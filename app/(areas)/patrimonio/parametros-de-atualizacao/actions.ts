@@ -36,8 +36,8 @@ export async function acaoDeParametrosAction(_prev: EstadoDoMolde, formData: For
     return {
       sucesso:
         acao === "encerrar"
-          ? "Atualização encerrada para esta classe. O processamento por competência passa a recusá-la."
-          : "Versão do parâmetro gravada. Vale para as competências processadas a partir de agora.",
+          ? "Atualização encerrada para esta classe. A classe não será mais incluída no processamento por competência."
+          : "Nova versão do parâmetro registrada. Aplica-se às competências processadas a partir de agora.",
     };
   });
 }

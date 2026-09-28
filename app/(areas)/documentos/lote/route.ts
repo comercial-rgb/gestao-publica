@@ -37,8 +37,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       {
         erro:
-          "Informe EXATAMENTE um dono do lote: ?processo=<id> ou ?pessoa=<id>. Sem dono " +
-          "não há regra de acesso a aplicar; com dois, não se sabe qual delas vale.",
+          "Informe exatamente um processo (?processo=<id>) ou uma pessoa (?pessoa=<id>) " +
+          "para baixar os anexos.",
       },
       { status: 400, headers: { "cache-control": "no-store" } }
     );

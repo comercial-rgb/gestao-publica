@@ -18,13 +18,13 @@ export const dynamic = "force-dynamic";
 
 export default async function UsuariosPage(): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_ADMINISTRACAO");
-  const cabecalho = <PageHeader titulo="Usuários" subtitulo="Identidades do sistema, estado e perfis" />;
+  const cabecalho = <PageHeader titulo="Usuários" subtitulo="Contas de acesso, situação e perfis atribuídos" />;
   let usuarios: readonly UsuarioAdmin[];
   let perfis: readonly PerfilOpcao[];
   try {
     [usuarios, perfis] = await Promise.all([listarUsuarios(), listarPerfisOpcoes()]);
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível listar os usuários"} descricao={erro instanceof Error ? erro.message : "Erro."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Usuários indisponíveis no momento" : "Não foi possível listar os usuários"} descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."} /></div>;
   }
 
   return (
@@ -34,10 +34,10 @@ export default async function UsuariosPage(): Promise<React.ReactElement> {
       {/* ⚠️ INTERRUPTOR: a troca-obrigatória no primeiro acesso ainda não é forçada (é campo de
           schema, e o schema segue nomeado). O admin ENTREGA a senha; o servidor deve trocá-la. */}
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs text-[color:var(--color-status-alerta-fg)]">
-        <div className="mb-1 flex items-center gap-2"><strong>Troca de senha no primeiro acesso</strong> <Badge status="alerta">pendente</Badge></div>
-        A senha inicial (ou a redefinida) é exibida <strong>uma vez</strong> ao criar/resetar — entregue-a ao servidor.
-        A <strong>troca obrigatória no primeiro acesso ainda não é forçada</strong> pelo sistema:
-        oriente o servidor a trocá-la em <strong>Administração → Senha</strong>.
+        <div className="mb-1"><strong>Entrega da senha inicial</strong></div>
+        A senha inicial ou redefinida é exibida <strong>uma única vez</strong>; entregue-a ao usuário.
+        O sistema ainda não exige a troca no primeiro acesso: oriente o usuário a alterá-la em{" "}
+        <strong>Administração → Senha</strong>.
       </div>
 
       <FormCriarUsuario perfis={perfis} />
@@ -49,7 +49,7 @@ export default async function UsuariosPage(): Promise<React.ReactElement> {
           colunas={colunas(perfis)}
           linhas={usuarios}
           keyDe={(u) => u.id}
-          legenda={`${usuarios.length} usuário(s) · cada ação de administração cobra a sua permissão do censo.`}
+          legenda={`${usuarios.length} usuário(s).`}
         />
       )}
     </div>
@@ -60,10 +60,10 @@ function colunas(perfis: readonly PerfilOpcao[]): readonly ColunaTabela<UsuarioA
   return [
     { chave: "ident", cabecalho: "Identificador", alinhamento: "esquerda", celula: (u) => u.identificador },
     { chave: "nome", cabecalho: "Nome", alinhamento: "esquerda", celula: (u) => u.nome },
-    { chave: "ativo", cabecalho: "Estado", alinhamento: "esquerda", largura: "6rem", celula: (u) => <Badge status={u.ativo ? "ok" : "erro"}>{u.ativo ? "ativo" : "inativo"}</Badge> },
+    { chave: "ativo", cabecalho: "Situação", alinhamento: "esquerda", largura: "6rem", celula: (u) => <Badge status={u.ativo ? "ok" : "erro"}>{u.ativo ? "ativo" : "inativo"}</Badge> },
     { chave: "perfis", cabecalho: "Perfis", alinhamento: "esquerda", celula: (u) => (u.perfis.length > 0 ? u.perfis.join(", ") : "—") },
     // V3 (pacote 2): a pessoa que o usuário É. Sem vínculo = PENDENTE, nomeado — nunca inferido do nome.
-    { chave: "pessoa", cabecalho: "Pessoa do cadastro", alinhamento: "esquerda", celula: (u) => (u.pessoa === null ? <Badge status="alerta">vínculo pendente</Badge> : <span title={u.pessoa.documento}>{u.pessoa.nome}</span>) },
+    { chave: "pessoa", cabecalho: "Pessoa do cadastro", alinhamento: "esquerda", celula: (u) => (u.pessoa === null ? <Badge status="alerta">não vinculado</Badge> : <span title={u.pessoa.documento}>{u.pessoa.nome}</span>) },
     {
       chave: "acoes",
       cabecalho: "Ações",

@@ -24,6 +24,12 @@ const ROTULO_DO_TIPO: Record<RestoAPagarDetalhe["tipo"], string> = {
   NAO_PROCESSADO: "Não processado",
 };
 
+const ROTULO_DA_SITUACAO: Record<RestoAPagarDetalhe["situacao"], string> = {
+  "A PAGAR": "A pagar",
+  QUITADO: "Quitado",
+  CANCELADO: "Cancelado",
+};
+
 const STATUS_DA_SITUACAO: Record<RestoAPagarDetalhe["situacao"], "ok" | "alerta" | "neutro"> = {
   "A PAGAR": "alerta",
   QUITADO: "ok",
@@ -52,7 +58,7 @@ export default async function RestoAPagarDetalhePage({
       <div>
         <PageHeader titulo="Resto a Pagar" acoes={voltar} />
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível consultar a inscrição"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível consultar a inscrição"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -78,7 +84,7 @@ export default async function RestoAPagarDetalhePage({
         acoes={voltar}
       />
       <div>
-        <Badge status={STATUS_DA_SITUACAO[d.situacao]}>{d.situacao}</Badge>
+        <Badge status={STATUS_DA_SITUACAO[d.situacao]}>{ROTULO_DA_SITUACAO[d.situacao]}</Badge>
       </div>
 
       <TabelaDeDados
@@ -114,7 +120,7 @@ export default async function RestoAPagarDetalhePage({
         ]}
         keyDe={(l) => l.rotulo}
         ehTotal={(l) => l.destaque}
-        legenda="Composição do saldo — valores em R$ · líquido = bruto − estorno · saldo = inscrito − pago líquido − cancelado líquido"
+        legenda="Composição do saldo · valores em R$ · líquido = bruto − estorno · saldo = inscrito − pago líquido − cancelado líquido"
       />
 
       <AcoesDaInscricao d={d} />
@@ -193,8 +199,8 @@ async function AcoesDaInscricao({
       {pendentes.length > 0 ? (
         <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {pendentes.length === 1
-            ? `A ${pendentes[0]} ainda não tem contas informadas e será recusada.`
-            : `Estas operações ainda não têm contas informadas e serão recusadas: ${pendentes.join(", ")}.`}{" "}
+            ? `A ${pendentes[0]} ainda não tem contas informadas e não poderá ser registrada.`
+            : `Estas operações ainda não têm contas informadas e não poderão ser registradas: ${pendentes.join(", ")}.`}{" "}
           <Link className="underline hover:no-underline" href="/contabilidade/roteiros-de-restos-a-pagar">
             Informar as contas das operações de restos a pagar
           </Link>

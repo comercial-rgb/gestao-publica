@@ -25,7 +25,7 @@ export async function triarAction(_prev: EstadoDaOuvidoria, formData: FormData):
       return { erro: mensagemDoErro(e, "Não foi possível registrar a triagem. Nada foi gravado.") };
     }
     revalidatePath("/protocolo/ouvidoria");
-    return { sucesso: "Triagem registrada. A anotação é interna e não vai ao manifestante." };
+    return { sucesso: "Triagem registrada. A anotação é interna e não é exibida ao manifestante." };
   });
 }
 
@@ -38,7 +38,7 @@ export async function responderAction(_prev: EstadoDaOuvidoria, formData: FormDa
       return { erro: mensagemDoErro(e, "Não foi possível registrar a resposta. Nada foi gravado.") };
     }
     revalidatePath("/protocolo/ouvidoria");
-    return { sucesso: conclusiva ? "Resposta conclusiva registrada; o processo foi encerrado. O manifestante a lê pelo código." : "Resposta registrada. O manifestante a lê pelo código." };
+    return { sucesso: conclusiva ? "Resposta conclusiva registrada e processo encerrado. O manifestante pode consultá-la com o código de acompanhamento." : "Resposta registrada. O manifestante pode consultá-la com o código de acompanhamento." };
   });
 }
 
@@ -58,8 +58,8 @@ export async function encaminharAction(_prev: EstadoDaOuvidoria, formData: FormD
     revalidatePath("/protocolo/ouvidoria");
     return {
       sucesso:
-        "Encaminhada. O setor de destino foi notificado e precisa RECEBER a manifestação — " +
-        "é o recebimento que inicia a contagem do prazo, não o envio.",
+        "Manifestação encaminhada. O setor de destino foi notificado e deve registrar o recebimento, " +
+        "a partir do qual o prazo passa a ser contado.",
     };
   });
 }
@@ -72,6 +72,6 @@ export async function receberAction(_prev: EstadoDaOuvidoria, formData: FormData
       return { erro: mensagemDoErro(e, "Não foi possível receber a manifestação. Nada foi gravado.") };
     }
     revalidatePath("/protocolo/ouvidoria");
-    return { sucesso: "Recebida neste setor. O prazo da etapa passa a contar a partir de agora." };
+    return { sucesso: "Manifestação recebida neste setor. O prazo da etapa passa a ser contado a partir de agora." };
   });
 }

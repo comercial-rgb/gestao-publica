@@ -39,23 +39,23 @@ export default async function ApresentacaoPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <PageHeader
         titulo="Apresentação do ente"
-        subtitulo="Como a instituição aparece na entrada, no cabeçalho, no rodapé e nos documentos novos. Cada gravação é uma versão, com autor."
+        subtitulo="Identificação da instituição exibida na entrada, no cabeçalho, no rodapé e nos novos documentos."
       />
 
       {dados.ente === null ? (
         <p role="alert" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-sm text-[color:var(--color-status-alerta-fg)]">
-          O ente desta implantação ainda não está semeado: a entrada mostra a identidade neutra de desenvolvimento. Semeie a
-          identificação do ente (IBGE, CNPJ, tribunal) com quem responde por ela antes de configurar a apresentação.
+          A identificação do ente (código IBGE, CNPJ e tribunal de contas) ainda não foi cadastrada. Solicite o cadastro
+          ao responsável antes de configurar a apresentação.
         </p>
       ) : (
         <Card>
-          <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">O ente semeado nesta implantação</h2>
+          <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Identificação do ente</h2>
           <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
             <div><dt className="text-xs text-[color:var(--color-ink-3)]">Nome oficial</dt><dd className="text-[color:var(--color-ink)]">{dados.ente.nome}</dd></div>
             <div><dt className="text-xs text-[color:var(--color-ink-3)]">UF</dt><dd className="text-[color:var(--color-ink)]">{dados.ente.uf ?? "—"}</dd></div>
             <div><dt className="text-xs text-[color:var(--color-ink-3)]">Código IBGE</dt><dd className="tabular text-[color:var(--color-ink)]">{dados.ente.codigoIbge}</dd></div>
           </dl>
-          <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Estes dados são da identificação fiscal e não se editam aqui.</p>
+          <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Os dados de identificação fiscal não são alterados nesta tela.</p>
         </Card>
       )}
 
@@ -64,7 +64,7 @@ export default async function ApresentacaoPage(): Promise<React.ReactElement> {
       <Card>
         <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Versões</h2>
         {dados.historico.length === 0 ? (
-          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma versão gravada — a entrada mostra a identidade neutra até a primeira.</p>
+          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma versão gravada. Até a primeira gravação, a tela de entrada exibe uma identificação genérica.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

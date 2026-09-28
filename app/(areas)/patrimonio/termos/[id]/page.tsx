@@ -32,8 +32,8 @@ export default async function Detalhe({
   const abaDeAnexos = (
     <div>
       <p className="mb-3 text-sm text-[color:var(--color-ink-2)]">
-        O termo assinado, digitalizado. Cada arquivo guarda o sha256 do conteúdo; um arquivo trocado
-        depois de anexado é recusado na entrega em vez de servido como se fosse o original.
+        Anexe o termo assinado e digitalizado. A integridade de cada arquivo é verificada a cada
+        acesso; um arquivo alterado após o envio não é disponibilizado.
       </p>
       <ListaDeAnexos anexos={anexos} />
       <div className="mt-4 border-t border-[color:var(--color-border)] pt-4">

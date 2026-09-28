@@ -62,8 +62,8 @@ export default async function ConsultaPublicaPage({
           Acompanhar processo
         </h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-          Informe o número, o ano e o código verificador que você recebeu na abertura.
-          Não é preciso ter senha.
+          Informe o número, o ano e o código verificador recebidos na abertura do processo.
+          Não é necessário cadastro nem senha.
         </p>
       </header>
 
@@ -118,8 +118,7 @@ export default async function ConsultaPublicaPage({
           className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
         >
           Não encontramos um processo com esse número, ano e código verificador. Confira
-          os três — o código distingue maiúsculas de minúsculas apenas na digitação, e
-          nunca usa os caracteres 0, O, 1, I e L.
+          os dados informados. O código verificador não utiliza os caracteres 0, O, 1, I e L.
         </p>
       ) : null}
 
@@ -190,7 +189,7 @@ export default async function ConsultaPublicaPage({
               )}
               {acesso.resposta === null ? (
                 <p className="mt-2 text-sm text-[color:var(--color-ink-2)]" data-sem-resposta-do-acesso>
-                  Nenhuma resposta foi entregue até aqui.
+                  Ainda não há resposta.
                 </p>
               ) : (
                 <p className="mt-2 text-sm" data-resposta-do-acesso>
@@ -216,8 +215,8 @@ export default async function ConsultaPublicaPage({
           )}
 
           <p className="mt-4 text-xs text-[color:var(--color-ink-2)]">
-            Esta consulta mostra por onde o processo passou e em que pé ele está. O
-            conteúdo da instrução — pareceres e documentos internos — não aparece aqui.
+            Esta consulta mostra o andamento e a situação atual do processo. Pareceres e
+            documentos internos não são exibidos.
           </p>
         </section>
       ) : null}

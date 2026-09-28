@@ -39,7 +39,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
           direcao={consulta.direcao}
           selecionados={consulta.selecionados}
           somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, [])}
-          motivoSemCriar="As solicitações nascem na carta de serviços, pelo requerente. A mesa não as cria."
+          motivoSemCriar="As solicitações são registradas pelo requerente na carta de serviços."
         />
       </div>
     );
@@ -48,7 +48,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={SOLICITACOES_DA_MESA.rotulo} subtitulo={SOLICITACOES_DA_MESA.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê as solicitações. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar a base de dados deste ambiente." />
         </div>
       );
     }

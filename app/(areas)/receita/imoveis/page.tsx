@@ -22,7 +22,7 @@ export default async function Imoveis({ searchParams }: { readonly searchParams:
   return (
     <ResultadosDosAtos>
       <div className="space-y-4" data-imoveis={t.imoveis.length}>
-        <PageHeader titulo="Cadastro imobiliário" subtitulo="Imóveis do município, com o histórico de cada cadastro. Simular não lança tributo nem constitui dívida." />
+        <PageHeader titulo="Cadastro imobiliário" subtitulo="Imóveis do município e histórico de cada cadastro. A simulação não gera lançamento nem dívida." />
         <AvisosDosAtos />
         <Card>
           <form method="get" className="flex flex-wrap items-end gap-2" data-busca-de-imovel>
@@ -51,7 +51,7 @@ export default async function Imoveis({ searchParams }: { readonly searchParams:
               </table>
             </div>
           )}
-          {t.podeCadastrar ? null : <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-do-cadastro>Cadastrar imóvel e registrar versões é do cadastro imobiliário (a ação de gerir o cadastro imobiliário no seu perfil).</p>}
+          {t.podeCadastrar ? null : <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-do-cadastro>O cadastro de imóveis e o registro de versões requerem a permissão de gestão do cadastro imobiliário.</p>}
         </Card>
         {t.podeCadastrar ? <FormCadastrarImovel hoje={t.hoje} /> : null}
       </div>

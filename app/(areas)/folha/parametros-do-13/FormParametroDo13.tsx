@@ -71,16 +71,15 @@ export function FormParametroDo13({
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Novo parâmetro do 13º</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Estes números decidem quanto cada servidor recebe de 13º, e nenhum deles existe no sistema: todos vêm do ato do
-        ente. Sem parâmetro do exercício, a folha de 13º recusa calcular e diz qual exercício falta. Corrigir é cadastrar
-        a versão seguinte — nada é editado, porque as folhas já calculadas citam a versão que as produziu.
+        Informe os valores conforme o ato do ente. Sem parâmetro publicado para o exercício, o cálculo da folha de 13º não
+        é realizado. Para corrigir, cadastre nova versão; as versões anteriores permanecem no histórico.
       </p>
 
       {semRubricas ? (
         <p className="mb-3 rounded border border-[color:var(--color-borda)] p-3 text-xs text-[color:var(--color-ink-2)]">
-          Faltam rubricas para preencher este formulário. São necessárias: duas rubricas de PROVENTO (uma para o 13º,
-          outra para o adiantamento), ao menos uma rubrica de provento de vencimento-base, gratificações ou percentual
-          para compor a base, e uma rubrica de DESCONTO de natureza &quot;Abatimento do adiantamento do 13º&quot;.
+          Faltam rubricas para preencher este formulário. São necessárias: duas rubricas de provento (uma para o 13º e
+          outra para o adiantamento), ao menos uma rubrica de provento de vencimento-base, gratificação ou percentual
+          para compor a base, e uma rubrica de desconto de natureza &quot;Abatimento do adiantamento do 13º&quot;.
           Cadastre-as em Folha &gt; Rubricas, com versão aprovada.
         </p>
       ) : null}
@@ -113,8 +112,8 @@ export function FormParametroDo13({
             <option value="EXERCICIO_INTEIRO">Os doze meses do exercício (o ano projetado)</option>
           </select>
           <span className="mt-1 block text-[11px]">
-            As duas práticas existem nos municípios e o sistema não escolhe por você: uma paga metade do que já foi
-            ganho até a competência; a outra paga metade do 13º projetado para o ano inteiro.
+            Na primeira opção, a parcela considera os avos adquiridos até a competência; na segunda, o 13º projetado
+            para o ano inteiro. Adote a prática prevista no ato do ente.
           </span>
         </label>
 
@@ -134,21 +133,20 @@ export function FormParametroDo13({
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Para ser abatido na 2ª parcela, o adiantamento precisa estar</span>
           <select name="estadoMinimoDoAdiantamentoParaAbater" defaultValue="" className={CAMPO}>
-            <option value="">Não declarado — o 13º sai como simulação e não pode ser apropriado</option>
-            <option value="FECHADO">Fechado — o cálculo do adiantamento foi congelado</option>
-            <option value="CERTIFICADO">Certificado — o cálculo foi atestado por quem o ente designou</option>
-            <option value="PAGO">Pago — o adiantamento deste servidor saiu do caixa</option>
+            <option value="">Não definido (o 13º é calculado como simulação e não pode ser apropriado)</option>
+            <option value="FECHADO">Fechado (o cálculo do adiantamento foi encerrado)</option>
+            <option value="CERTIFICADO">Certificado (o cálculo foi atestado pelo servidor designado)</option>
+            <option value="PAGO">Pago (o adiantamento deste servidor foi pago)</option>
           </select>
           <span className="mt-1 block text-[11px]">
-            Quem declara é o ente, com o ato abaixo. A Lei 4.749/1965, art. 1º e o Decreto 57.155/1965, art. 3º, § 3º
-            mandam compensar o que o empregado &ldquo;houver recebido&rdquo; — mas governam o contrato celetista, e o
-            estatutário recebe pelo estatuto do município. Por isso o sistema não escolhe por você, e também não
-            assume o que fazia antes.
+            A definição cabe ao ente, conforme o ato informado abaixo. A Lei 4.749/1965, art. 1º, e o Decreto
+            57.155/1965, art. 3º, § 3º, tratam da compensação do valor &ldquo;recebido&rdquo; no regime celetista; para
+            o servidor estatutário, prevalece o estatuto do município.
           </span>
           <span className="mt-1 block text-[11px]">
             {adiantamentosQuePermitemPago.length === 0
-              ? "Exigir “pago” não é possível hoje: nenhuma rubrica de provento está num grupo de empenho que empenhe POR SERVIDOR, e sem isso não existe no banco quanto saiu para cada matrícula. Cadastre um grupo por servidor para a rubrica do adiantamento, ou use “fechado” ou “certificado”."
-              : `Exigir “pago” só funciona com rubrica de adiantamento empenhada POR SERVIDOR. Hoje servem: ${adiantamentosQuePermitemPago.join("; ")}.`}
+              ? "A opção “pago” não está disponível: nenhuma rubrica de provento está em grupo de empenho por servidor. Cadastre um grupo de empenho por servidor para a rubrica do adiantamento, ou utilize “fechado” ou “certificado”."
+              : `A opção “pago” exige rubrica de adiantamento empenhada por servidor. Rubricas disponíveis: ${adiantamentosQuePermitemPago.join("; ")}.`}
           </span>
         </label>
 
@@ -163,9 +161,8 @@ export function FormParametroDo13({
       </div>
 
       <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]">
-        A 1ª parcela não sofre contribuição nem imposto neste sistema, e isso não é uma afirmação sobre a norma: é um
-        limite declarado. Se ela sofresse, a 2ª parcela teria de abater o que já foi retido, e esse critério não foi
-        levantado. A memória de cada contracheque do adiantamento diz isso por escrito.
+        Neste sistema, não há retenção de contribuição nem de imposto sobre a 1ª parcela. A memória de cada contracheque
+        do adiantamento registra essa condição.
       </p>
 
       <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">As rubricas</h3>
@@ -196,8 +193,7 @@ export function FormParametroDo13({
             ))}
           </select>
           <span className="mt-1 block text-[11px]">
-            Separada da anterior de propósito: é a rubrica que decide em qual grupo de empenho — e portanto em qual
-            ficha — a verba cai.
+            Deve ser distinta da rubrica do 13º, pois define o grupo de empenho e a ficha orçamentária da parcela.
           </span>
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -218,9 +214,8 @@ export function FormParametroDo13({
       <fieldset className="mt-4">
         <legend className={ROTULO}>Rubricas que compõem a base do 13º</legend>
         <p className="mb-2 text-[11px] text-[color:var(--color-ink-2)]">
-          Só aparecem aqui vencimento-base, gratificações do vínculo e percentual do vencimento. Compor o 13º com valor
-          informado ou com fórmula exigiria a média das variáveis do ano, que este sistema não calcula — e somar o
-          lançamento de um mês pagaria 13º sobre a hora extra de dezembro como se fosse a do ano inteiro.
+          São listadas apenas rubricas de vencimento-base, gratificações do vínculo e percentual do vencimento. Rubricas
+          variáveis não compõem a base do 13º neste cadastro.
         </p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {base.map((o) => (
@@ -234,8 +229,8 @@ export function FormParametroDo13({
 
       <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">O ato que fundamenta</h3>
       <p className="mb-2 text-[11px] text-[color:var(--color-ink-2)]">
-        Uma frase não serve: o sistema confere que há um ato identificado (número com dígito), de ano possível, com o
-        dispositivo onde a regra está. É o que permite ao controle interno conferir sem abrir o diário oficial.
+        Informe o ato com número, ano e dispositivo em que a regra está prevista, para permitir a conferência pelo
+        controle interno.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs text-[color:var(--color-ink-2)]">

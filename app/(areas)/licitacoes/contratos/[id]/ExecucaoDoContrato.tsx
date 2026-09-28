@@ -42,16 +42,16 @@ export function ExecucaoDoContrato({ e, contratoId }: { readonly e: ExecucaoPara
       <Card>
         <h2 className="text-sm font-semibold">Execução por ordens de serviço</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Valor dado="autorizado" rotulo="Autorizado" valor={e.totais.autorizado} definicao="Ordens emitidas, menos os saldos cancelados, pelo unitário da ordem." />
-          <Valor dado="medido" rotulo="Medido" valor={e.totais.medido} definicao="Executado informado pelo fiscal nas medições das ordens." />
+          <Valor dado="autorizado" rotulo="Autorizado" valor={e.totais.autorizado} definicao="Valor das ordens emitidas, descontados os saldos cancelados." />
+          <Valor dado="medido" rotulo="Medido" valor={e.totais.medido} definicao="Execução informada pelo fiscal nas medições das ordens." />
           <Valor dado="recebido" rotulo="Recebido em definitivo" valor={e.totais.recebido} definicao="Parcelas aceitas pelo recebedor designado (art. 140, I, b)." />
-          <Valor dado="liquidado" rotulo="Liquidado pelas parcelas" valor={e.totais.liquidado} definicao="O que as liquidações vivas da despesa consumiram das parcelas recebidas." />
+          <Valor dado="liquidado" rotulo="Liquidado pelas parcelas" valor={e.totais.liquidado} definicao="Valor das parcelas recebidas já liquidado na despesa." />
         </div>
       </Card>
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Saldo dos itens do contrato</h2>
-        {e.itensDoContrato.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum item cadastrado: sem itens, não há ordem de serviço.</p> : (
+        {e.itensDoContrato.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum item cadastrado. Cadastre os itens do contrato para emitir ordens de serviço.</p> : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[52rem] text-left text-sm" data-saldo-dos-itens>
               <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Item</th><th className="py-1 pr-2">Unidade</th><th className="py-1 pr-2 text-right">Original</th><th className="py-1 pr-2 text-right">Contratado hoje</th><th className="py-1 pr-2 text-right">Unitário hoje</th><th className="py-1 pr-2 text-right">Autorizado em ordens</th><th className="py-1 pr-2 text-right">Medido sem ordem</th><th className="py-1 text-right">A autorizar</th></tr></thead>

@@ -120,7 +120,7 @@ async function criarServico(page: Page, slug: string, titulo: string, tipo: stri
     { sel: 'select[name="tipo"]', valor: tipo, tipo: "select" },
     { sel: 'select[name="assuntoId"]', valor: assunto, tipo: "select" },
   ]);
-  R.conferir(`2.s serviço ${slug} cadastrado pelo molde, fora da carta`, r.tipo === "ok" && r.texto.includes("FORA DA CARTA"), `${r.tipo}: ${r.texto.slice(0, 200)}`);
+  R.conferir(`2.s serviço ${slug} cadastrado pelo molde, fora da carta`, r.tipo === "ok" && r.texto.includes("não publicado na carta"), `${r.tipo}: ${r.texto.slice(0, 200)}`);
   return idDoSucesso(r.texto, "/protocolo/servicos");
 }
 
@@ -194,7 +194,7 @@ async function main(): Promise<void> {
     const slugOuv = `ouvidoria-${SUF}`;
     const req = await criarServico(page, slugReq, `Revisão de lançamento ${SUF}`, "REQUERIMENTO_ADMINISTRATIVO", "CIDADAO");
     const rv = await cadastrarVersao(page, req, [{ nome: "assunto", rotulo: "Assunto do pedido", tipo: "texto", obrigatorio: true }, { nome: "detalhes", rotulo: "Detalhes", tipo: "textoLongo", obrigatorio: true }]);
-    R.conferir("2.1 versão do requerimento cadastrada em RASCUNHO pela ilha", rv.tipo === "ok" && rv.texto.includes("RASCUNHO"), `${rv.tipo}: ${rv.texto.slice(0, 200)}`);
+    R.conferir("2.1 versão do requerimento cadastrada em RASCUNHO pela ilha", rv.tipo === "ok" && rv.texto.includes("rascunho"), `${rv.tipo}: ${rv.texto.slice(0, 200)}`);
     await publicar(page, req);
 
     const cad = await criarServico(page, slugCad, `Atualizar contato ${SUF}`, "ATUALIZACAO_CADASTRAL", "CIDADAO");
@@ -360,7 +360,7 @@ async function main(): Promise<void> {
     const op = await preencherEEnviar(page, "opinar-sobre-servico", [...notas(1, 2, 1), { sel: 'textarea[name="descricao"]', valor: `Opinião abusiva ${SUF}` }]);
     R.conferir("9.8 o visitante SEM CONTA dá opinião geral sobre o serviço", op.tipo === "ok", `${op.tipo}: ${op.texto.slice(0, 200)}`);
     const resultado = await irPara(N, page, `/servicos/${slugReq}`);
-    R.conferir("9.9 o resultado público separa quem foi atendido (1 resposta, satisfação 4,0) da opinião geral (1), sem a descrição privada", (await page.$('[data-avaliacoes="publicado"]')) !== null && /de quem foi atendido\s*respostas\s*1\s*satisfação\s*4,0/.test(resultado) && /opinião geral, sem conta\s*respostas\s*1/.test(resultado) && !resultado.includes(`descrição privada ${SUF}`), resultado.slice(resultado.indexOf("avaliações"), resultado.indexOf("avaliações") + 500));
+    R.conferir("9.9 o resultado público separa quem foi atendido (1 resposta, satisfação 4,0) da opinião geral (1), sem a descrição privada", (await page.$('[data-avaliacoes="publicado"]')) !== null && /de quem foi atendido\s*respostas\s*1\s*satisfação\s*4,0/.test(resultado) && /opiniões gerais\s*respostas\s*1/.test(resultado) && !resultado.includes(`descrição privada ${SUF}`), resultado.slice(resultado.indexOf("avaliações"), resultado.indexOf("avaliações") + 500));
     await capturar(page, "servico-resultado-avaliacoes");
     await entrar(N, page, ADMIN, SENHA_ADMIN);
     await irPara(N, page, "/protocolo/avaliacoes");
@@ -369,7 +369,7 @@ async function main(): Promise<void> {
     R.conferir("9.10 a moderação (admin) remove a opinião abusiva com motivo e justificativa", rem.tipo === "ok", `${rem.tipo}: ${rem.texto.slice(0, 200)}`);
     await sair(N, page);
     const depois = await irPara(N, page, `/servicos/${slugReq}`);
-    R.conferir("9.11 o resultado público informa a remoção e a opinião sai da média", /1 avaliação\(ões\) removida/.test(depois) && /opinião geral, sem conta\s*ainda sem avaliações no período/.test(depois), depois.slice(depois.indexOf("avaliações"), depois.indexOf("avaliações") + 500));
+    R.conferir("9.11 o resultado público informa a remoção e a opinião sai da média", /1 avaliação\(ões\) removida/.test(depois) && /opiniões gerais\s*ainda sem avaliações no período/.test(depois), depois.slice(depois.indexOf("avaliações"), depois.indexOf("avaliações") + 500));
 
     // ══ 9c. V7 M1 U4 — a manifestação sem conta: registro, acompanhamento limitado, sigilo, triagem e resposta ══
     R.conferir("9.12 /ouvidoria responde sem sessão e lista o canal publicado", (await status(page, "/ouvidoria")) === 200 && (await texto(page)).includes(`ouvidoria ${SUF}`), "o canal não apareceu");

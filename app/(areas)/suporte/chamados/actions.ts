@@ -63,8 +63,7 @@ export async function responderChamadoAction(
       revalidar(chamadoId);
       return {
         sucesso:
-          "Resposta registrada — e ela NÃO encerra o chamado. Quem abriu é quem sabe se o " +
-          "problema acabou.",
+          "Resposta registrada. O chamado permanece aberto até o encerramento.",
       };
     } catch (e) {
       return comoErro(e);
@@ -81,7 +80,7 @@ export async function encerrarChamadoAction(
     try {
       await encerrarChamadoNaTela({ chamadoId, texto: texto(formData, "texto") });
       revalidar(chamadoId);
-      return { sucesso: "Chamado encerrado. Quem o abriu foi convidado a avaliar." };
+      return { sucesso: "Chamado encerrado. O solicitante poderá avaliar o atendimento." };
     } catch (e) {
       return comoErro(e);
     }
@@ -122,8 +121,7 @@ export async function avaliarChamadoAction(
       revalidar(chamadoId);
       return {
         sucesso:
-          "Avaliação gravada. Ela não se altera — uma nota que muda depois de o suporte " +
-          "ver o resultado não é pesquisa, é negociação.",
+          "Avaliação registrada. Após o envio, ela não pode ser alterada.",
       };
     } catch (e) {
       return comoErro(e);

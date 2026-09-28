@@ -47,8 +47,8 @@ export function FormFormarOrdem({
     <form action={action} data-acao="formar-ordem" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
       <input type="hidden" name="solicitacaoId" value={solicitacaoId} />
-      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Formar ordem de compra a partir desta solicitação</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Só os itens com pendente entram. Reduza a quantidade para atender em parte; o resto continua pendente para outra ordem.</p>
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Emitir ordem de compra a partir desta solicitação</h2>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Somente itens pendentes são listados. Para atendimento parcial, reduza a quantidade; o saldo permanece pendente para outra ordem.</p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Número da ordem</span>
@@ -138,7 +138,7 @@ export function FormFormarOrdem({
         </p>
       ) : null}
       <button type="submit" disabled={pendente} className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`}>
-        {pendente ? "Gravando…" : "Formar ordem com os itens marcados"}
+        {pendente ? "Gravando…" : "Emitir ordem com os itens marcados"}
       </button>
     </form>
   );

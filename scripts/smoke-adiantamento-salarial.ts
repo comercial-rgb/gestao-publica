@@ -263,7 +263,7 @@ async function main(): Promise<void> {
     const semPoder = await irPara(N, page, "/folha/parametros-do-adiantamento-salarial");
     R.conferir(
       "4.1 NEGATIVA: sem a ação, a tela não oferece o cadastro e NOMEIA a permissão que falta",
-      semPoder.includes("configurar_parametro_do_adiantamento_salarial"),
+      semPoder.includes("permissão para configurar os parâmetros do adiantamento salarial"),
       semPoder.slice(0, 600)
     );
     R.conferir(
@@ -380,7 +380,7 @@ async function main(): Promise<void> {
      */
     const lista = await irPara(N, page, "/folha/parametros-do-adiantamento-salarial");
     R.conferir("5.8 a lista mostra o percentual em pt-BR e a situação VIGENTE", lista.includes("40,00%") && lista.includes("vigente"), lista.slice(0, 900));
-    R.conferir("5.9 e a coluna do critério diz que FECHADO não significa que o dinheiro saiu", /não significa que o dinheiro saiu|nao significa que o dinheiro saiu/i.test(lista), lista.slice(0, 1200));
+    R.conferir("5.9 e a coluna do critério diz que FECHADO não significa que o dinheiro saiu", /ainda sem pagamento/i.test(lista), lista.slice(0, 1200));
 
     // ══ 6. O PAR N=2, ADMITIDO PELA TELA ═════════════════════════════════════
     /**

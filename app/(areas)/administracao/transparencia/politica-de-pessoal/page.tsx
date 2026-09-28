@@ -16,7 +16,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
     <>
       <PageHeader
         titulo="Política de publicação de pessoal"
-        subtitulo="O ato do ente que diz o que o portal público mostra por servidor — e o que ele nunca mostra"
+        subtitulo="Define quais dados individuais de servidores o portal público pode exibir."
       />
       <FormPolitica p={painel} />
     </>

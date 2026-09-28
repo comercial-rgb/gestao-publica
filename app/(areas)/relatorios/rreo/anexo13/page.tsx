@@ -31,7 +31,7 @@ export default async function RreoAnexo13Page({
   try {
     dados = await gerarRreoAnexo13({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 13"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 13"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   return (

@@ -87,28 +87,26 @@ export function FormParametroDoAdiantamentoSalarial({
         Novo parâmetro do adiantamento salarial
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Estes números decidem quanto cada servidor recebe de vale, e nenhum deles existe no sistema: todos vêm do ato do
-        ente. Sem parâmetro da competência, a folha de adiantamento salarial recusa calcular e diz qual competência
-        falta. Corrigir é cadastrar a versão seguinte — nada é editado, e a folha mensal lê a versão que apurou o vale,
-        não a mais recente.
+        Informe os valores conforme o ato do ente. Sem parâmetro publicado para a competência, o cálculo da folha de
+        adiantamento salarial não é realizado. Para corrigir, cadastre nova versão; a folha mensal utiliza a versão que
+        apurou o adiantamento.
       </p>
 
       {semRubricas ? (
         <p className="mb-3 rounded border border-[color:var(--color-borda)] p-3 text-xs text-[color:var(--color-ink-2)]">
-          Faltam rubricas para preencher este formulário. São necessárias: uma rubrica de PROVENTO para pagar o vale, e
-          uma rubrica de DESCONTO de natureza &quot;Abatimento do adiantamento salarial&quot; para abatê-lo na folha
-          mensal. A natureza do abatimento do 13º não serve aqui — ela abate na folha de 13º, e usá-la descontaria do
-          salário do mês metade da gratificação natalina. Cadastre-as em Folha &gt; Rubricas, com versão aprovada.
+          Faltam rubricas para preencher este formulário. São necessárias: uma rubrica de provento para pagar o
+          adiantamento e uma rubrica de desconto de natureza &quot;Abatimento do adiantamento salarial&quot; para abatê-lo
+          na folha mensal (a natureza do abatimento do 13º não se aplica). Cadastre-as em Folha &gt; Rubricas, com versão
+          aprovada.
         </p>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Competência do vale (AAAA-MM)</span>
+          <span className={ROTULO}>Competência do adiantamento (AAAA-MM)</span>
           <input name="competencia" required pattern="\d{4}-(0[1-9]|1[0-2])" placeholder="2026-06" className={CAMPO} />
           <span className="mt-1 block text-[11px]">
-            O parâmetro é por competência, e não por ano: o ente pode mudar o percentual em julho sem reescrever o que
-            valeu em junho.
+            O parâmetro é definido por competência, o que permite alterar o percentual sem afetar as competências anteriores.
           </span>
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -123,70 +121,65 @@ export function FormParametroDoAdiantamentoSalarial({
               Escolha
             </option>
             <option value="REMUNERACAO_DO_MES_ANTERIOR">
-              A remuneração do mês anterior (o que a folha fechada dele apurou)
+              A remuneração do mês anterior (apurada na folha fechada)
             </option>
             <option value="REMUNERACAO_PROJETADA_DO_MES">
-              A remuneração projetada do próprio mês (motor mensal, tabelas vigentes)
+              A remuneração projetada do próprio mês (com as tabelas vigentes)
             </option>
           </select>
           <span className="mt-1 block text-[11px]">
-            <strong>Mês anterior:</strong> lê o que a folha mensal FECHADA do mês passado apurou; nada é recalculado.
-            Quem foi admitido na própria competência não tem base e não recebe vale, e sem aquela folha fechada o
-            cálculo recusa. <strong>Projetada:</strong> roda o motor mensal da competência corrente — admissão,
-            desligamento e mudança de vencimento dentro do mês já aparecem no vale.
+            <strong>Mês anterior:</strong> utiliza o valor apurado na folha mensal fechada do mês anterior. Servidores
+            admitidos na própria competência não recebem adiantamento, e o cálculo exige que aquela folha esteja fechada.
+            <strong> Projetada:</strong> calcula a remuneração da competência corrente, considerando admissões,
+            desligamentos e alterações de vencimento ocorridos no mês.
           </span>
           <span className="mt-1 block text-[11px]">
-            Estas são as duas práticas que o sistema sabe calcular e conferir, e elas não esgotam as regras possíveis.
-            Se o ato do seu município fixa outra coisa — valor fixo por faixa, percentual variável por tempo de serviço,
-            vale limitado a um teto —, <strong>não escolha a mais parecida</strong>: o cálculo sairia todo mês com o
-            valor errado e nada acusaria, porque a folha fecha e os totais batem. Registre a regra e peça a
-            funcionalidade.
+            Estas duas opções não esgotam as regras possíveis. Se o ato do município prevê outra forma (valor fixo por
+            faixa, percentual variável por tempo de serviço ou limite máximo), <strong>não escolha a mais parecida</strong>:
+            registre a regra e solicite a inclusão da funcionalidade.
           </span>
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Para ser abatido na folha mensal, o vale precisa estar</span>
+          <span className={ROTULO}>Para ser abatido na folha mensal, o adiantamento precisa estar</span>
           <select name="estadoMinimoParaAbater" required defaultValue="" className={CAMPO}>
             <option value="" disabled>
               Escolha
             </option>
-            <option value="FECHADO">Fechado — o cálculo do vale foi congelado</option>
-            <option value="CERTIFICADO">Certificado — o cálculo foi atestado por quem o ente designou</option>
-            <option value="PAGO">Pago — o vale deste servidor saiu do caixa</option>
+            <option value="FECHADO">Fechado (o cálculo do adiantamento foi encerrado)</option>
+            <option value="CERTIFICADO">Certificado (o cálculo foi atestado pelo servidor designado)</option>
+            <option value="PAGO">Pago (o adiantamento deste servidor foi pago)</option>
           </select>
           <span className="mt-1 block text-[11px]">
-            <strong>Fechar não é pagar.</strong> Fechar congela o cálculo e não move um centavo: escolher
-            &ldquo;fechado&rdquo; faz a mensal descontar do servidor um vale que o ente pode ainda não ter pago. Quem
-            declara qual fato basta é o ente, com o ato abaixo — o sistema não escolhe por você, e é por isso que este
-            campo não tem opção em branco nem valor sugerido.
+            <strong>Fechar não é pagar.</strong> O fechamento encerra o cálculo, sem efetuar pagamento: com a opção
+            &ldquo;fechado&rdquo;, a folha mensal pode descontar um adiantamento ainda não pago. A definição cabe ao
+            ente, conforme o ato informado abaixo.
           </span>
           <span className="mt-1 block text-[11px]">
             {adiantamentosQuePermitemPago.length === 0
-              ? "Exigir “pago” não é possível hoje: nenhuma rubrica de provento está num grupo de empenho que empenhe POR SERVIDOR, e sem isso não existe no banco quanto saiu para cada matrícula. Cadastre um grupo por servidor para a rubrica do vale, ou use “fechado” ou “certificado”."
-              : `Exigir “pago” só funciona com a rubrica do vale empenhada POR SERVIDOR. Hoje servem: ${adiantamentosQuePermitemPago.join("; ")}.`}
+              ? "A opção “pago” não está disponível: nenhuma rubrica de provento está em grupo de empenho por servidor. Cadastre um grupo de empenho por servidor para a rubrica do adiantamento, ou utilize “fechado” ou “certificado”."
+              : `A opção “pago” exige a rubrica do adiantamento empenhada por servidor. Rubricas disponíveis: ${adiantamentosQuePermitemPago.join("; ")}.`}
           </span>
         </label>
       </div>
 
       <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]">
-        O vale não sofre contribuição nem IRRF neste sistema, e isso não é uma afirmação sobre a norma: é aritmética
-        interna. O abatimento na mensal é um desconto que não reduz base, então a folha do mês tributa a remuneração
-        inteira, o vale incluído — reter aqui tributaria a mesma base duas vezes. A memória de cada contracheque do vale
-        diz isso por escrito.
+        Não há retenção de contribuição nem de IRRF sobre o adiantamento: a folha mensal tributa a remuneração integral,
+        incluído o adiantamento, o que evita tributar a mesma base duas vezes. A memória de cada contracheque do
+        adiantamento registra essa condição.
       </p>
 
-      <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">O lado contábil</h3>
+      <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">Registro contábil</h3>
       {semContas ? (
         <p className="mb-3 rounded border border-[color:var(--color-borda)] p-3 text-xs text-[color:var(--color-ink-2)]">
-          O plano de contas do ente não tem nenhuma conta ANALÍTICA do ramo 1.1.3.1 (Adiantamentos concedidos), e sem
-          ela este parâmetro não pode ser cadastrado — o vale precisa de uma conta onde virar direito a receber. O plano
-          oficial do TCE-PB traz 1.1.3.1.1.01.01 (Salários e ordenados - adiantamentos) para exatamente este caso.
-          Semeie o plano de contas antes de continuar.
+          O plano de contas do ente não possui conta analítica do grupo 1.1.3.1 (Adiantamentos concedidos), necessária
+          para registrar o adiantamento como direito a receber. O plano oficial do TCE-PB prevê a conta 1.1.3.1.1.01.01
+          (Salários e ordenados - adiantamentos) para este caso. Cadastre a conta no plano de contas antes de continuar.
         </p>
       ) : null}
       <div className="grid gap-4">
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Conta do plano em que o vale vira DIREITO a receber</span>
+          <span className={ROTULO}>Conta de registro do adiantamento como direito a receber</span>
           <select name="contaDoAdiantamentoId" required defaultValue="" className={CAMPO} disabled={semContas}>
             <option value="" disabled>
               Escolha
@@ -198,15 +191,12 @@ export function FormParametroDoAdiantamentoSalarial({
             ))}
           </select>
           <span className="mt-1 block text-[11px]">
-            O vale <strong>não é despesa de pessoal do mês</strong>: quando ele sai do caixa, o ente passa a ter um
-            direito a receber daquele servidor, e é esta conta que o registra. A folha mensal da mesma competência
-            <strong> baixa</strong> esse direito ao abater o vale do líquido. A despesa de pessoal é reconhecida uma
-            única vez, na folha mensal, pelo valor bruto.
+            O adiantamento <strong>não é despesa de pessoal do mês</strong>: quando pago, é registrado nesta conta como
+            direito a receber do servidor, baixado pela folha mensal da mesma competência ao abater o valor do líquido. A
+            despesa de pessoal é reconhecida uma única vez, na folha mensal, pelo valor bruto.
           </span>
           <span className="mt-1 block text-[11px]">
-            Só aparecem aqui contas analíticas do ramo 1.1.3.1 (Adiantamentos concedidos). Contas sintéticas não
-            recebem lançamento, e uma conta de variação patrimonial diminutiva faria o mesmo dinheiro virar despesa
-            duas vezes — uma no vale, outra na mensal.
+            São listadas apenas contas analíticas do grupo 1.1.3.1 (Adiantamentos concedidos).
           </span>
         </label>
       </div>
@@ -214,7 +204,7 @@ export function FormParametroDoAdiantamentoSalarial({
       <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">As rubricas</h3>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Rubrica que PAGA o vale</span>
+          <span className={ROTULO}>Rubrica de pagamento do adiantamento</span>
           <select name="rubricaDoAdiantamentoId" required defaultValue="" className={CAMPO}>
             <option value="" disabled>
               Escolha
@@ -226,11 +216,11 @@ export function FormParametroDoAdiantamentoSalarial({
             ))}
           </select>
           <span className="mt-1 block text-[11px]">
-            É ela que decide em qual grupo de empenho — e portanto em qual ficha — a verba do vale cai.
+            Define o grupo de empenho e a ficha orçamentária do adiantamento.
           </span>
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Rubrica que ABATE o vale na folha mensal</span>
+          <span className={ROTULO}>Rubrica de abatimento na folha mensal</span>
           <select name="rubricaDoAbatimentoId" required defaultValue="" className={CAMPO}>
             <option value="" disabled>
               Escolha
@@ -242,17 +232,15 @@ export function FormParametroDoAdiantamentoSalarial({
             ))}
           </select>
           <span className="mt-1 block text-[11px]">
-            Só aparecem rubricas de natureza &quot;Abatimento do adiantamento salarial&quot;: é a única que o motor
-            mensal sabe ler para descontar o vale.
+            São listadas apenas rubricas de natureza &quot;Abatimento do adiantamento salarial&quot;.
           </span>
         </label>
       </div>
 
       <h3 className="mt-5 mb-2 text-xs font-semibold text-[color:var(--color-ink)]">O ato que fundamenta</h3>
       <p className="mb-2 text-[11px] text-[color:var(--color-ink-2)]">
-        Uma frase não serve: o sistema confere que há um ato identificado (número com dígito), de ano possível, com o
-        dispositivo onde a regra está. É o que permite ao controle interno conferir sem abrir o diário oficial — e é o
-        que sustenta a base e o critério de abatimento escolhidos acima.
+        Informe o ato com número, ano e dispositivo em que a regra está prevista. Ele fundamenta a base e o critério de
+        abatimento escolhidos acima e permite a conferência pelo controle interno.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs text-[color:var(--color-ink-2)]">

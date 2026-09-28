@@ -40,10 +40,10 @@ async function ler<T>(fn: () => Promise<T>): Promise<Estado<T>> {
 
 function Faixa({ estado, vazio, children }: { readonly estado: Estado<unknown>; readonly vazio: string; readonly children?: React.ReactNode }): React.ReactElement {
   if (estado.tipo === "sem-acesso") {
-    return <p className="text-sm text-[color:var(--color-ink-3)]" data-estado="sem-acesso">Não está no seu acesso.</p>;
+    return <p className="text-sm text-[color:var(--color-ink-3)]" data-estado="sem-acesso">Não disponível para o seu perfil.</p>;
   }
   if (estado.tipo === "indisponivel") {
-    return <p className="text-sm text-[color:var(--color-status-alerta-fg)]" data-estado="indisponivel">Indisponível agora — a consulta falhou; não é zero.</p>;
+    return <p className="text-sm text-[color:var(--color-status-alerta-fg)]" data-estado="indisponivel">Informação indisponível no momento. Tente novamente mais tarde.</p>;
   }
   if (Array.isArray(estado.valor) && estado.valor.length === 0) {
     return <p className="text-sm text-[color:var(--color-ink-3)]" data-estado="vazio">{vazio}</p>;
@@ -63,8 +63,8 @@ export async function AcoesFrequentes(): Promise<React.ReactElement> {
   });
   return (
     <section aria-label="Ações frequentes" data-mesa="acoes">
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Ações que você pode fazer</h2>
-      <Faixa estado={estado} vazio="Nenhuma ação de registro no seu perfil — as consultas continuam no menu.">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Ações frequentes</h2>
+      <Faixa estado={estado} vazio="Nenhuma ação de registro disponível para o seu perfil. As consultas estão no menu.">
         {estado.tipo === "dado" ? (
           <ul className="flex flex-wrap gap-2">
             {estado.valor.map((d) => (
@@ -118,7 +118,7 @@ export async function ComunicadosAguardandoLeitura(): Promise<React.ReactElement
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Comunicados não lidos</h2>
         <Link href="/comunicacao/comunicados" className="text-xs text-[color:var(--color-primary)] hover:underline">Caixa de entrada</Link>
       </div>
-      <Faixa estado={estado} vazio="Nada aguardando a sua leitura.">
+      <Faixa estado={estado} vazio="Nenhum comunicado pendente de leitura.">
         {estado.tipo === "dado" ? (
           <ul className="divide-y divide-[color:var(--color-border)] rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)]">
             {estado.valor.map((c) => (

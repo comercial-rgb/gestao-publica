@@ -4,7 +4,7 @@ import type { ObrigacoesLidas } from "../../../../../lib/portas/recursos/obrigac
 import { baixarGuiaAction, cancelarGuiaAction, registrarGuiaAction } from "../guias-actions";
 import { FormBaixaDaGuia, FormCancelarGuia, FormGuiaDeRecolhimento } from "./FormulariosDaGuia";
 
-const ROTULO_DA_SITUACAO: Readonly<Record<string, string>> = { RECEBIDA: "Recebida — não paga", BAIXADA: "Baixada por pagamento", CANCELADA: "Cancelada" };
+const ROTULO_DA_SITUACAO: Readonly<Record<string, string>> = { RECEBIDA: "Recebida, não paga", BAIXADA: "Baixada por pagamento", CANCELADA: "Cancelada" };
 
 /**
  * AS OBRIGAÇÕES DOS ENCARGOS E AS GUIAS (V7 M1 U3.2) — quatro objetos lado a lado e nenhum no lugar do outro:
@@ -16,12 +16,12 @@ export function ObrigacoesDaFolha({ folhaId, obrigacoes, podeGerir }: { readonly
     <Card>
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Obrigações dos encargos e guias de recolhimento</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Liquidado é a obrigação reconhecida; pago vem dos pagamentos; guia é o documento do emissor. Encargo apurado não prova recolhimento, e guia recebida não prova pagamento.{" "}
-        <a href={`/folha/folhas/${folhaId}/obrigacoes?formato=pdf`} target="_blank" rel="noopener noreferrer" className="font-medium text-[color:var(--color-primary)] hover:underline">Demonstrativo interno (PDF) — não é guia</a>{" · "}
+        Liquidado é a obrigação reconhecida; pago corresponde aos pagamentos realizados; guia é o documento emitido pelo órgão arrecadador.{" "}
+        <a href={`/folha/folhas/${folhaId}/obrigacoes?formato=pdf`} target="_blank" rel="noopener noreferrer" className="font-medium text-[color:var(--color-primary)] hover:underline">Demonstrativo interno (PDF)</a>{" · "}
         <a href={`/folha/folhas/${folhaId}/obrigacoes?formato=csv`} className="font-medium text-[color:var(--color-primary)] hover:underline">CSV</a>
       </p>
       {obrigacoes.length === 0 ? (
-        <p data-obrigacoes="vazio" className="text-xs text-[color:var(--color-ink-2)]">Nenhum encargo empenhado nesta competência — não há obrigação a recolher registrada.</p>
+        <p data-obrigacoes="vazio" className="text-xs text-[color:var(--color-ink-2)]">Nenhum encargo empenhado nesta competência.</p>
       ) : (
         <div className="space-y-4" data-obrigacoes="grupos">
           {obrigacoes.map((o) => (

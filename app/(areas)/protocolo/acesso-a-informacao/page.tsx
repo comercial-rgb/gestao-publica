@@ -25,7 +25,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
   const cabecalho = (
     <PageHeader
       titulo="Acesso à informação"
-      subtitulo="O prazo que o ente promete a quem pede informação, a norma que o fixa e o histórico das versões publicadas."
+      subtitulo="Prazos de resposta a pedidos de informação, normas aplicáveis e histórico de versões."
     />
   );
 
@@ -37,7 +37,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       return (
         <>
           {cabecalho}
-          <EstadoVazio titulo="Sem banco configurado" descricao="Esta tela lê a configuração publicada e precisa do banco." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar a base de dados deste ambiente." />
         </>
       );
     }
@@ -75,8 +75,8 @@ export default async function Pagina(): Promise<React.ReactElement> {
           </p>
           {p.exemploDeLimite !== null ? (
             <p className="mt-2 text-xs text-[color:var(--color-ink-3)]" data-papel="exemplo-de-limite">
-              Um pedido protocolado hoje venceria em <strong>{p.exemploDeLimite}</strong>, antes de
-              qualquer prorrogação. O número sai da mesma régua que calcula o prazo dos pedidos reais.
+              Um pedido protocolado hoje vence em <strong>{p.exemploDeLimite}</strong>, sem considerar
+              prorrogações.
             </p>
           ) : null}
         </Card>
@@ -85,7 +85,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       {p.versoes.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma configuração publicada"
-          descricao="O prazo de resposta a um pedido de acesso à informação nasce de lei, e este sistema não o inventa. Publique a primeira versão com o prazo e a norma que o fixa."
+          descricao="Publique a primeira versão com o prazo de resposta e a norma que o estabelece."
         />
       ) : (
         <div className="my-4 overflow-x-auto">
@@ -150,7 +150,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       ) : (
         <Card>
           <p className="text-sm text-[color:var(--color-ink-3)]">
-            O seu acesso consulta a configuração do acesso à informação, mas não a publica.
+            Seu perfil permite consultar esta configuração, mas não publicá-la.
           </p>
         </Card>
       )}

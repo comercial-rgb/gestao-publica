@@ -45,14 +45,14 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
           <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-fisico>
             <p className="text-xs text-[color:var(--color-ink-2)]">Físico (medições)</p>
             <p className="mt-1 text-sm">Medido: <ValorMonetario valor={d.fisico.medidoTotal} comSimbolo /></p>
-            <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">Progresso físico não é pagamento: medir não liquida; a medição precisa de aprovação e a liquidação é da despesa.</p>
+            <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">A medição não gera pagamento: depende de aprovação, e a liquidação é feita na execução da despesa.</p>
           </div>
         </div>
       </section>
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Gestor, fiscais e recebedores</h2>
-        {d.designacoes.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma designação. Sem gestor e fiscal designados, agenda, ocorrência e medição por itens não se praticam.</p> : (
+        {d.designacoes.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma designação. É necessário designar gestor e fiscal para programar fiscalizações, registrar ocorrências e medir por itens.</p> : (
           <ul className="space-y-3" data-designacoes>
             {d.designacoes.map((x) => (
               <li key={x.id} data-designacao={x.papel} className="text-sm">
@@ -89,7 +89,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
       {d.visao === "FINANCEIRA" ? (
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Fiscalização</h2>
-          <p className="text-sm text-[color:var(--color-ink-2)]" data-fiscalizacao-restrita>{d.alcance.motivo} A agenda, as ocorrências e as evidências não fazem parte desta projeção.</p>
+          <p className="text-sm text-[color:var(--color-ink-2)]" data-fiscalizacao-restrita>{d.alcance.motivo} A agenda, as ocorrências e as evidências não são exibidas neste perfil de acesso.</p>
         </Card>
       ) : null}
       {d.visao === "FISCALIZACAO" ? (<>
@@ -100,7 +100,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
             {d.ordens.map((o) => <li key={o.id} data-ordem={o.numero}>Ordem nº {o.numero} · {o.dataPrevista} · {o.fiscal} · {o.objetivo} <span className="text-xs text-[color:var(--color-ink-2)]">({o.ocorrencias} ocorrência(s))</span></li>)}
           </ul>
         )}
-        {d.papeis.podeProgramar ? null : <Motivo texto={d.papeis.gestor ? "Seu perfil não tem a ação de programar fiscalização." : "Programar é do GESTOR designado e vigente neste contrato."} />}
+        {d.papeis.podeProgramar ? null : <Motivo texto={d.papeis.gestor ? "Seu perfil não tem permissão para programar fiscalização." : "A programação cabe ao gestor com designação vigente neste contrato."} />}
       </Card>
       {d.papeis.podeProgramar ? <FormProgramar contratoId={alvo} fiscais={d.opcoes.fiscais} /> : null}
 
@@ -119,7 +119,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
             ))}
           </ol>
         )}
-        {d.papeis.podeRegistrarOcorrencia ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem a ação de registrar ocorrência." : "Registrar ocorrência é do FISCAL designado e vigente neste contrato."} />}
+        {d.papeis.podeRegistrarOcorrencia ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem permissão para registrar ocorrência." : "O registro de ocorrência cabe ao fiscal com designação vigente neste contrato."} />}
       </Card>
       {d.papeis.podeRegistrarOcorrencia ? <FormOcorrencia contratoId={alvo} ordens={d.opcoes.minhasOrdens} hoje={hoje} tipos={d.opcoes.tiposDeOcorrencia} /> : null}
       </>) : null}
@@ -133,10 +133,10 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
         )}
         <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-regime-de-medicao={d.regimesDeMedicao[0]?.regime ?? "PERIODO_LIVRE"}>
           {d.regimesDeMedicao[0] === undefined
-            ? "Regime de período: livre (sem configuração). Duas parcelas distintas no mesmo período passam; o saldo de cada item impede medir duas vezes."
+            ? "Regime de período: livre (padrão). Medições distintas no mesmo período são aceitas, limitadas ao saldo de cada item."
             : `Regime de período desde ${d.regimesDeMedicao[0].desde}: ${d.regimesDeMedicao[0].regime === "PERIODO_INDIVISIVEL" ? "indivisível" : "livre"} — ${d.regimesDeMedicao[0].fundamento}.`}
         </p>
-        {d.papeis.podeMedir ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem a ação de registrar medição." : "Medir por itens é do FISCAL designado e vigente neste contrato."} />}
+        {d.papeis.podeMedir ? null : <Motivo texto={d.papeis.fiscal ? "Seu perfil não tem permissão para registrar medição." : "A medição por itens cabe ao fiscal com designação vigente neste contrato."} />}
       </Card>
       {d.papeis.configurarExecucao ? <FormRegimeDeMedicao contratoId={alvo} hoje={hoje} /> : null}
       {d.papeis.podeMedir && d.fisico.itens.length > 0 ? (

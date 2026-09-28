@@ -10,6 +10,16 @@ import {
 import { diaCivil } from "../../../../packages/datas/index";
 import { FormMovimentacao } from "./FormMovimentacao";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { formatarMoeda } from "../../../../lib/format/moeda";
+
+const ROTULO_TIPO: Readonly<Record<string, string>> = {
+  DEPOSITO: "Depósito",
+  SAQUE: "Saque",
+  APLICACAO: "Aplicação financeira",
+  RESGATE: "Resgate de aplicação",
+  RENDIMENTO: "Rendimento creditado",
+  TARIFA: "Tarifa bancária",
+};
 
 /**
  * MOVIMENTAÇÃO BANCÁRIA POR FONTE — TR 5.62 e 5.10.2.6/.18/.19.
@@ -40,7 +50,7 @@ export default async function MovimentacaoPage({
   const cabecalho = (
     <PageHeader
       titulo="Movimentação bancária"
-      subtitulo={`Depósito, saque, aplicação, resgate, rendimento e tarifa — saldo por fonte até ${ate}`}
+      subtitulo={`Depósitos, saques, aplicações, resgates, rendimentos e tarifas, com saldo por fonte até ${ate.split("-").reverse().join("/")}`}
     />
   );
 
@@ -92,7 +102,7 @@ export default async function MovimentacaoPage({
                       {c.codigo} — {c.descricao}
                     </h3>
                     <span data-saldo-total={c.codigo} className="text-sm tabular-nums">
-                      {c.saldo}
+                      R$ {formatarMoeda(c.saldo).texto}
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-[color:var(--color-ink-2)]">
@@ -111,7 +121,7 @@ export default async function MovimentacaoPage({
                           <span className="text-[color:var(--color-ink-2)]">
                             fonte {f.codigo}
                           </span>
-                          <span className="tabular-nums">{f.saldo}</span>
+                          <span className="tabular-nums">R$ {formatarMoeda(f.saldo).texto}</span>
                         </li>
                       ))
                     )}
@@ -153,10 +163,10 @@ export default async function MovimentacaoPage({
                       className="border-t border-[color:var(--color-border)]"
                     >
                       <td className="py-2 tabular-nums">{m.data}</td>
-                      <td>{m.tipo}</td>
+                      <td>{ROTULO_TIPO[m.tipo] ?? m.tipo}</td>
                       <td className="tabular-nums">{m.fonteCodigo}</td>
                       <td>{m.historico}</td>
-                      <td className="text-right tabular-nums">{m.valor}</td>
+                      <td className="text-right tabular-nums">{formatarMoeda(m.valor).texto}</td>
                       <td>
                         {m.ehEstorno ? (
                           <Badge status="neutro">estorno</Badge>
@@ -181,8 +191,8 @@ export default async function MovimentacaoPage({
         <div className="space-y-6">
           {cabecalho}
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="A movimentação bancária lê e escreve no banco. Sem ele, esta tela não tem o que mostrar — e não vai fingir que tem."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível carregar a movimentação bancária. Tente novamente mais tarde."
           />
         </div>
       );

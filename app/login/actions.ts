@@ -21,8 +21,8 @@ export async function entrarAction(_prev: EstadoLogin, formData: FormData): Prom
   const retorno = retornoBruto.startsWith("/") && !retornoBruto.startsWith("//") ? retornoBruto : "/";
 
   const erros: { identificador?: string; senha?: string } = {};
-  if (identificador === "") erros.identificador = "Informe o seu usuário.";
-  if (senha === "") erros.senha = "Informe a sua senha.";
+  if (identificador === "") erros.identificador = "Informe seu usuário.";
+  if (senha === "") erros.senha = "Informe sua senha.";
   if (erros.identificador !== undefined || erros.senha !== undefined) {
     return { erros, identificador };
   }

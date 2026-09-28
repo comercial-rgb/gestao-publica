@@ -24,9 +24,9 @@ export async function PainelDePendencias(): Promise<React.ReactElement | null> {
     // em JSX colide se o componente aparecer duas vezes na mesma página, e `id` duplicado
     // quebra justamente a associação que ele deveria criar. O guard
     // `test/ui/formularios-na-mesma-pagina.test.tsx` cobra isso.
-    <section aria-label="O que espera por você" className="mb-6">
+    <section aria-label="Pendências" className="mb-6">
       <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">
-        O que espera por você
+        Pendências
       </h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {pendencias.map((p) => (

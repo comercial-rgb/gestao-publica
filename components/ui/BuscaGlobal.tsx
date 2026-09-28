@@ -106,7 +106,7 @@ export function BuscaGlobal({
             // dizer que a lista respeita a permissão explica por que uma tela que ele já viu
             // em outro perfil não aparece.
             <li className="px-3 py-2 text-xs text-[color:var(--color-ink-3)]">
-              Nada encontrado entre as telas a que você tem acesso.
+              Nenhuma tela encontrada entre as disponíveis para o seu perfil.
             </li>
           ) : (
             achados.map((d, i) => (

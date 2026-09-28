@@ -44,9 +44,9 @@ export function FormDivulgacao({ d }: { readonly d: DivulgacaoNaCarta }): React.
         Divulgação na consulta pública de bens
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-        Hoje este lugar está{" "}
-        <strong>{d.divulgada ? "DIVULGADO" : "RESERVADO"}</strong>. Os bens guardados aqui aparecem
-        na consulta pública nos dois casos; o que muda é se o LUGAR aparece junto.
+        Situação atual:{" "}
+        <strong>{d.divulgada ? "localização divulgada" : "localização não divulgada"}</strong>. Os bens desta
+        localização constam da consulta pública em ambos os casos; a divulgação define se o nome da localização é exibido.
       </p>
 
       {d.podeDefinir ? (
@@ -56,18 +56,18 @@ export function FormDivulgacao({ d }: { readonly d: DivulgacaoNaCarta }): React.
           <input type="hidden" name="publicavel" value={alvo ? "sim" : "nao"} />
           <label className="text-xs sm:col-span-3">
             <span className={ROTULO}>
-              Motivo {alvo ? "para divulgar este lugar" : "para deixar de divulgar este lugar"}
+              Motivo {alvo ? "da divulgação da localização" : "da retirada da divulgação da localização"}
             </span>
             <input name="motivo" required minLength={10} maxLength={500} className={CAMPO} />
           </label>
           <div className="sm:col-span-4">
             <p className="mb-1 text-xs text-[color:var(--color-ink-2)]">
               {alvo
-                ? "Ao confirmar, o nome deste lugar passa a aparecer no portal público, ao lado de cada bem guardado aqui."
-                : "Ao confirmar, o nome deste lugar deixa de aparecer no portal público. Os bens continuam listados, com o lugar como não divulgado."}
+                ? "Após a confirmação, o nome desta localização será exibido no portal público junto aos bens nela registrados."
+                : "Após a confirmação, o nome desta localização deixará de ser exibido no portal público. Os bens continuarão listados, com a localização indicada como não divulgada."}
             </p>
             <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
-              {pendente ? "Gravando…" : alvo ? "Divulgar este lugar" : "Deixar de divulgar este lugar"}
+              {pendente ? "Gravando…" : alvo ? "Divulgar localização" : "Retirar divulgação"}
             </button>
             {estado.erro !== undefined ? (
               <p role="alert" className="mt-2 whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-xs text-[color:var(--color-status-erro-fg)]">
@@ -83,22 +83,22 @@ export function FormDivulgacao({ d }: { readonly d: DivulgacaoNaCarta }): React.
         </form>
       ) : (
         <p className="text-xs text-[color:var(--color-ink-3)]">
-          O seu perfil consulta esta política, mas não a altera.
+          O seu perfil permite apenas a consulta desta configuração.
         </p>
       )}
 
       <h3 className="mt-4 mb-1 text-xs font-semibold text-[color:var(--color-ink-2)]">
-        Histórico da decisão
+        Histórico de alterações
       </h3>
       {d.historico.length === 0 ? (
         <p className="text-xs text-[color:var(--color-ink-3)]">
-          Nenhuma mudança registrada: a política é a escolhida no cadastro.
+          Nenhuma alteração registrada. Vale a opção definida no cadastro da localização.
         </p>
       ) : (
         <ul role="list" className="space-y-0.5 text-xs" data-papel="historico-da-divulgacao">
           {d.historico.map((h, i) => (
             <li key={`${h.quando}-${i}`} className="text-[color:var(--color-ink)]">
-              {h.quando} — {h.de ? "divulgado" : "reservado"} para {h.para ? "divulgado" : "reservado"}, por{" "}
+              {h.quando} — de {h.de ? "divulgada" : "não divulgada"} para {h.para ? "divulgada" : "não divulgada"}, por{" "}
               {h.por}: {h.motivo}
             </li>
           ))}

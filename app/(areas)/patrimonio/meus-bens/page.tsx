@@ -26,7 +26,7 @@ const COLUNAS: readonly ColunaTabela<MeuBem>[] = [
 export default async function MeusBensPage(): Promise<React.ReactElement> {
   await telaExigeLeituraEmAlgumEscopo("CONSULTAR_PATRIMONIO");
   const cabecalho = (
-    <PageHeader titulo="Bens sob minha responsabilidade" subtitulo="Os bens pelos quais você responde hoje, pelo último termo ou movimento de responsável de cada um." />
+    <PageHeader titulo="Bens sob minha responsabilidade" subtitulo="Bens sob sua responsabilidade, conforme o termo ou a movimentação mais recente." />
   );
 
   let dados: Awaited<ReturnType<typeof meusBens>>;
@@ -37,8 +37,14 @@ export default async function MeusBensPage(): Promise<React.ReactElement> {
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler os seus bens"}
-          descricao={erro instanceof Error ? erro.message : "Erro."}
+          titulo={erro instanceof PortaSemBancoError ? "Dados indisponíveis" : "Não foi possível carregar os seus bens"}
+          descricao={
+            erro instanceof PortaSemBancoError
+              ? "Não foi possível acessar os dados do patrimônio no momento. Tente novamente em instantes."
+              : erro instanceof Error
+                ? erro.message
+                : "Erro desconhecido."
+          }
         />
       </div>
     );
@@ -49,8 +55,8 @@ export default async function MeusBensPage(): Promise<React.ReactElement> {
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo="Vínculo com o cadastro de pessoas pendente"
-          descricao="O seu usuário ainda não está vinculado a uma pessoa do cadastro, e a responsabilidade por um bem é de uma PESSOA. O sistema não associa pelo nome: peça ao administrador para vincular o seu usuário ao seu CPF em Administração > Usuários."
+          titulo="Usuário não vinculado ao cadastro de pessoas"
+          descricao="Para consultar os bens sob sua responsabilidade, o seu usuário precisa estar vinculado ao seu CPF no cadastro de pessoas. Solicite o vínculo ao administrador em Administração > Usuários."
         />
       </div>
     );
@@ -60,10 +66,10 @@ export default async function MeusBensPage(): Promise<React.ReactElement> {
     <div className="space-y-4">
       {cabecalho}
       <p className="text-xs text-[color:var(--color-ink-2)]" data-pessoa={dados.pessoa.documento}>
-        Você é <strong>{dados.pessoa.nome}</strong> ({dados.pessoa.documento}) no cadastro.
+        Responsável: <strong>{dados.pessoa.nome}</strong> ({dados.pessoa.documento}).
       </p>
       {dados.bens.length === 0 ? (
-        <EstadoVazio titulo="Nenhum bem sob a sua responsabilidade" descricao="Nenhum bem tem você como responsável no último movimento de responsabilidade. Quando um termo de responsabilidade for emitido em seu nome, ele aparece aqui." />
+        <EstadoVazio titulo="Nenhum bem sob a sua responsabilidade" descricao="Não há bens atribuídos a você. Os bens constarão aqui após a emissão de termo de responsabilidade em seu nome." />
       ) : (
         <TabelaDeDados colunas={COLUNAS} linhas={dados.bens} keyDe={(b) => b.id} legenda={`${dados.bens.length} bem(ns) sob a sua responsabilidade`} />
       )}

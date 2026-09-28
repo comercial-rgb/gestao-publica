@@ -73,12 +73,12 @@ function blocoComRegua(
 function BannerHonesto(): React.ReactElement {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
-      <p className="font-semibold text-[color:var(--color-ink)]">Formato oficial gerado e validado localmente</p>
+      <p className="font-semibold text-[color:var(--color-ink)]">Arquivos gerados e validados neste sistema</p>
       <ul className="mt-2 space-y-1 text-[color:var(--color-ink-2)]">
-        <li>✓ Layout SAGRES Contabilidade 2026 v1.1 — arquivos e posições conforme o layout oficial versionado.</li>
-        <li>✓ Validado localmente (obrigatoriedade, domínios oficiais e integridade referencial).</li>
-        <li>⚠ <strong>Transmissão externa não realizada.</strong> Esta tela não fala com o TCE: não há recibo, protocolo nem aceite.</li>
-        <li>○ Integração de transmissão: preparada para credencial (sessões seguintes).</li>
+        <li>Leiaute SAGRES Contabilidade 2026 v1.1: arquivos e posições conforme o leiaute oficial.</li>
+        <li>Validação de obrigatoriedade, domínios oficiais e integridade referencial.</li>
+        <li><strong>Transmissão externa não realizada.</strong> Esta tela não se comunica com o TCE: não há recibo, protocolo nem aceite.</li>
+        <li>A transmissão ao TCE depende da configuração da credencial de acesso.</li>
       </ul>
     </div>
   );
@@ -107,19 +107,19 @@ function BannerHonesto(): React.ReactElement {
  * silenciosa é buraco.
  */
 const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: string; readonly exporta: boolean; readonly nota: string }[] = [
-  { entidade: "Dotacao", secao: "§4.4", exporta: true, nota: "Sai das fichas orçamentárias do exercício." },
-  { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Sai dos empenhos, com a classificação da ficha." },
-  { entidade: "Liquidacao", secao: "§4.10", exporta: true, nota: "Sai das liquidações, com o empenho e a ficha." },
-  { entidade: "Pagamentos", secao: "§4.12", exporta: true, nota: "Sai dos pagamentos, com a conta que pagou." },
-  { entidade: "Retencao", secao: "§4.14", exporta: true, nota: "Sai das retenções feitas dentro de pagamentos, pelo de-para do tipo de retenção (§5.24)." },
-  { entidade: "ReceitaOrcamentaria", secao: "§4.16", exporta: true, nota: "Sai da receita arrecadada; a conta arrecadadora é informada na exportação." },
-  { entidade: "DespesaExtra", secao: "§4.20", exporta: true, nota: "Sai dos recolhimentos; a fonte (860/861/862/869) é informada na exportação." },
-  { entidade: "CadastroContaBancaria", secao: "§4.23", exporta: true, nota: "Sai do cadastro das contas bancárias (banco, agência e conta)." },
+  { entidade: "Dotacao", secao: "§4.4", exporta: true, nota: "Gerado a partir das fichas orçamentárias do exercício." },
+  { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Gerado a partir dos empenhos, com a classificação da ficha." },
+  { entidade: "Liquidacao", secao: "§4.10", exporta: true, nota: "Gerado a partir das liquidações, com o empenho e a ficha." },
+  { entidade: "Pagamentos", secao: "§4.12", exporta: true, nota: "Gerado a partir dos pagamentos, com a conta pagadora." },
+  { entidade: "Retencao", secao: "§4.14", exporta: true, nota: "Gerado a partir das retenções efetuadas nos pagamentos, conforme a correspondência do tipo de retenção (§5.24)." },
+  { entidade: "ReceitaOrcamentaria", secao: "§4.16", exporta: true, nota: "Gerado a partir da receita arrecadada; a conta arrecadadora é informada na geração." },
+  { entidade: "DespesaExtra", secao: "§4.20", exporta: true, nota: "Gerado a partir dos recolhimentos; a fonte (860/861/862/869) é informada na geração." },
+  { entidade: "CadastroContaBancaria", secao: "§4.23", exporta: true, nota: "Gerado a partir do cadastro das contas bancárias (banco, agência e conta)." },
   { entidade: "SaldoMensal", secao: "§4.26", exporta: true, nota: "Soma do extrato bancário até o fim do mês." },
-  { entidade: "MovimentacaoEntreContas", secao: "§4.59", exporta: true, nota: "Sai das transferências entre contas do próprio ente." },
-  { entidade: "EstornoRetencao", secao: "§4.15", exporta: false, nota: "O estorno da retenção já é registrado; a exportação desta entidade ainda não foi construída." },
-  { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: false, nota: "O estorno do recolhimento já é registrado; a exportação desta entidade ainda não foi construída." },
-  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Exige retenção sobre restos a pagar — não há esse fato na massa de demonstração." },
+  { entidade: "MovimentacaoEntreContas", secao: "§4.59", exporta: true, nota: "Gerado a partir das transferências entre contas do próprio ente." },
+  { entidade: "EstornoRetencao", secao: "§4.15", exporta: false, nota: "O estorno da retenção é registrado no sistema; a geração deste arquivo ainda não está disponível." },
+  { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: false, nota: "O estorno do recolhimento é registrado no sistema; a geração deste arquivo ainda não está disponível." },
+  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Depende de retenção sobre restos a pagar, inexistente nos dados de demonstração." },
 ];
 
 /** aaaa-mm-dd a partir de um Date UTC — o mesmo formato que a porta e o `<input type="date">` usam. */
@@ -147,30 +147,28 @@ function AvisoSemMovimento({
   return (
     <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-4 text-sm">
       <p className="font-semibold text-[color:var(--color-ink)]">
-        {diario ? "Este dia não tem movimento na base" : "Este mês não tem movimento na base"} — <span className="font-mono">{competencia}</span>
+        {diario ? "Não há movimento registrado neste dia" : "Não há movimento registrado neste mês"} — <span className="font-mono">{competencia}</span>
       </p>
       <p className="mt-1 text-[color:var(--color-ink-2)]">
         {diario ? (
           <>
-            Os arquivos <strong>diários de fato</strong> (Empenhos, Liquidacao, Pagamentos,
-            ReceitaOrcamentaria, Retencao, DespesaExtra, MovimentacaoEntreContas) sairão com{" "}
-            <strong>0 registro</strong>.
+            Os arquivos <strong>diários</strong> (Empenhos, Liquidacao, Pagamentos,
+            ReceitaOrcamentaria, Retencao, DespesaExtra, MovimentacaoEntreContas) serão gerados{" "}
+            <strong>sem registros</strong>.
           </>
         ) : (
           <>
-            Os arquivos <strong>mensais</strong> desta competência refletirão um mês sem movimento: o
-            SaldoMensal (§4.26) traz o saldo acumulado até o fim do mês, ainda que nenhum fato tenha
-            ocorrido dentro dele.
+            Os arquivos <strong>mensais</strong> desta competência refletirão um mês sem movimento; o
+            SaldoMensal (§4.26) apresenta o saldo acumulado até o fim do mês.
           </>
         )}{" "}
-        <strong>Isso é correto:</strong> o arquivo é gerado <strong>vazio</strong>, não omitido — a
-        ausência de movimento é uma declaração, e o pacote precisa carregá-la.
+        O arquivo vazio é gerado normalmente, pois a ausência de movimento também deve ser informada ao TCE.
       </p>
       <p className="mt-1 text-[color:var(--color-ink-3)]">
         {diario
-          ? "O CadastroContaBancaria (§4.23) e os arquivos mensais continuam preenchidos: eles não dependem do dia escolhido."
-          : "A Dotacao (§4.4) continua preenchida se o exercício tiver fichas: ela é o orçamento autorizado, não o movimento do mês."}{" "}
-        Os atalhos abaixo listam os períodos que <em>têm</em> fato, lidos do banco.
+          ? "O CadastroContaBancaria (§4.23) e os arquivos mensais não dependem do dia escolhido."
+          : "A Dotacao (§4.4) é preenchida sempre que o exercício tiver fichas orçamentárias, pois reflete o orçamento autorizado."}{" "}
+        Os atalhos da seção de competência indicam os períodos com movimento.
       </p>
     </div>
   );
@@ -199,8 +197,8 @@ export default async function SagresPage({
 
   const cabecalho = (
     <PageHeader
-      titulo="SAGRES 2026 — TXT diário e mensal"
-      subtitulo="Geração, validação local e download do pacote (formato oficial 2026 v1.1)."
+      titulo="SAGRES 2026: arquivos TXT diários e mensais"
+      subtitulo="Geração, validação e download do pacote no leiaute oficial 2026 v1.1."
       acoes={<Badge status="ok">Layout SAGRES 2026 v1.1</Badge>}
     />
   );
@@ -218,8 +216,8 @@ export default async function SagresPage({
         {cabecalho}
         <BannerHonesto />
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler os períodos com movimento"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          titulo={erro instanceof PortaSemBancoError ? "Dados indisponíveis no momento" : "Não foi possível consultar os períodos com movimento"}
+          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
         />
       </div>
     );
@@ -232,13 +230,13 @@ export default async function SagresPage({
 
   let preview: PreviewSagres | null = null;
   let erro: string | null = null;
-  if (!diaValido) erro = `Parâmetro 'dia' inválido: "${diaParam}" (esperado aaaa-mm-dd).`;
-  else if (!mesValido) erro = `Parâmetro 'mes' inválido: "${mesParam}" (esperado aaaa-mm).`;
+  if (!diaValido) erro = `Data inválida: "${diaParam}" (formato esperado: aaaa-mm-dd).`;
+  else if (!mesValido) erro = `Mês inválido: "${mesParam}" (formato esperado: aaaa-mm).`;
   else {
     try {
       preview = await montarPreviewSagres({ ...POC_SAGRES, dia: diaEscolhido, mes: mesEscolhido });
     } catch (e) {
-      erro = e instanceof Error ? e.message : "Falha ao montar a prévia.";
+      erro = e instanceof Error ? e.message : "Não foi possível gerar a prévia.";
     }
   }
 
@@ -258,8 +256,8 @@ export default async function SagresPage({
       {/* ── MATRIZ DE COBERTURA ── */}
       <Card>
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Matriz de cobertura</h2>
-          <Badge status="ok">{MATRIZ_SAGRES.filter((m) => m.exporta).length} de {MATRIZ_SAGRES.length} exportam</Badge>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Arquivos do leiaute</h2>
+          <Badge status="ok">{MATRIZ_SAGRES.filter((m) => m.exporta).length} de {MATRIZ_SAGRES.length} disponíveis</Badge>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] text-left text-sm">
@@ -267,8 +265,8 @@ export default async function SagresPage({
               <tr className="border-b border-[color:var(--color-border)] text-xs uppercase tracking-wide text-[color:var(--color-ink-3)]">
                 <th className="py-2 pr-3 font-semibold">Entidade</th>
                 <th className="py-2 pr-3 font-semibold">Seção do leiaute do TCE</th>
-                <th className="py-2 pr-3 font-semibold">Status</th>
-                <th className="py-2 font-semibold">Origem / motivo</th>
+                <th className="py-2 pr-3 font-semibold">Situação</th>
+                <th className="py-2 font-semibold">Origem dos dados</th>
               </tr>
             </thead>
             <tbody>
@@ -277,7 +275,7 @@ export default async function SagresPage({
                   <td className="py-2 pr-3 font-medium text-[color:var(--color-ink)]">{m.entidade}</td>
                   <td className="py-2 pr-3 font-mono text-xs text-[color:var(--color-ink-3)]">{m.secao}</td>
                   <td className="py-2 pr-3">
-                    <Badge status={m.exporta ? "ok" : "neutro"}>{m.exporta ? "exporta" : "não implementada"}</Badge>
+                    <Badge status={m.exporta ? "ok" : "neutro"}>{m.exporta ? "disponível" : "não disponível"}</Badge>
                   </td>
                   <td className="py-2 text-[color:var(--color-ink-2)]">{m.nota}</td>
                 </tr>
@@ -291,9 +289,8 @@ export default async function SagresPage({
       <Card>
         <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Competência a gerar</h2>
         <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-          Escolha <strong>qualquer</strong> dia e <strong>qualquer</strong> mês — não há lista fechada.
-          O dia comanda os arquivos <strong>diários</strong>; o mês, os <strong>mensais</strong> (Dotacao
-          §4.4 e SaldoMensal §4.26). Os dois são independentes.
+          Escolha qualquer dia e qualquer mês. O dia define os arquivos <strong>diários</strong>; o mês,
+          os <strong>mensais</strong> (Dotacao §4.4 e SaldoMensal §4.26). As duas escolhas são independentes.
         </p>
         <SeletorCompetencia dia={diaIso} mes={mesIso} />
 
@@ -301,11 +298,11 @@ export default async function SagresPage({
         <div className="mt-5 space-y-3">
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">
-              Dias com movimento na base ({periodos.dias.length})
+              Dias com movimento ({periodos.dias.length})
             </h3>
             {periodos.dias.length === 0 ? (
               <p className="text-sm text-[color:var(--color-ink-3)]">
-                Nenhum dia com fato exportável na base — a massa não foi semeada. Todo pacote diário sairá com 0 registro.
+                Nenhum dia com movimento registrado. Os pacotes diários serão gerados sem registros.
               </p>
             ) : (
               <div className="flex flex-wrap gap-2">
@@ -330,10 +327,10 @@ export default async function SagresPage({
 
           <div>
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">
-              Meses com movimento na base ({periodos.meses.length})
+              Meses com movimento ({periodos.meses.length})
             </h3>
             {periodos.meses.length === 0 ? (
-              <p className="text-sm text-[color:var(--color-ink-3)]">Nenhum mês com fato exportável na base.</p>
+              <p className="text-sm text-[color:var(--color-ink-3)]">Nenhum mês com movimento registrado.</p>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {periodos.meses.map((m) => (
@@ -362,9 +359,9 @@ export default async function SagresPage({
             exercícios existem evita a conclusão errada de que "mês sem movimento = Dotacao vazia".
           */}
           <p className="text-xs text-[color:var(--color-ink-3)]">
-            Exercícios com ficha orçamentária (fonte da Dotacao §4.4):{" "}
-            {periodos.exercicios.length === 0 ? "nenhum" : periodos.exercicios.join(", ")}. Períodos e
-            contagens acima são <strong>lidos do banco a cada carga</strong> — não há lista fixa nesta tela.
+            Exercícios com ficha orçamentária (origem da Dotacao §4.4):{" "}
+            {periodos.exercicios.length === 0 ? "nenhum" : periodos.exercicios.join(", ")}. Os períodos
+            e as contagens acima são atualizados a cada acesso.
           </p>
         </div>
       </Card>
@@ -384,7 +381,7 @@ export default async function SagresPage({
         <>
           <Card>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-              <span><span className="text-[color:var(--color-ink-2)]">UG:</span> <strong>{preview.codUnidadeGestora}</strong> <Badge status="neutro">Demonstração</Badge></span>
+              <span><span className="text-[color:var(--color-ink-2)]">Unidade gestora:</span> <strong>{preview.codUnidadeGestora}</strong> <Badge status="neutro">Demonstração</Badge></span>
               <span>
                 <span className="text-[color:var(--color-ink-2)]">Competência diária:</span> <strong>{preview.competenciaDiaria}</strong>{" "}
                 <Badge status={movimentoDoDia !== undefined ? "ok" : "alerta"}>
@@ -402,15 +399,14 @@ export default async function SagresPage({
                   href={hrefDownload}
                   className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]"
                 >
-                  Baixar pacote (.zip + manifesto)
+                  Baixar pacote (.zip com manifesto)
                 </a>
               </span>
             </div>
-            <p className="mt-2 break-all text-xs text-[color:var(--color-ink-3)]">hash do pacote: {preview.manifesto.hashPacote}</p>
+            <p className="mt-2 break-all text-xs text-[color:var(--color-ink-3)]">Código de verificação do pacote: {preview.manifesto.hashPacote}</p>
             <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
-              O ZIP baixado é <strong>exatamente</strong> esta competência — o botão carrega os mesmos{" "}
-              <code>dia</code> e <code>mes</code> da prévia. Os arquivos mensais dentro dele levam{" "}
-              {preview.competenciaMensal} no nome, mesmo quando o dia escolhido é de outro mês.
+              O arquivo baixado corresponde exatamente à competência exibida. Os arquivos mensais levam{" "}
+              {preview.competenciaMensal} no nome, mesmo quando o dia escolhido pertence a outro mês.
             </p>
           </Card>
 
@@ -418,7 +414,7 @@ export default async function SagresPage({
           <Card>
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Validações</h2>
             {preview.violacoes.length === 0 ? (
-              <p className="text-sm text-[color:var(--color-status-ok-fg)]">✓ Nenhuma violação — o pacote passou nas validações locais.</p>
+              <p className="text-sm text-[color:var(--color-status-ok-fg)]">Nenhuma inconsistência encontrada nas validações.</p>
             ) : (
               <ul className="space-y-1 text-sm">
                 {preview.violacoes.map((v, i) => (
@@ -442,9 +438,8 @@ export default async function SagresPage({
               </div>
               {arq.registros === 0 ? (
                 <p className="text-sm text-[color:var(--color-ink-3)]">
-                  Sem registros nesta competência — o arquivo é gerado <strong>vazio (0 linha)</strong>, não omitido:
-                  a ausência de movimento também é uma declaração ao TCE. Use os atalhos acima para escolher um
-                  período com fato.
+                  Sem registros nesta competência. O arquivo é gerado vazio, pois a ausência de movimento também
+                  deve ser informada ao TCE. Use os atalhos acima para escolher um período com movimento.
                 </p>
               ) : (
                 <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)]">

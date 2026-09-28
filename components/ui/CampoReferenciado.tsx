@@ -127,7 +127,7 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
         setEstado({ tipo: "pronto" });
       } catch {
         if (minha !== seq.current) return;
-        setEstado({ tipo: "erro", mensagem: "Não foi possível consultar as opções. Verifique a conexão e tente de novo; nada foi escolhido." });
+        setEstado({ tipo: "erro", mensagem: "Não foi possível consultar as opções. Verifique a conexão e tente novamente." });
       }
     },
     [url]
@@ -163,12 +163,12 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
             return;
           }
           setEscolha(null);
-          setAviso(`A escolha "${escolha.rotulo}" não vale para o que foi alterado acima e foi retirada. Escolha de novo.`);
+          setAviso(`A opção "${escolha.rotulo}" não é válida para os dados alterados acima e foi removida. Selecione novamente.`);
         })
         .catch(() => {
           if (minha !== seq.current) return;
           setEscolha(null);
-          setAviso("Não foi possível conferir a escolha depois da mudança acima; ela foi retirada para não seguir sem conferência.");
+          setAviso("Não foi possível validar a opção após a alteração acima. Selecione novamente.");
         });
     };
     form.addEventListener("change", aoMudar);
@@ -273,7 +273,7 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
           é validado pelo navegador — por isso o `data-obrigatorio` e a checagem do caso de uso. */}
       <input type="hidden" name={name} value={escolha?.valor ?? ""} data-obrigatorio={obrigatorio === true ? "sim" : undefined} />
       <span id={idStatus} role="status" className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">
-        {escolha !== null ? `Escolhido: ${escolha.rotulo}` : obrigatorio === true && statusTexto === "" ? "Obrigatório — escolha uma opção da lista." : statusTexto}
+        {escolha !== null ? `Escolhido: ${escolha.rotulo}` : obrigatorio === true && statusTexto === "" ? "Obrigatório. Selecione uma opção da lista." : statusTexto}
       </span>
       {aviso !== null ? <span role="alert" className="mt-1 block text-[11px] text-[color:var(--color-status-erro-fg)]">{aviso}</span> : null}
       {ajuda !== undefined ? <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">{ajuda}</span> : null}

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { registrarLiquidacao } from "../../../../lib/portas/liquidacao";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 export interface EstadoLiquidacao {
   readonly erro?: string;
@@ -113,7 +114,7 @@ export async function liquidarAction(
       revalidatePath("/despesa/pagamentos");
       revalidatePath("/despesa/empenhos");
       if (documentoFiscalId !== "") revalidatePath("/licitacoes/documentos-fiscais");
-      return { sucesso: `Liquidação ${numero} registrada no valor de ${valor}.` };
+      return { sucesso: `Liquidação ${numero} registrada no valor de R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível liquidar." };
     }

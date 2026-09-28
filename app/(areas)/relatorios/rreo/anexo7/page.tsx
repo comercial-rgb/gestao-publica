@@ -56,8 +56,8 @@ export default async function RreoAnexo7Page({
         {cabecalho}
         {erro instanceof PortaSemBancoError ? (
           <EstadoVazio
-            titulo="Banco de dados não configurado"
-            descricao="A variável DATABASE_URL não está definida. Configure o banco e recarregue."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível acessar os dados. Tente novamente mais tarde."
           />
         ) : (
           <EstadoVazio
@@ -100,7 +100,7 @@ export default async function RreoAnexo7Page({
         keyDe={(l) => l.chave}
         ehTotal={(l) => l.nivel === "total" || l.nivel === "poder"}
         recuoDe={(l) => (l.nivel === "orgao" ? 1 : 0)}
-        legenda={`Valores em R$ · exercício de referência ${exercicio} · (h) Liquidados é informativa e NÃO entra no saldo (k). e=(a+b)−(c+d) · k=(f+g)−(i+j) · l=e+k.`}
+        legenda={`Valores em R$ · exercício de referência ${exercicio} · a coluna (h) Liquidados é informativa e não compõe o saldo (k) · e=(a+b)−(c+d) · k=(f+g)−(i+j) · l=e+k.`}
       />
       <RelatoriosRelacionados relacoes={RELACOES_RREO["/relatorios/rreo/anexo7"] ?? []} />
     </div>

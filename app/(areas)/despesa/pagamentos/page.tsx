@@ -71,7 +71,7 @@ export default async function PagamentosPage({
   const cabecalho = (
     <PageHeader
       titulo="Fila de Pagamentos"
-      subtitulo="Ordem cronológica por fonte e categoria — Lei 14.133/2021, art. 141"
+      subtitulo="Ordem cronológica por fonte e categoria (Lei 14.133/2021, art. 141)"
       acoes={<BotaoPdf href="/despesa/pagamentos/pdf" rotulo="Imprimir fila (PDF)" />}
     />
   );
@@ -115,8 +115,8 @@ export default async function PagamentosPage({
               : erro instanceof ExercicioIlegivelError
                 ? "O exercício pedido não é um ano"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
-                  : "Não foi possível ler a fila de pagamentos"
+                  ? "Serviço indisponível"
+                  : "Não foi possível carregar a fila de pagamentos"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -130,12 +130,9 @@ export default async function PagamentosPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada <strong>fonte × categoria</strong> é uma fila própria — elas não se disputam. A
-        ordem é a <strong>data de liquidação</strong> (o marco de exigibilidade do caput), com
-        desempate pelo número. Pagar fora da posição 1 exige{" "}
-        <strong>justificativa prévia</strong> numa das cinco hipóteses taxativas do §1º; sem ela,
-        o domínio recusa o pagamento — e é ele quem confere a posição, dentro da transação
-        do pagamento, contra a fila de agora.
+        Cada combinação de <strong>fonte e categoria</strong> forma uma fila própria, ordenada pela{" "}
+        <strong>data de liquidação</strong> e, em caso de empate, pelo número. O pagamento fora da
+        posição 1 exige <strong>justificativa prévia</strong> em uma das hipóteses do §1º do art. 141.
       </div>
 
       <FormPagamento
@@ -170,7 +167,7 @@ export default async function PagamentosPage({
       {filas.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma fila aberta"
-          descricao="Não há liquidação com saldo a pagar. A fila do art. 141 é derivada: ela existe enquanto houver despesa liquidada e não paga."
+          descricao="Não há liquidação com saldo a pagar."
         />
       ) : (
         filas.map((f) => (
@@ -189,7 +186,7 @@ export default async function PagamentosPage({
               colunas={COLUNAS}
               linhas={f.linhas}
               keyDe={(l) => l.liquidacaoId}
-              legenda={`Ordem cronológica da fonte ${f.fonteCodigo} — ${ROTULO_CATEGORIA[f.categoria] ?? f.categoria}. Pagar fora da posição 1 exige justificativa (§1º).`}
+              legenda={`Ordem cronológica da fonte ${f.fonteCodigo}, ${(ROTULO_CATEGORIA[f.categoria] ?? f.categoria).toLowerCase()}. O pagamento fora da posição 1 exige justificativa (§1º).`}
             />
           </section>
         ))
@@ -198,12 +195,12 @@ export default async function PagamentosPage({
       {/* ⚠️ PAGAMENTOS EXECUTADOS — a outra pergunta: o que já saiu, para poder anular (TR 5.35). */}
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
-          Pagamentos executados — {descreverRecorte(recorte).toLowerCase()}
+          Pagamentos realizados: {descreverRecorte(recorte).toLowerCase()}
         </h2>
         {pagamentos.length === 0 ? (
           <EstadoVazio
-            titulo="Nenhum pagamento executado"
-            descricao="Não há pagamento neste recorte. Assim que a fila for paga, os pagamentos aparecem aqui — e é daqui que se anula um cheque emitido por engano."
+            titulo="Nenhum pagamento realizado"
+            descricao="Não há pagamento na unidade e no exercício selecionados. Os pagamentos registrados aparecem nesta lista, onde também podem ser anulados."
           />
         ) : (
           <>
@@ -214,7 +211,7 @@ export default async function PagamentosPage({
               colunas={COLUNAS_PAGAMENTOS}
               linhas={pagamentos}
               keyDe={(l) => l.id}
-              legenda={`${pagamentos.length} pagamento(s) · valores em R$ · anular reduz (parcial) ou estorna (integral) o cheque.`}
+              legenda={`${pagamentos.length} pagamento(s) · valores em R$ · a anulação pode ser parcial ou integral.`}
             />
           </>
         )}

@@ -42,8 +42,8 @@ export async function acaoDeRoteirosDeResultadoAction(
     return {
       sucesso:
         acao === "criar"
-          ? "Roteiro parametrizado. A alienação já pode apurar este resultado."
-          : "Contas trocadas. Vale para as alienações futuras.",
+          ? "Roteiro contábil cadastrado. O resultado já pode ser apurado nas alienações."
+          : "Contas alteradas. A alteração vale para as próximas alienações.",
     };
   });
 }

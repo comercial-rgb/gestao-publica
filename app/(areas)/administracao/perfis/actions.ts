@@ -31,7 +31,7 @@ export async function criarPerfilAction(_prev: EstadoPerfil, formData: FormData)
     try {
       await criarPerfilAdmin({ nome, descricao });
       revalidatePath(ROTA);
-      return { sucesso: `Perfil ${nome} criado. Ele nasce sem permissão nenhuma — conceda as ações uma a uma.` };
+      return { sucesso: `Perfil ${nome} criado sem permissões. Conceda as ações necessárias individualmente.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível criar o perfil." };
     }
@@ -51,7 +51,7 @@ export async function concederAcaoAction(_prev: EstadoPerfil, formData: FormData
         sucesso:
           unidade === ""
             ? `Ação ${acao} concedida em todas as unidades.`
-            : `Ação ${acao} concedida nesta unidade gestora.`,
+            : `Ação ${acao} concedida na unidade gestora selecionada.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível conceder a ação." };
@@ -85,8 +85,8 @@ export async function aplicarAtualizacaoAction(_prev: EstadoPerfil, formData: Fo
       return {
         sucesso:
           r.concessoes === 0
-            ? `Atualização ${versao} registrada: nenhum perfil precisava de concessão nova.`
-            : `Atualização ${versao} aplicada: ${r.concessoes} concessão(ões) em ${r.perfisAlcancados} perfil(is), cada uma com o seu nome no autor.`,
+            ? `Atualização ${versao} registrada. Nenhum perfil necessitava de nova permissão.`
+            : `Atualização ${versao} aplicada: ${r.concessoes} permissão(ões) concedida(s) em ${r.perfisAlcancados} perfil(is), registradas em seu nome.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível aplicar a atualização." };

@@ -24,10 +24,10 @@ export default async function Pagina(): Promise<React.ReactElement> {
     if (ficha.pessoa === null) {
       return (
         <div className="space-y-6">
-          <PageHeader titulo="Portal do Servidor" subtitulo="O que é seu: vínculos, dependentes e contracheques." />
+          <PageHeader titulo="Portal do Servidor" subtitulo="Consulta de vínculos, dependentes e contracheques do servidor." />
           <EstadoVazio
             titulo="A sua conta ainda não está ligada ao seu cadastro de pessoa"
-            descricao="O portal mostra o que é SEU, e para isso precisa saber qual pessoa do cadastro único você é. Esse vínculo é feito pelo administrador, pelo CPF — nunca pelo nome. Procure a administração do sistema."
+            descricao="Para exibir suas informações, sua conta precisa estar vinculada ao seu cadastro pelo CPF. Solicite o vínculo à administração do sistema."
           />
         </div>
       );
@@ -37,8 +37,8 @@ export default async function Pagina(): Promise<React.ReactElement> {
         <div className="space-y-6">
           <PageHeader titulo="Portal do Servidor" subtitulo={`${ficha.pessoa.nome} · ${ficha.pessoa.documento}`} />
           <EstadoVazio
-            titulo="Você não tem ficha de servidor neste ente"
-            descricao="A sua conta está ligada ao seu cadastro de pessoa, mas o setor de pessoal ainda não abriu a sua ficha de servidor. Enquanto ela não existir, não há vínculo nem contracheque a mostrar."
+            titulo="Ficha de servidor não encontrada"
+            descricao="Sua conta está vinculada ao seu cadastro, mas o setor de pessoal ainda não registrou sua ficha de servidor. Após o registro, seus vínculos e contracheques serão exibidos aqui."
           />
         </div>
       );
@@ -47,16 +47,16 @@ export default async function Pagina(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <PageHeader
           titulo={`Olá, ${ficha.nomeSocial ?? ficha.pessoa.nome}`}
-          subtitulo={`${ficha.pessoa.documento}${ficha.nascimento === null ? "" : ` · nascimento ${ficha.nascimento}`} · o que aparece aqui é o que o sistema tem sobre você`}
+          subtitulo={`${ficha.pessoa.documento}${ficha.nascimento === null ? "" : ` · nascimento ${ficha.nascimento}`}`}
         />
 
         <Card>
           <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Meus vínculos</h2>
           <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-            Cargo, lotação, salário e situação são os de HOJE, derivados dos atos registrados na sua vida funcional.
+            Cargo, lotação, salário e situação atuais, conforme os atos registrados na sua vida funcional.
           </p>
           {ficha.vinculos.length === 0 ? (
-            <p className="text-xs text-[color:var(--color-ink-2)]">Sua ficha existe, mas ainda não há matrícula registrada nela.</p>
+            <p className="text-xs text-[color:var(--color-ink-2)]">Nenhuma matrícula registrada na sua ficha.</p>
           ) : (
             <ul className="space-y-3">
               {ficha.vinculos.map((v) => (
@@ -100,7 +100,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
           <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Meus dependentes</h2>
           {ficha.dependentes.length === 0 ? (
             <p className="text-xs text-[color:var(--color-ink-2)]">
-              Não há dependente registrado na sua ficha. Quem registra é o setor de pessoal, com os documentos.
+              Nenhum dependente registrado na sua ficha. O registro é feito pelo setor de pessoal, mediante apresentação dos documentos.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -110,7 +110,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
                   <ul className="ml-4 list-disc text-xs text-[color:var(--color-ink-2)]">
                     {d.finalidades.map((f) => (
                       <li key={f.finalidade}>
-                        {f.finalidade.toLowerCase().replace(/_/g, " ")}: {f.vale ? "vale hoje" : `não vale hoje — ${f.motivo ?? "sem motivo declarado"}`}
+                        {f.finalidade.toLowerCase().replace(/_/g, " ")}: {f.vale ? "válido atualmente" : `não válido atualmente: ${f.motivo ?? "motivo não informado"}`}
                       </li>
                     ))}
                   </ul>
@@ -123,12 +123,11 @@ export default async function Pagina(): Promise<React.ReactElement> {
         <Card>
           <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Meus contracheques</h2>
           <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-            Só aparecem as folhas já FECHADAS pelo ente. Um cálculo ainda aberto pode ser cancelado e refeito — mostrá-lo
-            aqui seria prometer um valor que a competência ainda pode mudar.
+            São exibidas apenas as folhas já fechadas. Valores de folhas em aberto ainda podem ser alterados.
           </p>
           {ficha.contracheques.length === 0 ? (
             <p className="text-xs text-[color:var(--color-ink-2)]">
-              Nenhuma folha fechada com pagamento para você até agora.
+              Nenhum contracheque disponível até o momento.
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -167,8 +166,8 @@ export default async function Pagina(): Promise<React.ReactElement> {
     if (e instanceof PortaSemBancoError) {
       return (
         <div className="space-y-6">
-          <PageHeader titulo="Portal do Servidor" subtitulo="O que é seu: vínculos, dependentes e contracheques." />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê a sua ficha e os seus contracheques. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <PageHeader titulo="Portal do Servidor" subtitulo="Consulta de vínculos, dependentes e contracheques do servidor." />
+          <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar as informações. Tente novamente mais tarde." />
         </div>
       );
     }

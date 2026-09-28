@@ -77,8 +77,8 @@ export default async function CmdMbaPage({
         <EstadoVazio
           titulo={
             erro instanceof ExercicioIlegivelError
-              ? "O exercício pedido não é um ano"
-              : "Não foi possível ler o recorte"
+              ? "Exercício inválido"
+              : "Não foi possível carregar a consulta"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -88,7 +88,7 @@ export default async function CmdMbaPage({
   const cabecalho = (
     <PageHeader
       titulo="Programação financeira — CMD e MBA"
-      subtitulo={`Exercício ${exercicio} · consolidado do ente — cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º, 9º e 13)`}
+      subtitulo={`Exercício ${exercicio}, consolidado do ente (LRF arts. 8º, 9º e 13).`}
     />
   );
 
@@ -109,7 +109,7 @@ export default async function CmdMbaPage({
         <SincronizarContexto />
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler a programação financeira"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível carregar a programação financeira"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -127,13 +127,10 @@ export default async function CmdMbaPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O <strong>CMD</strong> reparte a despesa fixada na LOA em <strong>doze cotas mensais por fonte</strong> (os
-        duodécimos); o <strong>MBA</strong> reparte a receita prevista em <strong>seis metas bimestrais</strong>. A
-        distribuição <strong>fecha ao centavo</strong> com a LOA: cada parcela leva o valor truncado a dois decimais e o{" "}
-        <strong>último período absorve a diferença</strong> — por isso dezembro (ou o 6º bimestre) costuma diferir dos
-        demais em alguns centavos. Planos são <strong>versionados, e nenhuma versão é reescrita</strong>: retificar é publicar decreto
-        novo, e a versão anterior fica na base. Exibe-se aqui a <strong>vigente</strong> — a de vigência mais recente já
-        decorrida, o mesmo critério contra o qual a limitação de empenho julga o empenho.
+        O <strong>CMD</strong> distribui a despesa fixada na LOA em <strong>doze cotas mensais por fonte</strong>, e o{" "}
+        <strong>MBA</strong> distribui a receita prevista em <strong>seis metas bimestrais</strong>; diferenças de centavos
+        são ajustadas no último período. Cada alteração é feita por novo decreto, e a tela exibe a versão{" "}
+        <strong>vigente</strong>.
       </div>
 
       {semNada ? (
@@ -141,9 +138,7 @@ export default async function CmdMbaPage({
           titulo="Nenhuma programação financeira registrada"
           descricao={
             `Não há CMD nem MBA vigente para o exercício ${exercicio}. ${descreverAusencia(cmd, "CMD")} ` +
-            `${descreverAusencia(mba, "MBA")} A programação nasce de decreto do Executivo (proposta a partir da LOA, ` +
-            `depois retificada por versões novas) — o banco atual foi semeado sem nenhuma. Nada foi arbitrado nesta tela: ` +
-            `um cronograma inventado viraria teto de empenho falso quando a limitação de empenho fosse ligada.`
+            `${descreverAusencia(mba, "MBA")} Utilize os formulários abaixo para propor a programação a partir da LOA.`
           }
         />
       ) : null}
@@ -153,7 +148,7 @@ export default async function CmdMbaPage({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold text-[color:var(--color-ink)]">
-              Cronograma Mensal de Desembolso — os duodécimos
+              Cronograma Mensal de Desembolso
             </h2>
             <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
               Quanto cada fonte pode desembolsar em cada mês (LRF art. 8º).
@@ -171,7 +166,7 @@ export default async function CmdMbaPage({
               linhas={comTotal(cmd.vigente)}
               keyDe={(l) => l.fonteId}
               ehTotal={(l) => l.fonteId === CHAVE_TOTAL}
-              legenda={`${cmd.vigente.linhas.length} fonte(s) · valores em R$ · a linha fecha na horizontal (Σ dos 12 meses = total do exercício) e na vertical.`}
+              legenda={`${cmd.vigente.linhas.length} fonte(s) · valores em R$ · a soma dos 12 meses corresponde ao total do exercício.`}
             />
           )}
         </div>
@@ -202,7 +197,7 @@ export default async function CmdMbaPage({
               linhas={comTotal(mba.vigente)}
               keyDe={(l) => l.fonteId}
               ehTotal={(l) => l.fonteId === CHAVE_TOTAL}
-              legenda={`${mba.vigente.linhas.length} fonte(s) · valores em R$ · Σ dos 6 bimestres = receita prevista da fonte.`}
+              legenda={`${mba.vigente.linhas.length} fonte(s) · valores em R$ · a soma dos 6 bimestres corresponde à receita prevista da fonte.`}
             />
           )}
         </div>
@@ -217,19 +212,19 @@ export default async function CmdMbaPage({
           {/* ⚠️ O ACUMULADO É DE PROPÓSITO: o art. 9º pergunta se, AO FINAL do bimestre, a realização da
               receita comporta o cumprimento das metas — e a meta é o desdobramento ATÉ ali, não a fatia
               isolada do bimestre. O arrecadado vem do M04 (o dono do dado), nunca de uma segunda soma. */}
-          Meta <strong>acumulada</strong> contra arrecadado <strong>acumulado</strong>, por fonte, até o fim de cada
-          bimestre. Diferença <strong>negativa</strong> é frustração de receita — o gatilho da limitação de empenho.
+          Meta <strong>acumulada</strong> comparada ao arrecadado <strong>acumulado</strong>, por fonte, até o fim de cada
+          bimestre. Diferença <strong>negativa</strong> indica frustração de receita, que pode exigir limitação de empenho.
         </p>
 
         <div className="mt-4">
           {confronto.linhas.length === 0 ? (
             <EstadoVazio
-              titulo="Confronto sem linhas"
+              titulo="Sem dados para o confronto"
               descricao={
                 confronto.ateBimestre === 0
-                  ? `Nenhum bimestre do exercício ${exercicio} fechou até hoje. O art. 9º julga "ao final de um bimestre" — confrontar o bimestre em curso compararia a meta cheia com uma arrecadação pela metade e acusaria frustração inexistente.`
+                  ? `Nenhum bimestre do exercício ${exercicio} foi encerrado até o momento. O confronto é feito ao final de cada bimestre (LRF art. 9º).`
                   : mba.vigente === null
-                    ? "Sem MBA vigente não há meta contra a qual confrontar o arrecadado. O confronto é meta × realização: sem a primeira, ele não existe."
+                    ? "Não há MBA vigente. O confronto depende das metas bimestrais de arrecadação."
                     : `O MBA vigente não tem metas nos bimestres já decorridos (até o ${confronto.ateBimestre}º).`
               }
             />
@@ -238,7 +233,7 @@ export default async function CmdMbaPage({
               colunas={COLUNAS_CONFRONTO}
               linhas={confronto.linhas}
               keyDe={(l) => `${l.fonteId}-${l.bimestre}`}
-              legenda={`Acumulado até o ${confronto.ateBimestre}º bimestre (o último inteiramente decorrido) · valores em R$ · diferença = arrecadado − meta.`}
+              legenda={`Acumulado até o ${confronto.ateBimestre}º bimestre (último bimestre encerrado) · valores em R$ · diferença = arrecadado − meta.`}
             />
           )}
         </div>
@@ -270,16 +265,15 @@ export default async function CmdMbaPage({
       <p className="text-xs text-[color:var(--color-ink-3)]">
         {limitacao.ativa && limitacao.atoRef !== null ? (
           <>
-            A limitação de empenho está <strong>LIGADA</strong> por {limitacao.atoRef}
+            A limitação de empenho está <strong>ativa</strong> conforme {limitacao.atoRef}
             {limitacao.desde !== null ? <> desde {dataBr(limitacao.desde)}</> : null}.{" "}
           </>
         ) : null}
-        A <strong>limitação de empenho</strong> é <strong>opt-in por exercício</strong>: ausente, ela está
-        DESLIGADA e o cronograma acima é planejamento, não trava. Ligada, o empenho passa a ser julgado contra a cota da
-        fonte no mês — e uma fonte <strong>sem cota</strong> naquele mês é rejeitada, o que é diferente de
-        uma cota de valor 0,00 (bloqueio deliberado). As{" "}
-        <a href="/receita/arrecadacao" className="text-[color:var(--color-primary)] hover:underline">arrecadações</a>{" "}
-        que alimentam o confronto são as do M04.
+        A <strong>limitação de empenho</strong> é ativada por exercício. Enquanto inativa, o cronograma tem caráter de
+        planejamento; quando ativa, o empenho fica limitado à cota da fonte no mês, e fonte <strong>sem cota</strong>{" "}
+        no mês tem o empenho recusado. As{" "}
+        <a href="/receita/arrecadacoes" className="text-[color:var(--color-primary)] hover:underline">arrecadações</a>{" "}
+        consideradas no confronto podem ser consultadas na área de Receita.
       </p>
     </div>
   );
@@ -303,7 +297,7 @@ function descreverAusencia(plano: PlanoProgramacao, nome: string): string {
   }
   return (
     `Há ${plano.versoes} versão(ões) de ${nome} registrada(s), mas nenhuma vigente em ` +
-    `${dataBr(plano.referencia)}${plano.futuras > 0 ? ` — ${plano.futuras} com vigência FUTURA` : ""}.`
+    `${dataBr(plano.referencia)}${plano.futuras > 0 ? `, ${plano.futuras} com vigência futura` : ""}.`
   );
 }
 
@@ -344,13 +338,12 @@ function AvisoSemCota({
   if (comBuraco.length === 0) return null;
   return (
     <div className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-      <strong className="text-[color:var(--color-ink)]">Ausência de cota (≠ cota zero):</strong>{" "}
+      <strong className="text-[color:var(--color-ink)]">Períodos sem cota no decreto:</strong>{" "}
       {comBuraco
         .map((l) => `${l.fonteCodigo} → ${l.periodosSemLinha.map((i) => rotulos[i - 1] ?? String(i)).join(", ")}`)
         .join(" · ")}
-      . Estas células mostram 0,00 porque não existe linha no decreto para aquele {periodo} — e não porque
-      alguém programou zero. Com a limitação de empenho ativa, empenho em fonte/{periodo} sem cota é
-      <strong> rejeitado</strong>.
+      . Esses valores aparecem como 0,00 porque o decreto não define cota para o {periodo}. Com a limitação
+      de empenho ativa, o empenho nessa fonte e {periodo} é <strong>recusado</strong>.
     </div>
   );
 }
@@ -428,7 +421,7 @@ const COLUNAS_CONFRONTO: readonly ColunaTabela<LinhaConfronto>[] = [
     alinhamento: "esquerda",
     celula: (l) =>
       l.frustrada ? (
-        <span className="text-[color:var(--color-negativo)]">Frustração — gatilho do art. 9º</span>
+        <span className="text-[color:var(--color-negativo)]">Frustração de receita (LRF art. 9º)</span>
       ) : (
         <span className="text-[color:var(--color-ink-3)]">Meta cumprida</span>
       ),

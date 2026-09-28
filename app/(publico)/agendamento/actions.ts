@@ -96,7 +96,7 @@ export async function remarcarPublicoAction(_p: EstadoDaRemarcacao, f: FormData)
 
 export async function cancelarPublicoAction(_p: EstadoDoCancelamento, f: FormData): Promise<EstadoDoCancelamento> {
   if (t(f, "segredo") === "") return { erro: "Informe o código de acompanhamento." };
-  if (t(f, "motivo") === "") return { erro: "Diga por que está cancelando — ajuda o ente a organizar o atendimento." };
+  if (t(f, "motivo") === "") return { erro: "Informe o motivo do cancelamento." };
   try {
     return { sucesso: await cancelarPublico({ segredo: t(f, "segredo"), motivo: t(f, "motivo") }) };
   } catch (e) {

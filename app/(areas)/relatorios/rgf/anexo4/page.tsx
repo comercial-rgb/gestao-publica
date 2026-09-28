@@ -53,7 +53,7 @@ export default async function RgfAnexo4Page({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 4"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 4"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -68,11 +68,11 @@ export default async function RgfAnexo4Page({
 
       {a4.excedeuLimite === true ? (
         <div role="alert" className="rounded-[var(--radius-md)] border border-[color:var(--color-status-erro-fg)] bg-[color:var(--color-status-erro-bg)] p-3 text-sm text-[color:var(--color-status-erro-fg)]">
-          <strong>Limite do Senado excedido:</strong> as operações de crédito são {a4.percentSobreRcl}% da RCL ajustada, contra um teto de {a4.limiteSenado}%. O ente fica impedido de contratar dívida nova.
+          <strong>Limite do Senado excedido:</strong> as operações de crédito são {a4.percentSobreRcl}% da RCL ajustada, contra um teto de {a4.limiteSenado}%. O ente fica impedido de contratar novas operações de crédito.
         </div>
       ) : a4.emAlerta === true ? (
         <div role="alert" className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-sm text-[color:var(--color-status-alerta-fg)]">
-          <strong>Limite de alerta:</strong> as operações de crédito já passaram dos {a4.limiteAlerta}% (art. 59, §1º, III).
+          <strong>Limite de alerta:</strong> as operações de crédito ultrapassaram {a4.limiteAlerta}% da RCL ajustada (LRF art. 59, §1º, III).
         </div>
       ) : null}
 
@@ -91,7 +91,7 @@ export default async function RgfAnexo4Page({
         keyDe={(l) => l.chave}
         ehTotal={(l) => l.nivel === "grupo" || l.nivel === "total"}
         recuoDe={(l) => (l.nivel === "subitem" ? 2 : l.nivel === "item" ? 1 : 0)}
-        legenda="Valores em R$ · corte pela data do fato · o limite mede o acumulado (Até o Quadrimestre)."
+        legenda="Valores em R$ · o limite é apurado sobre o valor acumulado até o quadrimestre."
       />
 
       <section className="space-y-2">
@@ -100,23 +100,23 @@ export default async function RgfAnexo4Page({
           colunas={COLUNAS}
           linhas={[{ chave: "ARO", rotulo: "ARO — saldo devedor", nivel: "item" as const, interruptor: true, valores: a4.aro.valores }]}
           keyDe={(l) => l.chave}
-          legenda={`Limite próprio: ${a4.aro.limitePercent}% da RCL (art. 38). Sem cadastro de ARO no sistema.`}
+          legenda={`Limite próprio: ${a4.aro.limitePercent}% da RCL (LRF art. 38). Operações de ARO ainda não são registradas no sistema.`}
         />
       </section>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Outras operações que integram a Dívida Consolidada (art. 29, §1º)</h2>
-        <p className="text-xs text-[color:var(--color-ink-3)]">Assunção, reconhecimento e confissão de dívidas — integram a DC, mas NÃO se sujeitam ao limite de contratação.</p>
+        <p className="text-xs text-[color:var(--color-ink-3)]">Assunção, reconhecimento e confissão de dívidas integram a Dívida Consolidada, mas não se sujeitam ao limite de contratação.</p>
         <TabelaDeDados
           colunas={COLUNAS}
           linhas={a4.outrasOperacoes}
           keyDe={(l) => l.chave}
-          legenda="Sem fato próprio no sistema — linhas nomeadas."
+          legenda="Operações sem registro específico no sistema."
         />
       </section>
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        <p className="mb-1 font-medium uppercase tracking-wide">Notas e interruptores</p>
+        <p className="mb-1 font-medium uppercase tracking-wide">Notas do demonstrativo</p>
         <ul className="list-disc space-y-1 pl-4">
           {a4.notas.map((n, i) => (
             <li key={i}>{n}</li>
@@ -129,12 +129,12 @@ export default async function RgfAnexo4Page({
           {
             href: "/relatorios/rgf/anexo2",
             rotulo: "RGF Anexo 2 — Dívida Consolidada Líquida",
-            motivo: "A operação de crédito de hoje é a dívida de amanhã: o ingresso que aqui conta contra o limite de 16% entra no estoque da DCL do Anexo 2.",
+            motivo: "As operações de crédito contratadas passam a integrar a Dívida Consolidada Líquida.",
           },
           {
             href: "/relatorios/rreo/anexo3",
             rotulo: "RREO Anexo 3 — RCL",
-            motivo: "A RCL ajustada que o limite de operações de crédito usa vem daqui — o motor único (regra Siconfi).",
+            motivo: "Origem da RCL ajustada utilizada no limite de operações de crédito.",
           },
         ]}
       />

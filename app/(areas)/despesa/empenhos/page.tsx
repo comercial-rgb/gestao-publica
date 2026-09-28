@@ -87,8 +87,8 @@ export default async function EmpenhosPage({
               : erro instanceof ExercicioIlegivelError
                 ? "O exercício pedido não é um ano"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
-                  : "Não foi possível ler os empenhos"
+                  ? "Serviço indisponível"
+                  : "Não foi possível carregar os empenhos"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -101,15 +101,12 @@ export default async function EmpenhosPage({
       <SincronizarContexto />
       <PageHeader
         titulo="Empenhos"
-        subtitulo={`${descreverRecorte(recorte)} — empenhado, liquidado, pago e saldos`}
+        subtitulo={`${descreverRecorte(recorte)}: empenhado, liquidado, pago e saldos`}
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O <strong>status</strong> e os saldos são <strong>derivados</strong> dos fatos — não há
-        coluna de status no banco. <strong>Empenhado</strong> já vem líquido das anulações (a
-        total zera; as parciais subtraem). O saldo mostrado na ficha é{" "}
-        <strong>orientação</strong>: quem decide se cabe é o domínio, contra o saldo real,
-        dentro da transação.
+        O valor <strong>empenhado</strong> já desconta as anulações. O disponível exibido na ficha é
+        indicativo: a suficiência de saldo é conferida no momento da emissão.
       </div>
 
       <FormEmpenho
@@ -127,7 +124,7 @@ export default async function EmpenhosPage({
       {empenhos.length === 0 ? (
         <EstadoVazio
           titulo="Sem empenhos"
-          descricao={`Nenhum empenho em ${descreverRecorte(recorte).toLowerCase()}. Ou o exercício não foi executado, ou a unidade selecionada não tem fichas.`}
+          descricao={`Nenhum empenho registrado em ${descreverRecorte(recorte).toLowerCase()}.`}
         />
       ) : (
         <>

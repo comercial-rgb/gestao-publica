@@ -23,7 +23,7 @@ export default async function RazaoPage({
   const conta = (Array.isArray(sp["conta"]) ? sp["conta"][0] : sp["conta"])?.trim();
 
   const cabecalho = (
-    <PageHeader titulo="Livro Razão" subtitulo="O razão de uma conta: saldo anterior, movimentos e saldo corrente" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} conta={conta ?? ""} comConta />} />
+    <PageHeader titulo="Livro Razão" subtitulo="Saldo anterior, movimentos e saldo acumulado de uma conta" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} conta={conta ?? ""} comConta />} />
   );
 
   if (conta === undefined || conta === "") {
@@ -34,7 +34,7 @@ export default async function RazaoPage({
   try {
     dados = await gerarRazao({ conta, desde, ate });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Razão"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Razão"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   if (dados.linhas.length === 0 && dados.saldoAnterior === "0.00") {
@@ -55,7 +55,7 @@ export default async function RazaoPage({
         colunas={COLUNAS}
         linhas={linhas}
         keyDe={(l) => l.lancamentoId}
-        legenda="Saldo corrente = ΣD − ΣC acumulado (saldo bruto do razão). Valores em R$."
+        legenda="Saldo corrente: débitos menos créditos, acumulados no período. Valores em R$."
       />
     </div>
   );

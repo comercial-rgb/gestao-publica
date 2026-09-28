@@ -26,13 +26,13 @@ export const dynamic = "force-dynamic";
 
 const EXPLICACAO: Record<string, string> = {
   LIQUIDACAO_NAO_PROCESSADO:
-    "O serviço empenhado no ano anterior é atestado agora: a despesa é reconhecida e a obrigação com o credor passa a existir. Nenhum empenho novo nasce, e nenhuma dotação do ano corrente é consumida.",
+    "A despesa empenhada em exercício anterior é liquidada e a obrigação com o credor é reconhecida, sem novo empenho e sem consumo de dotação do exercício corrente.",
   PAGAMENTO:
-    "O dinheiro sai e a obrigação se extingue. O que se informa aqui é apenas o controle da disponibilidade por destinação de recursos.",
+    "O pagamento extingue a obrigação. Informe apenas as contas de controle da disponibilidade por destinação de recursos.",
   CANCELAMENTO_PROCESSADO:
-    "A obrigação já reconhecida deixa de existir sem saída de caixa, e o município fica com um ganho patrimonial.",
+    "A obrigação já reconhecida é baixada sem saída de caixa, com registro de variação patrimonial aumentativa.",
   CANCELAMENTO_NAO_PROCESSADO:
-    "O compromisso que ainda não havia sido atestado é desfeito. Como ele nunca virou obrigação reconhecida, as contas não são as mesmas do cancelamento de um resto processado.",
+    "O compromisso ainda não liquidado é cancelado. As contas diferem das utilizadas no cancelamento de restos processados.",
 };
 
 export default async function Page(): Promise<React.ReactElement> {
@@ -49,7 +49,7 @@ export default async function Page(): Promise<React.ReactElement> {
     <div>
       <PageHeader
         titulo="Contas das operações de restos a pagar"
-        subtitulo="Em que contas cada ato de restos a pagar lança. Enquanto uma operação não tiver contas informadas, ela é recusada com o motivo — nenhuma conta é assumida por padrão."
+        subtitulo="Contas contábeis utilizadas em cada operação de restos a pagar"
       />
 
       {faltando > 0 ? (
@@ -122,8 +122,8 @@ export default async function Page(): Promise<React.ReactElement> {
       </ContasDasOperacoes>
 
       <p className="mt-6 text-sm text-[color:var(--color-ink-2)]">
-        Publicar não altera o que já foi escriturado: cada lançamento guarda a versão contra a qual
-        foi feito, e a versão nova vale para o que vier.
+        Uma nova versão vale para os lançamentos seguintes e não altera os lançamentos já
+        realizados.
       </p>
     </div>
   );

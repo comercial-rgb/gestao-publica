@@ -765,7 +765,7 @@ async function main(): Promise<void> {
     nota(`tela do teto: ${telaDoTeto.slice(0, 400)}`);
     R.conferir(
       "9.1 ⚠️ acima do teto, a tela mostra a RECUSA como estado — não a tela genérica de erro do Next, onde o operador veria só um digest",
-      /Consulta ampla demais para apurar por evento/i.test(telaDoTeto),
+      /Consulta muito abrangente/i.test(telaDoTeto),
       telaDoTeto.slice(0, 500)
     );
     /**
@@ -773,9 +773,9 @@ async function main(): Promise<void> {
      * alcança, (b) o que fazer, e (c) a garantia de que NADA foi truncado — truncar devolveria
      * uma lista que parece completa com um total que parece certo.
      */
-    R.conferir("9.2 e a recusa diz QUANTOS alcançou e qual é o teto", /alcan[çc]a\s*\d+\s*servidores/i.test(telaDoTeto) && /teto de\s*5000/i.test(telaDoTeto), telaDoTeto.slice(0, 500));
-    R.conferir("9.3 e diz o que fazer — estreitar por nome, matrícula, data de admissão ou regime jurídico", /Estreite por nome, matr[íi]cula, data de admiss[ãa]o ou regime jur[íi]dico/i.test(telaDoTeto), telaDoTeto.slice(0, 500));
-    R.conferir("9.4 ⚠️ e garante que NÃO truncou — truncar devolveria um total que parece certo", /N[ÃA]O foi truncada/i.test(telaDoTeto), telaDoTeto.slice(0, 500));
+    R.conferir("9.2 e a recusa diz QUANTOS alcançou e qual é o teto", /abrange\s*\d+\s*servidores/i.test(telaDoTeto) && /limite de\s*5000/i.test(telaDoTeto), telaDoTeto.slice(0, 500));
+    R.conferir("9.3 e diz o que fazer — estreitar por nome, matrícula, data de admissão ou regime jurídico", /Refine a pesquisa por nome, matr[íi]cula, data de admiss[ãa]o ou regime jur[íi]dico/i.test(telaDoTeto), telaDoTeto.slice(0, 500));
+    R.conferir("9.4 ⚠️ e garante que NÃO truncou — truncar devolveria um total que parece certo", /nenhum resultado parcial foi exibido/i.test(telaDoTeto), telaDoTeto.slice(0, 500));
     /**
      * ⚠️ E O CAMINHO RÁPIDO CONTINUA ATENDENDO. A recusa é do caminho que apura por evento; uma
      * consulta sem eixo derivado nem situação recorta no banco e responde normalmente. Sem este

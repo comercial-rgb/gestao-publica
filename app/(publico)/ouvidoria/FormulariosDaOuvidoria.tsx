@@ -42,8 +42,8 @@ export function FormManifestacao({ slug, campos, tipos, termoDeAceite }: {
           <p className="font-semibold">Anote agora o código de acompanhamento</p>
           <p className="mt-2 break-all font-mono text-lg tracking-wider" data-segredo-da-manifestacao>{estado.segredo}</p>
           <p className="mt-2">
-            Ele aparece só esta vez. O ente não guarda o código em claro e não consegue reenviá-lo: sem ele, não há como acompanhar a
-            resposta. Não o compartilhe — quem tiver o protocolo e o código lê as respostas da ouvidoria.
+            O código é exibido apenas uma vez e não pode ser reenviado. Sem ele, não é possível acompanhar a resposta.
+            Não o compartilhe: com o protocolo e o código, qualquer pessoa pode ler as respostas da ouvidoria.
           </p>
         </div>
         <p className="mt-4 text-sm"><Link href="/ouvidoria/acompanhar" className="text-[color:var(--color-primary)] underline">Acompanhar uma manifestação</Link></p>
@@ -78,7 +78,7 @@ export function FormManifestacao({ slug, campos, tipos, termoDeAceite }: {
         <label htmlFor={`${base}-contato`} className="text-xs text-[color:var(--color-ink-2)]">
           <span className={CLASSE_ROTULO}>Contato (opcional)</span>
           <input id={`${base}-contato`} name="contato" type="text" maxLength={200} aria-describedby={`${base}-contato-ajuda`} className={CLASSE_CAMPO} />
-          <span id={`${base}-contato-ajuda`} className="mt-1 block">Deixe em branco para manter a manifestação anônima. Se informar, só a ouvidoria vê.</span>
+          <span id={`${base}-contato-ajuda`} className="mt-1 block">Deixe em branco para manter a manifestação anônima. Se informado, o contato será visto apenas pela ouvidoria.</span>
         </label>
       </div>
       {termoDeAceite !== null ? (
@@ -113,7 +113,7 @@ export function FormAcompanhar(): React.ReactElement {
         <button type="submit" disabled={pendente} className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Consultando…" : "Consultar"}</button>
       </form>
       {estado.naoEncontrada === true ? (
-        <p role="status" data-manifestacao-nao-encontrada className="text-sm text-[color:var(--color-ink-2)]">Nenhuma manifestação com esse protocolo e esse código. Confira os dois — a resposta é a mesma para protocolo inexistente e código errado.</p>
+        <p role="status" data-manifestacao-nao-encontrada className="text-sm text-[color:var(--color-ink-2)]">Nenhuma manifestação com esse protocolo e esse código. Verifique os dados informados.</p>
       ) : null}
       {estado.resultado !== undefined ? (
         <section className={CLASSE_PAINEL_FORMULARIO} data-acompanhamento={estado.resultado.situacao} aria-live="polite">
@@ -170,7 +170,7 @@ export function CamposDaAvaliacao({ escala, idBase }: { readonly escala: EscalaD
       <label htmlFor={`${idBase}-descricao`} className="text-xs text-[color:var(--color-ink-2)]">
         <span className={CLASSE_ROTULO}>Descrição (opcional)</span>
         <textarea id={`${idBase}-descricao`} name="descricao" maxLength={2000} aria-describedby={`${idBase}-descricao-ajuda`} className={CLASSE_AREA_TEXTO} />
-        <span id={`${idBase}-descricao-ajuda`} className="mt-1 block">A descrição não é publicada: vai para quem modera as avaliações. Não inclua dados pessoais.</span>
+        <span id={`${idBase}-descricao-ajuda`} className="mt-1 block">A descrição não é publicada; ela é lida apenas pela equipe responsável pelas avaliações. Não inclua dados pessoais.</span>
       </label>
     </>
   );

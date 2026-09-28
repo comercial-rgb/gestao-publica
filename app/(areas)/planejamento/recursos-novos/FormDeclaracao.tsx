@@ -77,8 +77,8 @@ export function FormDeclaracao({
   if (fontes.length === 0) {
     return (
       <div className={`${CLASSE_PAINEL_FORMULARIO} text-xs text-[color:var(--color-ink-2)]`}>
-        <strong className="text-[color:var(--color-ink)]">Sem fonte de recurso cadastrada</strong> — a
-        disponibilidade é apurada POR FONTE, e sem fonte não há o que declarar.
+        <strong className="text-[color:var(--color-ink)]">Sem fonte de recurso cadastrada.</strong> Cadastre as
+        fontes de recurso antes de declarar a disponibilidade.
       </div>
     );
   }
@@ -90,8 +90,8 @@ export function FormDeclaracao({
           <div>
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Declarar disponibilidade apurada</h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-              Registra quanto uma fonte tem de recurso novo no exercício. É contra este número que o
-              crédito adicional por superávit, excesso ou operação de crédito é conferido.
+              Registra o recurso novo disponível por fonte no exercício, usado na conferência dos créditos
+              adicionais por superávit, excesso de arrecadação ou operação de crédito.
             </p>
           </div>
           <button type="button" onClick={() => setAberto(true)} className={CLASSE_BOTAO_PRIMARIO}>
@@ -166,7 +166,7 @@ export function FormDeclaracao({
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-4">
-          <span className={ROTULO}>De onde saiu este número</span>
+          <span className={ROTULO}>Origem da apuração</span>
           <input
             name="descricao"
             required
@@ -188,17 +188,15 @@ export function FormDeclaracao({
             if (apurado === undefined || apurado === null) {
               return (
                 <span className="text-[color:var(--color-status-alerta-fg)]">
-                  O exercício {exercicio - 1} não foi encerrado: não há superávit apurado contra o
-                  que conferir. Enquanto ele não for encerrado, nenhum crédito por superávit é
-                  aceito — a declaração fica sem par.
+                  O exercício {exercicio - 1} ainda não foi encerrado e não há superávit apurado. Créditos
+                  por superávit só são aceitos após o encerramento.
                 </span>
               );
             }
             return (
               <span className="text-[color:var(--color-ink-2)]">
-                Os fatos do exercício {exercicio - 1} dão <strong>R$ {apurado}</strong> de superávit
-                para a fonte {f?.codigo} — receita, pagamento, retenção e restos, a mesma conta que o
-                Anexo 14 publica. <strong>Declarar acima disso é recusado.</strong>
+                O superávit financeiro apurado em {exercicio - 1} para a fonte {f?.codigo} é de{" "}
+                <strong>R$ {apurado}</strong>, conforme o Anexo 14. <strong>Declarações acima desse valor são recusadas.</strong>
               </span>
             );
           })()}
@@ -206,9 +204,8 @@ export function FormDeclaracao({
       ) : null}
 
       <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-        Declarar de novo a mesma fonte <strong>não apaga</strong> a declaração anterior: cria uma
-        versão. O que cada decreto enxergou no dia continua legível. E não se declara abaixo do que
-        a fonte já suplementou — isso deixaria decreto vivo sem lastro.
+        Uma nova declaração da mesma fonte gera nova versão e preserva a anterior. O valor declarado não
+        pode ser inferior ao já utilizado em créditos adicionais da fonte.
       </p>
 
       <div className="mt-4 flex items-center gap-3">

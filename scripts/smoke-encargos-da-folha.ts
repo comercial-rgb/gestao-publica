@@ -109,7 +109,7 @@ async function reducaoGuiaEDemonstrativo(page: Page, hrefFolha: string, hrefRat:
   await irPara(N, page, hrefRat);
   const versao = await page.$eval('form[data-acao="aprovar-versao"] select[name="versaoId"]', (s) => Array.from((s as HTMLSelectElement).options).find((o) => o.value !== "")?.value ?? "");
   const rApr = await preencherEEnviar(page, "aprovar-versao", [{ sel: 'select[name="versaoId"]', valor: versao, tipo: "select" }, { sel: 'input[name="motivo"]', valor: "correção do perfil sintético para baixo" }]);
-  R.conferir("7.2 o aprovador aprova a versão menor", rApr.tipo === "ok" && /APROVADA/.test(rApr.texto), `${rApr.tipo}: ${rApr.texto.slice(0, 200)}`);
+  R.conferir("7.2 o aprovador aprova a versão menor", rApr.tipo === "ok" && /aprovada/i.test(rApr.texto), `${rApr.tipo}: ${rApr.texto.slice(0, 200)}`);
 
   await sair(N, page);
   await entrar(N, page, CONTABILIDADE, SENHA);
@@ -123,7 +123,7 @@ async function reducaoGuiaEDemonstrativo(page: Page, hrefFolha: string, hrefRat:
   await entrar(N, page, ATESTADOR, SENHA);
   await irPara(N, page, hrefFolha);
   const rCert2 = await preencherEEnviar(page, "certificar-encargos", [{ sel: 'input[name="data"]', valor: hoje(), tipo: "data" }]);
-  R.conferir("7.5 a atestadora certifica a apuração reduzida", rCert2.tipo === "ok" && /sha256/.test(rCert2.texto), `${rCert2.tipo}: ${rCert2.texto.slice(0, 300)}`);
+  R.conferir("7.5 a atestadora certifica a apuração reduzida", rCert2.tipo === "ok" && /código de integridade/.test(rCert2.texto), `${rCert2.tipo}: ${rCert2.texto.slice(0, 300)}`);
 
   await sair(N, page);
   await entrar(N, page, CONTABILIDADE, SENHA);
@@ -209,7 +209,7 @@ async function main(): Promise<void> {
     const atestada = seloDoAtesto === "certificada";
     console.log(`      [premissa: folha ${COMP} ${atestada ? "COM" : "SEM"} atesto salarial antes dos encargos · selo "${seloDoAtesto}"]`);
     if (process.env["ENCARGOS_SO_PREMISSA"] === "1") return;
-    R.conferir("1.0 a folha de partida está fechada e apropriada (o legado do pedido)", antesSalario.includes("fechada") && antesSalario.includes("certificação (derivada)") && empenhosSalariaisAntes > 0, antesSalario.slice(0, 400));
+    R.conferir("1.0 a folha de partida está fechada e apropriada (o legado do pedido)", antesSalario.includes("fechada") && /certificação (pendente de atesto|certificada|devolvida|superada)/.test(antesSalario) && empenhosSalariaisAntes > 0, antesSalario.slice(0, 400));
 
     for (const [codigo, tipo, descricao] of [[PATR, "PREVIDENCIA_PATRONAL", "Cota patronal RGPS (percurso SINTÉTICO)"], [RAT, "RISCO_AMBIENTAL_DO_TRABALHO", "RAT (percurso SINTÉTICO)"]] as const) {
       await irPara(N, page, "/folha/encargos");
@@ -237,7 +237,7 @@ async function main(): Promise<void> {
         { sel: 'input[name="fundamentacaoLegal"]', valor: "Perfil SINTÉTICO do percurso — sem validade normativa" },
         { sel: 'input[name="sintetica"]', valor: "sim", tipo: "marcar" },
       ]);
-      R.conferir(`1.3 versão de ${codigo} (${percentual}%, base VENC+HEXT, sintética) cadastrada — e AGUARDANDO APROVAÇÃO`, marcadas === 2 && r.tipo === "ok" && /AGUARDANDO APROVAÇÃO/.test(r.texto), `marcadas=${marcadas} ${r.tipo}: ${r.texto.slice(0, 200)}`);
+      R.conferir(`1.3 versão de ${codigo} (${percentual}%, base VENC+HEXT, sintética) cadastrada — e AGUARDANDO APROVAÇÃO`, marcadas === 2 && r.tipo === "ok" && /aguardando aprovação/i.test(r.texto), `marcadas=${marcadas} ${r.tipo}: ${r.texto.slice(0, 200)}`);
     }
     await irPara(N, page, hrefs[PATR] as string);
     const adminAprovar = await apresentacaoDoAto(page, "aprovar-versao");
@@ -250,7 +250,7 @@ async function main(): Promise<void> {
       await irPara(N, page, hrefs[codigo] as string);
       const versao = await page.$eval('form[data-acao="aprovar-versao"] select[name="versaoId"]', (s) => Array.from((s as HTMLSelectElement).options).find((o) => o.value !== "")?.value ?? "");
       const r = await preencherEEnviar(page, "aprovar-versao", [{ sel: 'select[name="versaoId"]', valor: versao, tipo: "select" }, { sel: 'input[name="motivo"]', valor: "conferido contra o perfil sintético do percurso" }]);
-      R.conferir(`2.1 o aprovador aprova a versão de ${codigo} — e a mensagem diz que apurações já gravadas não mudam`, r.tipo === "ok" && /APROVADA/.test(r.texto) && /NÃO mudam/.test(r.texto), `${r.tipo}: ${r.texto.slice(0, 220)}`);
+      R.conferir(`2.1 o aprovador aprova a versão de ${codigo} — e a mensagem diz que apurações já gravadas não mudam`, r.tipo === "ok" && /aprovada/i.test(r.texto) && /não mudam/i.test(r.texto), `${r.tipo}: ${r.texto.slice(0, 220)}`);
     }
     const aprovados = await irPara(N, page, `/folha/encargos?q=${SUF}`);
     R.conferir("2.2 recarregada, a lista mostra as duas versões vigentes com o aviso SINTÉTICA", (aprovados.match(/sintética/g) ?? []).length >= 2 && !aprovados.includes("nenhuma aprovada"), aprovados.slice(0, 500));
@@ -295,13 +295,13 @@ async function main(): Promise<void> {
 
     await irPara(N, page, hrefFolha);
     const rApurar = await preencherEEnviar(page, "apurar-encargos", [{ sel: 'input[name="motivo"]', valor: `apuração complementar do percurso ${SUF}` }]);
-    R.conferir("3.2 a contabilidade APURA: COMPLEMENTAR se (e só se) a folha já tinha atesto salarial, e o contracheque não mudou", rApurar.tipo === "ok" && (atestada ? /COMPLEMENTAR/.test(rApurar.texto) : !/COMPLEMENTAR/.test(rApurar.texto)) && /contracheque não mudou/.test(rApurar.texto), `${rApurar.tipo}: ${rApurar.texto.slice(0, 400)}`);
+    R.conferir("3.2 a contabilidade APURA: COMPLEMENTAR se (e só se) a folha já tinha atesto salarial, e o contracheque não mudou", rApurar.tipo === "ok" && (atestada ? /— complementar \(/.test(rApurar.texto) : !/— complementar \(/.test(rApurar.texto)) && /contracheques não foram alterados/.test(rApurar.texto), `${rApurar.tipo}: ${rApurar.texto.slice(0, 400)}`);
     const painel = await irPara(N, page, hrefFolha);
     const nApuracao = /encargos do empregador — apuração nº (\d+)/.exec(painel)?.[1] ?? "?";
     R.conferir("3.3 o painel mostra a apuração (complementar conforme a premissa), com universo, componentes e o aviso SINTÉTICA", (await page.$(`[data-encargos="apurados"][data-complementar="${atestada ? "sim" : "nao"}"]`)) !== null && (await page.$(`[data-componente="${PATR}"]`)) !== null && painel.includes("universo esperado") && painel.includes("sintética"), painel.slice(0, 900));
     const incompleta = (await page.$('[data-encargos="apurados"][data-completa="nao"]')) !== null;
     if (incompleta) console.log("      [a apuração ficou INCOMPLETA: há componente de execução anterior sem versão aprovada — o percurso segue e prova a trava]");
-    R.conferir("3.4 a folha salarial NÃO mudou: os mesmos empenhos salariais e o atesto salarial continua", (await page.evaluate(() => document.querySelectorAll("[data-empenho]").length)) === empenhosSalariaisAntes && painel.includes("certificação (derivada)"), "a folha salarial mudou");
+    R.conferir("3.4 a folha salarial NÃO mudou: os mesmos empenhos salariais e o atesto salarial continua", (await page.evaluate(() => document.querySelectorAll("[data-empenho]").length)) === empenhosSalariaisAntes && /certificação (pendente de atesto|certificada|devolvida|superada)/.test(painel), "a folha salarial mudou");
     R.conferir("3.5 NEGATIVA: quem apurou não vê CERTIFICAR os encargos como formulário", (await apresentacaoDoAto(page, "certificar-encargos")).estado !== "formulario", JSON.stringify(await apresentacaoDoAto(page, "certificar-encargos")));
 
     const idFolha = hrefFolha.split("/").pop() ?? "";
@@ -364,7 +364,7 @@ async function main(): Promise<void> {
       R.conferir("4.3 apuração INCOMPLETA: certificar os encargos continua travado, nomeando o componente sem parâmetro", trava.estado === "bloqueada" && /incompleta|sem parâmetro/i.test(trava.texto), JSON.stringify(trava));
     } else {
       const rCert = await preencherEEnviar(page, "certificar-encargos", [{ sel: 'input[name="data"]', valor: hoje(), tipo: "data" }]);
-      R.conferir("4.3 a atestadora CERTIFICA os encargos: a mensagem traz a apuração, o responsável e o sha256", rCert.tipo === "ok" && new RegExp(`apuração nº ${nApuracao}`).test(rCert.texto) && /sha256/.test(rCert.texto), `${rCert.tipo}: ${rCert.texto.slice(0, 300)}`);
+      R.conferir("4.3 a atestadora CERTIFICA os encargos: a mensagem traz a apuração, o responsável e o sha256", rCert.tipo === "ok" && new RegExp(`apuração nº ${nApuracao}`).test(rCert.texto) && /código de integridade/.test(rCert.texto), `${rCert.tipo}: ${rCert.texto.slice(0, 300)}`);
       await irPara(N, page, hrefFolha);
       R.conferir("4.4 recarregada: o painel diz CERTIFICADA e certificar sai da barra", (await page.$('[data-atesto-dos-encargos="CERTIFICADA"]')) !== null && (await apresentacaoDoAto(page, "certificar-encargos")).estado === "nao-aplicavel", "estado do atesto não mudou na tela");
 

@@ -22,6 +22,12 @@ const ROTULO_DO_TIPO: Record<RestoAPagarNaLista["tipo"], string> = {
   NAO_PROCESSADO: "Não processado",
 };
 
+const ROTULO_DA_SITUACAO: Record<RestoAPagarNaLista["situacao"], string> = {
+  "A PAGAR": "A pagar",
+  QUITADO: "Quitado",
+  CANCELADO: "Cancelado",
+};
+
 const STATUS_DA_SITUACAO: Record<RestoAPagarNaLista["situacao"], "ok" | "alerta" | "neutro"> = {
   "A PAGAR": "alerta",
   QUITADO: "ok",
@@ -44,7 +50,7 @@ export default async function RestosAPagarPage({
   const cabecalho = (
     <PageHeader
       titulo="Restos a Pagar"
-      subtitulo="Despesa inscrita de exercícios anteriores: inscrito, pago, cancelado e saldo por inscrição"
+      subtitulo="Despesas inscritas de exercícios anteriores: inscrito, pago, cancelado e saldo"
       acoes={<FiltroDosRestos exercicio={exercicio === undefined ? "" : String(exercicio)} tipo={tipo ?? ""} />}
     />
   );
@@ -57,7 +63,7 @@ export default async function RestosAPagarPage({
       <div>
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível consultar os restos a pagar"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível consultar os restos a pagar"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -69,8 +75,8 @@ export default async function RestosAPagarPage({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo="Nenhum resto a pagar no recorte"
-          descricao="Restos a pagar são inscritos no encerramento do exercício. Não há inscrição para o exercício e o tipo selecionados."
+          titulo="Nenhum resto a pagar encontrado"
+          descricao="Os restos a pagar são inscritos no encerramento do exercício. Não há inscrição para o exercício e o tipo selecionados."
         />
         {/* ⚠️ A LIMITAÇÃO APARECE AQUI TAMBÉM, e a primeira versão só a mostrava quando havia
             linha. Quem abrisse a tela sem inscrição nenhuma — que é o estado mais comum antes do
@@ -95,7 +101,7 @@ export default async function RestosAPagarPage({
         colunas={COLUNAS}
         linhas={linhas}
         keyDe={(l) => l.inscricaoId}
-        legenda="Valores em R$ · pago e cancelado são líquidos de estorno · saldo = inscrito − pago − cancelado"
+        legenda="Valores em R$ · pago e cancelado já descontam os estornos · saldo = inscrito − pago − cancelado"
       />
       <AvisoDasAcoes />
       <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
@@ -115,8 +121,8 @@ export default async function RestosAPagarPage({
 function AvisoDasAcoes(): React.ReactElement {
   return (
     <EstadoVazio
-      titulo="Ações desta tela ainda não disponíveis"
-      descricao="Liquidar, pagar, cancelar e estornar restos a pagar dependem da contabilização destas operações estar configurada. Configure a contabilização dos restos a pagar para habilitá-las."
+      titulo="Operações por inscrição"
+      descricao="A liquidação, o pagamento, o cancelamento e o estorno de restos a pagar são registrados na página de cada inscrição, acessada pelo número do empenho. As contas contábeis dessas operações devem estar parametrizadas."
     />
   );
 }
@@ -136,7 +142,7 @@ const COLUNAS: readonly ColunaTabela<RestoAPagarNaLista>[] = [
   // O nome quando o credor está no cadastro; o documento quando não está. Nunca vazio calado.
   { chave: "credor", cabecalho: "Credor", celula: (l) => l.credorNome ?? l.credorCpfCnpj },
   { chave: "fonte", cabecalho: "Fonte", celula: (l) => `${l.fonteCodigo} — ${l.fonteDescricao}` },
-  { chave: "situacao", cabecalho: "Situação", celula: (l) => <Badge status={STATUS_DA_SITUACAO[l.situacao]}>{l.situacao}</Badge> },
+  { chave: "situacao", cabecalho: "Situação", celula: (l) => <Badge status={STATUS_DA_SITUACAO[l.situacao]}>{ROTULO_DA_SITUACAO[l.situacao]}</Badge> },
   { chave: "valorInscrito", cabecalho: "Inscrito", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.valorInscrito} /> },
   { chave: "pagoLiquido", cabecalho: "Pago", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.pagoLiquido} /> },
   { chave: "canceladoLiquido", cabecalho: "Cancelado", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.canceladoLiquido} /> },

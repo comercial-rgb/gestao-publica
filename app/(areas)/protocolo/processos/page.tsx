@@ -42,7 +42,7 @@ const TOM_DA_SITUACAO: Record<string, StatusBadge> = {
 const ROTULO_DO_PRAZO: Record<string, string> = {
   SEM_PRAZO: "sem prazo",
   NO_PRAZO: "no prazo",
-  PROXIMO_DO_FIM: "prazo perto do fim",
+  PROXIMO_DO_FIM: "prazo próximo do fim",
   ATRASADO: "atrasado",
 };
 
@@ -78,7 +78,7 @@ export default async function ProcessosPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         titulo="Processos"
-        subtitulo="Abertura, tramitação, parecer, readequação, encerramento e arquivamento — com a situação derivada dos movimentos, nunca de uma coluna."
+        subtitulo="Abertura, tramitação, pareceres, encerramento e arquivamento de processos."
       />
 
       <Card>
@@ -104,8 +104,8 @@ export default async function ProcessosPage({
         </div>
         {caixa.length === 0 ? (
           <EstadoVazio
-            titulo="Nenhum processo no seu alcance"
-            descricao="Você vê os processos dos setores em que está lotado, os que abriu, os que movimentou — e os não sigilosos da sua unidade gestora. Sem lotação, a caixa fica vazia: o sistema não mostra tudo a quem não tem crachá."
+            titulo="Nenhum processo disponível"
+            descricao="São exibidos os processos dos setores de lotação do usuário, os que ele abriu ou movimentou e os não sigilosos da sua unidade gestora."
           />
         ) : (
           <div className="overflow-x-auto">

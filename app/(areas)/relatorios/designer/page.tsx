@@ -67,7 +67,7 @@ export default async function DesignerPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         titulo="Designer de relatórios"
-        subtitulo="Modelos desenhados pelo usuário, com campos calculados por gramática segura. Os relatórios legais (RREO, RGF, balanços) são outra coisa e ficam em Relatórios."
+        subtitulo="Relatórios operacionais montados pela entidade, com campos calculados"
       />
 
       <Card>
@@ -95,7 +95,7 @@ export default async function DesignerPage({
         {modelos.length === 0 ? (
           <EstadoVazio
             titulo="Nenhum modelo ainda"
-            descricao="Você vê os modelos públicos e os seus. Um modelo restrito não aparece para terceiros nem em cinza — o nome de um relatório costuma dizer o que ele mede."
+            descricao="São exibidos os modelos públicos e os criados pelo próprio usuário."
           />
         ) : (
           <div className="flex flex-col gap-4">
@@ -164,9 +164,7 @@ export default async function DesignerPage({
           Minhas execuções
         </h2>
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-          A execução é enfileirada e roda em segundo plano; abrir esta tela drena a fila.
-          Não há processo dedicado neste ambiente — pendência declarada, e é por isso que
-          a lista, e não a requisição do formulário, é quem processa.
+          As execuções são processadas em segundo plano e atualizadas ao abrir esta tela.
         </p>
         {execucoes.length === 0 ? (
           <EstadoVazio titulo="Nenhuma execução ainda" />

@@ -48,14 +48,14 @@ export async function versaoDoEncargoAction(_prev: EstadoDoMolde, formData: Form
     const campos = camposDe(formData);
     const componenteId = campos["__id"] ?? "";
     const rubricas = linhasDoFormulario(formData, "rubricas", ["id"]).map((l) => l["id"] ?? "").filter((x) => x !== "");
-    if (rubricas.length === 0) return { erro: "Marque ao menos uma rubrica que compõe a base: uma versão sem base não calcularia nada. Nada foi gravado." };
+    if (rubricas.length === 0) return { erro: "Marque ao menos uma rubrica para compor a base de cálculo. Nada foi gravado." };
     try {
       await criarVersaoDoEncargo(componenteId, campos, rubricas);
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível cadastrar a versão. Nada foi gravado.") };
     }
     revalidatePath(`${ENCARGOS_DA_FOLHA.rota}/${componenteId}`);
-    return { sucesso: `Versão desde ${campos["competenciaInicio"] ?? ""} cadastrada, AGUARDANDO APROVAÇÃO de outra pessoa. Até lá ela não entra em apuração nenhuma.` };
+    return { sucesso: `Versão a partir de ${campos["competenciaInicio"] ?? ""} cadastrada, aguardando aprovação por outro usuário. Até a aprovação, ela não é considerada em nenhuma apuração.` };
   });
 }
 
@@ -71,6 +71,6 @@ export async function grupoDosEncargosAction(_prev: EstadoDoMolde, formData: For
     }
     revalidatePath("/folha/grupos-de-empenho");
     revalidatePath(ENCARGOS_DA_FOLHA.rota);
-    return { sucesso: `Grupo de ENCARGOS ${campos["codigo"] ?? ""} cadastrado com ${componentes.length} componente(s): empenho único, credor declarado.` };
+    return { sucesso: `Grupo de encargos ${campos["codigo"] ?? ""} cadastrado com ${componentes.length} componente(s), com empenho único para o credor informado.` };
   });
 }

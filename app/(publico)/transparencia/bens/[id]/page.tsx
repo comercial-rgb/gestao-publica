@@ -53,7 +53,7 @@ export default async function BemPublicoPage({
     return (
       <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
         <p role="alert" className="text-sm">
-          A consulta está indisponível agora: o banco de dados não respondeu.
+          A consulta está temporariamente indisponível. Tente novamente mais tarde.
         </p>
       </main>
     );
@@ -161,8 +161,7 @@ export default async function BemPublicoPage({
             <>
               <p className="text-sm text-[color:var(--color-ink)]">{bem.localizacao}</p>
               <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-                Localização declarada divulgável pelo ente. É o último registro de movimentação de
-                localização deste bem que não foi estornado.
+                Localização atual do bem, conforme o último registro de movimentação.
               </p>
             </>
           ) : (
@@ -171,8 +170,8 @@ export default async function BemPublicoPage({
                 A localização deste bem não é divulgada.
               </p>
               <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-                O bem consta do acervo público; o lugar onde ele está só aparece quando o ente declara
-                aquela localização divulgável. Locais de acesso restrito ficam de fora.
+                O bem integra o patrimônio público. A localização é exibida somente quando autorizada
+                para divulgação.
               </p>
             </>
           )}
@@ -210,8 +209,7 @@ export default async function BemPublicoPage({
             </div>
           )}
           <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-            Movimento estornado e o estorno correspondente não aparecem: o par sai da conta, como no
-            razão patrimonial.
+            Movimentações estornadas e os respectivos estornos não são exibidos.
           </p>
         </section>
       ) : null}

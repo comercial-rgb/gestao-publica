@@ -59,12 +59,12 @@ export default async function PorEntidadePage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Arrecadação por entidade" subtitulo="De quem é a receita que entrou" />
+        <PageHeader titulo="Arrecadação por entidade" subtitulo="Receita arrecadada por entidade contábil titular" />
         <EstadoVazio
           titulo={
             erro instanceof ExercicioIlegivelError
-              ? "Exercício ilegível"
-              : "Não foi possível ler a arrecadação por entidade"
+              ? "Exercício inválido"
+              : "Não foi possível carregar a arrecadação por entidade"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -80,7 +80,7 @@ export default async function PorEntidadePage({
       <SincronizarContexto />
       <PageHeader
         titulo="Arrecadação por entidade"
-        subtitulo={`De quem é a receita que entrou — exercício ${String(exercicio)}`}
+        subtitulo={`Receita arrecadada por entidade contábil titular, exercício ${String(exercicio)}.`}
       />
 
       <table className="w-full text-sm" data-papel="arrecadado-por-entidade">
@@ -112,9 +112,9 @@ export default async function PorEntidadePage({
               <td className="py-2 text-right"><ValorMonetario valor={l.arrecadado} /></td>
               <td className="py-2 text-right text-xs text-[color:var(--color-ink-2)]" data-procedencia={l.codigo ?? ""}>
                 {l.porAtribuicao.guias === 0 ? (
-                  "toda identificada na origem"
+                  "identificada na origem"
                 ) : l.naOrigem.guias === 0 ? (
-                  <>toda atribuída por ato ({l.porAtribuicao.guias})</>
+                  <>atribuída por ato ({l.porAtribuicao.guias})</>
                 ) : (
                   <>
                     na origem <ValorMonetario valor={l.naOrigem.arrecadado} /> ({l.naOrigem.guias}) · por ato{" "}
@@ -132,14 +132,14 @@ export default async function PorEntidadePage({
           <tr className="border-b border-[color:var(--color-border)]" data-linha-entidade="nao-atribuido">
             <td className="py-2">
               <span className={temNaoAtribuido ? "text-[color:var(--color-status-alerta-fg)]" : ""}>
-                Não atribuído — o ente ainda não disse de quem é
+                Não atribuído (entidade titular não informada)
               </span>
             </td>
             <td className="py-2 text-right">{consulta.naoAtribuido.guias}</td>
             <td className="py-2 text-right"><ValorMonetario valor={consulta.naoAtribuido.arrecadado} /></td>
             <td className="py-2 text-right text-xs text-[color:var(--color-ink-2)]">
               {/* Esta linha é o complemento: nem origem, nem ato. Por isso não tem procedência a declarar. */}
-              sem nenhum dos dois
+              sem identificação
             </td>
           </tr>
         </tbody>
@@ -161,11 +161,10 @@ export default async function PorEntidadePage({
           parte conclui que a outra também está partida. Dizer o que NÃO está partido, e por quê,
           é o que separa um recorte honesto de um número inventado.
         */}
-        Esta tela parte a <strong>arrecadação</strong>. O <strong>superávit financeiro</strong>{" "}
-        continua sendo do ente, e não por descuido: ele vem do caixa por fonte, que soma
-        arrecadação, pagamento, extraorçamentário e restos — e só a arrecadação tem entidade hoje.
-        Partir uma perna e subtrair as outras três inteiras daria um número com cara de número, e
-        é esse número que autoriza despesa.
+        Esta consulta distribui apenas a <strong>arrecadação</strong> por entidade. O{" "}
+        <strong>superávit financeiro</strong> continua sendo do ente como um todo, pois também depende
+        de pagamentos, movimentos extraorçamentários e restos a pagar, que não são distribuídos por
+        entidade.
       </div>
 
       {/*
@@ -180,7 +179,7 @@ export default async function PorEntidadePage({
       {pendentes.length > 0 ? (
         <section className="space-y-2" data-papel="fila-nao-atribuidas">
           <h2 className="text-sm font-semibold">
-            Guias sem entidade ({pendentes.length}) — o que fazer em cada uma
+            Guias sem entidade ({pendentes.length})
           </h2>
           <ul className="space-y-2">
             {pendentes.map((g) => (
@@ -204,15 +203,14 @@ export default async function PorEntidadePage({
                 */}
                 {g.caminho === "DECLARAR_TITULAR_DA_CONTA" ? (
                   <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-                    Entrou na conta <strong>{g.contaCodigo}</strong>, que ainda não tem titular
-                    declarado. Declare em <strong>Financeiro &gt; Contas bancárias</strong> — isso
-                    resolve as próximas guias dessa conta de uma vez. Esta guia, que já entrou,
-                    continua precisando da atribuição abaixo.
+                    Recebida na conta <strong>{g.contaCodigo}</strong>, que ainda não tem titular
+                    declarado. Declare o titular em <strong>Financeiro &gt; Contas bancárias</strong>{" "}
+                    para identificar as próximas guias dessa conta; esta guia precisa da atribuição abaixo.
                   </p>
                 ) : (
                   <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-                    Esta guia não declara conta bancária (legado ou importação), então não há de
-                    onde derivar a entidade. Só a atribuição abaixo a resolve.
+                    Esta guia não declara conta bancária (registro antigo ou importado). Informe a
+                    entidade na atribuição abaixo.
                   </p>
                 )}
                 <FormAtribuir

@@ -35,7 +35,7 @@ export async function GET(req: Request): Promise<Response> {
     });
   } catch (e) {
     if (!(e instanceof PortaSemBancoError)) throw e;
-    return new Response("A consulta esta indisponivel agora: o banco de dados nao respondeu.", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
+    return new Response("A consulta está temporariamente indisponível. Tente novamente mais tarde.", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
 
   const linhas = dados.linhas.map((d) => [
@@ -54,14 +54,14 @@ export async function GET(req: Request): Promise<Response> {
   const truncado = dados.total > dados.linhas.length;
   const corpo =
     paraCsv(colunas, linhas) +
-    (truncado ? `\r\n"⚠️ ARQUIVO TRUNCADO: a consulta tem ${dados.total} empenhos e este arquivo traz os primeiros ${dados.linhas.length}. Estreite os filtros."\r\n` : "") +
+    (truncado ? `\r\n"Arquivo parcial: a consulta tem ${dados.total} empenhos e este arquivo traz os primeiros ${dados.linhas.length}. Refine os filtros para obter o conjunto completo."\r\n` : "") +
     // ⚠️ O RODAPÉ DIZ O QUE NÃO SOMAR. Uma planilha aberta por quem não acompanhou a decisão é
     // exatamente onde as três fases viram três despesas.
-    `\r\n"As colunas Empenhado, Liquidado e Pago sao ESTAGIOS da mesma despesa: somar as tres conta a mesma despesa tres vezes."\r\n` +
+    `\r\n"As colunas Empenhado, Liquidado e Pago são etapas da mesma despesa e não devem ser somadas."\r\n` +
     // ⚠️ OS TOTAIS DO RECORTE INTEIRO — inclusive quando o ARQUIVO foi truncado. São coisas
     // diferentes: o arquivo traz as primeiras N linhas, e o rodapé diz quanto vale o recorte
     // todo. Somar as linhas do arquivo truncado daria outro número, menor, sem aviso.
-    `"Totais do recorte: empenhado ${formatarMoeda(dados.totais.empenhado).texto}; liquidado ${formatarMoeda(dados.totais.liquidado).texto}; pago ${formatarMoeda(dados.totais.pago).texto}."\r\n`;
+    `"Totais da consulta: empenhado ${formatarMoeda(dados.totais.empenhado).texto}; liquidado ${formatarMoeda(dados.totais.liquidado).texto}; pago ${formatarMoeda(dados.totais.pago).texto}."\r\n`;
 
   return new Response(corpo, {
     headers: {

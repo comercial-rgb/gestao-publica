@@ -64,8 +64,7 @@ export async function criarModeloAction(
     if (colunas.length === 0) {
       return {
         erro:
-          "Preencha ao menos uma coluna, com rótulo e expressão. Um relatório sem coluna " +
-          "nenhuma não é relatório.",
+          "Preencha ao menos uma coluna, com rótulo e expressão.",
       };
     }
 
@@ -81,7 +80,7 @@ export async function criarModeloAction(
       });
       revalidar();
       return {
-        sucesso: `Modelo criado com ${colunas.length} coluna(s). As expressões foram analisadas agora — não na primeira execução.`,
+        sucesso: `Modelo criado com ${colunas.length} coluna(s). As expressões foram validadas.`,
       };
     } catch (e) {
       return comoErro(e);
@@ -103,8 +102,7 @@ export async function copiarModeloAction(
       revalidar();
       return {
         sucesso:
-          "Cópia criada — o original não foi tocado. E a cópia nasce RESTRITA ao autor, " +
-          "mesmo tendo sido derivada de um modelo público.",
+          "Cópia criada com visibilidade restrita ao autor. O modelo original não foi alterado.",
       };
     } catch (e) {
       return comoErro(e);
@@ -127,8 +125,7 @@ export async function distribuirModeloAction(
       revalidar();
       return {
         sucesso:
-          "Distribuído. A outra unidade passa a EXECUTAR este modelo sobre os dados dela — " +
-          "não recebeu uma cópia, que divergiria na primeira correção.",
+          "Modelo distribuído. A unidade de destino passa a executá-lo sobre os próprios dados.",
       };
     } catch (e) {
       return comoErro(e);
@@ -149,8 +146,7 @@ export async function retirarModeloAction(
       revalidar();
       return {
         sucesso:
-          "Modelo retirado de vigência. Ele não produz relatório novo; as execuções " +
-          "antigas continuam disponíveis.",
+          "Modelo retirado de vigência. As execuções anteriores continuam disponíveis.",
       };
     } catch (e) {
       return comoErro(e);
@@ -174,8 +170,7 @@ export async function executarAction(
       revalidar();
       return {
         sucesso:
-          "Execução ENFILEIRADA. Ela roda em segundo plano e você será notificado ao " +
-          "término — o relatório não é calculado dentro desta requisição.",
+          "Execução solicitada. O relatório será processado em segundo plano, com notificação ao término.",
       };
     } catch (e) {
       return comoErro(e);

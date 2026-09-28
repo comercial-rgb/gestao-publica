@@ -100,7 +100,7 @@ export default async function Pagina({
 
       {semBanco ? (
         <p role="alert" className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-4 text-sm">
-          A consulta está indisponível agora: o banco de dados não respondeu. Tente novamente em alguns minutos.
+          A consulta está temporariamente indisponível. Tente novamente em alguns minutos.
         </p>
       ) : null}
 
@@ -124,7 +124,7 @@ export default async function Pagina({
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs">
-          <span className="font-medium text-[color:var(--color-ink-2)]">Natureza da receita (código ou início dele)</span>
+          <span className="font-medium text-[color:var(--color-ink-2)]">Natureza da receita (código completo ou inicial)</span>
           <input name="natureza" defaultValue={filtros.natureza} placeholder="ex.: 1112" className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-2 py-1.5 text-sm" />
         </label>
         <label className="flex flex-col gap-1 text-xs">
@@ -143,7 +143,7 @@ export default async function Pagina({
         </label>
         <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
           <button type="submit" className="rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 py-1.5 text-sm text-[color:var(--color-on-primary)]">Consultar</button>
-          <a href={csv} className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-sm">Baixar CSV deste recorte</a>
+          <a href={csv} className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-sm">Baixar CSV desta consulta</a>
         </div>
       </form>
 
@@ -151,11 +151,11 @@ export default async function Pagina({
         <>
           <section className="mb-4 grid gap-3 sm:grid-cols-3" data-papel="totais-da-arrecadacao">
             <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
-              <p className="text-xs text-[color:var(--color-ink-2)]">Arrecadado no recorte</p>
+              <p className="text-xs text-[color:var(--color-ink-2)]">Total arrecadado</p>
               <p className="text-lg font-semibold tabular-nums">R$ {formatarMoeda(pagina.totais.arrecadado).texto}</p>
             </div>
             <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
-              <p className="text-xs text-[color:var(--color-ink-2)]">Anulado</p>
+              <p className="text-xs text-[color:var(--color-ink-2)]">Total anulado</p>
               <p className="text-lg font-semibold tabular-nums">R$ {formatarMoeda(pagina.totais.anulado).texto}</p>
             </div>
             <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
@@ -169,9 +169,9 @@ export default async function Pagina({
               <h2 className="mb-2 text-sm font-semibold">Previsão e execução em {pagina.previsao.exercicio}</h2>
               <dl className="grid gap-3 text-sm sm:grid-cols-4">
                 <div><dt className="text-xs text-[color:var(--color-ink-2)]">Previsão inicial (LOA)</dt><dd className="tabular-nums">R$ {formatarMoeda(pagina.previsao.inicial).texto}</dd></div>
-                <div><dt className="text-xs text-[color:var(--color-ink-2)]">Reprevisões (com sinal)</dt><dd className="tabular-nums">R$ {formatarMoeda(pagina.previsao.ajustes).texto}</dd></div>
+                <div><dt className="text-xs text-[color:var(--color-ink-2)]">Ajustes da previsão</dt><dd className="tabular-nums">R$ {formatarMoeda(pagina.previsao.ajustes).texto}</dd></div>
                 <div><dt className="text-xs text-[color:var(--color-ink-2)]">Previsão atualizada</dt><dd className="tabular-nums">R$ {formatarMoeda(pagina.previsao.atualizada).texto}</dd></div>
-                <div><dt className="text-xs text-[color:var(--color-ink-2)]">Arrecadado / atualizada</dt><dd className="tabular-nums">{pagina.previsao.execucao === null ? "—" : `${pagina.previsao.execucao}%`}</dd></div>
+                <div><dt className="text-xs text-[color:var(--color-ink-2)]">Execução (arrecadado sobre previsão atualizada)</dt><dd className="tabular-nums">{pagina.previsao.execucao === null ? "—" : `${pagina.previsao.execucao}%`}</dd></div>
               </dl>
             </section>
           ) : null}
@@ -182,11 +182,9 @@ export default async function Pagina({
               <p className="tabular-nums text-lg font-semibold">R$ {formatarMoeda(pagina.constituido).texto}</p>
               {/* ⚠️ O AVISO VEM COLADO NO NÚMERO, e não num rodapé que ninguém lê. */}
               <p className="mt-1 max-w-3xl text-xs text-[color:var(--color-ink-2)]">
-                Este valor <strong>não se soma</strong> à arrecadação acima. Ele é o crédito que
-                nasceu — o tributo lançado, o serviço prestado —, e a arrecadação é o dinheiro que
-                entrou e <strong>baixa</strong> esse crédito. São o mesmo dinheiro em dois momentos;
-                somá-los contaria a receita do município duas vezes. Vai agregado por exercício, sem
-                identificação de contribuinte.
+                Este valor <strong>não deve ser somado</strong> à arrecadação acima. Corresponde aos
+                tributos e serviços lançados no exercício; a arrecadação é o pagamento desses créditos.
+                Valor total do exercício, sem identificação de contribuintes.
               </p>
             </section>
           ) : null}
@@ -232,14 +230,14 @@ export default async function Pagina({
           <nav className="mt-4 flex items-center gap-3 text-sm" aria-label="Paginação">
             {paginaAtual > 1 ? <a href={linkDePagina(paginaAtual - 1)} className="text-[color:var(--color-primary)] hover:underline">Anterior</a> : null}
             <span className="text-xs text-[color:var(--color-ink-2)]">
-              Página {paginaAtual} de {pagina.paginas} · {pagina.total} guia(s) no recorte
+              Página {paginaAtual} de {pagina.paginas} · {pagina.total} guia(s) encontrada(s)
             </span>
             {paginaAtual < pagina.paginas ? <a href={linkDePagina(paginaAtual + 1)} className="text-[color:var(--color-primary)] hover:underline">Próxima</a> : null}
           </nav>
 
           <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">
-            Dados atualizados em {pagina.atualizadoEm}. Os totais acima são do recorte inteiro, não
-            apenas desta página.
+            Dados atualizados em {pagina.atualizadoEm}. Os totais consideram todos os resultados da
+            consulta, não apenas esta página.
           </p>
         </>
       ) : null}

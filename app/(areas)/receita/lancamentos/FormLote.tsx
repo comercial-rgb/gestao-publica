@@ -36,8 +36,8 @@ export function FormLote({ opcoes }: { readonly opcoes: OpcoesDoLote }): React.R
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Preparar um lote</h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        Preparar calcula e congela a memória de cada imóvel. <strong>Não constitui crédito nenhum</strong>:
-        o lote sai revisável, e constituir é ato à parte, um lançamento por vez.
+        A preparação calcula e registra a memória de cálculo de cada imóvel, <strong>sem constituir o crédito</strong>.
+        O lote pode ser revisado, e a constituição é feita a seguir, lançamento a lançamento.
       </p>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="text-xs">

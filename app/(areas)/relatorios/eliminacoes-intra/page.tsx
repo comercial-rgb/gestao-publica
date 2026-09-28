@@ -56,7 +56,7 @@ const COLUNAS_CONTRAPARTES: readonly ColunaTabela<ContraparteDaDespesaIntra>[] =
     celula: (c) =>
       c.entidadeCodigo === null ? (
         <span className="text-[color:var(--color-ink-3)]">
-          Contraparte não identificada — nenhuma entidade cadastrada tem este CNPJ
+          Contraparte não identificada: nenhuma entidade cadastrada possui este CNPJ
         </span>
       ) : (
         <span>
@@ -109,9 +109,8 @@ function BlocoDoPar({ par }: { readonly par: ParDeEliminacao }): React.ReactElem
 
           {par.situacao === "RESIDUO" ? (
             <p className="mt-3 text-sm text-[color:var(--color-status-erro-fg)]">
-              O resíduo é o ajuste que a consolidação ainda não explica: os dois lados da mesma
-              operação entre unidades deveriam ter o mesmo valor. Confira se a operação foi
-              reconhecida nas duas pontas e no mesmo período.
+              O resíduo é o ajuste que a consolidação ainda não explica. Confira se a operação foi
+              registrada pelas duas unidades envolvidas, no mesmo período.
             </p>
           ) : null}
 
@@ -120,7 +119,7 @@ function BlocoDoPar({ par }: { readonly par: ParDeEliminacao }): React.ReactElem
               <TabelaDeDados<ContaNaEliminacao>
                 colunas={COLUNAS_CONTAS}
                 keyDe={(c) => c.codigo}
-                legenda="As contas que compõem os dois lados — a explicação do ajuste, conta por conta."
+                legenda="Contas que compõem os dois lados da eliminação."
                 linhas={[...par.contas]}
               />
             </div>
@@ -147,7 +146,7 @@ export default async function Page({
   const cabecalho = (
     <PageHeader
       acoes={<SeletorDoPeriodo bimestre={bimestre} exercicio={exercicio} />}
-      subtitulo={`Exercício ${exercicio} · acumulado até o ${bimestre}º bimestre. As operações entre as unidades do próprio ente, que saem do consolidado — e o que ainda não fecha.`}
+      subtitulo={`Exercício ${exercicio} · acumulado até o ${bimestre}º bimestre · operações entre unidades do próprio ente excluídas da consolidação`}
       titulo="Eliminações intragovernamentais"
     />
   );
@@ -163,7 +162,7 @@ export default async function Page({
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível montar o demonstrativo"
           }
         />
@@ -176,12 +175,10 @@ export default async function Page({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Nada é lançado no razão: a eliminação é <strong>demonstrativo</strong>, e por isso a visão de
-        cada unidade continua intacta nos demais relatórios. <strong>Verde</strong> = os dois lados
-        se anulam; <strong>vermelho</strong> = sobrou resíduo, e ele é o ajuste a explicar;{" "}
-        <strong>âmbar</strong> = não há operação entre unidades no período. Operação com a União, o
-        Estado ou outro município <strong>não</strong> entra aqui — ela não é do próprio ente.
-        Confira também o{" "}
+        A eliminação é apenas demonstrativa: não gera lançamentos e não altera os demais relatórios
+        de cada unidade. <strong>Verde</strong>: os dois lados se anulam; <strong>vermelho</strong>:
+        há resíduo a explicar; <strong>âmbar</strong>: não há operação entre unidades no período.
+        Operação com a União, o Estado ou outro município não entra aqui. Confira também o{" "}
         <Link className="text-[color:var(--color-primary)] hover:underline" href="/relatorios/consistencia">
           Relatório de Consistência
         </Link>
@@ -193,9 +190,8 @@ export default async function Page({
           className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-sm text-[color:var(--color-status-alerta-fg)]"
           role="status"
         >
-          O plano de contas instalado não declara o nível de consolidação em nenhuma conta. Sem ele,
-          nenhuma partida pode ser dita intragovernamental — e este demonstrativo não tem como
-          separar o que sai do consolidado.
+          O plano de contas não informa o nível de consolidação das contas. Sem essa informação,
+          não é possível identificar as operações intragovernamentais.
         </div>
       ) : null}
 
@@ -204,7 +200,7 @@ export default async function Page({
           className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-sm text-[color:var(--color-status-alerta-fg)]"
           role="status"
         >
-          Contas com código fora da forma do plano de contas, que ficaram sem classificação:{" "}
+          Contas com código fora do padrão do plano de contas, não classificadas:{" "}
           {dados.malformados.join(", ")}.
         </div>
       ) : null}
@@ -215,11 +211,11 @@ export default async function Page({
 
       <Card>
         <p className="text-sm font-semibold text-[color:var(--color-ink)]">
-          Quem está do outro lado da despesa entre unidades
+          Contrapartes da despesa entre unidades
         </p>
         <p className="text-sm text-[color:var(--color-ink-2)]">
-          A contraparte sai do CNPJ do credor do empenho, conferido contra o CNPJ das entidades
-          cadastradas. O que não casa fica dito, nunca adivinhado.
+          A contraparte é identificada pelo CNPJ do credor do empenho, comparado ao CNPJ das
+          entidades cadastradas.
         </p>
         {dados.contrapartes.length === 0 ? (
           <p className="mt-3 text-sm text-[color:var(--color-ink-2)]">
@@ -230,7 +226,7 @@ export default async function Page({
             <TabelaDeDados<ContraparteDaDespesaIntra>
               colunas={COLUNAS_CONTRAPARTES}
               keyDe={(c) => c.credorCpfCnpj}
-              legenda="Uma linha por credor de despesa entre unidades, com o empenhado líquido de anulações."
+              legenda="Uma linha por credor de despesa entre unidades, com o valor empenhado líquido de anulações."
               linhas={[...dados.contrapartes]}
             />
           </div>

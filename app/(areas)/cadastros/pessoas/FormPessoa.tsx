@@ -47,7 +47,7 @@ export function FormPessoa(): React.ReactElement {
             className={CAMPO}
           />
           <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">
-            O tipo — física ou jurídica — vem do documento.
+            O tipo de pessoa (física ou jurídica) é identificado pelo documento.
           </span>
         </label>
 
@@ -58,7 +58,7 @@ export function FormPessoa(): React.ReactElement {
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nome fantasia</span>
-          <input name="nomeFantasia" placeholder="somente para PJ" className={CAMPO} />
+          <input name="nomeFantasia" placeholder="Somente para pessoa jurídica" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">

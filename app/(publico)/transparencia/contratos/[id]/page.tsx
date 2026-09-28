@@ -46,7 +46,7 @@ export default async function ContratoPublicoPage({ params }: { readonly params:
           <h2 className="mb-1 text-sm font-semibold">Alterações de itens por aditivo</h2>
           {c.aditivosPorItens.map((a) => (
             <div key={a.numero} className="mb-3">
-              <p className="text-sm">Termo nº {a.numero} · assinado em {a.assinatura} · vale a partir de {a.vigenciaInicio} · variação <ValorMonetario valor={a.variacao} comSimbolo />{a.estornado ? " · estornado" : ""}</p>
+              <p className="text-sm">Termo nº {a.numero} · assinado em {a.assinatura} · vigente a partir de {a.vigenciaInicio} · variação <ValorMonetario valor={a.variacao} comSimbolo />{a.estornado ? " · estornado" : ""}</p>
               <p className="text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]">{a.fundamento}</p>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[32rem] text-left text-sm">
@@ -76,7 +76,7 @@ export default async function ContratoPublicoPage({ params }: { readonly params:
           </table>
         </div>
       )}
-      <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">Execução física é a medida aprovada ou recebida; não é pagamento. Pagamentos seguem pela despesa do ente.</p>
+      <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">A execução física corresponde às medições aprovadas ou recebidas e não representa pagamento. Os pagamentos podem ser consultados em Despesas.</p>
     </main>
   );
 }

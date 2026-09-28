@@ -48,8 +48,8 @@ export async function acaoDeRoteirosPatrimoniaisAction(
     return {
       sucesso:
         acao === "criar"
-          ? "Roteiro parametrizado. O evento já pode ser registrado."
-          : "Contas trocadas. Vale para os movimentos futuros deste evento.",
+          ? "Roteiro contábil cadastrado. O evento já pode ser registrado."
+          : "Contas alteradas. A alteração vale para os próximos movimentos deste evento.",
     };
   });
 }

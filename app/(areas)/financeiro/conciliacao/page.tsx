@@ -56,13 +56,13 @@ export default async function ConciliacaoBancariaPage({
         <SincronizarContexto />
         <PageHeader
           titulo="Conciliação bancária"
-          subtitulo="O extrato do banco confrontado com o razão"
+          subtitulo="Confronto do extrato bancário com os registros contábeis"
         />
         <EstadoVazio
           titulo={
             erro instanceof ExercicioIlegivelError
               ? "O exercício pedido não é um ano"
-              : "Não foi possível ler o recorte"
+              : "Não foi possível carregar a consulta"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -73,7 +73,7 @@ export default async function ConciliacaoBancariaPage({
   const cabecalho = (
     <PageHeader
       titulo="Conciliação bancária"
-      subtitulo={`Exercício ${exercicio} — o extrato do banco confrontado com o razão: o que já casou, o que ainda não, e a diferença toda nomeada.`}
+      subtitulo={`Exercício ${exercicio}: confronto do extrato bancário com os registros contábeis, com pendências e diferenças`}
     />
   );
 
@@ -88,8 +88,8 @@ export default async function ConciliacaoBancariaPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível emitir a conciliação"
+              ? "Serviço indisponível"
+              : "Não foi possível carregar a conciliação"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -106,7 +106,7 @@ export default async function ConciliacaoBancariaPage({
         {cabecalho}
         <EstadoVazio
           titulo={`Nenhum extrato bancário importado no exercício ${exercicio}`}
-          descricao="Conciliar é confrontar um extrato com o razão — sem extrato não há confronto. A importação (arquivo OFX ou API do Banco do Brasil) é feita na Central de Integrações."
+          descricao="A conciliação exige um extrato importado. A importação (arquivo OFX ou API do Banco do Brasil) é feita na Central de Integrações."
           acao={
             <Link href="/integracoes" className="text-sm font-semibold text-[color:var(--color-primary)] underline">
               Ir para a Central de Integrações
@@ -127,12 +127,12 @@ export default async function ConciliacaoBancariaPage({
 
       {/* ══ HONESTIDADE, NO TOPO — não é nota de rodapé (DIRETIVA §4/§7) ══ */}
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-        <strong className="text-[color:var(--color-ink)]">Origem dos dados: massa de demonstração (simulada).</strong>{" "}
-        As linhas do extrato abaixo vieram de uma <strong>massa sintética</strong> no formato da API de
-        Extratos do Banco do Brasil, normalizada e importada pelo caminho real do sistema.{" "}
-        <strong>Nenhuma chamada financeira real foi feita</strong> — nem de consulta de saldo/extrato,
-        nem, com muito mais razão, de movimentação. {modo.live} Agência e conta aparecem{" "}
-        <strong>mascaradas</strong>: o número completo não sai do servidor.
+        <strong className="text-[color:var(--color-ink)]">Origem dos dados: demonstração.</strong>{" "}
+        As linhas do extrato abaixo são <strong>dados de demonstração</strong> no formato da API de
+        Extratos do Banco do Brasil, importados pelo mesmo processo utilizado em produção.{" "}
+        <strong>Nenhuma operação financeira real foi realizada</strong>, nem de consulta nem de
+        movimentação. {modo.live} Agência e conta são exibidas{" "}
+        <strong>mascaradas</strong>.
       </div>
 
       {/* ══ A CONTA, A ORIGEM E O MODO ══ */}
@@ -143,8 +143,7 @@ export default async function ConciliacaoBancariaPage({
               {conta.codigo} — {conta.descricao}
             </h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
-              Conta contábil de contrapartida: <span className="font-mono">{conta.contaContabil}</span> — é
-              contra ela que o extrato tem de fechar.
+              Conta contábil correspondente: <span className="font-mono">{conta.contaContabil}</span>.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -187,7 +186,7 @@ export default async function ConciliacaoBancariaPage({
             </dd>
           </div>
           <div className="min-w-0">
-            <dt className="text-[color:var(--color-ink-3)]">Hash da origem (SHA-256)</dt>
+            <dt className="text-[color:var(--color-ink-3)]">Código de verificação do arquivo (SHA-256)</dt>
             <dd className="mt-0.5 truncate font-mono text-[color:var(--color-ink-2)]" title={extrato.hashOrigem}>
               {extrato.hashOrigem.slice(0, 24)}…
             </dd>
@@ -200,15 +199,14 @@ export default async function ConciliacaoBancariaPage({
       {/* ══ CORRESPONDÊNCIAS — os dois lados, lado a lado ══ */}
       <Card>
         <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
-          Correspondências — lançamento do extrato × fato do sistema
+          Correspondências entre o extrato e os registros do sistema
         </h2>
         <p className="mb-2 text-xs text-[color:var(--color-ink-3)]">
-          Cada linha é um vínculo VIVO (append-only: desfazer é um registro novo, nunca um DELETE).
-          Correspondência parcial é legítima dos dois lados — por isso o valor conciliado aparece
-          separado dos valores de cada lado.
+          A correspondência pode ser parcial em qualquer dos lados; por isso o valor conciliado é
+          exibido separadamente dos valores do extrato e do sistema.
         </p>
         {painel.correspondencias.length === 0 ? (
-          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma linha do extrato foi conciliada até o corte.</p>
+          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma linha do extrato foi conciliada até a data de corte.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -270,8 +268,8 @@ export default async function ConciliacaoBancariaPage({
             No banco e não no razão
           </h2>
           <p className="mb-2 text-xs text-[color:var(--color-ink-3)]">
-            Linhas do extrato sem fato interno correspondente: tarifa não contabilizada, crédito ainda
-            não registrado. O sinal é do dinheiro — positivo entrou, negativo saiu.
+            Lançamentos do extrato sem registro correspondente no sistema, como tarifas não
+            contabilizadas ou créditos não registrados. Valores positivos são entradas; negativos, saídas.
           </p>
           {painel.pendenciasExtrato.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-3)]">Nada pendente deste lado.</p>
@@ -308,8 +306,8 @@ export default async function ConciliacaoBancariaPage({
             No razão e não no banco
           </h2>
           <p className="mb-2 text-xs text-[color:var(--color-ink-3)]">
-            Fatos do sistema que moveram esta conta e ainda não apareceram no extrato: cheque não
-            compensado, depósito não creditado.
+            Registros do sistema nesta conta que ainda não constam do extrato, como cheques não
+            compensados ou depósitos não creditados.
           </p>
           {painel.pendenciasInternas.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-3)]">Nada pendente deste lado.</p>
@@ -346,23 +344,21 @@ export default async function ConciliacaoBancariaPage({
 
       {/* ══ O RESUMO QUE FECHA ══ */}
       <Card>
-        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Resumo — e a amarração</h2>
+        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Resumo e conferência</h2>
         <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-          A diferença entre os saldos tem de ser exatamente a soma das pendências dos dois lados. Ela é
-          uma identidade: cada vínculo aparece nos dois lados com o mesmo valor e o mesmo sinal, então
-          os vínculos se cancelam e sobra só o que não foi explicado. Se ela não fechasse, o
-          relatório <strong>não sairia</strong> — o motor recusa emitir diferença sem nome.
+          A diferença entre os saldos deve ser igual à soma das pendências dos dois lados. A
+          conciliação <strong>não é emitida</strong> com diferença sem explicação.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
               <tr className="border-b border-[color:var(--color-border)]">
-                <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">Saldo pelo extrato (banco), até o corte</td>
+                <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">Saldo pelo extrato bancário, até a data de corte</td>
                 <td className="py-1.5 text-right"><ValorMonetario valor={resumo.saldoExtrato} /></td>
               </tr>
               <tr className="border-b border-[color:var(--color-border)]">
                 <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">
-                  Saldo pelo razão (conta <span className="font-mono">{conta.contaContabil}</span>), até o corte
+                  Saldo pelo razão (conta <span className="font-mono">{conta.contaContabil}</span>), até a data de corte
                 </td>
                 <td className="py-1.5 text-right"><ValorMonetario valor={resumo.saldoContabil} /></td>
               </tr>
@@ -375,27 +371,29 @@ export default async function ConciliacaoBancariaPage({
                 <td className="py-1.5 text-right"><ValorMonetario valor={resumo.diferencaExplicada} /></td>
               </tr>
               <tr>
-                <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">Total já conciliado (vínculos vivos)</td>
+                <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">Total conciliado</td>
                 <td className="py-1.5 text-right"><ValorMonetario valor={resumo.totalConciliado} /></td>
               </tr>
             </tbody>
           </table>
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <Badge status={fecha ? "ok" : "erro"}>{fecha ? "amarração fecha" : "amarração não fecha"}</Badge>
+          <Badge status={fecha ? "ok" : "erro"}>{fecha ? "diferença explicada" : "diferença não explicada"}</Badge>
           <span className="text-xs text-[color:var(--color-ink-2)]">
             {fecha
-              ? "A diferença está inteiramente explicada pelas pendências listadas acima — nenhum centavo sem nome."
-              : "Sobrou diferença sem explicação: ou falta um fato no relatório, ou há vínculo cruzando a data de corte."}
+              ? "A diferença está integralmente explicada pelas pendências listadas acima."
+              : "Há diferença sem explicação: pode faltar um registro ou haver vínculo com data posterior à data de corte."}
           </span>
         </div>
       </Card>
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        Esta tela é <strong>consulta</strong>. Vincular e desvincular são atos do domínio (M09), com as
-        travas de natureza, de conta/fonte e de capacidade aplicadas na gravação — e desvincular é um
-        registro novo, nunca um apagamento. O <strong>formulário de vínculo</strong> fica nomeado como
-        próxima fatia.
+        Esta tela é de <strong>consulta</strong>. A abertura, a justificativa de pendências e o
+        encerramento por período são feitos em{" "}
+        <Link href="/financeiro/conciliacao/periodo" className="text-[color:var(--color-primary)] underline">
+          Conciliação por período
+        </Link>
+        .
       </p>
     </div>
   );

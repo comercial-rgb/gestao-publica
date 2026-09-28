@@ -31,8 +31,7 @@ export function AbrangenciaDosCalculos({
     <section data-abrangencia-dos-calculos className="rounded-lg border border-[color:var(--color-border)] p-4">
       <h2 className="text-base font-semibold">Abrangência dos cálculos</h2>
       <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-        Quem cada cálculo desta folha de fato alcançou, e o motivo de cada ausência. É o FATO apurado pelo
-        motor — não a seleção que foi pedida.
+        Servidores efetivamente incluídos em cada cálculo desta folha e o motivo de cada exclusão.
       </p>
 
       {calculos.length === 0 ? (
@@ -44,28 +43,28 @@ export function AbrangenciaDosCalculos({
               <p className="flex flex-wrap items-baseline gap-2 text-sm">
                 <span className="font-medium">Cálculo nº {c.numero}</span>
                 <span data-modo-de-selecao={c.modoDeSelecao} className="text-[color:var(--color-ink-2)]">
-                  abrangência declarada: {c.modoDeSelecao === "EXPLICITA" ? "EXPLÍCITA (recorte pedido)" : "TODOS os elegíveis"}
+                  seleção: {c.modoDeSelecao === "EXPLICITA" ? "servidores selecionados" : "todos os elegíveis"}
                 </span>
                 {c.cancelado ? (
                   <span data-calculo-cancelado className="rounded bg-[color:var(--color-surface-2)] px-2 py-0.5 text-xs font-medium">
-                    CANCELADO — não vale, e por isso quem só estava nele deixou de ser prometido por ato
+                    Cancelado: este cálculo não produz efeitos
                   </span>
                 ) : null}
               </p>
               <p className="mt-1 text-sm">
                 <span data-calculados={c.calculados}>{c.calculados} calculado(s)</span>
                 {" · "}
-                <span data-excluidos={c.excluidos}>{c.excluidos} fora, com motivo</span>
+                <span data-excluidos={c.excluidos}>{c.excluidos} não incluído(s)</span>
               </p>
               <div className="mt-2 overflow-x-auto">
                 <table className="w-full min-w-[34rem] text-left text-xs">
-                  <caption className="sr-only">Vínculos considerados no cálculo nº {c.numero}, com o motivo de cada ausência</caption>
+                  <caption className="sr-only">Vínculos considerados no cálculo nº {c.numero}, com o motivo de cada exclusão</caption>
                   <thead>
                     <tr className="text-[color:var(--color-ink-2)]">
                       <th scope="col" className="py-1 pr-2">Matrícula</th>
                       <th scope="col" className="py-1 pr-2">Servidor</th>
-                      <th scope="col" className="py-1 pr-2">Entrou?</th>
-                      <th scope="col" className="py-1">Motivo da ausência</th>
+                      <th scope="col" className="py-1 pr-2">Incluído</th>
+                      <th scope="col" className="py-1">Motivo da exclusão</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -62,7 +62,7 @@ export default async function RgfAnexo5Page({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível gerar o Anexo 5"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -77,7 +77,7 @@ export default async function RgfAnexo5Page({
         {cabecalho}
         <EstadoVazio
           titulo="Sem movimento financeiro"
-          descricao={`Nenhuma fonte com caixa ou obrigação no exercício ${exercicio}. O anexo é uma fotografia do caixa por vinculação — sem arrecadação nem despesa, não há o que fotografar.`}
+          descricao={`Não há fonte com disponibilidade de caixa ou obrigação financeira no exercício ${exercicio}.`}
         />
       </div>
     );
@@ -98,21 +98,16 @@ export default async function RgfAnexo5Page({
           className="rounded-[var(--radius-md)] border border-[color:var(--color-status-erro-fg)] bg-[color:var(--color-status-erro-bg)] p-3 text-sm text-[color:var(--color-status-erro-fg)]"
         >
           <strong>Insuficiência de caixa em {a5.fontesInsuficientes.length} fonte(s):</strong>{" "}
-          {a5.fontesInsuficientes.join(", ")}. Pela regra da STN, o ente{" "}
+          {a5.fontesInsuficientes.join(", ")}. Conforme as normas da STN, o ente{" "}
           <strong>não pode inscrever restos a pagar não processados</strong> nessas
-          vinculações — e o superávit de outra fonte não as socorre: aquele dinheiro é
-          carimbado.
+          vinculações, e o superávit de outras fontes não pode ser utilizado para cobri-las.
         </div>
       ) : null}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        A <strong>disponibilidade bruta</strong> inclui o dinheiro retido de terceiros — ele
-        está no banco. A obrigação de repassá-lo sai em{" "}
-        <strong>demais obrigações financeiras</strong>: tirá-lo dos dois lados o descontaria
-        duas vezes. Valores <strong>negativos</strong> (entre parênteses) são{" "}
-        <strong>insuficiência de caixa</strong> — Nota 1 do layout oficial. A coluna de
-        empenhos cancelados está vazia porque o registro de cancelamento ainda não distingue o
-        motivo (cancelamento por insuficiência de caixa).
+        A <strong>disponibilidade bruta</strong> inclui os valores retidos de terceiros; a
+        obrigação de repassá-los consta em <strong>demais obrigações financeiras</strong>.
+        Valores negativos (entre parênteses) indicam <strong>insuficiência de caixa</strong>.
       </div>
 
       {naoVinculados.length > 0 ? (
@@ -125,7 +120,7 @@ export default async function RgfAnexo5Page({
             grupos={GRUPOS}
             linhas={naoVinculados}
             keyDe={(l) => l.fonte}
-            legenda="Recurso livre — o único que o ente pode remanejar."
+            legenda="Recursos de livre aplicação pelo ente."
           />
         </section>
       ) : null}
@@ -140,7 +135,7 @@ export default async function RgfAnexo5Page({
             grupos={GRUPOS}
             linhas={vinculados}
             keyDe={(l) => l.fonte}
-            legenda={`${vinculados.length} vinculação(ões) · cada uma calcula sozinha: a regra da STN é POR VINCULAÇÃO.`}
+            legenda={`${vinculados.length} vinculação(ões) · apuração individual por vinculação, conforme a STN.`}
           />
         </section>
       ) : null}
@@ -151,7 +146,7 @@ export default async function RgfAnexo5Page({
             href: "/relatorios/rreo/anexo7",
             rotulo: "RREO Anexo 7 — Restos a Pagar",
             motivo:
-              "As colunas (b) e (d) daqui são as mesmas inscrições que o Anexo 7 detalha por poder e órgão — aqui elas aparecem por fonte, porque é a fonte que autoriza a inscrição.",
+              "As inscrições das colunas (b) e (d) são detalhadas por Poder e órgão no Anexo 7.",
           },
           {
             href: "/relatorios/rgf/anexo1",

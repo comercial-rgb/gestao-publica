@@ -10,6 +10,8 @@ import {
 } from "../../../../components/ui/Formulario";
 import { liquidarAction, type EstadoLiquidacao } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
+import { formatarDocumento } from "../../../../packages/documento/index";
 
 /**
  * As opções das entradas de material, JÁ LIDAS pelo Server Component — a ilha client não importa
@@ -72,8 +74,7 @@ export function FormLiquidacao({
         <strong className="text-[color:var(--color-ink)]">
           Nenhum empenho com saldo a liquidar
         </strong>{" "}
-        — ou não há empenho neste recorte, ou todos já foram liquidados por inteiro. A
-        liquidação sempre parte de um empenho: é ele que reservou a dotação.
+        na unidade e no exercício selecionados. A liquidação é registrada a partir de um empenho.
       </div>
     );
   }
@@ -109,7 +110,7 @@ export function FormLiquidacao({
             </option>
             {empenhos.map((e) => (
               <option key={e.id} value={e.id}>
-                {e.numero} — credor {e.credorCpfCnpj} · a liquidar {e.saldoALiquidar}
+                {e.numero} · credor {formatarDocumento(e.credorCpfCnpj)} · a liquidar R$ {formatarMoeda(e.saldoALiquidar).texto}
                 {e.ehMaterial ? " · material de consumo" : ""}
               </option>
             ))}
@@ -123,7 +124,7 @@ export function FormLiquidacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>
-            Valor (R$){alvo !== undefined ? ` — até ${alvo.saldoALiquidar}` : ""}
+            Valor (R$){alvo !== undefined ? `, até ${formatarMoeda(alvo.saldoALiquidar).texto}` : ""}
           </span>
           <CampoValor name="valor" required placeholder="6.000,00" className={CAMPO} />
         </label>
@@ -138,7 +139,7 @@ export function FormLiquidacao({
           <input
             name="atesto"
             required
-            placeholder="quem atestou o recebimento"
+            placeholder="servidor que atestou o recebimento"
             className={CAMPO}
           />
         </label>
@@ -169,15 +170,15 @@ export function FormLiquidacao({
       {deMaterial ? (
         <fieldset data-secao="entradas-de-material" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
           <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">
-            Entradas no almoxarifado — liquidar material é dar entrada dele, no mesmo ato
+            Entradas no almoxarifado
           </legend>
           <p className="mb-3 text-[11px] text-[color:var(--color-ink-2)]">
-            Uma linha por classe de material; a soma dos valores tem de fechar com o valor liquidado. A perna física
-            (material, depósito, quantidade, unitário) é opcional e entra na mesma transação. Documento fiscal misto
-            (material e serviço) são duas liquidações, uma por empenho.
+            Informe uma linha por classe de material; a soma dos valores deve ser igual ao valor liquidado. Material,
+            depósito, quantidade e valor unitário são opcionais. Documento fiscal com material e serviço exige duas
+            liquidações, uma por empenho.
             {opcoesDeMaterial.classes.length === 0 ? (
               <strong className="block text-[color:var(--color-status-erro-fg)]">
-                Nenhuma classe de material cadastrada: sem ela, liquidar material é recusado — cadastre a classe antes.
+                Nenhuma classe de material cadastrada. Cadastre a classe antes de liquidar material.
               </strong>
             ) : null}
           </p>
@@ -198,12 +199,12 @@ export function FormLiquidacao({
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)]">
                 <span className={ROTULO}>Recebimento da ordem de compra (opcional)</span>
-                <input name={`entradas.${i}.recebimentoDeItemId`} placeholder="relaciona um recebimento existente" className={CAMPO} />
+                <input name={`entradas.${i}.recebimentoDeItemId`} placeholder="recebimento já registrado" className={CAMPO} />
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-2">
-                <span className={ROTULO}>Material (perna física, opcional)</span>
+                <span className={ROTULO}>Material (opcional)</span>
                 <select name={`entradas.${i}.materialId`} defaultValue="" className={CAMPO}>
-                  <option value="">— sem perna física —</option>
+                  <option value="">— sem entrada física —</option>
                   {opcoesDeMaterial.materiais.map((m) => (
                     <option key={m.id} value={m.id}>{m.rotulo}{m.controlaLote ? " (controla lote)" : ""}</option>
                   ))}

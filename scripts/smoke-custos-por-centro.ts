@@ -229,8 +229,8 @@ async function main(): Promise<void> {
       `${rApropriar.tipo}: ${rApropriar.texto.slice(0, 250)}`
     );
     conferir(
-      "4.3 ⚠️ e a mensagem DIZ que a despesa não foi lançada de novo — o ponto do desenho",
-      /n[ãa]o foi lan[çc]ada de novo/i.test(rApropriar.texto),
+      "4.3 ⚠️ e a mensagem DIZ que a despesa não foi lançada novamente — o ponto do desenho",
+      /n[ãa]o foi lan[çc]ada novamente/i.test(rApropriar.texto),
       rApropriar.texto.slice(0, 250)
     );
 

@@ -115,7 +115,7 @@ describe("a barra do molde por estado", () => {
     const tresAtos: DisponibilidadeDoRegistro = { versao: "v", porAcao: { certificar: { apresentacao: "disponivel" }, liquidar: { apresentacao: "bloqueada", motivo: "x" }, devolver: { apresentacao: "disponivel" } } };
     const { container } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"], tresAtos);
     const links = Array.from(container.querySelectorAll("[data-indice-dos-atos] a")).map((a) => `${a.getAttribute("href")}|${a.textContent}`);
-    expect(links).toEqual(["#ato-certificar|Certificar", "#ato-liquidar|Liquidar(travado)", "#ato-devolver|Devolver"]);
+    expect(links).toEqual(["#ato-certificar|Certificar", "#ato-liquidar|Liquidar(indisponível)", "#ato-devolver|Devolver"]);
     for (const alvo of ["ato-certificar", "ato-liquidar", "ato-devolver"]) expect(container.querySelector(`#${alvo}`)).not.toBeNull();
     cleanup();
     const { container: c2 } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"], DISP);
@@ -126,7 +126,7 @@ describe("a barra do molde por estado", () => {
     const { container } = montar(POR_ESTADO, ["CERTIFICAR_FOLHA", "LIQUIDAR_FOLHA"], null);
     expect(container.querySelectorAll("form").length).toBe(0);
     expect(container.querySelectorAll('section[data-acao-estado="bloqueada"]').length).toBe(3);
-    expect(container.textContent).toContain("Não foi possível conferir");
+    expect(container.textContent).toContain("Não foi possível verificar a disponibilidade");
   });
 
   it("AÇÃO SEM ENTRADA na projeção também trava (a porta esqueceu uma ação nova)", () => {

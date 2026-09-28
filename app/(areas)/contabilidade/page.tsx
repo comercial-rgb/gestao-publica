@@ -28,12 +28,12 @@ export default function ContabilidadePage(): React.ReactElement {
           href="/relatorios/livros/balancete"
           rotulo="Balancete"
           titulo="Balancete de Verificação"
-          descricao="A prova de que a soma dos débitos é igual à dos créditos — a mesma base destas duas telas, formatada para entrega."
+          descricao="Confere a igualdade entre débitos e créditos no período, a partir dos mesmos lançamentos."
         />
       </div>
       <p className="text-sm leading-relaxed text-[color:var(--color-ink-2)]">
-        As partidas dobradas são <strong>automáticas</strong>: os eventos contábeis já vêm prontos e o
-        usuário não parametriza roteiro. Diário, Razão e Balancete saem desta mesma base única, em{" "}
+        Os lançamentos em partidas dobradas são gerados automaticamente a partir dos eventos contábeis.
+        Diário, Razão e Balancete são emitidos em{" "}
         <a href="/relatorios" className="text-[color:var(--color-primary)] hover:underline">Relatórios</a>.
       </p>
     </div>

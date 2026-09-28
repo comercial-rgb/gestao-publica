@@ -309,13 +309,13 @@ async function main(): Promise<void> {
       );
       conferir(
         "4.6 a linha sem justificativa própria DIZ que vale o fundamento do ato",
-        /vale o fundamento do ato/i.test(await texto(page)),
+        /fundamento do ato/i.test(await texto(page)),
         "a segunda linha não explicou a ausência de justificativa própria"
       );
 
       conferir(
         "4.4 a tela DIZ que não há total em dinheiro por ato, e por quê",
-        /Não há total em dinheiro por ato/i.test(await texto(page)),
+        /Não há total por ato/i.test(await texto(page)),
         "a explicação da ausência de total por ato não está na tela"
       );
 

@@ -71,8 +71,8 @@ export async function distribuirAction(
     if (tortas.length > 0) {
       return {
         erro:
-          `O valor informado para a(s) fonte(s) ${tortas.map((p) => p.fonte).join(", ")} não é um ` +
-          `número com até dois centavos. Informe como 60.000,00. Nada foi gravado.`,
+          `O valor informado para a(s) fonte(s) ${tortas.map((p) => p.fonte).join(", ")} é inválido. ` +
+          `Informe no formato 60.000,00. Nada foi gravado.`,
       };
     }
 
@@ -82,7 +82,7 @@ export async function distribuirAction(
     const outroFundamento = t(f, "outroFundamento");
     if (outraFonte !== "" && outroValor === "") {
       return {
-        erro: `Você escolheu a fonte ${outraFonte} e não informou o valor que entrou nela. Nada foi gravado.`,
+        erro: `Informe o valor da fonte ${outraFonte}. Nada foi gravado.`,
       };
     }
     if (outraFonte === "" && outroValor !== "") {
@@ -90,7 +90,7 @@ export async function distribuirAction(
     }
     if (outraFonte !== "" && !/^\d+(\.\d{1,2})?$/.test(outroValor)) {
       return {
-        erro: `O valor informado para a fonte ${outraFonte} não é um número com até dois centavos. Nada foi gravado.`,
+        erro: `O valor informado para a fonte ${outraFonte} é inválido. Informe no formato 60.000,00. Nada foi gravado.`,
       };
     }
     if (outraFonte !== "") {
@@ -105,8 +105,7 @@ export async function distribuirAction(
     if (parcelas.length === 0) {
       return {
         erro:
-          "Informe o valor de ao menos uma fonte. Uma guia sem repartição não diz de quem é o " +
-          "dinheiro que entrou. Nada foi gravado.",
+          "Informe o valor de ao menos uma fonte. Nada foi gravado.",
       };
     }
 

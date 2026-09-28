@@ -44,7 +44,7 @@ export default async function RgfAnexo1Page({
   try {
     dados = await gerarRgfAnexo1({ exercicio, quadrimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o RGF Anexo 1"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o RGF Anexo 1"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   if (dados.poderes.length === 0) {
@@ -79,7 +79,7 @@ export default async function RgfAnexo1Page({
 
       {/* ── RCL ajustada ── */}
       <div className="grid gap-3 sm:grid-cols-4">
-        <CardEstatistica rotulo="RCL (IV)" nota="== Anexo 3 (III)"><ValorMonetario valor={dados.rcl} /></CardEstatistica>
+        <CardEstatistica rotulo="RCL (IV)" nota="Linha III do RREO Anexo 3"><ValorMonetario valor={dados.rcl} /></CardEstatistica>
         <CardEstatistica rotulo="(−) Emendas individuais (V)"><ValorMonetario valor={dados.emendasIndividuais} /></CardEstatistica>
         <CardEstatistica rotulo="(−) Emendas de bancada (VI)"><ValorMonetario valor={dados.emendasBancada} /></CardEstatistica>
         <CardEstatistica rotulo="RCL ajustada (VII)"><ValorMonetario valor={dados.rclAjustada} /></CardEstatistica>
@@ -107,7 +107,7 @@ export default async function RgfAnexo1Page({
 
       <RelatoriosRelacionados relacoes={[
         { href: "/relatorios/rreo/anexo3", rotulo: "RREO Anexo 3 — RCL", motivo: "A RCL do limite de pessoal é a mesma linha III do Anexo 3." },
-        { href: "/relatorios/rreo/anexo7", rotulo: "RREO Anexo 7 — Restos a Pagar", motivo: "A classificação por Poder usa o mesmo de-para órgão→poder." },
+        { href: "/relatorios/rreo/anexo7", rotulo: "RREO Anexo 7 — Restos a Pagar", motivo: "Utiliza a mesma classificação dos órgãos por Poder." },
       ]} />
     </div>
   );

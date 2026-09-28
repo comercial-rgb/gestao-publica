@@ -102,7 +102,7 @@ async function main(): Promise<void> {
     R.conferir("2.1 a gestora programa duas fiscalizações com horário, duração e local", p1.tipo === "ok" && p2.tipo === "ok" && /às 09:00/.test(p1.texto) && /aparece na agenda/.test(p1.texto), `${p1.tipo}/${p2.tipo}: ${p1.texto.slice(0, 160)}`);
     await irPara(N, page, AGENDA("dia", HOJE));
     const doDia = await page.$$eval("[data-compromisso]", (ls) => ls.map((l) => (l.textContent ?? "").replace(/\s+/g, " ").trim()));
-    R.conferir("2.2 a agenda do dia mostra os dois, com horário, e aponta o conflito de horário do mesmo fiscal", doDia.length === 2 && doDia.every((t) => /09:00|10:00/.test(t)) && doDia.some((t) => /horário cruza com a nº/.test(t)), doDia.join(" | ").slice(0, 300));
+    R.conferir("2.2 a agenda do dia mostra os dois, com horário, e aponta o conflito de horário do mesmo fiscal", doDia.length === 2 && doDia.every((t) => /09:00|10:00/.test(t)) && doDia.some((t) => /conflito de horário com a nº/.test(t)), doDia.join(" | ").slice(0, 300));
     await capturar(page, "dia");
     await irPara(N, page, AGENDA("semana", HOJE));
     const daSemana = await page.$$eval("[data-compromisso]", (ls) => ls.length);

@@ -19,7 +19,7 @@ export default async function AcompanharPage(): Promise<React.ReactElement> {
       <p className="mb-2 text-xs"><Link href="/ouvidoria" className="text-[color:var(--color-primary)] hover:underline">Ouvidoria</Link> / Acompanhar</p>
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Acompanhar manifestação</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Informe o protocolo e o código recebidos no registro. Você vê a situação e as respostas liberadas pela ouvidoria.</p>
+        <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Informe o protocolo e o código recebidos no registro para consultar a situação e as respostas da ouvidoria.</p>
       </header>
       <FormAcompanhar />
     </main>

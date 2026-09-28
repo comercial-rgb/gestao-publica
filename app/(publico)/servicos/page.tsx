@@ -36,8 +36,8 @@ export default async function CartaDeServicosPage({ searchParams }: { readonly s
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Carta de serviços</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]" data-ente-publico>
-          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · o que você pode pedir pela internet, com requisitos, documentos e prazo. Ler não exige
-          cadastro; cada serviço diz se o pedido exige entrar com a sua conta.
+          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · serviços disponíveis, com requisitos, documentos e prazos. A consulta é livre;
+          cada serviço informa se a solicitação exige acesso com a sua conta.
         </p>
       </header>
 
@@ -55,7 +55,7 @@ export default async function CartaDeServicosPage({ searchParams }: { readonly s
       </nav>
 
       {semBanco ? (
-        <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">A carta está indisponível agora (banco de dados fora do ar). Nada foi omitido de propósito.</p>
+        <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">A carta de serviços está temporariamente indisponível. Tente novamente mais tarde.</p>
       ) : servicos.length === 0 ? (
         <p className="text-sm text-[color:var(--color-ink-2)]" data-carta-vazia>Nenhum serviço publicado{publico === "" ? "" : " para este público"} até agora.</p>
       ) : (
@@ -67,9 +67,9 @@ export default async function CartaDeServicosPage({ searchParams }: { readonly s
                 <li key={s.slug} data-servico={s.slug} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-3">
                   <Link href={`/servicos/${s.slug}`} className="text-sm font-medium text-[color:var(--color-primary)] hover:underline">{s.titulo}</Link>
                   <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">{s.resumo}</p>
-                  <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">{s.publico} · {s.tipo} · prazo: {s.prazo ?? "não declarado"}</p>
+                  <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">{s.publico} · {s.tipo} · prazo: {s.prazo ?? "não informado"}</p>
                   <p className="mt-1 text-xs font-medium text-[color:var(--color-ink-2)]" data-exige-conta={s.exigeAutenticacao ? "sim" : "nao"}>
-                    {s.exigeAutenticacao ? "Pedido com a sua conta" : "Sem conta nem identificação"}
+                    {s.exigeAutenticacao ? "Solicitação com acesso à sua conta" : "Não exige cadastro nem identificação"}
                   </p>
                 </li>
               ))}

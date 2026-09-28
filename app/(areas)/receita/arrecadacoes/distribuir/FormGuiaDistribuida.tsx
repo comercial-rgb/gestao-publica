@@ -138,7 +138,7 @@ function Corpo({
               <option value="">Escolha a conta…</option>
               {contas.map((c) => (
                 <option key={c.codigo} value={c.codigo}>
-                  {c.codigo} — {c.descricao} · comporta {c.fontes.map((f) => f.codigo).join(", ")}
+                  {c.codigo} — {c.descricao} · fontes {c.fontes.map((f) => f.codigo).join(", ")}
                 </option>
               ))}
             </select>
@@ -177,14 +177,14 @@ function Corpo({
             Quanto do depósito entrou em cada fonte
           </legend>
           <p className="text-sm text-[color:var(--color-ink-2)]">
-            A guia fica arquivada sob a primeira fonte com valor informado. Deixe em branco a fonte
-            que não recebeu nada.
+            Deixe em branco as fontes sem valor. A guia é registrada na primeira fonte com valor
+            informado.
           </p>
 
           {fontesPrevistas.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-2)]">
-              A LOA deste exercício não prevê esta natureza em fonte nenhuma. Use a linha de outra
-              fonte, abaixo, informando o motivo.
+              A LOA deste exercício não prevê esta natureza em nenhuma fonte. Utilize o campo de
+              outra fonte, abaixo, informando o motivo.
             </p>
           ) : (
             fontesPrevistas.map((f) => {
@@ -220,11 +220,11 @@ function Corpo({
 
         <fieldset className="grid gap-2 rounded-[var(--radius-lg)] border border-[color:var(--color-border)] p-4">
           <legend className="px-1 text-sm font-semibold text-[color:var(--color-ink)]">
-            Uma fonte que a LOA não previu (opcional)
+            Fonte não prevista na LOA (opcional)
           </legend>
           <p className="text-sm text-[color:var(--color-ink-2)]">
-            Receita além do previsto existe. Informe a fonte, o valor e o motivo — o motivo é o que
-            a prestação de contas lê, e registrar assim depende de autorização própria.
+            Informe a fonte, o valor e o motivo, que constará da prestação de contas. Este registro
+            exige permissão específica.
           </p>
           <div className="grid items-end gap-2 sm:grid-cols-[1fr_12rem]">
             <div>
@@ -273,10 +273,10 @@ function Corpo({
           {numero(total) === 0
             ? "informe o total do depósito"
             : diferenca === 0
-              ? "fecha com o total"
+              ? "igual ao total"
               : diferenca > 0
-                ? `faltam ${reais(diferenca)} para fechar o total`
-                : `sobram ${reais(-diferenca)} além do total`}
+                ? `faltam ${reais(diferenca)} para atingir o total`
+                : `excede o total em ${reais(-diferenca)}`}
         </p>
 
         <div>

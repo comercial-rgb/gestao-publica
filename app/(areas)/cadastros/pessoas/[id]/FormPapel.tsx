@@ -47,8 +47,8 @@ export function FormPapel({
         Papéis
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Conceder e encerrar são fatos, com data própria — encerrar não apaga a concessão
-        anterior.
+        Concessões e encerramentos são registrados com data própria; o encerramento não
+        apaga a concessão anterior.
       </p>
 
       <input type="hidden" name="pessoaId" value={pessoaId} />
@@ -88,7 +88,7 @@ export function FormPapel({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Motivo</span>
-          <input name="motivo" placeholder="opcional" className={CAMPO} />
+          <input name="motivo" placeholder="Opcional" className={CAMPO} />
         </label>
       </div>
 

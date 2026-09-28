@@ -24,13 +24,11 @@ export function FormConfiguracao(): React.ReactElement {
   return (
     <section data-papel="form-configuracao-do-acesso" className="space-y-4">
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-4">
-        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">O que esta publicação decide</h2>
+        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Sobre a publicação</h2>
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          Publicar cria uma <strong>versão nova</strong>; nenhuma reescreve a anterior. Os pedidos
-          já protocolados continuam com o prazo que valia no dia em que entraram — é essa a
-          pergunta que o controle interno faz depois, e ela só tem resposta se o histórico ficar.
-          Enquanto não houver versão vigente, o pedido do cidadão continua sendo recebido e
-          instruído; o que fica impedido é prometer data e prorrogar.
+          Cada publicação cria uma nova versão, sem alterar as anteriores. Os pedidos já
+          protocolados mantêm o prazo vigente na data de entrada. Sem versão vigente, os pedidos
+          continuam sendo recebidos, mas não é possível informar data de resposta nem prorrogar.
         </p>
       </div>
 
@@ -76,8 +74,7 @@ export function FormConfiguracao(): React.ReactElement {
             </label>
           </div>
           <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-            Zero prorrogação e zero instância de recurso são respostas válidas, e ficam registradas
-            como decisão declarada — não como configuração pela metade.
+            Informe zero quando a norma não admitir prorrogação ou recurso.
           </p>
         </fieldset>
 
@@ -102,9 +99,8 @@ export function FormConfiguracao(): React.ReactElement {
             </label>
           </div>
           <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-            A regulamentação local vem com a data de publicação, ou não vem: uma norma citada sem
-            data não é conferível por quem for auditar. Deixá-la vazia é estado legítimo — aparece
-            como pendência a resolver, e não impede o pedido de correr pelo prazo federal.
+            Ao informar a regulamentação local, informe também a data de publicação. Sem
+            regulamentação local, os pedidos seguem o prazo federal e a ausência fica indicada como pendência.
           </p>
         </fieldset>
 

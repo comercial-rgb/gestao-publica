@@ -24,8 +24,8 @@ const ITENS: readonly ItemHub[] = [
   {
     titulo: "Servidores e vínculos",
     descricao:
-      "A folha lê o vencimento, as gratificações, a lotação e a situação de cada matrícula do cadastro de pessoal — " +
-      "inclusive o regime previdenciário, que decide a tabela.",
+      "Cadastro de pessoal com vencimento, gratificações, lotação, situação e regime previdenciário de cada matrícula, " +
+      "utilizados no cálculo da folha.",
     href: "/pessoal/servidores",
     onde: "Pessoal",
   },

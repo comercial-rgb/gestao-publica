@@ -72,9 +72,9 @@ export function AcoesDoLancamento({
           <input type="hidden" name="__lancamento" value={lancamentoId} />
           <input type="hidden" name="__lote" value={loteId} />
           <p className="mb-1 text-xs text-[color:var(--color-ink-3)]">
-            Constituir faz o crédito nascer no razão (crédito a receber contra variação patrimonial
-            aumentativa). O caixa não é tocado: arrecadar é outro fato, e ele baixa este crédito.
-            {temInconsistencia ? " Este lançamento tem pendência de revisão, e o servidor vai recusar." : ""}
+            A constituição registra o crédito a receber no razão, em contrapartida à variação patrimonial
+            aumentativa. A baixa do crédito ocorre na arrecadação.
+            {temInconsistencia ? " Este lançamento possui pendência de revisão e não poderá ser constituído." : ""}
           </p>
           <button type="submit" disabled={pendCon} className={CLASSE_BOTAO_PRIMARIO}>
             {pendCon ? "Constituindo…" : `Constituir o crédito do imóvel ${inscricao}`}
@@ -94,8 +94,8 @@ export function AcoesDoLancamento({
           </label>
           <div className="sm:col-span-4">
             <p className="mb-1 text-xs text-[color:var(--color-ink-3)]">
-              Retificar cancela este lançamento e prepara um substituto com o cadastro e a tabela de
-              hoje. O substituto nasce PREPARADO — constituir o crédito dele continua sendo ato à parte.
+              A retificação cancela este lançamento e prepara um substituto com o cadastro e a tabela
+              vigentes. O novo lançamento deve ser constituído em seguida.
             </p>
             <button type="submit" disabled={pendRet} className={CLASSE_BOTAO_PRIMARIO}>
               {pendRet ? "Retificando…" : `Retificar o lançamento do imóvel ${inscricao}`}
@@ -116,9 +116,8 @@ export function AcoesDoLancamento({
           </label>
           <div className="sm:col-span-4">
             <p className="mb-1 text-xs text-[color:var(--color-ink-3)]">
-              Cancelar um crédito já constituído o baixa por variação patrimonial DIMINUTIVA — a
-              renúncia fica registrada. A variação aumentativa do fato gerador permanece: ela foi
-              verdadeira quando aconteceu.
+              O cancelamento de crédito já constituído é registrado como variação patrimonial diminutiva,
+              preservando o registro original do fato gerador.
             </p>
             <button type="submit" disabled={pendCan} className={CLASSE_BOTAO_PRIMARIO}>
               {pendCan ? "Cancelando…" : `Cancelar o lançamento do imóvel ${inscricao}`}

@@ -52,7 +52,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
   const aLiquidar = o.medicoes.flatMap((m) => m.definitivos.filter((d) => d.estorno === null && Number(d.aLiquidar) > 0).map((d) => ({ id: d.id, rotulo: `Medição nº ${m.numero}, recebimento definitivo nº ${d.numero} (${d.data})`, aLiquidar: d.aLiquidar })));
   const proximas = [
     o.situacao === "RASCUNHO" ? (p.podeEmitir ? "Revisar e emitir a ordem" : "A ordem é rascunho: aguarda a emissão pelo gestor") : null,
-    emitida && o.itens.some((i) => Number(i.aExecutar) > 0) ? (p.podeMedir ? "Registrar a medição do que foi executado" : "Há quantidade a executar: a medição é do fiscal") : null,
+    emitida && o.itens.some((i) => Number(i.aExecutar) > 0) ? (p.podeMedir ? "Registrar a medição do que foi executado" : "Há quantidade a executar: medição a cargo do fiscal") : null,
     ativas.some((m) => m.provisorio === null) ? (p.podeReceberProvisorio ? "Conferir e receber provisoriamente a medição pendente" : "Medição aguardando o recebimento provisório do fiscal") : null,
     o.medicoes.some((m) => m.itens.some((i) => Number(i.pendenteDeDecisao) > 0)) ? (p.podeReceberDefinitivo ? "Decidir a controvérsia pendente" : "Controvérsia aguardando a decisão do recebedor definitivo") : null,
     o.medicoes.some((m) => m.provisorio !== null && m.itens.some((i) => Number(i.elegivel) > 0)) ? (p.podeReceberDefinitivo ? "Receber em definitivo o que é elegível" : "Parcela elegível aguardando o recebimento definitivo") : null,
@@ -106,7 +106,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
                       executar" sobe. Sem a coluna ao lado, quem acompanha veria dois números se
                       mexerem sem causa visível — e a conta deixa de fechar à vista. */}
                   <td className="py-2 pr-2 text-right tabular-nums">{qtdBr(i.medido)}</td>
-                  <td className="py-2 pr-2 text-right tabular-nums" data-glosado title={Number(i.glosado) > 0 ? "Quantidade recusada na decisão da controvérsia: voltou a executar dentro desta mesma ordem." : undefined}>{qtdBr(i.glosado)}</td>
+                  <td className="py-2 pr-2 text-right tabular-nums" data-glosado title={Number(i.glosado) > 0 ? "Quantidade rejeitada na decisão da controvérsia, que volta a ficar a executar nesta ordem." : undefined}>{qtdBr(i.glosado)}</td>
                   <td className="py-2 text-right tabular-nums" data-a-executar>{qtdBr(i.aExecutar)}</td>
                 </tr>
               ))}
@@ -129,7 +129,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
             {o.medicoes.map((m) => (
               <li key={m.id} data-medicao-da-ordem={m.numero} className="border-t border-[color:var(--color-border)] pt-3">
                 <p className="text-sm"><strong>Medição nº {m.numero}</strong> · {m.periodo} · {m.fiscal}{m.estorno === null ? null : <> <Badge status="neutro">estornada em {m.estorno.data}</Badge></>}</p>
-                {m.estorno === null ? null : <p className="text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]" data-estorno-da-medicao={m.numero}>Estornada por {m.estorno.por}{m.estorno.motivo === null ? "" : `: ${m.estorno.motivo}`}. Fica no histórico e fora das somas.</p>}
+                {m.estorno === null ? null : <p className="text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]" data-estorno-da-medicao={m.numero}>Estornada por {m.estorno.por}{m.estorno.motivo === null ? "" : `: ${m.estorno.motivo}`}. Permanece no histórico e não entra nos totais.</p>}
                 {m.pelaPlanilha === null ? null : <p className="text-xs" data-medicao-pela-planilha={m.pelaPlanilha.versao}>Medida pela planilha da obra <Link href={`/licitacoes/obras/${m.pelaPlanilha.obraId}/planilha/versoes/${m.pelaPlanilha.planilhaId}`} className="text-[color:var(--color-primary)] underline underline-offset-2">{m.pelaPlanilha.obra}, versão {m.pelaPlanilha.versao}</Link> · <a href={DOC(id, "memoria", m.id)} data-documento="memoria" className="text-[color:var(--color-primary)] underline underline-offset-2">memória da medição (PDF)</a></p>}
                 {m.evidencias.length === 0 ? null : <p className="text-xs" data-evidencias-da-medicao>Evidências: {m.evidencias.map((ev, k) => <span key={ev.id}>{k > 0 ? ", " : ""}<a href={`/documentos/anexos/${ev.id}`} className="text-[color:var(--color-primary)] underline underline-offset-2">{ev.nome}</a></span>)}</p>}
                 <div className="mt-2 overflow-x-auto">
@@ -186,14 +186,14 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
         {!p.podeReceberDefinitivo ? <p className="mt-1 text-xs text-[color:var(--color-ink-2)]" data-motivo-do-definitivo>{p.motivos.definitivo}</p> : null}
       </Card>
       {p.podeMedir && emitida && planilha.versoes.length > 0 ? <FormMedirPelaPlanilha contratoId={id} ordemId={o.id} versoes={planilha.versoes} hoje={e.hoje} /> : null}
-      {p.podeMedir && emitida && planilha.itensDaPlanilha.length > 0 ? <p className="text-xs text-[color:var(--color-ink-2)]" data-itens-pela-planilha>Os itens {planilha.itensDaPlanilha.join(", ")} estão vinculados à planilha da obra e se medem pela planilha.</p> : null}
+      {p.podeMedir && emitida && planilha.itensDaPlanilha.length > 0 ? <p className="text-xs text-[color:var(--color-ink-2)]" data-itens-pela-planilha>Os itens {planilha.itensDaPlanilha.join(", ")} estão vinculados à planilha da obra e devem ser medidos por ela.</p> : null}
       {p.podeMedir && emitida && o.itens.some((i) => Number(i.aExecutar) > 0 && !planilha.itensDaPlanilha.includes(i.item)) ? <FormMedirOrdem contratoId={id} ordemId={o.id} itens={o.itens.filter((i) => Number(i.aExecutar) > 0 && !planilha.itensDaPlanilha.includes(i.item)).map((i) => ({ id: i.id, rotulo: `${i.item} — ${i.descricao}`, aExecutar: i.aExecutar, unidade: i.unidade }))} hoje={e.hoje} /> : null}
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Liquidação das parcelas recebidas</h2>
         {aLiquidar.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-parcela-a-liquidar>Nenhuma parcela recebida em definitivo aguardando liquidação.</p> : <p className="text-sm" data-parcelas-a-liquidar={aLiquidar.length}>{aLiquidar.length} parcela(s) recebida(s) com saldo a liquidar.</p>}
         {!p.podeLiquidar ? <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-da-liquidacao>{p.motivos.liquidar}</p> : null}
-        {p.podeLiquidar && aLiquidar.length > 0 && (e.opcoes.documentos.length === 0 || e.opcoes.empenhos.length === 0) ? <p className="mt-2 text-xs font-semibold" data-impedimento-da-liquidacao>{e.opcoes.documentos.length === 0 ? "Não há documento de cobrança conferido do contratado com saldo: registre e confira a nota antes." : "Não há empenho vivo deste contrato (de serviço) para suportar a liquidação."}</p> : null}
+        {p.podeLiquidar && aLiquidar.length > 0 && (e.opcoes.documentos.length === 0 || e.opcoes.empenhos.length === 0) ? <p className="mt-2 text-xs font-semibold" data-impedimento-da-liquidacao>{e.opcoes.documentos.length === 0 ? "Não há documento de cobrança conferido com saldo. Registre e confira a nota fiscal do contratado." : "Não há empenho de serviço ativo deste contrato para a liquidação."}</p> : null}
       </Card>
       {p.podeLiquidar && aLiquidar.length > 0 && e.opcoes.documentos.length > 0 && e.opcoes.empenhos.length > 0 ? <FormLiquidarParcelas contratoId={id} parcelas={aLiquidar} empenhos={e.opcoes.empenhos} documentos={e.opcoes.documentos} hoje={e.hoje} /> : null}
     </div>

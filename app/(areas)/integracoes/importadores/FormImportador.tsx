@@ -45,8 +45,8 @@ export function FormImportador(): React.ReactElement {
         <div className={CLASSE_PAINEL_FORMULARIO}>
           <div className="mb-3 flex flex-wrap items-center gap-3">
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">2 · Prévia — {p.nomeArquivo}</h2>
-            {p.confirmavel ? <Badge status="ok">confirmável</Badge> : <Badge status="erro">{p.violacoes.length} violação(ões)</Badge>}
-            <span className="text-xs text-[color:var(--color-ink-3)]">{p.linhas.length} linha(s) · total {p.totalBruto} · sha256 {p.arquivoHash.slice(0, 12)}…</span>
+            {p.confirmavel ? <Badge status="ok">pronto para confirmar</Badge> : <Badge status="erro">{p.violacoes.length} erro(s) de validação</Badge>}
+            <span className="text-xs text-[color:var(--color-ink-3)]">{p.linhas.length} linha(s) · total {p.totalBruto} · verificação {p.arquivoHash.slice(0, 12)}…</span>
           </div>
 
           {p.violacoes.length > 0 ? (
@@ -97,10 +97,10 @@ export function FormImportador(): React.ReactElement {
             <input type="hidden" name="conteudo" value={previa.conteudo ?? ""} />
             <input type="hidden" name="nomeArquivo" value={previa.nomeArquivo ?? ""} />
             <button type="submit" disabled={!p.confirmavel || pendenteConf} className={CLASSE_BOTAO_PRIMARIO}>
-              {pendenteConf ? "Confirmando…" : "3 · Confirmar e gerar os fatos"}
+              {pendenteConf ? "Confirmando…" : "3 · Confirmar importação"}
             </button>
             {!p.confirmavel ? (
-              <span className="ml-3 text-xs text-[color:var(--color-ink-3)]">Corrija a origem: um arquivo com violação não é confirmável.</span>
+              <span className="ml-3 text-xs text-[color:var(--color-ink-3)]">Corrija o arquivo de origem: arquivos com erros de validação não podem ser confirmados.</span>
             ) : null}
           </form>
 

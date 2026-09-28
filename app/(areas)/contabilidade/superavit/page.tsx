@@ -23,9 +23,9 @@ import { PortaSemBancoError } from "../../../../lib/portas/cliente";
 export const dynamic = "force-dynamic";
 
 const ROTULO_DO_TETO: Readonly<Record<string, string>> = {
-  FATOS: "os fatos",
-  DECLARACAO: "a declaração",
-  IGUAIS: "os dois, iguais",
+  FATOS: "Apurado",
+  DECLARACAO: "Declarado",
+  IGUAIS: "Apurado e declarado (iguais)",
   SEM_TETO: "—",
 };
 
@@ -50,7 +50,7 @@ export default async function Pagina({
       return (
         <>
           <PageHeader titulo="Superávit financeiro por fonte" subtitulo="Origem de recurso para crédito adicional" />
-          <EstadoVazio titulo="Sem banco configurado" descricao="Esta consulta lê os fatos do exercício encerrado e precisa do banco." />
+          <EstadoVazio titulo="Serviço indisponível" descricao="Não foi possível carregar os dados do exercício encerrado." />
         </>
       );
     }
@@ -84,15 +84,15 @@ export default async function Pagina({
       {!c.exercicioAnteriorEncerrado ? (
         <Card>
           <p className="text-sm text-[color:var(--color-ink)]" data-papel="exercicio-aberto">
-            O exercício {c.exercicioApurado} <strong>não foi encerrado</strong>. Sem encerramento não
-            há superávit apurável, e nenhum crédito por superávit é aceito — o que aparece abaixo é
-            só o que foi declarado. Isto não é superávit zero: é um exercício ainda aberto.
+            O exercício {c.exercicioApurado} <strong>não foi encerrado</strong>. Até o encerramento não
+            há superávit apurado nem abertura de crédito por superávit; os valores abaixo são apenas
+            os declarados.
           </p>
         </Card>
       ) : (
         <div className="mb-4 grid gap-3 sm:grid-cols-3" data-papel="totais-do-superavit">
           <Card>
-            <p className="text-xs text-[color:var(--color-ink-2)]">Apurado nos fatos de {c.exercicioApurado}</p>
+            <p className="text-xs text-[color:var(--color-ink-2)]">Apurado no encerramento de {c.exercicioApurado}</p>
             <p className="text-lg font-semibold tabular-nums"><ValorMonetario valor={c.totalApurado ?? "0.00"} comSimbolo /></p>
           </Card>
           <Card>
@@ -117,16 +117,16 @@ export default async function Pagina({
         <div className="overflow-x-auto">
           <table className="w-full text-sm" data-papel="tabela-do-superavit">
             <caption className="sr-only">
-              Superávit financeiro por fonte: apurado nos fatos, declarado, utilizado e disponível
+              Superávit financeiro por fonte: apurado, declarado, utilizado e disponível
             </caption>
             <thead>
               <tr className="border-b border-[color:var(--color-border)] text-left text-xs text-[color:var(--color-ink-2)]">
                 <th scope="col" className="px-3 py-2">Fonte</th>
-                <th scope="col" className="px-3 py-2 text-right">Apurado nos fatos</th>
+                <th scope="col" className="px-3 py-2 text-right">Apurado</th>
                 <th scope="col" className="px-3 py-2 text-right">Declarado</th>
                 <th scope="col" className="px-3 py-2 text-right">Utilizado</th>
                 <th scope="col" className="px-3 py-2 text-right">Disponível</th>
-                <th scope="col" className="px-3 py-2">Limita</th>
+                <th scope="col" className="px-3 py-2">Limite aplicado</th>
               </tr>
             </thead>
             <tbody>
@@ -158,7 +158,7 @@ export default async function Pagina({
                         {l.decretos.map((d) => (
                           <li key={d.identificacao} className="text-[color:var(--color-ink-2)]">
                             Decreto {d.identificacao} de {d.data}: <ValorMonetario valor={d.liquido} />
-                            {d.liquido === "0.00" ? " (anulado — devolveu a disponibilidade)" : ""}
+                            {d.liquido === "0.00" ? " (anulado; valor devolvido à disponibilidade)" : ""}
                             {d.encerrado ? " · encerrado" : ""}
                           </li>
                         ))}
@@ -187,12 +187,10 @@ export default async function Pagina({
               numa parte da tela conclui que a outra também está partida. Dizer o que NÃO está
               partido, e por quê, é o que separa um recorte honesto de um número inventado. */}
           <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-papel="nota-da-entidade">
-            <strong>A tabela é a consolidada.</strong> O recorte <strong>por entidade</strong>
-            {" "}aparece no <strong>suplementado</strong> de cada fonte: o crédito aponta uma ficha,
-            e a ficha aponta o órgão. O <strong>apurado</strong> não se parte por entidade — ele vem
-            do caixa por fonte (arrecadação, pagamentos e movimentos extraorçamentários), e a
-            arrecadação registrada aqui não tem entidade arrecadadora. Ratear a receita entre os
-            órgãos para preencher a coluna inventaria justamente o número que autoriza a despesa.
+            <strong>Os valores da tabela são consolidados.</strong> O valor <strong>suplementado</strong>
+            {" "}é detalhado por entidade conforme a ficha de cada crédito. O valor{" "}
+            <strong>apurado</strong> não é detalhado por entidade, pois é calculado pelo caixa de
+            cada fonte e a arrecadação não identifica a entidade arrecadadora.
           </p>
         </div>
       )}

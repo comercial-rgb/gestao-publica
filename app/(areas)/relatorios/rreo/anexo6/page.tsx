@@ -40,7 +40,7 @@ export default async function RreoAnexo6Page({
   const cabecalho = (
     <PageHeader
       titulo="RREO — Anexo 6 · Resultado Primário e Nominal"
-      subtitulo="Acima da linha · LRF art. 53, III · regime de CAIXA"
+      subtitulo="Metodologias acima e abaixo da linha · LRF art. 53, III · regime de caixa"
       acoes={<SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} />}
     />
   );
@@ -62,7 +62,7 @@ export default async function RreoAnexo6Page({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível gerar o Anexo 6"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -83,7 +83,7 @@ export default async function RreoAnexo6Page({
       {semMovimento ? (
         <EstadoVazio
           titulo="Sem execução no período"
-          descricao="Não há receita arrecadada nem despesa empenhada até este bimestre. O resultado primário é apurado assim que a execução começar."
+          descricao="Não há receita arrecadada nem despesa empenhada até este bimestre."
         />
       ) : (
         <>
@@ -91,7 +91,7 @@ export default async function RreoAnexo6Page({
             <CardEstatistica rotulo="Receita primária (XII)" nota="Realizada até o bimestre">
               <ValorMonetario valor={dados.receitaPrimariaTotal.realizada} />
             </CardEstatistica>
-            <CardEstatistica rotulo="Despesa primária paga" nota="(a) + (b) + (c) — o caixa que saiu">
+            <CardEstatistica rotulo="Despesa primária paga" nota="(a) + (b) + (c)">
               <ValorMonetario valor={caixaDaLinhaDeDespesa(dados.despesaPrimariaTotal)} />
             </CardEstatistica>
             <Card>
@@ -126,7 +126,7 @@ export default async function RreoAnexo6Page({
               colunas={COLUNAS_RECEITA}
               linhas={[...dados.receitas, dados.receitaPrimariaTotal]}
               keyDe={(l) => l.chave}
-              legenda="Valores em R$ · receitas JÁ LÍQUIDAS das deduções (FUNDEB, restituições) · realizadas até o bimestre."
+              legenda="Valores em R$ · receitas líquidas de deduções (FUNDEB e restituições) · realizadas até o bimestre."
             />
           </section>
 
@@ -138,7 +138,7 @@ export default async function RreoAnexo6Page({
               colunas={COLUNAS_DESPESA}
               linhas={[...dados.despesas, dados.despesaPrimariaTotal]}
               keyDe={(l) => l.chave}
-              legenda="Valores em R$ · (a) despesa do exercício paga · (b) RP processados pagos · (c) RP não processados pagos. As três são CAIXA, e nenhuma repete a outra."
+              legenda="Valores em R$ · (a) despesa do exercício paga · (b) RP processados pagos · (c) RP não processados pagos."
             />
           </section>
 
@@ -150,12 +150,12 @@ export default async function RreoAnexo6Page({
                 <ValorMonetario valor={dados.jurosAtivos} />
               )}
             </CardEstatistica>
-            <CardEstatistica rotulo="Juros passivos (XXVI)" nota="Caixa do grupo ND 2">
+            <CardEstatistica rotulo="Juros passivos (XXVI)" nota="Pagamentos do grupo de natureza 2">
               <ValorMonetario valor={dados.jurosPassivos} />
             </CardEstatistica>
             <CardEstatistica rotulo="Resultado nominal (XXVII)" nota="XXIV + (XXV − XXVI)">
               {dados.resultadoNominal === null ? (
-                <Badge status="alerta">depende do XXV</Badge>
+                <Badge status="alerta">depende da linha XXV</Badge>
               ) : (
                 <ValorMonetario valor={dados.resultadoNominal} />
               )}
@@ -168,9 +168,8 @@ export default async function RreoAnexo6Page({
               Abaixo da linha — variação da Dívida Consolidada Líquida
             </h2>
             <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-              O resultado nominal medido pelo ESTOQUE: quanto a DCL variou entre 31/12/
-              {exercicio - 1} e o fim do bimestre. DCL que cai = superávit. É a outra estrada para o
-              mesmo número que o fluxo mede acima.
+              Resultado nominal apurado pela variação da Dívida Consolidada Líquida entre 31/12/{exercicio - 1} e
+              o fim do bimestre. A redução da DCL indica superávit.
             </p>
 
             <div className="grid gap-3 sm:grid-cols-3">
@@ -190,14 +189,14 @@ export default async function RreoAnexo6Page({
                 Ajustes metodológicos
               </h3>
               <p className="mb-2 text-xs text-[color:var(--color-ink-3)]">
-                Variações que mudaram a DCL SEM esforço fiscal do período. Só entram com fato
-                rastreável; sem fato, a linha fica em zero e nomeada.
+                Variações da DCL que não decorrem do resultado fiscal do período. Ajustes sem registro
+                de origem são apresentados com valor zero.
               </p>
               <TabelaDeDados<LinhaAjusteMetodologico>
                 colunas={COLUNAS_AJUSTES}
                 linhas={[...abaixo.ajustes]}
                 keyDe={(l) => l.chave}
-                legenda="Valores em R$ · a variação monetária soma de volta ao nominal (o passivo subiu por índice, não por déficit)."
+                legenda="Valores em R$ · a atualização monetária da dívida é ajustada no resultado nominal, por não decorrer de déficit."
               />
             </div>
 
@@ -215,7 +214,7 @@ export default async function RreoAnexo6Page({
               </Card>
               <CardEstatistica rotulo="Resultado primário (abaixo)" nota="Nominal − juros nominais líquidos">
                 {abaixo.resultadoPrimario === null ? (
-                  <Badge status="alerta">depende do XXV</Badge>
+                  <Badge status="alerta">depende da linha XXV</Badge>
                 ) : (
                   <ValorMonetario valor={abaixo.resultadoPrimario} />
                 )}
@@ -228,16 +227,16 @@ export default async function RreoAnexo6Page({
             <div className="mb-2 flex items-center gap-2">
               <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Harmonização</h2>
               {abaixo.harmonizacao.fecha ? (
-                <Badge status="ok">os dois caminhos fecham</Badge>
+                <Badge status="ok">metodologias coincidem</Badge>
               ) : (
-                <Badge status="alerta">diferença por juros / RP / piso</Badge>
+                <Badge status="alerta">diferença explicada abaixo</Badge>
               )}
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <CardEstatistica rotulo="Primário acima (XXIV)" nota="Pelo fluxo">
+              <CardEstatistica rotulo="Primário acima (XXIV)" nota="Acima da linha">
                 <ValorMonetario valor={abaixo.harmonizacao.primarioAcima} />
               </CardEstatistica>
-              <CardEstatistica rotulo="Nominal abaixo" nota="Pelo estoque (DCL)">
+              <CardEstatistica rotulo="Nominal abaixo" nota="Abaixo da linha (DCL)">
                 <ValorMonetario valor={abaixo.harmonizacao.nominalAbaixo} />
               </CardEstatistica>
               <CardEstatistica rotulo="Diferença" nota="Nominal abaixo − primário acima">
@@ -252,8 +251,8 @@ export default async function RreoAnexo6Page({
                 XXVII (nominal acima) e o primário abaixo ficam sem número: falta o XXV (juros ativos).
               */}
               {abaixo.harmonizacao.fecha
-                ? "Sem juros nem ajustes, o resultado nominal (estoque) coincide com o primário (fluxo): as duas medidas se confirmam."
-                : "A diferença é explicada pelos juros (XXVI), pelo pagamento de restos a pagar processados (que não altera a DCL, mas é subtraído no XXIV) e pelo piso da disponibilidade (nota¹). Não é erro — é o que cada método mede de forma diferente."}
+                ? "Sem juros nem ajustes, o resultado nominal apurado abaixo da linha coincide com o resultado primário apurado acima da linha."
+                : "A diferença decorre dos juros (XXVI), do pagamento de restos a pagar processados (que não altera a DCL, mas é deduzido na linha XXIV) e do limite mínimo da disponibilidade de caixa (nota ¹)."}
             </p>
           </Card>
 
@@ -270,9 +269,8 @@ export default async function RreoAnexo6Page({
                 <Badge status="alerta">sem cadastro</Badge>
               </div>
               <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
-                O Anexo de Metas Fiscais da LDO não está cadastrado neste sistema. Sem a meta, o
-                demonstrativo apresenta o resultado apurado e NÃO afirma cumprimento nem
-                descumprimento — a comparação seria contra um número que não existe.
+                O Anexo de Metas Fiscais da LDO não está cadastrado. O demonstrativo apresenta o
+                resultado apurado, sem comparação com a meta.
               </p>
             </Card>
           ) : null}
@@ -283,9 +281,8 @@ export default async function RreoAnexo6Page({
                 Naturezas fora da apuração
               </h2>
               <p className="mb-2 text-xs text-[color:var(--color-ink-3)]">
-                Estas receitas foram arrecadadas e NÃO entraram na receita primária: este sistema
-                não sabe classificá-las. Elas aparecem aqui porque um número que sai da conta tem
-                de aparecer em algum lugar.
+                Receitas arrecadadas cuja natureza não foi classificada e que, por isso, não integram
+                a receita primária.
               </p>
               <TabelaDeDados<NaturezaNaoClassificada>
                 colunas={COLUNAS_NAO_CLASSIFICADAS}
@@ -299,7 +296,7 @@ export default async function RreoAnexo6Page({
       )}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        <p className="mb-1 font-medium uppercase tracking-wide">Notas e pendências de dado</p>
+        <p className="mb-1 font-medium uppercase tracking-wide">Notas do demonstrativo</p>
         <ul className="list-disc space-y-1 pl-4">
           {dados.pendencias.map((n, i) => (
             <li key={i}>{n}</li>
@@ -313,18 +310,18 @@ export default async function RreoAnexo6Page({
             href: "/relatorios/rreo/anexo1",
             rotulo: "Anexo 1 — Balanço Orçamentário",
             motivo:
-              "A mesma receita e a mesma despesa, sem o recorte primário: lá o resultado é de competência; aqui, de caixa.",
+              "Receita e despesa orçamentárias completas, pelo regime orçamentário.",
           },
           {
             href: "/relatorios/rreo/anexo2",
             rotulo: "Anexo 2 — Despesa por Função",
-            motivo: "A mesma despesa executada, cortada por função em vez de por grupo de natureza.",
+            motivo: "A mesma despesa executada, classificada por função.",
           },
           {
             href: "/relatorios/rgf/anexo2",
             rotulo: "RGF Anexo 2 — Dívida Consolidada Líquida",
             motivo:
-              "A DCL é o estoque que o resultado nominal mede: o abaixo da linha, acima, a confronta em dois cortes. Aqui você vê a DCL por quadrimestre e contra o limite do Senado.",
+              "A DCL por quadrimestre e sua comparação com o limite do Senado.",
           },
         ]}
       />
@@ -390,12 +387,12 @@ const COLUNAS_AJUSTES: readonly ColunaTabela<LinhaAjusteMetodologico>[] = [
   },
   {
     chave: "tipo",
-    cabecalho: "Fonte",
+    cabecalho: "Origem",
     alinhamento: "esquerda",
     largura: "8rem",
     celula: (l) =>
       l.tipo === "vivo" ? (
-        <Badge status="neutro">fato</Badge>
+        <Badge status="neutro">apurado</Badge>
       ) : (
         <Badge status="alerta">parâmetro</Badge>
       ),
@@ -411,6 +408,6 @@ const COLUNAS_AJUSTES: readonly ColunaTabela<LinhaAjusteMetodologico>[] = [
 
 const COLUNAS_NAO_CLASSIFICADAS: readonly ColunaTabela<NaturezaNaoClassificada>[] = [
   { chave: "codigo", cabecalho: "Natureza", alinhamento: "esquerda", largura: "8rem", celula: (l) => <span className="tabular">{l.codigo}</span> },
-  { chave: "motivo", cabecalho: "Por que ficou fora", alinhamento: "esquerda", celula: (l) => l.motivo },
+  { chave: "motivo", cabecalho: "Motivo", alinhamento: "esquerda", celula: (l) => l.motivo },
   { chave: "realizada", cabecalho: "Arrecadada", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.realizada} /> },
 ];

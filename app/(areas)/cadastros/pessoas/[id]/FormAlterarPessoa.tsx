@@ -45,7 +45,7 @@ export function FormAlterarPessoa({
         Alterar cadastro
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        A versão atual não é reescrita — esta alteração cria uma nova, e a anterior
+        Esta alteração gera uma nova versão do cadastro; a versão anterior
         permanece no histórico.
       </p>
 
@@ -107,7 +107,7 @@ export function FormAlterarPessoa({
           <input
             name="motivo"
             required
-            placeholder="correção de endereço · mudança de razão social"
+            placeholder="Ex.: correção de endereço ou mudança de razão social"
             className={CAMPO}
           />
         </label>

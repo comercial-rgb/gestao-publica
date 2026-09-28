@@ -36,9 +36,9 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Consignações" subtitulo="Onde a retenção na fonte vira dívida com o consignatário" />
+        <PageHeader titulo="Consignações" subtitulo="Tipos de consignação e contas de passivo das retenções na fonte" />
         <EstadoVazio
-          titulo="Não foi possível ler as consignações"
+          titulo="Não foi possível carregar as consignações"
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -50,15 +50,13 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-4">
       <SincronizarContexto />
-      <PageHeader titulo="Consignações" subtitulo="Onde a retenção na fonte vira dívida com o consignatário" />
+      <PageHeader titulo="Consignações" subtitulo="Tipos de consignação e contas de passivo das retenções na fonte" />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Uma retenção na fonte não é despesa: é <strong>dívida</strong> com quem vai receber — o
-        INSS, a Receita, o município do ISS, quem tem a pensão. Em que conta do plano essa dívida
-        nasce é <strong>decisão contábil do ente</strong>, e o sistema não a escolhe: ele a exige, e
-        guarda quem decidiu, quando e por quê. Enquanto uma consignação não tiver conta,{" "}
-        <strong>ela não é oferecida no pagamento</strong> — e é isso, e não um erro no meio da
-        retenção, que a tela mostra.
+        A retenção na fonte é uma <strong>obrigação</strong> com o consignatário (INSS, Receita Federal,
+        município do ISS, beneficiário de pensão). A conta de passivo de cada tipo é{" "}
+        <strong>definida pelo ente</strong> e registrada com o responsável, a data e a justificativa.
+        As consignações sem conta definida <strong>não são oferecidas no pagamento</strong>.
       </div>
 
       <FormCadastrar contas={contas} />
@@ -69,17 +67,16 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
           data-teste="consignacoes-sem-conta"
         >
           <strong>
-            {semConta.length} consignação(ões) sem conta decidida — {semConta.map((t) => t.codigo).join(", ")}
+            {semConta.length} consignação(ões) sem conta definida: {semConta.map((t) => t.codigo).join(", ")}
           </strong>
-          . Elas não aparecem na tela de pagamento. Escolha a conta de cada uma para que a retenção
-          volte a ser possível.
+          . Elas não são oferecidas no pagamento. Defina a conta de cada uma para permitir a retenção.
         </div>
       ) : null}
 
       {tipos.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma consignação cadastrada"
-          descricao="Enquanto não houver consignação com conta decidida, a tela de pagamento não oferece retenção. Cadastre a primeira no painel acima."
+          descricao="Sem consignação com conta definida, o pagamento não oferece retenção. Cadastre a primeira no painel acima."
         />
       ) : (
         <Card>
@@ -114,7 +111,7 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
                     <td className="py-1.5 pr-4">
                       {t.contaCodigo === null ? (
                         <span className="text-xs text-[color:var(--color-status-erro-fg)]">
-                          sem conta — não é oferecida no pagamento
+                          sem conta: não é oferecida no pagamento
                         </span>
                       ) : (
                         <>
@@ -134,7 +131,7 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
                           coluna antiga, e a diferença importa: ninguém do ente escolheu aquela
                           conta, e quem olhar precisa saber disso antes de confiar nela. */}
                       {t.semDecisao ? (
-                        <em>Anterior ao cadastro — ninguém do ente decidiu esta conta ainda.</em>
+                        <em>Conta da carga inicial, ainda não confirmada pelo ente.</em>
                       ) : (
                         <>
                           {t.fundamento}

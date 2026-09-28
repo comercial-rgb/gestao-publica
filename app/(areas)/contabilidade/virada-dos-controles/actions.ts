@@ -35,8 +35,8 @@ export async function classificarContaAction(
     if (destinoBruto !== "ENCERRA" && destinoBruto !== "TRANSFERE") {
       return {
         erro:
-          "Escolha o destino da conta na virada: ENCERRA (o saldo morre em 31 de dezembro) ou " +
-          "TRANSFERE (o saldo atravessa para o exercício seguinte).",
+          "Escolha o destino da conta no encerramento: ENCERRA (o saldo é encerrado em 31 de dezembro) ou " +
+          "TRANSFERE (o saldo é transferido para o exercício seguinte).",
       };
     }
 
@@ -52,8 +52,8 @@ export async function classificarContaAction(
           `Conta ${r.codigo} ${r.reclassificada ? "reclassificada" : "classificada"} como ` +
           `${destinoBruto === "ENCERRA" ? "ENCERRA" : "TRANSFERE"}. ` +
           (r.reclassificada
-            ? "A troca vale para a próxima virada: um encerramento já feito não muda por causa dela — para desfazê-lo, estorne-o."
-            : "A decisão fica gravada com a justificativa e o autor."),
+            ? "A alteração vale a partir do próximo encerramento. Um encerramento já realizado só é desfeito por estorno."
+            : "A classificação fica registrada com a justificativa e o responsável."),
       };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível classificar a conta.") };

@@ -87,7 +87,7 @@ describe("rascunho do decreto — a validação de FORMA (pura)", () => {
 
   it("t3: decreto sem movimento é recusado — ele não alteraria dotação nenhuma", () => {
     expect(errosDoRascunho({ ...RASCUNHO_BOM, movimentos: [] })).toContain(
-      "Um decreto sem movimento não altera dotação nenhuma — inclua ao menos uma perna."
+      "Inclua ao menos um movimento no decreto."
     );
   });
 
@@ -110,7 +110,7 @@ describe("rascunho do decreto — a validação de FORMA (pura)", () => {
       ...RASCUNHO_BOM,
       movimentos: [mov("f-a", "SUPLEMENTACAO", "100.00", "500"), mov("f-a", "SUPLEMENTACAO", "100.00", "500")],
     });
-    expect(erros.some((e) => e.includes("some os valores numa linha só"))).toBe(true);
+    expect(erros.some((e) => e.includes("Some os valores em uma única linha"))).toBe(true);
 
     // A MESMA ficha com tipos DIFERENTES é legítima (anular e suplementar a mesma ficha),
     // e não pode ser confundida com a duplicata.

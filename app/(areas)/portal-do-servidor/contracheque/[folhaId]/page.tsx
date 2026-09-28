@@ -24,7 +24,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
   const competencia = contracheques[0]?.competencia ?? "";
   return (
     <div className="space-y-4">
-      <PageHeader titulo={`Contracheque de ${competencia}`} subtitulo={`Folha fechada em ${contracheques[0]?.fechadaEm ?? "—"} — os valores não mudam mais`} />
+      <PageHeader titulo={`Contracheque de ${competencia}`} subtitulo={`Folha fechada em ${contracheques[0]?.fechadaEm ?? "—"} · valores definitivos`} />
       <p className="text-xs">
         <Link href="/portal-do-servidor" className="text-[color:var(--color-acento)] underline underline-offset-2">
           Voltar ao portal
@@ -72,7 +72,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             </table>
           </div>
           <p className="mt-3 break-all font-mono text-[11px] text-[color:var(--color-ink-3)]" data-sha256={c.sha256}>
-            Impressão digital do cálculo: {c.sha256}
+            Código de verificação do cálculo: {c.sha256}
           </p>
         </Card>
       ))}

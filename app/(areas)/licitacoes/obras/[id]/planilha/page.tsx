@@ -60,7 +60,7 @@ export default async function PlanilhaDaObraPage({ params }: { readonly params: 
           </ul>
         </Card>
       )}
-      {t.podeGerir ? <FormImportarPlanilha obraId={id} /> : <p className="text-xs text-[color:var(--color-ink-2)]" data-motivo-da-planilha>Importar e confirmar a planilha é da engenharia de obras (a ação de gerir a planilha da obra no seu perfil).</p>}
+      {t.podeGerir ? <FormImportarPlanilha obraId={id} /> : <p className="text-xs text-[color:var(--color-ink-2)]" data-motivo-da-planilha>Importar e confirmar a planilha exige a permissão de gerir a planilha da obra.</p>}
     </div>
     </ResultadosDosAtos>
   );

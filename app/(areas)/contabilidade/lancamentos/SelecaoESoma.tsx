@@ -80,15 +80,14 @@ export function SelecaoESoma({
               onClick={() => setMarcados(new Set())}
               className="ml-3 text-[color:var(--color-primary)] hover:underline"
             >
-              limpar
+              Limpar
             </button>
           ) : null}
         </span>
       </div>
 
       <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-        A soma é <strong>por subsistema</strong>, débito e crédito separados. Somar tudo
-        junto daria sempre o dobro do valor — todo lançamento tem os dois lados.
+        Os totais são apresentados <strong>por subsistema</strong>, com débito e crédito separados.
       </p>
 
       <div className="mt-3 max-h-64 overflow-y-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)]">

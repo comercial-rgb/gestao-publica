@@ -63,7 +63,7 @@ export default async function AgendaDaFiscalizacao({ searchParams }: { readonly 
         </nav>
         <header>
           <h1 className="text-xl font-semibold">Agenda de fiscalização</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">De {br(a.de)} a {br(a.ate)} — os compromissos dos contratos que você acompanha, no calendário do município.</p>
+          <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Compromissos de fiscalização de {br(a.de)} a {br(a.ate)} nos contratos que você acompanha.</p>
         </header>
         <AvisosDosAtos />
 
@@ -108,7 +108,7 @@ export default async function AgendaDaFiscalizacao({ searchParams }: { readonly 
         </Card>
 
         {a.semAlcance ? (
-          <Card><p className="text-sm text-[color:var(--color-ink-2)]" data-sem-alcance-na-agenda>Você não tem designação vigente em contrato nenhum nem definição de administrador da fiscalização: a agenda não mostra compromissos de outros.</p></Card>
+          <Card><p className="text-sm text-[color:var(--color-ink-2)]" data-sem-alcance-na-agenda>Você não possui designação vigente em contratos nem é administrador da fiscalização. Não há compromissos a exibir.</p></Card>
         ) : (
           <Card>
             {a.compromissos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-agenda-vazia>Nenhum compromisso no período.</p> : null}
@@ -124,7 +124,7 @@ export default async function AgendaDaFiscalizacao({ searchParams }: { readonly 
                             <strong>{c.horaInicio === null ? "sem horário" : `${c.horaInicio}${c.horaFim === null ? "" : `–${c.horaFim}`}`}</strong> · nº {c.numero} ·{" "}
                             <Link href={`/licitacoes/contratos/${c.contratoId}`} className="text-[color:var(--color-primary)] underline underline-offset-2">{c.contrato}</Link>{" "}
                             <Badge status={SITUACAO[c.situacao]?.tom ?? "neutro"}>{SITUACAO[c.situacao]?.texto ?? c.situacao}</Badge>
-                            {c.conflitos.length > 0 ? <Badge status="alerta">horário cruza com a nº {c.conflitos.join(", nº ")}</Badge> : null}
+                            {c.conflitos.length > 0 ? <Badge status="alerta">conflito de horário com a nº {c.conflitos.join(", nº ")}</Badge> : null}
                           </p>
                           <p className="text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]">{c.objetivo}{c.local === null ? "" : ` · ${c.local}`} · {c.fiscal}</p>
                           {c.historico.length === 0 ? null : <p className="text-xs text-[color:var(--color-ink-2)]" data-historico-do-compromisso={c.historico.length}>Reagendada {c.historico.length}×; a última para {br(c.historico[c.historico.length - 1]!.data)}: {c.historico[c.historico.length - 1]!.motivo}</p>}
@@ -145,7 +145,7 @@ export default async function AgendaDaFiscalizacao({ searchParams }: { readonly 
                 </section>
               ))}
             </div>
-            <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">Reagendar e cancelar são do gestor designado; registrar a realização, do fiscal do compromisso. Quem não pode não recebe o formulário, e o servidor recusa de novo.</p>
+            <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">Reagendar e cancelar cabem ao gestor designado; registrar a realização cabe ao fiscal responsável pelo compromisso.</p>
           </Card>
         )}
       </div>

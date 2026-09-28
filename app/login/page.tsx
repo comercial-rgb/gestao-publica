@@ -57,7 +57,7 @@ export default async function LoginPage({
             </div>
             {canaisPublicos.length > 0 ? (
               <nav aria-label="Canais públicos" className="mt-auto">
-                <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Sem cadastro</h2>
+                <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Acesso público</h2>
                 <ul className="space-y-1">
                   {canaisPublicos.map((c) => (
                     <li key={c.id}>
@@ -84,7 +84,7 @@ export default async function LoginPage({
           {/* o acesso */}
           <section aria-label="Acesso à gestão interna" className="min-w-0 p-6">
             <h1 className="mb-1 text-lg font-semibold text-[color:var(--color-ink)]">Acesso à gestão interna</h1>
-            <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">Use o usuário e a senha do seu cadastro. Sem sessão, nada do sistema fica exposto.</p>
+            <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">Informe seu usuário e sua senha para acessar o sistema.</p>
             <FormLogin retorno={retorno} />
           </section>
         </div>

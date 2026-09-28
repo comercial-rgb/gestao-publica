@@ -57,8 +57,8 @@ export default async function Detalhe({
       acoes={
         <div className="space-y-4">
           <p className="text-xs text-[color:var(--color-ink-2)]">
-            Documento de demonstração — sem validade fiscal. A conferência é interna; não
-            substitui autorização de órgão fiscal.
+            O PDF de conferência não tem validade fiscal. A conferência é interna e não substitui
+            a autorização da SEFAZ.
           </p>
           <div className="flex flex-wrap gap-3 text-sm">
             <a

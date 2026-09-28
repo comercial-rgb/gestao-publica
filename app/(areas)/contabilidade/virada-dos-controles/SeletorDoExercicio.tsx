@@ -35,7 +35,7 @@ export function SeletorDoExercicioDaVirada({
       <label className="flex items-center gap-1.5 text-xs text-[color:var(--color-ink-2)]">
         <span className="uppercase tracking-wide">Exercício</span>
         <select
-          aria-label="Exercício da virada"
+          aria-label="Exercício do encerramento"
           className={CLASSE}
           data-seletor="exercicio"
           onChange={(e) => navegar(e.target.value)}

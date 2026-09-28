@@ -22,25 +22,25 @@ export async function GET(req: Request): Promise<Response> {
     d = await demonstrativoDePessoal(competencia);
   } catch (e) {
     if (!(e instanceof PortaSemBancoError)) throw e;
-    return new Response("A consulta esta indisponivel agora: o banco de dados nao respondeu.", {
+    return new Response("A consulta está temporariamente indisponível. Tente novamente mais tarde.", {
       status: 503,
       headers: { "content-type": "text/plain; charset=utf-8" },
     });
   }
 
   const agregado = paraCsv(
-    ["Lotacao", "Regime", "Vinculos", "Bruto", "Descontos", "Liquido"],
+    ["Lotação", "Regime", "Vínculos", "Bruto", "Descontos", "Líquido"],
     d.agregado.map((g) => [g.lotacao, g.regime, String(g.vinculos), formatarMoeda(g.bruto).texto, formatarMoeda(g.descontos).texto, formatarMoeda(g.liquido).texto]),
   );
 
   const individual =
     d.politica === null
       ? `\r\n"${(d.pendencia ?? "").replace(/"/g, "'")}"\r\n`
-      : `\r\n"Por servidor — publicado sob a politica ${d.politica.versao}, vigente ${d.politica.vigencia}. Fundamento: ${d.politica.fundamentacaoLegal.replace(/"/g, "'")}."\r\n` +
+      : `\r\n"Por servidor: divulgação conforme a política ${d.politica.versao}, vigente ${d.politica.vigencia}. Fundamento: ${d.politica.fundamentacaoLegal.replace(/"/g, "'")}."\r\n` +
         paraCsv([...d.cabecalho], d.linhas.map((l) => l.celulas.map((c) => (c.coluna === "PROVENTOS" || c.coluna === "DESCONTOS" || c.coluna === "LIQUIDO" ? formatarMoeda(c.valor).texto : c.valor))));
 
   const corpo =
-    `"Demonstrativo de pessoal — competencia ${d.competencia}. Apenas folhas fechadas."\r\n\r\n` +
+    `"Demonstrativo de pessoal: competência ${d.competencia}. Apenas folhas fechadas."\r\n\r\n` +
     agregado +
     individual;
 

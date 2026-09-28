@@ -95,8 +95,8 @@ export async function configurarLimitacaoAction(
       revalidatePath("/planejamento/cmd-mba");
       return {
         sucesso: r.ativo
-          ? "Limitação de empenho LIGADA: a partir de agora o empenho é julgado também contra a cota do mês."
-          : "Limitação de empenho DESLIGADA: o empenho volta a responder apenas à dotação.",
+          ? "Limitação de empenho ativada. O empenho passa a observar também a cota mensal da fonte."
+          : "Limitação de empenho desativada. O empenho volta a observar apenas a dotação.",
       };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível registrar a medida.") };
@@ -128,7 +128,7 @@ export async function liberarCotaAction(
         motivo,
       });
       revalidatePath("/planejamento/cmd-mba");
-      return { sucesso: "Liberação registrada: o teto daquele mês subiu pelo valor informado." };
+      return { sucesso: "Liberação registrada. O limite do mês foi ampliado no valor informado." };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível registrar a liberação.") };
     }

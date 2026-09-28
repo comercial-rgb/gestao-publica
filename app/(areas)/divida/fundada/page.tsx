@@ -70,8 +70,8 @@ export default async function DividaFundadaPage({
         <div className="space-y-6">
           <PageHeader titulo={DIVIDA_FUNDADA.rotulo} subtitulo={DIVIDA_FUNDADA.descricao} />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Este cadastro lê e escreve no banco. Sem ele, esta tela não tem o que mostrar — e não vai fingir que tem."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível carregar os dados deste cadastro. Tente novamente em instantes."
           />
         </div>
       );

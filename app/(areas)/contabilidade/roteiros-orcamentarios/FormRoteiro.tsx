@@ -130,7 +130,7 @@ export function FormDoPar({
       <input type="hidden" name="abertura" value={abertura ?? ""} />
 
       <label className="text-xs sm:col-span-2">
-        <span className={ROTULO}>Conta de DÉBITO</span>
+        <span className={ROTULO}>Conta de débito</span>
         <select name="contaDebitoCodigo" required defaultValue="" className={CAMPO}>
           <option value="">Escolha a conta…</option>
           {ctx.contas.map((c) => (
@@ -139,7 +139,7 @@ export function FormDoPar({
         </select>
       </label>
       <label className="text-xs sm:col-span-2">
-        <span className={ROTULO}>Conta de CRÉDITO</span>
+        <span className={ROTULO}>Conta de crédito</span>
         <select name="contaCreditoCodigo" required defaultValue="" className={CAMPO}>
           <option value="">Escolha a conta…</option>
           {ctx.contas.map((c) => (
@@ -148,13 +148,13 @@ export function FormDoPar({
         </select>
       </label>
       <label className="text-xs sm:col-span-4">
-        <span className={ROTULO}>Por que estas contas</span>
+        <span className={ROTULO}>Fundamento</span>
         <input
           name="fundamento"
           required
           minLength={20}
           maxLength={500}
-          placeholder="Plano de contas do ente, quadro X; ou a orientação do tribunal que a fixa"
+          placeholder="Plano de contas do ente ou orientação do tribunal"
           className={CAMPO}
         />
       </label>
@@ -165,7 +165,7 @@ export function FormDoPar({
         <button type="button" onClick={() => setAberto(false)} className="text-xs underline">Cancelar</button>
         {credito !== null ? (
           <span className="text-xs text-[color:var(--color-ink-3)]">
-            Hoje: {debito} / {credito}. Publicar cria uma versão — a anterior continua no histórico.
+            Contas atuais: {debito} / {credito}. A publicação cria uma nova versão; a anterior permanece no histórico.
           </span>
         ) : null}
       </div>
@@ -184,7 +184,7 @@ export function FormDoEixo({ eixoAtual }: { readonly eixoAtual: string }): React
   const ctx = useContext(C);
   const [aberto, setAberto] = useState(false);
   const outro = eixoAtual === "POR_FONTE" ? "POR_TIPO_DE_CREDITO" : "POR_FONTE";
-  const rotuloDoOutro = outro === "POR_FONTE" ? "POR FONTE do recurso (5.2.2.1.3)" : "POR TIPO de crédito (5.2.2.1.2)";
+  const rotuloDoOutro = outro === "POR_FONTE" ? "por fonte do recurso (5.2.2.1.3)" : "por tipo de crédito (5.2.2.1.2)";
 
   if (ctx === null) {
     return <span className="text-xs text-[color:var(--color-status-erro-fg)]">Configuração indisponível nesta tela.</span>;
@@ -199,27 +199,27 @@ export function FormDoEixo({ eixoAtual }: { readonly eixoAtual: string }): React
   }
 
   return (
-    <form action={ctx.acaoDoEixo} data-acao="publicar-eixo" className="mt-2 grid gap-3 text-xs" aria-label="Publicar o eixo da dotação adicional">
+    <form action={ctx.acaoDoEixo} data-acao="publicar-eixo" className="mt-2 grid gap-3 text-xs" aria-label="Alterar a forma de registro da dotação adicional">
       <ChaveDeComando />
       <input type="hidden" name="eixo" value={outro} />
       <label className="text-xs">
-        <span className={ROTULO}>Por que passar a registrar {rotuloDoOutro}</span>
+        <span className={ROTULO}>Fundamento da alteração</span>
         <input
           name="fundamento"
           required
           minLength={20}
           maxLength={500}
-          placeholder="Orientação do tribunal, plano de contas do ente, quadro X"
+          placeholder="Orientação do tribunal ou plano de contas do ente"
           className={CAMPO}
         />
       </label>
       <div className="flex items-center gap-3">
         <button type="submit" disabled={ctx.pendenteDoEixo} className={CLASSE_BOTAO_PRIMARIO}>
-          {ctx.pendenteDoEixo ? "Publicando…" : "Publicar o eixo"}
+          {ctx.pendenteDoEixo ? "Publicando…" : "Publicar a alteração"}
         </button>
         <button type="button" onClick={() => setAberto(false)} className="text-xs underline">Cancelar</button>
         <span className="text-xs text-[color:var(--color-ink-3)]">
-          O que já foi escriturado continua no ramo em que entrou — a troca vale para o que vier.
+          A alteração vale para os lançamentos seguintes; os já realizados não são alterados.
         </span>
       </div>
     </form>
@@ -261,7 +261,7 @@ export function FormDaFonte({
       <ChaveDeComando />
       <input type="hidden" name="origem" value={origem} />
       <label className="text-xs sm:col-span-2">
-        <span className={ROTULO}>Conta de DÉBITO</span>
+        <span className={ROTULO}>Conta de débito</span>
         <select name="contaDebitoCodigo" required defaultValue="" className={CAMPO}>
           <option value="">Escolha a conta…</option>
           {ctx.contas.map((c) => (
@@ -270,7 +270,7 @@ export function FormDaFonte({
         </select>
       </label>
       <label className="text-xs sm:col-span-2">
-        <span className={ROTULO}>Conta de CRÉDITO</span>
+        <span className={ROTULO}>Conta de crédito</span>
         <select name="contaCreditoCodigo" required defaultValue="" className={CAMPO}>
           <option value="">Escolha a conta…</option>
           {ctx.contas.map((c) => (
@@ -279,7 +279,7 @@ export function FormDaFonte({
         </select>
       </label>
       <label className="text-xs sm:col-span-4">
-        <span className={ROTULO}>Por que estas contas</span>
+        <span className={ROTULO}>Fundamento</span>
         <input name="fundamento" required minLength={20} maxLength={500} className={CAMPO} />
       </label>
       <div className="flex items-center gap-3 sm:col-span-4">
@@ -288,7 +288,7 @@ export function FormDaFonte({
         </button>
         <button type="button" onClick={() => setAberto(false)} className="text-xs underline">Cancelar</button>
         {credito !== null ? (
-          <span className="text-xs text-[color:var(--color-ink-3)]">Hoje: {debito} / {credito}.</span>
+          <span className="text-xs text-[color:var(--color-ink-3)]">Contas atuais: {debito} / {credito}.</span>
         ) : null}
       </div>
     </form>

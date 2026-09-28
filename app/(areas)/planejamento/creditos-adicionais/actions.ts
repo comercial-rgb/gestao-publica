@@ -124,9 +124,8 @@ export async function cadastrarDecretoAction(
       const motivo = e instanceof Error ? e.message : "erro desconhecido";
       return {
         erro:
-          `O decreto ${numero}/${anoBruto} FOI criado, mas os movimentos foram recusados — ` +
-          `ele ficou sem itens e não alterou dotação nenhuma. Corrija as pernas e lance de novo ` +
-          `neste mesmo decreto.\n\n${motivo}`,
+          `O decreto ${numero}/${anoBruto} foi criado, mas os movimentos foram recusados e a dotação ` +
+          `não foi alterada. Corrija os movimentos e lance-os novamente neste decreto.\n\n${motivo}`,
       };
     }
 
@@ -169,7 +168,7 @@ export async function cadastrarLeiAction(
 
     if (numero === "") return { erro: "Informe o número da lei." };
     if (!ehTipoDeCredito(tipoBruto)) return { erro: "Escolha o tipo de crédito autorizado." };
-    if (valorAutorizado === "") return { erro: "Informe o valor autorizado (o teto da lei)." };
+    if (valorAutorizado === "") return { erro: "Informe o valor autorizado pela lei." };
     if (publicacao === "") return { erro: "Informe a data de publicação da lei." };
     if (!Number.isInteger(ano)) return { erro: "Exercício da lei inválido." };
 

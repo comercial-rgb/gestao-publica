@@ -40,9 +40,9 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Contas bancárias" subtitulo="De quem é cada conta do ente" />
+        <PageHeader titulo="Contas bancárias" subtitulo="Titularidade e fontes de recursos das contas bancárias do ente" />
         <EstadoVazio
-          titulo="Não foi possível ler as contas"
+          titulo="Não foi possível carregar as contas"
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -55,13 +55,12 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
   return (
     <div className="space-y-4">
       <SincronizarContexto />
-      <PageHeader titulo="Contas bancárias" subtitulo="De quem é cada conta do ente" />
+      <PageHeader titulo="Contas bancárias" subtitulo="Titularidade e fontes de recursos das contas bancárias do ente" />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Declarar o titular de uma conta é o que faz a arrecadação saber <strong>de quem</strong> é
-        o dinheiro: a guia diz em que conta entrou, a conta diz de quem é, e a guia nasce
-        carimbada. Trocar o titular depois <strong>não reescreve as guias antigas</strong> — cada
-        uma guarda quem era o titular no dia em que o dinheiro entrou.
+        O titular da conta identifica a <strong>entidade</strong> a que pertencem os valores
+        arrecadados nela. A alteração do titular <strong>não modifica as guias já registradas</strong>,
+        que mantêm o titular vigente na data da arrecadação.
       </div>
 
       {semTitular.length > 0 ? (
@@ -75,18 +74,17 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
             {semTitular.length === 1
               ? "Uma conta ainda não tem titular declarado"
               : `${String(semTitular.length)} contas ainda não têm titular declarado`}
-          </strong>{" "}
-          — as guias que entrarem nelas ficam <strong>não atribuídas</strong> na consulta da
-          receita por entidade. Isso não impede a arrecadação, e não é erro: é o ente ainda não ter
-          dito de quem a conta é. Se não houver ato que fundamente a declaração,{" "}
-          <strong>não declare</strong>: não atribuída é preferível a um titular sem lastro.
+          </strong>
+          . As guias recebidas em conta sem titular ficam <strong>não atribuídas</strong> na consulta da
+          receita por entidade, sem impedir a arrecadação. Declare o titular somente com base em ato
+          formal.
         </div>
       ) : null}
 
       {contas.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma conta bancária cadastrada"
-          descricao="Sem conta bancária não há como declarar titularidade nem carimbar entidade nas guias."
+          descricao="Cadastre as contas bancárias para declarar a titularidade e as fontes de recursos."
         />
       ) : (
         <ul className="space-y-2" data-papel="lista-de-contas">
@@ -107,7 +105,7 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
               <p className="mt-1 text-xs" data-papel={`titular-${c.codigo}`}>
                 {c.titularNome === null ? (
                   <span className="text-[color:var(--color-status-alerta-fg)]">
-                    Sem titular declarado — as guias nesta conta entram como não atribuídas.
+                    Sem titular declarado: as guias desta conta ficam não atribuídas.
                   </span>
                 ) : (
                   <>

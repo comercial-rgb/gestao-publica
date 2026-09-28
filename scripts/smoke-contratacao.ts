@@ -285,7 +285,7 @@ async function main(): Promise<void> {
     conferir("contrato: cadastrado no processo homologado", rCont.tipo === "ok", rCont.texto);
     const histProc = await irPara(page, `${hrefProc}?aba=historico`);
     conferir("processo: RECARREGADO, o histórico traz a homologação, a reserva (saldo 1000.00) e o contrato", histProc.includes("homologação do processo") && histProc.includes("saldo 1000.00") && histProc.includes(`contrato ${CONTRATO.toLowerCase()}`), histProc.slice(0, 500));
-    const hrefsContrato = await hrefsDoHistorico(page, "abrir o contrato");
+    const hrefsContrato = await hrefsDoHistorico(page, "Abrir o contrato");
     conferir("processo: o contrato do histórico liga ao seu detalhe", hrefsContrato.length >= 1, "sem link");
     const hrefContrato = hrefsContrato[0];
     if (hrefContrato === undefined) throw new Error("sem contrato para seguir");

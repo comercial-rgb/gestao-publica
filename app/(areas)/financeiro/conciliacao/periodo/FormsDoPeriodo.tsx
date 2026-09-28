@@ -134,8 +134,8 @@ export function FormEncerrar({
         {pendente ? "Encerrando…" : `Encerrar a conciliação de ${rotulo}`}
       </button>
       <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]">
-        Encerrada, ela vira fato: não se reabre. Um erro descoberto depois é tratado no
-        período seguinte, referenciando este.
+        Após o encerramento, a conciliação não pode ser reaberta. Correções posteriores são
+        tratadas no período seguinte, com referência a este.
       </p>
     </form>
   );
@@ -167,7 +167,7 @@ export function FormPendenciaManual({
         Incluir pendência
       </h2>
       <p id={idAviso} className="mb-3 text-[11px] text-[color:var(--color-ink-2)]">
-        A pendência é uma decisão registrada, não um fato: ela aponta o motivo e{" "}
+        A pendência registra o motivo da diferença e{" "}
         <strong>não gera lançamento contábil</strong>.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -249,7 +249,7 @@ export function FormJustificar({
           required
           minLength={10}
           defaultValue={motivoAtual ?? ""}
-          placeholder="por que esta pendência atravessa o fechamento"
+          placeholder="motivo para manter a pendência no encerramento"
           className={`${CAMPO} max-w-md`}
         />
         <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>

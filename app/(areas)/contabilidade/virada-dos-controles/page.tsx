@@ -52,7 +52,7 @@ export default async function Page({
 
   const cabecalho = (
     <PageHeader
-      subtitulo="O que morre em 31 de dezembro e o que atravessa para o exercício seguinte"
+      subtitulo="Encerramento das contas de controle orçamentário e transferência de saldos ao exercício seguinte"
       titulo="Virada das contas de controle"
     />
   );
@@ -77,7 +77,7 @@ export default async function Page({
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível ler as contas de controle"
           }
         />
@@ -93,17 +93,17 @@ export default async function Page({
     impedimentos.push(
       virada.exercicioId === null
         ? `Não existe exercício ${String(exercicio)} cadastrado.`
-        : `O exercício ${String(exercicio)} ainda não foi encerrado — não se enterra o orçamento de um ano que ainda corre. Encerre o exercício em Despesa, Restos a pagar.`
+        : `O exercício ${String(exercicio)} ainda não foi encerrado. Encerre o exercício antes, em Despesa, Restos a pagar.`
     );
   }
   if (virada.semDestino > 0) {
     impedimentos.push(
-      `${String(virada.semDestino)} conta(s) com saldo ainda não têm destino declarado. Toda conta das classes 5 e 6 com saldo em 31 de dezembro precisa dizer se encerra ou se transfere.`
+      `${String(virada.semDestino)} conta(s) com saldo ainda não têm destino declarado. Toda conta das classes 5 e 6 com saldo em 31 de dezembro deve ser classificada para encerramento ou transferência.`
     );
   }
   if (virada.contas.length > 0 && virada.semDestino === 0 && !virada.fecha) {
     impedimentos.push(
-      `As contas classificadas como ENCERRA não fecham: o lado do débito soma ${virada.somaDebito} e o do crédito ${virada.somaCredito}. Uma conta de controle só encerra em par com a que a lastreia — se uma perna do par encerra e a outra transfere, a soma não fecha e o lançamento é recusado.`
+      `As contas classificadas como ENCERRA não fecham: débitos de ${virada.somaDebito} e créditos de ${virada.somaCredito}. Cada conta de controle deve ter o mesmo destino da sua contrapartida; caso contrário, o encerramento é recusado.`
     );
   }
   const podeEncerrar = impedimentos.length === 0 && virada.contas.length > 0;
@@ -121,7 +121,7 @@ export default async function Page({
     .filter((c) => c.analitica)
     .map((c) => ({
       codigo: c.codigo,
-      rotulo: `${c.codigo} — ${c.nome} — saldo ${c.saldo}${c.destino === null ? " — sem destino" : ` — hoje ${c.destino}`}`,
+      rotulo: `${c.codigo} — ${c.nome} — saldo ${c.saldo}${c.destino === null ? " — sem destino" : ` — destino atual: ${c.destino}`}`,
       destinoSugerido: c.destinoSugerido,
       razaoDaSugestao: c.razaoDaSugestao,
     }));
@@ -136,9 +136,9 @@ export default async function Page({
         className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]"
         data-corte-da-virada={String(exercicio)}
       >
-        Saldos apurados no razão até <strong>{diaCivilBr(virada.corte)}</strong>, o último instante do
-        exercício. A apuração do resultado não toca estas contas: ela zera as variações patrimoniais
-        contra o patrimônio líquido, e a dotação e o crédito são de outro subsistema.
+        Saldos apurados até <strong>{diaCivilBr(virada.corte)}</strong>, último dia do exercício. A
+        apuração do resultado encerra somente as variações patrimoniais; as contas de controle
+        orçamentário são encerradas nesta tela.
       </div>
 
       {impedimentos.length > 0 ? (
@@ -159,11 +159,11 @@ export default async function Page({
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
-          Contas de controle com saldo no corte
+          Contas de controle com saldo no fim do exercício
         </h2>
         {virada.contas.length === 0 ? (
           <EstadoVazio
-            descricao="Nenhuma conta das classes 5 e 6 tem saldo no último instante deste exercício. Ou o exercício não teve orçamento, ou os controles já foram encerrados — não existe marca de encerrado: o saldo é que governa."
+            descricao="Nenhuma conta das classes 5 e 6 tem saldo no fim deste exercício. O exercício não teve execução orçamentária ou os controles já foram encerrados."
             titulo="Nenhuma conta de controle com saldo"
           />
         ) : (
@@ -174,8 +174,8 @@ export default async function Page({
                   <tr className="border-b border-[color:var(--color-border)]">
                     <th className={CABECA}>Conta</th>
                     <th className={CABECA}>Natureza</th>
-                    <th className={`${CABECA} text-right`}>Saldo no corte</th>
-                    <th className={CABECA}>Se encerrar, a partida é</th>
+                    <th className={`${CABECA} text-right`}>Saldo final</th>
+                    <th className={CABECA}>Lançamento no encerramento</th>
                     <th className={CABECA}>Destino declarado</th>
                     <th className={CABECA}>Justificativa</th>
                   </tr>
@@ -191,7 +191,7 @@ export default async function Page({
                         <span className="tabular-nums">{c.codigo}</span>
                         <span className="block text-xs text-[color:var(--color-ink-3)]">
                           {c.nome}
-                          {c.analitica ? "" : " (sintética — não recebe partida)"}
+                          {c.analitica ? "" : " (sintética, sem lançamento direto)"}
                         </span>
                       </td>
                       <td className={CELULA}>{c.naturezaSaldo === "DEVEDORA" ? "Devedora" : "Credora"}</td>
@@ -229,7 +229,7 @@ export default async function Page({
                   ))}
                   <tr className="border-t-2 border-[color:var(--color-border-strong)]">
                     <td className={`${CELULA} font-semibold`} colSpan={2}>
-                      Soma do que encerraria, por perna
+                      Total a encerrar
                     </td>
                     <td className={`${CELULA} text-right font-semibold`} data-soma-debito>
                       <ValorMonetario valor={virada.somaDebito} />
@@ -253,9 +253,8 @@ export default async function Page({
               </table>
             </div>
             <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-              A soma conta somente as contas classificadas como ENCERRA: a que transfere não recebe
-              partida nenhuma. As duas pernas têm de fechar, porque uma conta de controle só encerra
-              em par com a que a lastreia.
+              O total considera somente as contas classificadas como ENCERRA. Débitos e créditos
+              devem ser iguais para que o encerramento seja realizado.
             </p>
           </>
         )}
@@ -264,14 +263,14 @@ export default async function Page({
       {feitos.length === 0 ? null : (
         <Card>
           <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
-            Encerramentos já gravados
+            Encerramentos realizados
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-[color:var(--color-border)]">
                   <th className={CABECA}>Número de controle</th>
-                  <th className={CABECA}>Data do fato</th>
+                  <th className={CABECA}>Data</th>
                   <th className={CABECA}>Histórico</th>
                   <th className={CABECA}>Registrado por</th>
                   <th className={CABECA}>Situação</th>
@@ -322,7 +321,7 @@ export default async function Page({
         impedimento={
           impedimentos.length === 0
             ? ""
-            : `Este ato será recusado enquanto: ${impedimentos.join(" ")}`
+            : `O encerramento só pode ser realizado após resolver as pendências: ${impedimentos.join(" ")}`
         }
         podeEncerrar={podeEncerrar}
       />

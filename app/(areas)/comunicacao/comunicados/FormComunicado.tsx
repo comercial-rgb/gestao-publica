@@ -78,9 +78,9 @@ export function FormNovoComunicado({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Você não está lotado em nenhum setor
+          Seu usuário não está lotado em nenhum setor.
         </strong>{" "}
-        — e um comunicado sai de um setor, não de uma pessoa.
+        Comunicados são emitidos em nome de um setor.
       </div>
     );
   }
@@ -88,10 +88,9 @@ export function FormNovoComunicado({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Nenhum tipo de comunicado cadastrado
+          Nenhum tipo de comunicado cadastrado.
         </strong>{" "}
-        — memorando, ofício e circular são <em>dados</em>, não valores fixos no código:
-        cada entidade cria os seus. Cadastre ao menos um.
+        Cadastre ao menos um tipo, como memorando, ofício ou circular.
       </div>
     );
   }
@@ -106,7 +105,7 @@ export function FormNovoComunicado({
           required
           largura={1}
           opcoes={exercicios.map((a) => ({ valor: String(a), rotulo: String(a) }))}
-          ajuda="A numeração é por ano, tipo e setor."
+          ajuda="A numeração é sequencial por ano, tipo e setor."
         />
         <CampoSelect
           name="tipoId"
@@ -122,7 +121,7 @@ export function FormNovoComunicado({
           required
           largura={2}
           opcoes={setores.map((s) => ({ valor: s.id, rotulo: s.rotulo }))}
-          ajuda="Só os setores em que você está lotado."
+          ajuda="Somente os setores de lotação do usuário."
         />
         <CampoTexto name="assunto" rotulo="Assunto" required largura={4} />
         <CampoTextarea name="corpo" rotulo="Corpo" required largura={4} linhas={6} />

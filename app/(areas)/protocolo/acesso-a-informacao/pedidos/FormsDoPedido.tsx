@@ -65,9 +65,8 @@ export function FormProtocolar({
       <ChaveDeComando />
       <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Protocolar um pedido</h2>
       <p className="text-xs text-[color:var(--color-ink-2)]">
-        O pedido é executado por um processo do protocolo. A norma que vale para ele é a publicada
-        hoje, e ela fica registrada no pedido — publicar uma versão nova depois não muda o prazo
-        deste.
+        O pedido gera um processo no protocolo. O prazo segue a configuração vigente na data de
+        protocolo, mesmo que uma nova versão seja publicada depois.
       </p>
       <label className="block text-xs" htmlFor={`${uid}-p-exercicio`}>
         <span className={ROTULO}>Exercício</span>
@@ -123,7 +122,7 @@ export function FormDistribuir({
       <ChaveDeComando />
       <input type="hidden" name="pedidoId" value={pedidoId} />
       <h3 className="text-sm font-semibold text-[color:var(--color-ink)]">Encaminhar ao setor</h3>
-      <p className="text-xs text-[color:var(--color-ink-2)]">O processo tramita junto, no mesmo ato.</p>
+      <p className="text-xs text-[color:var(--color-ink-2)]">O processo vinculado é tramitado em conjunto.</p>
       <label className="block text-xs" htmlFor={`${uid}-d-setor`}>
         <span className={ROTULO}>Setor de destino</span>
         <select id={`${uid}-d-setor`} name="setorDestinoId" required className={CAMPO}>
@@ -134,7 +133,7 @@ export function FormDistribuir({
         </select>
       </label>
       <label className="block text-xs" htmlFor={`${uid}-d-motivo`}>
-        <span className={ROTULO}>Por que este setor (registro interno)</span>
+        <span className={ROTULO}>Motivo do encaminhamento (registro interno)</span>
         <textarea id={`${uid}-d-motivo`} name="fundamentoInterno" required minLength={10} rows={2} className={AREA} />
       </label>
       <button type="submit" disabled={pendente} className={BOTAO}>Encaminhar</button>
@@ -152,7 +151,7 @@ export function FormReceber({ pedidoId }: { readonly pedidoId: string }): React.
       <input type="hidden" name="pedidoId" value={pedidoId} />
       <h3 className="text-sm font-semibold text-[color:var(--color-ink)]">Receber no setor</h3>
       <p className="text-xs text-[color:var(--color-ink-2)]">
-        Receber é ato de quem está no destino. Quem enviou não recebe em nome de quem não abriu.
+        O recebimento deve ser registrado pelo setor de destino.
       </p>
       <button type="submit" disabled={pendente} className={BOTAO}>Receber pedido</button>
       <Mensagens estado={estado} />
@@ -183,8 +182,7 @@ export function FormProrrogar({
       <input type="hidden" name="pedidoId" value={pedidoId} />
       <h3 className="text-sm font-semibold text-[color:var(--color-ink)]">Prorrogar o prazo</h3>
       <p className="text-xs text-[color:var(--color-ink-2)]">
-        A prorrogação é motivada, e o requerente é avisado. São dois textos porque são duas coisas:
-        o que instrui o processo e o que o cidadão lê.
+        Informe o motivo da prorrogação, que fica no processo, e a mensagem que será enviada ao requerente.
       </p>
       <label className="block text-xs" htmlFor={`${uid}-pr-motivo`}>
         <span className={ROTULO}>Motivo (registro interno)</span>
@@ -214,8 +212,8 @@ export function FormResponder({ pedidoId, entregar }: { readonly pedidoId: strin
       </h3>
       <p className="text-xs text-[color:var(--color-ink-2)]">
         {entregar
-          ? "A entrega é o ato: ela inicia o prazo de recurso e aparece para o requerente. Negar o acesso exige fundamento."
-          : "A prévia é o texto que o setor preparou e ainda NÃO entregou. Ela não aparece para o requerente e não inicia prazo nenhum."}
+          ? "A entrega disponibiliza a resposta ao requerente e inicia o prazo de recurso. A negativa de acesso exige fundamento."
+          : "A prévia é uma resposta em preparação. Ela não é exibida ao requerente e não inicia prazo."}
       </p>
       {entregar ? (
         <>
@@ -268,7 +266,7 @@ export function FormInterporRecurso({
       <input type="hidden" name="pedidoId" value={pedidoId} />
       <h3 className="text-sm font-semibold text-[color:var(--color-ink)]">Registrar recurso do requerente</h3>
       <p className="text-xs text-[color:var(--color-ink-2)]">
-        O recurso é ato do requerente; quem o registra é o setor que o recebe. As razões ficam como ele as escreveu.
+        Registre o recurso apresentado pelo requerente, transcrevendo as razões como foram escritas.
       </p>
       <label className="block text-xs" htmlFor={`${uid}-rc-razoes`}>
         <span className={ROTULO}>Razões do recurso</span>

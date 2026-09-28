@@ -128,7 +128,7 @@ export default async function PessoasPage({
   const cabecalho = (
     <PageHeader
       titulo="Pessoas e credores"
-      subtitulo="Cadastro compartilhado: uma pessoa, vários papéis, histórico completo"
+      subtitulo="Cadastro único de pessoas físicas e jurídicas, com papéis e histórico de alterações"
     />
   );
 
@@ -148,10 +148,10 @@ export default async function PessoasPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler o cadastro de pessoas"
+              ? "Cadastro indisponível no momento"
+              : "Não foi possível consultar o cadastro de pessoas"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
         />
       </div>
     );
@@ -172,10 +172,8 @@ export default async function PessoasPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O cadastro é <strong>acrescentado, nunca reescrito</strong>: alterar não apaga o registro, cria
-        uma <strong>versão nova</strong>. A anterior continua no histórico, com autor,
-        momento e motivo. <strong>Desativar também é uma versão</strong> — e por isso tem
-        motivo e autor, em vez de ser um interruptor sem história.
+        Cada alteração gera uma <strong>nova versão</strong> do cadastro, e a anterior permanece no
+        histórico com autor, data e motivo. A desativação também é registrada como uma nova versão.
       </div>
 
       <FormPessoa />
@@ -215,10 +213,10 @@ export default async function PessoasPage({
 
       {resultado.itens.length === 0 ? (
         <EstadoVazio
-          titulo="Nenhuma pessoa neste recorte"
+          titulo="Nenhuma pessoa encontrada"
           descricao={
             busca !== "" || papel !== undefined || situacao !== ""
-              ? "Os filtros aplicados não devolveram ninguém. Limpe-os para ver o cadastro inteiro."
+              ? "Nenhum registro corresponde aos filtros aplicados. Limpe os filtros para ver todo o cadastro."
               : "O cadastro está vazio. Use o formulário acima para incluir a primeira pessoa."
           }
         />
@@ -228,7 +226,7 @@ export default async function PessoasPage({
             colunas={COLUNAS}
             linhas={resultado.itens}
             keyDe={(p) => p.id}
-            legenda={`${resultado.total} pessoa(s) no recorte · papéis e situação são derivados do histórico.`}
+            legenda={`${resultado.total} pessoa(s) encontrada(s).`}
           />
           <Paginacao
             pagina={pagina}

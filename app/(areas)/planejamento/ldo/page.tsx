@@ -58,7 +58,7 @@ export default async function Pagina({
       return (
         <div className="space-y-6">
           <PageHeader titulo={LEIS_DE_DIRETRIZES.rotulo} subtitulo={LEIS_DE_DIRETRIZES.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava o planejamento. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Serviço indisponível" descricao="Não foi possível carregar os dados. Tente novamente em instantes." />
         </div>
       );
     }

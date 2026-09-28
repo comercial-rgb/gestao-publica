@@ -90,12 +90,10 @@ export function FormCriterioDeRateio({
         <ChaveDeComando />
 
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-          <strong className="text-[color:var(--color-ink)]">O que este critério decide.</strong> Em
-          que proporção o custo de uma despesa se divide entre os centros. Ele é{" "}
-          <strong>versionado</strong>: publicar de novo com a mesma identificação cria uma versão
-          nova e mantém as anteriores, que continuam respondendo pelas apropriações já feitas. Os
-          percentuais precisam somar exatamente 100. O centavo que sobra na divisão vai ao centro que
-          você indicar como destino do resíduo — e ele precisa receber uma parte do rateio.
+          O critério define a proporção do custo destinada a cada centro. Publicar com a mesma
+          identificação cria uma <strong>nova versão</strong> e mantém as anteriores. Os percentuais
+          devem somar exatamente 100, e o centro indicado para o resíduo em centavos deve constar do
+          rateio.
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -207,12 +205,9 @@ export function FormApropriacaoDeCusto({
         <ChaveDeComando />
 
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-          <strong className="text-[color:var(--color-ink)]">O que este ato faz, e o que não faz.</strong>{" "}
-          Ele diz <strong>a que centros pertence</strong> o custo de uma despesa já reconhecida, na
-          proporção do critério vigente na competência informada.{" "}
-          <strong>Ele não lança a despesa de novo</strong>: a despesa foi reconhecida na liquidação, e
-          lançá-la outra vez contaria o mesmo custo duas vezes no resultado do exercício. O teto é o
-          valor da liquidação já descontadas as anulações, menos o que dela já foi apropriado.
+          Distribui o custo de uma despesa já liquidada entre os centros, conforme o critério vigente
+          na competência informada, <strong>sem novo lançamento contábil</strong>. O limite é o valor
+          líquido da liquidação, descontado o que já foi apropriado.
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">

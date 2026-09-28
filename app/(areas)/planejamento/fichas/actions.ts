@@ -18,15 +18,14 @@ export async function fichasAction(_prev: EstadoDoMolde, formData: FormData): Pr
       if (typeof v === "string") campos[k] = v;
     }
     const acao = campos["__acao"] ?? "";
-    let novoId = "";
     try {
       if (acao !== "criar") throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
-      novoId = await criarFichaPelaTela(campos);
+      await criarFichaPelaTela(campos);
     } catch (e) {
       return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
     }
     revalidatePath(FICHAS.rota);
     revalidatePath("/planejamento/qdd");
-    return { sucesso: `Ficha ${campos["numero"] ?? ""}/${campos["exercicio"] ?? ""} criada SEM crédito. Abra em ${FICHAS.rota}/${novoId}. A dotação dela vem de crédito adicional.` };
+    return { sucesso: `Ficha ${campos["numero"] ?? ""}/${campos["exercicio"] ?? ""} criada, ainda sem dotação. A dotação é incluída por crédito adicional.` };
   });
 }

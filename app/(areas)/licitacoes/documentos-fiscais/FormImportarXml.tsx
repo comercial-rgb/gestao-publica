@@ -35,9 +35,8 @@ export function FormImportarXml({
       <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Importar XML da NF-e</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Só modelos 55 e 65. O emitente precisa já existir no cadastro de pessoas. A importação
-        guarda o arquivo original e confere a estrutura — não consulta órgão fiscal e não
-        substitui a conferência interna.
+        Aceita NF-e (modelo 55) e NFC-e (modelo 65), com o emitente já cadastrado. A importação
+        guarda o arquivo e verifica sua estrutura, sem consultar a SEFAZ nem dispensar a conferência.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">

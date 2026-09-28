@@ -40,7 +40,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={REPRESENTACOES.rotulo} subtitulo={REPRESENTACOES.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava as representações. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Representações indisponíveis no momento" descricao="Não foi possível consultar as representações. Tente novamente em alguns instantes." />
         </div>
       );
     }

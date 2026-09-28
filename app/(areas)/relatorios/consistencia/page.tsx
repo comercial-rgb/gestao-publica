@@ -31,6 +31,7 @@ export const dynamic = "force-dynamic";
 
 const ESCOPOS: readonly EscopoConsistencia[] = ["MENSAL", "PLANEJAMENTO", "ANUAL"];
 const ehEscopo = (v: string): v is EscopoConsistencia => (ESCOPOS as readonly string[]).includes(v);
+const ROTULO_ESCOPO: Record<EscopoConsistencia, string> = { MENSAL: "Mensal", PLANEJAMENTO: "Planejamento", ANUAL: "Anual" };
 
 export default async function ConsistenciaPage({
   searchParams,
@@ -53,7 +54,7 @@ export default async function ConsistenciaPage({
   const cabecalho = (
     <PageHeader
       titulo="Relatório de Consistência"
-      subtitulo={`Exercício ${exercicio} · ${preEnvio ? "Diagnóstico pré-envio (MSC/Siconfi)" : escopo}`}
+      subtitulo={`Exercício ${exercicio} · ${preEnvio ? "Verificação antes do envio (MSC/Siconfi)" : ROTULO_ESCOPO[escopo]}`}
       acoes={<SeletorConsistencia exercicio={exercicio} escopo={escBruto} />}
     />
   );
@@ -72,7 +73,7 @@ export default async function ConsistenciaPage({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível rodar as verificações"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível executar as verificações"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -92,27 +93,26 @@ export default async function ConsistenciaPage({
               : "border-[color:var(--color-status-erro-fg)] bg-[color:var(--color-status-erro-bg)] text-[color:var(--color-status-erro-fg)]"
           }`}
         >
-          <strong>{diagnostico.prontoParaEnvio ? "Pronto para envio: SIM" : "Pronto para envio: NÃO"}</strong>
+          <strong>{diagnostico.prontoParaEnvio ? "Pronto para envio" : "Não está pronto para envio"}</strong>
           {diagnostico.prontoParaEnvio ? (
-            <span> — nenhuma divergência de números. {diagnostico.semDados.length > 0 ? `${diagnostico.semDados.length} verificação(ões) sem cadastro (não travam, mas confira).` : ""}</span>
+            <span> — nenhuma divergência de valores. {diagnostico.semDados.length > 0 ? `${diagnostico.semDados.length} verificação(ões) sem dados suficientes (não impedem o envio, mas devem ser conferidas).` : ""}</span>
           ) : (
-            <span> — o que trava: {diagnostico.divergencias.join("; ")}.</span>
+            <span> — pendências que impedem o envio: {diagnostico.divergencias.join("; ")}.</span>
           )}
         </div>
       ) : null}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada verificação <strong>visita</strong> a identidade do seu dono e lê os dois lados — não
-        recalcula. <strong>Verde</strong> = bate; <strong>vermelho</strong> = não bate (com a
-        diferença); <strong>âmbar</strong> = sem dado (cadastro ausente ou motor inexistente — não é
-        erro, mas também não é OK). O link "onde mora" leva ao demonstrativo dono.
+        Cada verificação compara dois valores que devem coincidir. <strong>Verde</strong>: conferem;{" "}
+        <strong>vermelho</strong>: divergem, com a diferença apurada; <strong>âmbar</strong>: sem
+        dados suficientes para a conferência. A coluna Demonstrativo leva ao relatório de origem.
       </div>
 
       <TabelaDeDados<Verificacao>
         colunas={COLUNAS}
         linhas={[...verificacoes]}
         keyDe={(v) => v.chave}
-        legenda="A consistência é interna: mostra onde conferir antes de publicar."
+        legenda="Relatório de uso interno, para conferência antes da publicação e do envio."
       />
     </div>
   );
@@ -143,14 +143,14 @@ const COLUNAS: readonly ColunaTabela<Verificacao>[] = [
   },
   {
     chave: "esquerda",
-    cabecalho: "Esquerda",
+    cabecalho: "Valor 1",
     alinhamento: "direita",
     largura: "9rem",
     celula: (v) => (v.esquerda === "—" || v.esquerda === "fecha" ? <span className="text-[color:var(--color-ink-3)]">{v.esquerda}</span> : <ValorMonetario valor={v.esquerda} />),
   },
   {
     chave: "direita",
-    cabecalho: "Direita",
+    cabecalho: "Valor 2",
     alinhamento: "direita",
     largura: "9rem",
     celula: (v) => (v.direita === "—" || v.direita === "fecha" ? <span className="text-[color:var(--color-ink-3)]">{v.direita}</span> : <ValorMonetario valor={v.direita} />),
@@ -164,7 +164,7 @@ const COLUNAS: readonly ColunaTabela<Verificacao>[] = [
   },
   {
     chave: "fonte",
-    cabecalho: "Onde mora",
+    cabecalho: "Demonstrativo",
     alinhamento: "esquerda",
     largura: "12rem",
     celula: (v) => (v.fonteHref === "" ? <span className="text-[color:var(--color-ink-3)]">{v.fonte}</span> : <Link href={v.fonteHref} className="text-[color:var(--color-primary)] hover:underline">{v.fonte}</Link>),

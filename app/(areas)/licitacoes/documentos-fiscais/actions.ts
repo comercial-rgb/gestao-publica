@@ -55,7 +55,7 @@ export async function registrarDocumentoFiscalAction(
     }
     revalidatePath(DOCUMENTOS_FISCAIS.rota);
     return {
-      sucesso: `Nota ${campos["numero"] ?? ""}/${campos["serie"] ?? ""} recebida. Aguardando conferência. Não produz estoque nem liquidação.`,
+      sucesso: `Nota ${campos["numero"] ?? ""}/${campos["serie"] ?? ""} registrada, aguardando conferência. O registro não produz entrada em estoque nem liquidação.`,
     };
   });
 }
@@ -81,7 +81,7 @@ export async function importarDocumentoFiscalAction(
     }
     revalidatePath(DOCUMENTOS_FISCAIS.rota);
     return {
-      sucesso: `XML "${arquivo.name}" importado. Validação estrutural local — não é autorização fiscal. Aguardando conferência.`,
+      sucesso: `XML "${arquivo.name}" importado, aguardando conferência. A importação verifica a estrutura do arquivo e não confirma a autorização na SEFAZ.`,
     };
   });
 }
@@ -103,8 +103,8 @@ export async function documentosfiscaisAction(
     revalidatePath(DOCUMENTOS_FISCAIS.rota);
     revalidatePath(`${DOCUMENTOS_FISCAIS.rota}/${id}`);
     if (acao === "conferir") {
-      return { sucesso: `Documento conferido contra a origem. Não afirma autorização fiscal.` };
+      return { sucesso: `Documento conferido com a origem.` };
     }
-    return { sucesso: "Documento cancelado. O original permanece; o cancelamento é um fato novo." };
+    return { sucesso: "Documento cancelado. O registro original permanece no histórico." };
   });
 }

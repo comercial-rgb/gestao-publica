@@ -52,7 +52,7 @@ export async function abrirUnidadeAction(_p: EstadoDoAto, f: FormData): Promise<
   return comComandoDoFormulario(f, async () => {
     if (t(f, "codigo") === "") return { erro: "Informe o código da unidade." };
     if (t(f, "nome") === "") return { erro: "Informe o nome da unidade." };
-    if (t(f, "endereco") === "") return { erro: "Informe o endereço — é ele que a pessoa vai procurar." };
+    if (t(f, "endereco") === "") return { erro: "Informe o endereço da unidade." };
     if (t(f, "setorId") === "") return { erro: "Escolha o setor responsável pela unidade." };
     return ato(
       () =>
@@ -107,8 +107,8 @@ export async function publicarOfertaAction(_p: EstadoDoAto, f: FormData): Promis
     const duracao = inteiro(f, "duracaoMinutos");
     const capacidade = inteiro(f, "capacidade");
     if (!Number.isInteger(duracao) || duracao <= 0) return { erro: "Informe a duração de cada atendimento, em minutos." };
-    if (!Number.isInteger(capacidade) || capacidade <= 0) return { erro: "Informe quantas pessoas cabem em cada horário." };
-    if (t(f, "vigenciaInicio") === "") return { erro: "Informe a partir de quando esta oferta vale." };
+    if (!Number.isInteger(capacidade) || capacidade <= 0) return { erro: "Informe a quantidade de pessoas atendidas por horário." };
+    if (t(f, "vigenciaInicio") === "") return { erro: "Informe a data de início da vigência da oferta." };
     const fim = t(f, "vigenciaFim");
     return ato(
       () =>
@@ -142,11 +142,11 @@ export async function fecharDiaAction(_p: EstadoDoAto, f: FormData): Promise<Est
     if (t(f, "dia") === "") return { erro: "Informe o dia." };
     const tipo = t(f, "tipo");
     if (!(TIPOS_DE_EXCECAO as readonly string[]).includes(tipo)) {
-      return { erro: "Escolha o que fazer com o dia: fechar, expediente especial ou voltar ao normal." };
+      return { erro: "Selecione a situação do dia: fechado, expediente especial ou expediente normal." };
     }
-    if (t(f, "motivo") === "") return { erro: "Diga por quê — é isso que a tela mostra a quem procurar horário." };
+    if (t(f, "motivo") === "") return { erro: "Informe o motivo. Ele será exibido a quem consultar horários." };
     if (tipo === "EXPEDIENTE_ESPECIAL" && (t(f, "horaInicio") === "" || t(f, "horaFim") === "")) {
-      return { erro: "O expediente especial precisa da hora de início E da hora de fim." };
+      return { erro: "Para expediente especial, informe a hora de início e a hora de término." };
     }
     return ato(
       () =>
@@ -167,12 +167,12 @@ export async function fecharDiaAction(_p: EstadoDoAto, f: FormData): Promise<Est
 export async function marcarAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "servicoId") === "") return { erro: "Escolha o serviço." };
-    if (t(f, "documento") === "") return { erro: "Informe o CPF ou CNPJ de quem vai ser atendido." };
+    if (t(f, "documento") === "") return { erro: "Informe o CPF ou CNPJ da pessoa a ser atendida." };
     if (t(f, "horaInicio") === "") return { erro: "Escolha o horário." };
     // ⚠️ A CHAVE DO COMANDO VAI PARA DENTRO DA CHAVE DE IDEMPOTÊNCIA: é ela que faz dois cliques
     // no mesmo botão serem UMA reserva, e dois envios deliberados serem duas.
     const chave = t(f, "__chave");
-    if (chave === "") return { erro: "A tela ainda está carregando. Tente de novo em um instante." };
+    if (chave === "") return { erro: "A página ainda está carregando. Tente novamente em instantes." };
     return ato(
       () =>
         marcarAtendimento({
@@ -196,7 +196,7 @@ export async function confirmarAction(_p: EstadoDoAto, f: FormData): Promise<Est
 
 export async function registrarAtendimentoAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
-    if (t(f, "atendidoPor") === "") return { erro: "Informe quem atendeu." };
+    if (t(f, "atendidoPor") === "") return { erro: "Informe o responsável pelo atendimento." };
     return ato(
       () =>
         registrarAtendimento({
@@ -211,7 +211,7 @@ export async function registrarAtendimentoAction(_p: EstadoDoAto, f: FormData): 
 
 export async function cancelarAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
-    if (t(f, "motivo") === "") return { erro: "Diga por que a marcação está sendo cancelada." };
+    if (t(f, "motivo") === "") return { erro: "Informe o motivo do cancelamento." };
     return ato(
       () => cancelarMarcacao({ reservaId: t(f, "reservaId"), motivo: t(f, "motivo") }),
       "Não foi possível cancelar. Nada foi gravado."
@@ -222,7 +222,7 @@ export async function cancelarAction(_p: EstadoDoAto, f: FormData): Promise<Esta
 export async function remarcarAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "dia") === "" || t(f, "horaInicio") === "") return { erro: "Informe o novo dia e o novo horário." };
-    if (t(f, "motivo") === "") return { erro: "Diga por que está sendo remarcado — o motivo fica no histórico." };
+    if (t(f, "motivo") === "") return { erro: "Informe o motivo da remarcação. Ele ficará registrado no histórico." };
     return ato(
       () =>
         remarcarAtendimento({

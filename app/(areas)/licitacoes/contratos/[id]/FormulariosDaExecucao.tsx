@@ -111,7 +111,7 @@ export function FormNovaOrdem({ contratoId, itens, fiscais, empenhos, hoje }: {
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="rascunho" />
       <h3 className="mb-1 text-sm font-semibold">Nova ordem de serviço (rascunho)</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">O rascunho não compromete o saldo do contrato. Unidade, preço e contratado saem do contrato; a emissão confere o saldo de cada item.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">O rascunho não compromete o saldo do contrato. Unidade e preço vêm do contrato, e o saldo de cada item é verificado na emissão.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Texto id={a.id} nome="finalidade" rotulo="Finalidade" />
         <Campo id={a.id} nome="local" rotulo="Local (opcional)" obrigatorio={false} />
@@ -148,7 +148,7 @@ export function FormEmitirOrdem({ contratoId, ordemId, previsto, inicio, impacto
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="emitir" extra={{ ordemId }} />
       <h3 className="mb-1 text-sm font-semibold">Emitir a ordem de serviço</h3>
-      <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Prévia do efeito: a emissão compromete {previsto} do saldo do contrato nos itens abaixo. Não empenha, não recebe e não paga.</p>
+      <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">A emissão compromete {previsto} do saldo do contrato nos itens abaixo. Não gera empenho, recebimento nem pagamento.</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[30rem] text-left text-xs" data-previa-da-emissao>
           <thead><tr className="text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Item</th><th className="py-1 pr-2 text-right">Pedido</th><th className="py-1 pr-2 text-right">Disponível hoje</th><th className="py-1 text-right">Depois</th></tr></thead>
@@ -162,7 +162,7 @@ export function FormEmitirOrdem({ contratoId, ordemId, previsto, inicio, impacto
           </tbody>
         </table>
       </div>
-      {cabeTudo ? null : <p className="mt-2 text-xs font-semibold text-[color:var(--color-status-erro-fg)]" data-previa-sem-saldo>Algum item não tem saldo: a emissão será recusada pelo servidor. Quantidade acima do contratado exige aditivo antes.</p>}
+      {cabeTudo ? null : <p className="mt-2 text-xs font-semibold text-[color:var(--color-status-erro-fg)]" data-previa-sem-saldo>Há item sem saldo suficiente, e a emissão será recusada. Quantidade acima do contratado exige termo aditivo.</p>}
       <div className="mt-3 grid gap-3 sm:grid-cols-2"><Campo id={a.id} nome="inicioAutorizado" rotulo="Início autorizado" tipo="date" defaultValue={inicio} /></div>
       <Mensagens estado={a.estado} acao="emitir-ordem-de-servico" />
       <Enviar pendente={a.pendente} rotulo="Emitir" />
@@ -209,7 +209,7 @@ export function FormCancelarSaldo({ contratoId, ordemId, itens, hoje }: { readon
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="cancelarSaldo" extra={{ ordemId }} />
       <h3 className="mb-1 text-sm font-semibold">Cancelar saldo não executado</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Só o que ainda não foi medido. O empenho indicado na ordem não é anulado aqui.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Somente a quantidade ainda não medida. O empenho indicado na ordem não é anulado por esta operação.</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {itens.map((i) => <Campo key={i.id} id={a.id} nome={`cancelar.${i.id}`} rotulo={`${i.rotulo} — não executado ${qtdBr(i.aExecutar)} ${i.unidade}`} obrigatorio={false} inputMode="decimal" placeholder="0" />)}
         <Campo id={a.id} nome="data" rotulo="Data do cancelamento" tipo="date" defaultValue={hoje} max={hoje} />
@@ -230,7 +230,7 @@ export function FormMedirOrdem({ contratoId, ordemId, itens, hoje }: { readonly 
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="medir" extra={{ ordemId }} />
       <h3 className="mb-1 text-sm font-semibold">Registrar medição (fiscal)</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Quantidades executadas no período, por item. A mesma parcela não se mede duas vezes: o limite é o autorizado ainda não medido.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Informe as quantidades executadas no período, por item, limitadas ao autorizado ainda não medido.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id={a.id} nome="diaInicio" rotulo="Período — início" tipo="date" max={hoje} />
         <Campo id={a.id} nome="diaFim" rotulo="Período — fim" tipo="date" max={hoje} />
@@ -282,7 +282,7 @@ export function FormMedirPelaPlanilha({ contratoId, ordemId, versoes, hoje }: { 
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="medirPelaPlanilha" extra={{ ordemId }} />
       <h3 className="mb-1 text-sm font-semibold">Registrar medição pela planilha da obra (fiscal)</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A quantidade de cada serviço vira a quantidade do item vinculado da ordem, valorada pelo unitário do contrato. A versão precisa valer no primeiro dia do período, e o período não pode alcançar a versão seguinte.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A quantidade de cada serviço é lançada no item vinculado da ordem, pelo preço unitário do contrato. A versão deve estar vigente no início do período, e o período não pode alcançar a versão seguinte.</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <label htmlFor={`${a.id}-planilhaId`} className="text-xs text-[color:var(--color-ink-2)]">
           <span className={CLASSE_ROTULO}>Versão da planilha</span>
@@ -305,7 +305,7 @@ export function FormMedirPelaPlanilha({ contratoId, ordemId, versoes, hoje }: { 
               return (
                 <tr key={l.itemDaPlanilhaId} data-servico={l.codigo} className="border-t border-[color:var(--color-border)] align-top">
                   <td className="py-1 pr-2 [overflow-wrap:anywhere]">{l.codigo} — {l.descricao} ({l.unidade})</td>
-                  <td className="py-1 pr-2 [overflow-wrap:anywhere]">{l.conciliacao.apto ? <>{l.conciliacao.itemDoContrato}<span className="block text-[color:var(--color-ink-2)]">a executar na ordem: {qtdBr(l.conciliacao.aExecutarNaOrdem)}</span></> : <span data-motivo-do-servico={l.conciliacao.recusa}>Não se mede por aqui: {l.conciliacao.motivo}.</span>}</td>
+                  <td className="py-1 pr-2 [overflow-wrap:anywhere]">{l.conciliacao.apto ? <>{l.conciliacao.itemDoContrato}<span className="block text-[color:var(--color-ink-2)]">a executar na ordem: {qtdBr(l.conciliacao.aExecutarNaOrdem)}</span></> : <span data-motivo-do-servico={l.conciliacao.recusa}>Não pode ser medido pela planilha: {l.conciliacao.motivo}.</span>}</td>
                   <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(l.previsto)}</td>
                   <td className="py-1 pr-2 text-right tabular-nums">{qtdBr(l.anterior)}</td>
                   <td className="py-1 pr-2">
@@ -345,7 +345,7 @@ export function FormEstornarMedicao({ contratoId, medicaoId, numero }: { readonl
       <form ref={a.ref} action={a.disparar} data-acao={`estornar-medicao-${numero}`} className="mt-2">
         <ChaveDeComando />
         <Ocultos contratoId={contratoId} acao="estornarMedicao" extra={{ medicaoId }} />
-        <p className="text-xs text-[color:var(--color-ink-2)]">Só enquanto não houver recebimento provisório. A medição fica no histórico, marcada como estornada, e as quantidades voltam a executar.</p>
+        <p className="text-xs text-[color:var(--color-ink-2)]">Permitido apenas antes do recebimento provisório. A medição permanece no histórico como estornada, e as quantidades voltam a ficar a executar.</p>
         <label htmlFor={`${a.id}-motivo`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Motivo do estorno</span>
           <textarea id={`${a.id}-motivo`} name="motivo" required minLength={10} rows={2} className={CLASSE_AREA_TEXTO} />
         </label>
@@ -388,14 +388,13 @@ export function FormEstornarRecebimento({ contratoId, recebimentoId, numero, val
         <ChaveDeComando />
         <Ocultos contratoId={contratoId} acao="estornarRecebimento" extra={{ recebimentoId }} />
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          O termo nº {numero} ({`R$ ${formatarMoeda(valor).texto}`}) continua no histórico, com o seu documento — ele não é apagado
-          nem reescrito. O que volta é a <strong>quantidade elegível</strong> da medição, para que o
-          recebimento corrigido possa ser registrado. O estorno gera termo próprio.
+          O termo nº {numero} ({`R$ ${formatarMoeda(valor).texto}`}) permanece no histórico, com o seu documento. A quantidade volta a ficar <strong>elegível</strong>
+          na medição para o registro do recebimento corrigido, e o estorno gera termo próprio.
         </p>
         {temLiquidacao ? (
           <p role="status" className="mt-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-2 py-1.5 text-xs text-[color:var(--color-status-alerta-fg)]" data-bloqueio-do-estorno>
-            Este recebimento lastreia {`R$ ${formatarMoeda(liquidado).texto}`} já liquidados. O estorno será recusado enquanto a
-            liquidação estiver viva: estorne-a primeiro, em Despesa › Liquidações.
+            Este recebimento lastreia {`R$ ${formatarMoeda(liquidado).texto}`} já liquidados. Antes de estorná-lo,
+            estorne a liquidação em Despesa › Liquidações.
           </p>
         ) : null}
         <label htmlFor={`${a.id}-data`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Data do estorno</span>
@@ -418,7 +417,7 @@ export function FormRecebimentoProvisorio({ contratoId, medicaoId, itens, hoje }
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="provisorio" extra={{ medicaoId }} />
       <h3 className="mb-1 text-sm font-semibold">Conferência e recebimento provisório (fiscal)</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Todo item medido é conferido: conforme + em controvérsia = medido. A controvérsia exige o motivo e não é glosa: ela aguarda a decisão do recebedor definitivo.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Em cada item, a soma de conforme e em controvérsia deve ser igual ao medido. A controvérsia exige motivo e aguarda a decisão do recebedor definitivo.</p>
       <div className="space-y-3">
         {itens.map((i) => (
           <fieldset key={i.id} data-conferencia-do-item={i.rotulo} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
@@ -466,7 +465,7 @@ export function FormRecebimentoDefinitivo({ contratoId, medicaoId, itens, hoje }
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="definitivo" extra={{ medicaoId }} />
       <h3 className="mb-1 text-sm font-semibold">Recebimento definitivo (recebedor designado)</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Só o elegível: conforme + controvérsia aceita − já recebido. A quantidade em controvérsia sem decisão fica fora, e a parte regular segue.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Pode ser recebida a quantidade elegível: conforme mais controvérsia aceita, menos o já recebido. Quantidades em controvérsia sem decisão ficam de fora.</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {itens.map((i) => (
           <Campo key={i.id} id={a.id} nome={`receber.${i.id}`} rotulo={`${i.rotulo} — elegível ${qtdBr(i.elegivel)} ${i.unidade}${i.pendente !== "0.0000" ? `; ${qtdBr(i.pendente)} aguardando decisão` : ""}`} obrigatorio={false} inputMode="decimal" defaultValue={i.elegivel === "0.0000" ? "" : qtdBr(i.elegivel)} />
@@ -499,7 +498,7 @@ export function FormLiquidarParcelas({ contratoId, parcelas, empenhos, documento
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="liquidar" />
       <h3 className="mb-1 text-sm font-semibold">Preparar a liquidação das parcelas recebidas</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A liquidação é gravada na despesa com o documento de cobrança conferido e o empenho do contrato. Informe quanto de cada parcela esta nota cobre; o servidor confere o elegível, o documento e o empenho.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A liquidação é registrada na despesa com o documento de cobrança conferido e o empenho do contrato. Informe o valor de cada parcela coberto por esta nota.</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {parcelas.map((p) => (
           <Campo key={p.id} id={a.id} nome={`parcela.${p.id}`} rotulo={`${p.rotulo} — a liquidar ${brl(Number(p.aLiquidar))}`} obrigatorio={false} inputMode="decimal" placeholder="0,00" onChange={(e) => setValores((v) => ({ ...v, [p.id]: e.target.value }))} />
@@ -517,7 +516,7 @@ export function FormLiquidarParcelas({ contratoId, parcelas, empenhos, documento
         <Campo id={a.id} nome="data" rotulo="Data da liquidação" tipo="date" defaultValue={hoje} max={hoje} />
       </div>
       <p className="mt-3 text-xs" data-previa-da-liquidacao aria-live="polite">
-        Prévia: {brl(soma)} nas parcelas{doc === "" ? "." : `; o documento tem ${brl(saldoDoc)} a liquidar${soma > saldoDoc + 0.005 ? " — acima do documento: o servidor recusará." : "."}`}
+        Prévia: {brl(soma)} nas parcelas{doc === "" ? "." : `; o documento tem ${brl(saldoDoc)} a liquidar${soma > saldoDoc + 0.005 ? " — valor acima do saldo do documento; a liquidação será recusada." : "."}`}
       </p>
       <Mensagens estado={a.estado} acao="liquidar-parcelas-do-contrato" />
       <Enviar pendente={a.pendente} rotulo="Liquidar" />
@@ -551,7 +550,7 @@ export function FormAditivoPorItens({ contratoId, itens, hoje }: {
       <ChaveDeComando />
       <input type="hidden" name="__id" value={contratoId} />
       <h3 className="mb-1 text-sm font-semibold">Aditivo por itens</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Registre o termo assinado: novas quantidades, novos unitários ou item incluído, a partir da vigência. A variação de valor entra no contrato; ordens emitidas e períodos já medidos mantêm o preço deles.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Registre o termo assinado: novas quantidades, novos unitários ou item incluído, a partir da vigência. A variação de valor é incorporada ao contrato; ordens emitidas e períodos já medidos mantêm os preços originais.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id={id} nome="numeroAditivo" rotulo="Número do termo aditivo" />
         <Campo id={id} nome="dataAssinatura" rotulo="Assinado em" tipo="date" defaultValue={hoje} max={hoje} />
@@ -599,7 +598,7 @@ export function FormEstornarAditivo({ contratoId, aditivoId, numero, hoje }: { r
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="estornarAditivo" extra={{ aditivoId }} />
       <h4 className="mb-1 text-sm font-semibold">Estornar o aditivo nº {numero}</h4>
-      <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Só enquanto nenhuma ordem ou medição usou os itens dele. Itens e valor são desfeitos juntos; o registro fica no histórico.</p>
+      <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Permitido apenas se nenhuma ordem ou medição utilizou os itens do aditivo. Itens e valor são desfeitos em conjunto, e o registro permanece no histórico.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id={a.id} nome="data" rotulo="Data do estorno" tipo="date" defaultValue={hoje} max={hoje} />
         <Texto id={a.id} nome="motivo" rotulo="Motivo do estorno" />

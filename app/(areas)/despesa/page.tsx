@@ -26,9 +26,8 @@ export default function DespesaPage(): React.ReactElement {
       </div>
 
       <p className="text-sm leading-relaxed text-[color:var(--color-ink-2)]">
-        Estas telas são de <strong>consulta</strong>: acompanham cada empenho, liquidação e
-        pagamento com seus saldos e a ordem cronológica por fonte. Os atos de execução são
-        registrados pelo funil contábil do sistema, com identidade e histórico em cada lançamento.
+        Registre e acompanhe cada empenho, liquidação e pagamento, com seus saldos e a ordem
+        cronológica por fonte. Cada registro guarda o responsável, a data e o histórico.
       </p>
     </div>
   );

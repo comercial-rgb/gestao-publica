@@ -43,8 +43,8 @@ export function FormDocumentoFiscal({
       <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Registrar documento fiscal</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Registrar a nota não dá entrada em estoque, não liquida e não paga. A conferência é um
-        ato seguinte. Sem chave de acesso o documento ainda pode ser digitado.
+        O registro da nota não gera entrada em estoque, liquidação nem pagamento; a conferência é
+        feita em seguida. Documentos sem chave de acesso também podem ser digitados.
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">

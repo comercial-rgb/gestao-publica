@@ -106,8 +106,8 @@ export default async function OrdensDePagamentoPage({
               : erro instanceof ExercicioIlegivelError
                 ? "O exercício pedido não é um ano"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
-                  : "Não foi possível ler as ordens de pagamento"
+                  ? "Serviço indisponível"
+                  : "Não foi possível carregar as ordens de pagamento"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -120,7 +120,7 @@ export default async function OrdensDePagamentoPage({
   const cabecalho = (
     <PageHeader
       titulo="Ordens de pagamento"
-      subtitulo={`${descreverRecorte(recorte)} — preparar, autorizar, registrar e conferir`}
+      subtitulo={`${descreverRecorte(recorte)}: preparar, autorizar, registrar e conferir`}
     />
   );
 
@@ -134,8 +134,8 @@ export default async function OrdensDePagamentoPage({
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         O pagamento é dividido em <strong>quatro etapas</strong>: preparar a ordem,
         autorizá-la, registrar o pagamento e conferir a confirmação do banco.{" "}
-        <strong>Quem prepara não autoriza</strong> — são permissões distintas, e o sistema
-        recusa a mesma pessoa nas duas pontas do mesmo documento.
+        A preparação e a autorização devem ser feitas por <strong>pessoas diferentes</strong>{" "}
+        (segregação de funções).
       </div>
 
       <FormOrdem liquidacoes={liquidacoes} contas={contas} />
@@ -186,7 +186,7 @@ export default async function OrdensDePagamentoPage({
                       o.canceladaPor !== null
                         ? `cancelada por ${o.canceladaPor}${o.motivoDoCancelamento === null ? "" : ` — ${o.motivoDoCancelamento}`}`
                         : o.autorizadaEm === null
-                          ? "aguardando quem consente"
+                          ? "aguardando autorização"
                           : `${instante(o.autorizadaEm)} · ${o.autorizadaPor}`
                     }
                   />

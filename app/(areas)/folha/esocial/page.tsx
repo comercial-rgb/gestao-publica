@@ -44,7 +44,7 @@ export default async function Pagina({
   const cabecalho = (
     <PageHeader
       titulo="Consistência para o eSocial"
-      subtitulo="O que o cadastro do ente ainda não tem para atender o leiaute registrado. Esta tela não gera, não assina e não transmite arquivo."
+      subtitulo="Pendências do cadastro de pessoal em relação ao leiaute do eSocial. Esta consulta não gera nem transmite arquivos."
     />
   );
 
@@ -56,7 +56,7 @@ export default async function Pagina({
       return (
         <>
           {cabecalho}
-          <EstadoVazio titulo="Sem banco configurado" descricao="Esta consulta lê o cadastro de pessoal e precisa do banco." />
+          <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar o cadastro de pessoal. Tente novamente mais tarde." />
         </>
       );
     }
@@ -117,16 +117,16 @@ export default async function Pagina({
       ) : (
         <>
           <Card>
-            <p className="text-xs text-[color:var(--color-ink-2)]">Leiaute obedecido nesta conferência</p>
+            <p className="text-xs text-[color:var(--color-ink-2)]">Leiaute utilizado nesta conferência</p>
             <p className="text-sm text-[color:var(--color-ink)]" data-papel="leiaute-em-uso">
-              Versão <strong>{r.leiaute?.versao}</strong> · arquivo {r.leiaute?.arquivo} · sha256 {r.leiaute?.sha256}
+              Versão <strong>{r.leiaute?.versao}</strong> · arquivo {r.leiaute?.arquivo} · código de verificação {r.leiaute?.sha256}
             </p>
             <p className="mt-1 break-all text-xs text-[color:var(--color-ink-3)]">Fonte: {r.leiaute?.fonte}</p>
             <ul role="list" className="mt-2 space-y-0.5 text-xs" data-papel="eventos-vigentes">
               {r.eventos.map((e) => (
                 <li key={e.codigo} className="text-[color:var(--color-ink-2)]">
                   {e.codigo} — {e.nome}
-                  {e.temXsd ? "" : " · sem XSD registrado, nenhuma validação de estrutura é possível"}
+                  {e.temXsd ? "" : " · sem esquema de validação registrado; a estrutura não pode ser validada"}
                 </li>
               ))}
             </ul>
@@ -150,13 +150,13 @@ export default async function Pagina({
           {r.pendencias.length === 0 ? (
             <EstadoVazio
               titulo="Nenhuma pendência de cadastro"
-              descricao={`Os ${r.vinculosConferidos} vínculos têm preenchidos todos os campos que o leiaute registrado exige. Isto não é autorização para transmitir: geração, assinatura e transporte continuam indisponíveis.`}
+              descricao={`Os ${r.vinculosConferidos} vínculos têm preenchidos todos os campos exigidos pelo leiaute. A geração, a assinatura e a transmissão dos arquivos não são realizadas por esta consulta.`}
             />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-papel="tabela-da-consistencia">
                 <caption className="sr-only">
-                  Pendências de cadastro para o eSocial: pessoa, evento, campo, erro e onde corrigir
+                  Pendências de cadastro para o eSocial: pessoa, evento, campo, situação e onde corrigir
                 </caption>
                 <thead>
                   <tr className="border-b border-[color:var(--color-border)] text-left text-xs text-[color:var(--color-ink-2)]">

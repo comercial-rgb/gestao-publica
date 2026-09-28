@@ -198,7 +198,7 @@ describe("marcar um atendimento", () => {
   it("t8: guichê que não atende NADA não oferece formulário — ele diz o que falta", () => {
     marcar({ servicos: [] });
     expect(screen.queryByRole("button", { name: "Marcar atendimento" })).toBeNull();
-    expect(screen.getByText(/não atende serviço nenhum/)).toBeTruthy();
+    expect(screen.getByText(/não possui serviços habilitados/)).toBeTruthy();
   });
 
   it("t9: TODO campo tem rótulo, e o serviço não tem default", () => {

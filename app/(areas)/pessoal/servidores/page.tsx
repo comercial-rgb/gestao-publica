@@ -44,7 +44,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={SERVIDORES.rotulo} subtitulo={SERVIDORES.descricao} />
-          <EstadoVazio titulo="Consulta ampla demais para apurar por evento" descricao={e.message} />
+          <EstadoVazio titulo="Consulta muito abrangente" descricao={e.message} />
         </div>
       );
     }
@@ -52,7 +52,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={SERVIDORES.rotulo} subtitulo={SERVIDORES.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava o pessoal. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar as informações. Tente novamente mais tarde." />
         </div>
       );
     }

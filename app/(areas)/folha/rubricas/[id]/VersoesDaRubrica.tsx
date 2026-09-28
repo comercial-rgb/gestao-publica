@@ -20,9 +20,8 @@ export function VersoesDaRubrica({ p }: { readonly p: PainelDeVersoes }): React.
     <section data-papel="versoes-da-rubrica" data-rubrica={p.codigo} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-4">
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Versões de {p.codigo} — {p.descricao}</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-        A versão é o que a folha lê. Percentual, incidências, arredondamento, fundamento e fórmula
-        pertencem a ela, com vigência por competência — por isso mudar a regra em julho não
-        reescreve a folha de março. Uma versão aprovada não se edita: escreve-se outra.
+        O cálculo da folha utiliza a versão vigente na competência, com percentual, incidências, arredondamento,
+        fundamentação e fórmula. Uma versão aprovada não pode ser alterada; para mudar a regra, cadastre nova versão.
       </p>
 
       {estado.erro !== undefined ? (
@@ -36,8 +35,8 @@ export function VersoesDaRubrica({ p }: { readonly p: PainelDeVersoes }): React.
         {p.versoes.length === 0 ? (
           <li className="text-xs text-[color:var(--color-ink-3)]">
             {p.ehFormula
-              ? "Nenhuma versão ainda. Uma rubrica de fórmula nasce sem versão: enquanto não houver uma aprovada, ela não entra em contracheque nenhum."
-              : "Nenhuma versão."}
+              ? "Nenhuma versão cadastrada. Enquanto não houver versão aprovada, esta rubrica não é considerada nos contracheques."
+              : "Nenhuma versão cadastrada."}
           </li>
         ) : (
           p.versoes.map((v) => (
@@ -122,7 +121,7 @@ export function VersoesDaRubrica({ p }: { readonly p: PainelDeVersoes }): React.
                 rubrica, escreva {p.prefixo}CÓDIGO
                 {p.rubricasCitaveis.length === 0 ? "." : ` — existem: ${p.rubricasCitaveis.join(", ")}.`}
                 {" "}Operações: + − * / com parênteses, e as funções min, max, arredondar, teto, piso e se.
-                Uma fórmula que cite a si mesma, direta ou indiretamente, é recusada.
+                Não é permitida fórmula que faça referência a si mesma, direta ou indiretamente.
               </span>
             </label>
           ) : (
@@ -159,8 +158,7 @@ export function VersoesDaRubrica({ p }: { readonly p: PainelDeVersoes }): React.
             </select>
             {p.ehFormula ? (
               <span className="mt-1 block text-[color:var(--color-ink-3)]">
-                Numa fórmula, a proporcionalidade se escreve com a variável fator_dias. Marcar aqui
-                também contaria os dias duas vezes, e por isso é recusado.
+                Em fórmulas, use a variável fator_dias para a proporcionalidade; não marque esta opção.
               </span>
             ) : null}
           </label>
@@ -170,12 +168,12 @@ export function VersoesDaRubrica({ p }: { readonly p: PainelDeVersoes }): React.
               {pendente ? "Gravando…" : "Gravar como rascunho"}
             </button>
             <span className="ml-2 text-xs text-[color:var(--color-ink-3)]">
-              A versão nasce em rascunho e não altera folha nenhuma até que outra pessoa a aprove.
+              A versão é gravada como rascunho e só passa a valer após aprovação por outro usuário.
             </span>
           </div>
         </form>
       ) : (
-        <p className="text-xs text-[color:var(--color-ink-3)]">O seu perfil consulta as versões, mas não as escreve.</p>
+        <p className="text-xs text-[color:var(--color-ink-3)]">Seu perfil permite consultar as versões, mas não cadastrá-las.</p>
       )}
     </section>
   );

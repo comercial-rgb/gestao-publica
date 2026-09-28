@@ -62,8 +62,8 @@ export default async function RreoAnexo3Page({
         {cabecalho}
         {erro instanceof PortaSemBancoError ? (
           <EstadoVazio
-            titulo="Banco de dados não configurado"
-            descricao="A variável DATABASE_URL não está definida. O relatório não tem de onde ler — configure o banco e recarregue."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível acessar os dados. Tente novamente mais tarde."
           />
         ) : (
           <EstadoVazio
@@ -102,7 +102,7 @@ export default async function RreoAnexo3Page({
         keyDe={(l) => l.chave}
         ehTotal={(l) => l.nivel === "total" || l.nivel === "grupo"}
         recuoDe={(l) => (l.nivel === "item" ? 1 : 0)}
-        legenda={`Valores em R$ · janela de 12 meses encerrada no ${bimestre}º bimestre de ${exercicio} · a coluna PREVISÃO ATUALIZADA reflete a LOA (reestimativa é pendência).`}
+        legenda={`Valores em R$ · janela de 12 meses encerrada no ${bimestre}º bimestre de ${exercicio} · a previsão atualizada corresponde à LOA.`}
       />
 
       {dados.pendencias.length > 0 ? (

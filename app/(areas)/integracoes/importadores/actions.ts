@@ -55,7 +55,7 @@ export async function confirmarAction(_prev: EstadoImportacao, formData: FormDat
         ? await confirmarFolha({ nomeArquivo, conteudo, exercicio: EXERCICIO })
         : await confirmarTributos({ nomeArquivo, conteudo, exercicio: EXERCICIO });
       revalidatePath("/integracoes/importadores");
-      return { sucesso: `Importação confirmada: ${r.linhas} linha(s), ${r.fatosGerados} fato(s) gerado(s). Correlação ${r.correlationId.slice(0, 8)}.` };
+      return { sucesso: `Importação confirmada: ${r.linhas} linha(s) e ${r.fatosGerados} registro(s) gerado(s). Identificador ${r.correlationId.slice(0, 8)}.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível confirmar a importação." };
     }

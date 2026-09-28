@@ -67,8 +67,8 @@ export default async function AtualizacoesOrcamentariasPage({
         <EstadoVazio
           titulo={
             erro instanceof ExercicioIlegivelError
-              ? "O exercício pedido não é um ano"
-              : "Não foi possível ler o recorte"
+              ? "Exercício inválido"
+              : "Não foi possível identificar o exercício"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -90,7 +90,7 @@ export default async function AtualizacoesOrcamentariasPage({
         <SincronizarContexto />
         <PageHeader titulo="Atualizações orçamentárias" subtitulo={`Exercício ${exercicio}`} />
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler as atualizações"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível ler as atualizações"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -105,7 +105,7 @@ export default async function AtualizacoesOrcamentariasPage({
   const cabecalho = (
     <PageHeader
       titulo="Atualizações orçamentárias"
-      subtitulo={`Exercício ${exercicio} — todo movimento de crédito adicional, por ficha, decreto, fonte e UG`}
+      subtitulo={`Exercício ${exercicio} · movimentos de crédito adicional por ficha, decreto, fonte e UG`}
       acoes={<FiltroAtualizacoes {...opcoes} {...filtro} />}
     />
   );
@@ -119,10 +119,8 @@ export default async function AtualizacoesOrcamentariasPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada linha é <strong>um movimento</strong> de um decreto sobre uma ficha. Os totais somam
-        <strong> as linhas exibidas</strong> — filtrar muda o total, e é assim que ele se confere.
-        Movimentos <strong>estornados</strong> continuam listados (o fato aconteceu) e ficam
-        <strong> fora dos totais</strong>, como na tela de créditos.
+        Cada linha corresponde a um movimento de decreto sobre uma ficha, e os totais consideram
+        apenas as linhas exibidas. Movimentos estornados permanecem listados, mas não entram nos totais.
       </div>
 
       {linhas.length === 0 ? (
@@ -131,7 +129,7 @@ export default async function AtualizacoesOrcamentariasPage({
           descricao={
             todas.length === 0
               ? `Nenhum movimento de crédito adicional no exercício ${exercicio}.`
-              : "Nenhum movimento atende aos filtros selecionados. Limpe um dos filtros para ampliar o recorte."
+              : "Nenhum movimento atende aos filtros selecionados. Remova um dos filtros para ampliar a consulta."
           }
         />
       ) : (

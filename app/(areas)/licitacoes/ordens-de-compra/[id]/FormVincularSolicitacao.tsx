@@ -50,7 +50,7 @@ export function FormVincularSolicitacao({
       <ChaveDeComando />
       <input type="hidden" name="ordemId" value={ordemId} />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Vincular parcela de solicitação a esta ordem</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Só solicitações autorizadas com pendente do mesmo material desta ordem. A quantidade não pode passar do pendente da solicitação nem do disponível da linha da ordem.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">São listadas as solicitações autorizadas com itens pendentes dos materiais desta ordem. A quantidade não pode exceder o pendente da solicitação nem o disponível no item da ordem.</p>
       {solicitacoes.length === 0 ? (
         <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma solicitação autorizada com pendente dos materiais desta ordem.</p>
       ) : (
@@ -72,7 +72,7 @@ export function FormVincularSolicitacao({
                 <input type="hidden" name={`linhas.${i}.itemDeOrdemId`} value={daOrdem.itemDeOrdemId} />
                 <div className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
                   <div className="text-[color:var(--color-ink)]">{item.rotulo}</div>
-                  <div className="text-[color:var(--color-ink-3)]">pendente na solicitação {item.pendente} · disponível na linha da ordem {daOrdem.disponivel}</div>
+                  <div className="text-[color:var(--color-ink-3)]">pendente na solicitação {item.pendente} · disponível no item da ordem {daOrdem.disponivel}</div>
                 </div>
                 <label className="text-xs text-[color:var(--color-ink-2)]">
                   <span className={ROTULO}>Quantidade desta ordem</span>

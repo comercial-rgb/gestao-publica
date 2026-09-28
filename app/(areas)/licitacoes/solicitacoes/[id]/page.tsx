@@ -47,10 +47,10 @@ export default async function Detalhe({ params, searchParams }: { readonly param
           ) : (
             <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
               {detalhe.situacao !== "AUTORIZADA"
-                ? `A solicitação está ${detalhe.situacao}: só a autorizada forma ordem.`
+                ? `Somente solicitações autorizadas podem gerar ordem de compra. Situação atual: ${detalhe.situacao.toLowerCase().replace(/_/g, " ")}.`
                 : detalhe.itensPendentes.length === 0
-                  ? "Nada pendente: todos os itens já estão em ordens vivas."
-                  : "Você não tem a permissão EMITIR_ORDEM_DE_COMPRA para formar uma ordem a partir desta solicitação."}
+                  ? "Todos os itens desta solicitação já constam em ordens de compra."
+                  : "Seu perfil não tem permissão para emitir ordem de compra a partir desta solicitação."}
             </p>
           )}
           <FormsDoRecurso definicao={SOLICITACOES_DE_COMPRA} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={solicitacoesdecompraAction} modo="acoes" />

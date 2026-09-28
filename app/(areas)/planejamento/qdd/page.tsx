@@ -67,9 +67,9 @@ export default async function QddPage({
             erro instanceof EscopoDeLeituraError
               ? "Esta unidade não está no seu acesso"
               : erro instanceof ExercicioIlegivelError
-                ? "O exercício pedido não é um ano"
+                ? "Exercício inválido"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
+                  ? "Serviço indisponível"
                   : "Não foi possível ler o QDD"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -93,17 +93,15 @@ export default async function QddPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        A <strong>dotação atualizada</strong> é a inicial mais as suplementações menos as anulações
-        dos decretos de crédito adicional — a linha fecha na horizontal porque as quatro colunas saem
-        dos <strong>mesmos movimentos de dotação</strong>, não de somas separadas. É este o teto
-        contra o qual o empenho é julgado. O <strong>disponível</strong> é cache (atualizada −
-        reservado − empenhado): serve para escolher a ficha, nunca para decidir se cabe.
+        A <strong>dotação atualizada</strong> corresponde à dotação inicial mais as suplementações e
+        menos as anulações dos créditos adicionais, e é o limite para o empenho. O <strong>disponível</strong>{" "}
+        desconta os valores reservados e empenhados e serve de referência para a escolha da ficha.
       </div>
 
       {linhas.length === 0 ? (
         <EstadoVazio
           titulo="Sem fichas"
-          descricao={`Nenhuma ficha orçamentária em ${descreverRecorte(recorte).toLowerCase()}. Ou a LOA do exercício não foi cadastrada, ou a unidade selecionada não tem fichas.`}
+          descricao={`Nenhuma ficha orçamentária em ${descreverRecorte(recorte).toLowerCase()}. Verifique se a LOA do exercício foi cadastrada e se a unidade selecionada possui fichas.`}
         />
       ) : (
         <>
@@ -120,10 +118,9 @@ export default async function QddPage({
       )}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        A <strong>execução</strong> de cada ficha (empenhado, liquidado, pago) fica de propósito FORA
-        deste quadro — o QDD é o orçamento autorizado. Ela está em{" "}
-        <a href="/despesa/empenhos" className="text-[color:var(--color-primary)] hover:underline">Despesa · Empenhos</a>, e cruzada
-        com a dotação no RREO Anexo 1.
+        A <strong>execução</strong> de cada ficha (empenhado, liquidado e pago) pode ser consultada em{" "}
+        <a href="/despesa/empenhos" className="text-[color:var(--color-primary)] hover:underline">Despesa · Empenhos</a> e no
+        RREO Anexo 1.
       </p>
     </div>
   );
@@ -134,7 +131,7 @@ function csvQdd(linhas: readonly LinhaQdd[]): string {
   return paraCsv(
     // ⚠️ No CSV cada componente da chave é COLUNA PRÓPRIA: quem abre em planilha filtra por função
     // ou por programa, e não conseguiria fazê-lo sobre a string composta que a tela exibe.
-    ["Ficha", "Órgão", "Órgão (nome)", "Unidade", "Unidade (nome)", "Programa", "Função", "Subfunção", "Ação", "Fonte", "CO", "Natureza", "Descrição", "Dotação inicial", "Suplementações", "Anulações", "Dotação atualizada", "Disponível (cache)"],
+    ["Ficha", "Órgão", "Órgão (nome)", "Unidade", "Unidade (nome)", "Programa", "Função", "Subfunção", "Ação", "Fonte", "CO", "Natureza", "Descrição", "Dotação inicial", "Suplementações", "Anulações", "Dotação atualizada", "Disponível"],
     linhas.map((l) => [
       String(l.numero),
       l.orgaoCodigo, l.orgaoNome, l.unidadeCodigo, l.unidadeNome,
@@ -169,7 +166,7 @@ function Chave({ l }: { readonly l: LinhaQdd }): React.ReactElement {
     `Subfunção ${l.subfuncaoCodigo} — ${l.subfuncaoNome}`,
     `Ação ${l.acaoCodigo} — ${l.acaoDescricao}`,
     `Fonte ${l.fonteCodigo}`,
-    l.coCodigo !== null ? `CO ${l.coCodigo} — ${l.coDescricao ?? ""}` : "CO: a ficha não tem",
+    l.coCodigo !== null ? `CO ${l.coCodigo} — ${l.coDescricao ?? ""}` : "CO: não informado",
     `Natureza ${l.naturezaCodigo} — ${l.naturezaDescricao}`,
   ].join("\n");
   return (
@@ -189,5 +186,5 @@ const COLUNAS: readonly ColunaTabela<LinhaQdd>[] = [
   // quem soma a linha com o olho. O `ValorMonetario` a imprime entre parênteses (convenção contábil).
   { chave: "anulado", cabecalho: "Anulações", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.creditoAnulado === "0.00" ? "0.00" : `-${l.creditoAnulado}`} /> },
   { chave: "atualizada", cabecalho: "Dotação atualizada", alinhamento: "direita", largura: "10rem", celula: (l) => <strong><ValorMonetario valor={l.dotacaoAtualizada} /></strong> },
-  { chave: "disponivel", cabecalho: "Disponível (cache)", alinhamento: "direita", largura: "10rem", celula: (l) => <ValorMonetario valor={l.saldoDisponivel} /> },
+  { chave: "disponivel", cabecalho: "Disponível", alinhamento: "direita", largura: "10rem", celula: (l) => <ValorMonetario valor={l.saldoDisponivel} /> },
 ];

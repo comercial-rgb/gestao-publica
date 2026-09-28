@@ -108,7 +108,7 @@ export default async function LiquidacoesPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Liquidações" subtitulo="O marco de exigibilidade da despesa" />
+        <PageHeader titulo="Liquidações" subtitulo="Verificação do direito do credor (Lei 4.320/64, art. 63)" />
         <EstadoVazio
           titulo={
             erro instanceof EscopoDeLeituraError
@@ -116,8 +116,8 @@ export default async function LiquidacoesPage({
               : erro instanceof ExercicioIlegivelError
                 ? "O exercício pedido não é um ano"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
-                  : "Não foi possível ler as liquidações"
+                  ? "Serviço indisponível"
+                  : "Não foi possível carregar as liquidações"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -130,15 +130,13 @@ export default async function LiquidacoesPage({
       <SincronizarContexto />
       <PageHeader
         titulo="Liquidações"
-        subtitulo={`${descreverRecorte(recorte)} — o marco de exigibilidade da despesa`}
+        subtitulo={`${descreverRecorte(recorte)}: verificação do direito do credor (Lei 4.320/64, art. 63)`}
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        A liquidação é o que <strong>põe a despesa na fila do art. 141</strong> — o saldo a pagar
-        de cada uma é a sua posição na ordem cronológica.{" "}
-        <strong>O responsável pelo atesto</strong> é obrigatório. A liquidação de{" "}
-        <strong>material de consumo</strong>, que vira estoque, repercute na contabilidade
-        patrimonial e é tratada no módulo de almoxarifado.
+        Cada liquidação passa a integrar a <strong>ordem cronológica de pagamentos</strong> (Lei
+        14.133/2021, art. 141). O <strong>responsável pelo atesto</strong> é obrigatório. A liquidação
+        de <strong>material de consumo</strong> registra também as entradas no almoxarifado.
       </div>
 
       <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} />
@@ -146,7 +144,7 @@ export default async function LiquidacoesPage({
       {liquidacoes.length === 0 ? (
         <EstadoVazio
           titulo="Sem liquidações"
-          descricao={`Nenhuma liquidação em ${descreverRecorte(recorte).toLowerCase()}. Sem liquidação não há fila de pagamento: a ordem cronológica começa aqui.`}
+          descricao={`Nenhuma liquidação registrada em ${descreverRecorte(recorte).toLowerCase()}.`}
         />
       ) : (
         <>

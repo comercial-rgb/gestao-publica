@@ -134,7 +134,7 @@ function Corpo({
 
         <fieldset className="grid gap-2 rounded-[var(--radius-lg)] border border-[color:var(--color-border)] p-4">
           <legend className="px-1 text-sm font-semibold text-[color:var(--color-ink)]">
-            De quais retenções sai este recolhimento
+            Retenções que compõem este recolhimento
           </legend>
           {disponiveis.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-2)]">

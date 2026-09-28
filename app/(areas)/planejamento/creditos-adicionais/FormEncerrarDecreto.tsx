@@ -30,7 +30,7 @@ export function FormEncerrarDecreto({ decretoId }: { readonly decretoId: string 
     <form action={action} className="flex flex-wrap items-center gap-2">
       <ChaveDeComando />
       <input type="hidden" name="decretoId" value={decretoId} />
-      <input name="motivo" required minLength={3} placeholder="motivo do encerramento" className={`${CAMPO} h-8 w-56`} />
+      <input name="motivo" required minLength={3} placeholder="motivo do encerramento" aria-label="Motivo do encerramento" className={`${CAMPO} h-8 w-56`} />
       <button type="submit" disabled={pendente} className="inline-flex h-8 items-center rounded-[var(--radius-md)] bg-[color:var(--color-danger,#c0392b)] px-3 text-xs font-semibold text-white disabled:opacity-60">
         {pendente ? "Encerrando…" : "Confirmar"}
       </button>

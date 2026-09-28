@@ -40,8 +40,8 @@ export function FormPedido(): React.ReactElement {
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Pedir uma certidão</h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        O pedido consulta as bases que este sistema alcança e registra o que cada uma respondeu.
-        Ele não emite nada: a decisão é de quem responde pela base fiscal.
+        O pedido consulta as bases fiscais disponíveis e registra o resultado de cada uma. A emissão
+        depende da análise do responsável.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-xs">
@@ -49,7 +49,7 @@ export function FormPedido(): React.ReactElement {
           <input name="documento" required pattern="\d{11}|\d{14}" maxLength={14} className={CAMPO} />
         </label>
         <label className="text-xs">
-          <span className={ROTULO}>Imóvel (opcional — em branco, a certidão é da pessoa)</span>
+          <span className={ROTULO}>Imóvel (opcional; em branco, a certidão refere-se à pessoa)</span>
           <input name="imovelId" maxLength={40} className={CAMPO} />
         </label>
       </div>
@@ -104,12 +104,12 @@ export function FormDecisao({
       {temBaseSemResposta ? (
         <label className="text-xs sm:col-span-4">
           <span className={ROTULO}>
-            O que você conferiu fora deste sistema (obrigatório para emitir negativa)
+            Conferência realizada em outras bases (obrigatória para emitir certidão negativa)
           </span>
           <textarea name="declaracaoDeConferencia" minLength={20} maxLength={2000} rows={3} className={CAMPO} />
           <span className="mt-1 block text-[color:var(--color-ink-3)]">
-            Este texto vai dentro do documento emitido, com o seu nome. Sem ele, o servidor recusa a
-            negativa: não aparecer e não existir são coisas diferentes.
+            Este texto é impresso no documento emitido, com a identificação do responsável. Sem ele, a
+            certidão negativa não é emitida.
           </span>
         </label>
       ) : null}
@@ -136,8 +136,8 @@ export function FormConfiguracao({
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Validade e fundamento</h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        Sem esta configuração o sistema não emite certidão nenhuma — e é deliberado: o prazo é do
-        município, e um valor padrão aqui seria prazo inventado. O pedido e a análise funcionam sem ela.
+        A emissão de certidões depende desta configuração, definida pelo município. Os pedidos e a
+        análise funcionam sem ela.
       </p>
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="text-xs">

@@ -24,10 +24,10 @@ const RÓTULO_DA_BASE: Record<string, string> = {
 };
 
 const RÓTULO_DA_SITUACAO_DA_BASE: Record<string, string> = {
-  SEM_PENDENCIA: "consultada — nada devido",
-  COM_PENDENCIA: "consultada — há débito",
-  INDISPONIVEL: "não respondeu",
-  FORA_DO_ALCANCE: "fora do alcance deste sistema",
+  SEM_PENDENCIA: "consultada, sem débitos",
+  COM_PENDENCIA: "consultada, com débitos",
+  INDISPONIVEL: "indisponível no momento da consulta",
+  FORA_DO_ALCANCE: "não integrada ao sistema",
 };
 
 export default async function CertidoesPage(): Promise<React.ReactElement> {
@@ -38,21 +38,20 @@ export default async function CertidoesPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <PageHeader
         titulo="Certidões"
-        subtitulo="Pedido, análise e emissão. O sistema consulta as bases que alcança e declara as que não alcança — e não emite negativa sobre base que não leu."
+        subtitulo="Pedido, análise e emissão de certidões, com consulta às bases fiscais disponíveis."
       />
 
       {dados.semValidadeOficial ? (
         <p role="note" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-sm text-[color:var(--color-status-alerta-fg)]">
-          Esta implantação não é de produção: os documentos emitidos aqui saem marcados como{" "}
-          <strong>sem validade oficial</strong>, dentro do próprio documento.
+          Este ambiente não é de produção: os documentos emitidos são marcados como{" "}
+          <strong>sem validade oficial</strong>.
         </p>
       ) : null}
 
       {dados.configuracao === null ? (
         <p role="alert" data-papel="sem-configuracao" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-sm text-[color:var(--color-status-alerta-fg)]">
-          Não há validade nem fundamento configurados, e por isso nenhuma certidão pode ser emitida.
-          O pedido e a análise continuam funcionando. Publique a configuração abaixo — o prazo é do
-          município, e o sistema não tem um valor padrão de propósito.
+          Não há validade nem fundamento legal configurados, e por isso nenhuma certidão pode ser
+          emitida. Os pedidos e a análise continuam disponíveis; publique a configuração abaixo.
         </p>
       ) : (
         <Card>

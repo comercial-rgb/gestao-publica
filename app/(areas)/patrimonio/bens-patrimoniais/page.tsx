@@ -88,8 +88,8 @@ export default async function BensPatrimoniaisPage({
         <div className="space-y-6">
           <PageHeader titulo={BENS_PATRIMONIAIS.rotulo} subtitulo={BENS_PATRIMONIAIS.descricao} />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Este cadastro lê e escreve no banco. Sem ele, esta tela não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis"
+            descricao="Não foi possível acessar os dados deste cadastro no momento. Tente novamente em instantes."
           />
         </div>
       );

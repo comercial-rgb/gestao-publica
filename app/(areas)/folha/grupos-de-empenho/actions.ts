@@ -26,7 +26,7 @@ export async function criarGrupoAction(_prev: EstadoDoGrupo, formData: FormData)
     }
     // Só as caixas MARCADAS chegam no FormData — as linhas vazias somem sozinhas.
     const rubricas = linhasDoFormulario(formData, "rubricas", ["id"]).map((l) => l["id"] ?? "").filter((id) => id !== "");
-    if (rubricas.length === 0) return { erro: "Marque ao menos uma rubrica de provento: um grupo sem rubrica não empenharia nada. Nada foi gravado." };
+    if (rubricas.length === 0) return { erro: "Marque ao menos uma rubrica de provento. Nada foi gravado." };
     try {
       await criarGrupoDeEmpenho(campos, rubricas);
     } catch (e) {

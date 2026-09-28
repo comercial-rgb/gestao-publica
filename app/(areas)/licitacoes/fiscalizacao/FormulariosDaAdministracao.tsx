@@ -26,10 +26,10 @@ export function FormDefinirAdministrador({ usuarios }: { readonly usuarios: read
       <ChaveDeComando />
       <input type="hidden" name="__acao" value="definir" />
       <h3 className="mb-1 text-sm font-semibold">Definir administrador da fiscalização</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Dentro da vigência, o administrador alcança a fiscalização de qualquer contrato. Ter este formulário não dá esse alcance a quem define.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Durante a vigência, o administrador tem acesso à fiscalização de todos os contratos. A definição não concede esse acesso a quem a registra.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label htmlFor={`${id}-usuario`} className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={CLASSE_ROTULO}>Conta (com pessoa vinculada)</span>
+          <span className={CLASSE_ROTULO}>Usuário (com pessoa vinculada)</span>
           <select id={`${id}-usuario`} name="usuario" required defaultValue="" className={CLASSE_CAMPO}>
             <option value="" disabled>Escolha…</option>
             {usuarios.map((u) => <option key={u.valor} value={u.valor}>{u.rotulo}</option>)}

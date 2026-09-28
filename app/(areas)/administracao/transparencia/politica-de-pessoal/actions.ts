@@ -33,14 +33,14 @@ export async function politicaDePessoalAction(_prev: EstadoDaPolitica, formData:
       else if (acao === "aprovar") mensagem = await aprovarPoliticaNaTela(campos);
       else if (acao === "revogar") mensagem = await revogarPoliticaNaTela(campos);
       // ⚠️ AÇÃO DESCONHECIDA ESTOURA, não vira silêncio verde.
-      else return { erro: `Ação "${acao}" não existe nesta tela. Nada foi gravado.` };
+      else return { erro: `Operação "${acao}" não reconhecida. Nenhuma alteração foi gravada.` };
 
       revalidatePath("/administracao/transparencia/politica-de-pessoal");
       // ⚠️ O PORTAL PÚBLICO TAMBÉM: aprovar ou revogar muda o que o cidadão vê AGORA.
       revalidatePath("/transparencia/pessoal");
       return { sucesso: mensagem };
     } catch (e) {
-      return { erro: mensagemDoErro(e, "Não foi possível gravar a política. Nada foi gravado.") };
+      return { erro: mensagemDoErro(e, "Não foi possível gravar a política. Nenhuma alteração foi gravada.") };
     }
   });
 }

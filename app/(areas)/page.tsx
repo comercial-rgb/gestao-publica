@@ -70,7 +70,7 @@ export default async function DashboardPage({
   return (
     <div>
       <SincronizarHome />
-      <PageHeader titulo="Minha mesa" subtitulo="O que espera por você, o que você faz com frequência e, embaixo, o retrato do ente." />
+      <PageHeader titulo="Minha mesa" subtitulo="Pendências, ações frequentes e indicadores fiscais do exercício." />
 
       {/* ⚠️ ANTES DOS INDICADORES, e de propósito: o que ESPERA por quem abriu a tela vem
           antes do retrato do ente. Um painel que começa pelo consolidado obriga o operador
@@ -85,11 +85,11 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Retrato do ente — exercício {exercicio}</h2>
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Indicadores fiscais do exercício de {exercicio}</h2>
 
       {podeRelatorios ? null : (
         <p className="mb-4 text-sm text-[color:var(--color-ink-2)]">
-          Os indicadores fiscais do painel exigem a consulta de relatórios no ente inteiro, que o seu perfil não concede. As suas pendências continuam acima.
+          Os indicadores fiscais não são exibidos porque o seu perfil não tem acesso à consulta de relatórios.
         </p>
       )}
 
@@ -127,7 +127,7 @@ export default async function DashboardPage({
           <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Relatórios</h2>
           <p className="text-sm text-[color:var(--color-ink-2)]">
             Os demonstrativos fiscais (RREO) estão em{" "}
-            <Link href="/relatorios" className="font-medium text-[color:var(--color-primary)] hover:underline">Relatórios</Link>. Cada card acima leva ao seu.
+            <Link href="/relatorios" className="font-medium text-[color:var(--color-primary)] hover:underline">Relatórios</Link>. Cada indicador acima abre o demonstrativo correspondente.
           </p>
         </Card>
       </div>

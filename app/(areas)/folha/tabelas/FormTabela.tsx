@@ -36,8 +36,8 @@ export function FormTabela(): React.ReactElement {
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Nova tabela do ente</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Os valores vêm da norma vigente (portaria, lei ou decreto) e a fundamentação é obrigatória: nenhuma alíquota mora
-        no código do sistema. Sem tabela vigente na competência, a folha recusa calcular e diz qual falta.
+        Informe os valores conforme a norma vigente (portaria, lei ou decreto); a fundamentação é obrigatória. Sem tabela
+        vigente na competência, o cálculo da folha não é realizado.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -55,7 +55,7 @@ export function FormTabela(): React.ReactElement {
           <input name="competenciaInicio" required placeholder="2026-01" pattern="\d{4}-(0[1-9]|1[0-2])" className={CAMPO} />
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Vigente até (vazio = aberta)</span>
+          <span className={ROTULO}>Vigente até (opcional)</span>
           <input name="competenciaFim" placeholder="2026-12" pattern="\d{4}-(0[1-9]|1[0-2])" className={CAMPO} />
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-4">
@@ -66,7 +66,7 @@ export function FormTabela(): React.ReactElement {
         {contribuicao ? (
           <>
             <label className="text-xs text-[color:var(--color-ink-2)]">
-              <span className={ROTULO}>Teto do salário de contribuição (vazio = sem teto)</span>
+              <span className={ROTULO}>Teto do salário de contribuição (opcional)</span>
               <input name="teto" inputMode="decimal" placeholder="8.000,00" className={CAMPO} />
             </label>
             <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -83,7 +83,7 @@ export function FormTabela(): React.ReactElement {
               <input name="deducaoPorDependente" required inputMode="decimal" placeholder="189,59" className={CAMPO} />
             </label>
             <label className="text-xs text-[color:var(--color-ink-2)]">
-              <span className={ROTULO}>Desconto simplificado (vazio = sem o cenário)</span>
+              <span className={ROTULO}>Desconto simplificado (opcional)</span>
               <input name="descontoSimplificado" inputMode="decimal" className={CAMPO} />
             </label>
             <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -127,13 +127,13 @@ export function FormTabela(): React.ReactElement {
         <fieldset data-secao="faixas" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
           <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Faixas (da menor para a maior)</legend>
           <p className="mb-2 text-[11px] text-[color:var(--color-ink-3)]">
-            O limite é INCLUSIVO e só a última faixa fica sem limite. A alíquota se digita em porcento. O cálculo percorre
-            faixa a faixa: cada uma incide só sobre a parcela da base que cai nela.
+            O limite de cada faixa é inclusivo, e apenas a última faixa fica sem limite. Informe a alíquota em percentual.
+            Cada alíquota incide somente sobre a parcela da base compreendida na respectiva faixa.
           </p>
           {Array.from({ length: linhas }, (_, i) => (
             <div key={i} data-linha={i} className="mb-3 grid gap-3 rounded border border-dashed border-[color:var(--color-border)] p-2 sm:grid-cols-3">
               <label className="text-xs text-[color:var(--color-ink-2)]">
-                <span className={ROTULO}>Até (R$) — vazio na última</span>
+                <span className={ROTULO}>Até (R$), em branco na última faixa</span>
                 <input name={`faixas.${i}.ate`} inputMode="decimal" placeholder="1.621,00" className={CAMPO} />
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -142,7 +142,7 @@ export function FormTabela(): React.ReactElement {
               </label>
               {tipo === "IRRF" ? (
                 <label className="text-xs text-[color:var(--color-ink-2)]">
-                  <span className={ROTULO}>Parcela a deduzir (R$) — para conferência</span>
+                  <span className={ROTULO}>Parcela a deduzir (R$), para conferência</span>
                   <input name={`faixas.${i}.parcelaADeduzir`} inputMode="decimal" className={CAMPO} />
                 </label>
               ) : null}

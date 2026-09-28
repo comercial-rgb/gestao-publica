@@ -126,7 +126,7 @@ export function GerenciarPerfil({
               <span className={ROTULO}>Ação a conceder</span>
               <select name="acao" defaultValue="" className={CAMPO}>
                 <option value="" disabled>
-                  escolha a ação…
+                  Selecione a ação
                 </option>
                 {doGrupo.map((a) => (
                   <option key={a} value={a} disabled={jaConcedidasGlobais.has(a)}>
@@ -137,7 +137,7 @@ export function GerenciarPerfil({
               </select>
             </label>
             <label>
-              <span className={ROTULO}>Onde vale</span>
+              <span className={ROTULO}>Abrangência</span>
               <select name="unidadeOrcId" defaultValue="" className={CAMPO}>
                 <option value="">Todas as unidades gestoras</option>
                 {unidades.map((u) => (
@@ -163,7 +163,7 @@ export function GerenciarPerfil({
           <div>
             {permissoes.length > 0 ? (
               <span className="uppercase tracking-wide text-[color:var(--color-ink-2)]">
-                Revogar uma ação deste perfil
+                Revogar ação deste perfil
               </span>
             ) : null}
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -183,11 +183,11 @@ export function GerenciarPerfil({
                   <button
                     type="submit"
                     disabled={pendRevogar}
-                    title={p.unidadeOrc === null ? "vale em todas as unidades" : `unidade ${p.unidadeOrc}`}
+                    title={p.unidadeOrc === null ? "Válida em todas as unidades" : `Unidade ${p.unidadeOrc}`}
                     className="h-7 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-2 text-xs hover:bg-[color:var(--color-surface)]"
                   >
                     {p.acao}
-                    {p.unidadeOrc !== null ? ` · ${p.unidadeOrc}` : ""} — revogar
+                    {p.unidadeOrc !== null ? ` · ${p.unidadeOrc}` : ""} · Revogar
                   </button>
                 </form>
               ))}

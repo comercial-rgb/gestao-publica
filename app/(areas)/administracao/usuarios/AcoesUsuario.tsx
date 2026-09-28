@@ -69,12 +69,12 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
           {usuario.pessoa === null ? (
             <>
               <label>
-                <span className={ROTULO}>Vincular à pessoa do cadastro (CPF/CNPJ)</span>
+                <span className={ROTULO}>Vincular a pessoa cadastrada (CPF/CNPJ)</span>
                 <input name="documento" required placeholder="000.000.000-00" className={CAMPO} />
               </label>
               <label>
                 <span className={ROTULO}>Motivo</span>
-                <input name="motivo" required minLength={5} placeholder="É o servidor da matrícula…" className={CAMPO} />
+                <input name="motivo" required minLength={5} placeholder="Ex.: servidor da matrícula 1234" className={CAMPO} />
               </label>
               <button type="submit" disabled={pendVinc} className={BOTAO}>Vincular</button>
             </>
@@ -100,7 +100,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
           <label>
             <span className={ROTULO}>Conceder perfil</span>
             <select name="perfilId" defaultValue="" className={CAMPO} disabled={naoVinculados.length === 0}>
-              <option value="" disabled>{naoVinculados.length === 0 ? "já tem todos" : "escolha…"}</option>
+              <option value="" disabled>{naoVinculados.length === 0 ? "Todos os perfis já atribuídos" : "Selecione"}</option>
               {naoVinculados.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
             </select>
           </label>
@@ -129,7 +129,7 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
           <ChaveDeComando />
           <input type="hidden" name="usuarioId" value={usuario.id} />
           <button type="submit" disabled={pendAtivo} className={BOTAO}>
-            {usuario.ativo ? "Inativar (derruba as sessões dele)" : "Reativar"}
+            {usuario.ativo ? "Inativar (encerra as sessões ativas)" : "Reativar"}
           </button>
           <Mensagem estado={estAtivo} />
         </form>
@@ -139,10 +139,10 @@ export function AcoesUsuario({ usuario, perfis }: { readonly usuario: UsuarioLin
           <ChaveDeComando />
           <input type="hidden" name="usuarioId" value={usuario.id} />
           <label>
-            <span className={ROTULO}>Nova senha temporária (mín. 12)</span>
-            <input name="senhaTemporaria" required minLength={12} placeholder="frase longa" className={CAMPO} />
+            <span className={ROTULO}>Nova senha temporária (mínimo de 12 caracteres)</span>
+            <input name="senhaTemporaria" required minLength={12} placeholder="Frase longa" className={CAMPO} />
           </label>
-          <button type="submit" disabled={pendReset} className={BOTAO}>Resetar senha</button>
+          <button type="submit" disabled={pendReset} className={BOTAO}>Redefinir senha</button>
           <Mensagem estado={estReset} />
         </form>
       </div>

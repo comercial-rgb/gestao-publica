@@ -50,8 +50,8 @@ export default async function DemonstrativosPublicosPage(): Promise<React.ReactE
       </nav>
 
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        Escolha o exercício e o período — o PDF é gerado sob demanda, com hash SHA-256 do conteúdo no rodapé.
-        ⚠️ Os documentos ainda <strong>não são assinados digitalmente</strong> (certificado ICP-Brasil pendente).
+        Escolha o exercício e o bimestre. O PDF é gerado no momento da consulta e traz no rodapé um código de
+        verificação de integridade (SHA-256). Os documentos ainda <strong>não possuem assinatura digital</strong>.
       </p>
 
       <ul className="space-y-3">

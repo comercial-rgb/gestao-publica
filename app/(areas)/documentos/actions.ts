@@ -124,8 +124,8 @@ export async function anexarArquivoAction(
       revalidarDono(dono);
       return {
         sucesso:
-          `"${arquivo.name}" anexado. Verificação: ${r.sha256.slice(0, 12)}… — é este ` +
-          `valor que prova, depois, que o arquivo é o mesmo.`,
+          `"${arquivo.name}" anexado. Código de verificação: ${r.sha256.slice(0, 12)}…, ` +
+          `que permite confirmar posteriormente a integridade do arquivo.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : String(e) };

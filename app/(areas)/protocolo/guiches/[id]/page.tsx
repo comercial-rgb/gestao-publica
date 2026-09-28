@@ -60,7 +60,7 @@ export default async function AgendaDoGuichePage({
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Agenda do guichê" subtitulo="Atendimento presencial" />
-        <EstadoVazio titulo="Não foi possível ler a agenda" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar a agenda" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
       </div>
     );
   }
@@ -70,7 +70,7 @@ export default async function AgendaDoGuichePage({
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Agenda do guichê" subtitulo="Atendimento presencial" />
-        <EstadoVazio titulo="Guichê não encontrado" descricao="Ele pode ter sido criado noutra unidade, ou o endereço está errado." />
+        <EstadoVazio titulo="Guichê não encontrado" descricao="Verifique o endereço acessado ou selecione o guichê na tela de organização do atendimento." />
       </div>
     );
   }
@@ -109,7 +109,7 @@ export default async function AgendaDoGuichePage({
       {fechado !== null ? (
         <EstadoVazio
           titulo={`A unidade não abre em ${br(dia)}`}
-          descricao={`${fechado.motivo}. Nenhum horário é oferecido neste dia, e nada pode ser marcado.`}
+          descricao={`${fechado.motivo}. Não há horários disponíveis para agendamento neste dia.`}
         />
       ) : (
         <>
@@ -123,7 +123,7 @@ export default async function AgendaDoGuichePage({
           {agenda.oferta.horarios.length === 0 ? (
             <EstadoVazio
               titulo="Sem oferta publicada para este dia da semana"
-              descricao="Este guichê não oferece horário nenhum em dias como este. Publique a oferta na tela de organização — não existe expediente padrão."
+              descricao="Este guichê não possui horários para este dia da semana. Publique a oferta na tela de organização do atendimento."
             />
           ) : (
             <Card>
@@ -137,7 +137,7 @@ export default async function AgendaDoGuichePage({
                   <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                     <th className="py-1.5 pr-4">Horário</th>
                     <th className="py-1.5 pr-4">Vagas</th>
-                    <th className="py-1.5">Quem está marcado</th>
+                    <th className="py-1.5">Agendados</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,7 +153,7 @@ export default async function AgendaDoGuichePage({
                         </td>
                         <td className="py-1.5">
                           {doHorario.length === 0 ? (
-                            <span className="text-xs text-[color:var(--color-ink-3)]">ninguém</span>
+                            <span className="text-xs text-[color:var(--color-ink-3)]">nenhum agendamento</span>
                           ) : (
                             <ul className="space-y-2">
                               {doHorario.map((r) => (
@@ -169,7 +169,7 @@ export default async function AgendaDoGuichePage({
                                       ninguém — quem está no guichê tem de pedir o documento. */}
                                   {r.pelaInternet ? (
                                     <span className="ml-1 text-xs text-[color:var(--color-ink-3)]">
-                                      · pela internet, dados a conferir
+                                      · agendado pela internet, conferir documento
                                     </span>
                                   ) : null}
                                   {r.reagendamentos > 0 ? (

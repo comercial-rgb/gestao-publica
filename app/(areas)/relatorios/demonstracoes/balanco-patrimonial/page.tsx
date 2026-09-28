@@ -69,7 +69,7 @@ export default async function BalancoPatrimonialPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível emitir o Balanço Patrimonial"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -147,7 +147,7 @@ export default async function BalancoPatrimonialPage({
           colunas={COLUNAS_COMPOSICAO}
           linhas={q.composicao}
           keyDe={(c) => c.codigo}
-          legenda="Composição conta a conta do quadro financeiro e permanente — valores em R$"
+          legenda="Composição por conta do quadro financeiro e permanente — valores em R$"
         />
       ) : null}
 
@@ -179,7 +179,7 @@ export default async function BalancoPatrimonialPage({
           ]}
           keyDe={(l) => l.fonte}
           ehTotal={(l) => l.fonte === "TOTAL"}
-          legenda="Superávit financeiro por fonte (art. 43, § 1º, III) — valores em R$ · fonte deficitária aparece negativa · restos a pagar é informativo e não é subtraído"
+          legenda="Superávit financeiro por fonte (art. 43, § 1º, III) — valores em R$ · fonte deficitária aparece negativa · a coluna restos a pagar é informativa e não é deduzida"
         />
       )}
     </div>

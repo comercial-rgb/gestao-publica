@@ -55,7 +55,7 @@ export default async function ComunicadosPage({
     <div className="flex flex-col gap-6">
       <PageHeader
         titulo="Comunicação interna"
-        subtitulo="Memorandos, ofícios e circulares. As caixas são calculadas para quem olha — o mesmo documento está na saída de um e na entrada do outro."
+        subtitulo="Memorandos, ofícios e circulares trocados entre os setores."
       />
 
       <Card>
@@ -94,8 +94,8 @@ export default async function ComunicadosPage({
 
         {lista.length === 0 ? (
           <EstadoVazio
-            titulo="Nada nesta caixa"
-            descricao="Você vê os comunicados dos setores em que está lotado — como remetente ou como destinatário — e os que emitiu. Sem lotação, a caixa fica vazia."
+            titulo="Nenhum comunicado nesta caixa"
+            descricao="São exibidos os comunicados emitidos pelo usuário e os dos setores em que ele está lotado, como remetente ou destinatário."
           />
         ) : (
           <div className="overflow-x-auto">
@@ -127,7 +127,7 @@ export default async function ComunicadosPage({
                       ) : null}
                       {c.aosCuidadosDeMim ? (
                         <span className="ml-2">
-                          <Badge status="alerta">A/C você</Badge>
+                          <Badge status="alerta">aos seus cuidados</Badge>
                         </span>
                       ) : null}
                     </td>

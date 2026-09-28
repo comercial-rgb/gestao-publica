@@ -27,55 +27,55 @@ const ABERTAS: readonly Familia[] = [
   {
     titulo: "Bens patrimoniais",
     descricao:
-      "O acervo do município, bem a bem: tombamento, classe, data de aquisição, situação e estado. Filtros por ano, espécie e situação; exportação em CSV do mesmo recorte da tela.",
+      "Bens patrimoniais, com tombamento, classe, data de aquisição, situação e estado de conservação. Permite filtrar por ano, espécie e situação e exportar em CSV.",
     href: "/transparencia/bens",
   },
   {
     titulo: "Despesas",
     descricao:
-      "Empenhos do ente, com credor, histórico, contrato vinculado e os valores empenhado, anulado, liquidado e pago. Uma linha por empenho: as fases são colunas dele, não despesas distintas.",
+      "Empenhos, com credor, histórico, contrato vinculado e valores empenhado, anulado, liquidado e pago.",
     href: "/transparencia/despesas",
   },
   {
     titulo: "Receitas",
     descricao:
-      "As guias de arrecadação do ente, com natureza, fonte, arrecadado, anulado e líquido, mais a previsão da LOA, as reprevisões e a execução do exercício. O crédito constituído aparece à parte: ele não se soma à arrecadação — é o mesmo dinheiro em dois momentos.",
+      "Guias de arrecadação, com natureza, fonte e valores arrecadado, anulado e líquido, além da previsão da LOA, dos ajustes e da execução da receita no exercício.",
     href: "/transparencia/receitas",
   },
   {
     titulo: "Pessoal",
     descricao:
-      "Totais de folha por unidade e regime, e — quando o ente aprova a política que a autoriza — a linha por servidor com as colunas desse ato. Publica apenas folhas fechadas, e nunca dependente, plano de saúde, pensão ou imposto individual.",
+      "Totais da folha de pagamento por lotação e regime e, quando houver política de divulgação aprovada, valores por servidor. Apenas folhas fechadas, sem dados de dependentes, plano de saúde, pensão ou imposto individual.",
     href: "/transparencia/pessoal",
   },
   {
     titulo: "Contratos",
     descricao:
-      "Os contratos do ente, com objeto, contratado, vigência, valores, aditivos e a execução física já aprovada.",
+      "Contratos, com objeto, contratado, vigência, valores, aditivos e execução física aprovada.",
     href: "/transparencia/contratos",
   },
   {
     titulo: "Demonstrativos fiscais",
     descricao:
-      "RREO e RGF publicados, em PDF e CSV, abertos sem cadastro (LC 131/2009).",
+      "Relatório Resumido da Execução Orçamentária (RREO) e Relatório de Gestão Fiscal (RGF), em PDF (LC 131/2009).",
     href: "/transparencia/demonstrativos",
   },
   {
     titulo: "Carta de serviços",
     descricao:
-      "O que o ente oferece, com requisitos, documentos, prazo e custo — e quais pedidos podem ser feitos pela internet.",
+      "Serviços oferecidos, com requisitos, documentos, prazo e custo, e quais podem ser solicitados pela internet.",
     href: "/servicos",
   },
   {
     titulo: "Ouvidoria",
     descricao:
-      "Registrar reclamação, denúncia, sugestão, elogio ou pedido de informação, e acompanhar pelo código do protocolo.",
+      "Registre reclamação, denúncia, sugestão, elogio ou pedido de informação e acompanhe a resposta pelo protocolo.",
     href: "/ouvidoria",
   },
   {
     titulo: "Consulta por protocolo",
     descricao:
-      "Conferir um processo ou documento pelo número e pelo código verificador, sem entrar com conta.",
+      "Acompanhe um processo pelo número e pelo código verificador, sem necessidade de cadastro.",
     href: "/consulta",
   },
 ];
@@ -98,9 +98,9 @@ export default async function PortalDaTransparenciaPage(): Promise<React.ReactEl
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-[color:var(--color-ink)]">Transparência</h1>
         <p className="mt-1 max-w-2xl text-sm text-[color:var(--color-ink-2)]">
-          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} — consultas abertas, sem cadastro e sem
-          identificação. Os filtros ficam no endereço da página: a consulta que você montou pode ser
-          copiada e enviada como link.
+          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · consultas de acesso livre, sem cadastro
+          e sem identificação. Os resultados filtrados podem ser compartilhados copiando o endereço da
+          página.
         </p>
       </header>
 
@@ -133,8 +133,7 @@ export default async function PortalDaTransparenciaPage(): Promise<React.ReactEl
           Ainda não publicadas
         </h2>
         <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
-          Estas consultas estão previstas e ainda não abriram. Ficam listadas aqui, sem link, em vez de
-          aparecerem como página vazia.
+          Estas consultas estão previstas e serão disponibilizadas em breve.
         </p>
         <ul className="mt-3 space-y-2">
           {AINDA_NAO_PUBLICADAS.map((f) => (

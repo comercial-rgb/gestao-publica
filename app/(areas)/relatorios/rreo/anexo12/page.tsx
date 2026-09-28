@@ -56,10 +56,10 @@ export default async function RreoAnexo12Page({
       <div>
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 12"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 12"}
           descricao={
             erro instanceof PortaSemBancoError
-              ? "A variável DATABASE_URL não está definida. Configure o banco e recarregue."
+              ? "Não foi possível acessar os dados. Tente novamente mais tarde."
               : erro instanceof Error
                 ? erro.message
                 : "Erro desconhecido ao ler o demonstrativo."
@@ -114,7 +114,7 @@ export default async function RreoAnexo12Page({
           keyDe={(l) => l.chave}
           ehTotal={(l) => l.nivel === "total"}
           recuoDe={(l) => (l.nivel === "item" ? 1 : 0)}
-          legenda="Valores em R$ · transferências pelo BRUTO (a dedução do FUNDEB não abate a base do art. 198)."
+          legenda="Valores em R$ · transferências pelo valor bruto, sem a dedução para o FUNDEB (CF, art. 198)."
         />
       </section>
 
@@ -127,7 +127,7 @@ export default async function RreoAnexo12Page({
           keyDe={(l) => l.chave}
           ehTotal={(l) => l.nivel === "total"}
           recuoDe={(l) => (l.nivel === "grupo" ? 1 : 0)}
-          legenda="Valores em R$ · corte pela data do fato, líquido de estornos."
+          legenda="Valores em R$ · líquidos de estornos."
         />
       </section>
 

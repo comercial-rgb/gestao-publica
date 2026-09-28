@@ -55,7 +55,7 @@ export default async function RgfAnexo6Page({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 6"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 6"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -67,15 +67,15 @@ export default async function RgfAnexo6Page({
       {cabecalho}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        A capa da gestão fiscal: o resultado de cada limite, com VALOR, % sobre a RCL ajustada e
-        LIMITE. Cada número é o do anexo analítico indicado, onde o detalhe e a memória de cálculo moram.
+        Resumo dos limites da gestão fiscal, com valor, percentual sobre a RCL ajustada e limite.
+        Cada linha indica o anexo em que o valor é detalhado.
       </p>
 
       <TabelaDeDados
         colunas={COLUNAS}
         linhas={[...a6.linhas]}
         keyDe={(l) => l.chave}
-        legenda="Valores em R$ · % e limites sobre a RCL ajustada · o Badge é o mesmo do anexo de origem."
+        legenda="Valores em R$ · percentuais e limites sobre a RCL ajustada."
       />
 
       {a6.blocoDisponibilidade !== null ? (
@@ -88,7 +88,7 @@ export default async function RgfAnexo6Page({
             <CardValor rotulo="RP empenhados e não liquidados do exercício" valor={a6.blocoDisponibilidade.rpnpDoExercicio} />
             <CardValor rotulo="Disponibilidade após a inscrição" valor={a6.blocoDisponibilidade.disponibilidadeApos} />
           </div>
-          <p className="text-xs text-[color:var(--color-ink-3)]">Do RGF Anexo 5, consolidado por vinculação. Só apurado no último quadrimestre.</p>
+          <p className="text-xs text-[color:var(--color-ink-3)]">Valores do RGF Anexo 5, consolidados por vinculação. Apurados apenas no 3º quadrimestre.</p>
         </section>
       ) : null}
 
@@ -103,9 +103,9 @@ export default async function RgfAnexo6Page({
 
       <RelatoriosRelacionados
         relacoes={[
-          { href: "/relatorios/rgf/anexo1", rotulo: "RGF Anexo 1 — Despesa com Pessoal", motivo: "O detalhe da despesa com pessoal por Poder mora lá." },
-          { href: "/relatorios/rgf/anexo2", rotulo: "RGF Anexo 2 — Dívida Consolidada Líquida", motivo: "A memória da DCL e das deduções mora lá." },
-          { href: "/relatorios/rgf/anexo4", rotulo: "RGF Anexo 4 — Operações de Crédito", motivo: "O detalhe das operações de crédito e da ARO mora lá." },
+          { href: "/relatorios/rgf/anexo1", rotulo: "RGF Anexo 1 — Despesa com Pessoal", motivo: "Detalhamento da despesa com pessoal por Poder." },
+          { href: "/relatorios/rgf/anexo2", rotulo: "RGF Anexo 2 — Dívida Consolidada Líquida", motivo: "Memória de cálculo da DCL e das deduções." },
+          { href: "/relatorios/rgf/anexo4", rotulo: "RGF Anexo 4 — Operações de Crédito", motivo: "Detalhamento das operações de crédito e da ARO." },
         ]}
       />
     </div>

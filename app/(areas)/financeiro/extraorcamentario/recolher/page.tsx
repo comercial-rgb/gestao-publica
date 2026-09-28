@@ -52,7 +52,7 @@ export default async function Page({
       <div>
         <PageHeader
           acoes={voltar}
-          subtitulo="Escolha a obrigação a recolher. Em seguida você informa de quais retenções sai cada centavo — inclusive de exercícios anteriores."
+          subtitulo="Escolha a obrigação a recolher e informe as retenções que compõem o recolhimento, inclusive de exercícios anteriores."
           titulo="Recolher consignações"
         />
         {comSaldo.length === 0 ? (
@@ -102,14 +102,14 @@ export default async function Page({
             Escolher outra obrigação
           </Link>
         }
-        subtitulo={`${tipo} · consignatário ${credor}. Informe de quais retenções sai cada centavo desta guia; o valor do recolhimento é a soma das parcelas.`}
+        subtitulo={`${tipo} · consignatário ${credor}. Informe o valor recolhido de cada retenção; o total da guia é a soma das parcelas.`}
         titulo="Compor o recolhimento"
       />
 
       <div className="mb-6 overflow-x-auto">
         <table className="w-full text-sm">
           <caption className="mb-2 text-left text-sm text-[color:var(--color-ink-2)]">
-            As retenções desta obrigação — retenção estornada permanece na lista, com zero a recolher
+            Retenções desta obrigação. As retenções estornadas permanecem na lista, sem valor a recolher.
           </caption>
           <thead>
             <tr className="border-b border-[color:var(--color-border)] text-left">

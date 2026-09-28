@@ -39,18 +39,15 @@ export function FormEncerramentoDoExercicio({
         <input name="ano" type="hidden" value={exercicio} />
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
           <strong className="text-[color:var(--color-ink)]">
-            O que este ato faz, e o que ele impede depois.
+            Atenção: esta operação não pode ser desfeita pela tela.
           </strong>{" "}
-          Varre as fichas de todas as unidades, inscreve como restos a pagar o que está{" "}
-          <strong>liquidado e não pago</strong> (processados) e o que está{" "}
-          <strong>empenhado e não liquidado</strong> (não processados), e grava o encerramento —
-          tudo na mesma operação. A dotação não é tocada: inscrever resto não é gastar de novo, é
-          reconhecer o que ficou pendente.{" "}
+          Inscreve como restos a pagar, em todas as unidades, as despesas{" "}
+          <strong>liquidadas e não pagas</strong> (processados) e as{" "}
+          <strong>empenhadas e não liquidadas</strong> (não processados), e registra o encerramento
+          do exercício. A dotação não é alterada.{" "}
           <strong>
-            Depois dele, fatos com data em {exercicio} passam a ser recusados pelo controle de
-            período.
-          </strong>{" "}
-          Não há desfazimento por tela.
+            Após o encerramento, não será possível registrar movimentos com data em {exercicio}.
+          </strong>
         </div>
         <label className="block text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Para confirmar, digite o ano do exercício</span>
@@ -118,14 +115,10 @@ export function FormApuracaoDoResultado({
         <ChaveDeComando />
         <input name="ano" type="hidden" value={exercicio} />
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-          <strong className="text-[color:var(--color-ink)]">O que este ato faz.</strong> Zera as
-          contas de <strong>variação patrimonial</strong> do exercício e transfere o saldo para o{" "}
-          <strong>patrimônio líquido</strong>, na conta de resultados acumulados que o ente
-          parametrizou. Superávit e déficit são os dois resultados possíveis, e nenhum deles é erro.{" "}
-          <strong>
-            Ele só roda depois de o exercício estar encerrado
-          </strong>{" "}
-          — apurar um ano que ainda recebe fato daria um resultado que muda depois de publicado.
+          Encerra as contas de <strong>variação patrimonial</strong> do exercício e transfere o saldo
+          para a conta de resultados acumulados do <strong>patrimônio líquido</strong>, parametrizada
+          pelo ente. O resultado pode ser superávit ou déficit.{" "}
+          <strong>A apuração só pode ser feita após o encerramento do exercício.</strong>
         </div>
         <label className="block text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Para confirmar, digite o ano do exercício</span>

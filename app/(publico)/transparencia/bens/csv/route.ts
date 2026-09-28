@@ -39,7 +39,7 @@ export async function GET(req: Request): Promise<Response> {
     });
   } catch (e) {
     if (!(e instanceof PortaSemBancoError)) throw e;
-    return new Response("A consulta esta indisponivel agora: o banco de dados nao respondeu.", {
+    return new Response("A consulta está temporariamente indisponível. Tente novamente mais tarde.", {
       status: 503,
       headers: { "content-type": "text/plain; charset=utf-8" },
     });
@@ -84,7 +84,7 @@ export async function GET(req: Request): Promise<Response> {
   const corpo =
     paraCsv(colunas, linhas) +
     (truncado
-      ? `\r\n"⚠️ ARQUIVO TRUNCADO: a consulta tem ${dados.total} bens e este arquivo traz os primeiros ${dados.linhas.length}. Estreite os filtros."\r\n`
+      ? `\r\n"Arquivo parcial: a consulta tem ${dados.total} bens e este arquivo traz os primeiros ${dados.linhas.length}. Refine os filtros para obter o conjunto completo."\r\n`
       : "");
 
   return new Response(corpo, {

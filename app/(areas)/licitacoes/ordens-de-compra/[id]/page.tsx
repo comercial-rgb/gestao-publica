@@ -36,8 +36,8 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   // ⚠️ RECEBER E EMPENHAR LEEM A MESMA PROJEÇÃO QUE A BARRA — o predicado é do domínio. Falhar a
   // consulta trava os dois (fail-closed), em vez de oferecer o que talvez não caiba.
   const disponibilidade = await disponibilidadeDaOrdem(id).catch(() => null);
-  const receber = disponibilidade?.porAcao["receber"] ?? { apresentacao: "bloqueada" as const, motivo: "Não foi possível conferir se cabe receber agora. Recarregue a página." };
-  const empenhar = disponibilidade?.porAcao["empenhar"] ?? { apresentacao: "bloqueada" as const, motivo: "Não foi possível conferir se cabe empenhar agora." };
+  const receber = disponibilidade?.porAcao["receber"] ?? { apresentacao: "bloqueada" as const, motivo: "Não foi possível verificar a disponibilidade para recebimento. Recarregue a página." };
+  const empenhar = disponibilidade?.porAcao["empenhar"] ?? { apresentacao: "bloqueada" as const, motivo: "Não foi possível verificar a disponibilidade para empenho." };
   return (
     <DetalheDeRecurso
       definicao={ORDENS_DE_COMPRA}
@@ -52,7 +52,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
         <div className="space-y-4">
           {estornada ? (
             <p role="status" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]" data-ordem-estornada>
-              Esta ordem está ESTORNADA. Ela continua no histórico; não recebe, não empenha e não liga solicitação. As parcelas de solicitação que ela atendia voltaram a pendente.
+              Esta ordem foi estornada e permanece no histórico. Não admite recebimento, empenho nem vínculo com solicitação, e as quantidades das solicitações atendidas voltaram a ficar pendentes.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-3 text-sm">
@@ -85,7 +85,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
           ) : null}
           {!permitidas.has("REGISTRAR_RECEBIMENTO_DE_ORDEM") ? (
             <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
-              Você não tem a permissão necessária para registrar recebimento. Peça ao administrador do sistema — a concessão é por ação, e é registrada.
+              Seu perfil não tem permissão para registrar recebimentos. Solicite a permissão ao administrador do sistema.
             </p>
           ) : receber.apresentacao === "disponivel" && detalhe.itensParaReceber.length > 0 ? (
             <FormRecebimento ordemId={id} itensDaOrdem={detalhe.itensParaReceber} documentos={documentos} />

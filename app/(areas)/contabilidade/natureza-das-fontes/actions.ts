@@ -28,7 +28,7 @@ export async function declararNaturezaAction(
     if (t(f, "fonteCodigo") === "") return { erro: "Fonte não informada." };
     if (t(f, "natureza") === "") return { erro: "Escolha a natureza do recurso." };
     if (t(f, "fundamento") === "") {
-      return { erro: "Diga por que esta fonte é desta natureza." };
+      return { erro: "Informe o fundamento da natureza declarada para esta fonte." };
     }
     try {
       const sucesso = await declararNatureza({

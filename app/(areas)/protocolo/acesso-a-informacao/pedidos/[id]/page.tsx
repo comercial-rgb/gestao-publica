@@ -66,7 +66,7 @@ export default async function Pagina({
               <dd className="font-semibold" data-prorrogacoes>{v.prorrogacoesAplicadas}</dd>
             </div>
             <div>
-              <dt className="text-[color:var(--color-ink-2)]">Norma obedecida</dt>
+              <dt className="text-[color:var(--color-ink-2)]">Norma aplicada</dt>
               <dd className="font-semibold" data-norma>{v.prazo.normaFederal ?? "nenhuma publicada"}</dd>
             </div>
           </dl>
@@ -80,7 +80,7 @@ export default async function Pagina({
         </Card>
 
         <Card>
-          <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Trilha interna</h2>
+          <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Histórico interno</h2>
           <ol className="space-y-2 text-xs" data-trilha-interna>
             {v.trilha.map((l, i) => (
               <li key={`${l.natureza}-${i}`} data-fato={l.natureza} className="border-t border-[color:var(--color-border)] pt-2 first:border-0 first:pt-0">
@@ -100,10 +100,10 @@ export default async function Pagina({
         </Card>
 
         <Card>
-          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">O que o requerente vê</h2>
+          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Visão do requerente</h2>
           <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
-            Esta é a mesma projeção da consulta pública, pelo número {v.protocolo} e o código {p.codigoVerificador}.
-            O registro interno, a prévia, o autor de cada ato e o setor não aparecem para ele.
+            Informações exibidas na consulta pública pelo número {v.protocolo} e pelo código {p.codigoVerificador}.
+            Registros internos, prévias, responsáveis e setores não são exibidos ao requerente.
           </p>
           <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2" data-visao-do-requerente>
             <div>

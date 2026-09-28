@@ -46,7 +46,7 @@ export default async function EtiquetasPage({
     <div className="no-print">
       <PageHeader
         titulo="Etiquetas de patrimônio"
-        subtitulo={`Folha para impressão com o código de barras de cada bem (Code 128). Até ${TETO_DO_LOTE} por folha; o código impresso é o gravado no cadastro.`}
+        subtitulo={`Folha de etiquetas com o código de barras de cada bem, até ${TETO_DO_LOTE} por impressão.`}
       />
     </div>
   );
@@ -61,13 +61,13 @@ export default async function EtiquetasPage({
           <div className="no-print">
             <EstadoVazio
               titulo="Nenhum bem para etiquetar"
-              descricao="Abra a etiqueta pelo detalhe do bem, ou marque bens na lista do acervo e use o link de etiquetas da seleção."
+              descricao="Acesse a etiqueta pelo detalhe do bem, ou selecione bens na lista de bens patrimoniais e utilize a opção de imprimir etiquetas."
             />
           </div>
         ) : null}
         {lote.semCodigo.length > 0 ? (
           <div className="no-print rounded border border-[color:var(--color-linha)] p-3 text-sm" data-sem-codigo={lote.semCodigo.length}>
-            <p className="font-medium">{lote.semCodigo.length} bem(ns) fora da folha:</p>
+            <p className="font-medium">{lote.semCodigo.length} bem(ns) não incluído(s) na folha:</p>
             <ul className="mt-1 list-disc pl-5">
               {lote.semCodigo.map((b) => (
                 <li key={b.id}>
@@ -78,7 +78,7 @@ export default async function EtiquetasPage({
           </div>
         ) : null}
         {lote.naoEncontrados > 0 ? (
-          <p className="no-print text-sm text-[color:var(--color-status-erro-fg)]">{lote.naoEncontrados} identificador(es) não correspondem a bem nenhum e foram ignorados.</p>
+          <p className="no-print text-sm text-[color:var(--color-status-erro-fg)]">{lote.naoEncontrados} bem(ns) não encontrado(s) foram desconsiderados.</p>
         ) : null}
         {lote.etiquetas.length > 0 ? (
           <>
@@ -106,7 +106,7 @@ export default async function EtiquetasPage({
       return (
         <div className="space-y-4">
           {cabecalho}
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="A folha lê os bens e os códigos gravados. Sem banco, não tem o que imprimir." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar os dados dos bens no momento. Tente novamente em instantes." />
         </div>
       );
     }

@@ -54,7 +54,7 @@ export default async function RgfAnexo3Page({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 3"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 3"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -77,7 +77,7 @@ export default async function RgfAnexo3Page({
         </div>
       ) : ref.emAlerta === true ? (
         <div role="alert" className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-sm text-[color:var(--color-status-alerta-fg)]">
-          <strong>Limite de alerta:</strong> as garantias já passaram dos {a3.limiteAlerta}% (art. 59, §1º, III).
+          <strong>Limite de alerta:</strong> as garantias ultrapassaram {a3.limiteAlerta}% da RCL ajustada (LRF art. 59, §1º, III).
         </div>
       ) : null}
 
@@ -98,12 +98,12 @@ export default async function RgfAnexo3Page({
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Garantias concedidas</h2>
-        <TabelaDeDados colunas={COLUNAS} linhas={linhasGarantia} keyDe={(l) => l.chave} ehTotal={(l) => l.total} legenda="Valores em R$ · Externas + Internas · corte pela data do fato." />
+        <TabelaDeDados colunas={COLUNAS} linhas={linhasGarantia} keyDe={(l) => l.chave} ehTotal={(l) => l.total} legenda="Valores em R$ · garantias externas e internas." />
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Contragarantias recebidas (espelho)</h2>
-        <TabelaDeDados colunas={COLUNAS} linhas={linhasContra} keyDe={(l) => l.chave} ehTotal={(l) => l.total} legenda="Valores em R$ · o espelho das garantias." />
+        <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Contragarantias recebidas</h2>
+        <TabelaDeDados colunas={COLUNAS} linhas={linhasContra} keyDe={(l) => l.chave} ehTotal={(l) => l.total} legenda="Valores em R$ · contragarantias correspondentes às garantias concedidas." />
       </section>
 
       <section className="space-y-1">
@@ -112,13 +112,13 @@ export default async function RgfAnexo3Page({
           {a3.medidasCorretivas === null
             ? "Sem excesso de garantias no período — não há medida corretiva a informar."
             : a3.medidasCorretivas === ""
-              ? "O layout pede medidas corretivas quando o limite é excedido; descreva-as aqui."
+              ? "Limite excedido sem medidas corretivas informadas. O demonstrativo exige a descrição das medidas adotadas."
               : a3.medidasCorretivas}
         </p>
       </section>
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        <p className="mb-1 font-medium uppercase tracking-wide">Notas e interruptores</p>
+        <p className="mb-1 font-medium uppercase tracking-wide">Notas do demonstrativo</p>
         <ul className="list-disc space-y-1 pl-4">
           {a3.notas.map((n, i) => (
             <li key={i}>{n}</li>
@@ -131,12 +131,12 @@ export default async function RgfAnexo3Page({
           {
             href: "/relatorios/rgf/anexo2",
             rotulo: "RGF Anexo 2 — Dívida Consolidada Líquida",
-            motivo: "A garantia é dívida de terceiro que o ente pode ter de honrar; se honrada, vira dívida própria e aparece na DCL do Anexo 2. A RCL ajustada é a mesma.",
+            motivo: "Garantias honradas pelo ente passam a integrar a Dívida Consolidada Líquida. A RCL ajustada é a mesma.",
           },
           {
             href: "/relatorios/rreo/anexo3",
             rotulo: "RREO Anexo 3 — RCL",
-            motivo: "A RCL ajustada que o limite de garantias usa vem daqui — o motor único (regra Siconfi).",
+            motivo: "Origem da RCL ajustada utilizada no limite de garantias.",
           },
         ]}
       />

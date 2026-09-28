@@ -84,19 +84,16 @@ export function FormClassificarConta({
   return (
     <details className={PAINEL} data-forma="classificar-conta-na-virada">
       <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">
-        Declarar o destino de uma conta de controle na virada
+        Classificar o destino de uma conta de controle
       </summary>
       <form action={action} className="mt-4 space-y-4" data-acao="classificar-conta-na-virada">
         <ChaveDeComando />
 
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-          <strong className="text-[color:var(--color-ink)]">O que esta decisão significa.</strong>{" "}
-          <strong>ENCERRA</strong>: o saldo da conta morre em 31 de dezembro. É o caso da dotação e do
-          crédito — o orçamento é anual, e o crédito não empenhado caduca.{" "}
-          <strong>TRANSFERE</strong>: o saldo atravessa para o exercício seguinte, sem receber partida
-          nenhuma. É o caso do controle dos restos a pagar, que continuam sendo executados no ano
-          seguinte. <strong>A justificativa é obrigatória</strong> e fica gravada com o seu nome: quem
-          auditar daqui a anos vai perguntar por que a dotação morreu e o resto a pagar não.
+          <strong>ENCERRA</strong>: o saldo é encerrado em 31 de dezembro, como a dotação e o crédito
+          não empenhado. <strong>TRANSFERE</strong>: o saldo passa ao exercício seguinte, como o
+          controle dos restos a pagar. A justificativa é obrigatória e fica registrada com o
+          responsável.
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -114,19 +111,19 @@ export function FormClassificarConta({
             </select>
           </label>
           <label className="block">
-            <span className={ROTULO}>Destino na virada</span>
+            <span className={ROTULO}>Destino no encerramento</span>
             <select className={CAMPO} defaultValue="ENCERRA" name="destino" required>
-              <option value="ENCERRA">ENCERRA — o saldo morre em 31 de dezembro</option>
-              <option value="TRANSFERE">TRANSFERE — o saldo atravessa a virada</option>
+              <option value="ENCERRA">ENCERRA: saldo encerrado em 31 de dezembro</option>
+              <option value="TRANSFERE">TRANSFERE: saldo transferido ao exercício seguinte</option>
             </select>
           </label>
           <label className="block sm:col-span-2">
-            <span className={ROTULO}>Justificativa da decisão</span>
+            <span className={ROTULO}>Justificativa</span>
             <textarea
               className={AREA}
               minLength={15}
               name="justificativa"
-              placeholder="O orcamento e anual: em 31 de dezembro a autorizacao de gastar morre e o credito nao empenhado caduca (Constituicao, artigo 167, inciso II)."
+              placeholder="Ex.: crédito orçamentário não empenhado, extinto ao fim do exercício (CF, art. 167, II)."
               required
             />
           </label>
@@ -173,18 +170,10 @@ export function FormEncerrarControles({
         <input name="ano" type="hidden" value={exercicio} />
 
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-          <strong className="text-[color:var(--color-ink)]">
-            O que este ato faz, e o que ele impede depois.
-          </strong>{" "}
-          Grava um lançamento único, datado do último instante de {exercicio}, que zera todas as
-          contas de controle classificadas como <strong>ENCERRA</strong> e deixa intactas as
-          classificadas como <strong>TRANSFERE</strong>. Depois dele, o exercício seguinte não nasce
-          mais com a dotação e o crédito do anterior somados aos próprios.{" "}
-          <strong>
-            Se qualquer conta com saldo estiver sem destino declarado, nada é gravado e a recusa
-            nomeia a conta.
-          </strong>{" "}
-          Existe desfazimento: o estorno, abaixo.
+          Registra um lançamento em 31 de dezembro de {exercicio} que zera as contas classificadas
+          como <strong>ENCERRA</strong> e mantém as classificadas como <strong>TRANSFERE</strong>.{" "}
+          <strong>Todas as contas com saldo devem estar classificadas.</strong> O encerramento pode
+          ser desfeito por estorno.
         </div>
 
         {podeEncerrar ? null : (
@@ -252,16 +241,14 @@ export function FormEstornarEncerramento({
   return (
     <details className={PAINEL} data-forma="estornar-encerramento">
       <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">
-        Estornar um encerramento de controles já gravado
+        Estornar um encerramento de controles
       </summary>
       <form action={action} className="mt-4 space-y-3" data-acao="estornar-encerramento">
         <ChaveDeComando />
 
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-          <strong className="text-[color:var(--color-ink)]">O que o estorno faz.</strong> Grava um
-          lançamento que inverte o encerramento; o <strong>original permanece no razão</strong>. O
-          saldo das contas volta, e o encerramento pode ser refeito depois — não existe marca de
-          &quot;já encerrado&quot;: o saldo é que governa.
+          O estorno registra um lançamento inverso e o <strong>original permanece no razão</strong>.
+          Os saldos das contas são restabelecidos e o encerramento pode ser refeito.
         </div>
 
         <label className="block">
@@ -287,8 +274,8 @@ export function FormEstornarEncerramento({
         </label>
         {encerramentos.length === 0 ? (
           <p className="text-xs text-[color:var(--color-ink-3)]" data-sem-encerramento-vigente>
-            Todo encerramento de controles já gravado foi estornado. O saldo das contas está de volta
-            e o encerramento pode ser refeito no formulário abaixo.
+            Todos os encerramentos de controles foram estornados. Os saldos foram restabelecidos e o
+            encerramento pode ser refeito no formulário abaixo.
           </p>
         ) : null}
         <label className="block">

@@ -55,7 +55,7 @@ export default async function Page({
       return (
         <div>
           <PageHeader titulo="Repartir uma guia entre fontes" />
-          <EstadoVazio descricao={e.message} titulo="Exercício ilegível" />
+          <EstadoVazio descricao={e.message} titulo="Exercício inválido" />
         </div>
       );
     }
@@ -99,12 +99,12 @@ export default async function Page({
       <div>
         <PageHeader
           acoes={voltar}
-          subtitulo={`Exercício ${ano}. Escolha a natureza da receita; em seguida você informa quanto do depósito entrou em cada fonte.`}
+          subtitulo={`Exercício ${ano}. Escolha a natureza da receita e, em seguida, informe o valor de cada fonte.`}
           titulo="Repartir uma guia entre fontes"
         />
         {porNatureza.size === 0 ? (
           <EstadoVazio
-            descricao={`A LOA de ${ano} não tem receita prevista cadastrada, e é dela que sai a lista de fontes de cada natureza.`}
+            descricao={`A LOA de ${ano} não possui receita prevista cadastrada; as fontes de cada natureza são obtidas da previsão.`}
             titulo="Nenhuma receita prevista neste exercício"
           />
         ) : (
@@ -154,7 +154,7 @@ export default async function Page({
             Escolher outra natureza
           </Link>
         }
-        subtitulo={`${natureza} — ${descricao}. Informe o total do depósito e quanto dele entrou em cada fonte; as parcelas têm de somar o total.`}
+        subtitulo={`${natureza} — ${descricao}. Informe o total do depósito e o valor de cada fonte; a soma das parcelas deve ser igual ao total.`}
         titulo="Repartir uma guia entre fontes"
       />
 

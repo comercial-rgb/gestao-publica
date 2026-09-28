@@ -48,7 +48,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={FUNCOES.rotulo} subtitulo={FUNCOES.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava o cadastro de funções. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar as informações. Tente novamente mais tarde." />
         </div>
       );
     }

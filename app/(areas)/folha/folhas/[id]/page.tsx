@@ -48,14 +48,14 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   const brl = (v: string): string => `R$ ${formatarMoeda(v).texto}`;
   const etapas: EtapaDoPainel[] = naAbaDados ? [
     { nome: "Cálculo", situacao: detalhe.situacao === "FECHADA" ? "fechado" : detalhe.situacao === "CALCULADA" ? "calculado, aberto" : "sem cálculo", tom: detalhe.situacao === "SEM_CALCULO" ? "alerta" : "ok", detalhe: detalhe.subtitulo, ancora: "contracheques" },
-    { nome: "Atesto salarial", situacao: detalhe.certificacao === null ? "não se aplica ainda" : detalhe.certificacao.situacao.toLowerCase(), tom: detalhe.certificacao?.situacao === "CERTIFICADA" ? "ok" : detalhe.certificacao === null ? "neutro" : "alerta", ...(detalhe.certificacao !== null ? { ancora: "certificacao" } : {}) },
+    { nome: "Atesto salarial", situacao: detalhe.certificacao === null ? "ainda não aplicável" : detalhe.certificacao.situacao.toLowerCase(), tom: detalhe.certificacao?.situacao === "CERTIFICADA" ? "ok" : detalhe.certificacao === null ? "neutro" : "alerta", ...(detalhe.certificacao !== null ? { ancora: "certificacao" } : {}) },
     { nome: "Empenho e liquidação", situacao: detalhe.apropriacao === null ? "não apropriada" : `${detalhe.liquidacao?.liquidadas ?? 0} de ${detalhe.apropriacao.empenhos.length} liquidado(s)`, tom: detalhe.apropriacao === null ? "neutro" : (detalhe.liquidacao?.pendentes ?? 1) === 0 ? "ok" : "alerta", ...(detalhe.apropriacao !== null ? { detalhe: `empenhado ${brl(detalhe.apropriacao.total)}`, ancora: "empenhos" } : {}) },
     { nome: "Encargos do empregador", situacao: encargos?.vigente === null || encargos === null ? "não apurados" : `apuração nº ${encargos.vigente.numero} · ${encargos.vigente.situacao.toLowerCase()}`, tom: encargos?.vigente?.situacao === "CERTIFICADA" && encargos.vigente.completa ? "ok" : encargos?.vigente === null ? "neutro" : "alerta", ...(encargos?.vigente !== null && encargos !== null ? { detalhe: `total ${brl(encargos.vigente.total)} · ${encargos.empenhos.length} empenho(s), ${encargos.empenhos.filter((x) => x.liquidacao !== null).length} liquidado(s)`, ancora: "encargos" } : { ancora: "encargos" }) },
     ...(obrigacoes === null ? [] : [{
       nome: "Obrigações e guias",
       situacao: obrigacoes.length === 0 ? "sem obrigação liquidada" : `${obrigacoes.reduce((n, o) => n + o.guias.filter((g) => g.situacao === "BAIXADA").length, 0)} guia(s) baixada(s) de ${obrigacoes.reduce((n, o) => n + o.guias.filter((g) => g.situacao !== "CANCELADA").length, 0)}`,
       tom: (obrigacoes.length === 0 ? "neutro" : "alerta") as EtapaDoPainel["tom"],
-      detalhe: obrigacoes.length === 0 ? "receber guia não paga nada" : `liquidado ${brl(totaisDasObrigacoes(obrigacoes).liquidado)} · pago ${brl(totaisDasObrigacoes(obrigacoes).pago)}`,
+      detalhe: obrigacoes.length === 0 ? "nenhuma obrigação a recolher" : `liquidado ${brl(totaisDasObrigacoes(obrigacoes).liquidado)} · pago ${brl(totaisDasObrigacoes(obrigacoes).pago)}`,
       ancora: "obrigacoes",
     }]),
   ] : [];

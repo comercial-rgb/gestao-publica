@@ -513,7 +513,7 @@ async function main(): Promise<void> {
     if (jaFechada) console.log("      [RETOMADA: 3.1 (fechar) não executado nesta passada]");
     else {
       const rFechar = await preencherEEnviar(page, "fechar", []);
-      conferir("3.1 a contabilidade fecha a folha — e o resultado continua na tela depois de FECHAR sair da barra", rFechar.tipo === "ok" && /fechada sobre o cálculo/i.test(rFechar.texto), `${rFechar.tipo}: ${rFechar.texto.slice(0, 200)}`);
+      conferir("3.1 a contabilidade fecha a folha — e o resultado continua na tela depois de FECHAR sair da barra", rFechar.tipo === "ok" && /fechada com o cálculo/i.test(rFechar.texto), `${rFechar.tipo}: ${rFechar.texto.slice(0, 200)}`);
     }
 
     // O grupo de empenho: reusa o que existir; se ele não tiver as contas da liquidação, define-as
@@ -658,12 +658,12 @@ async function main(): Promise<void> {
     const rCertificar = await preencherEEnviar(page, "certificar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
     conferir(
       "6.1 o designado CERTIFICA, e a mensagem traz o sha256 do manifesto e o próximo passo",
-      rCertificar.tipo === "ok" && /CERTIFICADA/.test(rCertificar.texto) && /sha256/i.test(rCertificar.texto) && /quem certificou não liquida/i.test(rCertificar.texto),
+      rCertificar.tipo === "ok" && /certificada/i.test(rCertificar.texto) && /código de integridade/i.test(rCertificar.texto) && /pessoa diferente de quem certificou/i.test(rCertificar.texto),
       `${rCertificar.tipo}: ${rCertificar.texto.slice(0, 320)}`
     );
     const telaDepois = await irPara(page, hrefFolha);
-    conferir("6.2 o detalhe mostra a certificação DERIVADA e separada da apropriação e da liquidação", telaDepois.includes("certificação (derivada)") && telaDepois.includes("certificada"), telaDepois.slice(0, 800));
-    const shaNaTela = await page.evaluate(() => /sha256 do manifesto: ([0-9a-f]{64})/.exec(document.body.innerText)?.[1] ?? "");
+    conferir("6.2 o detalhe mostra a certificação DERIVADA e separada da apropriação e da liquidação", telaDepois.includes("certificação certificada"), telaDepois.slice(0, 800));
+    const shaNaTela = await page.evaluate(() => /código de verificação: ([0-9a-f]{64})/i.exec(document.body.innerText)?.[1] ?? "");
     conferir("6.3 o painel do atesto traz o manifesto com o sha256 INTEIRO e o responsável designado", shaNaTela.length === 64 && telaDepois.includes(NOME_ATESTADOR.toLowerCase()) && telaDepois.includes(ATO.toLowerCase()), `sha="${shaNaTela}"`);
     const depoisDoAtesto = await apresentacaoDoAto(page, "certificar");
     conferir("6.4 ⚠️ certificada, CERTIFICAR SAI DA BARRA e aparece como estado ('já está certificada') — sem botão", depoisDoAtesto.estado === "nao-aplicavel" && /já está certificada/i.test(depoisDoAtesto.texto), JSON.stringify(depoisDoAtesto));
@@ -702,7 +702,7 @@ async function main(): Promise<void> {
       const depoisDeLiquidar = await irPara(page, hrefFolha);
       const liquidadas = await page.evaluate(() => document.querySelectorAll('[data-liquidacao="liquidado"]').length);
       conferir("7.4 cada empenho passa a mostrar a liquidação com a data e o RESPONSÁVEL PELO ATESTO", liquidadas === empenhosGravados && depoisDeLiquidar.includes(`atesto: ${NOME_ATESTADOR.toLowerCase()}`), `${liquidadas} de ${empenhosGravados} linha(s) liquidada(s)`);
-      conferir("7.5 e o detalhe mostra a liquidação como dimensão PRÓPRIA, com a ressalva de que liquidada não é paga", depoisDeLiquidar.includes("liquidação (derivada)") && depoisDeLiquidar.includes("liquidada não é paga"), depoisDeLiquidar.slice(0, 900));
+      conferir("7.5 e o detalhe mostra a liquidação como dimensão PRÓPRIA, com a ressalva de que liquidada não é paga", /liquidação \d+ de \d+ empenho/.test(depoisDeLiquidar) && depoisDeLiquidar.includes("liquidada não é paga"), depoisDeLiquidar.slice(0, 900));
       const liquidada = await apresentacaoDoAto(page, "liquidar");
       conferir("7.6 liquidada por inteiro, LIQUIDAR sai da barra e aparece como estado", liquidada.estado === "nao-aplicavel" && /já estão liquidados/i.test(liquidada.texto), JSON.stringify(liquidada));
       const rVelha = await preencherEEnviar(abaDoLiquidante, "liquidar", [{ sel: 'input[name="data"]', valor: ultimoDiaDaCompetencia(COMP), tipo: "data" }]);
@@ -742,9 +742,9 @@ async function main(): Promise<void> {
         { sel: 'input[name="dataEfeito"]', valor: [`${COMP}-28`, new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date())].sort()[0] as string, tipo: "data" },
         { sel: 'input[name="motivo"]', valor: "fim da designação do percurso (sintético)" },
       ]);
-      conferir("8.1 revogar é FATO: a designação continua no histórico e os atestos praticados sob ela continuam com lastro", rRevogar.tipo === "ok" && /continuam com lastro/i.test(rRevogar.texto), `${rRevogar.tipo}: ${rRevogar.texto.slice(0, 250)}`);
+      conferir("8.1 revogar é FATO: a designação continua no histórico e os atestos praticados sob ela continuam com lastro", rRevogar.tipo === "ok" && /atestos já praticados continuam válidos/i.test(rRevogar.texto), `${rRevogar.tipo}: ${rRevogar.texto.slice(0, 250)}`);
       const detalheDesignacao = await irPara(page, hrefDesignacao);
-      conferir("8.2 o detalhe mostra a revogação e a vigência de hoje passa a 'não'", detalheDesignacao.includes("revogada a partir de") && detalheDesignacao.includes("vigente hoje (derivada) não"), detalheDesignacao.slice(0, 600));
+      conferir("8.2 o detalhe mostra a revogação e a vigência de hoje passa a 'não'", detalheDesignacao.includes("revogada a partir de") && detalheDesignacao.includes("vigente hoje não"), detalheDesignacao.slice(0, 600));
     }
     const folhaFinal = await irPara(page, hrefFolha);
     conferir("8.3 e a folha CONTINUA certificada depois da revogação — revogar em maio não apaga o atesto de março", folhaFinal.includes("certificada"), folhaFinal.slice(0, 600));

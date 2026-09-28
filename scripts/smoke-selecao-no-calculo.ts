@@ -331,7 +331,7 @@ async function main(): Promise<void> {
 
     // ══ 4. o cenário obrigatório: nº1={A,B}, nº2={C,D} ══
     const c1 = await calcular(page, folha1, "EXPLICITA", `${MAT.A}, ${MAT.B}`);
-    R.conferir("4.1 cálculo nº1 com recorte EXPLÍCITO de {A,B}: 2 contracheques", c1.tipo === "ok" && /2 contracheque/.test(c1.texto) && /EXPL[ÍI]CITO de 2/.test(c1.texto), `${c1.tipo}: ${c1.texto.slice(0, 260)}`);
+    R.conferir("4.1 cálculo nº1 com recorte EXPLÍCITO de {A,B}: 2 contracheques", c1.tipo === "ok" && /2 contracheque/.test(c1.texto) && /Abrangência: 2 matrícula/.test(c1.texto), `${c1.tipo}: ${c1.texto.slice(0, 260)}`);
 
     const c2 = await calcular(page, folha1, "EXPLICITA", `${MAT.C}\n${MAT.D}`);
     R.conferir("4.2 cálculo nº2 com recorte EXPLÍCITO de {C,D}: 2 contracheques", c2.tipo === "ok" && /2 contracheque/.test(c2.texto), `${c2.tipo}: ${c2.texto.slice(0, 260)}`);

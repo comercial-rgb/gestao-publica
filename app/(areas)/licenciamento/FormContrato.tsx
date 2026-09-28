@@ -30,8 +30,8 @@ export function FormContrato({ hoje }: { readonly hoje: string }): React.ReactEl
         Registrar o contrato desta implantação
       </h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        Um contrato ativo por implantação. Enquanto ele não existir, os módulos contratáveis ficam
-        fechados — a administração de usuários, os cadastros e o suporte continuam abertos.
+        É permitido um contrato ativo por implantação. Sem contrato, os módulos contratáveis ficam
+        indisponíveis; a administração de usuários, os cadastros e o suporte continuam disponíveis.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="text-xs">
@@ -47,7 +47,7 @@ export function FormContrato({ hoje }: { readonly hoje: string }): React.ReactEl
           <input name="inicio" type="date" required defaultValue={hoje} className={CAMPO} />
         </label>
         <label className="text-xs">
-          <span className={ROTULO}>Fim da vigência (em branco = sem termo)</span>
+          <span className={ROTULO}>Fim da vigência (em branco para prazo indeterminado)</span>
           <input name="fim" type="date" className={CAMPO} />
         </label>
         <label className="text-xs sm:col-span-2">
@@ -57,7 +57,7 @@ export function FormContrato({ hoje }: { readonly hoje: string }): React.ReactEl
         <label className="flex items-center gap-2 text-xs sm:col-span-2">
           <input name="demonstracao" type="checkbox" className="h-4 w-4" />
           <span className="text-[color:var(--color-ink-2)]">
-            Contrato de demonstração — ambiente de avaliação, não é contratação em produção
+            Contrato de demonstração (ambiente de avaliação, sem contratação em produção)
           </span>
         </label>
       </div>

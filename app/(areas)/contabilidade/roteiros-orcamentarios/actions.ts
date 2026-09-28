@@ -27,9 +27,9 @@ const t = (f: FormData, k: string): string => String(f.get(k) ?? "").trim();
 export async function publicarRoteiroAction(_p: EstadoDoRoteiro, f: FormData): Promise<EstadoDoRoteiro> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "tipo") === "") return { erro: "Movimento não informado." };
-    if (t(f, "contaDebitoCodigo") === "") return { erro: "Escolha a conta de DÉBITO." };
-    if (t(f, "contaCreditoCodigo") === "") return { erro: "Escolha a conta de CRÉDITO." };
-    if (t(f, "fundamento") === "") return { erro: "Diga por que estas contas." };
+    if (t(f, "contaDebitoCodigo") === "") return { erro: "Escolha a conta de débito." };
+    if (t(f, "contaCreditoCodigo") === "") return { erro: "Escolha a conta de crédito." };
+    if (t(f, "fundamento") === "") return { erro: "Informe o fundamento da parametrização." };
     try {
       const sucesso = await publicarRoteiro({
         tipo: t(f, "tipo"),
@@ -56,7 +56,7 @@ export async function publicarRoteiroAction(_p: EstadoDoRoteiro, f: FormData): P
 export async function publicarEixoAction(_p: EstadoDoRoteiro, f: FormData): Promise<EstadoDoRoteiro> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "eixo") === "") return { erro: "Escolha o eixo." };
-    if (t(f, "fundamento") === "") return { erro: "Diga por que este eixo." };
+    if (t(f, "fundamento") === "") return { erro: "Informe o fundamento da escolha do eixo." };
     try {
       const sucesso = await publicarEixoDaDotacao({ eixo: t(f, "eixo"), fundamento: t(f, "fundamento") });
       revalidatePath("/contabilidade/roteiros-orcamentarios");
@@ -70,9 +70,9 @@ export async function publicarEixoAction(_p: EstadoDoRoteiro, f: FormData): Prom
 export async function publicarPorFonteAction(_p: EstadoDoRoteiro, f: FormData): Promise<EstadoDoRoteiro> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "origem") === "") return { erro: "Origem não informada." };
-    if (t(f, "contaDebitoCodigo") === "") return { erro: "Escolha a conta de DÉBITO." };
-    if (t(f, "contaCreditoCodigo") === "") return { erro: "Escolha a conta de CRÉDITO." };
-    if (t(f, "fundamento") === "") return { erro: "Diga por que estas contas." };
+    if (t(f, "contaDebitoCodigo") === "") return { erro: "Escolha a conta de débito." };
+    if (t(f, "contaCreditoCodigo") === "") return { erro: "Escolha a conta de crédito." };
+    if (t(f, "fundamento") === "") return { erro: "Informe o fundamento da parametrização." };
     try {
       const sucesso = await publicarRoteiroPorFonte({
         origem: t(f, "origem"),

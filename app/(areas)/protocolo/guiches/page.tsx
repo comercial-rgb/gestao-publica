@@ -48,9 +48,9 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Atendimento presencial" subtitulo="Unidades, guichês e a oferta de horários" />
+        <PageHeader titulo="Atendimento presencial" subtitulo="Unidades, guichês e oferta de horários." />
         <EstadoVazio
-          titulo="Não foi possível ler o atendimento presencial"
+          titulo="Não foi possível carregar o atendimento presencial"
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -66,15 +66,13 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
       <SincronizarContexto />
       <PageHeader
         titulo="Atendimento presencial"
-        subtitulo="Unidades, guichês e a oferta de horários"
+        subtitulo="Unidades, guichês e oferta de horários."
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Aqui se <strong>organiza</strong> o atendimento: onde se atende, que serviços cada guichê
-        resolve, em que horários e quantas pessoas cabem em cada um. Para <strong>marcar</strong>{" "}
-        alguém, abra a agenda do guichê. Um horário só existe se tiver sido publicado —{" "}
-        <strong>não há expediente padrão</strong>, e sem oferta publicada a marcação é recusada
-        nomeando a ausência.
+        Nesta tela são cadastradas as unidades, os guichês, os serviços atendidos e os horários
+        oferecidos. Para agendar um atendimento, abra a agenda do guichê. Somente horários
+        publicados ficam disponíveis para agendamento.
       </div>
 
       <FormsDaOrganizacao
@@ -87,7 +85,7 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
       {unidades.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma unidade de atendimento"
-          descricao="Enquanto não houver uma unidade com guichê e oferta publicada, não há atendimento presencial para marcar. Abra a primeira no painel acima."
+          descricao="Cadastre a primeira unidade no painel acima. O agendamento exige unidade, guichê e oferta de horários publicada."
         />
       ) : null}
 
@@ -116,7 +114,7 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
 
           {u.guiches.length === 0 ? (
             <p className="mt-3 text-sm text-[color:var(--color-ink-2)]">
-              Esta unidade ainda não tem guichê. Sem guichê não há o que marcar.
+              Esta unidade ainda não possui guichê cadastrado.
             </p>
           ) : (
             <div className="mt-3 space-y-3">
@@ -133,16 +131,16 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
                     <strong>Atende:</strong>{" "}
                     {g.servicos.length === 0 ? (
                       <span className="text-[color:var(--color-status-erro-fg)]">
-                        nenhum serviço — nada pode ser marcado aqui
+                        nenhum serviço habilitado (agendamento indisponível)
                       </span>
                     ) : (
-                      g.servicos.map((s) => `${s.titulo}${s.agendamentoPublico ? " (marca pela internet)" : ""}`).join("; ")
+                      g.servicos.map((s) => `${s.titulo}${s.agendamentoPublico ? " (agendamento pela internet)" : ""}`).join("; ")
                     )}
                   </p>
 
                   {g.janelas.length === 0 ? (
                     <p className="mt-2 text-xs text-[color:var(--color-status-erro-fg)]">
-                      Sem oferta publicada — este guichê não oferece horário nenhum.
+                      Sem oferta publicada. Este guichê não possui horários disponíveis.
                     </p>
                   ) : (
                     <table className="mt-2 w-full text-xs" data-teste={`janelas-${g.id}`}>
@@ -150,8 +148,8 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
                         <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                           <th className="py-1 pr-3">Dia</th>
                           <th className="py-1 pr-3">Horário</th>
-                          <th className="py-1 pr-3">Cada</th>
-                          <th className="py-1 pr-3">Cabem</th>
+                          <th className="py-1 pr-3">Duração</th>
+                          <th className="py-1 pr-3">Vagas por horário</th>
                           <th className="py-1">Vigência</th>
                         </tr>
                       </thead>

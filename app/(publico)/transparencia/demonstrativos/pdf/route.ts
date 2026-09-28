@@ -17,7 +17,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const bimestre = Number.parseInt(sp.get("bimestre") ?? "", 10);
 
   if (!Number.isInteger(exercicio) || !Number.isInteger(bimestre)) {
-    return NextResponse.json({ erro: "exercicio e bimestre são obrigatórios (inteiros)." }, { status: 400 });
+    return NextResponse.json({ erro: "Informe o exercício e o bimestre." }, { status: 400 });
   }
 
   let resultado;
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ erro: e instanceof Error ? e.message : "Falha ao gerar o PDF." }, { status: 500 });
   }
   if (resultado === null) {
-    return NextResponse.json({ erro: `Demonstrativo desconhecido: "${slug}".` }, { status: 404 });
+    return NextResponse.json({ erro: `Demonstrativo não encontrado: "${slug}".` }, { status: 404 });
   }
 
   return new NextResponse(Buffer.from(resultado.pdf), {

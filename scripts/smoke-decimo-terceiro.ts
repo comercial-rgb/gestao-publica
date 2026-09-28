@@ -448,7 +448,7 @@ async function main(): Promise<void> {
      */
     R.conferir(
       "5 NEGATIVA: o RH lê a lista de parâmetros do 13º e NÃO recebe o formulário — a tela nomeia a ação que falta",
-      !temFormulario && /CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO/.test(paramComoRh.toUpperCase()),
+      !temFormulario && /permissão para configurar os parâmetros do 13º/i.test(paramComoRh),
       `formulário presente=${temFormulario}; ${paramComoRh.slice(0, 300)}`
     );
 

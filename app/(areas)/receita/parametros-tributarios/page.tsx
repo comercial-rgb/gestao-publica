@@ -21,11 +21,11 @@ export default async function ParametrosTributarios(): Promise<React.ReactElemen
   return (
     <ResultadosDosAtos>
       <div className="space-y-4" data-tabelas-tributarias={t.tabelas.length}>
-        <PageHeader titulo="Parâmetros do tributo" subtitulo="A fórmula e os valores do município, por exercício e vigência — com o fundamento legal declarado." />
+        <PageHeader titulo="Parâmetros do tributo" subtitulo="Fórmulas e valores de cálculo do município, por exercício e vigência, com o fundamento legal." />
         <AvisosDosAtos />
         <Card>
           {t.tabelas.length === 0 ? (
-            <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-tabelas>Nenhuma tabela publicada. Sem tabela, a simulação recusa em vez de inventar alíquota.</p>
+            <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-tabelas>Nenhuma tabela publicada. A simulação de tributos depende da publicação de uma tabela.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[48rem] text-left text-sm" data-lista-de-tabelas>
@@ -46,8 +46,8 @@ export default async function ParametrosTributarios(): Promise<React.ReactElemen
               </table>
             </div>
           )}
-          <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">A simulação de cada imóvel está na página dele, no <Link href="/receita/imoveis" className="text-[color:var(--color-primary)] underline underline-offset-2">cadastro imobiliário</Link>. Publicar versão nova não muda as simulações de dias anteriores.</p>
-          {t.podeParametrizar ? null : <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-dos-parametros>Publicar a tabela é da administração tributária (a ação de gerir parâmetros tributários no seu perfil).</p>}
+          <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">A simulação de cada imóvel está na página dele, no <Link href="/receita/imoveis" className="text-[color:var(--color-primary)] underline underline-offset-2">cadastro imobiliário</Link>. A publicação de nova versão não altera simulações de datas anteriores.</p>
+          {t.podeParametrizar ? null : <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-dos-parametros>A publicação de tabelas requer a permissão de gestão de parâmetros tributários.</p>}
         </Card>
         {t.podeParametrizar ? <FormPublicarTabela hoje={hoje} exercicio={Number(hoje.slice(0, 4))} variaveisDoCadastro={t.variaveisDoCadastro} /> : null}
       </div>

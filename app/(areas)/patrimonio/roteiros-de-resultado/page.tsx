@@ -74,8 +74,8 @@ export default async function RoteirosDeResultadoPage({
             subtitulo={ROTEIROS_DE_RESULTADO.descricao}
           />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Esta tela lê o plano de contas e grava a parametrização. Sem banco, não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis"
+            descricao="Não foi possível acessar os roteiros contábeis no momento. Tente novamente em instantes."
           />
         </div>
       );

@@ -86,7 +86,7 @@ export function FormImportarPlanilha({ obraId }: { readonly obraId: string }): R
       <ChaveDeComando />
       <Ocultos obraId={obraId} acao="previa" />
       <h2 className="mb-1 text-sm font-semibold">Importar planilha orçamentária</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Arquivo .xlsx ou .xls. A importação gera uma prévia: nada vira versão até a confirmação. Fórmulas e macros do arquivo não são executadas; vale o valor que o arquivo gravou.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Arquivo .xlsx ou .xls. A importação gera uma prévia, que só se torna versão após a confirmação. Fórmulas e macros não são executadas; valem os valores gravados no arquivo.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id={a.id} nome="arquivo" rotulo="Arquivo da planilha" tipo="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
         <Campo id={a.id} nome="aba" rotulo="Aba (opcional; sem ela, a primeira com cabeçalho reconhecido)" obrigatorio={false} />
@@ -114,7 +114,7 @@ export function FormConfirmarPrevia({ obraId, previaId, divergencias, hoje }: { 
       <ChaveDeComando />
       <Ocultos obraId={obraId} acao="confirmar" extra={{ previaId }} />
       <h2 className="mb-1 text-sm font-semibold">Confirmar como nova versão</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A confirmação lê de novo o arquivo guardado. Data-base e referência de preços são as do orçamento, informadas por quem confirma.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Informe a data-base e a referência de preços do orçamento.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Campo id={a.id} nome="descricao" rotulo="Descrição da versão" minLength={5} />
         <Campo id={a.id} nome="numeroDoContrato" rotulo="Número do contrato de execução (opcional)" obrigatorio={false} />

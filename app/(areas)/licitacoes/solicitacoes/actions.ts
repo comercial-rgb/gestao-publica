@@ -72,15 +72,15 @@ export async function formarOrdemAction(_prev: EstadoDaSolicitacao, formData: Fo
     const linhas = linhasDoFormulario(formData, "itens", ["incluir", "itemDeSolicitacaoId", "materialId", "quantidade", "valorUnitario"])
       .filter((l) => l["incluir"] === "on" || l["incluir"] === "1")
       .map((l) => ({ itemDeSolicitacaoId: l["itemDeSolicitacaoId"] ?? "", materialId: l["materialId"] ?? "", quantidade: l["quantidade"] ?? "", valorUnitario: l["valorUnitario"] ?? "" }));
-    if (linhas.length === 0) return { erro: "Escolha ao menos um item pendente para formar a ordem. Nada foi gravado." };
+    if (linhas.length === 0) return { erro: "Selecione ao menos um item pendente para emitir a ordem. Nada foi gravado." };
     try {
       const r = await formarOrdemDaSolicitacao(campos, linhas);
       revalidatePath(SOLICITACOES_DE_COMPRA.rota);
       revalidatePath(`${SOLICITACOES_DE_COMPRA.rota}/${solicitacaoId}`);
       revalidatePath("/licitacoes/ordens-de-compra");
-      return { sucesso: `Ordem ${campos["numero"] ?? ""} formada com ${r.itens} item(ns) desta solicitação. Abra em /licitacoes/ordens-de-compra/${r.ordemId}.`, ordemId: r.ordemId };
+      return { sucesso: `Ordem ${campos["numero"] ?? ""} emitida com ${r.itens} item(ns) desta solicitação.`, ordemId: r.ordemId };
     } catch (e) {
-      return { erro: mensagemDoErro(e, "Não foi possível formar a ordem. Nada foi gravado.") };
+      return { erro: mensagemDoErro(e, "Não foi possível emitir a ordem. Nada foi gravado.") };
     }
   });
 }

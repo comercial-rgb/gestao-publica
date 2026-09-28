@@ -57,7 +57,7 @@ export async function encerrarPeriodoAction(
     try {
       const rotulo = await encerrarPeriodo(id);
       revalidatePath("/financeiro/conciliacao/periodo");
-      return { sucesso: `Conciliação de ${rotulo} ENCERRADA.` };
+      return { sucesso: `Conciliação de ${rotulo} encerrada.` };
     } catch (e) {
       return {
         erro: e instanceof Error ? e.message : "Não foi possível encerrar o período.",
@@ -137,7 +137,7 @@ export async function atribuirContaAction(
     try {
       await atribuirContaDaArrecadacao({ receitaArrecadadaId, contaBancariaId, motivo });
       revalidatePath("/financeiro/conciliacao/periodo");
-      return { sucesso: "Conta atribuída: a guia passa a contar no lado interno desta conta. Vincule-a à linha do extrato para fechar." };
+      return { sucesso: "Conta atribuída. A guia passa a integrar os registros desta conta; vincule-a à linha do extrato para concluir a conciliação." };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível atribuir a conta." };
     }

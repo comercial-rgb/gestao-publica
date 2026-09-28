@@ -25,14 +25,14 @@ export default async function OuvidoriaPage(): Promise<React.ReactElement> {
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Ouvidoria</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · denúncias, reclamações, sugestões, dúvidas e elogios. Não é preciso conta nem
-          identificação. Você recebe um protocolo e um código para acompanhar a resposta.
+          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · registre denúncias, reclamações, sugestões, dúvidas e elogios. Não é
+          necessário cadastro nem identificação. Ao registrar, você receberá um protocolo e um código para acompanhar a resposta.
         </p>
       </header>
       {semBanco ? (
-        <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">A ouvidoria está indisponível agora (banco de dados fora do ar).</p>
+        <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">A ouvidoria está temporariamente indisponível. Tente novamente mais tarde.</p>
       ) : servicos.length === 0 ? (
-        <p className="text-sm text-[color:var(--color-ink-2)]" data-ouvidoria-vazia>A ouvidoria ainda não publicou um canal de manifestação pela internet.</p>
+        <p className="text-sm text-[color:var(--color-ink-2)]" data-ouvidoria-vazia>No momento, não há canal de manifestação disponível pela internet.</p>
       ) : (
         <ul className="space-y-3" data-canais-da-ouvidoria>
           {servicos.map((s) => (
@@ -47,7 +47,7 @@ export default async function OuvidoriaPage(): Promise<React.ReactElement> {
         Já registrou? <Link href="/ouvidoria/acompanhar" className="text-[color:var(--color-primary)] underline">Acompanhe com o protocolo e o código</Link>.
       </p>
       <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-        Limite de envios: alguns por hora a partir da mesma origem. Não há verificação externa contra robôs conectada a este canal.
+        Por segurança, o número de envios por hora a partir de uma mesma conexão é limitado.
       </p>
     </main>
   );

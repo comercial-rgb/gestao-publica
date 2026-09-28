@@ -37,10 +37,10 @@ export function FormApresentacao({ valores, podeConfigurar }: { readonly valores
   return (
     <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-acao="configurar-apresentacao" encType="multipart/form-data">
       <ChaveDeComando />
-      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Como o ente se apresenta</h2>
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Dados de apresentação</h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        Cada gravação é uma versão nova, com o seu nome e a hora. Os documentos já emitidos não mudam.
-        {ro ? " O seu perfil consulta esta configuração, mas não a altera." : ""}
+        Cada gravação gera uma nova versão, registrada com o autor e o horário. Os documentos já emitidos não são alterados.
+        {ro ? " Seu perfil permite apenas consultar esta configuração." : ""}
       </p>
       <fieldset disabled={ro} className="grid gap-4 sm:grid-cols-2">
         <label className="text-xs sm:col-span-2">
@@ -108,7 +108,7 @@ export function FormApresentacao({ valores, podeConfigurar }: { readonly valores
               Acompanhar processo (consulta pelo requerente)
             </label>
           </div>
-          <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">Portal do Servidor, Portal do Cidadão e Fornecedor aparecem aqui quando existirem.</p>
+          <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">Outros canais públicos serão listados aqui quando estiverem disponíveis.</p>
         </fieldset>
       </fieldset>
 

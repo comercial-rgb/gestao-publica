@@ -35,7 +35,7 @@ export default async function EntidadesPage(): Promise<React.ReactElement> {
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Entidades contábeis" subtitulo="Quem tem balancete próprio no ente" />
+        <PageHeader titulo="Entidades contábeis" subtitulo="Entidades do ente com contabilização própria" />
         <EstadoVazio
           titulo="Não foi possível ler as entidades"
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -49,15 +49,12 @@ export default async function EntidadesPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-4">
       <SincronizarContexto />
-      <PageHeader titulo="Entidades contábeis" subtitulo="Quem tem balancete próprio no ente" />
+      <PageHeader titulo="Entidades contábeis" subtitulo="Entidades do ente com contabilização própria" />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Uma <strong>entidade contábil</strong> é quem tem contabilização distinta: a prefeitura, a
-        câmara, uma autarquia, uma fundação, um fundo, o RPPS. Não é secretaria nem unidade
-        orçamentária — essas são a estrutura da <strong>despesa</strong>. É pela entidade que a
-        arrecadação passa a dizer de quem é o dinheiro que entrou, e o caminho é a{" "}
-        <strong>conta bancária</strong>: em Financeiro, você declara de quem é cada conta, e as
-        guias que entram nela nascem já com a entidade.
+        <strong>Entidade contábil</strong> é o órgão ou ente com contabilização própria: prefeitura,
+        câmara, autarquia, fundação, fundo ou RPPS. A arrecadação é atribuída à entidade pela{" "}
+        <strong>conta bancária</strong>, cuja titularidade é informada em Financeiro.
       </div>
 
       <FormCadastrarEntidade tiposDeEntidade={TIPOS_DE_ENTIDADE} tiposDeAto={TIPOS_DE_ATO_NA_TELA} />
@@ -74,11 +71,11 @@ export default async function EntidadesPage(): Promise<React.ReactElement> {
           */}
           <strong>
             {semConta.length === 1
-              ? "Uma entidade ainda não tem conta bancária declarada"
-              : `${String(semConta.length)} entidades ainda não têm conta bancária declarada`}
-          </strong>{" "}
-          — enquanto nenhuma conta for declarada como delas, nenhuma guia será carimbada com o seu
-          nome, e elas não aparecerão na consulta da receita por entidade. Declare em{" "}
+              ? "Uma entidade ainda não tem conta bancária vinculada"
+              : `${String(semConta.length)} entidades ainda não têm conta bancária vinculada`}
+          </strong>
+          . Sem conta bancária vinculada, a arrecadação não é atribuída à entidade nem aparece na
+          consulta da receita por entidade. Vincule em{" "}
           <strong>Financeiro &gt; Contas bancárias</strong>:{" "}
           {semConta.map((e) => `${e.codigo} ${e.nome}`).join("; ")}.
         </div>
@@ -87,7 +84,7 @@ export default async function EntidadesPage(): Promise<React.ReactElement> {
       {entidades.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma entidade cadastrada"
-          descricao="O cadastro nasce vazio: quais são as entidades do ente é dado dele, e o sistema não as inventa. Cadastre a primeira acima."
+          descricao="Cadastre acima as entidades contábeis do ente."
         />
       ) : (
         <ul className="space-y-2" data-papel="lista-de-entidades">

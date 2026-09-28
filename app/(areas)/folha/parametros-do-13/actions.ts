@@ -41,7 +41,7 @@ export async function criarParametroDo13Action(
     return {
       sucesso:
         `Parâmetro do 13º de ${campos["exercicio"] ?? ""} gravado na versão ${versao}, com ${rubricasDaBase.length} ` +
-        `rubrica(s) na base. A versão anterior continua no histórico: as folhas que ela calculou a citam na memória.`,
+        `rubrica(s) na base. A versão anterior permanece no histórico e continua referenciada pelas folhas já calculadas.`,
     };
   });
 }

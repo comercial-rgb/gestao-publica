@@ -319,7 +319,7 @@ async function main(): Promise<void> {
     conferir("plano: a série histórica anterior ao plano foi registrada", rHist.tipo === "ok", rHist.texto);
     const historicoDoPlano = await irPara(page, `${hrefPlano}?aba=historico`);
     conferir("plano: RECARREGADO, o histórico traz o programa, a previsão e a série histórica", historicoDoPlano.includes("programa") && historicoDoPlano.includes(`receita prevista ${ANO + 1}`) && historicoDoPlano.includes(`receita realizada em ${ANO - 1}`), historicoDoPlano.slice(0, 400));
-    const hrefsPrograma = await hrefsDoHistorico(page, "abrir o programa no plano");
+    const hrefsPrograma = await hrefsDoHistorico(page, "Abrir o programa no plano");
     conferir("plano: o programa do histórico liga ao seu detalhe", hrefsPrograma.length >= 1, "sem link");
 
     // ── 3. o programa no plano: ação e indicador ──

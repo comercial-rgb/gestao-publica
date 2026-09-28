@@ -141,9 +141,9 @@ export function FormDaOperacao({
         </div>
       ) : (
         <p className="rounded border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          Nesta operação as contas de débito e crédito não se informam aqui. A obrigação baixada é a
-          que a liquidação de origem registrou, e a saída de caixa é a conta contábil da conta
-          bancária escolhida no momento do pagamento.
+          Nesta operação não se informam contas de débito e crédito: a obrigação baixada é a que a
+          liquidação de origem registrou, e a saída de caixa usa a conta contábil da conta bancária
+          escolhida no pagamento.
         </p>
       )}
       <div className="grid gap-3 sm:grid-cols-2">
@@ -160,7 +160,7 @@ export function FormDaOperacao({
       </div>
       <div>
         <label className={ROTULO} htmlFor={`fundamento-${evento}`}>
-          Por que estas contas
+          Fundamento
         </label>
         <textarea
           className={AREA}
@@ -168,7 +168,7 @@ export function FormDaOperacao({
           name="fundamento"
           rows={2}
           maxLength={500}
-          placeholder="Cite o plano de contas do município, a norma ou a orientação do tribunal."
+          placeholder="Plano de contas do município, norma ou orientação do tribunal"
         />
       </div>
       <div>

@@ -71,10 +71,9 @@ export function FormAbrirProcesso({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Você não está lotado em nenhum setor
+          Seu usuário não está lotado em nenhum setor.
         </strong>{" "}
-        — e é do setor que um processo nasce. Peça a lotação a quem administra os
-        cadastros; sem ela o servidor recusaria a abertura de qualquer forma.
+        A abertura de processos exige lotação. Solicite-a ao administrador dos cadastros.
       </div>
     );
   }
@@ -97,7 +96,7 @@ export function FormAbrirProcesso({
           required
           largura={1}
           opcoes={setores.map((s) => ({ valor: s.id, rotulo: s.rotulo }))}
-          ajuda="Só os setores em que você está lotado."
+          ajuda="Somente os setores de lotação do usuário."
         />
         <CampoSelect
           name="assuntoId"
@@ -162,7 +161,7 @@ export function FormAbrirProcesso({
             required
             largura={2}
             placeholder="(83) 99999-0000 ou e-mail"
-            ajuda="É o único canal para responder — sem ele, o pedido não tem a quem voltar."
+            ajuda="Canal pelo qual o requerente receberá a resposta."
           />
         ) : (
           <CampoSelect
@@ -170,9 +169,9 @@ export function FormAbrirProcesso({
             rotulo="Requerente"
             required
             largura={2}
-            vazio="Escolha no cadastro único"
+            vazio="Selecione no cadastro de pessoas"
             opcoes={pessoas.map((p) => ({ valor: p.id, rotulo: p.rotulo }))}
-            ajuda="Do cadastro compartilhado — o mesmo que a despesa e as consignações usam."
+            ajuda="Pessoas do cadastro único do município."
           />
         )}
 
@@ -196,8 +195,7 @@ export function FormAbrirProcesso({
             <strong className="text-[color:var(--color-ink)]">
               Este assunto é sigiloso por definição da entidade.
             </strong>{" "}
-            O processo nascerá sigiloso — visível apenas a quem estiver envolvido nele.
-            Não há como abrir sem sigilo por aqui.
+            O processo será aberto como sigiloso, com acesso restrito aos envolvidos.
           </p>
         ) : (
           <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)] md:col-span-2">

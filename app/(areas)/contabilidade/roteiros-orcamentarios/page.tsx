@@ -48,7 +48,7 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Roteiro orçamentário" subtitulo="Em que contas cada movimento de dotação lança" />
+        <PageHeader titulo="Roteiro orçamentário" subtitulo="Contas contábeis de cada movimento de dotação" />
         <EstadoVazio titulo="Não foi possível ler os roteiros" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
       </div>
     );
@@ -59,20 +59,19 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
   return (
     <div className="space-y-4">
       <SincronizarContexto />
-      <PageHeader titulo="Roteiro orçamentário" subtitulo="Em que contas cada movimento de dotação lança" />
+      <PageHeader titulo="Roteiro orçamentário" subtitulo="Contas contábeis de cada movimento de dotação" />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Todo movimento de dotação tem <strong>perna no razão</strong> — e é aqui que o ente diz
-        quais contas do plano dele recebem cada uma. Enquanto um par não tiver roteiro,{" "}
-        <strong>o movimento é recusado</strong>, e é assim que deve ser: um orçamento que cresce
-        sem contrapartida no razão é o furo que este roteiro existe para impedir. Publicar de novo
-        cria uma <strong>versão</strong> — o que já foi escriturado continua como estava.
+        Todo movimento de dotação gera <strong>lançamento contábil</strong>. Informe aqui as contas
+        de débito e crédito de cada movimento.{" "}
+        <strong>Movimento sem roteiro não pode ser registrado.</strong> Uma nova publicação cria
+        outra <strong>versão</strong>, sem alterar os lançamentos já realizados.
       </div>
 
       {faltando.length > 0 ? (
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] p-3 text-xs" data-teste="roteiros-faltando">
-          <strong>{faltando.length} movimento(s) sem roteiro — {faltando.map((l) => l.rotulo).join("; ")}</strong>. Eles são
-          recusados enquanto o ente não decidir as contas.
+          <strong>{faltando.length} movimento(s) sem roteiro — {faltando.map((l) => l.rotulo).join("; ")}</strong>. Esses movimentos
+          não podem ser registrados até que as contas sejam informadas.
         </div>
       ) : null}
 
@@ -82,25 +81,22 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
               As duas visões do plano descrevem o MESMO crédito. Lançar nas duas creditaria o
               crédito disponível duas vezes pelo mesmo decreto — por isso o eixo é UM. */}
           <div className="mb-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-teste="eixo-da-dotacao">
-            <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Em que eixo a dotação adicional é registrada</h2>
+            <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Forma de registro da dotação adicional</h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-              O plano tem <strong>duas visões irmãs</strong> do mesmo crédito: por{" "}
-              <strong>tipo</strong> (5.2.2.1.2 — suplementar, especial, extraordinário) e por{" "}
-              <strong>fonte</strong> (5.2.2.1.3 — superávit, excesso, anulação, operação de
-              crédito). A perna de crédito é a mesma nas duas: o crédito disponível. Lançar nas
-              duas creditaria o disponível <strong>duas vezes pelo mesmo decreto</strong>, e o ente
-              passaria a poder empenhar o dobro do autorizado — por isso aqui se escolhe{" "}
-              <strong>um</strong>.
+              O PCASP registra o crédito adicional por <strong>tipo</strong> (5.2.2.1.2: suplementar,
+              especial, extraordinário) ou por <strong>fonte</strong> (5.2.2.1.3: superávit, excesso de
+              arrecadação, anulação, operação de crédito). Escolha <strong>uma</strong> das formas,
+              para que o crédito disponível não seja registrado em duplicidade.
             </p>
             <p className="mt-2 text-sm">
-              Hoje: <strong data-teste="eixo-vigente">{eixo.rotulo}</strong>{" "}
+              Forma vigente: <strong data-teste="eixo-vigente">{eixo.rotulo}</strong>{" "}
               {eixo.decidido ? (
                 <span className="text-xs text-[color:var(--color-ink-2)]">
                   — v{eixo.versao}, por {eixo.criadoPor}. {eixo.fundamento}
                 </span>
               ) : (
                 <em className="text-xs text-[color:var(--color-ink-2)]">
-                  — veio da instalação; ninguém do ente decidiu isto ainda.
+                  — configuração inicial, ainda não confirmada pelo ente.
                 </em>
               )}
             </p>
@@ -136,14 +132,14 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
                     </td>
                     <td className="py-1.5 pr-4">
                       {l.credito === null ? (
-                        <span className="text-xs text-[color:var(--color-status-erro-fg)]">o movimento é recusado</span>
+                        <span className="text-xs text-[color:var(--color-status-erro-fg)]">movimento bloqueado</span>
                       ) : (
                         <span className="font-mono">{l.credito}</span>
                       )}
                     </td>
                     <td className="py-1.5 text-xs text-[color:var(--color-ink-2)]">
                       {l.semFundamento ? (
-                        <em>Veio da instalação — ninguém do ente decidiu estas contas ainda.</em>
+                        <em>Configuração inicial, ainda não confirmada pelo ente.</em>
                       ) : l.fundamento !== null ? (
                         <>
                           {l.fundamento}
@@ -182,8 +178,8 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
                         concluir que está tudo certo. */}
                     {eixo.eixo === "POR_FONTE" && l.tipo === "CREDITO_ADICIONAL" ? (
                       <span className="block text-xs text-[color:var(--color-status-alerta-fg)]">
-                        Inerte: o ente registra a dotação adicional por FONTE, e o razão lê a
-                        tabela acima. Esta linha volta a valer se o eixo voltar.
+                        Sem efeito: a dotação adicional está sendo registrada por fonte, conforme a
+                        tabela acima.
                       </span>
                     ) : null}
                   </td>
@@ -199,7 +195,7 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
                   </td>
                   <td className="py-1.5 pr-4">
                     {l.credito === null ? (
-                      <span className="text-xs text-[color:var(--color-status-erro-fg)]">o movimento é recusado</span>
+                      <span className="text-xs text-[color:var(--color-status-erro-fg)]">movimento bloqueado</span>
                     ) : (
                       <>
                         <span className="font-mono">{l.credito}</span>
@@ -212,7 +208,7 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
                     {/* ⚠️ A LINHA DO SEED É NOMEADA. Ela funciona, e ninguém do ente a decidiu —
                         quem olhar precisa saber disso antes de citá-la numa prestação de contas. */}
                     {l.semFundamento ? (
-                      <em>Veio da instalação — ninguém do ente decidiu estas contas ainda.</em>
+                      <em>Configuração inicial, ainda não confirmada pelo ente.</em>
                     ) : l.fundamento !== null ? (
                       <>
                         {l.fundamento}

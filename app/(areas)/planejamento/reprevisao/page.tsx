@@ -24,13 +24,13 @@ export default async function ReprevisaoPage({
   const bruto = Array.isArray(sp["exercicio"]) ? sp["exercicio"][0] : sp["exercicio"];
   const exercicio = bruto !== undefined && !Number.isNaN(Number.parseInt(bruto, 10)) ? Number.parseInt(bruto, 10) : 2026;
 
-  const cabecalho = <PageHeader titulo="Reprevisão de Receita" subtitulo={`Reestimativas do exercício ${exercicio} (LRF art. 12) — cada reestimativa fica registrada`} />;
+  const cabecalho = <PageHeader titulo="Reprevisão de Receita" subtitulo={`Reestimativas da receita do exercício ${exercicio} (LRF art. 12).`} />;
 
   let reprevisoes: readonly ReprevisaoRegistrada[];
   try {
     reprevisoes = await gerarReprevisoes({ exercicio });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler as reprevisões"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível ler as reprevisões"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   return (
@@ -38,8 +38,8 @@ export default async function ReprevisaoPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        A previsão <strong>atualizada</strong> dos demonstrativos (Anexos 1, 3, 8, 12) é a inicial mais a soma destas reestimativas.
-        {" "}O registro exige sessão e fica auditado (quem, quando).
+        A previsão <strong>atualizada</strong> dos demonstrativos (Anexos 1, 3, 8 e 12) corresponde à previsão inicial somada às reestimativas.
+        {" "}Cada registro guarda o responsável e a data.
       </div>
 
       <FormReprevisao exercicio={exercicio} />

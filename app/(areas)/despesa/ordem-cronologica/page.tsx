@@ -112,7 +112,7 @@ export default async function OrdemCronologicaPage({
   const cabecalho = (opcoes: readonly string[]): React.ReactElement => (
     <PageHeader
       titulo="Ordem Cronológica de Pagamentos"
-      subtitulo="Painel de conformidade do art. 141 da Lei 14.133/2021 — a ordem de exigibilidade, por fonte e categoria"
+      subtitulo="Consulta da ordem de pagamentos por fonte e categoria (Lei 14.133/2021, art. 141)"
       acoes={
         <>
           <SeletorFonte fonte={fonte} fontes={opcoes} />
@@ -145,8 +145,8 @@ export default async function OrdemCronologicaPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler a ordem cronológica"
+              ? "Serviço indisponível"
+              : "Não foi possível carregar a ordem cronológica"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -170,12 +170,10 @@ export default async function OrdemCronologicaPage({
       {cabecalho(fontes)}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada <strong>fonte × categoria</strong> é uma fila própria — elas não se disputam. A ordem é a{" "}
-        <strong>data de liquidação</strong> (o marco de exigibilidade do caput), com desempate pelo
-        número. Pagar fora da <strong>posição 1</strong> exige justificativa prévia numa das cinco
-        hipóteses taxativas do §1º; sem ela o domínio recusa o pagamento — e quem confere a posição é
-        ele, dentro da transação, contra a fila de agora. Esta tela é{" "}
-        <strong>só leitura</strong>: o pagamento se faz em{" "}
+        Cada combinação de <strong>fonte e categoria</strong> forma uma fila própria, ordenada pela{" "}
+        <strong>data de liquidação</strong> e, em caso de empate, pelo número. O pagamento fora da{" "}
+        <strong>posição 1</strong> exige justificativa prévia em uma das hipóteses do §1º. Esta tela é{" "}
+        <strong>somente para consulta</strong>; os pagamentos são registrados em{" "}
         <a href="/despesa/pagamentos" className="text-[color:var(--color-primary)] hover:underline">
           Despesa · Pagamentos
         </a>
@@ -187,8 +185,8 @@ export default async function OrdemCronologicaPage({
           titulo={fonte !== "" ? `Nenhuma fila na fonte ${fonte}` : "Nenhuma fila aberta"}
           descricao={
             fonte !== ""
-              ? "Esta fonte não tem liquidação com saldo a pagar. Escolha outra fonte, ou volte a “todas” para ver o quadro inteiro."
-              : "Não há liquidação com saldo a pagar. A fila do art. 141 é derivada: ela existe enquanto houver despesa liquidada e não paga."
+              ? "Esta fonte não tem liquidação com saldo a pagar. Escolha outra fonte ou selecione “Todas as fontes”."
+              : "Não há liquidação com saldo a pagar."
           }
         />
       ) : (
@@ -215,7 +213,7 @@ export default async function OrdemCronologicaPage({
                   colunas={COLUNAS}
                   linhas={g.linhas}
                   keyDe={(l) => l.liquidacaoId}
-                  legenda={`Ordem cronológica da fonte ${codigo} — ${ROTULO_CATEGORIA[g.categoria] ?? g.categoria}. Pagar fora da posição 1 exige justificativa (§1º).`}
+                  legenda={`Ordem cronológica da fonte ${codigo}, ${(ROTULO_CATEGORIA[g.categoria] ?? g.categoria).toLowerCase()}. O pagamento fora da posição 1 exige justificativa (§1º).`}
                 />
               </section>
             ))}
@@ -230,7 +228,7 @@ export default async function OrdemCronologicaPage({
           junto — uma lista fixa aqui viraria, no primeiro dia, uma promessa que o sistema não cumpre. */}
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         <span className="font-semibold text-[color:var(--color-ink)]">
-          Hipóteses do §1º — as únicas que autorizam quebra da ordem:
+          Hipóteses do §1º que admitem pagamento fora da ordem:
         </span>
         <ul className="mt-2 space-y-1">
           {HIPOTESES_DE_QUEBRA.map((h) => (
@@ -238,19 +236,16 @@ export default async function OrdemCronologicaPage({
           ))}
         </ul>
         <p className="mt-2 text-[color:var(--color-ink-3)]">
-          Toda quebra exige justificativa prévia, autorizada pela autoridade competente, e fica
-          registrada junto ao pagamento — a justificativa e o pagamento são gravados na mesma
-          transação, então não existe um sem o outro.
+          O pagamento fora da ordem exige justificativa prévia, autorizada pela autoridade
+          competente, e registrada junto com o pagamento.
         </p>
       </div>
 
       {/* ⚠️ A NOTA QUE EXPLICA O SELETOR INERTE do cabeçalho — ver o comentário no `recorteDe` acima. */}
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        O recorte do cabeçalho (<strong>{descreverRecorte(recorte).toLowerCase()}</strong>) não se
-        aplica a esta tela: a ordem cronológica é do <strong>ente</strong>, por fonte e categoria de
-        contrato — recortá-la por unidade a partiria em filas que a lei não criou, cada uma com uma
-        “posição 1” própria. O único recorte legítimo é o da <strong>fonte</strong>, porque cada
-        fonte já é uma fila separada.
+        A seleção do cabeçalho (<strong>{descreverRecorte(recorte).toLowerCase()}</strong>) não se
+        aplica a esta consulta: a ordem cronológica abrange todo o <strong>ente</strong>, por fonte e
+        categoria de contrato. O filtro disponível é o de <strong>fonte</strong>.
       </p>
     </div>
   );

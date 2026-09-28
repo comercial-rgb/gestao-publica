@@ -104,7 +104,7 @@ async function main(): Promise<void> {
       "balanço financeiro",
       "80.500,00", // ingressos e dispêndios
       "200,00", // saldo em espécie para o exercício seguinte
-      "caixa apurado pelas partidas do razão",
+      "caixa apurado pelos lançamentos contábeis",
     ]);
 
     // ── ANEXO 14 ──────────────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ async function main(): Promise<void> {
       ]);
       // O dia escolhido tem fato: o pacote não pode estar inteiramente vazio.
       passos += 1;
-      if (sg.includes("este dia não tem movimento na base")) {
+      if (sg.includes("não há movimento registrado neste dia")) {
         falhas.push(`SAGRES ${r.dia}: a tela disse "sem movimento" num dia que TEM fato na base`);
         console.log(`  FALHA SAGRES ${r.dia} — disse "sem movimento" e a base tem fato`);
       } else {
@@ -221,7 +221,7 @@ async function main(): Promise<void> {
     await irPara(n, page, "/integracoes/sagres?dia=2026-02-02&mes=2026-02");
     const vazio = await principal(page);
     conferir("SAGRES — dia sem movimento é DITO, não escondido", vazio, [
-      "não tem movimento",
+      "não há movimento registrado",
       "2026-02-02",
     ]);
 

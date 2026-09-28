@@ -22,13 +22,13 @@ export default async function Pagina(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <PageHeader
           titulo="Minhas solicitações"
-          subtitulo={quem.pessoa === null ? "Sua conta ainda não está ligada ao cadastro de pessoa." : `${quem.pessoa.nome} · ${quem.pessoa.documento}${quem.titulares.length > 1 ? ` · representa ${quem.titulares.length - 1} pessoa(s)` : ""}`}
+          subtitulo={quem.pessoa === null ? "Sua conta ainda não está vinculada ao seu cadastro." : `${quem.pessoa.nome} · ${quem.pessoa.documento}${quem.titulares.length > 1 ? ` · representa ${quem.titulares.length - 1} pessoa(s)` : ""}`}
           acoes={<Link href="/servicos" className="text-sm text-[color:var(--color-primary)] underline">Carta de serviços</Link>}
         />
         {quem.pessoa === null ? (
           <EstadoVazio
-            titulo="A sua conta ainda não está ligada ao seu cadastro de pessoa"
-            descricao="Os pedidos são feitos em nome de uma pessoa do cadastro, e para isso o sistema precisa saber quem você é. Esse vínculo é feito pelo atendimento, pelo CPF — nunca pelo nome."
+            titulo="Sua conta ainda não está vinculada ao seu cadastro"
+            descricao="Para fazer solicitações, sua conta precisa estar vinculada ao seu cadastro pelo CPF. Solicite o vínculo ao atendimento."
           />
         ) : solicitacoes.length === 0 ? (
           <EstadoVazio titulo="Nenhuma solicitação ainda" descricao="Escolha um serviço na carta para fazer o seu primeiro pedido." />
@@ -64,7 +64,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       </div>
     );
   } catch (e) {
-    if (e instanceof PortaSemBancoError) return <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê as suas solicitações. Sem banco, não tem o que mostrar — e não vai fingir que tem." />;
+    if (e instanceof PortaSemBancoError) return <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar as informações. Tente novamente mais tarde." />;
     throw e;
   }
 }

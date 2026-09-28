@@ -48,8 +48,8 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Novo grupo de empenho</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        O grupo diz QUAIS rubricas de provento viram despesa, em QUAL ficha e para QUEM. Só provento entra: desconto é
-        retenção do pagamento, e empenhá-lo somaria à despesa do ente um valor que ele nunca gastou.
+        Define quais rubricas de provento são empenhadas, em qual ficha orçamentária e para qual credor. Descontos não
+        entram no grupo, pois são retenções do pagamento.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -58,7 +58,7 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
           <input name="codigo" required placeholder="FOLHA-VENC" className={CAMPO} />
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Descrição (vai no histórico do empenho)</span>
+          <span className={ROTULO}>Descrição (constará no histórico do empenho)</span>
           <input name="descricao" required placeholder="Vencimentos e vantagens fixas" className={CAMPO} />
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -68,7 +68,7 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-4">
           <span className={ROTULO}>Ficha orçamentária</span>
           <select name="fichaId" required defaultValue="" className={CAMPO}>
-            <option value="">— escolha —</option>
+            <option value="">Selecione</option>
             {fichas.map((f) => (
               <option key={f.id} value={f.id}>{f.rotulo}</option>
             ))}
@@ -93,13 +93,13 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
         </label>
         <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <input type="checkbox" name="porServidor" value="sim" checked={porServidor} onChange={(e) => setPorServidor(e.target.checked)} className="h-4 w-4" />
-          <span>Um empenho por servidor (credor = o CPF de cada um)</span>
+          <span>Um empenho por servidor (cada servidor como credor)</span>
         </label>
         {porServidor ? null : (
           <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-4">
             <span className={ROTULO}>Credor do empenho único</span>
             <select name="credorId" required defaultValue="" className={CAMPO}>
-              <option value="">— escolha —</option>
+              <option value="">Selecione</option>
               {credores.map((c) => (
                 <option key={c.id} value={c.id}>{c.rotulo}</option>
               ))}
@@ -111,16 +111,14 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
       <fieldset data-secao="contas" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Contas da liquidação deste grupo</legend>
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-          Quando a folha certificada for liquidada, a obrigação nasce nestas duas contas. O plano de contas mapeia
-          contrapartida por elemento para material, serviço e amortização — não para folha —, e a variação de serviços de
-          terceiros lançaria a remuneração dos servidores como serviço contratado. Quais contas usar é decisão do contador
-          do ente.
+          Na liquidação da folha certificada, a obrigação é registrada nestas duas contas. A escolha das contas cabe ao
+          contador do ente.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-xs text-[color:var(--color-ink-2)]">
             <span className={ROTULO}>Variação patrimonial diminutiva (debitada)</span>
             <select name="contaVariacaoId" required defaultValue="" className={CAMPO}>
-              <option value="">— escolha —</option>
+              <option value="">Selecione</option>
               {contasDeVariacao.map((c) => (
                 <option key={c.id} value={c.id}>{c.rotulo}</option>
               ))}
@@ -129,7 +127,7 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
           <label className="text-xs text-[color:var(--color-ink-2)]">
             <span className={ROTULO}>Obrigação de pessoal a pagar (creditada)</span>
             <select name="contaObrigacaoId" required defaultValue="" className={CAMPO}>
-              <option value="">— escolha —</option>
+              <option value="">Selecione</option>
               {contasDeObrigacao.map((c) => (
                 <option key={c.id} value={c.id}>{c.rotulo}</option>
               ))}
@@ -141,7 +139,7 @@ export function FormGrupoDeEmpenho({ fichas, credores, rubricas, contasDeVariaca
       <fieldset data-secao="rubricas" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Rubricas de provento deste grupo</legend>
         {rubricas.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-ink-2)]">Não há rubrica de provento cadastrada. Cadastre-as antes.</p>
+          <p className="text-xs text-[color:var(--color-ink-2)]">Não há rubrica de provento cadastrada. Cadastre as rubricas antes de criar o grupo.</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {rubricas.map((r, i) => (

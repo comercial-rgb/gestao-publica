@@ -138,8 +138,8 @@ export function FormAtribuir({
       <ChaveDeComando />
       <input type="hidden" name="receitaArrecadadaId" value={receitaArrecadadaId} />
       <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
-        Isto <strong>não altera a guia</strong>: grava um registro novo, com o seu nome, o motivo e
-        o ato que fundamenta. O ato precisa mencionar a entidade que você escolher.
+        A atribuição <strong>não altera a guia</strong>: é registrada com o responsável, o motivo e o
+        ato que a fundamenta. O ato deve mencionar a entidade escolhida.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs sm:col-span-2">

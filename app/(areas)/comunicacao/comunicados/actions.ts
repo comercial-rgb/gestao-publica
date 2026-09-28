@@ -64,8 +64,8 @@ export async function rascunharAction(
       revalidar();
       return {
         sucesso:
-          `Rascunho ${r.numero} criado. Ele já nasce numerado — e só sai da sua caixa de ` +
-          `rascunhos quando você o enviar.`,
+          `Rascunho ${r.numero} criado. Ele permanece na caixa de rascunhos até ser ` +
+          `enviado.`,
       };
     } catch (e) {
       return comoErro(e);
@@ -143,7 +143,7 @@ export async function responderAction(
   return comComandoDoFormulario(formData, async () => {
     const comunicadoId = texto(formData, "comunicadoId");
     const setorRemetenteId = texto(formData, "setorRemetenteId");
-    if (setorRemetenteId === "") return { erro: "Escolha por qual setor você responde." };
+    if (setorRemetenteId === "") return { erro: "Escolha o setor responsável pela resposta." };
 
     try {
       const r = await responderNaTela({
@@ -154,7 +154,7 @@ export async function responderAction(
       });
       revalidar(comunicadoId);
       return {
-        sucesso: `Resposta ${r.numero} enviada aos setores que já estavam na conversa.`,
+        sucesso: `Resposta ${r.numero} enviada aos setores participantes do comunicado.`,
       };
     } catch (e) {
       return comoErro(e);
@@ -181,8 +181,8 @@ export async function encaminharAction(
       revalidar(comunicadoId);
       return {
         sucesso:
-          "Encaminhado. O setor incluído passa a poder responder — e o encaminhamento " +
-          "fica registrado como tal.",
+          "Comunicado encaminhado. O setor incluído passa a poder responder, e o " +
+          "encaminhamento fica registrado.",
       };
     } catch (e) {
       return comoErro(e);
@@ -201,8 +201,8 @@ export async function marcarLeituraAction(
       revalidar(comunicadoId);
       return {
         sucesso: r.jaLida
-          ? "Você já havia registrado ciência deste comunicado — a primeira leitura é a que vale."
-          : "Ciência registrada, com o instante e a origem.",
+          ? "A ciência deste comunicado já havia sido registrada. Prevalece o primeiro registro."
+          : "Ciência registrada, com data, hora e origem.",
       };
     } catch (e) {
       return comoErro(e);
@@ -219,7 +219,7 @@ export async function arquivarAction(
     try {
       await arquivarNaTela(comunicadoId);
       revalidar(comunicadoId);
-      return { sucesso: "Arquivado na SUA caixa — para os outros nada mudou." };
+      return { sucesso: "Comunicado arquivado na sua caixa. Para os demais destinatários, nada foi alterado." };
     } catch (e) {
       return comoErro(e);
     }
@@ -235,7 +235,7 @@ export async function desarquivarAction(
     try {
       await desarquivarNaTela(comunicadoId);
       revalidar(comunicadoId);
-      return { sucesso: "Desarquivado." };
+      return { sucesso: "Comunicado desarquivado." };
     } catch (e) {
       return comoErro(e);
     }
@@ -265,11 +265,11 @@ export async function etiquetarAction(
   return comComandoDoFormulario(formData, async () => {
     const comunicadoId = texto(formData, "comunicadoId");
     const tag = texto(formData, "tag");
-    if (tag === "") return { erro: "Escreva a etiqueta." };
+    if (tag === "") return { erro: "Informe a etiqueta." };
     try {
       await etiquetarNaTela({ comunicadoId, tag });
       revalidar(comunicadoId);
-      return { sucesso: `Etiqueta "${tag}" aplicada — e ela é visível a todos os envolvidos.` };
+      return { sucesso: `Etiqueta "${tag}" aplicada. Ela é visível a todos os participantes.` };
     } catch (e) {
       return comoErro(e);
     }

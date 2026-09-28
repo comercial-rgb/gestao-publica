@@ -82,7 +82,7 @@ export async function publicarVersaoAction(
       });
       revalidatePath("/contabilidade/entidades");
       return {
-        sucesso: `Versão ${String(versao)} publicada. A versão anterior continua no histórico — nenhuma guia já carimbada muda de entidade.`,
+        sucesso: `Versão ${String(versao)} publicada. A versão anterior permanece no histórico, e as guias já emitidas mantêm a entidade original.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível publicar a versão." };

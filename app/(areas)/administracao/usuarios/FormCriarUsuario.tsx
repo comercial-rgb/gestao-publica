@@ -37,17 +37,17 @@ export function FormCriarUsuario({ perfis }: { readonly perfis: readonly PerfilO
           <input name="nome" required placeholder="Maria da Silva" className={CAMPO} />
         </label>
         <label className="text-xs">
-          <span className={ROTULO}>Email (identificador)</span>
+          <span className={ROTULO}>E-mail (usuário de acesso)</span>
           <input name="email" type="email" required placeholder="nome@dominio-do-ente" className={CAMPO} />
         </label>
         <label className="text-xs">
-          <span className={ROTULO}>Senha inicial (mín. 12)</span>
-          <input name="senhaInicial" required minLength={12} placeholder="frase longa e única" className={CAMPO} />
+          <span className={ROTULO}>Senha inicial (mínimo de 12 caracteres)</span>
+          <input name="senhaInicial" required minLength={12} placeholder="Frase longa e exclusiva" className={CAMPO} />
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Perfil inicial (opcional)</span>
           <select name="perfilId" defaultValue="" className={CAMPO}>
-            <option value="">— sem perfil —</option>
+            <option value="">Sem perfil</option>
             {perfis.map((p) => (
               <option key={p.id} value={p.id}>{p.nome}</option>
             ))}
@@ -63,7 +63,7 @@ export function FormCriarUsuario({ perfis }: { readonly perfis: readonly PerfilO
           <p>{estado.sucesso}</p>
           {estado.senhaParaEntregar !== undefined ? (
             <p className="mt-1">
-              ⚠️ Entregue esta senha ao servidor AGORA — ela não será mostrada de novo:{" "}
+              Entregue esta senha ao usuário. Ela não será exibida novamente:{" "}
               <strong className="tabular select-all">{estado.senhaParaEntregar}</strong>
             </p>
           ) : null}

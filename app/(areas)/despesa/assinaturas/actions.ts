@@ -34,7 +34,7 @@ export async function enviarParaAssinaturaAction(
     if (signatarios.length === 0) {
       return {
         erro:
-          "Escolha ao menos um signatário. Fila vazia passaria por 'todas as assinaturas colhidas' — e o documento sairia sem ninguém ter assinado.",
+          "Escolha ao menos um signatário.",
       };
     }
 
@@ -63,8 +63,8 @@ export async function assinarAction(
       revalidatePath("/despesa/assinaturas");
       return {
         sucesso: concluida
-          ? "Assinado. A fila está completa."
-          : "Assinado. Ainda faltam signatários.",
+          ? "Documento assinado. Todas as assinaturas foram registradas."
+          : "Documento assinado. Ainda há assinaturas pendentes.",
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível assinar." };

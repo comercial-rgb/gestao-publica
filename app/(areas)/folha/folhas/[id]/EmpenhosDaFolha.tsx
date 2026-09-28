@@ -22,9 +22,9 @@ export function EmpenhosDaFolha({ apropriacao, liquidacoes }: {
       <Card>
         <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Apropriação contábil</h2>
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          A apropriação foi tentada em {apropriacao.dataDoEmpenho} por {apropriacao.por} e parou ANTES de gravar o primeiro
-          empenho — a causa mais comum é saldo insuficiente na ficha do grupo. Nada foi empenhado. Resolva a causa e
-          apropriar de novo continua daqui: a numeração é determinística e não duplica.
+          A apropriação foi iniciada em {apropriacao.dataDoEmpenho} por {apropriacao.por} e parou antes de gravar o primeiro
+          empenho. A causa mais comum é saldo insuficiente na ficha do grupo. Nenhum valor foi empenhado; após resolver a
+          causa, a apropriação pode ser repetida sem duplicidade.
         </p>
       </Card>
     );
@@ -33,9 +33,9 @@ export function EmpenhosDaFolha({ apropriacao, liquidacoes }: {
     <Card>
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Empenhos gerados por esta folha</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Apropriada em {apropriacao.dataDoEmpenho} por {apropriacao.por}. Só o BRUTO é empenhado — a contribuição e o
-        imposto retidos do servidor são retenções do pagamento, não despesa orçamentária. Empenhar, liquidar e pagar são
-        três fatos: a coluna Liquidação diz quais destes empenhos já viraram obrigação exigível — e nenhum deles foi pago.
+        Apropriada em {apropriacao.dataDoEmpenho} por {apropriacao.por}. Só o bruto é empenhado: a contribuição e o imposto
+        retidos do servidor são retenções do pagamento, não despesa orçamentária. A coluna Liquidação indica quais empenhos
+        já foram liquidados; esta seção não registra pagamentos.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[44rem] border-collapse text-sm">

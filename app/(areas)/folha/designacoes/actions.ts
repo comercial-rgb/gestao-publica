@@ -25,8 +25,8 @@ export async function designacoesAction(_prev: EstadoDoMolde, formData: FormData
       if (acao === "criar") {
         const novoId = await criarDesignacao(campos);
         mensagem =
-          `Designação cadastrada. Ela NÃO concede poder sozinha: certificar exige também a ação CERTIFICAR_FOLHA no ` +
-          `perfil desta conta. Abra em ${DESIGNACOES_DA_FOLHA.rota}/${novoId}.`;
+          `Designação cadastrada. Ela não concede poder sozinha: para certificar, o perfil da conta também precisa da ` +
+          `permissão de certificar a folha. Abra em ${DESIGNACOES_DA_FOLHA.rota}/${novoId}.`;
       } else if (id !== "") {
         mensagem = await acaoDaDesignacao(acao, id, campos);
       } else {

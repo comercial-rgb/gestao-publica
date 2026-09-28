@@ -64,7 +64,7 @@ export default async function Page({
 
   const cabecalho = (
     <PageHeader
-      subtitulo="Quanto custou cada centro no período — e de que despesa cada parte veio"
+      subtitulo="Custo apropriado a cada centro no período, com a composição por despesa"
       titulo="Custo por centro"
     />
   );
@@ -94,7 +94,7 @@ export default async function Page({
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível ler o custo por centro"
           }
         />
@@ -134,8 +134,8 @@ export default async function Page({
         data-janela-do-custo={String(exercicio)}
       >
         Período de {diaCivilBr(custo.de)} a {diaCivilBr(custo.ate)}, pela{" "}
-        <strong>competência do custo</strong> — e não pela data da liquidação. Uma despesa liquidada
-        em um mês pode ser custo de outro, e é a competência declarada na apropriação que decide.
+        <strong>competência do custo</strong>, e não pela data da liquidação. A competência é
+        informada em cada apropriação.
       </div>
 
       <Card>
@@ -196,8 +196,7 @@ export default async function Page({
               </table>
             </div>
             <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-              O total é a soma das partes gravadas em cada apropriação. Centro sem apropriação no
-              período não aparece com zero: a lista mostra o que houve, não o cadastro inteiro.
+              São listados apenas os centros com apropriação no período.
             </p>
           </>
         )}
@@ -211,7 +210,7 @@ export default async function Page({
           {composicao.length === 0 ? (
             <EstadoVazio
               descricao="Este centro não recebeu apropriação no período escolhido."
-              titulo="Sem partes no período"
+              titulo="Sem apropriações no período"
             />
           ) : (
             <>
@@ -273,8 +272,8 @@ export default async function Page({
                 </table>
               </div>
               <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-                A soma da coluna deste centro fecha com o acumulado da tabela acima. A coluna
-                &quot;apropriado&quot; é o valor total daquele ato, que se dividiu entre os centros do
+                A soma da coluna deste centro corresponde ao acumulado da tabela acima. A coluna
+                &quot;Apropriado&quot; mostra o valor total da apropriação, dividido entre os centros do
                 critério.
               </p>
             </>
@@ -288,7 +287,7 @@ export default async function Page({
         </h2>
         {criterios.length === 0 ? (
           <EstadoVazio
-            descricao="Nenhum critério foi publicado. Sem critério vigente, apropriar custo é recusado: o sistema não escolhe a proporção do rateio por conta própria."
+            descricao="Nenhum critério foi publicado. É necessário publicar um critério de rateio antes de apropriar custos."
             titulo="Nenhum critério de rateio"
           />
         ) : (
@@ -349,14 +348,14 @@ export default async function Page({
           </div>
         )}
         <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-          As versões anteriores continuam gravadas: é por elas que se responde contra que proporção
-          uma apropriação antiga foi feita.
+          As versões anteriores permanecem registradas e identificam a proporção usada em cada
+          apropriação já realizada.
         </p>
       </Card>
 
       {centros.length === 0 ? (
         <EstadoVazio
-          descricao="O centro de custo deste sistema é o setor administrativo. Cadastre os setores do ente para poder publicar um critério de rateio."
+          descricao="Os centros de custo correspondem aos setores administrativos. Cadastre os setores do ente para publicar um critério de rateio."
           titulo="Nenhum setor ativo cadastrado"
         />
       ) : (

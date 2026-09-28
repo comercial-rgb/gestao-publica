@@ -34,7 +34,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, CONTRATOS.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        motivoSemCriar="O contrato entra pelo detalhe do processo homologado (Licitações > Processos > abrir o processo > Cadastrar contrato)."
+        motivoSemCriar="O contrato é cadastrado a partir do processo homologado (Licitações > Processos > abrir o processo > Cadastrar contrato)."
       />
     );
   } catch (e) {
@@ -42,7 +42,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={CONTRATOS.rotulo} subtitulo={CONTRATOS.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava a contratação. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Serviço indisponível" descricao="Não foi possível carregar os dados. Tente novamente em instantes." />
         </div>
       );
     }

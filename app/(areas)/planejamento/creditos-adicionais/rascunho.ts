@@ -110,7 +110,7 @@ export function errosDoRascunho(r: RascunhoDecreto): readonly string[] {
   if (!ehOrigem(r.origemRecurso)) erros.push("Escolha a origem do recurso.");
 
   if (r.movimentos.length === 0) {
-    erros.push("Um decreto sem movimento não altera dotação nenhuma — inclua ao menos uma perna.");
+    erros.push("Inclua ao menos um movimento no decreto.");
   }
   r.movimentos.forEach((m, i) => {
     const onde = `Movimento ${i + 1}`;
@@ -128,7 +128,7 @@ export function errosDoRascunho(r: RascunhoDecreto): readonly string[] {
     const chave = `${m.fichaId}|${m.tipo}`;
     if (vistos.has(chave)) {
       erros.push(
-        `A mesma ficha aparece duas vezes com o mesmo tipo de movimento — some os valores numa linha só.`
+        `A mesma ficha aparece duas vezes com o mesmo tipo de movimento. Some os valores em uma única linha.`
       );
       break;
     }

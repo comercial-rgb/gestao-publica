@@ -74,8 +74,8 @@ export default async function AuditoriasPage({
         <div className="space-y-6">
           <PageHeader titulo={AUDITORIAS.rotulo} subtitulo={AUDITORIAS.descricao} />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Este cadastro lê e escreve no banco. Sem ele, esta tela não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis"
+            descricao="Não foi possível acessar a base de dados deste ambiente."
           />
         </div>
       );

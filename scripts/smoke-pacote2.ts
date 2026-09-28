@@ -233,7 +233,7 @@ async function hrefsDoHistorico(page: Page, rotuloDoLink: string): Promise<reado
  */
 async function hrefDaAnaliseNoHistorico(page: Page, oQue: string): Promise<string | undefined> {
   return page.evaluate((q) => {
-    const a = Array.from(document.querySelectorAll("li a")).find((x) => (x.textContent ?? "").trim() === "analisar estorno" && (x.closest("li")?.textContent ?? "").includes(q));
+    const a = Array.from(document.querySelectorAll("li a")).find((x) => (x.textContent ?? "").trim() === "Analisar estorno" && (x.closest("li")?.textContent ?? "").includes(q));
     return a instanceof HTMLAnchorElement ? new URL(a.href).pathname : undefined;
   }, oQue);
 }
@@ -328,7 +328,7 @@ async function main(): Promise<void> {
 
     // ── 3. o estorno com análise de dependências ──
     await irPara(page, hrefBem + "?aba=historico");
-    const analises = await hrefsDoHistorico(page, "analisar estorno");
+    const analises = await hrefsDoHistorico(page, "Analisar estorno");
     conferir("histórico do bem: cada movimento vivo liga à análise do seu estorno", analises.length >= 1, `links: ${analises.length}`);
     const analiseDaEntrada = await hrefDaAnaliseNoHistorico(page, "Avaliação inicial");
     conferir("histórico do bem: a ENTRADA (avaliação inicial) tem a sua análise, distinta do item da competência", analiseDaEntrada !== undefined && analiseDaEntrada.includes("/estornos/valor/"), `link: ${analiseDaEntrada ?? "nenhum"}`);

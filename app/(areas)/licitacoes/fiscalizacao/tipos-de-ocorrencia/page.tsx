@@ -27,12 +27,12 @@ export default async function TiposDeOcorrencia(): Promise<React.ReactElement> {
         </nav>
         <header>
           <h1 className="text-xl font-semibold">Tipos de ocorrência e formulários</h1>
-          <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">O que o fiscal escolhe ao registrar uma ocorrência, e as perguntas que ele responde. Cada mudança é uma versão nova, com a data em que passa a valer.</p>
+          <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Tipos de ocorrência disponíveis ao fiscal e as perguntas de cada formulário. Cada alteração gera uma nova versão, com data de início de vigência.</p>
         </header>
         <AvisosDosAtos />
 
         <Card>
-          {t.tipos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-tipos>Nenhum tipo cadastrado. Sem tipo com formulário, a ocorrência continua sendo registrada pelo vocabulário fixo do sistema.</p> : (
+          {t.tipos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-tipos>Nenhum tipo cadastrado. Enquanto não houver tipos com formulário, as ocorrências são registradas com os tipos padrão do sistema.</p> : (
             <ul className="space-y-4">
               {t.tipos.map((x) => (
                 <li key={x.tipoId} data-tipo={x.codigo} className="border-t border-[color:var(--color-border)] pt-3 first:border-t-0 first:pt-0">
@@ -68,7 +68,7 @@ export default async function TiposDeOcorrencia(): Promise<React.ReactElement> {
               ))}
             </ul>
           )}
-          {t.podeGerir ? null : <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-dos-tipos>Cadastrar tipos e publicar formulários é da administração da fiscalização (a ação de gerir tipos de ocorrência no seu perfil).</p>}
+          {t.podeGerir ? null : <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-motivo-dos-tipos>Cadastrar tipos e publicar formulários exige a permissão de gerir tipos de ocorrência.</p>}
         </Card>
         {t.podeGerir ? <FormCadastrarTipo /> : null}
       </div>

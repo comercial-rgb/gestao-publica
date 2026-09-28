@@ -32,7 +32,7 @@ export interface ContaDePassivo {
 function SelectDeConta({ contas }: { readonly contas: readonly ContaDePassivo[] }): React.ReactElement {
   return (
     <label className="text-xs sm:col-span-2">
-      <span className={ROTULO}>Conta do passivo (onde a dívida nasce)</span>
+      <span className={ROTULO}>Conta de passivo</span>
       <select name="contaPassivoCodigo" required defaultValue="" className={CAMPO}>
         <option value="">Escolha a conta analítica…</option>
         {contas.map((c) => (
@@ -72,9 +72,8 @@ export function FormCadastrar({ contas }: { readonly contas: readonly ContaDePas
   if (contas.length === 0) {
     return (
       <div className={`${CLASSE_PAINEL_FORMULARIO} text-xs text-[color:var(--color-ink-2)]`}>
-        <strong className="text-[color:var(--color-ink)]">Nenhuma conta analítica de passivo no plano</strong> —
-        carregue o plano de contas do ente antes de cadastrar consignações. Sem conta onde a dívida
-        nasça, a retenção seria recusada no meio de um pagamento.
+        <strong className="text-[color:var(--color-ink)]">Nenhuma conta analítica de passivo no plano de contas.</strong>{" "}
+        Carregue o plano de contas do ente antes de cadastrar consignações.
       </div>
     );
   }
@@ -86,8 +85,8 @@ export function FormCadastrar({ contas }: { readonly contas: readonly ContaDePas
           <div>
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Cadastrar uma consignação</h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-              INSS, IRRF, ISS, pensão, caução — e as que o ente criar. É aqui que se diz em que conta
-              do plano a retenção vira dívida com o consignatário.
+              INSS, IRRF, ISS, pensão, caução e outras definidas pelo ente, com a conta de passivo de
+              cada uma.
             </p>
           </div>
           <button type="button" onClick={() => setAberto(true)} className={CLASSE_BOTAO_PRIMARIO}>
@@ -114,7 +113,7 @@ export function FormCadastrar({ contas }: { readonly contas: readonly ContaDePas
         </label>
         <SelectDeConta contas={contas} />
         <label className="text-xs sm:col-span-4">
-          <span className={ROTULO}>Por que esta conta</span>
+          <span className={ROTULO}>Justificativa da conta</span>
           <input
             name="fundamento"
             required
@@ -126,9 +125,8 @@ export function FormCadastrar({ contas }: { readonly contas: readonly ContaDePas
         </label>
       </div>
       <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-        A escolha fica registrada com o seu nome e a data. Trocar a conta depois <strong>não
-        reescreve</strong> o que já foi retido — o que já está no razão continua onde foi
-        escriturado.
+        A escolha fica registrada com o seu nome e a data. A troca posterior da conta{" "}
+        <strong>não altera</strong> as retenções já contabilizadas.
       </p>
       <div className="mt-4 flex items-center gap-3">
         <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
@@ -229,7 +227,7 @@ export function AtosDoTipo({ tipoId }: { readonly tipoId: string }): React.React
         <input type="hidden" name="tipoId" value={tipoId} />
         <SelectDeConta contas={ctx.contas} />
         <label className="text-xs sm:col-span-2">
-          <span className={ROTULO}>Por que está mudando</span>
+          <span className={ROTULO}>Justificativa da troca</span>
           <input name="fundamento" required minLength={20} maxLength={500} className={CAMPO} />
         </label>
         <div className="flex items-center gap-3 sm:col-span-4">
@@ -245,7 +243,7 @@ export function AtosDoTipo({ tipoId }: { readonly tipoId: string }): React.React
       <ChaveDeComando />
       <input type="hidden" name="tipoId" value={tipoId} />
       <label className="text-xs">
-        <span className={ROTULO}>Por que está desativando</span>
+        <span className={ROTULO}>Justificativa da desativação</span>
         <input name="fundamento" required minLength={20} maxLength={500} className={CAMPO} />
       </label>
       <button type="submit" disabled={ctx.pDes} className={CLASSE_BOTAO_PRIMARIO}>{ctx.pDes ? "Gravando…" : "Desativar"}</button>

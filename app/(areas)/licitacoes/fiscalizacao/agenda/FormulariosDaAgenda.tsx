@@ -65,7 +65,7 @@ export function FormReagendar({ ordemId, contratoId, numero, data, horaInicio, d
       <form ref={a.ref} action={a.disparar} data-acao={acao} className="mt-2">
         <ChaveDeComando />
         <Ocultos acao="reagendar" ordemId={ordemId} contratoId={contratoId} />
-        <p className="text-xs text-[color:var(--color-ink-2)]">Hoje: {data.split("-").reverse().join("/")}{horaInicio === null ? "" : ` às ${horaInicio}`}. O compromisso anterior e o motivo ficam no histórico.</p>
+        <p className="text-xs text-[color:var(--color-ink-2)]">Agendada para {data.split("-").reverse().join("/")}{horaInicio === null ? "" : ` às ${horaInicio}`}. A data anterior e o motivo ficam registrados no histórico.</p>
         <div className="mt-2 grid gap-2 sm:grid-cols-4">
           <Campo id={a.id} nome="dataPrevista" rotulo="Nova data" tipo="date" defaultValue={data} min={hoje} />
           <Campo id={a.id} nome="horaInicio" rotulo="Horário (HH:MM)" tipo="time" obrigatorio={false} defaultValue={horaInicio ?? ""} />
@@ -118,7 +118,7 @@ export function FormRealizar({ ordemId, contratoId, numero, data, hoje }: { read
         <label htmlFor={`${a.id}-relato`} className="mt-2 block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Relato da visita</span>
           <textarea id={`${a.id}-relato`} name="relato" required minLength={10} rows={3} className={CLASSE_AREA_TEXTO} />
         </label>
-        <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">Registrar a realização não é a ocorrência: o que foi constatado se registra como ocorrência, no contrato, com o formulário do tipo.</p>
+        <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">As constatações da visita devem ser registradas como ocorrência, na página do contrato.</p>
         <Mensagens estado={a.estado} acao={acao} />
         <button type="submit" disabled={a.pendente} className={`mt-2 ${CLASSE_BOTAO_PRIMARIO}`}>{a.pendente ? "Gravando…" : "Registrar realização"}</button>
       </form>
@@ -135,7 +135,7 @@ export function FormCadastrarTipo(): React.ReactElement {
       <ChaveDeComando />
       <input type="hidden" name="__acao" value="cadastrarTipo" />
       <h2 className="mb-1 text-sm font-semibold">Cadastrar tipo de ocorrência</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">O tipo nasce ativo e sem formulário: publique a primeira versão para que o fiscal possa usá-lo.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">O tipo é cadastrado ativo e sem formulário. Publique a primeira versão para que os fiscais possam utilizá-lo.</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <Campo id={a.id} nome="codigo" rotulo="Código (letras maiúsculas, números e hífen)" maxLength={30} />
         <Campo id={a.id} nome="nome" rotulo="Nome" minLength={3} />
@@ -164,7 +164,7 @@ export function FormPublicarVersao({ tipoId, codigo, proximaVersao, hoje }: { re
         <input type="hidden" name="__acao" value="publicarVersao" />
         <input type="hidden" name="tipoId" value={tipoId} />
         <div className="grid gap-2 sm:grid-cols-4">
-          <Campo id={a.id} nome="vigenciaInicio" rotulo="Vale para preencher desde" tipo="date" defaultValue={hoje} />
+          <Campo id={a.id} nome="vigenciaInicio" rotulo="Vigente a partir de" tipo="date" defaultValue={hoje} />
           <label htmlFor={`${a.id}-exigeGravidade`} className="text-xs text-[color:var(--color-ink-2)]">
             <span className={CLASSE_ROTULO}>Exige gravidade</span>
             <select id={`${a.id}-exigeGravidade`} name="exigeGravidade" defaultValue="nao" className={CLASSE_CAMPO}><option value="nao">Não</option><option value="sim">Sim</option></select>

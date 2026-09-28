@@ -42,7 +42,7 @@ export default async function Pagina({
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, PROGRAMAS_DO_PPA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        motivoSemCriar="O programa entra no plano pelo detalhe do PPA (Planejamento > PPA > abrir o plano > Incluir programa no plano)."
+        motivoSemCriar="Para incluir um programa, abra o PPA correspondente e use a opção Incluir programa no plano."
       />
     );
   } catch (e) {
@@ -50,7 +50,7 @@ export default async function Pagina({
       return (
         <div className="space-y-6">
           <PageHeader titulo={PROGRAMAS_DO_PPA.rotulo} subtitulo={PROGRAMAS_DO_PPA.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava o planejamento. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Serviço indisponível" descricao="Não foi possível carregar os dados. Tente novamente em instantes." />
         </div>
       );
     }

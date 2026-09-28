@@ -22,7 +22,7 @@ export default async function ChamadosPage(): Promise<React.ReactElement> {
     <div className="flex flex-col gap-6">
       <PageHeader
         titulo="Chamados de suporte"
-        subtitulo="Número único no produto inteiro, severidade cadastrada pela entidade e histórico consultável por quem abriu."
+        subtitulo="Abertura e acompanhamento de chamados, com número único e histórico."
       />
 
       <Card>
@@ -38,13 +38,13 @@ export default async function ChamadosPage(): Promise<React.ReactElement> {
             Meus chamados
           </h2>
           <span className="text-xs text-[color:var(--color-ink-2)]">
-            Ordenados pela severidade — o mais grave primeiro.
+            Ordenados por severidade, do mais grave para o menos grave.
           </span>
         </div>
         {chamados.length === 0 ? (
           <EstadoVazio
             titulo="Nenhum chamado"
-            descricao="Você vê os chamados que abriu. Quem atende o suporte vê todos — um chamado costuma descrever o que a pessoa não conseguiu fazer, e isso não é assunto do setor dela."
+            descricao="São exibidos os chamados abertos por você. A equipe de suporte visualiza todos os chamados."
           />
         ) : (
           <table className="w-full text-sm">

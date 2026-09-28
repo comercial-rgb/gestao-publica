@@ -3,7 +3,7 @@ import { Badge } from "../../../../../components/ui/Badge";
 import type { ItemDoAtendimentoLido } from "../../../../../lib/portas/recursos/compras-dados";
 
 const ROTULO_DA_PARCELA: Record<ItemDoAtendimentoLido["parcelas"][number]["situacao"], { readonly texto: string; readonly tom: "ok" | "neutro" | "erro" }> = {
-  VIVA: { texto: "viva", tom: "ok" },
+  VIVA: { texto: "ativa", tom: "ok" },
   DESFEITA: { texto: "desfeita", tom: "neutro" },
   ORDEM_ESTORNADA: { texto: "ordem estornada", tom: "erro" },
 };
@@ -17,7 +17,7 @@ export function Atendimento({ itens }: { readonly itens: readonly ItemDoAtendime
   return (
     <section aria-label="Atendimento da solicitação" data-atendimento className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-card)]">
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Atendimento por item</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Ordenado = parcelas vivas em ordens vivas; recebido = entregas atribuídas a elas; cancelado = parcelas desfeitas ou de ordens estornadas; pendente = solicitado − ordenado.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Ordenado: incluído em ordens de compra ativas; recebido: já entregue; cancelado: parcelas desfeitas ou de ordens estornadas; pendente: solicitado menos ordenado.</p>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>

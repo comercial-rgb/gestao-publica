@@ -29,14 +29,14 @@ export default async function RreoAnexo1Page({
   const bimestre = ([1, 2, 3, 4, 5, 6] as const).includes(b as 1) ? (b as 1) : 1;
 
   const cabecalho = (
-    <PageHeader titulo="RREO — Anexo 1 · Balanço Orçamentário" subtitulo="Receita e despesa do exercício (LRF art. 52) · corte pela data do fato" acoes={<div className="flex items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><a href={`/transparencia/demonstrativos/pdf?slug=rreo-anexo1&exercicio=${exercicio}&bimestre=${bimestre}`} target="_blank" rel="noopener" data-chrome className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-xs font-medium text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] inline-flex items-center">Baixar PDF</a></div>} />
+    <PageHeader titulo="RREO — Anexo 1 · Balanço Orçamentário" subtitulo="Execução da receita e da despesa orçamentária (LRF art. 52)" acoes={<div className="flex items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><a href={`/transparencia/demonstrativos/pdf?slug=rreo-anexo1&exercicio=${exercicio}&bimestre=${bimestre}`} target="_blank" rel="noopener" data-chrome className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-xs font-medium text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] inline-flex items-center">Baixar PDF</a></div>} />
   );
 
   let dados: Anexo1;
   try {
     dados = await gerarRreoAnexo1({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 1"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 1"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   if (dados.receitas.length === 0 && dados.despesas.length === 0) {

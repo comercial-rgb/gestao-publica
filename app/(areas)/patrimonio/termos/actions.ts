@@ -25,6 +25,6 @@ export async function acaoDeTermosAction(_prev: EstadoDoMolde, formData: FormDat
     }
     revalidatePath(TERMOS_PATRIMONIAIS.rota);
     revalidatePath("/patrimonio/bens-patrimoniais");
-    return { sucesso: "Termo emitido. O movimento de cada bem ficou registrado; o PDF está no detalhe do termo." };
+    return { sucesso: "Termo emitido. A movimentação de cada bem foi registrada, e o PDF está disponível no detalhe do termo." };
   });
 }

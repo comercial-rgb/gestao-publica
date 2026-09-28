@@ -51,17 +51,16 @@ export default async function LicenciamentoPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <PageHeader
         titulo="Contrato e módulos"
-        subtitulo="O contrato comercial desta implantação e o que ele alcança. Habilitar não concede permissão a ninguém: quem pode o quê dentro do município continua sendo da administração do ente."
+        subtitulo="Contrato comercial desta implantação e módulos contratados. As permissões dos usuários são definidas pela administração do ente."
       />
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Esta implantação</h2>
         {contrato === null ? (
           <p role="alert" data-papel="sem-contrato" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-sm text-[color:var(--color-status-alerta-fg)]">
-            Não há contrato comercial registrado. Enquanto não houver, nenhum módulo contratável
-            opera — e isso é deliberado: liberar tudo &quot;porque a configuração falta&quot; faria de
-            apagar a tabela o caminho para usar o sistema de graça. A administração de usuários, os
-            cadastros e o suporte continuam abertos: são plataforma e não se contratam.
+            Não há contrato comercial registrado. Sem contrato, os módulos contratáveis ficam
+            indisponíveis. A administração de usuários, os cadastros e o suporte continuam
+            disponíveis.
           </p>
         ) : (
           <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3" data-papel="contrato">
@@ -83,7 +82,7 @@ export default async function LicenciamentoPage(): Promise<React.ReactElement> {
             <div>
               <dt className="text-xs text-[color:var(--color-ink-3)]">Vigência</dt>
               <dd className="tabular text-[color:var(--color-ink)]">
-                {contrato.inicio} a {contrato.fim ?? "sem termo"}
+                {contrato.inicio} a {contrato.fim ?? "prazo indeterminado"}
               </dd>
             </div>
             <div>
@@ -91,7 +90,7 @@ export default async function LicenciamentoPage(): Promise<React.ReactElement> {
               <dd className="text-[color:var(--color-ink)]">{contrato.criadoPor}</dd>
             </div>
             <div>
-              <dt className="text-xs text-[color:var(--color-ink-3)]">Dia civil de hoje</dt>
+              <dt className="text-xs text-[color:var(--color-ink-3)]">Data de hoje</dt>
               <dd className="tabular text-[color:var(--color-ink)]">{visao.hoje}</dd>
             </div>
             {contrato.observacao === null ? null : (
@@ -108,7 +107,7 @@ export default async function LicenciamentoPage(): Promise<React.ReactElement> {
       {contrato === null && !podeRegistrar ? (
         <Card>
           <p className="text-sm text-[color:var(--color-ink-3)]">
-            O seu acesso consulta o contrato desta implantação, mas não o registra.
+            Seu perfil permite consultar o contrato desta implantação, mas não registrá-lo.
           </p>
         </Card>
       ) : null}
@@ -117,8 +116,8 @@ export default async function LicenciamentoPage(): Promise<React.ReactElement> {
         <Card>
           <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Módulos</h2>
           <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-            Suspender não apaga fato nenhum: o que já foi registrado continua podendo ser consultado
-            e prestado em contas. O que a suspensão impede é operação nova.
+            A suspensão impede novas operações, mas não remove registros: o que já foi lançado
+            continua disponível para consulta e prestação de contas.
           </p>
           <div className="space-y-4">
             {visao.modulos.map((m) => {
@@ -160,7 +159,7 @@ export default async function LicenciamentoPage(): Promise<React.ReactElement> {
                 <caption className="sr-only">Eventos do contrato comercial desta implantação</caption>
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wide text-[color:var(--color-ink-3)]">
-                    <th scope="col" className="py-1 pr-3">Quando</th>
+                    <th scope="col" className="py-1 pr-3">Data e hora</th>
                     <th scope="col" className="py-1 pr-3">Evento</th>
                     <th scope="col" className="py-1 pr-3">Módulo</th>
                     <th scope="col" className="py-1 pr-3">Motivo</th>

@@ -67,7 +67,7 @@ export function SeletorDoCusto({
           onChange={(e) => navegar("centro", e.target.value)}
           value={centro}
         >
-          <option value="">Nenhum — mostrar só o acumulado</option>
+          <option value="">Nenhum (somente o acumulado)</option>
           {centros.map((c) => (
             <option key={c.valor} value={c.valor}>
               {c.rotulo}

@@ -28,7 +28,7 @@ export async function publicarRoteiroDeRestosAction(
   return comComandoDoFormulario(f, async () => {
     if (t(f, "evento") === "") return { erro: "Operação não informada." };
     if (t(f, "fundamento") === "") {
-      return { erro: "Diga por que estas contas — citando o plano do ente, a norma ou a orientação do tribunal." };
+      return { erro: "Informe o fundamento da parametrização: plano de contas do ente, norma ou orientação do tribunal." };
     }
     try {
       const sucesso = await publicarRoteiroDeRestos({

@@ -96,11 +96,11 @@ export default async function EstoquePage({
         <div className="space-y-6">
           <PageHeader
             titulo="Posição de estoque"
-            subtitulo="Quanto havia de cada material, num depósito, numa data."
+            subtitulo="Saldo de cada material por depósito, na data consultada."
           />
           <EstadoVazio
             titulo="Nenhum depósito cadastrado"
-            descricao="A posição é sempre de um depósito. Cadastre um depósito antes de consultar."
+            descricao="A posição de estoque é consultada por depósito. Cadastre um depósito para iniciar a consulta."
           />
         </div>
       );
@@ -114,7 +114,7 @@ export default async function EstoquePage({
           <PageHeader titulo="Posição de estoque" subtitulo="Depósito não encontrado." />
           <EstadoVazio
             titulo="Depósito não encontrado"
-            descricao="O depósito pedido não existe ou foi desativado."
+            descricao="O depósito informado não existe ou foi desativado."
           />
         </div>
       );
@@ -173,15 +173,15 @@ export default async function EstoquePage({
 
         {posicao.bloqueado ? (
           <Alerta status="alerta" titulo="Movimentação bloqueada neste depósito">
-            {posicao.motivosDoBloqueio.join(" · ")}. Enquanto o bloqueio vale, entrada, saída
-            e transferência são recusadas — a consulta continua respondendo normalmente.
+            {posicao.motivosDoBloqueio.join(" · ")}. Enquanto o bloqueio estiver vigente, entradas, saídas
+            e transferências não são aceitas. A consulta permanece disponível.
           </Alerta>
         ) : null}
 
         {posicao.linhas.length === 0 ? (
           <EstadoVazio
             titulo="Nenhum material com saldo nesta data"
-            descricao="A posição é derivada dos movimentos. Sem movimento até esta data, não há saldo a mostrar — e isso não é um erro."
+            descricao="Não há movimentação registrada neste depósito até a data consultada; isso não é um erro."
           />
         ) : (
           <>
@@ -221,7 +221,7 @@ export default async function EstoquePage({
             />
           )}
           <p className="text-xs">
-            Só lote COM SALDO entra nesta conta: um lote já consumido não vence para ninguém.
+            Consideram-se apenas os lotes com saldo; lotes já consumidos não são listados.
           </p>
         </section>
       </div>
@@ -232,11 +232,11 @@ export default async function EstoquePage({
         <div className="space-y-6">
           <PageHeader
             titulo="Posição de estoque"
-            subtitulo="Quanto havia de cada material, num depósito, numa data."
+            subtitulo="Saldo de cada material por depósito, na data consultada."
           />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Esta consulta lê o banco. Sem ele, esta tela não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis"
+            descricao="Não foi possível acessar os dados desta consulta no momento. Tente novamente em instantes."
           />
         </div>
       );

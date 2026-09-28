@@ -49,7 +49,7 @@ export default async function BalancoFinanceiroPage({
             semRol
               ? "Contas de disponibilidade não informadas"
               : erro instanceof PortaSemBancoError
-                ? "Banco de dados não configurado"
+                ? "Serviço indisponível"
                 : "Não foi possível emitir o Balanço Financeiro"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -108,7 +108,7 @@ export default async function BalancoFinanceiroPage({
         linhas={[
           { rotulo: "Saldo em espécie do exercício anterior", valor: dados.saldoEmEspecie.anterior },
           { rotulo: "Saldo em espécie para o exercício seguinte", valor: dados.saldoEmEspecie.seguinte },
-          { rotulo: "Caixa apurado pelas partidas do razão", valor: dados.saldoEmEspecie.apuradoPelasPartidas },
+          { rotulo: "Caixa apurado pelos lançamentos contábeis", valor: dados.saldoEmEspecie.apuradoPelasPartidas },
         ]}
         keyDe={(l) => l.rotulo}
         legenda="Saldo em espécie — valores em R$"

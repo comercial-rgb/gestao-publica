@@ -40,7 +40,7 @@ export async function cadastrarAction(_p: EstadoDoAto, f: FormData): Promise<Est
     if (t(f, "codigo") === "") return { erro: "Informe o código da consignação." };
     if (t(f, "descricao") === "") return { erro: "Informe a descrição." };
     if (t(f, "contaPassivoCodigo") === "") return { erro: "Escolha a conta de passivo." };
-    if (t(f, "fundamento") === "") return { erro: "Diga por que esta conta recebe esta consignação." };
+    if (t(f, "fundamento") === "") return { erro: "Informe a justificativa da conta." };
     return ato(
       () =>
         cadastrarConsignacao({
@@ -57,7 +57,7 @@ export async function cadastrarAction(_p: EstadoDoAto, f: FormData): Promise<Est
 export async function redefinirAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
     if (t(f, "contaPassivoCodigo") === "") return { erro: "Escolha a nova conta de passivo." };
-    if (t(f, "fundamento") === "") return { erro: "Diga por que a conta está mudando." };
+    if (t(f, "fundamento") === "") return { erro: "Informe a justificativa da troca de conta." };
     return ato(
       () =>
         redefinirConsignacao({
@@ -72,7 +72,7 @@ export async function redefinirAction(_p: EstadoDoAto, f: FormData): Promise<Est
 
 export async function desativarAction(_p: EstadoDoAto, f: FormData): Promise<EstadoDoAto> {
   return comComandoDoFormulario(f, async () => {
-    if (t(f, "fundamento") === "") return { erro: "Diga por que a consignação está sendo desativada." };
+    if (t(f, "fundamento") === "") return { erro: "Informe a justificativa da desativação." };
     return ato(
       () => desativarConsignacao({ tipoId: t(f, "tipoId"), fundamento: t(f, "fundamento") }),
       "Não foi possível desativar. Nada foi gravado."

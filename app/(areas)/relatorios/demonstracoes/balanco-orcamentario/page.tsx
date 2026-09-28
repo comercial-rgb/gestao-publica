@@ -45,7 +45,7 @@ export default async function BalancoOrcamentarioPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível emitir o Balanço Orçamentário"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}

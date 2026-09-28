@@ -45,13 +45,13 @@ export default async function ExtraorcamentarioPage({
         <SincronizarContexto />
         <PageHeader
           titulo="Extraorçamentário"
-          subtitulo="Consignações, retenções e recolhimentos (dinheiro de terceiros no caixa)"
+          subtitulo="Consignações, retenções e recolhimentos de valores de terceiros"
         />
         <EstadoVazio
           titulo={
             erro instanceof ExercicioIlegivelError
               ? "O exercício pedido não é um ano"
-              : "Não foi possível ler o recorte"
+              : "Não foi possível carregar a consulta"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -61,7 +61,7 @@ export default async function ExtraorcamentarioPage({
   const cabecalho = (
     <PageHeader
       titulo="Extraorçamentário"
-      subtitulo={`Exercício ${exercicio} — consignações, retenções e recolhimentos (dinheiro de terceiros no caixa)`}
+      subtitulo={`Exercício ${exercicio}: consignações, retenções e recolhimentos de valores de terceiros`}
       acoes={<BotaoPdf href={`/financeiro/extraorcamentario/pdf?exercicio=${exercicio}`} />}
     />
   );
@@ -82,7 +82,7 @@ export default async function ExtraorcamentarioPage({
         <SincronizarContexto />
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler o extraorçamentário"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível carregar os dados extraorçamentários"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -95,11 +95,10 @@ export default async function ExtraorcamentarioPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O extraorçamentário é <strong>dinheiro de terceiros</strong>: entra sem ser receita, sai sem ser
-        despesa, não toca dotação. A <strong>retenção na fonte</strong> nasce dentro de um pagamento (o
-        líquido vai ao fornecedor; o retido vira <strong>passivo com o consignatário</strong>).
-        O <strong>recolhimento</strong> (despesa extra) repassa o retido — e nunca repassa mais do que se
-        reteve (o saldo nunca fica negativo).
+        Os valores extraorçamentários pertencem a <strong>terceiros</strong>: não constituem receita nem
+        despesa orçamentária e não afetam a dotação. A <strong>retenção na fonte</strong> é registrada no
+        pagamento, e o valor retido passa a ser devido ao <strong>consignatário</strong>. O{" "}
+        <strong>recolhimento</strong> repassa o valor retido e não pode ultrapassá-lo.
       </div>
 
       {/* ── C37: RETIDO, RECOLHIDO, ESTORNADO E A RECOLHER, SEPARADOS ── */}
@@ -113,9 +112,8 @@ export default async function ExtraorcamentarioPage({
           </Link>
         </div>
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-          Aqui o <strong>estorno aparece como coluna, não embutido</strong>: um recolhimento de 500,00
-          desfeito por um estorno de 500,00 mostra os dois, e não &quot;recolhido zero&quot;. O que falta
-          recolher é derivado, nunca digitado.
+          Os <strong>estornos são exibidos em colunas próprias</strong>, separados dos valores retidos e
+          recolhidos. O valor a recolher é calculado a partir dos movimentos registrados.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -160,9 +158,9 @@ export default async function ExtraorcamentarioPage({
             </>
           ) : (
             <strong className="text-[color:var(--color-status-erro-fg)]">
-              Divergência: a soma das obrigações é {brl(composicao.somaDasObrigacoes)} e a contagem
-              independente dos movimentos dá {brl(composicao.totalGlobal)}. Não emita conferência
-              deste quadro até a diferença ser explicada.
+              Divergência: a soma das obrigações é {brl(composicao.somaDasObrigacoes)} e o total apurado
+              pelos movimentos é {brl(composicao.totalGlobal)}. Verifique a diferença antes de utilizar
+              este quadro.
             </strong>
           )}
         </p>
@@ -293,10 +291,9 @@ export default async function ExtraorcamentarioPage({
       </Card>
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        O <strong>cadastro de eventos</strong> e o <strong>lançamento de retenções/recolhimentos</strong>
-        são atos do domínio (M07/M05), com as travas de saldo aplicadas na gravação. Esta tela é a
-        consulta com <strong>drill ao documento</strong> e a impressão; o cadastro por formulário fica
-        nomeado como próxima fatia.
+        As <strong>retenções</strong> são registradas no pagamento da despesa, e os{" "}
+        <strong>recolhimentos</strong> em Recolher consignações. Esta tela reúne a consulta, o estorno de
+        recolhimentos e a impressão.
       </p>
     </div>
   );

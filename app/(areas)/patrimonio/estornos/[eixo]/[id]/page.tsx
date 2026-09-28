@@ -32,12 +32,12 @@ function Itens({ itens, tom }: { readonly itens: readonly ItemDaAnalise[]; reado
               {i.rotulo}
               {i.valor !== null ? <span className="ml-2 tabular-nums">{i.valor}</span> : null}
             </span>
-            <span className="tabular-nums text-[color:var(--color-ink-3)]">fato em {i.quando} · registrado {i.registradoEm} · {i.por}</span>
+            <span className="tabular-nums text-[color:var(--color-ink-3)]">ocorrido em {i.quando} · registrado em {i.registradoEm} · {i.por}</span>
           </div>
           {i.motivo !== null ? <div className="mt-1 text-[color:var(--color-ink-2)]">{i.motivo}</div> : null}
           {i.porque !== null ? <div className="mt-1 text-[color:var(--color-status-erro-fg)]">Depende porque {i.porque}.</div> : null}
           <div className="mt-1">
-            <Link href={i.href} className="underline underline-offset-2">analisar o estorno deste</Link>
+            <Link href={i.href} className="underline underline-offset-2">Analisar o estorno deste movimento</Link>
           </div>
         </li>
       ))}
@@ -70,17 +70,17 @@ export default async function AnaliseDoEstornoPage({
         ) : null}
 
         <section className="space-y-2">
-          <h2 className="font-medium">O que este estorno desfaz</h2>
+          <h2 className="font-medium">Efeitos do estorno</h2>
           <p className="text-sm">
-            O movimento acima é anulado por um lançamento novo, com o mesmo valor e as pernas invertidas; o original continua no histórico.
-            {analise.temMemoria ? " A memória de cálculo gravada com ele permanece — o estorno não a apaga." : ""}
+            O movimento é anulado por um novo lançamento, de mesmo valor e com débito e crédito invertidos; o registro original permanece no histórico.
+            {analise.temMemoria ? " A memória de cálculo do movimento é preservada." : ""}
           </p>
           {analise.arrastados.length > 0 ? (
             <>
               <p className="text-sm">
                 {analise.execucao !== null
-                  ? `Este movimento é um item da execução de ${analise.execucao.competencia} (${analise.execucao.escopo}, ${analise.execucao.itens} item(ns), um lançamento só). O estorno desfaz ESSA execução — não a virada de todas as classes. Desfeitos no mesmo ato:`
-                  : "Desfeitos NO MESMO ATO, porque pertencem à mesma operação:"}
+                  ? `Este movimento integra o processamento da competência ${analise.execucao.competencia} (${analise.execucao.escopo}, ${analise.execucao.itens} item(ns), em lançamento único). O estorno anula somente esse processamento, sem afetar as demais classes. Serão estornados em conjunto:`
+                  : "Serão estornados em conjunto, por pertencerem à mesma operação:"}
               </p>
               <Itens itens={analise.arrastados} tom="neutro" />
             </>
@@ -91,12 +91,12 @@ export default async function AnaliseDoEstornoPage({
         </section>
 
         <section className="space-y-2">
-          <h2 className="font-medium">Quem depende deste movimento</h2>
+          <h2 className="font-medium">Movimentos dependentes</h2>
           {analise.dependentes.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum movimento posterior ficaria inválido com este estorno.</p>
           ) : (
             <>
-              <p className="text-sm">Estes movimentos foram conferidos ou calculados sobre um acervo que incluía este. Estorne-os primeiro, do mais recente ao mais antigo:</p>
+              <p className="text-sm">Os movimentos abaixo foram calculados com base neste. Estorne-os antes, do mais recente para o mais antigo:</p>
               <Itens itens={analise.dependentes} tom="erro" />
             </>
           )}
@@ -104,11 +104,11 @@ export default async function AnaliseDoEstornoPage({
 
         {analise.informativos.length > 0 ? (
           <section className="space-y-2">
-            <h2 className="font-medium">{eixo === "valor" ? "Posteriores do mesmo bem" : "Posteriores do mesmo eixo deste bem"}</h2>
+            <h2 className="font-medium">{eixo === "valor" ? "Movimentos posteriores do mesmo bem" : "Movimentos de gestão posteriores deste bem"}</h2>
             <p className="text-sm text-[color:var(--color-ink-2)]">
               {eixo === "valor"
-                ? "Não ficam inválidos com este estorno; aparecem para que a cadeia do bem seja vista inteira."
-                : "O estado atual do bem é o movimento mais recente do eixo; estornar um anterior reescreve o histórico, não o estado."}
+                ? "Não são afetados por este estorno; são exibidos para consulta do histórico completo do bem."
+                : "A situação atual do bem corresponde ao movimento mais recente; o estorno de um movimento anterior altera apenas o histórico."}
             </p>
             <Itens itens={analise.informativos} tom="neutro" />
           </section>
@@ -116,7 +116,7 @@ export default async function AnaliseDoEstornoPage({
 
         {analise.bloqueios.length > 0 ? (
           <section className="space-y-1">
-            <h2 className="font-medium">Por que não pode ser estornado agora</h2>
+            <h2 className="font-medium">Impedimentos ao estorno</h2>
             {analise.bloqueios.map((b) => (
               <p key={b} role="alert" className="whitespace-pre-line text-sm text-[color:var(--color-status-erro-fg)]">{b}</p>
             ))}
@@ -127,12 +127,12 @@ export default async function AnaliseDoEstornoPage({
             movimentoId={analise.movimentoId}
             resumo={
               analise.arrastados.length > 0
-                ? `Estorna o movimento e os ${analise.arrastados.length} arrastado(s) da operação, numa só transação.`
-                : "Estorna o movimento por lançamento novo, com a data e o motivo abaixo."
+                ? `Estorna o movimento e os ${analise.arrastados.length} movimento(s) vinculado(s) da mesma operação, em um único registro.`
+                : "Estorna o movimento por novo lançamento, com a data e o motivo informados abaixo."
             }
           />
         ) : (
-          <p className="text-sm text-[color:var(--color-ink-2)]">Nada bloqueia o estorno, mas o seu perfil não estorna neste eixo — o ato é de quem tem a ação de estornar.</p>
+          <p className="text-sm text-[color:var(--color-ink-2)]">Não há impedimentos ao estorno, mas o seu perfil não tem permissão para estorná-lo.</p>
         )}
       </div>
     );
@@ -140,8 +140,8 @@ export default async function AnaliseDoEstornoPage({
     if (e instanceof PortaSemBancoError) {
       return (
         <div className="space-y-4">
-          <PageHeader titulo="Estorno" subtitulo="Análise de dependências" />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê os movimentos do bem e da classe. Sem banco, não tem o que mostrar." />
+          <PageHeader titulo="Estorno" subtitulo="Análise de dependências do movimento" />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar os movimentos do bem no momento. Tente novamente em instantes." />
         </div>
       );
     }

@@ -35,7 +35,7 @@ export default async function RreoAnexo2Page({
   try {
     dados = await gerarRreoAnexo2({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 2"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 2"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   if (dados.despesas.length === 0) {
@@ -51,7 +51,7 @@ export default async function RreoAnexo2Page({
         keyDe={(l, i) => `${l.nivel}-${l.codigo}-${i}`}
         ehTotal={(l) => l.nivel === "subtotal" || l.nivel === "total"}
         recuoDe={(l) => (l.nivel === "subfuncao" ? 1 : 0)}
-        legenda="Valores em R$ · corte pela data do fato, líquido de estornos · (b) até o bimestre."
+        legenda="Valores em R$ · líquidos de estornos · acumulados até o bimestre."
       />
       <RelatoriosRelacionados relacoes={RELACOES_RREO["/relatorios/rreo/anexo2"] ?? []} />
     </div>

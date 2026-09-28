@@ -24,14 +24,14 @@ export default async function SistemaPage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-6">
-      <PageHeader titulo="Sobre o sistema" subtitulo="Proveniência técnica desta implantação — para quem confere versões e evidências." />
+      <PageHeader titulo="Sobre o sistema" subtitulo="Informações técnicas da versão instalada." />
       <Card>
         <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-[color:var(--color-ink-3)]">Produto</dt><dd className="text-[color:var(--color-ink)]">{PRODUTO.nome} — {PRODUTO.descricao}</dd></div>
           <div><dt className="text-xs text-[color:var(--color-ink-3)]">Ambiente</dt><dd className="text-[color:var(--color-ink)]">{prov.ambiente}</dd></div>
           <div className="sm:col-span-2">
-            <dt className="text-xs text-[color:var(--color-ink-3)]">Commit do build</dt>
-            <dd className="break-all font-mono text-xs text-[color:var(--color-ink)]" data-build-commit>{prov.commit ?? "fora de um build versionado (desenvolvimento)"}</dd>
+            <dt className="text-xs text-[color:var(--color-ink-3)]">Identificador da versão</dt>
+            <dd className="break-all font-mono text-xs text-[color:var(--color-ink)]" data-build-commit>{prov.commit ?? "versão de desenvolvimento, sem identificador registrado"}</dd>
           </div>
           <div><dt className="text-xs text-[color:var(--color-ink-3)]">Node</dt><dd className="font-mono text-xs text-[color:var(--color-ink)]">{process.version}</dd></div>
         </dl>
@@ -39,7 +39,7 @@ export default async function SistemaPage(): Promise<React.ReactElement> {
       <Card>
         <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Atualizações de permissões</h2>
         {atualizacoes === null ? (
-          <p className="text-sm text-[color:var(--color-ink-3)]">Indisponível agora — a situação das atualizações não pôde ser lida.</p>
+          <p className="text-sm text-[color:var(--color-ink-3)]">Não foi possível consultar a situação das atualizações.</p>
         ) : (
           <ul className="space-y-1 text-sm">
             {atualizacoes.map((a) => (
@@ -47,7 +47,7 @@ export default async function SistemaPage(): Promise<React.ReactElement> {
                 <span className="tabular font-medium text-[color:var(--color-ink)]">v{a.versao}</span>
                 <span className="text-[color:var(--color-ink-2)]">{a.nome}</span>
                 <span className="text-xs text-[color:var(--color-ink-3)]">
-                  {a.aplicadaEm !== null ? `aplicada em ${instanteCivilBr(a.aplicadaEm)} por ${a.aplicadaPor ?? "—"}` : `pendente — prévia de ${a.previa} concessão(ões)`}
+                  {a.aplicadaEm !== null ? `aplicada em ${instanteCivilBr(a.aplicadaEm)} por ${a.aplicadaPor ?? "—"}` : `pendente · ${a.previa} permissão(ões) a conceder`}
                 </span>
               </li>
             ))}

@@ -110,9 +110,8 @@ export function FormAnexo({
         />
         <p id={idAjuda} className="mt-1 text-xs text-[color:var(--color-ink-2)]">
           Até {mb} MB. PDF, DOC, DOCX, XLS, XLSX, ODT, JPG, PNG
-          {dono.documentoFiscalId !== undefined ? " ou XML da nota" : ""}. O sistema calcula uma
-          verificação (SHA-256) do arquivo no momento do envio — é ela que prova, depois,
-          que o documento não foi trocado.
+          {dono.documentoFiscalId !== undefined ? " ou XML da nota" : ""}. No envio, o sistema gera um
+          código de verificação (SHA-256) que permite confirmar a integridade do documento.
         </p>
       </div>
 

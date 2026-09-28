@@ -73,7 +73,7 @@ export default async function ChamadoPage({
         </h2>
         {c.movimentos.length === 0 ? (
           <p className="text-sm text-[color:var(--color-ink-2)]">
-            Sem movimentação — o chamado está aguardando atendimento.
+            Sem movimentação. O chamado aguarda atendimento.
           </p>
         ) : (
           <ol className="text-sm">

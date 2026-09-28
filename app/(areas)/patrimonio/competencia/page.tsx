@@ -54,11 +54,11 @@ function Linha({ rotulo, valor }: { readonly rotulo: string; readonly valor: str
 const COLUNAS_DOS_ITENS: readonly ColunaTabela<ItemDaPreviaLido>[] = [
   { chave: "alvo", cabecalho: "Bem", alinhamento: "esquerda", celula: (i) => i.alvo },
   { chave: "entrada", cabecalho: "Entrada", alinhamento: "esquerda", celula: (i) => i.entradaEm },
-  { chave: "base", cabecalho: "Base (bruto no corte)", alinhamento: "direita", celula: (i) => i.base },
-  { chave: "contabil", cabecalho: "Contábil no corte", alinhamento: "direita", celula: (i) => i.valorContabil },
-  { chave: "residual", cabecalho: "Residual", alinhamento: "direita", celula: (i) => i.valorResidual },
+  { chave: "base", cabecalho: "Valor bruto na data de referência", alinhamento: "direita", celula: (i) => i.base },
+  { chave: "contabil", cabecalho: "Valor contábil na data de referência", alinhamento: "direita", celula: (i) => i.valorContabil },
+  { chave: "residual", cabecalho: "Valor residual", alinhamento: "direita", celula: (i) => i.valorResidual },
   { chave: "cheia", cabecalho: "Parcela cheia", alinhamento: "direita", celula: (i) => i.parcelaCheia },
-  { chave: "teto", cabecalho: "Teto", alinhamento: "direita", celula: (i) => i.teto },
+  { chave: "teto", cabecalho: "Limite", alinhamento: "direita", celula: (i) => i.teto },
   { chave: "parcela", cabecalho: "Parcela a lançar", alinhamento: "direita", celula: (i) => i.valorDaParcela },
   { chave: "sit", cabecalho: "Situação", alinhamento: "esquerda", celula: (i) => (i.nota === "" ? i.situacaoRotulo : `${i.situacaoRotulo} — ${i.nota}`) },
 ];
@@ -73,8 +73,8 @@ function Memoria({ previa }: { readonly previa: PreviaLida }): React.ReactElemen
       <p className="mt-1 text-sm">
         <strong>{ROTULO_DA_SITUACAO[previa.situacao]}</strong>
         {previa.tipo !== null ? ` · ${previa.tipo}` : ""}
-        {` · escopo: ${previa.escopo === "BEM" ? "um bem" : "a classe (todos os itens prontos)"}`}
-        {` · corte: ${previa.corte}`}
+        {` · abrangência: ${previa.escopo === "BEM" ? "um bem" : "toda a classe (itens prontos)"}`}
+        {` · data de referência: ${previa.corte}`}
       </p>
       {previa.recusa !== null ? (
         <p role="alert" className="mt-2 whitespace-pre-line text-sm text-[color:var(--color-status-erro-fg)]">{previa.recusa}</p>
@@ -87,21 +87,21 @@ function Memoria({ previa }: { readonly previa: PreviaLida }): React.ReactElemen
             <Linha rotulo="Valor residual" valor={previa.parametro.residual} />
           </>
         ) : null}
-        <Linha rotulo="Valor contábil da classe no corte" valor={previa.valorContabil} />
+        <Linha rotulo="Valor contábil da classe na data de referência" valor={previa.valorContabil} />
         {previa.situacao === "JA_ATUALIZADA" ? <Linha rotulo="Já aplicado nesta competência" valor={previa.jaAplicado} /> : null}
         {previa.calculo !== null ? (
           <>
             <Linha rotulo={`Base dos itens prontos (${previa.prontos})`} valor={previa.base} />
             <Linha rotulo="Residual dos itens prontos" valor={previa.calculo.valorResidual} />
             <Linha rotulo="Parcela cheia (soma dos itens)" valor={previa.calculo.parcelaCheia} />
-            <Linha rotulo="Teto (soma dos itens)" valor={previa.calculo.teto} />
-            <Linha rotulo="Parcela a lançar (soma dos itens, um lançamento)" valor={previa.calculo.valorDaParcela} />
+            <Linha rotulo="Limite (soma dos itens)" valor={previa.calculo.teto} />
+            <Linha rotulo="Parcela a lançar (soma dos itens, em lançamento único)" valor={previa.calculo.valorDaParcela} />
           </>
         ) : null}
       </dl>
       {previa.itens.length > 0 ? (
         <div className="mt-4">
-          <TabelaDeDados colunas={COLUNAS_DOS_ITENS} linhas={previa.itens} keyDe={(i) => i.chave} legenda={`${previa.itens.length} item(ns): cada bem com movimento de valor e, se houver, o acervo sem individualização. Cada item é arredondado a duas casas; o total é a soma dos itens.`} />
+          <TabelaDeDados colunas={COLUNAS_DOS_ITENS} linhas={previa.itens} keyDe={(i) => i.chave} legenda={`${previa.itens.length} item(ns): bens com valor registrado e, se houver, o acervo sem individualização. Cada item é arredondado em duas casas decimais; o total é a soma dos itens.`} />
         </div>
       ) : null}
     </section>
@@ -110,7 +110,7 @@ function Memoria({ previa }: { readonly previa: PreviaLida }): React.ReactElemen
 
 const COLUNAS: readonly ColunaTabela<ExecucaoProcessada>[] = [
   { chave: "comp", cabecalho: "Competência", alinhamento: "esquerda", celula: (p) => p.competencia },
-  { chave: "escopo", cabecalho: "Escopo", alinhamento: "esquerda", celula: (p) => p.escopo },
+  { chave: "escopo", cabecalho: "Abrangência", alinhamento: "esquerda", celula: (p) => p.escopo },
   { chave: "tipo", cabecalho: "Tipo", alinhamento: "esquerda", celula: (p) => p.tipo },
   { chave: "itens", cabecalho: "Itens", alinhamento: "direita", celula: (p) => String(p.itens) },
   { chave: "valor", cabecalho: "Valor lançado", alinhamento: "direita", celula: (p) => p.valor },
@@ -120,8 +120,8 @@ const COLUNAS: readonly ColunaTabela<ExecucaoProcessada>[] = [
     alinhamento: "esquerda",
     celula: (p) =>
       p.detalhes.length === 0
-        ? "sem memória (anterior ao registro da memória)"
-        : `${p.versao} · ` + p.detalhes.map((d) => `${d.alvo}: base ${d.base}, contábil antes ${d.valorContabilAntes}, residual ${d.valorResidual}, parcela cheia ${d.parcelaCheia}, teto ${d.teto} → ${d.valor}`).join(" · "),
+        ? "memória de cálculo não disponível para este processamento"
+        : `${p.versao} · ` + p.detalhes.map((d) => `${d.alvo}: base ${d.base}, valor contábil anterior ${d.valorContabilAntes}, residual ${d.valorResidual}, parcela cheia ${d.parcelaCheia}, limite ${d.teto} → ${d.valor}`).join(" · "),
   },
   { chave: "quando", cabecalho: "Lançada em", alinhamento: "esquerda", celula: (p) => `${p.lancadaEm} por ${p.por}` },
   { chave: "sit", cabecalho: "Situação", alinhamento: "esquerda", celula: (p) => (p.estornada ? "estornada" : "vigente") },
@@ -137,13 +137,13 @@ const COLUNAS: readonly ColunaTabela<ExecucaoProcessada>[] = [
 function Conciliacao({ c }: { readonly c: ConciliacaoLida }): React.ReactElement {
   return (
     <section data-conciliacao={c.diferenca === "0.00" ? "fecha" : "nao-fecha"} className="rounded border border-[color:var(--color-linha)] p-4">
-      <h2 className="font-medium">Conciliação item → classe → razão</h2>
+      <h2 className="font-medium">Conciliação entre bens, classe e contabilidade</h2>
       <dl className="mt-2">
         <Linha rotulo={`Soma dos bens (${c.bens})`} valor={c.somaDosBens} />
         <Linha rotulo="Acervo sem individualização" valor={c.semIndividualizacao} />
         <Linha rotulo="Valor contábil da classe" valor={c.classe} />
         <Linha rotulo="Diferença" valor={c.diferenca} />
-        <Linha rotulo="Depreciação lançada pela classe inteira antes do item por bem (reconciliação histórica a definir)" valor={c.acumuladaHistoricaSemBem} />
+        <Linha rotulo="Depreciação lançada para a classe antes do controle por bem" valor={c.acumuladaHistoricaSemBem} />
       </dl>
     </section>
   );
@@ -163,7 +163,7 @@ export default async function CompetenciaPage({
   const cabecalho = (
     <PageHeader
       titulo="Processamento por competência"
-      subtitulo="A depreciação, amortização ou exaustão do mês, por bem elegível, com a base cortada na competência e a versão do parâmetro vigente nela. Veja cada item antes de lançar; o que já foi executado fica abaixo, com a memória de cada item."
+      subtitulo="Cálculo mensal de depreciação, amortização e exaustão por classe de bens, com prévia antes do lançamento."
     />
   );
 
@@ -193,12 +193,12 @@ export default async function CompetenciaPage({
           {/* Os ids dos campos vêm do `useId` dentro de `CampoEnvolvido` — nunca literais. */}
           <CampoSelect
             name="classe"
-            rotulo="Classe de bens (com parâmetro)"
+            rotulo="Classe de bens"
             largura={2}
             required
             defaultValue={classeId}
             desabilitado={classes.length === 0}
-            vazio={classes.length === 0 ? "nenhuma classe parametrizada" : "escolha a classe"}
+            vazio={classes.length === 0 ? "Nenhuma classe com parâmetro cadastrado" : "Selecione a classe"}
             opcoes={classes.map((c) => ({ valor: c.id, rotulo: `${c.rotulo} — ${c.metodo}` }))}
           />
           <CampoTexto
@@ -212,19 +212,19 @@ export default async function CompetenciaPage({
           />
           <CampoTexto
             name="bem"
-            rotulo="Só um bem (opcional)"
+            rotulo="Bem específico (opcional)"
             largura={1}
             defaultValue={bemId}
-            ajuda="Em branco, a classe inteira: todos os bens elegíveis e o acervo sem individualização."
+            ajuda="Deixe em branco para processar toda a classe, incluindo o acervo sem individualização."
           />
           <div className="flex items-end">
-            <button type="submit" className={CLASSE_BOTAO_PRIMARIO}>Ver a prévia</button>
+            <button type="submit" className={CLASSE_BOTAO_PRIMARIO}>Gerar prévia</button>
           </div>
         </form>
         {classes.length === 0 ? (
           <EstadoVazio
             titulo="Nenhuma classe com parâmetro em vigor"
-            descricao="A atualização por competência precisa de método, vida útil e residual por classe. Defina-os em Parâmetros de Depreciação."
+            descricao="O processamento exige método, vida útil e valor residual definidos para a classe. Cadastre-os em Parâmetros de Depreciação."
           />
         ) : null}
         {erro !== null ? <p role="alert" className="text-sm text-[color:var(--color-status-erro-fg)]">{erro}</p> : null}
@@ -236,30 +236,30 @@ export default async function CompetenciaPage({
               competencia={previa.competencia}
               bemId={previa.bemId}
               resumo={
-                `Processa ${previa.escopo === "BEM" ? "UM BEM" : "A CLASSE"} ${previa.classe.rotulo} em ${previa.competencia}: ` +
-                `${previa.prontos} item(ns) pronto(s), ${previa.tipo ?? "atualização"} de ${previa.calculo.valorDaParcela} num único lançamento, ` +
-                `pelo roteiro contábil do tipo. Cada item grava a sua memória; a execução ganha identidade própria e é estornável inteira.`
+                `Processamento ${previa.escopo === "BEM" ? "de um bem da classe" : "da classe"} ${previa.classe.rotulo} em ${previa.competencia}: ` +
+                `${previa.prontos} item(ns) pronto(s), ${previa.tipo ?? "atualização"} de ${previa.calculo.valorDaParcela} em lançamento único, ` +
+                `conforme o roteiro contábil. A memória de cálculo de cada item é registrada, e o processamento pode ser estornado integralmente.`
               }
             />
           ) : (
-            <p className="text-sm text-[color:var(--color-ink-2)]">A prévia está pronta, mas o seu perfil não processa competências — o lançamento é de quem tem a ação de atualizar o patrimônio.</p>
+            <p className="text-sm text-[color:var(--color-ink-2)]">A prévia está pronta. O processamento requer permissão de atualização patrimonial, não concedida ao seu perfil.</p>
           )
         ) : null}
         {conc !== null ? <Conciliacao c={conc} /> : null}
         {classeId !== "" ? (
           processadas.length === 0 ? (
-            <EstadoVazio titulo="Nenhuma competência processada nesta classe" descricao="A primeira aparece aqui, com a memória de cálculo de cada item, assim que for lançada." />
+            <EstadoVazio titulo="Nenhuma competência processada nesta classe" descricao="Os processamentos lançados serão listados aqui, com a memória de cálculo de cada item." />
           ) : (
             <TabelaDeDados
               colunas={COLUNAS}
               linhas={processadas}
               keyDe={(p) => p.execucaoId}
-              legenda={`${processadas.length} execução(ões) nesta classe`}
+              legenda={`${processadas.length} processamento(s) nesta classe`}
             />
           )
         ) : null}
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          Os parâmetros (método, vida útil, residual, vigência) e as versões deles estão em{" "}
+          Os parâmetros (método, vida útil, valor residual e vigência) e seu histórico de versões estão em{" "}
           <Link className="underline underline-offset-2" href="/patrimonio/parametros-de-atualizacao">Parâmetros de Depreciação</Link>.
         </p>
       </div>
@@ -269,7 +269,7 @@ export default async function CompetenciaPage({
       return (
         <div className="space-y-6">
           {cabecalho}
-          <EstadoVazio titulo="Banco de dados indisponível" descricao={e.message} />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar os dados do processamento no momento. Tente novamente em instantes." />
         </div>
       );
     }

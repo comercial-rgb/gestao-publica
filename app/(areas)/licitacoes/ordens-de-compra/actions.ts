@@ -92,7 +92,7 @@ export async function vincularSolicitacaoAction(_prev: EstadoDaOrdem, formData: 
       revalidatePath(ORDENS_DE_COMPRA.rota);
       revalidatePath(`${ORDENS_DE_COMPRA.rota}/${ordemId}`);
       revalidatePath("/licitacoes/solicitacoes");
-      return { sucesso: `${r.parcelas} parcela(s) vinculada(s) a esta ordem, ${r.quantidade} no total. O atendimento da solicitação já reflete o ordenado — recebido só quando entregar.` };
+      return { sucesso: `${r.parcelas} parcela(s) vinculada(s) a esta ordem, ${r.quantidade} no total. A quantidade passa a constar como ordenada na solicitação.` };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível vincular. Nada foi gravado.") };
     }
@@ -111,7 +111,7 @@ export async function desfazerVinculoAction(_prev: EstadoDaOrdem, formData: Form
       revalidatePath(ORDENS_DE_COMPRA.rota);
       if (ordemId !== "") revalidatePath(`${ORDENS_DE_COMPRA.rota}/${ordemId}`);
       revalidatePath("/licitacoes/solicitacoes");
-      return { sucesso: "Parcela desfeita: a quantidade voltou a pendente na solicitação. A linha original fica no histórico." };
+      return { sucesso: "Parcela desfeita. A quantidade voltou a ficar pendente na solicitação, e o registro original permanece no histórico." };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível desfazer. Nada foi gravado.") };
     }

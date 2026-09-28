@@ -71,8 +71,8 @@ export default async function RreoAnexo8Page({
       <div>
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 8"}
-          descricao={erro instanceof PortaSemBancoError ? "A variável DATABASE_URL não está definida." : erro instanceof Error ? erro.message : "Erro desconhecido."}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 8"}
+          descricao={erro instanceof PortaSemBancoError ? "Não foi possível acessar os dados. Tente novamente mais tarde." : erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
     );
@@ -117,7 +117,7 @@ export default async function RreoAnexo8Page({
           keyDe={(l) => l.numero}
           ehTotal={(l) => l.nivel === "total" || l.nivel === "grupo"}
           recuoDe={(l) => (l.nivel === "item" ? 1 : 0)}
-          legenda="Valores em R$ · transferências pelo bruto · a linha 4 é calculada (20% da base do FUNDEB); a dedução registrada pode divergir (nota STN)."
+          legenda="Valores em R$ · transferências pelo valor bruto · a linha 4 corresponde a 20% da base do FUNDEB e pode diferir da dedução registrada."
         />
       </section>
 
@@ -170,7 +170,7 @@ export default async function RreoAnexo8Page({
             href: "/relatorios/rgf/anexo5",
             rotulo: "RGF Anexo 5 — Disponibilidade de Caixa",
             motivo:
-              "R-DIF: o que o FUNDEB não aplicou tem de estar na conta vinculada da fonte — o não aplicado daqui se confronta com a disponibilidade líquida (i) de lá. Dois caminhos, um razão.",
+              "Os recursos do FUNDEB não aplicados devem permanecer na conta vinculada e são confrontados com a disponibilidade líquida (i) do Anexo 5.",
           },
         ]}
       />
@@ -193,7 +193,7 @@ function SecaoDiferimento({
   return (
     <section className="space-y-2">
       <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
-        Diferimento — art. 25, §3º (retrato de 31/12)
+        Diferimento — Lei 14.113/2020, art. 25, §3º (posição em 31/12)
       </h2>
 
       {dif.estourou ? (
@@ -203,9 +203,9 @@ function SecaoDiferimento({
         >
           <strong>Não aplicado acima do limite de 10%.</strong> O §3º permite diferir até{" "}
           <strong>{dif.limite}</strong> para o 1º quadrimestre seguinte; o não aplicado foi{" "}
-          <strong>{dif.naoAplicado}</strong> — excesso de <strong>{dif.excesso}</strong>.
-          O que passa do teto não é diferimento: é recurso do FUNDEB não aplicado no
-          exercício.
+          <strong>{dif.naoAplicado}</strong>, com excesso de <strong>{dif.excesso}</strong>.
+          O valor excedente não se caracteriza como diferimento e constitui recurso do FUNDEB
+          não aplicado no exercício.
         </div>
       ) : null}
 
@@ -213,33 +213,31 @@ function SecaoDiferimento({
         colunas={COLUNAS_DIF}
         linhas={[dif]}
         keyDe={() => "dif"}
-        legenda={`Diferimento é exceção estreita: até 10% do recebido, no 1º quadrimestre seguinte, mediante crédito adicional. As disponibilidades permanecem em conta vinculada.`}
+        legenda={`O diferimento é limitado a 10% dos recursos recebidos, para aplicação no 1º quadrimestre seguinte mediante crédito adicional. As disponibilidades permanecem em conta vinculada.`}
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         <p>
           <strong>Aplicado até 30/04 do exercício seguinte:</strong>{" "}
-          {dif.aplicadoNaJanela ?? "sem movimento na janela"} — medido pela{" "}
-          <strong>data do fato</strong>, não pela digitação.
+          {dif.aplicadoNaJanela ?? "sem movimento no período"}, considerada a data da despesa, e
+          não a data do registro.
         </p>
         <p className="mt-1">
-          <strong>Lastro (R-DIF):</strong> o não aplicado ({dif.naoAplicado}) está na conta
-          vinculada da fonte? Disponibilidade líquida do{" "}
+          <strong>Saldo em conta vinculada:</strong> o valor não aplicado ({dif.naoAplicado}) deve
+          permanecer na conta vinculada da fonte. Disponibilidade líquida do{" "}
           <a href="/relatorios/rgf/anexo5" className="underline">
             Anexo 5
           </a>{" "}
           em 31/12: <strong>{dif.disponibilidadeLiquida}</strong> —{" "}
-          {dif.lastreado ? "lastreado" : "SEM LASTRO"}. Fontes FUNDEB:{" "}
+          {dif.lastreado ? "com lastro" : "sem lastro"}. Fontes do FUNDEB:{" "}
           {dif.fontesFundeb.join(", ") || "nenhuma classificada"}.
         </p>
         {/* ⚠️ INTERRUPTOR NOMEADO — o §3º exige crédito adicional para usar o diferido,
             e o M03 não tem leitor de créditos por fonte. Inventar o vínculo seria dizer
             que o crédito existe sem ter olhado. */}
         <p className="mt-1">
-          <strong>Crédito adicional (§3º):</strong> o uso do diferido exige abertura de
-          crédito adicional. Este relatório <strong>não o referencia</strong> — a leitura de
-          créditos por fonte ainda não está disponível, e afirmar o vínculo sem ela seria
-          declarar um crédito que não foi conferido.
+          <strong>Crédito adicional (§3º):</strong> a utilização do valor diferido exige abertura
+          de crédito adicional, que deve ser conferida em Planejamento · Créditos adicionais.
         </p>
       </div>
     </section>
@@ -364,7 +362,7 @@ function SecaoBloco2({ b2 }: { readonly b2: Bloco2Mde }): React.ReactElement {
           ]}
           keyDe={(a) => a.chave}
           ehTotal={(a) => a.chave === "NAO_RATEADO"}
-          legenda="Valores em R$ · por subfunção · acompanhamento pela regra bimestral do bloco 1."
+          legenda="Valores em R$ · por subfunção · mesmo critério de acompanhamento do quadro principal."
         />
       </section>
 
@@ -377,17 +375,17 @@ function SecaoBloco2({ b2 }: { readonly b2: Bloco2Mde }): React.ReactElement {
             role="alert"
             className="mb-2 rounded-[var(--radius-md)] border border-[color:var(--color-status-erro-fg)] bg-[color:var(--color-status-erro-bg)] p-3 text-sm text-[color:var(--color-status-erro-fg)]"
           >
-            <strong>RP sem lastro: {b2.rpSemLastroTotal}.</strong> O art. 25, §3º manda as
-            disponibilidades — <strong>inclusive as que cobrem restos a pagar</strong> —
-            permanecerem em conta vinculada. O que excede o caixa da própria fonte não pode
-            contar como aplicação do mínimo.
+            <strong>Restos a pagar sem lastro: {b2.rpSemLastroTotal}.</strong> Conforme o art. 25,
+            §3º da Lei 14.113/2020, as disponibilidades, inclusive as destinadas a restos a pagar,
+            devem permanecer em conta vinculada. O valor que excede o caixa da própria fonte não é
+            computado na aplicação do mínimo.
           </div>
         ) : null}
         <TabelaDeDados<RpDaFonte>
           colunas={COLUNAS_RP}
           linhas={b2.rpPorFonte}
           keyDe={(r) => r.fonte}
-          legenda="Por FONTE, nunca pelo total: o dinheiro da educação é carimbado, e o superávit de outra fonte não lastreia o RP desta."
+          legenda="Apuração por fonte de recursos: o superávit de uma fonte não cobre restos a pagar de outra."
         />
       </section>
 

@@ -41,7 +41,7 @@ export async function atribuirEntidadeAction(
       revalidatePath("/receita/por-entidade");
       return {
         sucesso:
-          "Entidade atribuída. A guia não foi alterada — a atribuição é um registro novo, com o seu nome, o motivo e o ato.",
+          "Entidade atribuída. A guia foi mantida, e a atribuição ficou registrada com o responsável, o motivo e o ato.",
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível atribuir a entidade." };

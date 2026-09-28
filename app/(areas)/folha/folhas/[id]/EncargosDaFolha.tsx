@@ -6,11 +6,11 @@ type Encargos = Awaited<ReturnType<typeof import("../../../../../lib/portas/recu
 
 const ROTULO_DA_SITUACAO: Readonly<Record<string, string>> = {
   NAO_APLICAVEL: "não aplicável",
-  PARAMETRO_AUSENTE: "SEM PARÂMETRO",
+  PARAMETRO_AUSENTE: "sem parâmetro",
   CALCULADO: "calculado",
   ZERO_CALCULADO: "zero calculado",
 };
-const ROTULO_DO_ATESTO: Readonly<Record<string, string>> = { PENDENTE: "PENDENTE DE ATESTO", CERTIFICADA: "CERTIFICADA", DEVOLVIDA: "DEVOLVIDA", SUPERADA: "SUPERADA" };
+const ROTULO_DO_ATESTO: Readonly<Record<string, string>> = { PENDENTE: "Pendente de atesto", CERTIFICADA: "Certificada", DEVOLVIDA: "Devolvida", SUPERADA: "Superada" };
 
 /**
  * OS ENCARGOS DO EMPREGADOR NA FOLHA (V6.2 U1) — a apuração vigente, o universo, o comparativo, o
@@ -27,8 +27,7 @@ export function EncargosDaFolha({ encargos }: { readonly encargos: Encargos }): 
       <Card>
         <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Encargos do empregador</h2>
         <p data-encargos="nao-apurados" className="text-xs text-[color:var(--color-ink-2)]">
-          Os encargos desta competência ainda NÃO foram apurados. Sem apuração não há empenho de encargos — e isso não prova que o
-          ente não deva nada: a apuração é que diz, componente a componente.
+          Os encargos desta competência ainda não foram apurados. O empenho dos encargos depende da apuração.
         </p>
       </Card>
     );
@@ -39,13 +38,13 @@ export function EncargosDaFolha({ encargos }: { readonly encargos: Encargos }): 
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Encargos do empregador — apuração nº {v.numero}</h2>
       <div data-encargos="apurados" data-completa={v.completa ? "sim" : "nao"} data-complementar={v.complementar ? "sim" : "nao"} className="mb-3 space-y-1 text-xs text-[color:var(--color-ink-2)]">
         <p>
-          Apurada em {v.apuradaEm} por {v.apuradaPor}. Total do ente <strong><ValorMonetario valor={v.total} comSimbolo /></strong> — obrigação do
-          empregador: não desconta do servidor e não entra no contracheque. Atesto dos encargos: <strong data-atesto-dos-encargos={v.situacao}>{ROTULO_DO_ATESTO[v.situacao] ?? v.situacao}</strong>.
+          Apurada em {v.apuradaEm} por {v.apuradaPor}. Total do ente <strong><ValorMonetario valor={v.total} comSimbolo /></strong>, de responsabilidade
+          do empregador, sem desconto do servidor e sem reflexo no contracheque. Atesto dos encargos: <strong data-atesto-dos-encargos={v.situacao}>{ROTULO_DO_ATESTO[v.situacao] ?? v.situacao}</strong>.
         </p>
-        {v.complementar ? <p className="font-medium text-[color:var(--color-ink)]">Apuração COMPLEMENTAR: esta folha já tinha atesto salarial quando os encargos foram apurados, e aquele atesto NÃO alcança estes valores.</p> : null}
-        {!v.completa ? <p role="status" className="font-medium text-[color:var(--color-status-erro-fg)]">INCOMPLETA: há componente aplicável sem parâmetro aprovado. Ela não se certifica nem se empenha; a competência não está completa.</p> : null}
-        {sintetica ? <p className="font-medium">Há versão SINTÉTICA (perfil de teste) nesta apuração — os valores não têm validade normativa.</p> : null}
-        <p>Universo esperado: {v.esperados} par(es) vínculo × componente aplicáveis. sha256 da apuração: <span className="break-all">{v.sha256}</span></p>
+        {v.complementar ? <p className="font-medium text-[color:var(--color-ink)]">Apuração complementar: a folha já estava atestada quando os encargos foram apurados, e aquele atesto não abrange estes valores.</p> : null}
+        {!v.completa ? <p role="status" className="font-medium text-[color:var(--color-status-erro-fg)]">Apuração incompleta: há componente aplicável sem parâmetro aprovado. Enquanto isso, a apuração não pode ser certificada nem empenhada.</p> : null}
+        {sintetica ? <p className="font-medium">Há versão sintética (de teste) nesta apuração; os valores não têm validade normativa.</p> : null}
+        <p>Universo esperado: {v.esperados} combinação(ões) de vínculo e componente aplicáveis. Código de verificação da apuração: <span className="break-all">{v.sha256}</span></p>
       </div>
       <div className="overflow-x-auto">
         <table data-tabela="encargos-por-componente" className="w-full min-w-[40rem] border-collapse text-sm">
@@ -99,7 +98,7 @@ export function EncargosDaFolha({ encargos }: { readonly encargos: Encargos }): 
                   <td className="py-1 pr-2">{i.base === "" ? "—" : `${i.base}${i.tetoAplicado ? " (teto)" : ""} = ${i.rubricas}`}</td>
                   <td className="py-1 pr-2 text-right">{i.aliquota || "—"}</td>
                   <td className="py-1 pr-2 text-right">{i.valor === "" ? "—" : <ValorMonetario valor={i.valor} />}</td>
-                  <td className="py-1 break-words [overflow-wrap:anywhere]">{i.motivo || i.fundamentacao}{i.sintetica ? " — SINTÉTICA" : ""}</td>
+                  <td className="py-1 break-words [overflow-wrap:anywhere]">{i.motivo || i.fundamentacao}{i.sintetica ? " (sintética)" : ""}</td>
                 </tr>
               ))}
             </tbody>
@@ -137,7 +136,7 @@ export function EncargosDaFolha({ encargos }: { readonly encargos: Encargos }): 
               </li>
             ))}
           </ul>
-          <p className="mt-1 text-[color:var(--color-ink-3)]">Liquidado não é recolhido: a guia e o pagamento dos encargos são atos próprios.</p>
+          <p className="mt-1 text-[color:var(--color-ink-3)]">A liquidação não corresponde ao recolhimento: a guia e o pagamento dos encargos são registrados à parte.</p>
         </div>
       ) : null}
     </Card>

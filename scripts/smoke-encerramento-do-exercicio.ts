@@ -113,7 +113,7 @@ async function main(): Promise<void> {
     });
     conferir(
       "2.3 abrindo o detalhe, a consequência está escrita ANTES do campo: a competência trava",
-      /passam a ser recusados pelo controle de per[íi]odo/i.test(aviso),
+      /não será possível registrar movimentos com data em/i.test(aviso),
       aviso.slice(0, 400)
     );
 

@@ -52,7 +52,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
                 </div>
               ),
             }
-          : { motivoSemCriar: "Você não tem a permissão CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA. Peça ao administrador — a concessão é por ação, e é registrada." })}
+          : { motivoSemCriar: "Seu perfil não tem permissão para cadastrar grupos de empenho da folha. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {
@@ -60,7 +60,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={GRUPOS_DE_EMPENHO_DA_FOLHA.rotulo} subtitulo={GRUPOS_DE_EMPENHO_DA_FOLHA.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava os grupos de empenho. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar as informações. Tente novamente mais tarde." />
         </div>
       );
     }

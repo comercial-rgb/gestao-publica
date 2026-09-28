@@ -6,6 +6,7 @@ import {
   registrarMovimento,
 } from "../../../../lib/portas/tesouraria";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 export interface EstadoMovimento {
   readonly erro?: string;
@@ -21,6 +22,14 @@ const TIPOS = [
   "TARIFA",
 ] as const;
 type Tipo = (typeof TIPOS)[number];
+const ROTULO_TIPO: Readonly<Record<Tipo, string>> = {
+  DEPOSITO: "Depósito",
+  SAQUE: "Saque",
+  APLICACAO: "Aplicação financeira",
+  RESGATE: "Resgate de aplicação",
+  RENDIMENTO: "Rendimento",
+  TARIFA: "Tarifa bancária",
+};
 const ehTipo = (v: string): v is Tipo => (TIPOS as readonly string[]).includes(v);
 
 /**
@@ -68,7 +77,7 @@ export async function registrarMovimentoAction(
         contaContrapartidaId,
       });
       revalidatePath("/financeiro/movimentacao");
-      return { sucesso: `${tipoBruto} de ${valor} registrado.` };
+      return { sucesso: `Movimento registrado: ${ROTULO_TIPO[tipoBruto]} de R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
       return {
         erro: e instanceof Error ? e.message : "Não foi possível registrar o movimento.",

@@ -68,7 +68,7 @@ export default async function Pagina({
             }
           : {
               motivoSemCriar:
-                "Você não tem a permissão REGISTRAR_DOCUMENTO_FISCAL. Peça ao administrador — a concessão é por ação, e é registrada.",
+                "Seu perfil não tem permissão para registrar documentos fiscais. Solicite a permissão ao administrador do sistema.",
             })}
       />
     );
@@ -78,8 +78,8 @@ export default async function Pagina({
         <div className="space-y-6">
           <PageHeader titulo={DOCUMENTOS_FISCAIS.rotulo} subtitulo={DOCUMENTOS_FISCAIS.descricao} />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Esta tela lê e grava documentos fiscais. Sem banco, não tem o que mostrar — e não vai fingir que tem."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível carregar os dados. Tente novamente em instantes."
           />
         </div>
       );

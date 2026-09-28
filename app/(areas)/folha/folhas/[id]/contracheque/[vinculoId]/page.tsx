@@ -29,8 +29,8 @@ function medida(m: MemoriaLida, diasDaColuna: number): string {
   if (m.dias.situacao === "PRESENTE") return m.dias.dados.explicacao;
   // A memória DECLARA a grandeza (V11 V9.4b): quem mede diferença diz que mede diferença.
   if (m.medida.situacao === "PRESENTE") return m.medida.dados.explicacao;
-  if (m.avos.situacao === "ILEGIVEL") return `medida não reconhecida na memória (${m.avos.motivo})`;
-  if (m.medida.situacao === "ILEGIVEL") return `medida não reconhecida na memória (${m.medida.motivo})`;
+  if (m.avos.situacao === "ILEGIVEL") return `unidade de medida não identificada (${m.avos.motivo})`;
+  if (m.medida.situacao === "ILEGIVEL") return `unidade de medida não identificada (${m.medida.motivo})`;
   /**
    * ⚠️ O RAMO FINAL NÃO INVENTA UNIDADE — e este é o conserto de um defeito que já tinha sido
    * consertado uma vez, do jeito errado (V11 V9.4b).
@@ -53,7 +53,7 @@ function medida(m: MemoriaLida, diasDaColuna: number): string {
    * `medida`, um tipo NOVO que não escreva `dias` nem `avos` cai neste ramo — e agora cai dizendo
    * que não sabe, em vez de mentindo. Fechar a propriedade é fazer os quatro motores declararem.
    */
-  return `${diasDaColuna}/30 dias registrados no cálculo — a memória não declara que grandeza este contracheque mede`;
+  return `${diasDaColuna}/30 dias registrados no cálculo (unidade de medida não informada)`;
 }
 
 /**
@@ -67,8 +67,8 @@ function SemBloco({ b }: { readonly b: { readonly situacao: "AUSENTE" | "ILEGIVE
   if (b.situacao === "AUSENTE") return <p className="text-xs text-[color:var(--color-ink-2)]">{b.motivo}</p>;
   return (
     <p role="alert" className="text-xs text-[color:var(--color-perigo)]">
-      A memória deste cálculo traz um detalhamento que esta tela não reconheceu: {b.motivo}. O valor total continua
-      correto nos totais acima; o que falta é a explicação da conta. Avise a administração do sistema.
+      Não foi possível exibir o detalhamento deste cálculo: {b.motivo}. Os totais acima estão corretos. Comunique a
+      administração do sistema.
     </p>
   );
 }
@@ -104,7 +104,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
       */}
       {m.natureza.situacao === "PRESENTE" || m.regimeDeTributacao.situacao === "PRESENTE" ? (
         <Card>
-          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">O que este documento é</h2>
+          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Natureza deste contracheque</h2>
           {m.natureza.situacao === "PRESENTE" ? (
             <p data-natureza-do-contracheque className="text-xs text-[color:var(--color-ink)]">{m.natureza.dados}</p>
           ) : null}
@@ -167,9 +167,9 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
         {m.contribuicao.situacao !== "PRESENTE" && m.contribuicaoDoRecalculoIntegral.situacao === "PRESENTE" ? (
           <div data-contribuicao-do-integral className="space-y-2 text-xs text-[color:var(--color-ink-2)]">
             <p className="text-[color:var(--color-ink)]">
-              Esta folha retém a DIFERENÇA de contribuição, e o valor retido é o que está na linha da rubrica acima.
-              A conta abaixo é o recálculo INTEGRAL da competência — a base de onde a diferença saiu —, e não o valor
-              descontado neste documento.
+              Esta folha retém apenas a diferença de contribuição, indicada na linha da rubrica acima. O cálculo abaixo
+              corresponde ao recálculo integral da competência, que deu origem à diferença, e não ao valor descontado
+              neste contracheque.
             </p>
             <p>
               Regime {m.contribuicaoDoRecalculoIntegral.dados.regime} · base {m.contribuicaoDoRecalculoIntegral.dados.base}
@@ -197,7 +197,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             {m.contribuicao.dados.faixas.length > 0 ? (
               <ul className="ml-4 list-disc">
                 {m.contribuicao.dados.faixas.map((f) => (
-                  <li key={f.ordem}>faixa {f.ordem}: {f.baseNaFaixa} x {f.aliquota} = {f.valor} (de {f.de} ate {f.ate})</li>
+                  <li key={f.ordem}>faixa {f.ordem}: {f.baseNaFaixa} x {f.aliquota} = {f.valor} (de {f.de} até {f.ate})</li>
                 ))}
               </ul>
             ) : null}
@@ -217,7 +217,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             <ul className="ml-4 list-disc">
               {m.irrf.dados.cenarios.map((x) => (
                 <li key={x.nome} className={x.nome === (m.irrf.situacao === "PRESENTE" ? m.irrf.dados.cenario : "") ? "text-[color:var(--color-ink)]" : ""}>
-                  {x.nome}: {x.aplicavel ? `base ${x.base} → ${x.valor}${x.deducoes.length > 0 ? ` (deduções: ${x.deducoes.map((d) => `${d.tipo} ${d.valor}`).join(", ")})` : ""}` : `não aplicável — ${x.motivo ?? "sem motivo declarado"}`}
+                  {x.nome}: {x.aplicavel ? `base ${x.base} → ${x.valor}${x.deducoes.length > 0 ? ` (deduções: ${x.deducoes.map((d) => `${d.tipo} ${d.valor}`).join(", ")})` : ""}` : `não aplicável — ${x.motivo ?? "motivo não informado"}`}
                 </li>
               ))}
             </ul>
@@ -233,7 +233,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             <p>Renda bruta {m.salarioFamilia.dados.rendaBruta} (máxima {m.salarioFamilia.dados.rendaMaxima}) · {m.salarioFamilia.dados.elegiveis} dependente(s) elegível(is) x {m.salarioFamilia.dados.valorPorDependente} = {m.salarioFamilia.dados.valor}</p>
             <ul className="ml-4 list-disc">
               {m.salarioFamilia.dados.considerados.map((d) => (
-                <li key={d.nome}>{d.nome}, {d.idade} anos: {d.elegivel ? "elegível" : `não elegível — ${d.motivo ?? "sem motivo declarado"}`}</li>
+                <li key={d.nome}>{d.nome}, {d.idade} anos: {d.elegivel ? "elegível" : `não elegível — ${d.motivo ?? "motivo não informado"}`}</li>
               ))}
             </ul>
             <p>Fundamentação: {m.salarioFamilia.dados.fundamentacao}</p>
@@ -255,8 +255,8 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
             recalcular. O motor já gravava mês a mês com o motivo; a tela é que não mostrava.
           */}
           <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
-            {m.avos.dados.computados} de {m.avos.dados.de} avos · um mês conta quando alcança {m.avos.dados.diasMinimos} dia(s)
-            computado(s). A medida do 13º é o MÊS, não o dia: o mês conta inteiro ou não conta.
+            {m.avos.dados.computados} de {m.avos.dados.de} avos · o mês é computado quando alcança {m.avos.dados.diasMinimos} dia(s)
+            trabalhado(s). O 13º é apurado por mês: cada mês conta integralmente ou não conta.
           </p>
           <ul className="ml-4 list-disc text-xs text-[color:var(--color-ink-2)]">
             {m.avos.dados.meses.map((x) => (
@@ -275,7 +275,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
 
       {m.procedenciaDoAbatimento.situacao === "PRESENTE" ? (
         <Card>
-          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">De onde veio o abatimento</h2>
+          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Origem do abatimento</h2>
           {/*
             ⚠️ O QUE SUSTENTA O DESCONTO, E O QUE NÃO SUSTENTA — E DESDE A V11 V9.3 ISSO VARIA.
             Quando o ente DECLAROU o critério (no parâmetro versionado, com ato), o contracheque
@@ -287,8 +287,8 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
           <div className="space-y-1 text-xs text-[color:var(--color-ink-2)]">
             {m.procedenciaDoAbatimento.dados.natureza === "SIMULACAO" ? (
               <p className="font-semibold text-[color:var(--color-ink)]">
-                SIMULAÇÃO — não é apuração aprovada. O ente não declarou qual estado o adiantamento precisa ter
-                alcançado para ser abatido.
+                Simulação, sem valor de apuração aprovada: o ente não definiu em que situação o adiantamento deve estar
+                para ser abatido.
               </p>
             ) : null}
             <p>
@@ -318,11 +318,11 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
       ) : null}
 
       <Card>
-        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Impressão digital</h2>
+        <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Código de verificação</h2>
         <p className="break-all font-mono text-xs text-[color:var(--color-ink-2)]" data-sha256={c.sha256}>{c.sha256}</p>
         <p className="mt-1 text-[11px] text-[color:var(--color-ink-3)]">
-          sha256 da memória canônica deste contracheque. Recalcular com os mesmos dados devolve o mesmo valor; um centavo
-          diferente muda o hash inteiro.
+          Código de verificação da memória de cálculo deste contracheque. Um novo cálculo com os mesmos dados produz o mesmo
+          código; qualquer diferença de valor gera um código diferente.
         </p>
       </Card>
     </div>

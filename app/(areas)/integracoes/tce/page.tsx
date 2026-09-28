@@ -34,6 +34,13 @@ const TOM: Record<SituacaoComparacao, StatusBadge> = {
   SO_TCE: "alerta",
 };
 
+const ROTULO_DA_SITUACAO: Record<SituacaoComparacao, string> = {
+  IGUAL: "igual",
+  DIVERGENTE: "divergente",
+  SO_LOCAL: "somente no sistema",
+  SO_TCE: "somente no TCE",
+};
+
 export default async function ConsultaTcePage(): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
   let r: Awaited<ReturnType<typeof compararEmpenhosLocalTce>> | null = null;
@@ -41,26 +48,26 @@ export default async function ConsultaTcePage(): Promise<React.ReactElement> {
   try {
     r = await compararEmpenhosLocalTce();
   } catch (e) {
-    erro = e instanceof Error ? e.message : "Falha na consulta.";
+    erro = e instanceof Error ? e.message : "Não foi possível realizar a consulta.";
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader titulo="API de Consulta TCE-PB — dados locais × TCE" subtitulo="Comparação de empenhos por UG/período (retorno sintético, contrato oficial)." />
+      <PageHeader titulo="Consulta ao TCE-PB" subtitulo="Comparação entre os empenhos registrados no sistema e os informados pelo TCE-PB." />
 
       <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
         <p className="font-semibold text-[color:var(--color-ink)]">
-          <Badge status="neutro">Simulação</Badge> Retorno sintético — simulação executada
+          <Badge status="neutro">Simulação</Badge> Consulta simulada
         </p>
         <p className="mt-1 text-[color:var(--color-ink-2)]">
-          Os dados do "TCE" vêm de <strong>massa conforme o contrato oficial</strong> (OpenAPI versionado), não de uma consulta real.
-          <strong> Nenhuma transmissão externa foi realizada.</strong> SANDBOX/LIVE exigem token (por configuração) e respondem <strong>credencial não configurada</strong> — e não há caminho alternativo.
+          Os dados atribuídos ao TCE são fictícios e seguem o padrão oficial da API; nenhuma consulta real foi feita.
+          <strong> Nenhuma transmissão externa foi realizada.</strong> A consulta real depende da configuração da credencial de acesso.
         </p>
       </div>
 
       {erro !== null && (
         <Card>
-          <p className="text-sm font-semibold text-[color:var(--color-status-erro-fg)]">Falha na consulta</p>
+          <p className="text-sm font-semibold text-[color:var(--color-status-erro-fg)]">Não foi possível realizar a consulta</p>
           <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{erro}</p>
         </Card>
       )}
@@ -68,18 +75,18 @@ export default async function ConsultaTcePage(): Promise<React.ReactElement> {
       {r !== null && (
         <Card>
           <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-            <strong>Empenhos — UG {"999001"} · jul/2026</strong>
+            <strong>Empenhos · unidade gestora {"999001"} · jul/2026</strong>
             <span className="text-[color:var(--color-ink-2)]">
-              {r.resumo.iguais} iguais · <span className="text-[color:var(--color-status-erro-fg)]">{r.resumo.divergentes} divergentes</span> · {r.resumo.soLocal} só-local · {r.resumo.soTce} só-TCE
+              {r.resumo.iguais} iguais · <span className="text-[color:var(--color-status-erro-fg)]">{r.resumo.divergentes} divergentes</span> · {r.resumo.soLocal} somente no sistema · {r.resumo.soTce} somente no TCE
             </span>
-            <code className="ml-auto text-xs text-[color:var(--color-ink-3)]">corr:{r.correlationId.slice(0, 8)}</code>
+            <code className="ml-auto text-xs text-[color:var(--color-ink-3)]">consulta {r.correlationId.slice(0, 8)}</code>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                   <th className="py-1.5 pr-4">Nº Empenho</th>
-                  <th className="py-1.5 pr-4">Valor local</th>
+                  <th className="py-1.5 pr-4">Valor no sistema</th>
                   <th className="py-1.5 pr-4">Valor TCE</th>
                   <th className="py-1.5">Situação</th>
                 </tr>
@@ -90,7 +97,7 @@ export default async function ConsultaTcePage(): Promise<React.ReactElement> {
                     <td className="py-1.5 pr-4">{l.chave}</td>
                     <td className="py-1.5 pr-4">{emReal(l.valorLocal)}</td>
                     <td className="py-1.5 pr-4">{emReal(l.valorTce)}</td>
-                    <td className="py-1.5"><Badge status={TOM[l.situacao]}>{l.situacao}</Badge></td>
+                    <td className="py-1.5"><Badge status={TOM[l.situacao]}>{ROTULO_DA_SITUACAO[l.situacao]}</Badge></td>
                   </tr>
                 ))}
               </tbody>

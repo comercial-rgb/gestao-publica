@@ -63,13 +63,13 @@ export default async function ArrecadacoesPage({
         <SincronizarContexto />
         <PageHeader
           titulo="Arrecadação"
-          subtitulo="Guias do ente, por natureza e fonte (a receita não tem UG)"
+          subtitulo="Guias arrecadadas pelo ente, por natureza e fonte"
         />
         <EstadoVazio
           titulo={
             erro instanceof ExercicioIlegivelError
-              ? "O exercício pedido não é um ano"
-              : "Não foi possível ler o recorte"
+              ? "Exercício inválido"
+              : "Não foi possível carregar a consulta"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -80,7 +80,7 @@ export default async function ArrecadacoesPage({
   const cabecalho = (
     <PageHeader
       titulo="Arrecadação"
-      subtitulo={`Exercício ${exercicio} — guias do ente, por natureza e fonte (a receita não tem UG)`}
+      subtitulo={`Exercício ${exercicio}: guias arrecadadas pelo ente, por natureza e fonte.`}
     />
   );
 
@@ -101,8 +101,8 @@ export default async function ArrecadacoesPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler a arrecadação"
+              ? "Serviço indisponível"
+              : "Não foi possível carregar a arrecadação"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -116,15 +116,11 @@ export default async function ArrecadacoesPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Nada é reescrito: a guia anulada continua na lista, e a anulação
-        aparece ao lado dela com sinal negativo. O <strong>total</strong> é a receita realizada
-        líquida — Σ(arrecadações) − Σ(anulações). O corte é pela{" "}
-        <strong>data de arrecadação</strong> (o fato), nunca pela data de digitação. O rol da
-        LOA é <strong>sugestão</strong>, não restrição: receita não prevista existe, e é o que
-        o Anexo 1 mostra como arrecadado além do previsto. Um depósito único que pertence a{" "}
-        <strong>mais de uma fonte</strong> — FPM, ICMS partilhado, convênio com contrapartida —
-        entra por <strong>Repartir uma guia entre fontes</strong>: a coluna Fonte então mostra
-        quanto foi de cada uma.
+        O <strong>total</strong> corresponde à receita realizada líquida (arrecadações menos anulações),
+        apurada pela <strong>data de arrecadação</strong>; a guia anulada permanece na lista, e a
+        anulação aparece com valor negativo. Depósitos que pertencem a <strong>mais de uma fonte</strong>{" "}
+        (FPM, ICMS partilhado, convênio com contrapartida) são registrados em{" "}
+        <strong>Repartir uma guia entre fontes</strong>.
       </div>
 
       <FormArrecadacao

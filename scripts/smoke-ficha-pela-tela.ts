@@ -103,7 +103,7 @@ async function main(): Promise<void> {
     const NUM_VENC = 20000 + SUF;
     const venc = await criarLivre(NUM_VENC, "319011");
     const rVenc = venc.r;
-    R.conferir("1.6 ficha de VENCIMENTOS criada pela tela — e a mensagem diz SEM crédito e de onde vem a dotação", rVenc.tipo === "ok" && /SEM crédito/.test(rVenc.texto) && /crédito adicional/.test(rVenc.texto), `${rVenc.tipo}: ${rVenc.texto.slice(0, 300)}`);
+    R.conferir("1.6 ficha de VENCIMENTOS criada pela tela — e a mensagem diz SEM crédito e de onde vem a dotação", rVenc.tipo === "ok" && /sem dotação/.test(rVenc.texto) && /crédito adicional/.test(rVenc.texto), `${rVenc.tipo}: ${rVenc.texto.slice(0, 300)}`);
 
     await irPara(N, page, `/planejamento/fichas?q=${NUM_VENC}`);
     const hrefVenc = await hrefDoRegistro(page, String(NUM_VENC));
@@ -118,7 +118,7 @@ async function main(): Promise<void> {
     // ══ 2. a ficha de OBRIGAÇÕES PATRONAIS — a que o percurso dos encargos vai usar ══
     const NUM_PATR = 30000 + SUF;
     const patr = await criarLivre(NUM_PATR, "319013");
-    R.conferir("2.1 ficha de OBRIGAÇÕES PATRONAIS (319013) criada pela tela, também sem crédito", patr.r.tipo === "ok" && /SEM crédito/.test(patr.r.texto), `${patr.r.tipo}: ${patr.r.texto.slice(0, 300)}`);
+    R.conferir("2.1 ficha de OBRIGAÇÕES PATRONAIS (319013) criada pela tela, também sem crédito", patr.r.tipo === "ok" && /sem dotação/.test(patr.r.texto), `${patr.r.tipo}: ${patr.r.texto.slice(0, 300)}`);
     console.log(`      [fichas do percurso: ${NUM_VENC} (319011, ação ${venc.acao}, subfunção ${venc.subfuncao}) e ${NUM_PATR} (319013, ação ${patr.acao}), fonte ${fonte.valor}, UO ${uo.valor}, exercício ${ano}]`);
 
     // ══ 3. as recusas, cada uma com o motivo ══

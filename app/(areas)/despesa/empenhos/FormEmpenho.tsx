@@ -154,9 +154,8 @@ export function FormEmpenho({
   if (fichas.length === 0) {
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
-        <strong className="text-[color:var(--color-ink)]">Sem fichas neste recorte</strong> — não há onde
-        empenhar. A despesa sai da dotação de uma ficha da LOA; sem ficha, o empenho não tem contra o
-        quê ser emitido.
+        <strong className="text-[color:var(--color-ink)]">Nenhuma ficha disponível</strong> para a unidade e o
+        exercício selecionados. O empenho exige uma ficha de dotação da LOA.
       </div>
     );
   }

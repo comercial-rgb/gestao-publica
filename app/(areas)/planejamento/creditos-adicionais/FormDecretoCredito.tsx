@@ -153,11 +153,11 @@ export function FormDecretoCredito({
     return (
       <div className={`${CLASSE_PAINEL_FORMULARIO} text-xs text-[color:var(--color-ink-2)]`}>
         <strong className="text-[color:var(--color-ink)]">
-          {leis.length === 0 ? "Sem lei de crédito neste exercício" : "Sem fichas neste exercício"}
+          {leis.length === 0 ? "Sem lei de crédito neste exercício." : "Sem fichas neste exercício."}
         </strong>{" "}
         {leis.length === 0
-          ? "— um decreto executa o TETO de uma lei autorizadora; sem lei, não há o que executar. Cadastre a lei no painel acima."
-          : "— as pernas do decreto suplementam ou anulam FICHAS da LOA. Sem ficha, não há dotação a alterar."}
+          ? "Cadastre a lei no painel acima antes de registrar o decreto."
+          : "O decreto altera a dotação das fichas da LOA; cadastre as fichas do exercício antes de registrá-lo."}
       </div>
     );
   }
@@ -169,8 +169,7 @@ export function FormDecretoCredito({
           <div>
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Novo decreto de crédito adicional</h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-              Executa (parte d)o teto de uma lei, suplementando e anulando fichas. As travas (teto da
-              lei, saldo da ficha, fonte, fechamento por fonte) são do domínio, aplicadas na gravação.
+              Suplementa e anula dotações de fichas dentro do valor autorizado em lei.
             </p>
           </div>
           <button type="button" onClick={() => setAberto(true)} className={CLASSE_BOTAO_PRIMARIO}>
@@ -205,12 +204,12 @@ export function FormDecretoCredito({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Lei autorizadora (teto)</span>
+          <span className={ROTULO}>Lei autorizadora</span>
           <select name="leiId" value={leiId} onChange={(e) => setLeiId(e.target.value)} className={CAMPO}>
             <option value="">Escolha a lei…</option>
             {leis.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.numero}/{l.ano} — {TIPO_ROTULO[l.tipoCredito] ?? l.tipoCredito} · teto{" "}
+                {l.numero}/{l.ano} — {TIPO_ROTULO[l.tipoCredito] ?? l.tipoCredito} · autorizado{" "}
                 {formatarMoeda(l.valorAutorizado).texto}
               </option>
             ))}
@@ -243,7 +242,7 @@ export function FormDecretoCredito({
       </div>
 
       <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">
-        Movimentos (as pernas do decreto)
+        Movimentos do decreto
       </h3>
 
       <div className="mt-2 space-y-2">
@@ -252,7 +251,7 @@ export function FormDecretoCredito({
           return (
             <div key={l.chave} className="grid gap-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-2 sm:grid-cols-[1fr_10rem_10rem_auto]">
               <label className="text-xs text-[color:var(--color-ink-2)]">
-                <span className={ROTULO}>Ficha (dotação)</span>
+                <span className={ROTULO}>Ficha</span>
                 <select
                   aria-label={`Ficha do movimento ${i + 1}`}
                   value={l.fichaId}
@@ -312,7 +311,7 @@ export function FormDecretoCredito({
                     onClick={() => setLinhas((atual) => atual.filter((x) => x.chave !== l.chave))}
                     className="text-[color:var(--color-status-erro-fg)] hover:underline"
                   >
-                    remover
+                    Remover
                   </button>
                 ) : null}
               </div>
@@ -343,13 +342,12 @@ export function FormDecretoCredito({
           }`}
         >
           {desequilibrios.length === 0 ? (
-            <>As pernas <strong>fecham por fonte</strong> — o total suplementado iguala o anulado em cada fonte.</>
+            <>Os movimentos <strong>fecham por fonte</strong>: o total suplementado é igual ao anulado em cada fonte.</>
           ) : (
             <>
-              <strong>As pernas ainda não fecham por fonte</strong>:{" "}
-              {desequilibrios.map((d) => `fonte ${d.fonteCodigo} sobra ${formatarMoeda(d.diferenca).texto}`).join("; ")}.
-              Num decreto por anulação, cada fonte tem de sair no zero. Quem recusa é o domínio, na
-              gravação — este aviso só antecipa a conversa.
+              <strong>Os movimentos ainda não fecham por fonte</strong>:{" "}
+              {desequilibrios.map((d) => `fonte ${d.fonteCodigo} com diferença de ${formatarMoeda(d.diferenca).texto}`).join("; ")}.
+              Nos decretos por anulação, o total suplementado deve ser igual ao anulado em cada fonte.
             </>
           )}
         </div>

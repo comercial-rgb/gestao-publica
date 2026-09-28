@@ -38,8 +38,8 @@ export async function criarParametroDoAdiantamentoSalarialAction(
     return {
       sucesso:
         `Parâmetro do adiantamento salarial de ${campos["competencia"] ?? ""} gravado na versão ${versao}. ` +
-        `A versão anterior continua no histórico: as folhas que ela calculou a citam na memória, e é a versão ` +
-        `citada — não esta — que a folha mensal daquela competência lê para abater.`,
+        `A versão anterior permanece no histórico, e a folha mensal de cada competência utiliza, para o abatimento, ` +
+        `a versão que apurou o adiantamento.`,
     };
   });
 }

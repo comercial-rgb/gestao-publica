@@ -51,9 +51,8 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
           ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} adiantamentosQuePermitemPago={rubricas.adiantamentosQuePermitemPago} /> }
           : {
               motivoSemCriar:
-                "Você não tem a permissão CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO. Ela é própria, e não vem junto com a de " +
-                "configurar as tabelas do ente: quem cadastra a tabela federal do IRRF não é necessariamente quem decide o " +
-                "critério do avo do município. Peça ao administrador — a concessão é por ação, e é registrada.",
+                "Seu perfil não tem permissão para configurar os parâmetros do 13º. Essa permissão é específica e não " +
+                "acompanha a de configurar as tabelas da folha. Solicite a permissão ao administrador do sistema.",
             })}
       />
     );
@@ -63,8 +62,8 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         <div className="space-y-6">
           <PageHeader titulo={PARAMETROS_DO_DECIMO_TERCEIRO.rotulo} subtitulo={PARAMETROS_DO_DECIMO_TERCEIRO.descricao} />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Esta tela lê e grava os parâmetros do 13º do ente. Sem banco, não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis no momento"
+            descricao="Não foi possível acessar as informações. Tente novamente mais tarde."
           />
         </div>
       );

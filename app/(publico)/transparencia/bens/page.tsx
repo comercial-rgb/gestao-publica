@@ -103,8 +103,8 @@ export default async function BensPublicosPage({
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Bens patrimoniais</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
-          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · acesso público, sem cadastro. A consulta
-          fica no endereço desta página e pode ser copiada como link.
+          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · acesso público, sem cadastro. Os resultados
+          filtrados podem ser compartilhados copiando o endereço da página.
         </p>
       </header>
 
@@ -193,8 +193,7 @@ export default async function BensPublicosPage({
 
       {semBanco ? (
         <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">
-          A consulta está indisponível agora: o banco de dados não respondeu. Nada foi omitido de
-          propósito.
+          A consulta está temporariamente indisponível. Tente novamente mais tarde.
         </p>
       ) : pagina === null || pagina.total === 0 ? (
         <p data-bens-vazio className="text-sm text-[color:var(--color-ink-2)]">
@@ -233,7 +232,7 @@ export default async function BensPublicosPage({
 
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)]">
             <table className="w-full min-w-[44rem] text-left text-sm" data-bens-publicos>
-              <caption className="sr-only">Bens patrimoniais do ente, com tombamento, descrição, classe, aquisição, situação e localização</caption>
+              <caption className="sr-only">Bens patrimoniais, com tombamento, descrição, classe, aquisição, situação, valor contábil e localização</caption>
               <thead className="bg-[color:var(--color-surface-2)] text-xs text-[color:var(--color-ink-2)]">
                 <tr>
                   <th scope="col" className="px-3 py-2">Tombamento</th>
@@ -300,17 +299,15 @@ export default async function BensPublicosPage({
           </nav>
 
           <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-data-de-referencia>
-            Valores contábeis apurados em {pagina.linhas[0]?.dataDeReferencia ?? "—"}: são a soma dos
-            movimentos patrimoniais registrados até esta data (aquisição, custo subsequente e
-            reavaliação somam; depreciação, redução ao valor recuperável e baixa subtraem).
-            Depreciação e reavaliação mudam o número com o tempo — por isso a data vai junto.
-            &quot;Sem movimento registrado&quot; não é o mesmo que zero: é um bem cadastrado cujo
-            valor ainda não foi lançado.
+            Valores contábeis apurados em {pagina.linhas[0]?.dataDeReferencia ?? "—"}, considerando
+            aquisições, custos subsequentes, reavaliações, depreciações, reduções ao valor recuperável
+            e baixas registradas até essa data. &quot;Sem movimento registrado&quot; indica bem
+            cadastrado cujo valor ainda não foi lançado, e não valor zero.
           </p>
 
           <p className="mt-4 text-xs text-[color:var(--color-ink-3)]">
-            A localização de um bem só aparece quando o ente a declara divulgável. Bens em locais de
-            acesso restrito continuam na lista, sem o lugar.
+            A localização é exibida somente quando autorizada para divulgação. Bens em locais de acesso
+            restrito são listados sem a localização.
           </p>
         </>
       )}

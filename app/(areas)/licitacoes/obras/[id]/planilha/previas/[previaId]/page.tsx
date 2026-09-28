@@ -37,8 +37,8 @@ export default async function PreviaDaPlanilhaPage({ params }: { readonly params
           <Badge status={a.erros.length === 0 ? "ok" : "alerta"}>{a.erros.length} linha(s) com erro</Badge>
           <Badge status={a.divergencias.length === 0 ? "ok" : "alerta"}>{a.divergencias.length} divergência(s) de conciliação</Badge>
           <Badge status="neutro">{a.itens.filter((i) => i.tipo === "SERVICO").length} serviço(s)</Badge>
-          <Badge status="neutro">{a.celulasComFormula} célula(s) com fórmula: vale o valor gravado</Badge>
-          {a.macros ? <Badge status="alerta">o arquivo tem macros: não foram executadas</Badge> : null}
+          <Badge status="neutro">{a.celulasComFormula} célula(s) com fórmula: considerado o valor gravado</Badge>
+          {a.macros ? <Badge status="alerta">arquivo com macros (não executadas)</Badge> : null}
         </div>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
           <div><dt className="text-xs text-[color:var(--color-ink-2)]">Total calculado (quantidade × preço, por linha)</dt><dd><ValorMonetario valor={a.totalCalculado} comSimbolo /></dd></div>
@@ -82,9 +82,9 @@ export default async function PreviaDaPlanilhaPage({ params }: { readonly params
         {a.ignoradas.length === 0 ? null : <details className="mt-3 text-sm"><summary className="cursor-pointer text-xs font-semibold">{a.ignoradas.length} linha(s) sem código, não importadas</summary><ul className="mt-1 list-disc pl-5 text-xs">{a.ignoradas.map((x, k) => <li key={k} className="[overflow-wrap:anywhere]">Linha {x.linha}: {x.mensagem}</li>)}</ul></details>}
       </Card>
       {p.confirmada !== null ? <p className="text-sm" data-previa-confirmada>Esta prévia já é a <Link href={`/licitacoes/obras/${id}/planilha/versoes/${p.confirmada.planilhaId}`} className="text-[color:var(--color-primary)] underline underline-offset-2">versão {p.confirmada.versao}</Link>.</p>
-        : a.erros.length > 0 ? <p className="text-sm font-semibold" data-previa-bloqueada>Corrija as linhas com erro no arquivo e importe de novo: esta prévia não pode ser confirmada.</p>
+        : a.erros.length > 0 ? <p className="text-sm font-semibold" data-previa-bloqueada>Esta prévia não pode ser confirmada. Corrija as linhas com erro no arquivo e importe-o novamente.</p>
           : p.podeGerir ? <FormConfirmarPrevia obraId={id} previaId={p.id} divergencias={a.divergencias.length} hoje={diaCivil(new Date())} />
-            : <p className="text-xs text-[color:var(--color-ink-2)]">Confirmar a prévia é da engenharia de obras (a ação de gerir a planilha da obra no seu perfil).</p>}
+            : <p className="text-xs text-[color:var(--color-ink-2)]">Confirmar a prévia exige a permissão de gerir a planilha da obra.</p>}
     </div>
     </ResultadosDosAtos>
   );

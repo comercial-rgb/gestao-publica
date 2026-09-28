@@ -55,7 +55,7 @@ function camposCadastrais(formData: FormData) {
 }
 
 function mensagem(erro: unknown): string {
-  return erro instanceof Error ? erro.message : "Falha ao gravar.";
+  return erro instanceof Error ? erro.message : "Não foi possível gravar o cadastro.";
 }
 
 export async function cadastrarPessoaAction(
@@ -66,9 +66,9 @@ export async function cadastrarPessoaAction(
     const documento = String(formData.get("documento") ?? "").trim();
 
     try {
-      const id = await registrarPessoa({ documento, ...camposCadastrais(formData) });
+      await registrarPessoa({ documento, ...camposCadastrais(formData) });
       revalidatePath("/cadastros/pessoas");
-      return { sucesso: `Pessoa cadastrada (${id}).` };
+      return { sucesso: "Pessoa cadastrada com sucesso." };
     } catch (erro) {
       return { erro: mensagem(erro) };
     }
@@ -94,7 +94,7 @@ export async function alterarPessoaAction(
       });
       revalidatePath("/cadastros/pessoas");
       revalidatePath(`/cadastros/pessoas/${pessoaId}`);
-      return { sucesso: "Alteração registrada — a versão anterior continua no histórico." };
+      return { sucesso: "Alteração registrada. A versão anterior permanece no histórico." };
     } catch (erro) {
       return { erro: mensagem(erro) };
     }

@@ -188,7 +188,7 @@ async function main(): Promise<void> {
     const r2 = await preencherEEnviar(page, "abrir-guiche", [{ sel: 'input[name="nome"]', valor: GUICHE }]);
     R.conferir(
       `1.4 o guichê é criado e o ato confirma que ele nasce SEM serviço e SEM horário`,
-      r2.tipo === "ok" && r2.texto.includes("não atende serviço nenhum"),
+      r2.tipo === "ok" && r2.texto.includes("Ainda não há serviço habilitado"),
       r2.tipo === "silencio" ? await porQueNaoEnviou(page, "abrir-guiche") : `${r2.tipo}: ${r2.texto}`
     );
 
@@ -266,7 +266,7 @@ async function main(): Promise<void> {
     // no balcão tinha de VOLTAR ao balcão para desmarcar — cortesia virando deslocamento.
     R.conferir(
       "2.4 o atendimento é marcado PELA TELA e a confirmação traz o número e o código a ENTREGAR",
-      r5.tipo === "ok" && r5.texto.includes("ENTREGUE à pessoa") && r5.texto.includes(br(C.segunda)),
+      r5.tipo === "ok" && r5.texto.includes("Entregue à pessoa o código de acompanhamento") && r5.texto.includes(br(C.segunda)),
       r5.tipo === "silencio" ? await porQueNaoEnviou(page, "marcar-atendimento") : `${r5.tipo}: ${r5.texto}`
     );
 
@@ -338,7 +338,7 @@ async function main(): Promise<void> {
     ]);
     R.conferir(
       "3.6 o atendimento é registrado e o ato diz que a partir dali não se cancela nem se remarca",
-      r7.tipo === "ok" && r7.texto.includes("não se cancela"),
+      r7.tipo === "ok" && r7.texto.includes("não pode ser cancelada nem remarcada"),
       r7.tipo === "silencio" ? await porQueNaoEnviou(page, "registrar-atendimento") : `${r7.tipo}: ${r7.texto}`
     );
 
@@ -419,7 +419,7 @@ async function main(): Promise<void> {
     ]);
     R.conferir(
       "4.4b o dia fechado por ENGANO volta atrás pela tela — e a decisão é a segunda do dia",
-      r10b.tipo === "ok" && r10b.texto.includes("expediente normal") && r10b.texto.includes("decisão 2"),
+      r10b.tipo === "ok" && r10b.texto.includes("expediente normal") && r10b.texto.includes("alteração nº 2"),
       r10b.tipo === "silencio" ? await porQueNaoEnviou(page, "fechar-dia-de-atendimento") : `${r10b.tipo}: ${r10b.texto}`
     );
 
@@ -495,7 +495,7 @@ async function main(): Promise<void> {
     ]);
     R.conferir(
       "5.2 a chefia ABRE o serviço à marcação pela internet, e o ato diz isso",
-      r12.tipo === "ok" && r12.texto.includes("ABERTO à marcação pelo portal"),
+      r12.tipo === "ok" && r12.texto.includes("disponível para agendamento pelo portal"),
       r12.tipo === "silencio" ? await porQueNaoEnviou(page, "definir-servico-do-guiche") : `${r12.tipo}: ${r12.texto}`
     );
 

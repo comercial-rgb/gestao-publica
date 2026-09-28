@@ -28,7 +28,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
   const cabecalho = (
     <PageHeader
       titulo="Pedidos de acesso à informação"
-      subtitulo="O rito de cada pedido: para onde foi, qual é o prazo pela norma que valia quando ele entrou, e o que já foi respondido."
+      subtitulo="Acompanhamento dos pedidos: encaminhamento, prazo de resposta e respostas registradas."
     />
   );
 
@@ -40,7 +40,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       return (
         <>
           {cabecalho}
-          <EstadoVazio titulo="Sem banco configurado" descricao="Esta tela lê os pedidos protocolados e precisa do banco." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar a base de dados deste ambiente." />
         </>
       );
     }
@@ -56,14 +56,14 @@ export default async function Pagina(): Promise<React.ReactElement> {
         ) : (
           <Card>
             <p className="text-xs text-[color:var(--color-ink-2)]" data-sem-formulario>
-              Seu perfil não tem a ação de protocolar pedido de acesso à informação. A lista abaixo continua visível.
+              Seu perfil não permite protocolar pedidos de acesso à informação. A consulta da lista continua disponível.
             </p>
           </Card>
         )}
 
         <Card>
           {p.pedidos.length === 0 ? (
-            <EstadoVazio titulo="Nenhum pedido protocolado" descricao="Quando o primeiro pedido entrar, ele aparece aqui com o prazo dele." />
+            <EstadoVazio titulo="Nenhum pedido protocolado" descricao="Os pedidos protocolados serão listados aqui com o respectivo prazo." />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs" data-lista-de-pedidos>
@@ -83,7 +83,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
                       <td className="py-2 pr-3">{l.rotulo}</td>
                       <td className="py-2 pr-3">
                         {l.limite === null ? (
-                          <span data-sem-prazo>sem data — o ente não publicou a configuração</span>
+                          <span data-sem-prazo>sem data (configuração de prazos não publicada)</span>
                         ) : (
                           <span className={`rounded-[var(--radius-sm)] px-1.5 py-0.5 ${CLASSE_SITUACAO[l.situacaoDoPrazo] ?? ""}`}>
                             {l.limite}

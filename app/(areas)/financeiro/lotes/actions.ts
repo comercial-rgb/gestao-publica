@@ -98,14 +98,14 @@ export async function gerarBorderoAction(
     if (signatarios.length === 0) {
       return {
         erro:
-          "Escolha ao menos um signatário. Fila vazia passaria por 'todas as assinaturas colhidas' — e o borderô seria transmitido sem ninguém ter assinado.",
+          "Escolha ao menos um signatário.",
       };
     }
 
     try {
       const r = await gerarBorderoDoLote(loteId, signatarios);
       revalidatePath("/financeiro/lotes");
-      return { sucesso: `Borderô gerado. Hash ${r.hash.slice(0, 12)}…` };
+      return { sucesso: `Borderô gerado. Código de verificação ${r.hash.slice(0, 12)}…` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível gerar o borderô." };
     }
@@ -136,7 +136,7 @@ export async function retornoAction(
         }))
       );
       revalidatePath("/financeiro/lotes");
-      return { sucesso: `${baixados} item(ns) baixado(s) pelo retorno.` };
+      return { sucesso: `${baixados} item(ns) baixado(s) pelo retorno do banco.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível processar o retorno." };
     }

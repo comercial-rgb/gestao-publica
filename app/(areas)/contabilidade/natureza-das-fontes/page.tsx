@@ -42,7 +42,7 @@ export default async function NaturezaDasFontesPage(): Promise<React.ReactElemen
         <SincronizarContexto />
         <PageHeader
           titulo="Natureza das fontes"
-          subtitulo="De que natureza é cada recurso, para o controle da disponibilidade"
+          subtitulo="Classificação de cada fonte de recurso para o controle da disponibilidade"
         />
         <EstadoVazio
           titulo="Não foi possível ler as fontes"
@@ -59,18 +59,14 @@ export default async function NaturezaDasFontesPage(): Promise<React.ReactElemen
       <SincronizarContexto />
       <PageHeader
         titulo="Natureza das fontes"
-        subtitulo="De que natureza é cada recurso, para o controle da disponibilidade"
+        subtitulo="Classificação de cada fonte de recurso para o controle da disponibilidade"
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Toda arrecadação registra a <strong>entrada do dinheiro sob controle</strong>, e a conta
-        dessa perna depende da natureza do recurso — ordinário, vinculado, extraorçamentário,
-        de compensação financeira ou outro. O plano de contas separa as cinco; quem diz em qual
-        delas cada fonte do município se enquadra é o ente.{" "}
-        <strong>Enquanto uma fonte não tiver natureza declarada, a arrecadação dela é recusada</strong>{" "}
-        — e é assim que deve ser: classificar por semelhança de nome poria recurso da saúde ou da
-        educação no lugar do recurso livre. Declarar de novo cria uma <strong>versão</strong>; o que
-        já foi arrecadado permanece na conta em que entrou.
+        A natureza do recurso (ordinário, vinculado, extraorçamentário, de compensação financeira
+        ou outro) define a conta de controle da disponibilidade usada na arrecadação.{" "}
+        <strong>A arrecadação de fonte sem natureza declarada não é aceita.</strong> Uma nova
+        declaração cria outra <strong>versão</strong>, sem alterar o que já foi arrecadado.
       </div>
 
       {pendentes.length > 0 ? (
@@ -82,7 +78,7 @@ export default async function NaturezaDasFontesPage(): Promise<React.ReactElemen
             {pendentes.length} fonte(s) sem natureza declarada —{" "}
             {pendentes.map((f) => `${f.codigo} ${f.descricao}`).join("; ")}
           </strong>
-          . A arrecadação delas é recusada enquanto o ente não classificar.
+          . A arrecadação dessas fontes não é aceita até que a natureza seja declarada.
         </div>
       ) : null}
 
@@ -91,7 +87,7 @@ export default async function NaturezaDasFontesPage(): Promise<React.ReactElemen
           {fontes.length === 0 ? (
             <EstadoVazio
               titulo="Nenhuma fonte de recurso cadastrada"
-              descricao="A natureza se declara sobre a fonte do cadastro. Cadastre as fontes do ente antes."
+              descricao="Cadastre as fontes de recurso do ente para declarar a natureza de cada uma."
             />
           ) : (
             <div className="overflow-x-auto">

@@ -42,9 +42,9 @@ import { consultaDoSuperavit } from "../../../../lib/portas/superavit";
 export const dynamic = "force-dynamic";
 
 const ORIGENS = [
-  { chave: "SUPERAVIT_FINANCEIRO", rotulo: "Superávit financeiro", explicacao: "Sobra do exercício anterior, apurada no balanço (art. 43 § 1º I)." },
-  { chave: "EXCESSO_ARRECADACAO", rotulo: "Excesso de arrecadação", explicacao: "O que entrou além do previsto, por fonte (art. 43 § 1º II)." },
-  { chave: "OPERACAO_CREDITO", rotulo: "Operação de crédito", explicacao: "Recurso de operação contratada e autorizada (art. 43 § 1º IV)." },
+  { chave: "SUPERAVIT_FINANCEIRO", rotulo: "Superávit financeiro", explicacao: "Saldo apurado no balanço patrimonial do exercício anterior (Lei 4.320/64, art. 43, § 1º, I)." },
+  { chave: "EXCESSO_ARRECADACAO", rotulo: "Excesso de arrecadação", explicacao: "Arrecadação superior à prevista, por fonte (Lei 4.320/64, art. 43, § 1º, II)." },
+  { chave: "OPERACAO_CREDITO", rotulo: "Operação de crédito", explicacao: "Recursos de operação de crédito autorizada (Lei 4.320/64, art. 43, § 1º, IV)." },
 ] as const;
 
 export default async function RecursosNovosPage({
@@ -76,16 +76,16 @@ export default async function RecursosNovosPage({
     return (
       <div className="space-y-4">
         <SincronizarContexto />
-        <PageHeader titulo="Disponibilidade de recurso novo" subtitulo="O lastro do crédito adicional sem anulação" />
+        <PageHeader titulo="Disponibilidade de recurso novo" subtitulo="Recursos disponíveis para créditos adicionais sem anulação de dotação" />
         <EstadoVazio
           titulo={
             erro instanceof EscopoDeLeituraError
               ? "Esta unidade não está no seu acesso"
               : erro instanceof ExercicioIlegivelError
-                ? "O exercício pedido não é um ano"
+                ? "Exercício inválido"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
-                  : "Não foi possível ler as disponibilidades"
+                  ? "Serviço indisponível"
+                  : "Não foi possível carregar as disponibilidades"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -112,16 +112,13 @@ export default async function RecursosNovosPage({
       <SincronizarContexto />
       <PageHeader
         titulo="Disponibilidade de recurso novo"
-        subtitulo={`Exercício ${exercicio} — o lastro do crédito adicional sem anulação`}
+        subtitulo={`Exercício ${exercicio}: recursos disponíveis para créditos adicionais sem anulação de dotação.`}
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Um crédito adicional por <strong>recurso novo</strong> faz o orçamento CRESCER, e por isso
-        precisa de lastro: o valor apurado da fonte. Aqui ele é <strong>declarado</strong>, e o
-        crédito é conferido contra ele na gravação do decreto. Declarar de novo{" "}
-        <strong>não apaga</strong> a declaração anterior — cria uma versão, e o que cada decreto
-        enxergou continua legível. Crédito por <strong>anulação</strong> não aparece aqui: ele
-        remaneja dotação, e o que o autoriza é o saldo da ficha anulada.
+        Os créditos adicionais por <strong>superávit financeiro</strong>, <strong>excesso de arrecadação</strong>{" "}
+        ou <strong>operação de crédito</strong> são conferidos, na gravação do decreto, contra a disponibilidade
+        declarada da fonte. Uma nova declaração da mesma fonte gera nova versão e preserva o histórico.
       </div>
 
       <FormDeclaracao exercicio={exercicio} fontes={fontesComApurado} />
@@ -179,7 +176,7 @@ export default async function RecursosNovosPage({
                             </span>
                             {d.decretos.length > 0 ? (
                               <span className="block text-[color:var(--color-ink-3)]">
-                                consumido por: {d.decretos.map((x) => `${x.numero}/${x.ano} (${x.liquido.toFixed(2)})`).join("; ")}
+                                utilizado nos decretos: {d.decretos.map((x) => `${x.numero}/${x.ano} (${x.liquido.toFixed(2)})`).join("; ")}
                               </span>
                             ) : null}
                           </td>

@@ -36,24 +36,24 @@ export function DiagnosticoDePermissoes(p: {
     <section className={CLASSE_PAINEL_FORMULARIO} data-acao="diagnostico-de-permissoes">
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Diagnóstico de permissões</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        O censo desta versão tem {p.totalDoCenso} ações. Uma ação que nenhum perfil concede é uma tela que ninguém alcança.
+        Esta versão do sistema possui {p.totalDoCenso} ações. Uma ação não concedida a nenhum perfil fica inacessível a todos os usuários.
       </p>
 
       {derivaLimpa ? (
         <p className="text-xs text-[color:var(--color-ink-2)]" data-deriva="limpa">
-          Censo e perfis batem: toda ação está concedida a algum perfil, e não há concessão fora do censo.
+          Todas as ações estão concedidas a pelo menos um perfil, e não há permissões para ações inexistentes.
         </p>
       ) : (
         <div className="space-y-2 text-xs" data-deriva="com-deriva">
           {p.semPerfil.length > 0 ? (
             <p>
-              <span className="font-semibold">{p.semPerfil.length} ação(ões) que nenhum perfil concede:</span>{" "}
+              <span className="font-semibold">{p.semPerfil.length} ação(ões) sem perfil concedido:</span>{" "}
               {p.semPerfil.join(", ")}
             </p>
           ) : null}
           {p.foraDoCenso.length > 0 ? (
             <p>
-              <span className="font-semibold">{p.foraDoCenso.length} concessão(ões) fora do censo:</span>{" "}
+              <span className="font-semibold">{p.foraDoCenso.length} permissão(ões) para ações inexistentes nesta versão:</span>{" "}
               {p.foraDoCenso.join(", ")}
             </p>
           ) : null}
@@ -77,14 +77,14 @@ export function DiagnosticoDePermissoes(p: {
                 <ChaveDeComando />
                 <input type="hidden" name="versao" value={a.versao} />
                 <span data-situacao="pendente">
-                  Pendente — a prévia concederia {a.previa} permissão(ões) aos perfis existentes, cada uma no escopo em que o perfil já age.
+                  Pendente. A aplicação concederá {a.previa} permissão(ões) aos perfis existentes, respeitando as unidades em que cada perfil já atua.
                 </span>
                 {p.podeAplicar ? (
                   <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
                     {pendente ? "Aplicando…" : `Aplicar atualização ${a.versao}`}
                   </button>
                 ) : (
-                  <span className="text-[color:var(--color-ink-3)]">Aplicar exige conceder ação a perfil, que o seu perfil não tem.</span>
+                  <span className="text-[color:var(--color-ink-3)]">Seu perfil não tem permissão para conceder ações a perfis.</span>
                 )}
               </form>
             )}

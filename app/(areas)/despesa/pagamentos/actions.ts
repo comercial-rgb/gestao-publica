@@ -53,7 +53,7 @@ export async function pagarAction(
     if (liquidacaoId === "") return { erro: "Escolha a liquidação a pagar." };
     if (dataBruta === "") return { erro: "A data do pagamento é obrigatória." };
     if (contaBancaria === "" || fonteId === "") {
-      return { erro: "Escolha a conta bancária de onde o dinheiro sai." };
+      return { erro: "Escolha a conta bancária do pagamento." };
     }
 
     // A justificativa é OPCIONAL: ausente = pagamento da cabeça da fila. Se veio pela
@@ -63,9 +63,9 @@ export async function pagarAction(
     if (querJustificar && (hipoteseBruta === "" || justificativa === "" || autorizadoPor === "")) {
       return {
         erro:
-          "A justificativa da quebra de ordem precisa das TRÊS coisas: hipótese do §1º, " +
-          "o texto e quem autorizou. Preencha as três, ou deixe as três em branco para " +
-          "pagar a cabeça da fila.",
+          "A justificativa do pagamento fora da ordem exige a hipótese do §1º, o texto e " +
+          "o responsável pela autorização. Preencha os três campos ou deixe-os em branco " +
+          "para pagar a primeira posição da fila.",
       };
     }
     if (querJustificar && !ehHipotese(hipoteseBruta)) {
@@ -134,8 +134,8 @@ function lerRetencoes(
 
   if (tipos.length !== credores.length || tipos.length !== valores.length) {
     return (
-      "As retenções chegaram incompletas ao servidor (tipo, consignatário e valor não " +
-      "vieram em igual número). Refaça a linha de retenção. Nada foi gravado."
+      "As retenções foram recebidas incompletas (tipo, consignatário e valor em " +
+      "quantidades diferentes). Preencha novamente as retenções. Nada foi gravado."
     );
   }
 
@@ -152,8 +152,8 @@ function lerRetencoes(
     if (tipo === "" && credor === "" && (valor === "" || valor === "0")) continue;
     if (tipo === "" || credor === "" || valor === "") {
       return (
-        `A ${i + 1}ª retenção está pela metade: escolha a consignação, diga a favor de ` +
-        "quem e informe o valor. Nada foi gravado."
+        `A ${i + 1}ª retenção está incompleta: escolha a consignação, informe o ` +
+        "consignatário e o valor. Nada foi gravado."
       );
     }
     linhas.push({ tipoConsignacaoId: tipo, credorConsignatario: credor, valor });

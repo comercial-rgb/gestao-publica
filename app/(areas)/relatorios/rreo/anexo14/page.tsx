@@ -53,7 +53,7 @@ export default async function RreoAnexo14Page({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 14"}
+          titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 14"}
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
       </div>
@@ -65,19 +65,18 @@ export default async function RreoAnexo14Page({
       {cabecalho}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        A capa do RREO: cada número é o do anexo analítico indicado, onde o detalhe e a memória de
-        cálculo moram. Os mínimos de educação e saúde e os resultados vêm dos seus demonstrativos próprios.
+        Resumo dos principais valores do RREO. Cada linha indica o anexo em que o valor é detalhado.
       </p>
 
       <TabelaDeDados
         colunas={COLUNAS}
         linhas={[...a14.linhas]}
         keyDe={(l) => l.chave}
-        legenda="Valores em R$ · % e limites conforme cada anexo · o Badge é o mesmo do anexo de origem."
+        legenda="Valores em R$ · percentuais e limites conforme cada anexo."
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        <p className="mb-1 font-medium uppercase tracking-wide">Notas e pendências</p>
+        <p className="mb-1 font-medium uppercase tracking-wide">Notas do demonstrativo</p>
         <ul className="list-disc space-y-1 pl-4">
           {a14.notas.map((n, i) => (
             <li key={i}>{n}</li>
@@ -87,9 +86,9 @@ export default async function RreoAnexo14Page({
 
       <RelatoriosRelacionados
         relacoes={[
-          { href: "/relatorios/rreo/anexo1", rotulo: "RREO Anexo 1 — Balanço Orçamentário", motivo: "As receitas e despesas em detalhe moram lá." },
-          { href: "/relatorios/rreo/anexo6", rotulo: "RREO Anexo 6 — Resultado Primário e Nominal", motivo: "A memória dos resultados (e o furo do XXV) mora lá." },
-          { href: "/relatorios/rreo/anexo3", rotulo: "RREO Anexo 3 — RCL", motivo: "A composição da RCL mora lá." },
+          { href: "/relatorios/rreo/anexo1", rotulo: "RREO Anexo 1 — Balanço Orçamentário", motivo: "Detalhamento das receitas e despesas." },
+          { href: "/relatorios/rreo/anexo6", rotulo: "RREO Anexo 6 — Resultado Primário e Nominal", motivo: "Memória de cálculo dos resultados primário e nominal." },
+          { href: "/relatorios/rreo/anexo3", rotulo: "RREO Anexo 3 — RCL", motivo: "Composição da Receita Corrente Líquida." },
         ]}
       />
     </div>

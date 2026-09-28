@@ -15,6 +15,8 @@ import {
   type EstadoDaOrdem,
 } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
+import { formatarDocumento } from "../../../../packages/documento/index";
 
 /**
  * ⚠️ TIPOS DECLARADOS AQUI, não importados de `lib/portas`. O grep trivalente da
@@ -64,10 +66,9 @@ export function FormOrdem({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Nenhuma liquidação comporta ordem nova
+          Nenhuma liquidação disponível para nova ordem.
         </strong>{" "}
-        — ou não há despesa liquidada em aberto, ou o que havia já está inteiramente
-        comprometido em ordens vivas.
+        Não há despesa liquidada a pagar ou o saldo já está coberto por ordens em andamento.
       </div>
     );
   }
@@ -81,8 +82,8 @@ export function FormOrdem({
         Preparar ordem de pagamento
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Preparar <strong>não autoriza</strong>: a ordem nasce aguardando o consentimento de
-        outra pessoa. Nada é lançado no razão nesta etapa — quem lança é o pagamento.
+        A ordem preparada fica <strong>aguardando autorização</strong> de outro responsável.
+        Não há lançamento contábil nesta etapa; o lançamento ocorre no pagamento.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,8 +95,8 @@ export function FormOrdem({
             </option>
             {liquidacoes.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.numero} — empenho {l.empenhoNumero} · {l.credorCpfCnpj} · cabe{" "}
-                {l.disponivelParaOrdem} · fonte {l.fonteCodigo}
+                {l.numero} · empenho {l.empenhoNumero} · {formatarDocumento(l.credorCpfCnpj)} · disponível R${" "}
+                {formatarMoeda(l.disponivelParaOrdem).texto} · fonte {l.fonteCodigo}
               </option>
             ))}
           </select>
@@ -117,7 +118,7 @@ export function FormOrdem({
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Conta bancária (traz a fonte)</span>
+          <span className={ROTULO}>Conta bancária (define a fonte)</span>
           <select
             name="contaBancaria"
             required
@@ -176,8 +177,8 @@ export function FormAutorizar({ ordemId }: { readonly ordemId: string }): React.
         <ChaveDeComando />
         <input type="hidden" name="ordemId" value={ordemId} />
         <p className="text-[color:var(--color-ink-2)]">
-          Autorizar é <strong>consentir com o pagamento</strong>. Quem preparou a ordem não
-          pode autorizá-la — o sistema recusa.
+          A autorização <strong>aprova o pagamento</strong>. Quem preparou a ordem não pode
+          autorizá-la.
         </p>
         <label className="block">
           <span className={ROTULO}>Observação (opcional)</span>

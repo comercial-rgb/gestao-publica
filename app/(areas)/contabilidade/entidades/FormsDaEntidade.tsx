@@ -34,10 +34,8 @@ function CamposDoAto({ tipos }: { readonly tipos: readonly OpcaoSimples[] }): Re
   return (
     <>
       <p className="sm:col-span-2 text-xs text-[color:var(--color-ink-2)]">
-        O <strong>ato do ente</strong> que cria ou autoriza esta entidade. O sistema confere se o
-        ano não é futuro, se o dispositivo é mesmo um dispositivo e se o trecho citado{" "}
-        <strong>fala desta entidade</strong> — pelo nome ou pelo CNPJ. Não é um campo de texto
-        livre com tamanho mínimo: é a prova de que o ato citado é sobre isto.
+        Informe o <strong>ato legal</strong> que cria ou autoriza esta entidade. O trecho citado deve
+        mencionar a entidade pelo nome ou pelo CNPJ.
       </p>
       <label className="text-xs">
         <span className={ROTULO}>Tipo do ato</span>
@@ -140,7 +138,7 @@ export function FormCadastrarEntidade({
         </label>
         <label className="text-xs">
           <span className={ROTULO}>CNPJ próprio (deixe em branco se não tiver)</span>
-          <input name="cnpj" className={CAMPO} inputMode="numeric" placeholder="somente dígitos" />
+          <input name="cnpj" className={CAMPO} inputMode="numeric" placeholder="Somente números" />
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Tipo da entidade</span>
@@ -217,9 +215,8 @@ export function FormPublicarVersao({
         está "consertando" a história.
       */}
       <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
-        Isto publica uma <strong>versão nova</strong>. A anterior continua no histórico, e as guias
-        já arrecadadas <strong>não mudam de entidade</strong> — elas apontam para a identidade, não
-        para o nome.
+        A correção cria uma <strong>nova versão</strong>. A anterior permanece no histórico, e as
+        guias já arrecadadas <strong>mantêm a entidade original</strong>.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs">

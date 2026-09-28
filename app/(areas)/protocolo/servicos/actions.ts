@@ -28,7 +28,7 @@ export async function servicosDaCartaAction(_prev: EstadoDoMolde, formData: Form
     try {
       if (acao === "criar") {
         const novo = await criarServicoDaCarta(campos);
-        mensagem = `Serviço cadastrado, ainda FORA DA CARTA. Abra em ${SERVICOS_DA_CARTA.rota}/${novo} para cadastrar a versão com o formulário e publicá-la.`;
+        mensagem = `Serviço cadastrado, ainda não publicado na carta de serviços. Para publicá-lo, cadastre uma versão em ${SERVICOS_DA_CARTA.rota}/${novo}.`;
       } else {
         if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
         mensagem = await acaoDoServicoDaCarta(acao, id, campos);
@@ -55,6 +55,6 @@ export async function versaoDoServicoAction(_prev: EstadoDoMolde, formData: Form
       return { erro: mensagemDoErro(e, "Não foi possível cadastrar a versão. Nada foi gravado.") };
     }
     revalidatePath(`${SERVICOS_DA_CARTA.rota}/${servicoId}`);
-    return { sucesso: `Versão ${numero} cadastrada em RASCUNHO. A carta continua mostrando a versão publicada até você publicar esta.` };
+    return { sucesso: `Versão ${numero} cadastrada como rascunho. A carta de serviços continua exibindo a versão publicada até a publicação desta.` };
   });
 }

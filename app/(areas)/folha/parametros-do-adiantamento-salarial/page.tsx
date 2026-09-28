@@ -65,10 +65,9 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
             }
           : {
               motivoSemCriar:
-                "Você não tem a permissão CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL. Ela é própria, e não vem junto " +
-                "com a de configurar o parâmetro do 13º: o critério do avo é anual e sai do estatuto do servidor; o " +
-                "percentual do vale é mensal e sai, na maioria dos entes, de decreto do prefeito. Peça ao administrador " +
-                "— a concessão é por ação, e é registrada.",
+                "Seu perfil não tem permissão para configurar os parâmetros do adiantamento salarial. Essa permissão é " +
+                "específica e não acompanha a do 13º, pois o percentual do adiantamento costuma ser fixado por decreto. " +
+                "Solicite a permissão ao administrador do sistema.",
             })}
       />
     );
@@ -81,8 +80,8 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
             subtitulo={PARAMETROS_DO_ADIANTAMENTO_SALARIAL.descricao}
           />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Esta tela lê e grava os parâmetros do adiantamento salarial do ente. Sem banco, não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis no momento"
+            descricao="Não foi possível acessar as informações. Tente novamente mais tarde."
           />
         </div>
       );

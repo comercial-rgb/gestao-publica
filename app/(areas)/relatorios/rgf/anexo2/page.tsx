@@ -58,7 +58,7 @@ export default async function RgfAnexo2Page({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível gerar o Anexo 2"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -78,7 +78,7 @@ export default async function RgfAnexo2Page({
         {cabecalho}
         <EstadoVazio
           titulo="Sem dívida consolidada nem deduções"
-          descricao={`Não há dívida cadastrada nem disponibilidade apurada até o ${quadrimestre}º quadrimestre de ${exercicio}. O limite do Senado não tem o que medir.`}
+          descricao={`Não há dívida cadastrada nem disponibilidade apurada até o ${quadrimestre}º quadrimestre de ${exercicio}.`}
         />
       </div>
     );
@@ -111,8 +111,8 @@ export default async function RgfAnexo2Page({
           className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-sm text-[color:var(--color-status-alerta-fg)]"
         >
           <strong>Limite de alerta:</strong> a DCL é {ref.percentDclSobreRcl}% da RCL
-          ajustada e já passou dos {a2.limiteAlerta}% (art. 59, §1º, III). O Tribunal de
-          Contas alerta o ente.
+          ajustada e ultrapassou {a2.limiteAlerta}% (LRF art. 59, §1º, III), situação que enseja
+          alerta do Tribunal de Contas.
         </div>
       ) : null}
 
@@ -141,16 +141,15 @@ export default async function RgfAnexo2Page({
         keyDe={(l) => l.chave}
         ehTotal={(l) => l.nivel === "grupo" || l.nivel === "total"}
         recuoDe={(l) => (l.nivel === "subitem" ? 2 : l.nivel === "item" ? 1 : 0)}
-        legenda="Valores em R$ · corte pela data do fato · a coluna do exercício anterior é o saldo em 31/12."
+        legenda="Valores em R$ · a coluna do exercício anterior apresenta o saldo em 31/12."
       />
 
       {/* ⚠️ A NOTA ¹ É REGRA, e fica onde o leitor a procura: colada na tabela. */}
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         <p>
-          <strong>¹</strong> Se a Disponibilidade de Caixa Bruta for menor que os Restos a
-          Pagar Processados, o saldo negativo <strong>não</strong> é informado nesta linha:
-          ela vai a <strong>zero</strong>, e o valor aparece na{" "}
-          <strong>Insuficiência Financeira</strong> do quadro abaixo — sem o sinal de menos.
+          <strong>¹</strong> Quando a Disponibilidade de Caixa Bruta for menor que os Restos a
+          Pagar Processados, esta linha é informada com valor zero, e a diferença é apresentada,
+          sem sinal negativo, na linha <strong>Insuficiência Financeira</strong> do quadro abaixo.
         </p>
       </div>
 
@@ -171,12 +170,12 @@ export default async function RgfAnexo2Page({
             { chave: "PPP", rotulo: "Dívida Contratual de PPP", valor: a2.quadroInformativo.dividaContratualPpp, vazio: false },
           ]}
           keyDe={(l) => l.chave}
-          legenda={`No corte do ${quadrimestre}º quadrimestre · as linhas marcadas como interruptor não têm cadastro no sistema.`}
+          legenda={`Posição ao final do ${quadrimestre}º quadrimestre · as linhas marcadas como "sem cadastro" não possuem registro no sistema.`}
         />
       </section>
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        <p className="mb-1 font-medium uppercase tracking-wide">Notas e interruptores</p>
+        <p className="mb-1 font-medium uppercase tracking-wide">Notas do demonstrativo</p>
         <ul className="list-disc space-y-1 pl-4">
           {a2.notas.map((n, i) => (
             <li key={i}>{n}</li>
@@ -190,19 +189,19 @@ export default async function RgfAnexo2Page({
             href: "/relatorios/rgf/anexo1",
             rotulo: "RGF Anexo 1 — Despesa com Pessoal",
             motivo:
-              "A RCL ajustada é a MESMA (um motor, dois consumidores): se divergisse, o limite de pessoal e o de dívida mediriam contra receitas diferentes.",
+              "Utiliza a mesma RCL ajustada do limite da despesa com pessoal.",
           },
           {
             href: "/relatorios/rgf/anexo5",
             rotulo: "RGF Anexo 5 — Disponibilidade de Caixa",
             motivo:
-              "A Disponibilidade de Caixa Bruta daqui É a soma das colunas (a) de lá — o Anexo 2 consome o Anexo 5, não recalcula. E os RP processados saem do mesmo corte.",
+              "A Disponibilidade de Caixa Bruta corresponde à soma da coluna (a) do Anexo 5.",
           },
           {
             href: "/relatorios/rreo/anexo13",
             rotulo: "RREO Anexo 13 — PPP",
             motivo:
-              "A Dívida Contratual de PPP do quadro informativo vem do cadastro que o Anexo 13 publica.",
+              "A Dívida Contratual de PPP corresponde aos contratos demonstrados no Anexo 13.",
           },
         ]}
       />

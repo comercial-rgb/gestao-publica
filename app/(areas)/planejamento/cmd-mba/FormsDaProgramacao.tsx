@@ -86,8 +86,8 @@ export function FormProporDaLoa({
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
         {peca === "CMD"
-          ? "A previsão de receita de cada fonte é distribuída em doze cotas, fechando ao centavo."
-          : "A previsão de receita de cada fonte é distribuída em seis metas, fechando ao centavo."}
+          ? "A previsão de receita de cada fonte é distribuída em doze cotas mensais."
+          : "A previsão de receita de cada fonte é distribuída em seis metas bimestrais."}
       </p>
       <input name="exercicio" type="hidden" value={exercicio} />
       <input name="peca" type="hidden" value={peca} />
@@ -131,18 +131,18 @@ export function FormLimitacao({
         Limitação de empenho
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]" data-situacao-da-limitacao={ativa ? "ligada" : "desligada"}>
-        Situação atual: <strong>{ativa ? "LIGADA" : "DESLIGADA"}</strong>.{" "}
+        Situação atual: <strong>{ativa ? "ativa" : "inativa"}</strong>.{" "}
         {ativa
-          ? "O empenho está sendo julgado também contra a cota do mês da fonte."
-          : "O cronograma é planejamento; o empenho responde apenas à dotação."}
+          ? "O empenho observa também a cota mensal da fonte."
+          : "O empenho observa apenas a dotação; o cronograma tem caráter de planejamento."}
       </p>
       <input name="exercicio" type="hidden" value={exercicio} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Medida</span>
           <select className={CAMPO} defaultValue={ativa ? "desligar" : "ligar"} name="ativo">
-            <option value="ligar">Ligar — contingenciar</option>
-            <option value="desligar">Desligar — restabelecer o desembolso</option>
+            <option value="ligar">Ativar (contingenciamento)</option>
+            <option value="desligar">Desativar (restabelecimento do desembolso)</option>
           </select>
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -190,8 +190,8 @@ export function FormLiberacao({
         Liberar saldo de um mês
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        A liberação aumenta o teto daquele mês, por ato — ela nunca é negativa. Para reduzir o teto,
-        publique uma versão nova do cronograma.
+        A liberação amplia o limite do mês selecionado e depende de ato. Para reduzir o limite,
+        publique nova versão do cronograma.
       </p>
       <input name="exercicio" type="hidden" value={exercicio} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

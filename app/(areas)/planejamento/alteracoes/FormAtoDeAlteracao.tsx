@@ -184,8 +184,7 @@ export function FormItemDoAto({
         Acrescentar valor a um ato já registrado
       </h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        A mesma lei costuma alterar várias linhas. Cada valor entra como uma linha do ato, com o
-        sinal que ela teve.
+        Inclua os demais valores alterados pelo mesmo ato, com o respectivo sinal (+ acresce, − reduz).
       </p>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)]">

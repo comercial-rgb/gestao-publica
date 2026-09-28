@@ -203,7 +203,7 @@ async function main(): Promise<void> {
     ]);
     conferir(
       "4.1 a limitação de empenho é LIGADA por ato, com motivo",
-      r3.tipo === "ok" && /LIGADA/i.test(r3.texto),
+      r3.tipo === "ok" && /ativada/i.test(r3.texto),
       `${r3.tipo}: ${r3.texto.slice(0, 220)}`
     );
     await irPara(n, page, rota);
@@ -300,7 +300,7 @@ async function main(): Promise<void> {
       ]);
       conferir(
         "7.1 a limitação é DESLIGADA por ato — restabelecimento do desembolso",
-        r7.tipo === "ok" && /DESLIGADA/i.test(r7.texto),
+        r7.tipo === "ok" && /desativada/i.test(r7.texto),
         `${r7.tipo}: ${r7.texto.slice(0, 220)}`
       );
       await irPara(n, page, rota);

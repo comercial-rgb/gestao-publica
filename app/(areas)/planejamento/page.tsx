@@ -7,16 +7,16 @@ import { AREAS } from "../../../lib/navegacao";
  */
 
 const ITENS: readonly ItemHub[] = [
-  { titulo: "PPA — Plano Plurianual", descricao: "O quadriênio e a lei que o instituiu; cada programa no plano com estratégia, valor previsto, indicadores e ações; a receita do quadriênio e a série histórica que a instrui.", href: "/planejamento/ppa" },
-  { titulo: "LDO — Lei de Diretrizes Orçamentárias", descricao: "O trâmite (envio, devolução, sanção), as prioridades e os anexos da LRF: metas anuais, riscos fiscais, renúncia, alienação, RPPS, dívida e margem — em PDF.", href: "/planejamento/ldo" },
-  { titulo: "QDD — Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha: inicial, os créditos que a alteraram e a dotação atualizada — o teto contra o qual se empenha.", href: "/planejamento/qdd" },
-  { titulo: "Programação financeira — CMD/MBA", descricao: "O cronograma mensal de desembolso (os duodécimos por fonte) e as metas bimestrais de arrecadação, com o decreto que as institui (LRF art. 8º e 13).", href: "/planejamento/cmd-mba" },
-  { titulo: "Créditos adicionais", descricao: "Decretos de suplementação e anulação, com o teto da lei e a dotação atualizada de cada ficha.", href: "/planejamento/creditos-adicionais" },
-  { titulo: "Atualizações orçamentárias", descricao: "Todo movimento de crédito do exercício, filtrável por ficha, decreto, fonte e UG.", href: "/relatorios/atualizacoes-orcamentarias", onde: "Relatórios" },
+  { titulo: "PPA — Plano Plurianual", descricao: "Plano do quadriênio e sua lei: programas, indicadores, ações, receita prevista e série histórica.", href: "/planejamento/ppa" },
+  { titulo: "LDO — Lei de Diretrizes Orçamentárias", descricao: "Tramitação, prioridades e anexos da LRF (metas e riscos fiscais, renúncia de receita, alienação de ativos, RPPS, dívida e margem de expansão), emitidos em PDF.", href: "/planejamento/ldo" },
+  { titulo: "QDD — Quadro de Detalhamento da Despesa", descricao: "Dotação inicial, créditos adicionais e dotação atualizada de cada ficha, limite para o empenho.", href: "/planejamento/qdd" },
+  { titulo: "Programação financeira — CMD/MBA", descricao: "Cronograma mensal de desembolso por fonte e metas bimestrais de arrecadação, com o decreto correspondente (LRF arts. 8º e 13).", href: "/planejamento/cmd-mba" },
+  { titulo: "Créditos adicionais", descricao: "Leis e decretos de suplementação e anulação, com o valor autorizado e a dotação atualizada de cada ficha.", href: "/planejamento/creditos-adicionais" },
+  { titulo: "Atualizações orçamentárias", descricao: "Movimentações de crédito do exercício, com filtro por ficha, decreto, fonte e UG.", href: "/relatorios/atualizacoes-orcamentarias", onde: "Relatórios" },
   { titulo: "Reprevisão da receita", descricao: "Revisão da previsão de arrecadação ao longo do exercício (LRF art. 12).", href: "/planejamento/reprevisao" },
-  { titulo: "Consistência da LOA", descricao: "As identidades dos demonstrativos conferidas num lugar só — o diagnóstico antes do envio ao TCE.", href: "/relatorios/consistencia", onde: "Relatórios" },
-  { titulo: "Balancete de verificação", descricao: "Saldo e movimento por conta, provando que débitos e créditos fecham.", href: "/relatorios/livros/balancete", onde: "Relatórios" },
-  { titulo: "Fichas e créditos adicionais", descricao: "A dotação de cada ficha e os créditos que a alteram sustentam a execução da despesa e os demonstrativos orçamentários.", href: "/despesa/empenhos", onde: "Despesa" },
+  { titulo: "Consistência da LOA", descricao: "Conferência da consistência entre os demonstrativos antes do envio ao TCE.", href: "/relatorios/consistencia", onde: "Relatórios" },
+  { titulo: "Balancete de verificação", descricao: "Saldo e movimento por conta, com a conferência entre débitos e créditos.", href: "/relatorios/livros/balancete", onde: "Relatórios" },
+  { titulo: "Fichas e créditos adicionais", descricao: "Execução da despesa sobre a dotação de cada ficha.", href: "/despesa/empenhos", onde: "Despesa" },
 ];
 
 export default function PlanejamentoPage(): React.ReactElement {

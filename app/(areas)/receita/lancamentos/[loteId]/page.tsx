@@ -101,7 +101,7 @@ export default async function LotePage({
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <h3 className="mb-1 text-xs font-semibold text-[color:var(--color-ink-2)]">Quem responde</h3>
+                <h3 className="mb-1 text-xs font-semibold text-[color:var(--color-ink-2)]">Responsáveis</h3>
                 {l.responsaveis.length === 0 ? (
                   <p className="text-xs text-[color:var(--color-ink-3)]">Nenhum vínculo vigente no fato gerador.</p>
                 ) : (
@@ -128,7 +128,7 @@ export default async function LotePage({
 
             <details className="mt-3">
               <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-ink-2)]">
-                Memória do cálculo (congelada na preparação)
+                Memória de cálculo (registrada na preparação)
               </summary>
               <div className="mt-2 text-xs" data-papel="memoria">
                 <p className="text-[color:var(--color-ink-3)]">
@@ -145,7 +145,7 @@ export default async function LotePage({
                   ))}
                 </ul>
                 <p className="mt-1 text-[color:var(--color-ink-3)]">
-                  Impressão digital da memória: <span className="font-mono">{l.memoriaSha256.slice(0, 16)}…</span>
+                  Código de integridade da memória: <span className="font-mono">{l.memoriaSha256.slice(0, 16)}…</span>
                 </p>
               </div>
             </details>

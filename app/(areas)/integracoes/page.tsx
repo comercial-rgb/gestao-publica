@@ -26,24 +26,24 @@ export default async function CentralIntegracoesPage(): Promise<React.ReactEleme
   try {
     cards = await montarCentralIntegracoes();
   } catch (e) {
-    erro = e instanceof Error ? e.message : "Falha ao montar a Central.";
+    erro = e instanceof Error ? e.message : "Não foi possível carregar a Central de Integrações.";
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader titulo="Central de Integrações SIAFIC" subtitulo="SAGRES TXT · Captura 2.0 · Banco do Brasil · API TCE — cada canal com o seu modo e estado." />
+      <PageHeader titulo="Central de Integrações SIAFIC" subtitulo="Situação e modo de operação dos canais SAGRES TXT, Captura 2.0, Banco do Brasil e API do TCE." />
 
       <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
-        <p className="font-semibold text-[color:var(--color-ink)]">Formato oficial gerado e validado localmente</p>
+        <p className="font-semibold text-[color:var(--color-ink)]">Arquivos gerados e validados neste sistema</p>
         <p className="mt-1 text-[color:var(--color-ink-2)]">
-          Toda geração aqui é <strong>local</strong>. Simulações são <strong>simulações</strong> — <strong>nenhuma transmissão externa</strong> ao TCE ou ao banco foi realizada.
-          O <strong>modo aparece em cada card</strong>: o modo exibido é o modo que executa (nunca há fallback silencioso).
+          Os arquivos são gerados e validados neste sistema, e <strong>nenhuma transmissão externa</strong> ao TCE ou ao banco foi realizada.
+          O modo de operação de cada canal é informado no respectivo quadro.
         </p>
       </div>
 
       {erro !== null && (
         <Card>
-          <p className="text-sm font-semibold text-[color:var(--color-status-erro-fg)]">Não foi possível montar a Central</p>
+          <p className="text-sm font-semibold text-[color:var(--color-status-erro-fg)]">Não foi possível carregar a Central de Integrações</p>
           <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{erro}</p>
         </Card>
       )}
@@ -64,7 +64,7 @@ export default async function CentralIntegracoesPage(): Promise<React.ReactEleme
                 <div><dt className="inline font-medium">Último evento:</dt> <dd className="inline">{c.ultimoEvento}</dd></div>
               )}
               {c.hash !== null && (
-                <div className="break-all"><dt className="inline font-medium">Hash:</dt> <dd className="inline">{c.hash}</dd></div>
+                <div className="break-all"><dt className="inline font-medium">Código de verificação:</dt> <dd className="inline">{c.hash}</dd></div>
               )}
               {c.detalhe !== null && (
                 <div className="text-[color:var(--color-ink-3)]">{c.detalhe}</div>

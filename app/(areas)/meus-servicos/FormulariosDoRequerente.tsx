@@ -127,7 +127,7 @@ export function FormDocumentoDoRequerente({ solicitacaoId, accept, tamanhoMaximo
       <input type="hidden" name="__id" value={solicitacaoId} />
       <label htmlFor={id} className={CLASSE_ROTULO}>Enviar documento</label>
       <input id={id} aria-describedby={`${id}-ajuda`} type="file" name="arquivo" accept={accept} required className={CLASSE_CAMPO} />
-      <p id={`${id}-ajuda`} className="mt-1 text-xs text-[color:var(--color-ink-2)]">Até {(tamanhoMaximoBytes / 1024 / 1024).toFixed(0)} MB. PDF, DOC, DOCX, XLS, XLSX, ODT, JPG ou PNG. O arquivo fica ligado à sua solicitação com a verificação SHA-256 calculada no envio.</p>
+      <p id={`${id}-ajuda`} className="mt-1 text-xs text-[color:var(--color-ink-2)]">Até {(tamanhoMaximoBytes / 1024 / 1024).toFixed(0)} MB. PDF, DOC, DOCX, XLS, XLSX, ODT, JPG ou PNG. O arquivo será anexado à sua solicitação.</p>
       <Mensagens estado={estado} />
       <button type="submit" disabled={pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Enviando…" : "Enviar documento"}</button>
     </form>

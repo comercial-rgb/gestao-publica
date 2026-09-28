@@ -43,7 +43,7 @@ export function FormLogin({ retorno }: { readonly retorno: string }): React.Reac
           aria-invalid={erroIdent !== undefined ? true : undefined}
           aria-describedby={erroIdent !== undefined ? idErroIdent : undefined}
           className={CLASSE_CAMPO}
-          placeholder="Seu identificador de acesso"
+          placeholder="Seu usuário de acesso"
         />
         {erroIdent !== undefined ? (
           <p id={idErroIdent} className="mt-1 text-xs text-[color:var(--color-status-erro-fg)]">{erroIdent}</p>

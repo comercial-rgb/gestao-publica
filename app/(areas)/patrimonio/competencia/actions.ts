@@ -33,8 +33,8 @@ export async function processarCompetenciaAction(
       return {
         sucesso:
           `Competência ${campos["competencia"] ?? ""} processada: ${rotuloDoTipoPatrimonial(r.tipo)} de ` +
-          `${r.valorDaParcela.toFixed(2)} lançada no razão, em ${r.itens.length} item(ns) ` +
-          `(${r.escopo === "BEM" ? "um bem" : "a classe"}). A memória de cálculo ficou gravada com cada item.`,
+          `${r.valorDaParcela.toFixed(2)} lançada na contabilidade, em ${r.itens.length} item(ns) ` +
+          `(${r.escopo === "BEM" ? "um bem" : "toda a classe"}). A memória de cálculo foi registrada para cada item.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Falha ao processar. Nada foi gravado." };

@@ -24,7 +24,7 @@ export default async function ManifestacaoPage({ params }: { readonly params: Pr
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">{s.titulo}</h1>
         <p className="mt-1 whitespace-pre-line text-sm text-[color:var(--color-ink-2)]">{s.descricao}</p>
         <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-          Sem conta e sem identificação. A manifestação é sigilosa: só a ouvidoria a lê. Prazo: {s.prazo ?? "não declarado nesta versão"}.
+          Não é necessário cadastro nem identificação. A manifestação é sigilosa e lida apenas pela ouvidoria. Prazo de resposta: {s.prazo ?? "não informado"}.
         </p>
       </header>
       <FormManifestacao slug={s.slug} campos={s.campos as never} tipos={OPCOES_DE_TIPO_DE_MANIFESTACAO} termoDeAceite={s.termoDeAceite} />

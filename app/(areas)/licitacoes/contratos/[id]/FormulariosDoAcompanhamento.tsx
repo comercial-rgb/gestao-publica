@@ -67,7 +67,7 @@ export function FormDesignar({ contratoId, usuarios }: { readonly contratoId: st
       <h3 className="mb-3 text-sm font-semibold">Designar gestor, fiscal ou recebedor definitivo</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         <Selecao id={a.id} nome="papel" rotulo="Papel" opcoes={[{ valor: "GESTOR", rotulo: "Gestor do contrato" }, { valor: "FISCAL", rotulo: "Fiscal do contrato" }, { valor: "RECEBEDOR_DEFINITIVO", rotulo: "Recebedor definitivo (servidor ou membro da comissão)" }]} />
-        <Selecao id={a.id} nome="usuario" rotulo="Conta (com pessoa vinculada)" opcoes={usuarios} />
+        <Selecao id={a.id} nome="usuario" rotulo="Usuário (com pessoa vinculada)" opcoes={usuarios} />
         <Campo id={a.id} nome="ato" rotulo="Ato de designação" placeholder="Portaria 45/2026" minLength={3} />
         <Campo id={a.id} nome="inicio" rotulo="Início" tipo="date" />
         <Campo id={a.id} nome="fim" rotulo="Fim (opcional)" tipo="date" obrigatorio={false} />
@@ -176,11 +176,11 @@ export function FormOcorrencia({ contratoId, ordens, hoje, tipos = [] }: { reado
         </label>
       </div>
       {comFormulario.length === 0 ? (
-        <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-sem-tipo-configurado>Nenhum tipo de ocorrência do ente com formulário publicado: a ocorrência fica só com o tipo do sistema.</p>
+        <p className="mt-3 text-xs text-[color:var(--color-ink-2)]" data-sem-tipo-configurado>Nenhum tipo de ocorrência com formulário publicado. A ocorrência será registrada apenas com o tipo padrão.</p>
       ) : (
         <div className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-formulario-do-tipo={escolhido?.codigo ?? "nenhum"}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <label htmlFor={`${a.id}-tipoConfigurado`} className="text-xs"><span className={CLASSE_ROTULO}>Tipo de ocorrência do ente (opcional)</span>
+            <label htmlFor={`${a.id}-tipoConfigurado`} className="text-xs"><span className={CLASSE_ROTULO}>Tipo de ocorrência cadastrado (opcional)</span>
               <select id={`${a.id}-tipoConfigurado`} name="tipoConfigurado" value={tipoId} onChange={(ev) => setTipoId(ev.currentTarget.value)} className={CLASSE_CAMPO}>
                 <option value="">Sem formulário</option>
                 {comFormulario.map((t) => <option key={t.tipoId} value={t.tipoId}>{t.codigo} — {t.nome} (versão {t.versaoVigente!.versao})</option>)}
@@ -286,9 +286,9 @@ export function FormRegimeDeMedicao({ contratoId, hoje }: { readonly contratoId:
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="regime" />
       <h3 className="mb-1 text-sm font-semibold">Configurar o regime de período das medições</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Sem configuração, duas medições no mesmo período passam se forem parcelas distintas: o que impede medir duas vezes é o saldo de cada item. Período indivisível só com fundamento no contrato ou em regulamento.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">No regime padrão (livre), medições distintas no mesmo período são aceitas, limitadas ao saldo de cada item. O período indivisível exige fundamento no contrato ou em regulamento.</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Selecao id={a.id} nome="regime" rotulo="Regime" opcoes={[{ valor: "PERIODO_LIVRE", rotulo: "Período livre (a parcela é o saldo por item)" }, { valor: "PERIODO_INDIVISIVEL", rotulo: "Período indivisível (sem sobreposição)" }]} />
+        <Selecao id={a.id} nome="regime" rotulo="Regime" opcoes={[{ valor: "PERIODO_LIVRE", rotulo: "Período livre (limitado ao saldo por item)" }, { valor: "PERIODO_INDIVISIVEL", rotulo: "Período indivisível (sem sobreposição)" }]} />
         <Campo id={a.id} nome="inicio" rotulo="Vale para medições que começam a partir de" tipo="date" defaultValue={hoje} />
         <label htmlFor={`${a.id}-fundamento`} className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={CLASSE_ROTULO}>Fundamento (cláusula do contrato ou regulamento)</span>

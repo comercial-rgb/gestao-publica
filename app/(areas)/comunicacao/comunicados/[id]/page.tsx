@@ -104,7 +104,7 @@ export default async function ComunicadoPage({
             <dt className="text-xs text-[color:var(--color-ink-2)]">Destinatários</dt>
             <dd>
               {c.destinatarios.length === 0
-                ? "— (ainda não enviado)"
+                ? "Ainda não enviado"
                 : c.destinatarios.map((d) => (
                     <span key={d.setor} className="mr-2">
                       {d.setor}
@@ -152,20 +152,18 @@ export default async function ComunicadoPage({
             Quem leu
           </h2>
           <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-            A primeira leitura de cada pessoa é a que vale — um registro por abertura
-            afogaria o dado que interessa (quando ela tomou ciência) num histórico de
-            ruído.
+            É registrada a primeira ciência de cada servidor.
           </p>
           {c.leituras.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-2)]">
-              Ninguém registrou ciência ainda.
+              Nenhuma ciência registrada até o momento.
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead className="border-b border-[color:var(--color-border)] text-left text-xs uppercase tracking-wide text-[color:var(--color-ink-2)]">
                 <tr>
-                  <th className="py-2 pr-3">Quem</th>
-                  <th className="py-2 pr-3">Quando</th>
+                  <th className="py-2 pr-3">Servidor</th>
+                  <th className="py-2 pr-3">Data e hora</th>
                   <th className="py-2 pr-3">Origem</th>
                   <th className="py-2 pr-3">Setor</th>
                 </tr>

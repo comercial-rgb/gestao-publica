@@ -11,8 +11,8 @@ import { FormDesfazerVinculo } from "./FormDesfazerVinculo";
 export function Origem({ ordemId, itens, podeDesfazer, estornada }: { readonly ordemId: string; readonly itens: readonly ItemDeOrigemLido[]; readonly podeDesfazer: boolean; readonly estornada: boolean }): React.ReactElement {
   return (
     <section aria-label="Origem da ordem" data-origem className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-card)]">
-      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Origem por linha</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">De quais solicitações cada linha veio. O que não tem origem é compra direta ou legado, e fica identificado assim — nunca é casado automaticamente.</p>
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Origem por item</h2>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Solicitações que deram origem a cada item da ordem. Itens sem solicitação vinculada são identificados como compra direta ou registro anterior.</p>
       <ul className="space-y-3">
         {itens.map((i) => (
           <li key={i.itemDeOrdemId} data-item-origem={i.itemDeOrdemId} className="border-t border-[color:var(--color-border)] pt-2 text-sm">
@@ -22,7 +22,7 @@ export function Origem({ ordemId, itens, podeDesfazer, estornada }: { readonly o
               {i.semOrigem !== "0.0000" ? <Badge status="alerta">{i.semOrigem} sem origem</Badge> : null}
             </div>
             {i.parcelas.length === 0 ? (
-              <p className="mt-1 text-xs text-[color:var(--color-ink-3)]" data-sem-origem>Sem solicitação vinculada (compra direta ou legado).</p>
+              <p className="mt-1 text-xs text-[color:var(--color-ink-3)]" data-sem-origem>Sem solicitação vinculada (compra direta ou registro anterior).</p>
             ) : (
               <ul className="mt-1 space-y-1 text-xs text-[color:var(--color-ink-2)]">
                 {i.parcelas.map((p) => (
@@ -30,8 +30,8 @@ export function Origem({ ordemId, itens, podeDesfazer, estornada }: { readonly o
                     <div className="flex flex-wrap items-center gap-2">
                       <Link href={`/licitacoes/solicitacoes/${p.solicitacaoId}`} className="font-medium text-[color:var(--color-primary)] hover:underline">Solicitação {p.solicitacaoNumero}</Link>
                       <span>{p.setor} · {p.solicitante}</span>
-                      <span className="tabular">{p.quantidade} desta linha · {p.recebido} recebido</span>
-                      <Badge status={p.situacao === "VIVA" ? (estornada ? "erro" : "ok") : "neutro"}>{p.situacao === "VIVA" ? (estornada ? "cancelada pelo estorno" : "viva") : "desfeita"}</Badge>
+                      <span className="tabular">{p.quantidade} neste item · {p.recebido} recebido</span>
+                      <Badge status={p.situacao === "VIVA" ? (estornada ? "erro" : "ok") : "neutro"}>{p.situacao === "VIVA" ? (estornada ? "cancelada pelo estorno" : "ativa") : "desfeita"}</Badge>
                     </div>
                     {podeDesfazer && !estornada ? <FormDesfazerVinculo ordemId={ordemId} alocacaoId={p.alocacaoId} podeDesfazer={p.situacao === "VIVA" && p.recebido === "0.0000"} /> : null}
                   </li>

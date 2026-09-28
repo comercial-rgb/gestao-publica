@@ -92,7 +92,7 @@ export async function inativarUsuarioAction(_prev: EstadoUsuario, formData: Form
     try {
       const { sessoesRevogadas } = await inativarUsuarioAdmin({ usuarioId });
       revalidatePath(ROTA);
-      return { sucesso: `Usuário inativado — ${sessoesRevogadas} sessão(ões) derrubada(s).` };
+      return { sucesso: `Usuário inativado. ${sessoesRevogadas} sessão(ões) encerrada(s).` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível inativar o usuário." };
     }
@@ -106,7 +106,7 @@ export async function resetarSenhaAction(_prev: EstadoUsuario, formData: FormDat
     try {
       const { sessoesRevogadas } = await resetarSenhaAdmin({ usuarioId, senhaTemporaria });
       revalidatePath(ROTA);
-      return { sucesso: `Senha redefinida — ${sessoesRevogadas} sessão(ões) do usuário derrubada(s).`, senhaParaEntregar: senhaTemporaria };
+      return { sucesso: `Senha redefinida. ${sessoesRevogadas} sessão(ões) do usuário encerrada(s).`, senhaParaEntregar: senhaTemporaria };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível redefinir a senha." };
     }
@@ -119,11 +119,11 @@ export async function vincularPessoaAction(_prev: EstadoUsuario, formData: FormD
     const usuarioId = String(formData.get("usuarioId") ?? "").trim();
     const documento = String(formData.get("documento") ?? "").trim();
     const motivo = String(formData.get("motivo") ?? "").trim();
-    if (documento === "") return { erro: "Informe o CPF ou CNPJ da pessoa do cadastro." };
+    if (documento === "") return { erro: "Informe o CPF ou CNPJ da pessoa cadastrada." };
     try {
       const r = await vincularPessoaAoUsuarioAdmin({ usuarioId, documento, motivo });
       revalidatePath("/administracao/usuarios");
-      return { sucesso: `Usuário vinculado à pessoa ${r.nome}. O vínculo não concede permissão nenhuma.` };
+      return { sucesso: `Usuário vinculado a ${r.nome}. O vínculo não concede permissões de acesso.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível vincular." };
     }
@@ -137,7 +137,7 @@ export async function desvincularPessoaAction(_prev: EstadoUsuario, formData: Fo
     try {
       await desvincularPessoaDoUsuarioAdmin({ usuarioId, motivo });
       revalidatePath("/administracao/usuarios");
-      return { sucesso: "Vínculo desfeito — a linha anterior fica no histórico." };
+      return { sucesso: "Vínculo desfeito. O registro anterior permanece no histórico." };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível desvincular." };
     }

@@ -71,7 +71,7 @@ export default async function DetalheDaPessoaPage({
           <PageHeader titulo="Pessoa não encontrada" subtitulo={id} />
           <EstadoVazio
             titulo="Este cadastro não existe"
-            descricao="O identificador não corresponde a nenhuma pessoa. Volte à lista e escolha pelo nome."
+            descricao="Nenhuma pessoa corresponde a este identificador. Volte à lista e selecione pelo nome."
           />
         </div>
       );
@@ -85,10 +85,10 @@ export default async function DetalheDaPessoaPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler o cadastro"
+              ? "Cadastro indisponível no momento"
+              : "Não foi possível consultar o cadastro"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
         />
       </div>
     );
@@ -110,8 +110,7 @@ export default async function DetalheDaPessoaPage({
           </Badge>
           {pessoa.papeis.length === 0 ? (
             <span className="text-xs text-[color:var(--color-ink-3)]">
-              Sem papel vigente — esta pessoa está cadastrada, mas não é credora nem
-              servidora hoje.
+              Sem papel vigente.
             </span>
           ) : (
             pessoa.papeis.map((p) => (
@@ -132,10 +131,9 @@ export default async function DetalheDaPessoaPage({
             href={`/relatorios/gerenciais?credor=${encodeURIComponent(pessoa.documento)}`}
             className="underline underline-offset-2"
           >
-            Ver a execução da despesa deste documento
+            Ver a execução da despesa deste CPF/CNPJ
           </Link>{" "}
-          — os empenhos guardam o CPF/CNPJ como ele foi informado no ato, e é por ele que
-          a consulta casa.
+          (consulta pelo documento informado nos empenhos).
         </p>
       </Card>
 
@@ -156,9 +154,8 @@ export default async function DetalheDaPessoaPage({
             ele pertence seria uma promessa que a tela ao lado — nome, documento, histórico
             — desmente na mesma página. */}
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-          Documentos deste cadastro. O download passa pelo servidor, que confere a
-          verificação (SHA-256) do arquivo antes de entregá-lo: um arquivo trocado no disco
-          depois de anexado é recusado em vez de ser servido como se fosse o original.
+          Documentos anexados a este cadastro. A integridade de cada arquivo é conferida
+          antes do download.
         </p>
         <ListaDeAnexos
           anexos={anexos}

@@ -19,24 +19,24 @@ export default async function ImportadoresPage(): Promise<React.ReactElement> {
   try {
     historico = await lerImportacoes();
   } catch (e) {
-    erro = e instanceof PortaSemBancoError ? "Banco de dados não configurado." : e instanceof Error ? e.message : "Erro desconhecido.";
+    erro = e instanceof PortaSemBancoError ? "Histórico indisponível no momento." : e instanceof Error ? e.message : "Não foi possível consultar o histórico.";
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        titulo="Importadores — folha e tributário"
-        subtitulo="Arquivo externo → prévia validada → confirmação em lote pelos serviços reais"
+        titulo="Importação de folha e arrecadação tributária"
+        subtitulo="Envio do arquivo, conferência da prévia e confirmação da importação"
       />
 
       <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
-        <p className="font-semibold text-[color:var(--color-ink)]">Layout parametrizável — mapa oficial do ente aplicado na implantação</p>
+        <p className="font-semibold text-[color:var(--color-ink)]">Como funciona a importação</p>
         <ul className="mt-2 space-y-1 text-[color:var(--color-ink-2)]">
-          <li>✓ O <strong>mapa de colunas</strong> é configuração (como o SPEC do banco e a registry do SAGRES): trocar de folha é trocar o mapa, não o código.</li>
-          <li>✓ A <strong>prévia não grava nada</strong>. Um arquivo com qualquer violação <strong>não é confirmável</strong> — o erro nomeia linha e campo.</li>
-          <li>✓ A confirmação gera os fatos pelos <strong>serviços reais</strong> (empenho → liquidação → pagamento com retenções; arrecadação), com a mesma autorização e trilha de sempre.</li>
-          <li>⚠ <strong>Não existe layout oficial de folha do município</strong> — o arquivo é insumo do ente. Os dados de demonstração são <strong>sintéticos</strong> (nenhum servidor ou contribuinte real).</li>
-          <li>○ Reimportar o mesmo arquivo é <strong>recusa nomeada</strong> (idempotência por SHA-256 da origem).</li>
+          <li>O leiaute do arquivo é configurado na implantação, conforme o sistema de origem utilizado pelo ente.</li>
+          <li>A <strong>prévia não grava dados</strong>. Arquivos com erros de validação não podem ser confirmados; cada erro indica a linha e o campo.</li>
+          <li>A confirmação registra empenho, liquidação e pagamento com retenções (folha) ou a arrecadação (tributos), com as mesmas permissões e registros de auditoria das operações manuais.</li>
+          <li>Não há leiaute oficial de folha municipal; o arquivo é fornecido pelo ente. Os dados de demonstração são fictícios.</li>
+          <li>Um mesmo arquivo não pode ser importado mais de uma vez.</li>
         </ul>
       </div>
 
@@ -54,8 +54,8 @@ export default async function ImportadoresPage(): Promise<React.ReactElement> {
               <thead>
                 <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                   <th className="py-1.5 pr-4">Quando</th><th className="py-1.5 pr-4">Tipo</th><th className="py-1.5 pr-4">Arquivo</th>
-                  <th className="py-1.5 pr-4 text-right">Linhas</th><th className="py-1.5 pr-4 text-right">Fatos</th>
-                  <th className="py-1.5 pr-4">Correlação</th><th className="py-1.5">SHA-256</th>
+                  <th className="py-1.5 pr-4 text-right">Linhas</th><th className="py-1.5 pr-4 text-right">Registros gerados</th>
+                  <th className="py-1.5 pr-4">Identificador</th><th className="py-1.5">Código de verificação</th>
                 </tr>
               </thead>
               <tbody>

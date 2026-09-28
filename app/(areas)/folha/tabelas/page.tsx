@@ -33,7 +33,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, TABELAS_DA_FOLHA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormTabela /> } : { motivoSemCriar: "Você não tem a permissão CONFIGURAR_TABELAS_DA_FOLHA. Peça ao administrador — a concessão é por ação, e é registrada." })}
+        {...(podeCriar ? { formulario: <FormTabela /> } : { motivoSemCriar: "Seu perfil não tem permissão para cadastrar tabelas da folha. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {
@@ -41,7 +41,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={TABELAS_DA_FOLHA.rotulo} subtitulo={TABELAS_DA_FOLHA.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava as tabelas da folha. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Dados indisponíveis no momento" descricao="Não foi possível acessar as informações. Tente novamente mais tarde." />
         </div>
       );
     }

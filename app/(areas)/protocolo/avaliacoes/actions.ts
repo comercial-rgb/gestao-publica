@@ -26,7 +26,7 @@ export async function metodologiaAction(_prev: EstadoDaAvaliacao, formData: Form
     try {
       const r = await cadastrarMetodologiaNaTela({ escalaMinima, escalaMaxima, rotulos, descricaoDoMetodo: texto(formData, "descricaoDoMetodo"), periodoMeses: Number.parseInt(texto(formData, "periodoMeses"), 10) });
       revalidatePath("/protocolo/avaliacoes");
-      return { sucesso: `Metodologia versão ${r.versao} gravada e vigente. Avaliações anteriores continuam na versão em que foram feitas e saem da média nova.` };
+      return { sucesso: `Metodologia versão ${r.versao} gravada e em vigor. Avaliações anteriores permanecem vinculadas à versão em que foram feitas e não entram no novo resultado.` };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível gravar a metodologia. Nada foi gravado.") };
     }
@@ -41,6 +41,6 @@ export async function removerAction(_prev: EstadoDaAvaliacao, formData: FormData
       return { erro: mensagemDoErro(e, "Não foi possível remover. Nada foi gravado.") };
     }
     revalidatePath("/protocolo/avaliacoes");
-    return { sucesso: "Avaliação removida. O resultado público passa a informar a remoção." };
+    return { sucesso: "Avaliação removida. O resultado público passa a indicar a remoção." };
   });
 }

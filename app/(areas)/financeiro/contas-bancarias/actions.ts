@@ -39,8 +39,8 @@ export async function declararTitularAction(
       return {
         sucesso:
           versao === 1
-            ? "Titular declarado. As próximas guias que entrarem nesta conta nascem com esta entidade; as que já entraram continuam como estão."
-            : `Titular alterado (versão ${String(versao)}). As guias já arrecadadas NÃO mudam de entidade — elas guardam quem era o titular no dia em que o dinheiro entrou.`,
+            ? "Titular declarado. As próximas guias recebidas nesta conta serão atribuídas a esta entidade; as já registradas permanecem inalteradas."
+            : `Titular alterado (versão ${String(versao)}). As guias já arrecadadas mantêm o titular vigente na data da arrecadação.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível declarar o titular." };

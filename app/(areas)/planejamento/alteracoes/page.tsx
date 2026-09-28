@@ -47,7 +47,7 @@ export default async function Page({
 
   const cabecalho = (
     <PageHeader
-      subtitulo="O que cada lei mudou no plano depois de aprovado — e quanto vale hoje"
+      subtitulo="Alterações do PPA e da LDO após a aprovação e valores vigentes"
       titulo="Alterações do planejamento"
     />
   );
@@ -63,8 +63,8 @@ export default async function Page({
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
-              : "Não foi possível ler as peças de planejamento"
+              ? "Serviço indisponível"
+              : "Não foi possível carregar o PPA e a LDO"
           }
         />
       </div>
@@ -76,7 +76,7 @@ export default async function Page({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          descricao="Só existe alteração de peça aprovada. Cadastre o PPA ou a LDO antes de registrar a lei que os altera."
+          descricao="Cadastre o PPA ou a LDO antes de registrar as leis que os alteram."
           titulo="Nenhum PPA ou LDO cadastrado"
         />
       </div>
@@ -130,7 +130,7 @@ export default async function Page({
         ) : (
           <> — situação até {diaCivilBr(ate)}: atos posteriores a essa data ficam de fora.</>
         )}{" "}
-        O valor aprovado permanece gravado como estava; o vigente é ele mais a soma dos ajustes.
+        O valor vigente corresponde ao aprovado somado aos ajustes.
       </div>
 
       {comparativo.atos.length === 0 ? (
@@ -184,8 +184,8 @@ export default async function Page({
               de dívida produziria um número que nenhum demonstrativo reconhece.
             */}
             <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-              A coluna de linhas conta quantos valores o ato alterou. Não há total em dinheiro por
-              ato: um mesmo ato pode mexer em grandezas que não se somam entre si.
+              A coluna Linhas indica quantos valores o ato alterou. Não há total por ato, pois um mesmo
+              ato pode alterar grandezas de naturezas diferentes.
             </p>
           </Card>
 
@@ -241,7 +241,7 @@ export default async function Page({
                                 {a.justificativa === null ? (
                                   <span className="text-[color:var(--color-ink-3)]">
                                     {" "}
-                                    · sem justificativa própria: vale o fundamento do ato
+                                    · sem justificativa específica; aplica-se o fundamento do ato
                                   </span>
                                 ) : (
                                   <span> · {a.justificativa}</span>
@@ -297,8 +297,8 @@ export default async function Page({
               </table>
             </div>
             <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-              O total existe por grandeza, e só: é o único agrupamento em que as parcelas são da
-              mesma coisa.
+              Os totais são apresentados por grandeza, pois apenas valores de mesma natureza podem ser
+              somados.
             </p>
           </Card>
         </>
@@ -308,10 +308,10 @@ export default async function Page({
         <EstadoVazio
           descricao={
             escolhida.peca === "PPA"
-              ? "Esta peça ainda não tem previsão de receita, programa ou ação cadastrados — não há valor a alterar."
-              : "Esta LDO ainda não tem metas fiscais cadastradas. O que uma lei altera nela são as metas anuais."
+              ? "Este PPA ainda não possui previsão de receita, programa ou ação cadastrados."
+              : "Esta LDO ainda não possui metas fiscais cadastradas."
           }
-          titulo="Nada a alterar nesta peça"
+          titulo="Não há valores a alterar"
         />
       ) : (
         <>

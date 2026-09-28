@@ -107,9 +107,9 @@ export default async function RelatoriosGerenciaisPage({
             erro instanceof EscopoDeLeituraError
               ? "Esta unidade não está no seu acesso"
               : erro instanceof ExercicioIlegivelError
-                ? "O exercício pedido não é um ano"
+                ? "Exercício inválido"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
+                  ? "Serviço indisponível"
                   : "Não foi possível ler a execução da despesa"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -121,7 +121,7 @@ export default async function RelatoriosGerenciaisPage({
   // ⚠️ AQUI: `recorte` autorizado, e só agora o subtítulo pode afirmar o escopo.
   const subtitulo =
     `${descreverRecorte(recorte)} — execução da despesa por credor (CPF/CNPJ) e fonte de recursos` +
-    (recorteEmTexto.length > 0 ? ` · filtrado: ${recorteEmTexto.join(" · ")}` : "");
+    (recorteEmTexto.length > 0 ? ` · filtros: ${recorteEmTexto.join(" · ")}` : "");
 
   // ⚠️ A QUERY DO PDF É A DA TELA. O botão "Imprimir PDF" é só um link: o recorte
   // atravessa pela URL, e o papel sai igual ao que está na frente do usuário.
@@ -151,20 +151,18 @@ export default async function RelatoriosGerenciaisPage({
       />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O filtro de <strong>credor</strong> é um <strong>casamento por CPF/CNPJ</strong>, não uma
-        busca por nome: este sistema não tem cadastro de credores — o empenho guarda apenas o
-        documento. Por isso a lista acima oferece os <strong>documentos que existem</strong> no
-        exercício, e não um campo de texto livre. O filtro de <strong>fonte</strong> recorta pela
-        fonte de recursos da <strong>ficha</strong> do empenho, que é onde a fonte mora.
+        O filtro de <strong>credor</strong> considera o CPF/CNPJ informado no empenho e lista os
+        documentos existentes no exercício. O filtro de <strong>fonte</strong> considera a fonte
+        de recursos da ficha do empenho.
       </div>
 
       {empenhos.length === 0 ? (
         <EstadoVazio
-          titulo="Sem empenhos no recorte"
+          titulo="Nenhum empenho encontrado"
           descricao={
             recorteEmTexto.length > 0
-              ? `Nenhum empenho em ${descreverRecorte(recorte).toLowerCase()} com ${recorteEmTexto.join(" e ")}. Limpe um dos filtros para ampliar o recorte.`
-              : `Nenhum empenho em ${descreverRecorte(recorte).toLowerCase()}. Ou o exercício não foi executado, ou a unidade selecionada não tem fichas.`
+              ? `Nenhum empenho em ${descreverRecorte(recorte).toLowerCase()} com ${recorteEmTexto.join(" e ")}. Remova um dos filtros para ampliar a consulta.`
+              : `Nenhum empenho em ${descreverRecorte(recorte).toLowerCase()}. Não há execução da despesa no exercício ou a unidade selecionada não possui fichas.`
           }
         />
       ) : (
@@ -184,8 +182,8 @@ export default async function RelatoriosGerenciaisPage({
             linhas={empenhos}
             keyDe={(l) => l.id}
             legenda={
-              `${empenhos.length} empenho(s) · valores em R$ · empenhado já líquido das anulações` +
-              (recorteEmTexto.length > 0 ? ` · recorte: ${recorteEmTexto.join(" · ")}` : " · sem filtro") +
+              `${empenhos.length} empenho(s) · valores em R$ · empenhado líquido de anulações` +
+              (recorteEmTexto.length > 0 ? ` · filtros: ${recorteEmTexto.join(" · ")}` : " · sem filtro") +
               "."
             }
           />
@@ -193,9 +191,8 @@ export default async function RelatoriosGerenciaisPage({
       )}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        O <strong>PDF</strong> e o <strong>CSV</strong> levam exatamente este recorte — o filtro
-        mora na URL, e as três saídas o leem do mesmo lugar. A execução completa, com emissão de
-        NE e anulação, fica em{" "}
+        O PDF e o CSV reproduzem os filtros aplicados nesta tela. A emissão e a anulação de
+        empenhos ficam em{" "}
         <a href="/despesa/empenhos" className="text-[color:var(--color-primary)] hover:underline">
           Despesa · Empenhos
         </a>
@@ -211,7 +208,7 @@ function csvGerencial(empenhos: readonly EmpenhoDaTela[]): string {
     // O documento vai em DUAS colunas: mascarado (como se lê) e cru (como se filtra numa
     // planilha ou se cola de volta na URL). Uma coluna só obrigaria a escolher entre
     // legibilidade e utilidade.
-    ["Nº", "Data", "Credor (CPF/CNPJ)", "Credor (documento cru)", "Unidade", "Ficha", "Fonte", "Empenhado", "Liquidado", "Pago", "A liquidar", "A pagar", "Anulações", "Status"],
+    ["Nº", "Data", "Credor (CPF/CNPJ)", "Credor (somente números)", "Unidade", "Ficha", "Fonte", "Empenhado", "Liquidado", "Pago", "A liquidar", "A pagar", "Anulações", "Status"],
     empenhos.map((e) => [
       e.numero,
       dataBr(e.data),

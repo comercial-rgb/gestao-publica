@@ -37,7 +37,7 @@ export function FormGuiaDeRecolhimento({ folhaId, grupos, action }: { readonly f
       <ChaveDeComando />
       <input type="hidden" name="__id" value={folhaId} />
       <h3 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Registrar guia recebida do emissor</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Cadastra o documento REAL (com o arquivo) que o arrecadador emitiu. O sistema não gera guia, código de barras nem PIX, e registrar não paga nada.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Registre a guia emitida pelo órgão arrecadador, com o respectivo arquivo. O registro não gera guia nem efetua pagamento.</p>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label htmlFor={`${id}-grupo`} className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={CLASSE_ROTULO}>Obrigação (grupo de encargos)</span>
@@ -48,7 +48,7 @@ export function FormGuiaDeRecolhimento({ folhaId, grupos, action }: { readonly f
         </label>
         {campo("identificador", "Número/identificador da guia", { required: true, minLength: 3 }, "sm:col-span-2")}
         {campo("natureza", "Natureza como consta na guia", { required: true, minLength: 5 }, "sm:col-span-2 lg:col-span-4")}
-        {campo("vencimento", "Vencimento (vazio = não informado)", { type: "date" })}
+        {campo("vencimento", "Vencimento (opcional)", { type: "date" })}
         {campo("fundamentoDoVencimento", "Fundamento do vencimento", {}, "sm:col-span-1 lg:col-span-3")}
         {campo("principal", "Principal", { required: true, inputMode: "decimal", pattern: "[0-9.]+(,[0-9]{1,2})?|[0-9]+(\\.[0-9]{1,2})?" })}
         {campo("total", "Total da guia", { required: true, inputMode: "decimal" })}

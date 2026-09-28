@@ -90,7 +90,7 @@ export async function abrirProcessoAction(
       return {
         sucesso:
           `Processo ${r.numero}/${r.ano} aberto. Código verificador: ${r.codigoVerificador} ` +
-          `— é ele que o requerente usa para acompanhar sem senha.`,
+          `(utilizado pelo requerente para acompanhar o processo).`,
       };
     } catch (e) {
       return comoErro(e);
@@ -118,8 +118,8 @@ export async function tramitarAction(
       return {
         sucesso:
           r.alvos > 1
-            ? `Tramitado — e os ${r.alvos - 1} apenso(s) foram junto, na mesma transação.`
-            : "Tramitado.",
+            ? `Processo tramitado, juntamente com ${r.alvos - 1} processo(s) apensado(s).`
+            : "Processo tramitado.",
       };
     } catch (e) {
       return comoErro(e);
@@ -136,7 +136,7 @@ export async function receberAction(
     try {
       await receberNaTela(processoId);
       revalidar(processoId);
-      return { sucesso: "Recebido. O prazo da etapa começa a contar agora." };
+      return { sucesso: "Processo recebido. O prazo da etapa passa a ser contado a partir de agora." };
     } catch (e) {
       return comoErro(e);
     }
@@ -166,7 +166,7 @@ export async function solicitarParecerAction(
   return comComandoDoFormulario(formData, async () => {
     const processoId = texto(formData, "processoId");
     const setorDestinoId = texto(formData, "setorDestinoId");
-    if (setorDestinoId === "") return { erro: "Escolha a quem pedir o parecer." };
+    if (setorDestinoId === "") return { erro: "Escolha o setor ao qual o parecer será solicitado." };
     try {
       await solicitarParecerNaTela({
         processoId,
@@ -300,7 +300,7 @@ export async function apensarAction(
         motivo: texto(formData, "motivo"),
       });
       revalidar(processoPrincipalId);
-      return { sucesso: "Apensado. A partir de agora os dois andam juntos." };
+      return { sucesso: "Processo apensado. A partir de agora, os processos tramitam em conjunto." };
     } catch (e) {
       return comoErro(e);
     }
@@ -320,7 +320,7 @@ export async function desapensarAction(
         motivo: texto(formData, "motivo"),
       });
       revalidar(processoPrincipalId);
-      return { sucesso: "Desapensado. Os processos voltam a andar separados." };
+      return { sucesso: "Processo desapensado. Os processos voltam a tramitar separadamente." };
     } catch (e) {
       return comoErro(e);
     }
@@ -342,8 +342,8 @@ export async function tornarSemEfeitoAction(
       revalidar(processoId);
       return {
         sucesso:
-          "Movimento tornado sem efeito. Ele continua no histórico, marcado — e com o " +
-          "motivo e o autor de quem o desfez.",
+          "Movimento tornado sem efeito. O registro permanece no histórico, com o " +
+          "motivo e o responsável pela anulação.",
       };
     } catch (e) {
       return comoErro(e);

@@ -81,7 +81,7 @@ export default async function ImovelPage({ params, searchParams }: { readonly pa
 
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Pessoas vinculadas</h2>
-          {i.vinculos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-vinculos>Nenhuma pessoa vinculada. Sem vínculo, a simulação não tem a quem atribuir o valor.</p> : (
+          {i.vinculos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-vinculos>Nenhuma pessoa vinculada. Vincule o contribuinte para que a simulação indique o responsável pelo valor.</p> : (
             <ul className="space-y-2 text-sm" data-vinculos-do-imovel={i.vinculos.length}>
               {i.vinculos.map((v) => (
                 <li key={v.id} data-vinculo={v.id} className="border-t border-[color:var(--color-border)] pt-2 first:border-t-0 first:pt-0">
@@ -100,7 +100,7 @@ export default async function ImovelPage({ params, searchParams }: { readonly pa
 
         <Card>
           <h2 className="mb-1 text-sm font-semibold">Simulação</h2>
-          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">A simulação usa a versão do cadastro e a tabela de parâmetros que valem no dia escolhido. Ela <strong>não lança o tributo, não constitui dívida e não grava nada</strong>.</p>
+          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">A simulação usa a versão do cadastro e a tabela de parâmetros vigentes no dia escolhido e <strong>não gera lançamento, dívida ou registro</strong>.</p>
           <form method="get" className="flex flex-wrap items-end gap-2" data-form-de-simulacao>
             <input type="hidden" name="simular" value="1" />
             <label className="text-xs text-[color:var(--color-ink-2)]"><span className="mb-1 block font-medium text-[color:var(--color-ink)]">Tributo</span>
@@ -138,7 +138,7 @@ export default async function ImovelPage({ params, searchParams }: { readonly pa
                 </ul>
               )}
               {resultado.avisos.length === 0 ? null : <ul className="mt-2 list-disc pl-5 text-xs" data-avisos-da-simulacao>{resultado.avisos.map((x) => <li key={x}>{x}</li>)}</ul>}
-              <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">Esta simulação não foi gravada: nenhum lançamento, nenhuma dívida e nenhum registro contábil saem daqui.</p>
+              <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">Simulação apenas informativa, sem lançamento, dívida ou registro contábil.</p>
             </div>
           )}
         </Card>

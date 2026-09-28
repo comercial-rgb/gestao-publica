@@ -59,7 +59,7 @@ export function FormEditarRascunho({
   return (
     <Painel
       titulo="Editar rascunho"
-      descricao="Editável até o envio, e nunca depois: quem já leu leu o texto que saiu. O envio carimba o hash do conteúdo, e é ele que denuncia uma alteração feita por outro caminho."
+      descricao="O rascunho pode ser editado até o envio. Após o envio, o texto não pode mais ser alterado."
     >
       <form data-acao="editar-rascunho" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <ChaveDeComando />
@@ -102,8 +102,8 @@ export function FormEnviar({
       titulo="Enviar"
       descricao={
         assinaturaExigida !== null
-          ? `Este tipo EXIGE assinatura ${assinaturaExigida}. O servidor recusa o envio sem ela — um tipo que declara exigir assinatura e um envio que passa sem ela é configuração decorativa.`
-          : "O comunicado sai para os setores escolhidos e some da sua caixa de rascunhos."
+          ? `Este tipo de comunicado exige assinatura ${assinaturaExigida}. O envio sem assinatura não é permitido.`
+          : "O comunicado é enviado aos setores selecionados e deixa a caixa de rascunhos."
       }
     >
       <form data-acao="enviar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -126,14 +126,14 @@ export function FormEnviar({
               </option>
             ))}
           </select>
-          <span>Segure Ctrl (ou Cmd) para escolher mais de um.</span>
+          <span>Mantenha Ctrl (ou Cmd) pressionado para selecionar mais de um setor.</span>
         </label>
         <CampoTexto
           name="aosCuidadosDe"
           rotulo="Aos cuidados de (opcional)"
           largura={2}
-          placeholder="identificador do servidor"
-          ajuda="Destaca para uma pessoa — mas NÃO restringe: o comunicado continua sendo do setor."
+          placeholder="identificação do servidor"
+          ajuda="Destaca o comunicado para um servidor, sem restringir o acesso do setor."
         />
         {assinaturaExigida !== null ? (
           <input type="hidden" name="modoDeAssinatura" value={assinaturaExigida} />
@@ -169,10 +169,7 @@ export function FormResponder({
     return (
       <Painel titulo="Responder">
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          Este tipo <strong>não aceita resposta</strong>. Uma circular é comunicação de
-          um para muitos: se cada destinatário respondesse a todos, ela viraria lista de
-          discussão — que é exatamente o que ela não é. Emita um comunicado novo, se for
-          o caso.
+          Este tipo de comunicado não admite resposta. Se necessário, emita um novo comunicado.
         </p>
       </Painel>
     );
@@ -181,17 +178,17 @@ export function FormResponder({
   return (
     <Painel
       titulo="Responder"
-      descricao="A resposta alcança apenas os setores JÁ ENVOLVIDOS. Para trazer alguém novo, use encaminhar — e o encaminhamento fica registrado como tal."
+      descricao="A resposta é enviada somente aos setores já participantes. Para incluir outro setor, utilize o encaminhamento."
     >
       <form data-acao="responder" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoSelect
           name="setorRemetenteId"
-          rotulo="Respondo pelo setor"
+          rotulo="Setor responsável pela resposta"
           required
           largura={2}
-          vazio="Escolha"
+          vazio="Selecione"
           opcoes={setores.map((s) => ({ valor: s.id, rotulo: s.rotulo }))}
         />
         <CampoTexto
@@ -227,17 +224,17 @@ export function FormEncaminhar({
   return (
     <Painel
       titulo="Encaminhar"
-      descricao="É o ato que INCLUI alguém novo na conversa — e por isso ele é registrado, ao contrário de uma resposta que alcançasse qualquer setor."
+      descricao="Inclui um novo setor no comunicado. O encaminhamento fica registrado."
     >
       <form data-acao="encaminhar" action={action} className="grid grid-cols-1 gap-3 md:grid-cols-4">
         <ChaveDeComando />
         <input type="hidden" name="comunicadoId" value={comunicadoId} />
         <CampoSelect
           name="setorDestinoId"
-          rotulo="Incluir o setor"
+          rotulo="Setor a incluir"
           required
           largura={2}
-          vazio="Escolha"
+          vazio="Selecione"
           opcoes={setores.map((s) => ({ valor: s.id, rotulo: s.rotulo }))}
         />
         <CampoTexto
@@ -284,7 +281,7 @@ export function FormAcoesPessoais({
   return (
     <Painel
       titulo="Minha caixa"
-      descricao="Arquivar e favoritar são SEUS: o mesmo comunicado pode estar arquivado para você e ativo para outra pessoa. A etiqueta, ao contrário, é visível a todos os envolvidos."
+      descricao="Arquivar e favoritar afetam apenas a sua caixa. As etiquetas são visíveis a todos os participantes."
     >
       <div className="flex flex-wrap gap-2">
         <form data-acao="ciencia" action={acaoCiencia}>

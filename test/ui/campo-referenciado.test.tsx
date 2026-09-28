@@ -120,7 +120,7 @@ describe("CampoReferenciado", () => {
     expect(new URL(revalidacao?.url ?? "", "http://x").searchParams.get("ctx.exercicio")).toBe("2027");
     await responder(pendentes.length - 1, { opcoes: [], temMais: false });
     expect((container.querySelector('input[name="naturezaDespesa"]') as HTMLInputElement).value).toBe("");
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain("foi retirada");
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain("foi removida");
     expect(input.value).toBe("319011 — Vencimentos");
   });
 

@@ -36,7 +36,7 @@ export default async function RreoAnexo11Page({
   try {
     dados = await gerarRreoAnexo11({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Anexo 11"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 11"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   const semDados = dados.totalReceitas.realizada === "0.00" && dados.totalReceitas.previsaoAtualizada === "0.00" && dados.aplicacoes.length === 0;
@@ -50,7 +50,7 @@ export default async function RreoAnexo11Page({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <CardEstatistica rotulo="Receitas de alienação (I)"><ValorMonetario valor={dados.totalReceitas.realizada} /></CardEstatistica>
-        <CardEstatistica rotulo="Saldo anterior (i)" nota="Tabela-parâmetro"><ValorMonetario valor={dados.saldoAnterior} /></CardEstatistica>
+        <CardEstatistica rotulo="Saldo anterior (i)" nota="Informado em parâmetro"><ValorMonetario valor={dados.saldoAnterior} /></CardEstatistica>
         <CardEstatistica rotulo="Saldo do exercício (j)" nota="i + receitas − (pagas + RP)"><ValorMonetario valor={dados.saldoExercicio} /></CardEstatistica>
       </div>
 
@@ -83,7 +83,7 @@ export default async function RreoAnexo11Page({
         <ul className="list-disc space-y-1 pl-4">{dados.notas.map((n, i) => <li key={i}>{n}</li>)}</ul>
       </div>
 
-      <RelatoriosRelacionados relacoes={[{ href: "/relatorios/rreo/anexo1", rotulo: "Anexo 1 — Balanço Orçamentário", motivo: "As receitas de alienação (I) são um recorte da origem de alienação no balanço." }]} />
+      <RelatoriosRelacionados relacoes={[{ href: "/relatorios/rreo/anexo1", rotulo: "Anexo 1 — Balanço Orçamentário", motivo: "As receitas de alienação (I) integram a receita de alienação de bens do Balanço Orçamentário." }]} />
     </div>
   );
 }

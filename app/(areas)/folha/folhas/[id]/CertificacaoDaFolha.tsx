@@ -35,17 +35,14 @@ export function CertificacaoDaFolha({ situacao, fatos }: { readonly situacao: st
       </div>
       {fatos.length === 0 ? (
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          Esta folha ainda não foi certificada. O atesto é de quem o ente designou por ato administrativo — portaria,
-          decreto ou delegação —, e o sistema não escolhe um cargo por conta própria. Cadastre a designação em
-          Folha · Designações; sem ela, o ato de certificar recusa dizendo o que falta. Quem calculou ou fechou esta
-          folha não a certifica.
+          Esta folha ainda não foi certificada. O atesto cabe ao servidor designado por ato administrativo (portaria,
+          decreto ou delegação). Cadastre a designação em Folha &gt; Designações. Quem calculou ou fechou a folha não pode
+          certificá-la.
         </p>
       ) : (
         <>
           <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-            O atesto se prende ao CÁLCULO conferido, não à folha: o manifesto abaixo tem entidade, competência, cálculo,
-            totais, os vínculos e onde a despesa cai — e o sha256 é dele. Um cálculo novo é outro objeto, e o atesto
-            anterior não o alcança.
+            O atesto vale para o cálculo conferido. Se a folha for recalculada, é necessário novo atesto.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[44rem] border-collapse text-sm">
@@ -71,7 +68,7 @@ export function CertificacaoDaFolha({ situacao, fatos }: { readonly situacao: st
                     <td className="py-2 pr-3 text-[color:var(--color-ink-2)]">
                       {f.ato}
                       {f.motivo === null ? null : <span className="mt-0.5 block text-[11px] break-words [overflow-wrap:anywhere] text-[color:var(--color-ink-3)]">motivo: {f.motivo}</span>}
-                      <span className="mt-0.5 block text-[11px] break-words [overflow-wrap:anywhere] text-[color:var(--color-ink-3)]">sha256 do manifesto: {f.sha256}</span>
+                      <span className="mt-0.5 block text-[11px] break-words [overflow-wrap:anywhere] text-[color:var(--color-ink-3)]">código de verificação: {f.sha256}</span>
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">{f.vinculos}</td>
                     <td className="py-2 text-right"><ValorMonetario valor={f.totalLiquido} /></td>

@@ -115,7 +115,7 @@ export function FormArrecadacao({
             </option>
             {contas.map((c) => (
               <option key={c.codigo} value={c.codigo} disabled={c.contaContabil === null}>
-                {c.codigo} — {c.descricao} · fonte {c.fonteCodigo}{c.contaContabil === null ? " (sem conta contábil mapeada)" : ""}
+                {c.codigo} — {c.descricao} · fonte {c.fonteCodigo}{c.contaContabil === null ? " (sem conta contábil vinculada)" : ""}
               </option>
             ))}
           </select>

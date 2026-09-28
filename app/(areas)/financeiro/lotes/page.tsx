@@ -18,6 +18,7 @@ import {
 } from "./FormsDoLote";
 import { anoCivil, diaCivil } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 /**
  * LOTE DE PAGAMENTO, BORDERÔ E RETORNO — a segunda metade do primeiro percurso.
@@ -38,7 +39,7 @@ export default async function LotesPage(): Promise<React.ReactElement> {
   const cabecalho = (
     <PageHeader
       titulo="Lotes de pagamento e borderô"
-      subtitulo="Agrupar ordens autorizadas, fechar, gerar o borderô assinável e baixar pelo retorno do banco"
+      subtitulo="Agrupamento de ordens autorizadas, borderô para assinatura e baixa pelo retorno do banco"
     />
   );
 
@@ -103,7 +104,7 @@ export default async function LotesPage(): Promise<React.ReactElement> {
                       <p className="mt-1 text-[11px] text-[color:var(--color-ink-2)]">
                         vencimento {l.vencimento} · {l.itens} item(ns) ·{" "}
                         <span data-total-lote={l.numero} className="tabular-nums">
-                          {l.total}
+                          R$ {formatarMoeda(l.total).texto}
                         </span>
                       </p>
 
@@ -131,9 +132,8 @@ export default async function LotesPage(): Promise<React.ReactElement> {
                             </span>
                           </div>
                           <p className="mt-1 text-[11px] text-[color:var(--color-ink-2)]">
-                            O envio ao banco está indisponível: não há convênio bancário
-                            configurado. O borderô é assinável e baixável; a transmissão
-                            não é simulada.
+                            O envio ao banco não está disponível, pois não há convênio bancário
+                            configurado. O borderô pode ser assinado e baixado.
                           </p>
                           <ul className="mt-2 space-y-1 text-xs">
                             {itens.map((i) => (
@@ -144,7 +144,7 @@ export default async function LotesPage(): Promise<React.ReactElement> {
                               >
                                 <span>{i.descricao}</span>
                                 <span className="flex items-center gap-2">
-                                  <span className="tabular-nums">{i.valor}</span>
+                                  <span className="tabular-nums">R$ {formatarMoeda(i.valor).texto}</span>
                                   <Badge status={i.baixado ? "ok" : "neutro"}>
                                     {i.baixado ? "baixado" : "em aberto"}
                                   </Badge>
@@ -170,8 +170,8 @@ export default async function LotesPage(): Promise<React.ReactElement> {
         <div className="space-y-6">
           {cabecalho}
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="O lote agrupa ordens que vivem no banco. Sem ele, esta tela não tem o que mostrar."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível carregar os lotes de pagamento. Tente novamente mais tarde."
           />
         </div>
       );

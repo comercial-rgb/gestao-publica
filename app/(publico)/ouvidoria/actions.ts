@@ -48,7 +48,7 @@ export async function manifestarAction(_prev: EstadoDaManifestacao, formData: Fo
     const r = await registrarManifestacaoPublica({ slug: texto(formData, "__servico"), tipo: texto(formData, "tipo"), respostas, contato: texto(formData, "contato"), aceitouTermo: texto(formData, "aceitouTermo") === "sim" });
     return { protocolo: r.protocolo, segredo: r.segredo };
   } catch (e) {
-    return { erro: mensagemPublica(e, "Não foi possível registrar a manifestação. Nada foi registrado.") };
+    return { erro: mensagemPublica(e, "Não foi possível registrar a manifestação. Tente novamente em alguns minutos.") };
   }
 }
 
@@ -58,7 +58,7 @@ export async function acompanharAction(_prev: EstadoDoAcompanhamento, formData: 
     // ⚠️ Protocolo inexistente e segredo errado respondem a MESMA coisa.
     return r === null ? { naoEncontrada: true } : { resultado: r };
   } catch (e) {
-    return { erro: mensagemPublica(e, "Não foi possível consultar agora.") };
+    return { erro: mensagemPublica(e, "Não foi possível consultar agora. Tente novamente em alguns minutos.") };
   }
 }
 
@@ -67,8 +67,8 @@ export async function opinarAction(_prev: EstadoDaOpiniao, formData: FormData): 
   try {
     const r = await opinarPublicamente({ slug, satisfacao: nota(formData, "satisfacao"), atendimento: nota(formData, "atendimento"), prazos: nota(formData, "prazos"), descricao: texto(formData, "descricao") });
     revalidatePath(`/servicos/${slug}`);
-    return { sucesso: r.revisao ? "Sua opinião foi revisada. Só a mais recente conta no resultado." : "Opinião registrada. Obrigado." };
+    return { sucesso: r.revisao ? "Sua opinião foi atualizada. Apenas a mais recente é considerada no resultado." : "Opinião registrada. Agradecemos a sua participação." };
   } catch (e) {
-    return { erro: mensagemPublica(e, "Não foi possível registrar a opinião. Nada foi gravado.") };
+    return { erro: mensagemPublica(e, "Não foi possível registrar a opinião. Tente novamente em alguns minutos.") };
   }
 }

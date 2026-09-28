@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic";
 const CABECALHO = (
   <PageHeader
     titulo="Perfis e Permissões"
-    subtitulo="O que cada perfil concede — e onde vale. Conceder poder é um ato, e fica com o nome de quem o praticou."
+    subtitulo="Permissões de cada perfil e unidades em que valem. Toda concessão é registrada com o autor."
   />
 );
 
@@ -59,10 +59,10 @@ export default async function PerfisPage(): Promise<React.ReactElement> {
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Perfis indisponíveis no momento"
               : "Não foi possível listar os perfis"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro."}
+          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
         />
       </div>
     );
@@ -98,7 +98,7 @@ export default async function PerfisPage(): Promise<React.ReactElement> {
       {perfis.length === 0 ? (
         <EstadoVazio
           titulo="Sem perfis"
-          descricao="Nenhum perfil cadastrado. Sem perfil, nenhum usuário pode nada — o sistema nega por omissão."
+          descricao="Nenhum perfil cadastrado. Usuários sem perfil não têm acesso a nenhuma funcionalidade."
         />
       ) : (
         perfis.map((p) => {
@@ -119,13 +119,13 @@ export default async function PerfisPage(): Promise<React.ReactElement> {
 
               {p.permissoes.length === 0 ? (
                 <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
-                  Este perfil não concede nada ainda. Quem o tiver não poderá executar ação nenhuma
-                  — e isso é o padrão do sistema, não um defeito.
+                  Este perfil ainda não possui permissões. Usuários com este perfil não poderão executar
+                  nenhuma ação até que sejam concedidas.
                 </p>
               ) : (
                 <>
                   <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
-                    {global ? "Tem concessão que vale em TODAS as unidades gestoras. " : ""}
+                    {global ? "Possui permissões válidas em todas as unidades gestoras. " : ""}
                   </p>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {p.permissoes.map((perm) => (
@@ -134,8 +134,8 @@ export default async function PerfisPage(): Promise<React.ReactElement> {
                         className="rounded-[var(--radius-md)] bg-[color:var(--color-surface-2)] px-2 py-0.5 text-[11px] text-[color:var(--color-ink-2)]"
                         title={
                           perm.unidadeOrcId === null
-                            ? "vale em todas as unidades gestoras"
-                            : `vale só na unidade ${perm.unidadeOrc}`
+                            ? "Válida em todas as unidades gestoras"
+                            : `Válida somente na unidade ${perm.unidadeOrc}`
                         }
                       >
                         {perm.acao}

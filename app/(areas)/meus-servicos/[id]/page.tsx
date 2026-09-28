@@ -39,7 +39,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
           if (permitidas.has("SOLICITAR_SERVICO") && s.podeAnexar && pendente !== undefined) passos.push({ texto: "Enviar o documento pedido", href: "#enviar-documento" });
           if (permitidas.has("SOLICITAR_SERVICO") && avaliacao !== null && avaliacao.escala !== null && avaliacao.ultima === null) passos.push({ texto: "Avaliar o atendimento (opcional)", href: "#avaliacao" });
           if (passos.length === 0) {
-            return <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{s.decisao !== null ? "Nada a fazer por você: a solicitação foi decidida." : "Nada a fazer por você agora: a solicitação está com o setor responsável. Você será avisado se houver exigência."}</p>;
+            return <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{s.decisao !== null ? "Nenhuma providência pendente: a solicitação já foi decidida." : "Nenhuma providência pendente no momento: a solicitação está em análise pelo setor responsável. Você será avisado se houver exigência."}</p>;
           }
           return (
             <ul className="mt-2 flex flex-wrap gap-2">
@@ -52,7 +52,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
       <Card>
         <p className="text-sm" data-situacao-do-requerente={s.situacao}><strong>Situação:</strong> {s.rotuloDaSituacao}</p>
         <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-          Protocolada em {s.protocoladaEm} · prazo: {s.prazo ?? "não declarado"} · código verificador <span data-codigo-verificador>{s.codigoVerificador}</span> (serve na <Link href="/consulta" className="underline">consulta pública</Link>)
+          Protocolada em {s.protocoladaEm} · prazo: {s.prazo ?? "não informado"} · código verificador <span data-codigo-verificador>{s.codigoVerificador}</span> (serve na <Link href="/consulta" className="underline">consulta pública</Link>)
         </p>
         {s.decisao !== null ? (
           <div data-decisao={s.decisao.resultado} className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
@@ -67,7 +67,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
         <Card>
           <h2 className="mb-1 text-sm font-semibold">Avalie o atendimento</h2>
           {avaliacao?.escala === null || avaliacao === null ? (
-            <p className="text-sm text-[color:var(--color-ink-2)]" data-avaliacao="fechada">A avaliação dos serviços ainda não foi aberta pelo ente.</p>
+            <p className="text-sm text-[color:var(--color-ink-2)]" data-avaliacao="fechada">A avaliação dos serviços ainda não está disponível.</p>
           ) : (
             <>
               <p className="mb-3 text-xs text-[color:var(--color-ink-2)]" data-avaliacao={avaliacao.ultima === null ? "pendente" : "feita"}>
@@ -106,13 +106,13 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
       <Card>
         <h2 className="mb-2 text-sm font-semibold">Documentos</h2>
         {s.documentos.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-ink-2)]">Nenhum documento enviado por você ou liberado pelo ente.</p>
+          <p className="text-xs text-[color:var(--color-ink-2)]">Nenhum documento enviado por você ou disponibilizado pelo órgão.</p>
         ) : (
           <ul className="space-y-1 text-sm" data-documentos>
             {s.documentos.map((d) => (
               <li key={d.id} data-documento={d.origem}>
                 <a href={`/meus-servicos/${s.id}/documentos/${d.id}`} className="text-[color:var(--color-primary)] underline">{d.nome}</a>{" "}
-                <span className="text-xs text-[color:var(--color-ink-3)]">{d.origem === "REQUERENTE" ? "enviado por você" : "resposta do ente"} · {d.tamanho} · {d.em}</span>
+                <span className="text-xs text-[color:var(--color-ink-3)]">{d.origem === "REQUERENTE" ? "enviado por você" : "resposta do órgão"} · {d.tamanho} · {d.em}</span>
               </li>
             ))}
           </ul>

@@ -15,7 +15,7 @@ import { FormEncaminharManifestacao, FormReceberManifestacao, FormRespostaDaOuvi
 export const dynamic = "force-dynamic";
 
 const TITULO = "Ouvidoria";
-const DESCRICAO = "Manifestações recebidas sem conta: triagem interna, encaminhamento a outro setor, resposta ao manifestante e encerramento. Sigilosas — só quem está lotado no setor em que a manifestação está as vê.";
+const DESCRICAO = "Triagem, encaminhamento e resposta das manifestações. O acesso é restrito aos servidores do setor responsável.";
 
 export default async function Pagina(): Promise<React.ReactElement> {
   const sessao = await telaExigeLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
@@ -26,7 +26,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <PageHeader titulo={TITULO} subtitulo={DESCRICAO} acoes={<Link href="/ouvidoria" className="text-sm text-[color:var(--color-primary)] underline">Página pública</Link>} />
         {ms.length === 0 ? (
-          <EstadoVazio titulo="Nenhuma manifestação ao seu alcance" descricao="Ou ainda não chegou manifestação, ou você não está lotado no setor da ouvidoria. A consulta do protocolo, sozinha, não abre manifestação sigilosa." />
+          <EstadoVazio titulo="Nenhuma manifestação disponível" descricao="Não há manifestações recebidas ou seu usuário não está lotado no setor responsável pela ouvidoria." />
         ) : (
           <ul className="space-y-4" data-manifestacoes>
             {ms.map((m) => (
@@ -92,7 +92,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       return (
         <div className="space-y-6">
           <PageHeader titulo={TITULO} subtitulo={DESCRICAO} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê as manifestações. Sem banco, não tem o que mostrar." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar a base de dados deste ambiente." />
         </div>
       );
     }

@@ -105,9 +105,9 @@ export default async function PlanoDeContasPage({
             erro instanceof EscopoDeLeituraError
               ? "Esta unidade não está no seu acesso"
               : erro instanceof ExercicioIlegivelError
-                ? "O exercício pedido não é um ano"
+                ? "Exercício inválido"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
+                  ? "Serviço indisponível"
                   : "Não foi possível ler o plano de contas"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -148,15 +148,12 @@ export default async function PlanoDeContasPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-        <strong>Natureza do saldo</strong> (devedora/credora) é atributo <em>cadastrado</em> da
-        conta — coluna <code className="font-mono">naturezaSaldo</code> do PCASP. Já a{" "}
-        <strong>natureza da informação</strong> (patrimonial, orçamentária, controle) NÃO é coluna
-        da conta: ela é atributo do <em>lançamento</em> (<code className="font-mono">PartidaContabil.subsistema</code>).
-        A coluna abaixo a mostra <strong>derivada da classe do código</strong>, como orientação; a
-        natureza efetivamente escriturada aparece por partida em{" "}
+        A <strong>natureza do saldo</strong> (devedora ou credora) indica o lado em que o saldo da
+        conta é positivo. A <strong>natureza da informação</strong> (patrimonial, orçamentária ou
+        controle) é apresentada conforme a classe da conta; a natureza registrada em cada lançamento
+        pode ser consultada em{" "}
         <a href="/contabilidade/lancamentos" className="text-[color:var(--color-primary)] hover:underline">Contabilidade · Lançamentos</a>.
-        O <strong>saldo</strong> é o saldo final do exercício, lido do balancete (M12) e juntado a
-        esta lista pelo código — esta tela não soma partida nenhuma.
+        O <strong>saldo</strong> é o saldo final do exercício, conforme o balancete.
       </div>
 
       {/* Navegação por CLASSE — é o eixo em que o PCASP se lê, e o caminho do roteiro (classe 2). */}
@@ -185,7 +182,7 @@ export default async function PlanoDeContasPage({
           descricao={
             classeFiltro !== undefined
               ? `A classe ${classeFiltro} não tem conta cadastrada no plano.`
-              : "O plano de contas PCASP não foi semeado neste banco."
+              : "O plano de contas PCASP ainda não foi carregado."
           }
         />
       ) : (
@@ -201,7 +198,7 @@ export default async function PlanoDeContasPage({
                     Classe {classe} — {NOME_DA_CLASSE[classe] ?? "classe fora do PCASP conhecido"}
                   </h2>
                   <span className="text-xs text-[color:var(--color-ink-3)]">
-                    natureza da informação (derivada): {naturezaDaInformacao(classe)} · {daClasse.length} conta(s)
+                    natureza da informação: {naturezaDaInformacao(classe)} · {daClasse.length} conta(s)
                   </span>
                 </div>
                 <TabelaDeDados
@@ -209,7 +206,7 @@ export default async function PlanoDeContasPage({
                   linhas={daClasse}
                   keyDe={(l) => l.id}
                   recuoDe={(l) => (l.nivel - 1) * 12}
-                  legenda="Saldo final do exercício, do balancete. “—” na coluna de saldo = a conta não teve movimento no exercício."
+                  legenda="Saldo final do exercício, conforme o balancete. “—” indica conta sem movimento no exercício."
                 />
               </Card>
             );
@@ -287,7 +284,7 @@ const COLUNAS: readonly ColunaTabela<LinhaDoPlano>[] = [
     alinhamento: "esquerda",
     largura: "9rem",
     celula: (l) => (
-      <span title="Coluna real do cadastro (ContaPcasp.naturezaSaldo) — o lado em que o saldo desta conta é positivo.">
+      <span title="Lado em que o saldo desta conta é positivo.">
         {l.naturezaSaldo === "DEVEDORA" ? "devedora" : "credora"}
       </span>
     ),
@@ -300,9 +297,9 @@ const COLUNAS: readonly ColunaTabela<LinhaDoPlano>[] = [
     celula: (l) => (
       <span
         className="text-[color:var(--color-ink-2)]"
-        title="DERIVADA da classe do código (convenção MCASP). Não é coluna do plano de contas: a natureza escriturada vive em PartidaContabil.subsistema."
+        title="Definida pela classe da conta, conforme o MCASP. A natureza registrada em cada lançamento aparece na consulta de lançamentos."
       >
-        {naturezaDaInformacao(l.classe)} <span className="text-[color:var(--color-ink-3)]">(derivada)</span>
+        {naturezaDaInformacao(l.classe)}
       </span>
     ),
   },
@@ -328,7 +325,7 @@ const COLUNAS: readonly ColunaTabela<LinhaDoPlano>[] = [
     // ("quanto tem esta conta"), e a resposta é um número com um lado.
     celula: (l) => {
       if (l.semMovimento) {
-        return <span className="text-[color:var(--color-ink-3)]" title="Conta sem movimento no exercício — não aparece no balancete.">—</span>;
+        return <span className="text-[color:var(--color-ink-3)]" title="Conta sem movimento no exercício.">—</span>;
       }
       const devedor = Number(l.saldoDevedor) !== 0;
       const credor = Number(l.saldoCredor) !== 0;

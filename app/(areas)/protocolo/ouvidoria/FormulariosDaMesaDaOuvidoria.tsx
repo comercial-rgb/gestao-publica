@@ -57,7 +57,7 @@ export function FormRespostaDaOuvidoria({ manifestacaoId, protocolo, motivo }: {
       <label htmlFor={`${id}-texto`} className="text-xs">
         <span className={CLASSE_ROTULO}>Resposta ao manifestante</span>
         <textarea id={`${id}-texto`} name="texto" required minLength={10} aria-describedby={`${id}-ajuda`} className={CLASSE_AREA_TEXTO} />
-        <span id={`${id}-ajuda`} className="mt-1 block text-[color:var(--color-ink-2)]">Este texto é o que o manifestante lê com o código. Não coloque dado interno ou de terceiros.</span>
+        <span id={`${id}-ajuda`} className="mt-1 block text-[color:var(--color-ink-2)]">Este texto será exibido ao manifestante na consulta pelo código. Não inclua informações internas ou de terceiros.</span>
       </label>
       <label className="flex min-h-11 items-center gap-2 text-sm">
         <input type="checkbox" name="conclusiva" value="sim" className="h-4 w-4" />
@@ -111,9 +111,9 @@ export function FormEncaminharManifestacao({ processoId, protocolo, setores, mot
       </label>
       <label htmlFor={`${id}-agente`} className="text-xs">
         <span className={CLASSE_ROTULO}>Agente designado (opcional)</span>
-        <input id={`${id}-agente`} name="usuarioDestino" type="text" placeholder="identificação de quem deve tratar" className={CLASSE_CAMPO} />
+        <input id={`${id}-agente`} name="usuarioDestino" type="text" placeholder="identificação do responsável" className={CLASSE_CAMPO} />
         <span className="mt-1 block text-[color:var(--color-ink-3)]">
-          Em branco, qualquer pessoa lotada no setor de destino pode tratar o caso — e todas são notificadas.
+          Se não for informado, qualquer servidor lotado no setor de destino poderá tratar a manifestação, e todos serão notificados.
         </span>
       </label>
       <label htmlFor={`${id}-motivo`} className="text-xs">

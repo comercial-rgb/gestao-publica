@@ -32,7 +32,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, SOLICITACOES_DE_COMPRA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormSolicitacao setores={(opcoes["setorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} materiais={materiais} /> } : { motivoSemCriar: "Você não tem a permissão REGISTRAR_SOLICITACAO_DE_COMPRA. Peça ao administrador — a concessão é por ação, e é registrada." })}
+        {...(podeCriar ? { formulario: <FormSolicitacao setores={(opcoes["setorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} materiais={materiais} /> } : { motivoSemCriar: "Seu perfil não tem permissão para registrar solicitações de compra. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {
@@ -40,7 +40,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={SOLICITACOES_DE_COMPRA.rotulo} subtitulo={SOLICITACOES_DE_COMPRA.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava compras. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Serviço indisponível" descricao="Não foi possível carregar os dados. Tente novamente em instantes." />
         </div>
       );
     }

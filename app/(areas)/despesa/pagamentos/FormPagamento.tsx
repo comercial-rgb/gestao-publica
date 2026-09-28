@@ -11,6 +11,8 @@ import {
 } from "../../../../components/ui/Formulario";
 import { pagarAction, type EstadoPagamento } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
+import { formatarDocumento } from "../../../../packages/documento/index";
 
 /** Uma liquidação pagável, como a página a passa (já com a posição que o M06 deu). */
 export interface LiquidacaoPagavel {
@@ -112,8 +114,7 @@ export function FormPagamento({
   if (liquidacoes.length === 0) {
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
-        <strong className="text-[color:var(--color-ink)]">Nenhuma fila aberta</strong> —
-        não há liquidação com saldo a pagar.
+        <strong className="text-[color:var(--color-ink)]">Nenhuma liquidação aguardando pagamento.</strong>
       </div>
     );
   }
@@ -121,10 +122,10 @@ export function FormPagamento({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Nenhuma conta bancária cadastrada
+          Nenhuma conta bancária cadastrada.
         </strong>{" "}
-        — o dinheiro tem de sair de algum lugar, e a regra de fonte amarra o pagamento
-        à da conta. O cadastro de contas bancárias ainda não tem tela.
+        O pagamento exige uma conta bancária vinculada à fonte de recursos. Cadastre a conta em
+        Financeiro, Contas bancárias.
       </div>
     );
   }
@@ -161,8 +162,8 @@ export function FormPagamento({
             {liquidacoes.map((l) => (
               <option key={l.liquidacaoId} value={l.liquidacaoId}>
                 {l.posicao === 1 ? "★ " : ""}
-                {l.posicao}ª · {l.numero} — {l.credorCpfCnpj} · a pagar {l.saldoAPagar} ·
-                fonte {l.fonteCodigo}
+                {l.posicao}ª · {l.numero} · {formatarDocumento(l.credorCpfCnpj)} · a pagar R${" "}
+                {formatarMoeda(l.saldoAPagar).texto} · fonte {l.fonteCodigo}
               </option>
             ))}
           </select>
@@ -175,7 +176,7 @@ export function FormPagamento({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>
-            Valor (R$){alvo !== undefined ? ` — até ${alvo.saldoAPagar}` : ""}
+            Valor (R$){alvo !== undefined ? `, até ${formatarMoeda(alvo.saldoAPagar).texto}` : ""}
           </span>
           <CampoValor name="valor" required placeholder="2.500,00" className={CAMPO} />
         </label>
@@ -186,7 +187,7 @@ export function FormPagamento({
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Conta bancária (traz a fonte)</span>
+          <span className={ROTULO}>Conta bancária (define a fonte)</span>
           <select
             name="contaBancaria"
             required
@@ -217,10 +218,10 @@ export function FormPagamento({
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
           <span className={ROTULO}>Ordem autorizada (opcional)</span>
           <select name="ordemDePagamentoId" defaultValue="" className={CAMPO}>
-            <option value="">Sem ordem — registro direto</option>
+            <option value="">Sem ordem de pagamento</option>
             {ordensAutorizadas.map((o) => (
               <option key={o.id} value={o.id}>
-                {o.numero} — liquidação {o.liquidacaoNumero} · {o.credorCpfCnpj} · {o.valor}
+                {o.numero} · liquidação {o.liquidacaoNumero} · {formatarDocumento(o.credorCpfCnpj)} · R$ {formatarMoeda(o.valor).texto}
               </option>
             ))}
           </select>
@@ -240,13 +241,13 @@ export function FormPagamento({
       {foraDaOrdem ? (
         <fieldset className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3">
           <legend className="px-1 text-xs font-semibold text-[color:var(--color-status-alerta-fg)]">
-            Quebra da ordem cronológica — art. 141, §1º
+            Pagamento fora da ordem cronológica (art. 141, §1º)
           </legend>
           <p className="mb-3 text-xs text-[color:var(--color-status-alerta-fg)]">
             Esta liquidação está na <strong>{alvo.posicao}ª posição</strong> da fila
-            (fonte {alvo.fonteCodigo}). Pagá-la antes das anteriores exige{" "}
-            <strong>justificativa prévia</strong> numa das cinco hipóteses taxativas, e
-            ela vira prova se o §2º mandar apurar preterição.
+            (fonte {alvo.fonteCodigo}). O pagamento antes das anteriores exige{" "}
+            <strong>justificativa prévia</strong> em uma das hipóteses do §1º, que fica registrada
+            para eventual apuração (§2º).
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -275,7 +276,7 @@ export function FormPagamento({
               <textarea
                 name="justificativa"
                 rows={3}
-                placeholder="por que este credor é pago antes dos que estão na frente dele"
+                placeholder="motivo do pagamento antes dos credores anteriores na fila"
                 className={CLASSE_AREA_TEXTO}
               />
             </label>
@@ -354,17 +355,15 @@ function Retencoes({
       </legend>
 
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        O que se retém <strong>não sai do caixa</strong>: a obrigação com o credor é
-        extinta pelo <strong>valor cheio</strong>, o banco paga o líquido e o valor retido
-        vira <strong>dívida com o consignatário</strong>. Informe o valor — ele{" "}
-        <strong>não é calculado</strong> pelo sistema.
+        A obrigação com o credor é quitada pelo <strong>valor bruto</strong>, o banco paga o
+        valor líquido e o valor retido passa a ser devido ao <strong>consignatário</strong>.
+        Informe o valor retido; ele <strong>não é calculado</strong> automaticamente.
       </p>
 
       {disponiveis.length === 0 ? (
         <p className="text-xs text-[color:var(--color-ink-2)]">
-          Nenhum tipo de consignação está pronto para receber retenção. Os tipos existem,
-          mas falta parametrizar a conta de passivo de cada um — reter sem ela deixaria o
-          lançamento sem a perna da dívida.
+          Nenhum tipo de consignação disponível para retenção. É necessário parametrizar a
+          conta de passivo de cada tipo.
         </p>
       ) : (
         <>
@@ -396,7 +395,7 @@ function Retencoes({
                 <input
                   name="retencaoCredor"
                   required
-                  placeholder="INSS  ·  Município"
+                  placeholder="INSS, Município"
                   className={CAMPO}
                 />
               </label>

@@ -64,8 +64,8 @@ export default async function AgendamentoPage({
       <div className="space-y-4">
         <h1 className="text-xl font-semibold">Agendar atendimento presencial</h1>
         <p className="text-sm text-[color:var(--color-ink-2)]">
-          Escolha o serviço que você precisa resolver. Você recebe um horário e um código de
-          acompanhamento — não é preciso ter conta.{" "}
+          Escolha o serviço desejado. Ao concluir, você receberá o horário e um código de
+          acompanhamento. Não é necessário cadastro.{" "}
           <Link href="/agendamento/acompanhar" className="underline">
             Já tenho uma marcação
           </Link>

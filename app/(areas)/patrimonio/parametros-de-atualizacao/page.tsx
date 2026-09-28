@@ -66,8 +66,8 @@ export default async function ParametrosDeAtualizacaoPage({
         <div className="space-y-6">
           <PageHeader titulo={PARAMETROS_DE_ATUALIZACAO.rotulo} subtitulo={PARAMETROS_DE_ATUALIZACAO.descricao} />
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="Esta tela lê as classes e grava as versões do parâmetro. Sem banco, não tem o que mostrar — e não vai fingir que tem."
+            titulo="Dados indisponíveis"
+            descricao="Não foi possível acessar os parâmetros no momento. Tente novamente em instantes."
           />
         </div>
       );

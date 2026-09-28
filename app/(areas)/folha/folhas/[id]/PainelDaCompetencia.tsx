@@ -45,7 +45,7 @@ export function PainelDaCompetencia({ etapas, acoes, disponibilidade, permitidas
       </ol>
       <div className="mt-4 border-t border-[color:var(--color-border)] pt-3" data-proxima-acao={disponiveis.length > 0 ? "sim" : "nao"}>
         {disponibilidade === null ? (
-          <p className="text-sm text-[color:var(--color-ink-2)]">Não foi possível conferir os atos agora: a barra abaixo aparece travada, e nada foi liberado por falta de conferência.</p>
+          <p className="text-sm text-[color:var(--color-ink-2)]">Não foi possível verificar as ações disponíveis no momento. As ações abaixo permanecem bloqueadas.</p>
         ) : disponiveis.length > 0 ? (
           <>
             <p className="text-sm font-semibold text-[color:var(--color-ink)]">O que você pode fazer agora</p>
@@ -56,12 +56,12 @@ export function PainelDaCompetencia({ etapas, acoes, disponibilidade, permitidas
             </ul>
           </>
         ) : (
-          <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum ato do seu perfil está disponível nesta folha agora.</p>
+          <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma ação do seu perfil está disponível nesta folha no momento.</p>
         )}
         {travadas.length > 0 ? (
           <ul className="mt-2 space-y-1">
             {travadas.map((a) => (
-              <li key={a.nome} className="text-xs text-[color:var(--color-ink-2)]"><span className="font-medium text-[color:var(--color-ink)]">{a.rotulo}:</span> {disponibilidade?.porAcao[a.nome]?.motivo ?? "travado"}</li>
+              <li key={a.nome} className="text-xs text-[color:var(--color-ink-2)]"><span className="font-medium text-[color:var(--color-ink)]">{a.rotulo}:</span> {disponibilidade?.porAcao[a.nome]?.motivo ?? "bloqueado"}</li>
             ))}
           </ul>
         ) : null}

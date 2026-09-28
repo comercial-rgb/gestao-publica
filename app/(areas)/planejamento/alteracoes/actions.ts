@@ -100,7 +100,7 @@ export async function registrarAtoAction(
         ],
       });
       revalidatePath("/planejamento/alteracoes");
-      return { sucesso: "Ato registrado, e o comparativo já reflete o valor vigente." };
+      return { sucesso: "Ato registrado. O comparativo foi atualizado com o valor vigente." };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível registrar o ato." };
     }

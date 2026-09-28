@@ -24,7 +24,7 @@ export function FormRespostaDaMesa({ solicitacaoId, accept, action }: {
       <input type="hidden" name="__id" value={solicitacaoId} />
       <label htmlFor={id} className={CLASSE_ROTULO}>Liberar documento de resposta ao requerente</label>
       <input id={id} aria-describedby={`${id}-ajuda`} type="file" name="arquivo" accept={accept} required className={CLASSE_CAMPO} />
-      <p id={`${id}-ajuda`} className="mt-1 text-xs text-[color:var(--color-ink-2)]">O requerente é avisado e baixa este arquivo pelo acompanhamento. Documento interno (parecer, despacho) não se libera aqui.</p>
+      <p id={`${id}-ajuda`} className="mt-1 text-xs text-[color:var(--color-ink-2)]">O requerente será notificado e poderá baixar o arquivo pelo acompanhamento da solicitação. Não utilize esta opção para documentos internos, como pareceres e despachos.</p>
       {estado.erro !== undefined ? <p role="alert" className="mt-3 whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">{estado.erro}</p> : null}
       {estado.sucesso !== undefined ? <p role="status" className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p> : null}
       <button type="submit" disabled={pendente} className={`mt-3 ${CLASSE_BOTAO_PRIMARIO}`}>{pendente ? "Enviando…" : "Liberar documento"}</button>

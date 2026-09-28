@@ -68,8 +68,8 @@ export function FormAgendamento({
         <div className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] p-3">
           <p className="text-sm font-semibold">Guarde este código de acompanhamento</p>
           <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-            Ele aparece <strong>uma única vez</strong> e não pode ser recuperado. É com ele que
-            você consulta e cancela a sua marcação.
+            O código é exibido <strong>uma única vez</strong> e não pode ser recuperado. Ele é
+            necessário para consultar, remarcar ou cancelar a marcação.
           </p>
           <p className="mt-2 font-mono text-lg tracking-wide" data-teste="segredo-do-cidadao">
             {estado.segredo}
@@ -105,8 +105,8 @@ export function FormAgendamento({
 
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Os seus dados</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Eles servem para chamar você no guichê. Leve um documento de identificação — é com ele que
-        o atendimento confere quem você é.
+        Os dados informados serão usados para a chamada no atendimento. No dia, leve um documento
+        de identificação.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

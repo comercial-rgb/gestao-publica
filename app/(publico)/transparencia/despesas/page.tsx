@@ -90,8 +90,8 @@ export default async function DespesasPublicasPage({
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Despesas</h1>
         <p className="mt-1 max-w-3xl text-sm text-[color:var(--color-ink-2)]">
           {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · acesso público, sem cadastro.{" "}
-          <strong>Cada linha é um empenho</strong>, e empenhado, liquidado e pago são estágios dele —
-          não três despesas. Por isso não há uma coluna de total somando as três.
+          <strong>Cada linha corresponde a um empenho</strong>; os valores empenhado, liquidado e pago
+          são etapas da mesma despesa e não devem ser somados.
         </p>
       </header>
 
@@ -135,7 +135,7 @@ export default async function DespesasPublicasPage({
       </form>
 
       {semBanco ? (
-        <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">A consulta está indisponível agora: o banco de dados não respondeu.</p>
+        <p role="alert" className="text-sm text-[color:var(--color-ink-2)]">A consulta está temporariamente indisponível. Tente novamente mais tarde.</p>
       ) : pagina === null || pagina.total === 0 ? (
         <p data-despesas-vazio className="text-sm text-[color:var(--color-ink-2)]">Nenhum empenho encontrado com estes filtros.</p>
       ) : (
@@ -158,9 +158,9 @@ export default async function DespesasPublicasPage({
           <div className="mb-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-3 text-sm" data-totais-do-recorte>
             {(
               <dl className="grid gap-2 sm:grid-cols-3">
-                {([["Empenhado", pagina.totais.empenhado], ["Liquidado", pagina.totais.liquidado], ["Pago", pagina.totais.pago]] as const).map(([r, v]) => (
+                {([["Total empenhado", pagina.totais.empenhado], ["Total liquidado", pagina.totais.liquidado], ["Total pago", pagina.totais.pago]] as const).map(([r, v]) => (
                   <div key={r}>
-                    <dt className="text-xs text-[color:var(--color-ink-2)]">{r} no recorte</dt>
+                    <dt className="text-xs text-[color:var(--color-ink-2)]">{r}</dt>
                     <dd className="tabular-nums font-semibold text-[color:var(--color-ink)]">R$ {formatarMoeda(v).texto}</dd>
                   </div>
                 ))}
@@ -170,7 +170,7 @@ export default async function DespesasPublicasPage({
 
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)]">
             <table className="w-full min-w-[56rem] text-left text-sm" data-despesas-publicas>
-              <caption className="sr-only">Empenhos do ente, com credor, histórico e os valores empenhado, anulado, liquidado e pago</caption>
+              <caption className="sr-only">Empenhos, com credor, histórico e valores empenhado, anulado, liquidado e pago</caption>
               <thead className="bg-[color:var(--color-surface-2)] text-xs text-[color:var(--color-ink-2)]">
                 <tr>
                   <th scope="col" className="px-3 py-2">Empenho</th>
@@ -218,9 +218,9 @@ export default async function DespesasPublicasPage({
           </nav>
 
           <p className="mt-4 max-w-3xl text-xs text-[color:var(--color-ink-3)]">
-            O CNPJ de quem contrata com o poder público é publicado por inteiro. O CPF de pessoa
-            física aparece parcialmente oculto: o número completo se obtém por pedido de acesso à
-            informação, que é um caminho com identificação e registro.
+            Os totais consideram todos os resultados da consulta, não apenas esta página. O CNPJ dos
+            credores é exibido por completo; o CPF de pessoa física é parcialmente ocultado, e o número
+            completo pode ser solicitado por meio de pedido de acesso à informação.
           </p>
         </>
       )}

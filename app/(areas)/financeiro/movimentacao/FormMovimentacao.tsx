@@ -13,6 +13,7 @@ import {
   type EstadoMovimento,
 } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 /**
  * A conta como ESTE form a consome.
@@ -77,10 +78,10 @@ export function FormMovimentacao({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Nenhuma conta bancária cadastrada
+          Nenhuma conta bancária cadastrada.
         </strong>{" "}
-        — não há onde movimentar. A movimentação sai de uma conta do ente, e ela precisa
-        ter conta contábil e rol de fontes parametrizados.
+        Para registrar movimentos, a conta precisa ter conta contábil e fontes de recursos
+        parametrizadas.
       </div>
     );
   }
@@ -115,7 +116,7 @@ export function FormMovimentacao({
             </option>
             {contas.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.codigo} — {c.descricao} · saldo {c.saldo}
+                {c.codigo} — {c.descricao} · saldo R$ {formatarMoeda(c.saldo).texto}
               </option>
             ))}
           </select>
@@ -195,7 +196,7 @@ export function FormMovimentacao({
           <input
             name="historico"
             required
-            placeholder="aplicação em fundo de curto prazo — conta movimento"
+            placeholder="aplicação em fundo de curto prazo"
             className={CAMPO}
           />
         </label>

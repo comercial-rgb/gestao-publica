@@ -15,16 +15,16 @@ export function Contracheques({ folhaId, linhas }: { readonly folhaId: string; r
     return (
       <Card>
         <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Contracheques</h2>
-        <EstadoVazio titulo="Esta folha ainda não foi calculada" descricao="Calcule a folha para ver um contracheque por vínculo vivo na competência, cada um com a memória de cálculo e a sua impressão digital." />
+        <EstadoVazio titulo="Esta folha ainda não foi calculada" descricao="Após o cálculo, será exibido um contracheque para cada vínculo ativo na competência, com a memória de cálculo." />
       </Card>
     );
   }
   return (
     <Card>
-      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Contracheques do cálculo vivo</h2>
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Contracheques do cálculo vigente</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Um por vínculo vivo na competência. Abra para ver a memória: as tabelas usadas com a fundamentação, as faixas
-        percorridas, os cenários do imposto e a conta de cada rubrica.
+        Um contracheque por vínculo ativo na competência. Selecione a matrícula para ver a memória de cálculo: tabelas
+        utilizadas, faixas aplicadas, cenários do imposto e o cálculo de cada rubrica.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[46rem] border-collapse text-sm">

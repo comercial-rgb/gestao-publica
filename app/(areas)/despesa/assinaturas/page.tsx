@@ -36,7 +36,7 @@ export default async function AssinaturasPage(): Promise<React.ReactElement> {
   const cabecalho = (
     <PageHeader
       titulo="Assinatura dos documentos da despesa"
-      subtitulo="Empenho, liquidação e ordem de pagamento na fila de assinaturas — ordenada, e só conclui com todos"
+      subtitulo="Assinatura de notas de empenho, de liquidação e ordens de pagamento, na ordem definida"
     />
   );
 
@@ -52,7 +52,7 @@ export default async function AssinaturasPage(): Promise<React.ReactElement> {
           {cabecalho}
           <EstadoVazio
             titulo="Nenhum documento da despesa"
-            descricao="Emita um empenho, liquide-o ou prepare uma ordem de pagamento para ter o que assinar."
+            descricao="Os documentos de empenho, liquidação e ordem de pagamento aparecem aqui após o registro."
           />
         </div>
       );
@@ -81,8 +81,8 @@ export default async function AssinaturasPage(): Promise<React.ReactElement> {
               {d.filaId === null ? (
                 <>
                   <p className="mt-1 text-[11px] text-[color:var(--color-ink-2)]">
-                    Sem documento gerado. Ao gerar, o texto canônico vira anexo com hash e
-                    entra na fila.
+                    Documento ainda não gerado. Ao gerar, o documento é anexado com código de
+                    verificação e enviado aos signatários.
                   </p>
                   <FormEnviarAssinatura
                     tipo={d.tipo}
@@ -137,8 +137,8 @@ export default async function AssinaturasPage(): Promise<React.ReactElement> {
         <div className="space-y-6">
           {cabecalho}
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="A fila de assinaturas vive no banco. Sem ele, esta tela não tem o que mostrar."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível carregar a fila de assinaturas. Tente novamente mais tarde."
           />
         </div>
       );

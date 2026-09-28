@@ -127,8 +127,8 @@ export default async function DetalheDoEmpenhoPage({
             erro instanceof EscopoDeLeituraError
               ? "Este empenho não está no seu acesso"
               : erro instanceof PortaSemBancoError
-                ? "Banco de dados não configurado"
-                : "Não foi possível montar o dossiê deste empenho"
+                ? "Serviço indisponível"
+                : "Não foi possível carregar este empenho"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -142,7 +142,7 @@ export default async function DetalheDoEmpenhoPage({
         <PageHeader titulo="Empenho não encontrado" subtitulo={id} />
         <EstadoVazio
           titulo="Este empenho não existe"
-          descricao="O identificador não corresponde a nenhum empenho. Volte à lista e escolha pelo número."
+          descricao="Nenhum empenho corresponde ao endereço informado. Volte à lista e selecione pelo número."
         />
       </div>
     );
@@ -156,8 +156,8 @@ export default async function DetalheDoEmpenhoPage({
       <div className="space-y-4">
         <PageHeader titulo="Este documento é uma anulação" subtitulo={id} />
         <EstadoVazio
-          titulo="A anulação não tem dossiê próprio"
-          descricao="Ela existe dentro da história do empenho que anula — é lá que o valor, o saldo e os lançamentos fazem sentido."
+          titulo="Anulação vinculada a um empenho"
+          descricao="A anulação é consultada no empenho de origem, com os valores, saldos e lançamentos correspondentes."
         />
         <Card>
           <Link
@@ -274,10 +274,9 @@ function Origem({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactEl
         empenhado" — que é outra pergunta, e tem outra resposta.
       */}
       <p className="mt-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
-        Disponível na ficha <strong>agora</strong>:{" "}
-        <ValorMonetario valor={o.saldoDisponivelHoje} comSimbolo />. É o saldo de hoje, e
-        não o que havia quando este empenho foi emitido — a dotação anda com os créditos
-        adicionais, os outros empenhos e as anulações.
+        Disponível atual na ficha:{" "}
+        <ValorMonetario valor={o.saldoDisponivelHoje} comSimbolo />. O valor considera os créditos
+        adicionais, empenhos e anulações registrados até hoje, e não o saldo da data de emissão.
       </p>
     </Card>
   );
@@ -298,7 +297,7 @@ function Valores({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactE
             <Linha rotulo="Liquidado" valor={d.liquidado} />
             <Linha rotulo="A liquidar" valor={d.saldoALiquidar} />
             <Linha
-              rotulo="Pago (bruto — o que extinguiu a obrigação)"
+              rotulo="Pago (valor bruto)"
               valor={d.pago}
             />
             <Linha rotulo="Retido de terceiros" valor={d.totalRetido} />
@@ -314,10 +313,9 @@ function Valores({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactE
 
       {d.totalRetido === "0.00" ? null : (
         <p className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
-          Este empenho teve <strong>retenção na fonte</strong>. O que se deve ao
-          fornecedor foi extinto pelo <strong>bruto</strong>; o dinheiro retido não saiu do
-          caixa — ele virou <strong>dívida com o consignatário</strong>. Por isso os dois
-          números são diferentes, e os dois estão certos.
+          Este empenho teve <strong>retenção na fonte</strong>. O pagamento quita a obrigação
+          com o fornecedor pelo valor bruto; o valor retido não sai do caixa e passa a ser
+          devido ao <strong>consignatário</strong>.
         </p>
       )}
     </Card>
@@ -362,8 +360,7 @@ function Liquidacoes({
 
       {d.liquidacoes.length === 0 ? (
         <p className="text-xs text-[color:var(--color-ink-3)]">
-          Nenhuma liquidação. O empenho reservou a dotação; a despesa ainda não foi
-          reconhecida como devida.
+          Nenhuma liquidação registrada para este empenho.
         </p>
       ) : (
         <ol className="space-y-3">
@@ -415,8 +412,7 @@ function BlocoLiquidacao({
 
       {l.pagamentos.length === 0 ? (
         <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">
-          Sem pagamento. A obrigação está viva e a liquidação está na fila da ordem
-          cronológica.
+          Sem pagamento. A liquidação aguarda pagamento na ordem cronológica.
         </p>
       ) : (
         <ul className="mt-2 space-y-2">
@@ -458,7 +454,7 @@ function BlocoPagamento({
               {" "}
               · retido <ValorMonetario valor={p.totalRetido} /> ·{" "}
               <strong className="text-[color:var(--color-ink)]">
-                saiu do caixa <ValorMonetario valor={p.saidaDeCaixa} />
+                saída de caixa <ValorMonetario valor={p.saidaDeCaixa} />
               </strong>
             </>
           )}
@@ -503,7 +499,7 @@ function Anulacoes({
       </h2>
       {semOriginal.length === 0 ? (
         <p className="text-xs text-[color:var(--color-ink-3)]">
-          O empenho nunca foi anulado nem reduzido.
+          Nenhuma anulação registrada para este empenho.
         </p>
       ) : (
         <>
@@ -514,9 +510,8 @@ function Anulacoes({
             isso que o "empenhado líquido" é uma CONTA, e não uma coluna.
           */}
           <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
-            Nenhuma linha acima substituiu outra: corrigir aqui é <strong>acrescentar</strong>{" "}
-            um registro. O documento original continua valendo o que valeu, e o saldo é a
-            conta entre eles.
+            Cada anulação é registrada como documento próprio. O documento original é preservado
+            e o saldo considera todos os registros.
           </p>
         </>
       )}
@@ -567,9 +562,8 @@ function Lancamentos({
         aqui a conferência é MOSTRADA, para quem lê poder verificar o que o motor afirmou.
       */}
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        Débitos e créditos fecham <strong>dentro de cada subsistema</strong>, não só no
-        total. Um lançamento pode ter <strong>pernas de valores diferentes</strong> — é o
-        caso do pagamento com retenção.
+        Débitos e créditos são conferidos <strong>por subsistema</strong>. No pagamento com
+        retenção, as partidas podem ter valores diferentes.
       </p>
 
       {d.lancamentos.length === 0 ? (
@@ -756,8 +750,7 @@ function Historico({
         ))}
       </ol>
       <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada linha é um registro real — autor e instante saem do próprio fato, não de uma
-        tabela de auditoria mantida à parte.
+        Cada linha indica o responsável e a data e hora do registro.
       </p>
     </Card>
   );

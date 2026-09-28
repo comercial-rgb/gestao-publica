@@ -60,6 +60,6 @@ export async function declararAction(
       r.anterior === null
         ? `primeira declaração`
         : `versão ${r.versao}, substituindo ${r.anterior}`;
-    return { sucesso: `Disponibilidade declarada — ${qual}. Já utilizado: ${r.utilizado}.` };
+    return { sucesso: `Disponibilidade declarada (${qual}). Valor já utilizado: ${r.utilizado}.` };
   });
 }

@@ -45,10 +45,10 @@ const RÓTULO_DA_SITUACAO: Record<ModuloNaCarta["situacao"], string> = {
  */
 const EFEITO: Record<ModuloNaCarta["situacao"], string> = {
   HABILITADO: "Operação e consulta liberadas.",
-  SUSPENSO: "Operação nova bloqueada; a consulta ao que já foi registrado continua.",
+  SUSPENSO: "Novas operações bloqueadas; a consulta aos registros existentes continua disponível.",
   FORA_DE_VIGENCIA:
-    "A vigência não alcança hoje: operação nova bloqueada; a consulta ao que já foi registrado continua.",
-  NAO_CONTRATADO: "Operação e consulta fechadas — não há fato registrado neste módulo.",
+    "Fora do período de vigência: novas operações bloqueadas; a consulta aos registros existentes continua disponível.",
+  NAO_CONTRATADO: "Operação e consulta indisponíveis.",
 };
 
 export function CartaoDoModulo({
@@ -88,7 +88,7 @@ export function CartaoDoModulo({
         <div>
           <dt className="text-[color:var(--color-ink-3)]">Vigência</dt>
           <dd className="tabular text-[color:var(--color-ink)]">
-            {m.inicio === null ? "—" : `${m.inicio} a ${m.fim ?? "sem termo"}`}
+            {m.inicio === null ? "—" : `${m.inicio} a ${m.fim ?? "prazo indeterminado"}`}
           </dd>
         </div>
         <div className="sm:col-span-2">
@@ -99,15 +99,15 @@ export function CartaoDoModulo({
 
       {travadoPorDependencia ? (
         <p role="note" data-papel="dependencia" className="mb-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-xs text-[color:var(--color-status-alerta-fg)]">
-          Depende de {m.dependenciasFaltantes.join(", ")}, que não está no contrato. O sistema não
-          habilita a dependência sozinho: contrate-a primeiro.
+          Requer {m.dependenciasFaltantes.join(", ")}, que não consta do contrato. Contrate-o
+          antes de habilitar este módulo.
         </p>
       ) : null}
 
       {m.dependentesAtivos.length > 0 ? (
         <p role="note" data-papel="dependentes" className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-          Sustenta {m.dependentesAtivos.join(", ")} — suspender este agora é recusado enquanto eles
-          estiverem vigentes.
+          Necessário para {m.dependentesAtivos.join(", ")}. A suspensão não é permitida enquanto
+          esses módulos estiverem vigentes.
         </p>
       ) : null}
 

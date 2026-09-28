@@ -56,15 +56,15 @@ function rotuloDoModo(m: string): string {
 function BannerHonesto(): React.ReactElement {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
-      <p className="font-semibold text-[color:var(--color-ink)]">SAGRES Captura 2.0 — JSON gerado e validado localmente</p>
+      <p className="font-semibold text-[color:var(--color-ink)]">SAGRES Captura 2.0: arquivos JSON gerados e validados neste sistema</p>
       <ul className="mt-2 space-y-1 text-[color:var(--color-ink-2)]">
         {/* ⚠️ O NÚMERO É CONTADO do arquivo de schemas, não digitado: a tela afirma isto a uma
             Comissão, e uma constante no JSX viraria mentira silenciosa no dia em que o TCE
             publicasse mais uma entidade. Ver `totalDeSchemasOficiais` no M18. */}
-        <li>✓ JSON conforme os <strong>{contarSchemasOficiais()} JSON Schemas oficiais</strong> do TCE (draft 2020-12, versionados no repo com SHA-256 no manifesto).</li>
-        <li>Modo: <Badge status="neutro">Simulação</Badge> — a execução gera apenas um identificador interno de simulação.</li>
-        <li>⚠ <strong>Transmissão externa não realizada.</strong> Homologação e produção respondem <strong>credencial não configurada</strong> até haver credencial — e nunca voltam a simular.</li>
-        <li>○ Nenhum protocolo, recibo ou aceite do TCE: isso só existe com resposta real.</li>
+        <li>Arquivos conformes aos <strong>{contarSchemasOficiais()} esquemas oficiais</strong> publicados pelo TCE.</li>
+        <li>Modo: <Badge status="neutro">Simulação</Badge>. Cada execução gera apenas um identificador interno.</li>
+        <li><strong>Transmissão externa não realizada.</strong> Os ambientes de homologação e produção ficam indisponíveis até a configuração da credencial de acesso.</li>
+        <li>Não há protocolo, recibo ou aceite do TCE, que só são emitidos em uma transmissão real.</li>
       </ul>
     </div>
   );
@@ -79,12 +79,12 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
     preview = await montarPreviewCaptura();
     execucoes = await ultimasExecucoesCaptura(8);
   } catch (e) {
-    erro = e instanceof Error ? e.message : "Falha ao montar a prévia.";
+    erro = e instanceof Error ? e.message : "Não foi possível gerar a prévia.";
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader titulo="SAGRES Captura 2.0 — JSON" subtitulo="A mesma massa do TXT, em JSON, validada contra o contrato oficial e simulada." />
+      <PageHeader titulo="SAGRES Captura 2.0 (JSON)" subtitulo="Os mesmos dados do arquivo TXT, em formato JSON, validados conforme o padrão oficial do TCE." />
       <BannerHonesto />
 
       {erro !== null && (
@@ -119,9 +119,9 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
             <strong>{p.rotulo}</strong>
             <span className="text-[color:var(--color-ink-2)]">{p.registros} registro(s)</span>
             {p.violacoes.length === 0 ? (
-              <Badge status="ok">contrato oficial · válido</Badge>
+              <Badge status="ok">válido</Badge>
             ) : (
-              <Badge status="erro">{p.violacoes.length} violação(ões)</Badge>
+              <Badge status="erro">{p.violacoes.length} erro(s) de validação</Badge>
             )}
             <form action={acaoSimular} className="ml-auto">
               <ChaveDeComando />
@@ -141,7 +141,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
           )}
           {p.registros > 0 && (
             <details>
-              <summary className="cursor-pointer text-sm text-[color:var(--color-ink-2)]">ver JSON gerado</summary>
+              <summary className="cursor-pointer text-sm text-[color:var(--color-ink-2)]">Ver JSON gerado</summary>
               <div className="mt-2 overflow-x-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)]">
                 <pre className="whitespace-pre px-3 py-2 font-mono text-xs leading-5 text-[color:var(--color-ink)]">{p.json}</pre>
               </div>

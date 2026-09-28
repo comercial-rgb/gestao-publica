@@ -23,7 +23,7 @@ export async function registrarGuiaAction(_prev: EstadoDoMolde, formData: FormDa
     const c = camposDe(formData);
     const folhaId = c["__id"] ?? "";
     const arquivo = formData.get("arquivo");
-    if (!(arquivo instanceof File) || arquivo.size === 0) return { erro: "Anexe o arquivo da guia emitida pelo arrecadador. Sem ele, não há guia a registrar." };
+    if (!(arquivo instanceof File) || arquivo.size === 0) return { erro: "Anexe o arquivo da guia emitida pelo órgão arrecadador." };
     const componentes = linhasDoFormulario(formData, "componentes", ["rotulo", "valor"]).map((l) => ({ rotulo: l["rotulo"] ?? "", valor: l["valor"] ?? "" }));
     try {
       await registrarGuiaNaTela(folhaId, c, componentes, arquivo);
@@ -31,7 +31,7 @@ export async function registrarGuiaAction(_prev: EstadoDoMolde, formData: FormDa
       return { erro: mensagemDoErro(e, "Não foi possível registrar a guia. Nada foi gravado.") };
     }
     revalidatePath(`/folha/folhas/${folhaId}`);
-    return { sucesso: `Guia ${c["identificador"] ?? ""} registrada com o arquivo do emissor. Registrar a guia NÃO pagou nada: a baixa exige um pagamento que já aconteceu.` };
+    return { sucesso: `Guia ${c["identificador"] ?? ""} registrada com o arquivo do emissor. O registro não efetua pagamento: a baixa da guia exige um pagamento já realizado.` };
   });
 }
 

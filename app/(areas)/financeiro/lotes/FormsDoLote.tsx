@@ -16,6 +16,7 @@ import {
   type EstadoLote,
 } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 export interface ContaParaLote {
   readonly id: string;
@@ -144,7 +145,7 @@ export function FormIncluir({
           </option>
           {ordens.map((o) => (
             <option key={o.id} value={o.id}>
-              {o.numero} — {o.credor} · {o.valor}
+              {o.numero} — {o.credor} · R$ {formatarMoeda(o.valor).texto}
             </option>
           ))}
         </select>
@@ -252,7 +253,7 @@ export function FormRetorno({
             <label className="flex items-center gap-2">
               <input type="checkbox" name="itens" value={i.id} />
               <span>
-                {i.descricao} · {i.valor}
+                {i.descricao} · R$ {formatarMoeda(i.valor).texto}
               </span>
             </label>
             <input

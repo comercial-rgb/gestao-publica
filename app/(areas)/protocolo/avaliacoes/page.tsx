@@ -15,7 +15,7 @@ import { FormMetodologia, FormRemoverAvaliacao } from "./FormulariosDaAvaliacao"
 export const dynamic = "force-dynamic";
 
 const TITULO = "Avaliação dos serviços";
-const DESCRICAO = "A escala e o método publicados com o resultado de cada serviço, em versões; e a moderação por abuso ou dado pessoal, com motivo.";
+const DESCRICAO = "Escala e método de avaliação dos serviços, com versões, e moderação das avaliações recebidas.";
 
 export default async function Pagina(): Promise<React.ReactElement> {
   await telaExigeLeituraEmAlgumEscopo("CONSULTAR_PROTOCOLO");
@@ -27,7 +27,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Metodologia</h2>
           {metodologias.length === 0 ? (
-            <p className="text-sm text-[color:var(--color-ink-2)]" data-metodologia="nenhuma">Nenhuma versão gravada: a avaliação está fechada ao público e aos requerentes.</p>
+            <p className="text-sm text-[color:var(--color-ink-2)]" data-metodologia="nenhuma">Nenhuma versão gravada. A avaliação dos serviços permanece indisponível ao público até a primeira publicação.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm" data-metodologias>
@@ -52,7 +52,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Moderação</h2>
           {avaliacoes === null ? (
-            <p className="text-sm text-[color:var(--color-ink-2)]" data-moderacao="sem-permissao">Seu perfil não tem a moderação das avaliações: as descrições são privadas e não aparecem aqui.</p>
+            <p className="text-sm text-[color:var(--color-ink-2)]" data-moderacao="sem-permissao">Seu perfil não permite moderar avaliações. As descrições enviadas pelos avaliadores são reservadas.</p>
           ) : avaliacoes.length === 0 ? (
             <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma avaliação recebida.</p>
           ) : (
@@ -78,7 +78,7 @@ export default async function Pagina(): Promise<React.ReactElement> {
       return (
         <div className="space-y-6">
           <PageHeader titulo={TITULO} subtitulo={DESCRICAO} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê a metodologia e as avaliações." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar a base de dados deste ambiente." />
         </div>
       );
     }

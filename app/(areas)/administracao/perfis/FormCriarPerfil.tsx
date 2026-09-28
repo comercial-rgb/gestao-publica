@@ -33,11 +33,11 @@ export function FormCriarPerfil(): React.ReactElement {
           <input name="nome" required maxLength={60} placeholder="TESOURARIA" className={CAMPO} />
         </label>
         <label className="text-xs">
-          <span className={ROTULO}>Descrição — o que este perfil faz</span>
+          <span className={ROTULO}>Descrição das atribuições</span>
           <input
             name="descricao"
             required
-            placeholder="Quem opera a conciliação e os pagamentos"
+            placeholder="Responsável pela conciliação bancária e pelos pagamentos"
             className={CAMPO}
           />
         </label>

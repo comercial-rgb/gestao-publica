@@ -64,12 +64,12 @@ export default function SuportePage(): React.ReactElement {
       <PageHeader titulo={area.rotulo} subtitulo={area.descricao} />
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Esta tela publica os <strong>canais e os prazos contratados</strong>. Para abrir e
-        acompanhar um chamado <strong>dentro do sistema</strong>, use{" "}
+        Esta página apresenta os <strong>canais de atendimento e os prazos contratados</strong>. Para abrir e
+        acompanhar um chamado no sistema, acesse{" "}
         <a href="/suporte/chamados" className="text-[color:var(--color-primary)] hover:underline">
           Chamados
         </a>
-        . Os canais externos abaixo continuam valendo para o primeiro contato e para a triagem.
+        . Os canais abaixo também atendem o primeiro contato e a triagem.
       </div>
 
       <section>
@@ -79,7 +79,7 @@ export default function SuportePage(): React.ReactElement {
             href="/suporte/chamados"
             rotulo="Chamados"
             titulo="Abrir e acompanhar chamado"
-            descricao="Número único no produto inteiro, severidade cadastrada pela entidade, histórico e pesquisa de satisfação."
+            descricao="Registro com número único, classificação por severidade, histórico e pesquisa de satisfação."
           />
         </div>
       </section>
@@ -124,9 +124,9 @@ export default function SuportePage(): React.ReactElement {
           </table>
         </Card>
         <p className="mt-3 text-xs leading-relaxed text-[color:var(--color-ink-3)]">
-          Os prazos correm em dias úteis a partir da abertura do chamado no canal apropriado. Pedidos
-          de <strong>ajuste de dados</strong> alteram registro já lançado e por isso ficam na trilha de
-          auditoria, com o solicitante e o executor nomeados — consultável em{" "}
+          Os prazos são contados em dias úteis a partir da abertura do chamado no canal apropriado. Pedidos
+          de <strong>ajuste de dados</strong> alteram registros já lançados e ficam registrados na auditoria,
+          com a identificação do solicitante e do executor, disponível em{" "}
           <a href="/administracao/auditoria" className="text-[color:var(--color-primary)] hover:underline">Administração · Auditoria</a>.
         </p>
       </section>

@@ -27,7 +27,7 @@ import {
  */
 
 const ROTULO_DA_SITUACAO: Readonly<Record<string, string>> = {
-  MARCADA: "Marcada — compareça no horário",
+  MARCADA: "Marcada: compareça no horário agendado",
   CONFIRMADA: "Presença confirmada no atendimento",
   ATENDIDA: "Atendimento realizado",
   CANCELADA: "Cancelada",
@@ -86,8 +86,8 @@ export function Acompanhamento(): React.ReactElement {
         ) : null}
         {consulta.naoEncontrada === true ? (
           <p role="status" data-resultado-da-acao="consultar-marcacao" data-resultado-seq={String(seqConsulta)} className="mt-3 text-sm text-[color:var(--color-ink-2)]">
-            Não encontramos nenhuma marcação com este código. Confira se digitou exatamente como
-            recebeu — inclusive os hifens.
+            Não encontramos nenhuma marcação com este código. Verifique se ele foi digitado exatamente
+            como recebido, inclusive os hifens.
           </p>
         ) : null}
       </form>
@@ -140,8 +140,8 @@ export function Acompanhamento(): React.ReactElement {
                 {remarcando ? "Remarcando…" : "Remarcar"}
               </button>
               <span className="w-full text-xs text-[color:var(--color-ink-3)]">
-                No mesmo local e guichê. Se o horário escolhido estiver cheio, a sua marcação
-                continua como está — você não perde o que tem.
+                A remarcação é feita no mesmo local. Se o horário escolhido não estiver disponível,
+                a marcação atual é mantida.
               </span>
             </form>
 
@@ -155,7 +155,7 @@ export function Acompanhamento(): React.ReactElement {
                 <input name="segredo" required maxLength={40} placeholder="XXXXX-XXXXX-XXXXX-XXXXX" className={`${CAMPO} font-mono`} />
               </label>
               <label className="text-xs">
-                <span className={ROTULO}>Por que está cancelando?</span>
+                <span className={ROTULO}>Motivo do cancelamento</span>
                 <input name="motivo" required maxLength={240} className={CAMPO} />
               </label>
               <button type="submit" disabled={cancelando} className={CLASSE_BOTAO_PRIMARIO}>

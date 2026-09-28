@@ -174,9 +174,8 @@ export default async function ProcessoPage({
             Roteiro
           </h2>
           <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-            Copiado do assunto no instante da abertura. Reconfigurar o assunto depois não
-            mexe neste processo — se mexesse, um processo em dia ficaria atrasado
-            retroativamente, sem que nada tivesse acontecido com ele.
+            Etapas definidas no assunto na data de abertura. Alterações posteriores no
+            assunto não afetam este processo.
           </p>
           <ol className="text-sm">
             {dossie.etapas.map((e) => (
@@ -253,9 +252,8 @@ export default async function ProcessoPage({
             é sempre a DO PROCESSO, resolvida no servidor a cada leitura — não uma cópia
             gravada no anexo no dia em que ele foi enviado. */}
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-          Os documentos acompanham o processo por toda a tramitação. Quem pode ver o
-          processo pode baixá-los; quem não pode recebe a mesma resposta de um processo
-          que não existe, mesmo com o endereço do arquivo em mãos.
+          Os documentos acompanham o processo durante toda a tramitação e podem ser
+          baixados por quem tem acesso ao processo.
         </p>
         <ListaDeAnexos
           anexos={anexos}
@@ -279,8 +277,8 @@ export default async function ProcessoPage({
           Linha do tempo
         </h2>
         <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-          Todos os movimentos, inclusive os tornados sem efeito — que aparecem riscados,
-          com quem os desfez. Escondê-los faria a anulação virar um DELETE com outro nome.
+          Todos os movimentos do processo. Os tornados sem efeito aparecem riscados, com a
+          identificação do responsável pela anulação.
         </p>
         <ol className="text-sm">
           <li className="border-b border-[color:var(--color-border)] py-3">

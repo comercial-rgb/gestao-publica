@@ -153,7 +153,7 @@ export function FormsDaOrganizacao({
       <Painel
         acao="abrir-unidade-de-atendimento"
         titulo="Abrir uma unidade de atendimento"
-        explicacao="O lugar físico onde se atende. Os guichês moram dentro dela, e é o endereço dela que a pessoa vai procurar."
+        explicacao="Local físico de atendimento ao público, onde ficam os guichês."
         rotuloDoBotao="Abrir unidade"
         action={aUnidade}
         estado={eUnidade}
@@ -187,7 +187,7 @@ export function FormsDaOrganizacao({
       <Painel
         acao="abrir-guiche"
         titulo="Criar um guichê"
-        explicacao="O posto de atendimento dentro da unidade. Ele nasce sem atender serviço nenhum e sem horário publicado."
+        explicacao="Posto de atendimento da unidade. É criado sem serviços vinculados e sem horários publicados."
         rotuloDoBotao="Criar guichê"
         action={aGuiche}
         estado={eGuiche}
@@ -212,8 +212,8 @@ export function FormsDaOrganizacao({
 
       <Painel
         acao="definir-servico-do-guiche"
-        titulo="Dizer o que um guichê atende"
-        explicacao="Só se marca atendimento para um serviço que o guichê atende — marcar noutro mandaria a pessoa para uma fila que não resolve o problema dela."
+        titulo="Definir os serviços do guichê"
+        explicacao="O agendamento só é permitido para os serviços habilitados no guichê."
         rotuloDoBotao="Gravar"
         action={aServico}
         estado={eServico}
@@ -241,18 +241,18 @@ export function FormsDaOrganizacao({
           <label className="text-xs">
             <span className={ROTULO}>Passa a atender?</span>
             <select name="habilitado" required defaultValue="sim" className={CAMPO}>
-              <option value="sim">Sim — habilitar</option>
-              <option value="nao">Não — desabilitar</option>
+              <option value="sim">Sim, habilitar</option>
+              <option value="nao">Não, desabilitar</option>
             </select>
           </label>
           <label className="text-xs">
-            <span className={ROTULO}>O cidadão marca pela internet?</span>
+            <span className={ROTULO}>Agendamento pela internet</span>
             {/* ⚠️ "Não" É O PADRÃO, e o padrão é a decisão: um serviço só vai ao portal quando
                 alguém disser que vai. Há atendimento que exige triagem antes, e oferecê-lo na
                 internet mandaria a pessoa ao balcão para ouvir que não era ali. */}
             <select name="agendamentoPublico" required defaultValue="nao" className={CAMPO}>
-              <option value="nao">Não — só pelo balcão</option>
-              <option value="sim">Sim — abrir ao portal do cidadão</option>
+              <option value="nao">Não, somente presencial</option>
+              <option value="sim">Sim, disponível no portal do cidadão</option>
             </select>
           </label>
           <label className="text-xs">
@@ -265,7 +265,7 @@ export function FormsDaOrganizacao({
       <Painel
         acao="publicar-oferta-de-horarios"
         titulo="Publicar a oferta de horários"
-        explicacao="De que hora a que hora, de quantos em quantos minutos e quantas pessoas cabem em cada horário. Enquanto não houver oferta publicada, o guichê não oferece horário nenhum — não existe expediente padrão."
+        explicacao="Informe o horário de funcionamento, a duração de cada atendimento e a capacidade por horário. Sem oferta publicada, o guichê não disponibiliza horários."
         rotuloDoBotao="Publicar oferta"
         action={aOferta}
         estado={eOferta}
@@ -319,8 +319,8 @@ export function FormsDaOrganizacao({
 
       <Painel
         acao="fechar-dia-de-atendimento"
-        titulo="Declarar exceção no calendário de um dia"
-        explicacao="Feriado, ponto facultativo, véspera que abre só de manhã — ou a volta atrás de uma decisão dessas. Vale para a unidade inteira. Fechar ou encolher é recusado se já houver gente marcada no horário que deixaria de existir; cancele ou remarque antes, cada uma com o seu motivo. Cada decisão é um fato novo: as anteriores continuam no histórico."
+        titulo="Registrar exceção no calendário"
+        explicacao="Feriados, pontos facultativos e expedientes especiais, ou o retorno ao expediente normal, para toda a unidade. Havendo atendimentos marcados nos horários suprimidos, cancele-os ou remarque-os antes. As decisões anteriores permanecem no histórico."
         rotuloDoBotao="Declarar"
         action={aFeriado}
         estado={eFeriado}
@@ -343,9 +343,9 @@ export function FormsDaOrganizacao({
           {/* ⚠️ SEM DEFAULT (V11 V8.12): fechar, encolher e devolver ao normal são três atos
               diferentes sobre o mesmo dia, e um default escolheria um deles por quem declara. */}
           <label className="text-xs">
-            <span className={ROTULO}>O que acontece nesse dia</span>
+            <span className={ROTULO}>Situação do dia</span>
             <select name="tipo" required defaultValue="" className={CAMPO} onChange={(e) => setTipoDaExcecao(e.target.value)}>
-              <option value="">Escolha…</option>
+              <option value="">Selecione…</option>
               <option value="FECHADO">Não abre</option>
               <option value="EXPEDIENTE_ESPECIAL">Abre em horário especial</option>
               <option value="EXPEDIENTE_NORMAL">Volta ao expediente normal</option>
@@ -366,9 +366,8 @@ export function FormsDaOrganizacao({
                 <input name="horaFim" type="time" required className={CAMPO} />
               </label>
               <p className="text-xs text-[color:var(--color-ink-3)] sm:col-span-4">
-                O horário especial <strong>recorta</strong> a oferta já publicada — ele não cria
-                horários novos. O fim é <strong>exclusivo</strong>: 08:00 às 12:00 oferece o 11:30 e
-                não o 12:00, como nas janelas.
+                O horário especial restringe a oferta já publicada e não cria novos horários. O
+                horário de término não é incluído: das 08:00 às 12:00, com atendimentos de 30 minutos, o último horário é 11:30.
               </p>
             </>
           ) : null}

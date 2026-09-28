@@ -21,18 +21,18 @@ export default async function DiarioPage({
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
 
   const cabecalho = (
-    <PageHeader titulo="Livro Diário" subtitulo="Todos os lançamentos, em ordem cronológica estável (data do fato)" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} />} />
+    <PageHeader titulo="Livro Diário" subtitulo="Lançamentos contábeis do período, em ordem cronológica" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} />} />
   );
 
   let lancamentos: readonly LancamentoDoDiario[];
   try {
     lancamentos = await gerarDiario({ desde, ate });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Diário"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Diário"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   if (lancamentos.length === 0) {
-    return <div>{cabecalho}<EstadoVazio titulo="Sem lançamentos no período" descricao="Não há lançamento contábil na janela selecionada." /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo="Sem lançamentos no período" descricao="Não há lançamento contábil no período selecionado." /></div>;
   }
 
   const linhas = lancamentos.map((l) => ({
@@ -48,7 +48,7 @@ export default async function DiarioPage({
         colunas={COLUNAS}
         linhas={linhas}
         keyDe={(l) => l.id}
-        legenda={`${lancamentos.length} lançamento(s) · valores em R$ · ordem (data, registro, id).`}
+        legenda={`${lancamentos.length} lançamento(s) · valores em R$ · ordenados por data e número de controle.`}
       />
     </div>
   );

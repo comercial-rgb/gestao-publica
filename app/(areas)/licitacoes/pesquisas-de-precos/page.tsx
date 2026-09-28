@@ -32,7 +32,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, PESQUISAS_DE_PRECOS.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormPesquisaDePrecos materiais={materiais} fornecedores={fornecedoresLidos} /> } : { motivoSemCriar: "Você não tem a permissão REGISTRAR_PESQUISA_DE_PRECOS. Peça ao administrador — a concessão é por ação, e é registrada." })}
+        {...(podeCriar ? { formulario: <FormPesquisaDePrecos materiais={materiais} fornecedores={fornecedoresLidos} /> } : { motivoSemCriar: "Seu perfil não tem permissão para registrar pesquisas de preços. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {
@@ -40,7 +40,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
       return (
         <div className="space-y-6">
           <PageHeader titulo={PESQUISAS_DE_PRECOS.rotulo} subtitulo={PESQUISAS_DE_PRECOS.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava compras. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Serviço indisponível" descricao="Não foi possível carregar os dados. Tente novamente em instantes." />
         </div>
       );
     }

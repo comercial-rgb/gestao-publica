@@ -42,6 +42,6 @@ export async function acaoDeBensPatrimoniaisAction(
 
     revalidatePath(BENS_PATRIMONIAIS.rota);
     if (id !== "") revalidatePath(`${BENS_PATRIMONIAIS.rota}/${id}`);
-    return { sucesso: acao === "criar" ? "Bem cadastrado no acervo." : "Movimento registrado." };
+    return { sucesso: acao === "criar" ? "Bem cadastrado." : "Movimento registrado." };
   });
 }

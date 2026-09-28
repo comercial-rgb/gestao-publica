@@ -25,14 +25,14 @@ export async function estornarAction(_prev: EstadoDoEstorno, formData: FormData)
       if (typeof v === "string") campos[k] = v;
     }
     const eixo = campos["eixo"] ?? "";
-    if (!ehEixo(eixo)) return { erro: `Eixo "${eixo}" não existe. Nada foi gravado.` };
+    if (!ehEixo(eixo)) return { erro: `Tipo de movimento "${eixo}" não reconhecido. Nada foi gravado.` };
     try {
       const r = await estornarPorAnalise(eixo, campos);
       return {
         sucesso:
           r.movimentos === 1
-            ? "Estorno registrado: o movimento foi anulado por lançamento novo; o original continua no histórico."
-            : `Estorno registrado: ${r.movimentos} movimentos da operação foram anulados juntos; os originais continuam no histórico.`,
+            ? "Estorno registrado. O movimento foi anulado por novo lançamento, e o original permanece no histórico."
+            : `Estorno registrado. ${r.movimentos} movimentos da operação foram anulados em conjunto, e os originais permanecem no histórico.`,
       };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Falha ao estornar. Nada foi gravado." };

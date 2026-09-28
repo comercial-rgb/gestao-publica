@@ -98,11 +98,11 @@ export function FiltroDeLancamentos({
           `origemId` — o id interno do empenho, da liquidação, do pagamento. É ele que traz
           o lançamento E o estorno dele na mesma consulta, que é a pergunta de quem confere.
         */}
-        <span className="uppercase tracking-wide">Fato (id)</span>
+        <span className="uppercase tracking-wide">Documento de origem</span>
         <input
           type="text"
-          aria-label="Identificador do fato de origem"
-          placeholder="id do empenho, da liquidação…"
+          aria-label="Identificador do documento de origem"
+          placeholder="Identificador do empenho, da liquidação…"
           className={`${CLASSE} w-52`}
           value={f}
           onChange={(e) => setF(e.target.value)}
@@ -123,16 +123,16 @@ export function FiltroDeLancamentos({
         <span className="uppercase tracking-wide">Subsistema</span>
         {/* ⚠️ Aqui SIM existe a natureza da informação do MSC: ela é atributo da PARTIDA. */}
         <select aria-label="Subsistema" className={`${CLASSE} w-40`} value={s} onChange={(e) => setS(e.target.value)}>
-          <option value="">todos</option>
-          <option value="ORCAMENTARIO">orçamentário</option>
-          <option value="PATRIMONIAL">patrimonial</option>
-          <option value="CONTROLE">controle</option>
+          <option value="">Todos</option>
+          <option value="ORCAMENTARIO">Orçamentário</option>
+          <option value="PATRIMONIAL">Patrimonial</option>
+          <option value="CONTROLE">Controle</option>
         </select>
       </label>
       <label className="flex flex-col gap-0.5 text-xs text-[color:var(--color-ink-2)]">
         <span className="uppercase tracking-wide">Origem</span>
         <select aria-label="Tipo de origem" className={`${CLASSE} w-52`} value={o} onChange={(e) => setO(e.target.value)}>
-          <option value="">todas</option>
+          <option value="">Todas</option>
           {/* A origem selecionada entra na lista mesmo se sumiu do período — senão o `select`
               perderia o valor que está de fato filtrando e mostraria "todas" mentindo. */}
           {[...new Set([...origensDisponiveis, ...(origem !== "" ? [origem] : [])])].sort().map((t) => (

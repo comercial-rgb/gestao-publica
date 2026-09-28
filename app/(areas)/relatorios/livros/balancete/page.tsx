@@ -28,7 +28,7 @@ export default async function BalancetePage({
   try {
     dados = await gerarBalancete({ desde, ate, modo: "ANALITICO" });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível gerar o Balancete"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Balancete"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
   }
 
   if (dados.linhas.length === 0) {
@@ -46,7 +46,7 @@ export default async function BalancetePage({
     <div className="space-y-4">
       {cabecalho}
       <div>
-        <Badge status={dados.fecha ? "ok" : "erro"}>{dados.fecha ? "Balancete fecha (ΣD = ΣC)" : "Balancete NÃO fecha"}</Badge>
+        <Badge status={dados.fecha ? "ok" : "erro"}>{dados.fecha ? "Débitos e créditos conferem" : "Débitos e créditos não conferem"}</Badge>
       </div>
       <TabelaDeDados
         colunas={COLUNAS}
@@ -54,7 +54,7 @@ export default async function BalancetePage({
         linhas={[...dados.linhas, totalRow]}
         keyDe={(l) => l.conta}
         ehTotal={(l) => l.conta === "TOTAL"}
-        legenda="Valores em R$ · saldo anterior (corte exclusivo) · movimento do período · saldo final."
+        legenda="Valores em R$ · saldo anterior ao período · movimento do período · saldo final."
       />
     </div>
   );

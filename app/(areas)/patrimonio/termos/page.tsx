@@ -56,7 +56,7 @@ export default async function TermosPage({
       return (
         <div className="space-y-6">
           <PageHeader titulo={TERMOS_PATRIMONIAIS.rotulo} subtitulo={TERMOS_PATRIMONIAIS.descricao} />
-          <EstadoVazio titulo="Banco de dados indisponível" descricao="Esta tela lê e grava termos. Sem banco, não tem o que mostrar — e não vai fingir que tem." />
+          <EstadoVazio titulo="Dados indisponíveis" descricao="Não foi possível acessar os termos no momento. Tente novamente em instantes." />
         </div>
       );
     }

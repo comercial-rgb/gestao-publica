@@ -108,12 +108,12 @@ export function FormTitular({
       <ChaveDeComando />
       <input type="hidden" name="contaBancariaId" value={contaBancariaId} />
       <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
-        O ato pode ser o que <strong>criou a entidade</strong> (nele aparece o nome ou o CNPJ dela)
-        ou o que <strong>abriu esta conta</strong>
+        Informe o ato de <strong>criação da entidade</strong> (com o nome ou o CNPJ) ou o ato de{" "}
+        <strong>abertura desta conta</strong>
         {identificacaoBancaria === null
-          ? " — mas esta conta ainda não tem banco, agência e conta cadastrados, então o ato precisa nomear a entidade"
-          : ` (nele aparece ${identificacaoBancaria})`}
-        . O sistema confere que o trecho citado fala de um dos dois.
+          ? "; como a conta ainda não tem banco, agência e número cadastrados, o ato deve citar a entidade"
+          : ` (com a identificação ${identificacaoBancaria})`}
+        . O trecho citado deve mencionar a entidade ou a conta.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs sm:col-span-2">

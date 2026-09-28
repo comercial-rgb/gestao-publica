@@ -15,7 +15,7 @@ export default function AcompanharPage(): React.ReactElement {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Acompanhar atendimento marcado</h1>
       <p className="text-sm text-[color:var(--color-ink-2)]">
-        Consulte, confira o horário e cancele, se precisar.{" "}
+        Consulte, remarque ou cancele o seu atendimento.{" "}
         <Link href="/agendamento" className="underline">
           Marcar um novo atendimento
         </Link>

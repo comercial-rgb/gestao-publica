@@ -48,7 +48,7 @@ export default async function VariacoesPatrimoniaisPage({
         <EstadoVazio
           titulo={
             erro instanceof PortaSemBancoError
-              ? "Banco de dados não configurado"
+              ? "Serviço indisponível"
               : "Não foi possível emitir a demonstração"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}

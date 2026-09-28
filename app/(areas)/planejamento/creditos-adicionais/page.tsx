@@ -76,10 +76,10 @@ export default async function CreditosAdicionaisPage({
             erro instanceof EscopoDeLeituraError
               ? "Esta unidade não está no seu acesso"
               : erro instanceof ExercicioIlegivelError
-                ? "O exercício pedido não é um ano"
+                ? "Exercício inválido"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
-                  : "Não foi possível ler os créditos adicionais"
+                  ? "Serviço indisponível"
+                  : "Não foi possível carregar os créditos adicionais"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
         />
@@ -89,7 +89,7 @@ export default async function CreditosAdicionaisPage({
 
   // ⚠️ AQUI: o exercício já foi autorizado, e só agora o cabeçalho pode afirmá-lo.
   const exercicio = recorte.exercicio;
-  const cabecalho = <PageHeader titulo="Créditos adicionais" subtitulo={`Exercício ${exercicio} — decretos, suplementações e anulações`} />;
+  const cabecalho = <PageHeader titulo="Créditos adicionais" subtitulo={`Exercício ${exercicio}: leis autorizativas, decretos, suplementações e anulações.`} />;
 
   return (
     <div className="space-y-4">
@@ -97,11 +97,10 @@ export default async function CreditosAdicionaisPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada decreto executa (parte do) teto de uma <strong>lei</strong>. Num decreto por{" "}
-        <strong>anulação</strong>, o suplementado fecha com o anulado <strong>por fonte</strong>.
-        A <strong>dotação atualizada</strong> de cada ficha soma automaticamente estes créditos — é o
-        mesmo saldo que a emissão de empenho respeita. "Encerrado" é o <strong>fato</strong> de alguém ter
-        encerrado (append-only), não um campo editável.
+        Cada decreto utiliza parte do valor autorizado em <strong>lei</strong>; nos decretos por{" "}
+        <strong>anulação</strong>, o valor suplementado deve ser igual ao anulado em cada fonte. Os créditos
+        são somados automaticamente à <strong>dotação atualizada</strong> das fichas, que limita a emissão de
+        empenhos.
       </div>
 
       <FormLeiCredito exercicio={exercicio} />
@@ -175,16 +174,13 @@ export default async function CreditosAdicionaisPage({
       )}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        O cadastro de <strong>lei</strong>, de <strong>decreto</strong> e dos{" "}
-        <strong>movimentos</strong> é feito aqui, pelas portas de escrita do domínio — as travas
-        (teto da lei, saldo da ficha, fonte, fechamento por fonte) são aplicadas na gravação, dentro
-        da transação. Um decreto por <strong>recurso novo</strong> (superávit financeiro, excesso de
-        arrecadação, operação de crédito) é conferido contra a disponibilidade apurada da fonte, que
-        se declara em{" "}
+        Na gravação são verificados o valor autorizado pela lei, o saldo da ficha e o equilíbrio por
+        fonte. O decreto por <strong>recurso novo</strong> (superávit financeiro, excesso de arrecadação
+        ou operação de crédito) exige a disponibilidade da fonte declarada em{" "}
         <a href="/planejamento/recursos-novos" className="underline">
           Disponibilidade de Recurso Novo
         </a>
-        ; sem ela o decreto é recusado nomeando a fonte.
+        ; sem ela, o decreto é recusado.
       </p>
     </div>
   );

@@ -34,8 +34,8 @@ export async function recolherAction(
     if (ingressos.length !== valores.length) {
       return {
         erro:
-          "A composição chegou incompleta ao servidor e nada foi gravado. Recarregue a página e " +
-          "informe as parcelas de novo.",
+          "As parcelas foram recebidas incompletas e nada foi gravado. Recarregue a página e " +
+          "informe as parcelas novamente.",
       };
     }
     if (t(f, "tipo") === "") return { erro: "Escolha a consignação." };
@@ -50,8 +50,8 @@ export async function recolherAction(
     if (parcelas.length === 0) {
       return {
         erro:
-          "Informe o valor de ao menos uma retenção. Um recolhimento sem composição não pode ser " +
-          "conciliado por origem. Nada foi gravado.",
+          "Informe o valor de ao menos uma retenção. O recolhimento precisa indicar as retenções " +
+          "de origem. Nada foi gravado.",
       };
     }
 

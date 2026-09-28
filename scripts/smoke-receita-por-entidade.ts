@@ -175,7 +175,7 @@ async function main(): Promise<void> {
     const corpoInicial = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " "));
     conferir(
       "1.3 a linha do não atribuído DIZ o que ela é, em vez de um rótulo vazio",
-      /Não atribuído — o ente ainda não disse de quem é/.test(corpoInicial),
+      /Não atribuído \(entidade titular não informada\)/.test(corpoInicial),
       corpoInicial.slice(0, 200)
     );
     conferir(

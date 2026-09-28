@@ -28,7 +28,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const diaParam = req.nextUrl.searchParams.get("dia");
   const dia = diaParam !== null && diaParam !== "" ? inicioDoDiaCivil(diaParam) : POC_SAGRES.dia;
   if (Number.isNaN(dia.getTime())) {
-    return NextResponse.json({ erro: "parâmetro 'dia' inválido (aaaa-mm-dd)." }, { status: 400 });
+    return NextResponse.json({ erro: "Data inválida (formato esperado: aaaa-mm-dd)." }, { status: 400 });
   }
 
   // ⚠️ O MÊS É PARÂMETRO PRÓPRIO — o pacote MENSAL (Dotacao §4.4 e SaldoMensal §4.26) tem
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const mesParam = req.nextUrl.searchParams.get("mes");
   const mes = mesParam !== null && mesParam !== "" ? janelaCivilDoMes(mesParam).inicio : undefined;
   if (mes !== undefined && Number.isNaN(mes.getTime())) {
-    return NextResponse.json({ erro: "parâmetro 'mes' inválido (aaaa-mm)." }, { status: 400 });
+    return NextResponse.json({ erro: "Mês inválido (formato esperado: aaaa-mm)." }, { status: 400 });
   }
 
   try {
@@ -54,6 +54,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (e) {
-    return NextResponse.json({ erro: e instanceof Error ? e.message : "Falha ao gerar o pacote." }, { status: 500 });
+    return NextResponse.json({ erro: e instanceof Error ? e.message : "Não foi possível gerar o pacote." }, { status: 500 });
   }
 }

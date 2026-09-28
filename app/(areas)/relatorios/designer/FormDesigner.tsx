@@ -106,7 +106,7 @@ export function FormNovoModelo({
           required
           largura={1}
           placeholder="processos_por_assunto"
-          ajuda="Identificador estável ao longo das versões."
+          ajuda="Identificador do modelo, mantido entre as versões."
         />
         <CampoTexto name="nome" rotulo="Nome" required largura={3} />
         <CampoSelect
@@ -126,7 +126,7 @@ export function FormNovoModelo({
             { valor: "COMUNICADOS", rotulo: "Comunicados internos" },
           ]}
           aoMudar={setFonte}
-          ajuda="Rol fechado: cada fonte é uma consulta revisável, nunca SQL do usuário."
+          ajuda="Conjunto de dados sobre o qual o relatório é montado."
         />
         <CampoSelect
           name="visibilidade"
@@ -152,8 +152,8 @@ export function FormNovoModelo({
         <p className="mt-1">{funcoes.map((f) => f.ajuda).join(" · ")}</p>
         <p className="mt-2">
           Operadores: <code>+ - * /</code> · comparações <code>= &lt;&gt; &lt; &lt;= &gt; &gt;=</code> ·
-          concatenação <code>&amp;</code>. A aritmética é decimal, e a divisão por zero é
-          erro nomeado — nunca &quot;Infinity&quot; numa célula.
+          concatenação <code>&amp;</code>. Os cálculos usam aritmética decimal; divisão por zero
+          é recusada com mensagem de erro.
         </p>
       </div>
 
@@ -240,11 +240,11 @@ export function FormExecutar({
       />
       <CampoSelect
         name="unidadeOrcId"
-        rotulo="Sobre os dados da unidade"
+        rotulo="Unidade gestora dos dados"
         required
         largura={2}
         opcoes={unidades.map((u) => ({ valor: u.id, rotulo: u.rotulo }))}
-        ajuda="Um modelo distribuído roda sobre os dados de quem o executa."
+        ajuda="O relatório é gerado com os dados da unidade selecionada."
       />
       <CampoTextarea
         name="filtros"
@@ -252,11 +252,11 @@ export function FormExecutar({
         largura={4}
         linhas={3}
         placeholder={"assunto=Alvará\nsituacao=Encerrado"}
-        ajuda="Comparados em memória sobre a fonte já lida — nunca viram SQL."
+        ajuda="Opcional. São listados apenas os registros que atendem a todos os filtros."
       />
       <div className="md:col-span-4">
         <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendente}>
-          {pendente ? "Enfileirando…" : "Executar em segundo plano"}
+          {pendente ? "Enviando…" : "Executar em segundo plano"}
         </button>
         <ResultadoDesigner estado={estado} />
       </div>

@@ -25,7 +25,7 @@ export default async function ContratosPublicosPage(): Promise<React.ReactElemen
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Contratos</h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">{id.ente?.nomeDeExibicao ?? "Ente não configurado"} · acesso público, sem cadastro.</p>
       </header>
-      {semBanco ? <p role="alert" className="text-sm">A consulta está indisponível agora (banco de dados fora do ar).</p> : contratos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum contrato cadastrado.</p> : (
+      {semBanco ? <p role="alert" className="text-sm">A consulta está temporariamente indisponível. Tente novamente mais tarde.</p> : contratos.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum contrato cadastrado.</p> : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[36rem] text-left text-sm" data-contratos-publicos>
             <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-3">Contrato</th><th className="py-1 pr-3">Objeto</th><th className="py-1 pr-3">Contratado</th><th className="py-1">Início</th></tr></thead>

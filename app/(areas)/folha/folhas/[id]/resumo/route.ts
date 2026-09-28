@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, ctx: { readonly params: Promise<{ re
   const regime = sp.get("regime") ?? "";
   if (regime !== "" && !["RGPS", "RPPS", "ISENTO"].includes(regime)) return NextResponse.json({ erro: "regime deve ser RGPS, RPPS ou ISENTO." }, { status: 400, headers: SEM_CACHE });
   const r = await lerResumoDaFolha(id, { regime, lotacao: (sp.get("lotacao") ?? "").slice(0, 80) });
-  if (r === null) return NextResponse.json({ erro: "folha não encontrada ou ainda não fechada — o resumo é do cálculo fechado." }, { status: 404, headers: SEM_CACHE });
+  if (r === null) return NextResponse.json({ erro: "Folha não encontrada ou ainda não fechada." }, { status: 404, headers: SEM_CACHE });
   if (formato === "csv") {
     return new NextResponse(paraCsv(colunasDoResumo(), linhasDoResumo(r)), {
       status: 200,

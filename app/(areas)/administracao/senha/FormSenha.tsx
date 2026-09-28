@@ -16,7 +16,7 @@ export function FormSenha(): React.ReactElement {
       <ChaveDeComando />
       <label className="block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Nova senha</span>
         <input name="nova" type="password" autoComplete="new-password" required className={CLASSE_CAMPO} /></label>
-      <label className="block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Confirmar</span>
+      <label className="block text-xs text-[color:var(--color-ink-2)]"><span className={CLASSE_ROTULO}>Confirmar nova senha</span>
         <input name="confirmar" type="password" autoComplete="new-password" required className={CLASSE_CAMPO} /></label>
       {estado.erro !== undefined ? (
         <p role="alert" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">{estado.erro}</p>

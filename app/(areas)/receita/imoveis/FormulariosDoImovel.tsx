@@ -77,7 +77,7 @@ function CamposDaVersao({ id, valores }: { readonly id: string; readonly valores
         <Campo id={id} nome="fracaoIdeal" rotulo="Fração ideal (opcional; 1 = 100%)" obrigatorio={false} inputMode="decimal" defaultValue={valores?.fracaoIdeal ?? ""} />
       </div>
       <fieldset className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
-        <legend className="px-1 text-xs font-semibold">Atributos do imóvel (o que a fórmula do ente pode usar pelo nome)</legend>
+        <legend className="px-1 text-xs font-semibold">Atributos do imóvel (utilizáveis pelo nome na fórmula de cálculo)</legend>
         <div className="space-y-2">
           {Array.from({ length: linhas }, (_, i) => (
             <div key={i} className="grid gap-2 sm:grid-cols-3" data-atributo={i + 1}>
@@ -100,7 +100,7 @@ export function FormCadastrarImovel({ hoje }: { readonly hoje: string }): React.
       <ChaveDeComando />
       <input type="hidden" name="__acao" value="cadastrar" />
       <h2 className="mb-1 text-sm font-semibold">Cadastrar imóvel</h2>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">O imóvel nasce com a versão 1 do cadastro. O que mudar depois entra como versão nova, com a data em que passa a valer — nada é reescrito.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">O imóvel é criado com a versão 1 do cadastro. Alterações posteriores são registradas como nova versão, com a data de início de vigência.</p>
       <div className="grid gap-3 sm:grid-cols-3">
         <Campo id={a.id} nome="inscricao" rotulo="Inscrição imobiliária" maxLength={40} />
         <Campo id={a.id} nome="vigenciaInicio" rotulo="Vale a partir de" tipo="date" defaultValue={hoje} />
@@ -142,7 +142,7 @@ export function FormVincularPessoa({ imovelId, hoje }: { readonly imovelId: stri
       <input type="hidden" name="__acao" value="vincular" />
       <input type="hidden" name="imovelId" value={imovelId} />
       <h3 className="mb-1 text-sm font-semibold">Vincular pessoa ao imóvel</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A pessoa é a do cadastro de pessoas (pelo documento). As frações vigentes do mesmo papel não passam de 100%.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">Informe o documento de uma pessoa já cadastrada. A soma das frações vigentes de um mesmo papel não pode ultrapassar 100%.</p>
       <div className="grid gap-3 sm:grid-cols-4">
         <Campo id={a.id} nome="pessoaDocumento" rotulo="CPF ou CNPJ" inputMode="numeric" />
         <Selecao id={a.id} nome="papel" rotulo="Papel" opcoes={PAPEIS} />
@@ -186,7 +186,7 @@ export function FormPublicarTabela({ hoje, exercicio, variaveisDoCadastro }: { r
       <input type="hidden" name="__acao" value="publicarTabela" />
       <h2 className="mb-1 text-sm font-semibold">Publicar tabela de parâmetros</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-        A fórmula e os valores são do município, com o fundamento legal declarado. Do cadastro do imóvel vêm: {variaveisDoCadastro.join(", ")} — e os atributos que cada imóvel declarar.
+        Informe a fórmula, os valores e o fundamento legal. Variáveis disponíveis do cadastro do imóvel: {variaveisDoCadastro.join(", ")}, além dos atributos informados em cada imóvel.
         Operadores: + − * / ( ), comparações e as funções min, max, arredondar(x, casas), teto, piso e se(condição, então, senão).
       </p>
       <div className="grid gap-3 sm:grid-cols-4">
@@ -202,7 +202,7 @@ export function FormPublicarTabela({ hoje, exercicio, variaveisDoCadastro }: { r
         <textarea id={`${a.id}-motivo`} name="motivo" required minLength={5} rows={2} className={CLASSE_AREA_TEXTO} />
       </label>
       <fieldset className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
-        <legend className="px-1 text-xs font-semibold">Parâmetros (o nome é o que a fórmula chama)</legend>
+        <legend className="px-1 text-xs font-semibold">Parâmetros (o nome é usado na fórmula)</legend>
         <div className="space-y-2">
           {Array.from({ length: linhas }, (_, i) => (
             <div key={i} className="grid gap-2 sm:grid-cols-3" data-parametro={i + 1}>

@@ -37,9 +37,9 @@ import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
  */
 
 const TIPOS = [
-  { valor: "SUPLEMENTAR", rotulo: "Suplementar — reforça dotação que a LOA já fixou" },
-  { valor: "ESPECIAL", rotulo: "Especial — despesa sem dotação específica na LOA" },
-  { valor: "EXTRAORDINARIO", rotulo: "Extraordinário — despesa imprevisível e urgente" },
+  { valor: "SUPLEMENTAR", rotulo: "Suplementar (reforço de dotação já fixada na LOA)" },
+  { valor: "ESPECIAL", rotulo: "Especial (despesa sem dotação específica na LOA)" },
+  { valor: "EXTRAORDINARIO", rotulo: "Extraordinário (despesa imprevisível e urgente)" },
 ] as const;
 
 export function FormLeiCredito({ exercicio }: { readonly exercicio: number }): React.ReactElement {
@@ -66,8 +66,8 @@ export function FormLeiCredito({ exercicio }: { readonly exercicio: number }): R
           <div>
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Nova lei autorizadora</h2>
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-              A lei autoriza um <strong>teto</strong>; os decretos consomem esse teto. Sem lei, não há
-              decreto a lançar.
+              A lei define o <strong>valor autorizado</strong> para os decretos de crédito adicional e
+              deve ser cadastrada antes deles.
             </p>
           </div>
           <button type="button" onClick={() => setAberto(true)} className={CLASSE_BOTAO_PRIMARIO}>
@@ -127,14 +127,13 @@ export function FormLeiCredito({ exercicio }: { readonly exercicio: number }): R
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Valor autorizado (teto)</span>
+          <span className={ROTULO}>Valor autorizado</span>
           <CampoValor name="valorAutorizado" required placeholder="50.000,00" className={CAMPO} />
         </label>
       </div>
 
       <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">
-        O teto é o que os decretos desta lei podem consumir, somados. Quem recusa um decreto que
-        estoura o teto é o domínio, na gravação.
+        A soma dos decretos vinculados a esta lei não pode ultrapassar o valor autorizado.
       </p>
 
       <div className="mt-4 flex items-center gap-3">

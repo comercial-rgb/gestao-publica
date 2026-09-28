@@ -21,7 +21,7 @@ export default async function Fiscalizacao(): Promise<React.ReactElement> {
     <div className="space-y-4">
       <header>
         <h1 className="text-xl font-semibold">Fiscalização de contratos</h1>
-        <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Os contratos em que você está designado hoje{minhas.administrador ? " — e, como administrador da fiscalização, todos os contratos" : ""}.</p>
+        <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">Contratos em que você possui designação vigente{minhas.administrador ? " e, como administrador da fiscalização, todos os contratos" : ""}.</p>
         <p className="mt-2 flex flex-wrap gap-3 text-sm">
           <Link href="/licitacoes/fiscalizacao/agenda" className="text-[color:var(--color-primary)] underline underline-offset-2" data-link-agenda>Agenda de fiscalização (dia, semana e mês)</Link>
           <Link href="/licitacoes/fiscalizacao/tipos-de-ocorrencia" className="text-[color:var(--color-primary)] underline underline-offset-2" data-link-tipos>Tipos de ocorrência e formulários</Link>
@@ -29,7 +29,7 @@ export default async function Fiscalizacao(): Promise<React.ReactElement> {
       </header>
       <Card>
         {minhas.contratos.length === 0 ? (
-          <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-fiscalizacao>Você não tem designação vigente em contrato nenhum nem definição de administrador da fiscalização.</p>
+          <p className="text-sm text-[color:var(--color-ink-2)]" data-sem-fiscalizacao>Você não possui designação vigente em contratos nem é administrador da fiscalização.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[36rem] text-left text-sm" data-fiscalizacoes>
@@ -52,7 +52,7 @@ export default async function Fiscalizacao(): Promise<React.ReactElement> {
         <section aria-label="Administradores da fiscalização" className="space-y-3">
           <Card>
             <h2 className="mb-2 text-sm font-semibold">Administradores da fiscalização</h2>
-            {administracao.lista.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhuma definição.</p> : (
+            {administracao.lista.length === 0 ? <p className="text-sm text-[color:var(--color-ink-2)]">Nenhum administrador definido.</p> : (
               <ul className="space-y-3" data-administradores>
                 {administracao.lista.map((a) => (
                   <li key={a.id} data-administrador={a.usuario} className="text-sm">

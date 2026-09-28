@@ -25,7 +25,7 @@ export default async function AuditoriaPage({
   const pagina = Math.max(1, Number.parseInt(um("pagina") || "1", 10) || 1);
   const resultado = (["INICIADA", "SUCESSO", "CONCLUIDA", "NEGADO", "ERRO", "REPLAY"] as const).includes(resultadoStr as "SUCESSO") ? (resultadoStr as OperacaoAuditada["resultado"]) : undefined;
 
-  const cabecalho = <PageHeader titulo="Auditoria" subtitulo="Registro de operações da borda — quem, quando, qual ação e resultado" acoes={<FiltroAuditoria usuario={usuario} acao={acao} resultado={resultadoStr} desde={desdeStr} ate={ateStr} />} />;
+  const cabecalho = <PageHeader titulo="Auditoria" subtitulo="Registro das operações realizadas no sistema, com usuário, data, ação e resultado" acoes={<FiltroAuditoria usuario={usuario} acao={acao} resultado={resultadoStr} desde={desdeStr} ate={ateStr} />} />;
 
   let dados: PaginaDeAuditoria;
   try {
@@ -35,7 +35,7 @@ export default async function AuditoriaPage({
       pagina,
     });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler a auditoria"} descricao={erro instanceof Error ? erro.message : "Erro."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Auditoria indisponível no momento" : "Não foi possível consultar a auditoria"} descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."} /></div>;
   }
 
   if (dados.total === 0) return <div>{cabecalho}<EstadoVazio titulo="Nenhuma operação" descricao="Não há registro de operação para os filtros selecionados." /></div>;

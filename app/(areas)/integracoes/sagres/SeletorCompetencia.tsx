@@ -90,7 +90,7 @@ export function SeletorCompetencia({
           }}
           className="h-11 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 text-sm text-[color:var(--color-ink-2)] hover:border-[color:var(--color-primary)]"
         >
-          Usar o mês do dia ({d.slice(0, 7)})
+          Usar o mês da data escolhida ({d.slice(0, 7)})
         </button>
       ) : null}
     </div>

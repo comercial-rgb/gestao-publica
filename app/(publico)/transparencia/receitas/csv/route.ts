@@ -35,7 +35,7 @@ export async function GET(req: Request): Promise<Response> {
     });
   } catch (e) {
     if (!(e instanceof PortaSemBancoError)) throw e;
-    return new Response("A consulta esta indisponivel agora: o banco de dados nao respondeu.", {
+    return new Response("A consulta está temporariamente indisponível. Tente novamente mais tarde.", {
       status: 503,
       headers: { "content-type": "text/plain; charset=utf-8" },
     });
@@ -56,16 +56,16 @@ export async function GET(req: Request): Promise<Response> {
   const corpo =
     paraCsv(colunas, linhas) +
     (truncado
-      ? `\r\n"⚠️ ARQUIVO TRUNCADO: a consulta tem ${dados.total} guias e este arquivo traz as primeiras ${dados.linhas.length}. Estreite os filtros."\r\n`
+      ? `\r\n"Arquivo parcial: a consulta tem ${dados.total} guias e este arquivo traz as primeiras ${dados.linhas.length}. Refine os filtros para obter o conjunto completo."\r\n`
       : "") +
     // ⚠️ O RODAPÉ DIZ O QUE NÃO SOMAR, porque a planilha é aberta por quem não acompanhou a decisão.
-    `\r\n"Arrecadado menos Anulado e o Liquido: somar Arrecadado e Liquido conta a mesma guia duas vezes."\r\n` +
+    `\r\n"O valor Líquido corresponde ao Arrecadado menos o Anulado. As colunas Arrecadado e Líquido não devem ser somadas."\r\n` +
     // ⚠️ OS TOTAIS SÃO DO RECORTE INTEIRO, inclusive quando o ARQUIVO foi truncado. Somar as
     // linhas de um arquivo truncado daria outro número, menor, sem aviso nenhum.
-    `"Totais do recorte: arrecadado ${formatarMoeda(dados.totais.arrecadado).texto}; anulado ${formatarMoeda(dados.totais.anulado).texto}; liquido ${formatarMoeda(dados.totais.liquido).texto}."\r\n` +
+    `"Totais da consulta: arrecadado ${formatarMoeda(dados.totais.arrecadado).texto}; anulado ${formatarMoeda(dados.totais.anulado).texto}; líquido ${formatarMoeda(dados.totais.liquido).texto}."\r\n` +
     (dados.constituido === null
       ? ""
-      : `"Credito constituido no exercicio: ${formatarMoeda(dados.constituido).texto}. Ele NAO se soma a arrecadacao: e o credito que nasceu, e a arrecadacao o baixa."\r\n`);
+      : `"Crédito constituído no exercício: ${formatarMoeda(dados.constituido).texto}. Este valor não deve ser somado à arrecadação, que corresponde ao pagamento desses créditos."\r\n`);
 
   return new Response(corpo, {
     headers: {

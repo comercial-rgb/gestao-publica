@@ -27,13 +27,13 @@ export async function representacoesAction(_prev: EstadoDoMolde, formData: FormD
     try {
       if (acao === "criar") {
         const novo = await criarRepresentacao(campos);
-        mensagem = `Representação registrada. A partir do início da vigência, a conta age e acompanha em nome da representada pela carta de serviços. Detalhe em ${REPRESENTACOES.rota}/${novo}.`;
+        mensagem = `Representação registrada. A partir do início da vigência, o representante poderá solicitar e acompanhar serviços em nome da pessoa representada. Registro disponível em ${REPRESENTACOES.rota}/${novo}.`;
       } else {
-        if (id === "") return { erro: "Registro não identificado. Nada foi gravado." };
+        if (id === "") return { erro: "Registro não identificado. Nenhuma alteração foi gravada." };
         mensagem = await acaoDaRepresentacao(acao, id, campos);
       }
     } catch (e) {
-      return { erro: mensagemDoErro(e, "Falha ao gravar. Nada foi gravado.") };
+      return { erro: mensagemDoErro(e, "Não foi possível gravar. Nenhuma alteração foi gravada.") };
     }
     revalidatePath(REPRESENTACOES.rota);
     if (id !== "") revalidatePath(`${REPRESENTACOES.rota}/${id}`);

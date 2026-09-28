@@ -157,7 +157,7 @@ export function FormLiquidar({
   return (
     <Bloco
       titulo="Liquidar"
-      descricao="O serviço empenhado no exercício anterior é atestado agora. Nenhum empenho novo é criado e nenhuma dotação do exercício corrente é consumida."
+      descricao="Registra a liquidação da despesa empenhada no exercício anterior, sem novo empenho e sem consumir dotação do exercício corrente."
     >
       <form action={action} className="mt-3 grid gap-3" data-acao="liquidar-resto">
         <ChaveDeComando />
@@ -211,7 +211,7 @@ export function FormPagar({
   return (
     <Bloco
       titulo="Pagar"
-      descricao="O dinheiro sai e a obrigação se extingue. A baixa recai sobre a obrigação que a liquidação escolhida registrou."
+      descricao="Registra o pagamento e quita a obrigação correspondente à liquidação escolhida."
     >
       {liquidacoes.length === 0 ? (
         <p className="mt-3 rounded border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-sm">
@@ -285,7 +285,7 @@ export function FormCancelar({ inscricaoId }: { readonly inscricaoId: string }):
   return (
     <Bloco
       titulo="Cancelar"
-      descricao="A obrigação deixa de existir sem saída de caixa. Cancelar extingue a dívida com o credor nesta parte, e o ato pode ser anulado depois."
+      descricao="Cancela a obrigação com o credor, no todo ou em parte, sem saída de caixa. O cancelamento pode ser anulado posteriormente."
     >
       <form action={action} className="mt-3 grid gap-3" data-acao="cancelar-resto">
         <ChaveDeComando />
@@ -320,7 +320,7 @@ export function FormAnularPagamento({
   return (
     <Bloco
       titulo="Anular pagamento"
-      descricao="O registro original permanece e o valor volta ao saldo. A anulação é um fato novo que aponta para o pagamento desfeito."
+      descricao="O pagamento original é preservado e o valor retorna ao saldo a pagar."
     >
       <form action={action} className="mt-3 grid gap-3" data-acao="anular-pagamento-resto">
         <ChaveDeComando />
@@ -372,7 +372,7 @@ export function FormAnularCancelamento({
   return (
     <Bloco
       titulo="Anular cancelamento"
-      descricao="A obrigação com o credor volta a existir e o valor retorna ao saldo. Sem isto, um cancelamento feito por engano seria irreversível."
+      descricao="Restabelece a obrigação com o credor e devolve o valor ao saldo a pagar. Utilize para corrigir um cancelamento registrado por engano."
     >
       <form action={action} className="mt-3 grid gap-3" data-acao="anular-cancelamento-resto">
         <ChaveDeComando />

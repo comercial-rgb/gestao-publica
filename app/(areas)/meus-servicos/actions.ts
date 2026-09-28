@@ -35,7 +35,7 @@ export async function protocolarAction(_prev: EstadoDoRequerente, formData: Form
       revalidatePath("/meus-servicos");
       return {
         solicitacaoId: r.solicitacaoId,
-        sucesso: `Solicitação protocolada sob o número ${r.protocolo}, em nome de ${r.titular}${r.viaRepresentacao ? " (por representação)" : ""}. Guarde o número — com o código verificador que aparece no acompanhamento, ele também serve na consulta pública.`,
+        sucesso: `Solicitação protocolada sob o número ${r.protocolo}, em nome de ${r.titular}${r.viaRepresentacao ? " (por representação)" : ""}. Guarde este número: com o código verificador exibido no acompanhamento, ele também permite a consulta pública.`,
       };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível protocolar. Nada foi protocolado.") };
@@ -67,7 +67,7 @@ export async function anexarDoRequerenteAction(_prev: EstadoDoRequerente, formDa
       return { erro: mensagemDoErro(e, "Não foi possível enviar o documento. Nada foi gravado.") };
     }
     revalidatePath(`/meus-servicos/${solicitacaoId}`);
-    return { sucesso: `Documento "${arquivo.name}" enviado e ligado à sua solicitação.` };
+    return { sucesso: `Documento "${arquivo.name}" enviado e anexado à sua solicitação.` };
   });
 }
 
@@ -79,7 +79,7 @@ export async function avaliarAtendimentoAction(_prev: EstadoDoRequerente, formDa
     try {
       const r = await avaliarAtendimentoNaTela({ solicitacaoId, satisfacao: nota("satisfacao"), atendimento: nota("atendimento"), prazos: nota("prazos"), descricao: texto(formData, "descricao") });
       revalidatePath(`/meus-servicos/${solicitacaoId}`);
-      return { sucesso: r.revisao ? "Avaliação revisada. Só a mais recente conta no resultado do serviço." : "Avaliação registrada. Obrigado." };
+      return { sucesso: r.revisao ? "Avaliação revisada. Apenas a avaliação mais recente é considerada no resultado do serviço." : "Avaliação registrada. Obrigado." };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível registrar a avaliação. Nada foi gravado.") };
     }

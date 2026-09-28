@@ -107,15 +107,15 @@ export default async function LancamentosPage({
         {/* ⚠️ SEM `descreverRecorte(recorte)` AQUI. Este cabeçalho imprimia o recorte — e
             este é justamente o caminho em que o recorte pode NÃO EXISTIR, porque a recusa
             acontece ao montá-lo. Subtítulo fixo: um estado de erro não afirma escopo. */}
-        <PageHeader titulo="Lançamentos contábeis" subtitulo="Consulta analítica do razão" />
+        <PageHeader titulo="Lançamentos contábeis" subtitulo="Consulta dos lançamentos do razão" />
         <EstadoVazio
           titulo={
             erro instanceof EscopoDeLeituraError
               ? "Esta unidade não está no seu acesso"
               : erro instanceof ExercicioIlegivelError
-                ? "O exercício pedido não é um ano"
+                ? "Exercício inválido"
                 : erro instanceof PortaSemBancoError
-                  ? "Banco de dados não configurado"
+                  ? "Serviço indisponível"
                   : "Não foi possível consultar os lançamentos"
           }
           descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
@@ -155,7 +155,7 @@ export default async function LancamentosPage({
   const cabecalho = (
     <PageHeader
       titulo="Lançamentos contábeis"
-      subtitulo={`${descreverRecorte(recorte)} — consulta analítica do razão: partidas, subsistema e drill até o documento de origem`}
+      subtitulo={`${descreverRecorte(recorte)} — lançamentos do razão, com partidas e documento de origem`}
       acoes={
         <FiltroDeLancamentos
           desde={desdeStr}
@@ -177,21 +177,18 @@ export default async function LancamentosPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-        Consulta <strong>analítica</strong> — recortada, com as partidas abertas e link para o
-        documento de origem. Ela <strong>não substitui</strong> o{" "}
+        Consulta com filtros, partidas detalhadas e acesso ao documento de origem. Não substitui o{" "}
         <a href="/relatorios/livros/diario" className="text-[color:var(--color-primary)] hover:underline">Livro Diário</a>,
-        que é o livro obrigatório: completo, cronológico e sem filtro. O <strong>subsistema</strong> de
-        cada partida (orçamentário / patrimonial / controle) é a <em>natureza da informação</em> do
-        MSC como ela foi de fato escriturada — é atributo da partida, não da conta.
+        livro obrigatório, completo e cronológico. O <strong>subsistema</strong> de cada partida
+        (orçamentário, patrimonial ou controle) corresponde à natureza da informação da MSC.
       </div>
 
       {desbalanceados > 0 ? (
         // ⚠️ NOMEAR, NÃO ESCONDER. ΣD == ΣC é invariante do M01; se uma linha não fecha, o problema
         // é grave e a tela tem de gritar em vez de exibir o número torto como se fosse normal.
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink)]">
-          <strong>{desbalanceados} lançamento(s) com ΣD ≠ ΣC</strong> no recorte. Isso não deveria
-          acontecer: o balanceamento é regra permanente da contabilidade. Confira a consistência do
-          razão em <a href="/relatorios/consistencia" className="text-[color:var(--color-primary)] hover:underline">Relatórios · Consistência</a>.
+          <strong>{desbalanceados} lançamento(s) com débitos diferentes dos créditos</strong> nesta
+          consulta. Verifique a consistência do razão em <a href="/relatorios/consistencia" className="text-[color:var(--color-primary)] hover:underline">Relatórios · Consistência</a>.
         </div>
       ) : null}
 
@@ -231,9 +228,8 @@ export default async function LancamentosPage({
             </table>
           </div>
           <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
-            Diferença zero em cada linha é o esperado. O recorte pode conter apenas um lado
-            de um lançamento quando o filtro é por conta — nesse caso a diferença reflete o
-            recorte, não um erro do razão.
+            A diferença esperada em cada subsistema é zero. Com filtro por conta, a consulta pode
+            conter apenas um lado do lançamento, e a diferença reflete o filtro aplicado.
           </p>
         </div>
       )}
@@ -242,7 +238,7 @@ export default async function LancamentosPage({
 
       {linhas.length === 0 ? (
         <EstadoVazio
-          titulo="Sem lançamentos no recorte"
+          titulo="Nenhum lançamento encontrado"
           descricao={`Nenhum lançamento entre ${dataBr(desde)} e ${dataBr(ate)}${conta !== "" ? ` na conta ${conta}` : ""}${subsistema !== undefined ? ` no subsistema ${subsistema.toLowerCase()}` : ""}${origem !== "" ? ` com origem ${origem}` : ""}. Amplie o período ou remova um filtro.`}
         />
       ) : (
@@ -250,7 +246,7 @@ export default async function LancamentosPage({
           colunas={colunasDe(recorte.exercicio)}
           linhas={linhas}
           keyDe={(l) => l.id}
-          legenda={`${linhas.length} lançamento(s) · valores em R$ · ordem (data do fato, registro, id) · D e C por lançamento; cada partida traz sua conta e seu subsistema.`}
+          legenda={`${linhas.length} lançamento(s) · valores em R$ · ordenados por data e registro · cada partida mostra conta e subsistema.`}
         />
       )}
     </div>
@@ -349,7 +345,7 @@ function Drill({ l, exercicio }: { readonly l: LinhaDeLancamento; readonly exerc
   // Origem sem documento externo (lançamento manual, encerramento): não há a que fazer drill.
   if (l.origemId === null || destino === undefined) {
     return (
-      <span title={l.origemId === null ? "Lançamento sem documento de origem (manual ou de encerramento)." : `Origem "${l.origemTipo}" ainda não tem tela própria no sistema.`}>
+      <span title={l.origemId === null ? "Lançamento sem documento de origem (manual ou de encerramento)." : `Origem ${l.origemTipo}: documento sem consulta disponível.`}>
         {rotulo}
       </span>
     );
@@ -385,7 +381,7 @@ function Drill({ l, exercicio }: { readonly l: LinhaDeLancamento; readonly exerc
       >
         {destino.documento} →
       </a>
-      <span className="font-mono text-[10px] text-[color:var(--color-ink-3)]" title={`origemId: ${l.origemId}`}>
+      <span className="font-mono text-[10px] text-[color:var(--color-ink-3)]" title={`Identificador do documento: ${l.origemId}`}>
         {l.origemId}
       </span>
     </span>
@@ -403,7 +399,7 @@ function Partidas({ l }: { readonly l: LinhaDeLancamento }): React.ReactElement 
             {p.tipo === "DEBITO" ? "D" : "C"}
           </span>
           <span className="font-mono text-[color:var(--color-ink)]">{p.conta}</span>
-          <span className="text-[10px] uppercase tracking-wide text-[color:var(--color-ink-3)]" title="Subsistema da partida — a natureza da informação do MSC, como escriturada.">
+          <span className="text-[10px] uppercase tracking-wide text-[color:var(--color-ink-3)]" title="Subsistema da partida (natureza da informação da MSC).">
             {p.subsistema.toLowerCase()}
           </span>
           <ValorMonetario valor={p.valor} className="ml-auto text-xs" />
@@ -434,18 +430,18 @@ const colunasDe = (exercicio: number): readonly ColunaTabela<LinhaDeLancamento>[
   { chave: "partidas", cabecalho: "Partidas (conta · subsistema · valor)", alinhamento: "esquerda", largura: "24rem", celula: (l) => <Partidas l={l} /> },
   {
     chave: "dc",
-    cabecalho: "ΣD / ΣC",
+    cabecalho: "Débito / Crédito",
     alinhamento: "direita",
     largura: "10rem",
     celula: (l) => (
       <span className="flex flex-col items-end gap-0.5">
         <ValorMonetario valor={l.totalDebito} />
         <ValorMonetario valor={l.totalCredito} className="text-[color:var(--color-ink-2)]" />
-        {l.balanceado ? null : <Badge status="erro">não fecha</Badge>}
+        {l.balanceado ? null : <Badge status="erro">desbalanceado</Badge>}
       </span>
     ),
   },
-  { chave: "origem", cabecalho: "Origem (drill)", alinhamento: "esquerda", largura: "12rem", celula: (l) => <Drill l={l} exercicio={exercicio} /> },
+  { chave: "origem", cabecalho: "Documento de origem", alinhamento: "esquerda", largura: "12rem", celula: (l) => <Drill l={l} exercicio={exercicio} /> },
   {
     chave: "estorno",
     cabecalho: "Estorno de",
@@ -466,7 +462,7 @@ const colunasDe = (exercicio: number): readonly ColunaTabela<LinhaDeLancamento>[
           title={`Estorna o lançamento ${l.estornoDeId}`}
           className="text-xs text-[color:var(--color-primary)] hover:underline"
         >
-          ver o par
+          ver original
         </a>
       ),
   },

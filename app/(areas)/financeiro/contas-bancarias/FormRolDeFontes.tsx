@@ -42,8 +42,8 @@ export function FormRolDeFontes({
   return (
     <div className="mt-2">
       <p className="text-xs text-[color:var(--color-ink-2)]" data-papel={`rol-${contaCodigo}`}>
-        Comporta as fontes {fontesDoRol.map((f) => f.codigo).join(", ")}
-        {rolDeclarado ? "" : " — rol não declarado; vale a fonte padrão da conta"}
+        Fontes aceitas: {fontesDoRol.map((f) => f.codigo).join(", ")}
+        {rolDeclarado ? "" : " (rol não declarado; vale a fonte padrão da conta)"}
       </p>
 
       <Operacao

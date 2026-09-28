@@ -64,11 +64,10 @@ export function FormAbrirChamado({
     return (
       <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">
-          Nenhum nível de severidade cadastrado
+          Nenhum nível de severidade cadastrado.
         </strong>{" "}
-        — a escala é <em>dado de configuração</em>, não texto fixo no código: é o que cada
-        contratante negocia no contrato de suporte. Cadastre a escala antes de abrir
-        chamado.
+        Cadastre a escala de severidade prevista no contrato de suporte antes de abrir
+        chamados.
       </div>
     );
   }
@@ -100,14 +99,14 @@ export function FormAbrirChamado({
           largura={4}
           linhas={5}
           placeholder="O que você tentou fazer, o que aconteceu, e o que esperava que acontecesse."
-          ajuda="Mínimo de 20 caracteres — é o que alguém precisa para conseguir ajudar."
+          ajuda="Mínimo de 20 caracteres."
         />
         <CampoTexto
           name="rota"
           rotulo="Tela em que ocorreu (opcional)"
           largura={2}
           placeholder="/protocolo/processos"
-          ajuda="Liga o chamado à ajuda daquela tela."
+          ajuda="Endereço da tela em que o problema ocorreu."
         />
       </div>
       <ResultadoChamado estado={estado} />
@@ -161,7 +160,7 @@ export function FormAtendimento({
   return (
     <Painel
       titulo="Atendimento"
-      descricao="Responder e encerrar são atos separados: quem abriu é quem sabe se o problema acabou. Encerrar junto com a resposta faria a métrica de resolução medir a velocidade de digitar."
+      descricao="A resposta não encerra o chamado. O encerramento é registrado separadamente."
     >
       {!encerrado ? (
         <>

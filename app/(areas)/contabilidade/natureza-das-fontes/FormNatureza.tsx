@@ -130,13 +130,13 @@ export function FormDaNatureza({
         </label>
 
         <label className="text-xs">
-          <span className={ROTULO}>Por que esta natureza</span>
+          <span className={ROTULO}>Fundamento</span>
           <input
             name="fundamento"
             required
             minLength={20}
             maxLength={500}
-            placeholder="A lei ou o ato que vincula (ou não vincula) o recurso"
+            placeholder="Lei ou ato que vincula (ou não) o recurso"
             className={CAMPO}
           />
         </label>
@@ -147,8 +147,8 @@ export function FormDaNatureza({
           </button>
           {contaAtual !== null ? (
             <span className="text-xs text-[color:var(--color-ink-3)]">
-              Hoje escritura em {contaAtual}. Declarar cria uma versão — o que já foi arrecadado
-              permanece na conta em que entrou.
+              Conta atual: {contaAtual}. Uma nova declaração cria outra versão, sem alterar o que
+              já foi arrecadado.
             </span>
           ) : null}
         </div>

@@ -48,15 +48,15 @@ export default async function Pagina({
       <header className="mb-4 border-b border-[color:var(--color-border)] pb-3">
         <h1 className="text-xl font-semibold text-[color:var(--color-ink)]">Pessoal</h1>
         <p className="mt-1 max-w-3xl text-sm text-[color:var(--color-ink-2)]">
-          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · acesso público, sem cadastro. Publica
-          apenas <strong>folhas fechadas</strong>. Este demonstrativo não é o contracheque: não há
-          detalhe por rubrica, dependente, plano de saúde, pensão nem imposto individual.
+          {id.ente?.nomeDeExibicao ?? "Ente não configurado"} · acesso público, sem cadastro. São
+          publicadas apenas <strong>folhas fechadas</strong>, sem detalhamento por rubrica, dependentes,
+          plano de saúde, pensão ou imposto individual.
         </p>
       </header>
 
       {semBanco ? (
         <p role="alert" className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-4 text-sm">
-          A consulta está indisponível agora: o banco de dados não respondeu.
+          A consulta está temporariamente indisponível. Tente novamente mais tarde.
         </p>
       ) : null}
 
@@ -129,13 +129,13 @@ export default async function Pagina({
               {/* ⚠️ A REGRA APARECE AO LADO DO DADO. Quem lê precisa saber sob que ato aquilo foi
                   publicado, e o que ficou de fora — senão a ausência de uma coluna parece falha. */}
               <p className="mb-2 max-w-3xl text-xs text-[color:var(--color-ink-2)]">
-                Publicado sob a política {d.politica.versao}, vigente {d.politica.vigencia}.
-                Fundamento: {d.politica.fundamentacaoLegal}. As colunas abaixo são as que esse ato
-                autorizou; o que não está aqui não é publicado.
+                Divulgação conforme a política {d.politica.versao}, vigente {d.politica.vigencia}.
+                Fundamento: {d.politica.fundamentacaoLegal}. São exibidas apenas as informações
+                autorizadas por esse ato.
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm" data-papel="tabela-de-pessoal">
-                  <caption className="sr-only">Demonstrativo por servidor, com as colunas autorizadas pela política vigente</caption>
+                  <caption className="sr-only">Demonstrativo por servidor, com as informações autorizadas pela política vigente</caption>
                   <thead>
                     <tr className="border-b border-[color:var(--color-border)] text-left text-xs text-[color:var(--color-ink-2)]">
                       {d.cabecalho.map((h) => <th scope="col" key={h} className="px-3 py-2">{h}</th>)}

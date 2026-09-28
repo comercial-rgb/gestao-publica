@@ -43,7 +43,7 @@ export async function prepararOrdemAction(
     if (liquidacaoId === "") return { erro: "Escolha a liquidação a pagar." };
     if (dataBruta === "") return { erro: "A data prevista é obrigatória." };
     if (contaBancaria === "" || fonteId === "") {
-      return { erro: "Escolha a conta bancária de onde o dinheiro deve sair." };
+      return { erro: "Escolha a conta bancária do pagamento." };
     }
 
     try {
@@ -58,7 +58,7 @@ export async function prepararOrdemAction(
         historico,
       });
       revalidar();
-      return { sucesso: `Ordem ${numero} preparada. Falta autorizar.` };
+      return { sucesso: `Ordem ${numero} preparada. Aguardando autorização.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível preparar a ordem." };
     }

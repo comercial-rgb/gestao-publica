@@ -329,7 +329,7 @@ async function main(): Promise<void> {
 
     // ── 2. pendente: sem formar ordem ──
     const detPend = await irPara(page, hrefSol);
-    conferir("2.1 PENDENTE: o atendimento aparece e 'formar ordem' NÃO (só a autorizada forma)", detPend.includes("atendimento por item") && detPend.includes("só a autorizada forma ordem") && (await page.$('form[data-acao="formar-ordem"]')) === null, detPend.slice(0, 300));
+    conferir("2.1 PENDENTE: o atendimento aparece e 'formar ordem' NÃO (só a autorizada forma)", detPend.includes("atendimento por item") && detPend.includes("somente solicitações autorizadas podem gerar ordem de compra") && (await page.$('form[data-acao="formar-ordem"]')) === null, detPend.slice(0, 300));
     const rAut = await preencherEEnviar(page, "autorizar", [
       { sel: 'input[name="data"]', valor: "2026-05-05", tipo: "data" },
       { sel: 'input[name="motivo"]', valor: "Autorizada pelo ordenador (percurso)" },

@@ -51,7 +51,7 @@ export async function publicarCriterioAction(
       if (centroId === "" || percentual === "") {
         return {
           erro:
-            `A linha ${String(i + 1)} do rateio está pela metade: informe o centro e o percentual, ` +
+            `A linha ${String(i + 1)} do rateio está incompleta: informe o centro e o percentual, ` +
             `ou deixe a linha inteira em branco. Nada foi gravado.`,
         };
       }
@@ -121,7 +121,7 @@ export async function apropriarCustoAction(
       return {
         sucesso:
           `Custo de ${r.valor} apropriado a ${String(r.centros)} centro(s) de custo na competência ` +
-          `informada. A despesa não foi lançada de novo: ela já estava reconhecida na liquidação.`,
+          `informada. A despesa não foi lançada novamente, pois já estava reconhecida na liquidação.`,
       };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível apropriar o custo.") };

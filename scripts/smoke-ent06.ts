@@ -561,7 +561,7 @@ async function main(): Promise<void> {
     );
     conferir(
       "inventário: a tela diz que divergência NÃO vira ajuste automático",
-      tInv.includes("não vira ajuste"),
+      tInv.includes("não gera ajuste automático"),
       "a tela não explicou o que acontece com a divergência"
     );
 
@@ -609,7 +609,7 @@ async function main(): Promise<void> {
 
     conferir(
       "posição: o relatório de validade diz que só lote COM SALDO entra na conta",
-      posHoje.includes("já consumido não vence para ninguém"),
+      posHoje.includes("lotes já consumidos não são listados"),
       "a tela não explicou o recorte do relatório de validade"
     );
 

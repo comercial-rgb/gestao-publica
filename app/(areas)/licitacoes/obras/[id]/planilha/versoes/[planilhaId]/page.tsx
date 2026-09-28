@@ -78,7 +78,7 @@ export default async function VersaoDaPlanilhaPage({ params }: { readonly params
       {v.andamento === null ? null : (
         <Card>
           <h2 className="mb-1 text-sm font-semibold">Andamento da obra por serviço</h2>
-          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Medido: soma das medições de ordem de serviço feitas pela planilha desta obra (todas as versões, pelo código do serviço), sem as estornadas. Previsto e saldo são desta versão. Recebido e liquidado estão na página de cada ordem.</p>
+          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">Medido: soma das medições pela planilha desta obra, em todas as versões e sem as estornadas. Previsto e saldo referem-se a esta versão; recebido e liquidado constam na página de cada ordem.</p>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm" data-andamento-da-planilha>
               <thead><tr className="text-xs text-[color:var(--color-ink-2)]"><th className="py-1 pr-2">Serviço</th><th className="py-1 pr-2">Unidade</th><th className="py-1 pr-2 text-right">Previsto</th><th className="py-1 pr-2 text-right">Medido</th><th className="py-1 pr-2 text-right">Saldo</th><th className="py-1 text-right">Medido a preços da planilha</th></tr></thead>

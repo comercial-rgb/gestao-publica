@@ -23,7 +23,7 @@ export default async function LancamentosPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <PageHeader
         titulo="Lançamentos tributários"
-        subtitulo="Preparar calcula e congela a memória de cada imóvel; constituir faz o crédito nascer contra o contribuinte, no razão. São atos diferentes, com permissões diferentes."
+        subtitulo="Preparação dos lotes de lançamento e constituição do crédito tributário."
       />
 
       <Card>
@@ -76,7 +76,7 @@ export default async function LancamentosPage(): Promise<React.ReactElement> {
       ) : (
         <Card>
           <p className="text-sm text-[color:var(--color-ink-3)]">
-            O seu perfil consulta os lotes, mas não os prepara.
+            Seu perfil permite consultar os lotes, mas não prepará-los.
           </p>
         </Card>
       )}

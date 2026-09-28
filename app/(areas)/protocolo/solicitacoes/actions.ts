@@ -46,6 +46,6 @@ export async function respostaDaMesaAction(_prev: EstadoDoMolde, formData: FormD
       return { erro: mensagemDoErro(e, "Não foi possível liberar o documento. Nada foi gravado.") };
     }
     revalidatePath(`${SOLICITACOES_DA_MESA.rota}/${id}`);
-    return { sucesso: `Documento "${arquivo.name}" liberado ao requerente, que foi avisado no sistema.` };
+    return { sucesso: `Documento "${arquivo.name}" disponibilizado ao requerente, que foi notificado pelo sistema.` };
   });
 }

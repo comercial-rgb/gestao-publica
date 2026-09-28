@@ -76,9 +76,8 @@ export function FormMarcar({
   if (servicos.length === 0) {
     return (
       <div className={`${CLASSE_PAINEL_FORMULARIO} text-xs text-[color:var(--color-ink-2)]`}>
-        <strong className="text-[color:var(--color-ink)]">Este guichê não atende serviço nenhum</strong> — diga
-        o que ele atende na tela de organização antes de marcar. Marcar num guichê que não resolve o
-        problema mandaria a pessoa para a fila errada.
+        <strong className="text-[color:var(--color-ink)]">Este guichê não possui serviços habilitados.</strong>{" "}
+        Habilite os serviços na tela de organização do atendimento antes de agendar.
       </div>
     );
   }
@@ -120,7 +119,7 @@ export function FormMarcar({
         <label className="text-xs">
           <span className={ROTULO}>Serviço</span>
           <select name="servicoId" required defaultValue="" className={CAMPO}>
-            <option value="">O que a pessoa veio resolver…</option>
+            <option value="">Selecione o serviço…</option>
             {servicos.map((s) => (
               <option key={s.id} value={s.id}>{s.titulo}</option>
             ))}
@@ -128,7 +127,7 @@ export function FormMarcar({
         </label>
 
         <label className="text-xs">
-          <span className={ROTULO}>CPF ou CNPJ de quem será atendido</span>
+          <span className={ROTULO}>CPF ou CNPJ da pessoa atendida</span>
           <input name="documento" required maxLength={20} placeholder="000.000.000-00" className={CAMPO} />
         </label>
 
@@ -302,7 +301,7 @@ export function AtosDaReserva({
         <ChaveDeComando />
         <input type="hidden" name="reservaId" value={reservaId} />
         <label className="text-xs">
-          <span className={ROTULO}>Quem atendeu</span>
+          <span className={ROTULO}>Responsável pelo atendimento</span>
           <input name="atendidoPor" required maxLength={120} className={CAMPO} />
         </label>
         <label className="text-xs">

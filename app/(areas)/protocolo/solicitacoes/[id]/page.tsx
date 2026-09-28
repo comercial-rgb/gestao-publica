@@ -39,11 +39,11 @@ export default async function Detalhe({ params, searchParams }: { readonly param
       historico={detalhe.historico}
       acoes={
         <div className="space-y-4">
-          <p className="text-xs"><Link href={`/protocolo/processos/${detalhe.processoId}`} className="text-[color:var(--color-primary)] underline">Abrir o processo digital (tramitar, receber, pedir parecer)</Link></p>
+          <p className="text-xs"><Link href={`/protocolo/processos/${detalhe.processoId}`} className="text-[color:var(--color-primary)] underline">Abrir o processo digital (tramitação, recebimento e pareceres)</Link></p>
           <Card>
             <h2 className="mb-2 text-sm font-semibold">Documentos da solicitação</h2>
             {detalhe.documentos.length === 0 ? (
-              <p className="text-xs text-[color:var(--color-ink-2)]">Nenhum documento enviado pelo requerente nem liberado a ele.</p>
+              <p className="text-xs text-[color:var(--color-ink-2)]">Nenhum documento enviado pelo requerente ou disponibilizado a ele.</p>
             ) : (
               <ul className="space-y-1 text-sm" data-documentos-da-mesa>
                 {detalhe.documentos.map((d) => (

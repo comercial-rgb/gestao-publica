@@ -48,7 +48,7 @@ export async function configurarApresentacaoAction(_prev: EstadoApresentacao, fo
       });
       for (const rota of ROTAS_AFETADAS) revalidatePath(rota);
       revalidatePath("/", "layout");
-      return { sucesso: `Apresentação gravada como versão ${r.numero}. A entrada, o cabeçalho e os documentos novos passam a usá-la; os documentos já emitidos não mudam.` };
+      return { sucesso: `Apresentação gravada como versão ${r.numero}. A tela de entrada, o cabeçalho e os novos documentos passam a utilizá-la; os documentos já emitidos não são alterados.` };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível gravar a apresentação.") };
     }

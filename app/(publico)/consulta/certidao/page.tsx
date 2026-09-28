@@ -31,8 +31,8 @@ export default async function ConferirCertidaoPage({
     <main className="mx-auto max-w-2xl px-4 py-8" style={{ paddingInline: "16px" }}>
       <h1 className="mb-2 text-xl font-semibold text-[color:var(--color-ink)]">Conferir uma certidão</h1>
       <p className="mb-6 text-sm text-[color:var(--color-ink-3)]">
-        Informe a chave de autenticidade impressa no documento. A conferência mostra se ele existe,
-        de quem é e até quando vale — e nada além disso.
+        Informe a chave de autenticidade impressa no documento para confirmar a emissão, o titular
+        e a validade da certidão.
       </p>
 
       <form method="get" className="mb-6 flex flex-wrap items-end gap-3">
@@ -85,11 +85,11 @@ export default async function ConferirCertidaoPage({
             </div>
           </dl>
           <p data-papel="vigencia" className="mt-3 text-sm font-medium text-[color:var(--color-ink)]">
-            {resultado.vigente === true ? "Este documento está VIGENTE nesta data." : "Este documento está VENCIDO."}
+            {resultado.vigente === true ? "Este documento está válido nesta data." : "Este documento está vencido."}
           </p>
           {resultado.semValidadeOficial === true ? (
             <p role="note" className="mt-2 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-sm text-[color:var(--color-status-alerta-fg)]">
-              Documento emitido em ambiente de avaliação — <strong>sem validade oficial</strong>.
+              Documento emitido em ambiente de demonstração, <strong>sem validade oficial</strong>.
             </p>
           ) : null}
         </section>

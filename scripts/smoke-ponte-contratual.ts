@@ -407,7 +407,7 @@ async function main(): Promise<void> {
     const item2Dep = await page.$eval('tr[data-item-da-ordem="2"]', (tr) => ({ medido: (tr.querySelector("td[data-glosado]")?.previousElementSibling?.textContent ?? "").trim(), aExecutar: (tr.querySelector("td[data-a-executar]")?.textContent ?? "").trim() }));
     R.conferir(
       "13.4 recarregada, a medição nº 3 está no histórico marcada como estornada e a quantidade voltou a executar (medido 9, a executar 1)",
-      estorno3.includes("Fica no histórico e fora das somas") && item2Dep.medido === "9" && item2Dep.aExecutar === "1",
+      estorno3.includes("Permanece no histórico e não entra nos totais") && item2Dep.medido === "9" && item2Dep.aExecutar === "1",
       `${estorno3.slice(0, 160)} || medido=${item2Dep.medido} aExecutar=${item2Dep.aExecutar}`
     );
     const neg3 = await preencherEEnviar(abaB, "estornar-medicao-3", [{ sel: 'textarea[name="motivo"]', valor: `Segundo estorno da mesma medição, pela tela velha (percurso ${SUF})` }]);
@@ -447,7 +447,7 @@ async function main(): Promise<void> {
     const bloqueio = await conteudo(page, `${await formEstornoDoRecebimento(page, 1, 1)} [data-bloqueio-do-estorno]`);
     R.conferir(
       "14.1 a tela AVISA antes do clique: o termo nº 1 da medição nº 1 lastreia R$ 900,00 liquidados e o estorno será recusado até a liquidação ser estornada",
-      /lastreia R\$\s*900[.,]00 já liquidados/.test(bloqueio) && /estorne-a primeiro/i.test(bloqueio),
+      /lastreia R\$\s*900[.,]00 já liquidados/.test(bloqueio) && /estorne a liquidação/i.test(bloqueio),
       bloqueio === "" ? "o aviso do bloqueio não está na tela" : bloqueio.slice(0, 240)
     );
     const negLiq = await preencherEEnviar(page, await formEstornoDoRecebimento(page, 1, 1), [

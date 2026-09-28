@@ -50,7 +50,7 @@ export default async function PeriodoDeConciliacaoPage({
   const cabecalho = (
     <PageHeader
       titulo="Conciliação por período"
-      subtitulo="Abrir, conciliar, justificar o que fica em aberto e encerrar — o período seguinte herda o não resolvido"
+      subtitulo="Abertura, justificativa de pendências e encerramento; o que não for resolvido passa ao período seguinte"
     />
   );
 
@@ -64,7 +64,7 @@ export default async function PeriodoDeConciliacaoPage({
           {cabecalho}
           <EstadoVazio
             titulo="Nenhuma conta bancária"
-            descricao="A conciliação é de uma conta. Cadastre a conta e a conta contábil dela para começar."
+            descricao="Cadastre a conta bancária e a conta contábil correspondente para iniciar a conciliação."
           />
         </div>
       );
@@ -121,7 +121,7 @@ export default async function PeriodoDeConciliacaoPage({
           {periodos.length === 0 ? (
             <EstadoVazio
               titulo="Nenhum período aberto"
-              descricao="Abra o primeiro período acima. A partir dele, cada período seguinte herda o que ficou em aberto."
+              descricao="Abra o primeiro período acima. As pendências não resolvidas passam ao período seguinte."
             />
           ) : (
             <ul className="flex flex-wrap gap-2">
@@ -158,7 +158,7 @@ export default async function PeriodoDeConciliacaoPage({
             data-nao-fecha
             className="whitespace-pre-line rounded-[var(--radius-lg)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-status-erro-bg)] p-4 text-sm text-[color:var(--color-status-erro-fg)]"
           >
-            <strong className="block">A conciliação deste período não fecha.</strong>
+            <strong className="block">A conciliação deste período apresenta diferença.</strong>
             {naoFecha}
           </div>
         )}
@@ -166,19 +166,19 @@ export default async function PeriodoDeConciliacaoPage({
         {semConta.length === 0 ? null : (
           <section className="space-y-2" data-sem-conta>
             <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
-              Arrecadações da fonte sem conta bancária (legado)
+              Arrecadações sem conta bancária informada
             </h2>
             <p className="text-[11px] text-[color:var(--color-ink-2)]">
-              Guias registradas antes de a conta ser obrigatória, ou importadas. Ficam FORA da identidade até
-              você atribuir a conta em que entraram — e a atribuição só é aceita se o razão da guia debitou a
-              conta contábil da conta escolhida ({conta.codigo} usa {contas.find((c) => c.id === conta.id)?.contaContabil ?? "sem mapeamento"}).
+              Guias registradas antes da obrigatoriedade da conta, ou importadas. Elas não entram na
+              conciliação até que a conta seja atribuída, e a atribuição só é aceita se a guia tiver sido
+              contabilizada na conta contábil da conta escolhida ({conta.codigo} usa {contas.find((c) => c.id === conta.id)?.contaContabil ?? "sem mapeamento"}).
             </p>
             <ul className="space-y-1 text-xs">
               {semConta.map((g) => (
                 <li key={g.id} data-guia-sem-conta={g.id} className="border-t border-[color:var(--color-border)] py-2">
                   <div className="flex flex-wrap justify-between gap-2">
                     <span>
-                      Guia {g.numeroReceita} · {diaCivilBr(g.data)} · fonte {g.fonteCodigo} · razão debitou{" "}
+                      Guia {g.numeroReceita} · {diaCivilBr(g.data)} · fonte {g.fonteCodigo} · conta contábil debitada{" "}
                       <span className="tabular-nums">{g.contaContabilDebitada ?? "—"}</span>
                     </span>
                     <span className="tabular-nums">{g.valor}</span>
@@ -230,8 +230,8 @@ export default async function PeriodoDeConciliacaoPage({
                 </div>
               </dl>
               <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]">
-                Os três números são derivados agora, do razão e do extrato — nada foi
-                congelado no encerramento.
+                Os valores são calculados a partir da contabilidade e do extrato na data da
+                consulta.
               </p>
 
               {detalhe.estado === "ABERTA" ? (
@@ -245,8 +245,7 @@ export default async function PeriodoDeConciliacaoPage({
                   Herdadas do período anterior
                 </h2>
                 <p className="text-[11px] text-[color:var(--color-ink-2)]">
-                  Referência ao conjunto não resolvido da conciliação anterior — nenhuma
-                  linha foi duplicada.
+                  Pendências não resolvidas na conciliação anterior.
                 </p>
                 <ul className="space-y-1 text-xs">
                   {detalhe.herdadasDaAnterior.map((h) => (
@@ -276,7 +275,7 @@ export default async function PeriodoDeConciliacaoPage({
               </h2>
               {detalhe.relatorio.noExtratoSemVinculo.length === 0 ? (
                 <p className="text-xs text-[color:var(--color-ink-2)]">
-                  Nada em aberto do lado do banco.
+                  Nenhuma pendência do extrato.
                 </p>
               ) : (
                 <ul className="space-y-1 text-xs">
@@ -315,7 +314,7 @@ export default async function PeriodoDeConciliacaoPage({
               </h2>
               {detalhe.relatorio.internoSemVinculo.length === 0 ? (
                 <p className="text-xs text-[color:var(--color-ink-2)]">
-                  Nada em aberto do lado do sistema.
+                  Nenhuma pendência contábil.
                 </p>
               ) : (
                 <ul className="space-y-1 text-xs">
@@ -391,8 +390,8 @@ export default async function PeriodoDeConciliacaoPage({
         <div className="space-y-6">
           {cabecalho}
           <EstadoVazio
-            titulo="Banco de dados indisponível"
-            descricao="A conciliação compara o razão com o extrato. Sem banco, não há o que comparar — e esta tela não vai fingir que há."
+            titulo="Serviço indisponível"
+            descricao="Não foi possível carregar a conciliação. Tente novamente mais tarde."
           />
         </div>
       );

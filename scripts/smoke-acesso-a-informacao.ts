@@ -127,7 +127,7 @@ async function main(): Promise<void> {
     ]);
     R.conferir(
       "2.1 encaminhar ao setor TRAMITA o processo no mesmo ato",
-      dist.tipo === "ok" && /processo tramitou junto/i.test(dist.texto),
+      dist.tipo === "ok" && /tramitação do processo/i.test(dist.texto),
       `${dist.tipo}: ${dist.texto.slice(0, 200)}`,
     );
 
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
     ]);
     R.conferir(
       "4.1 a prévia é registrada, e a mensagem diz que ela NÃO foi entregue",
-      previa.tipo === "ok" && /N[ÃA]O foi entregue/i.test(previa.texto) && /n[ãa]o inicia prazo de recurso/i.test(previa.texto),
+      previa.tipo === "ok" && /ainda n[ãa]o entregue/i.test(previa.texto) && /n[ãa]o inicia prazo de recurso/i.test(previa.texto),
       `${previa.tipo}: ${previa.texto.slice(0, 240)}`,
     );
 

@@ -37,7 +37,7 @@ export function EstornarMovimento({
         required
         largura={3}
         linhas={2}
-        ajuda="Por que o original não vale. Quem ler o histórico daqui a um ano não terá a quem perguntar."
+        ajuda="Descreva por que o movimento original está sendo anulado. O motivo fica registrado no histórico."
       />
       <div className="md:col-span-4">
         <button type="submit" className={BOTAO} disabled={pendente || estado.sucesso !== undefined}>
