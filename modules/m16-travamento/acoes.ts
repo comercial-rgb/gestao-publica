@@ -189,6 +189,14 @@ export type AcaoDoSistema =
   | "CADASTRAR_RENUNCIA_RECEITA_LDO"
   | "CADASTRAR_ALIENACAO_LDO"
 
+  // ── M02b V18/C13 — o ATO que ALTERA a peça já aprovada (TR 5.9.1.30 · 5.9.2.18) ──
+  // UMA ação, DOIS serviços (registrar o ato, acrescentar item), AS DUAS peças. E ela NÃO
+  // acompanha CADASTRAR_PPA nem CADASTRAR_LDO: digitar a peça que o Executivo monta e assinar
+  // a lei que altera a peça APROVADA são autoridades diferentes no ente — a segunda pressupõe
+  // ato publicado. Partir em ALTERAR_PPA e ALTERAR_LDO daria dois crachás que a mesma pessoa
+  // sempre recebe junto, e um crachá que não segrega ninguém é ruído no painel de permissões.
+  | "ALTERAR_PLANEJAMENTO"
+
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
   | "CADASTRAR_COMISSAO_PATRIMONIAL"
@@ -1105,6 +1113,9 @@ export type NomeDeServico =
   | "criarRenunciaReceitaLdo"
   | "criarAlienacaoBemLdo"
   | "criarAplicacaoAlienacaoLdo"
+  // V18/C13 — a alteracao da peca aprovada (dois servicos, uma acao)
+  | "registrarAtoDeAlteracaoDoPlanejamento"
+  | "acrescentarItemAoAtoDeAlteracao"
   | "criarDividaConsolidadaLdo"
   | "criarProjecaoAtuarialRpps"
   | "criarMargemExpansaoLdo"
@@ -1749,6 +1760,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // A alienação prevista e a aplicação do produto (art. 44) são o mesmo demonstrativo.
   criarAlienacaoBemLdo: "CADASTRAR_ALIENACAO_LDO",
   criarAplicacaoAlienacaoLdo: "CADASTRAR_ALIENACAO_LDO",
+  // ── M02b V18/C13 — a ALTERAÇÃO da peça: o ato e os itens dele, sob a MESMA ação ──
+  // Acrescentar item a um ato já registrado é o mesmo poder de registrá-lo (a mesma lei
+  // mexendo em mais uma linha, TR 5.9.3.16): conceder um sem o outro não significaria nada.
+  registrarAtoDeAlteracaoDoPlanejamento: "ALTERAR_PLANEJAMENTO",
+  acrescentarItemAoAtoDeAlteracao: "ALTERAR_PLANEJAMENTO",
 
   // ── M21 — protocolo e processo digital (ENT02) ──
   abrirProcesso: "ABRIR_PROCESSO",
@@ -2037,6 +2053,22 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "⚠️ E A AUSÊNCIA DE AÇÃO É A DECISÃO CENTRAL DELE: a eliminação é DEMONSTRATIVO, não " +
     "lançamento — nada se escreve no razão, e é assim que a visão individual de cada unidade se " +
     "preserva. A tela é lida sob `CONSULTAR_RELATORIOS`, como os outros demonstrativos.",
+  // ── V18/C13 — as quatro leituras da ALTERAÇÃO da peça de planejamento ──
+  // ⚠️ A ESCRITA DELAS TEM AÇÃO PRÓPRIA (`ALTERAR_PLANEJAMENTO`, em `ACAO_DO_SERVICO`); o que
+  // está aqui é só quem LÊ. A leitura da tela é `CONSULTAR_PLANEJAMENTO`, como as demais peças.
+  comparativoDaPeca:
+    "LEITURA. O comparativo da peça: o valor original, os atos que a alteraram em ordem " +
+    "cronológica, a soma e o vigente — com corte por data, que é o que faz 'relatório por " +
+    "versão'. Não grava nada; o valor vigente é DERIVADO e não existe como coluna.",
+  metasAnuaisVigentes:
+    "LEITURA. As metas fiscais da LDO com as alterações já aplicadas — o DONO da derivação. " +
+    "⚠️ Os dois leitores que já existiam (o Anexo de Metas Fiscais em PDF e a meta que o RREO " +
+    "Anexo 6 confronta) passam por ela, para que não haja duas verdades sobre o mesmo número.",
+  atosDaPeca:
+    "LEITURA. Os atos que alteraram uma peça, em ordem cronológica e com corte por data.",
+  linhasAlteraveisDaPeca:
+    "LEITURA. As linhas que um ato PODE alterar, recortadas pela peça — é o recorte que o " +
+    "formulário oferece, para não virar um select de quinhentos itens.",
   // ⚠️ ESTA É COMPOSÁVEL INTERNA, não leitura de tela: ela roda DENTRO de `alocarRecolhimento`,
   // na transação dele, e é o número contra o qual a parcela é conferida. Autorizá-la de novo
   // seria cobrar duas vezes pelo mesmo ato.

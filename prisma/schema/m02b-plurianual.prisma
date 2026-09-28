@@ -76,6 +76,8 @@ model PlanoPlurianual {
   programas       ProgramaPpa[]
   previsoes       PrevisaoReceitaPpa[]
   receitasAnteriores ReceitaAnteriorPpa[]
+  /// Os atos que alteraram este plano (V18/C13).
+  atosDeAlteracao AtoDeAlteracaoDoPlanejamento[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -195,6 +197,10 @@ model ProgramaPpa {
   indicadores IndicadorPrograma[]
   acoes       AcaoPpa[]
 
+  /// Os ajustes que atos de alteracao fizeram neste valor (V18/C13). O valor
+  /// VIGENTE e esta linha mais a soma deles — nunca uma coluna cache.
+  alteracoes AlteracaoDeValorPlanejado[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -266,6 +272,10 @@ model AcaoPpa {
   metaFisica     Decimal @db.Decimal(18, 6)
   metaFinanceira Decimal @db.Decimal(18, 2)
 
+  /// Os ajustes que atos de alteracao fizeram neste valor (V18/C13). O valor
+  /// VIGENTE e esta linha mais a soma deles — nunca uma coluna cache.
+  alteracoes AlteracaoDeValorPlanejado[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -301,6 +311,10 @@ model PrevisaoReceitaPpa {
   /// O exercício DENTRO do quadriênio. O serviço confere que está no intervalo.
   ano   Int
   valor Decimal @db.Decimal(18, 2)
+
+  /// Os ajustes que atos de alteracao fizeram neste valor (V18/C13). O valor
+  /// VIGENTE e esta linha mais a soma deles — nunca uma coluna cache.
+  alteracoes AlteracaoDeValorPlanejado[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -380,6 +394,8 @@ model LeiDiretrizesOrcamentarias {
   dividas        DividaConsolidadaLdo[]
   projecoesRpps  ProjecaoAtuarialRpps[]
   margens        MargemExpansaoLdo[]
+  /// Os atos que alteraram esta LDO (V18/C13).
+  atosDeAlteracao AtoDeAlteracaoDoPlanejamento[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -456,6 +472,10 @@ model MetaAnualLdo {
   receitaPrimariaPpp Decimal @db.Decimal(18, 2)
   despesaPrimariaPpp Decimal @db.Decimal(18, 2)
   impactoSaldoPpp    Decimal @db.Decimal(18, 2)
+
+  /// Os ajustes que atos de alteracao fizeram neste valor (V18/C13). O valor
+  /// VIGENTE e esta linha mais a soma deles — nunca uma coluna cache.
+  alteracoes AlteracaoDeValorPlanejado[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -658,4 +678,160 @@ model MargemExpansaoLdo {
 
   @@unique([ldoId, ano])
   @@index([ldoId])
+}
+
+// ============================================================================
+// A ALTERAÇÃO DA PEÇA — o ato que muda o plano, e o valor que ele mudou (V18/C13)
+//
+// ⚠️ NÃO EXISTE CÓPIA DA PEÇA POR VERSÃO, e a ausência é a decisão desta unidade.
+// A candidata "uma coluna `versaoId` nas 20 tabelas" exigiria derrubar
+// `PlanoPlurianual.@@unique([anoInicio])` e `LeiDiretrizesOrcamentarias.exercicio
+// @unique` — as duas unicidades que existem justamente para impedir duas verdades
+// sobre o mesmo período —, multiplicaria as 29 colunas de dinheiro do módulo em N
+// cópias (cache de dinheiro, o bug do TR 5.9) e deixaria os oito anexos da LDO,
+// que não sabem de versão, lendo a versão 1 em silêncio. Recusada em
+// `docs/varreduras/varredura-v18-versao-do-planejamento.md`.
+//
+// O que existe é o mecanismo que este repositório já usa duas vezes para a LOA (a
+// reprevisão da receita e o crédito adicional do M03): o ATO é uma linha, o valor
+// que ele mexeu é um item COM SINAL, nada se edita, e o valor vigente é
+// `original + soma dos ajustes`. "A versão da peça" é o estado dela até um ato ou
+// até uma data — derivação, nunca flag que alguém esquece de virar. É a mesma
+// doutrina do `vigente` que o PPA não tem e do `situacao` que a LDO não tem.
+//
+// ═══ ⚠️ O DELTA AO LADO DA LINHA DESLIGA OS CHECKS DA LINHA ═══
+// Cinco CHECKs deste módulo governam as colunas que uma alteração mexe
+// (`ck_previsao_receita_ppa_nao_negativa`, `ck_programa_ppa_valor_nao_negativo`,
+// `ck_acao_ppa_metas_nao_negativas`, `ck_meta_anual_valores_nao_negativos`,
+// `ck_meta_anual_primaria_nao_excede_total`). O `INSERT` de um item NÃO toca a
+// tabela vigiada, então nenhum deles é avaliado sobre o valor que o sistema passa
+// a exibir. Sem cuidado explícito, esta tabela seria a rota alternativa que aceita
+// a previsão de receita negativa e a receita primária maior que a total — as duas
+// recusadas pelo banco hoje. Por isso o serviço REIMPÕE cada predicado sobre o
+// valor DERIVADO, dentro da transação, e cada guard cita a constraint que espelha
+// (`modules/m02b-plurianual/alteracao.ts`). O `CLAUDE.md` chama isso pelo nome:
+// "bloqueio vale por API, por worker e por rota alternativa".
+// ============================================================================
+
+/// O ATO QUE ALTERA A PEÇA — a lei ou o decreto, e o texto que o fundamenta.
+///
+/// ⚠️ UMA PEÇA POR ATO, NUNCA AS DUAS. `planoId` e `ldoId` são nullable e o CHECK
+/// `ck_ato_alteracao_uma_peca` exige exatamente um: um ato que alterasse o PPA e a
+/// LDO ao mesmo tempo produziria um comparativo em que o total de nenhuma das duas
+/// fecha, e a compatibilização entre peças é outra capacidade (TR 5.9.1.25), que
+/// depende do vínculo PPA→LOA que este módulo registra como ausente.
+///
+/// ⚠️ SEM COLUNA `situacao`/`vigente`. O ato existe, logo ele valeu — e o que o
+/// desfaz é outro ato, com os ajustes invertidos. Mesma doutrina do
+/// `DecretoEncerramento` do M03: o fato é a linha, não um atributo mutável.
+///
+/// ⚠️ NÃO HÁ CHECK LIGANDO `ano` A `data`. A tentação era
+/// `EXTRACT(YEAR FROM data) = ano`, e ela está errada duas vezes: `EXTRACT` sobre
+/// timestamp avalia em UTC, e a data civil do ente é a régua deste repositório
+/// (`packages/datas`); e uma lei publicada em janeiro pode numerar-se pelo ano
+/// anterior. O `ano` é o da numeração do ato, como o ente a publica — igual ao
+/// `LeiCredito.ano` do M03.
+model AtoDeAlteracaoDoPlanejamento {
+  id String @id @default(cuid())
+
+  /// A peça alterada — exatamente UMA das duas. Ver o CHECK.
+  planoId String?
+  plano   PlanoPlurianual? @relation(fields: [planoId], references: [id], onDelete: Restrict)
+  ldoId   String?
+  ldo     LeiDiretrizesOrcamentarias? @relation(fields: [ldoId], references: [id], onDelete: Restrict)
+
+  /// O número do ato, como o ente o publica ("1.234", "27/2026").
+  numero String
+  /// O ano da numeração. Ver o docblock: não é derivado de `data`.
+  ano    Int
+
+  /// A data do ato, e a data em que ele foi publicado. A publicação não antecede o
+  /// ato (`ck_ato_alteracao_publicacao_nao_antecede`) — erro de digitação que
+  /// nenhum relatório detecta sozinho.
+  data           DateTime
+  dataPublicacao DateTime
+
+  /// O texto que fundamenta a alteração. Obrigatório: um ato sem fundamento é uma
+  /// mudança de valor sem autoria jurídica, e a prova de C13 exige o ato preservado.
+  fundamento String
+
+  itens AlteracaoDeValorPlanejado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// ⚠️ DUAS UNICIDADES, UMA POR PEÇA, e não uma só com as duas colunas: no
+  /// Postgres NULL não conflita com NULL, então cada índice restringe apenas as
+  /// linhas da sua peça — que é exatamente o desejado. Dois atos "lei 10/2026" no
+  /// mesmo PPA são um só duplicado; a lei 10/2026 que altera a LDO é outro ato.
+  @@unique([planoId, ano, numero])
+  @@unique([ldoId, ano, numero])
+  @@index([planoId, data])
+  @@index([ldoId, data])
+}
+
+/// O VALOR QUE O ATO MUDOU — append-only, COM SINAL.
+///
+/// ⚠️ O AJUSTE TEM SINAL E NÃO PODE SER ZERO (`ck_alteracao_valor_ajuste_nao_zero`):
+/// `+` acresce, `−` reduz, e um ajuste zero seria um item que aparece no comparativo
+/// e não altera nada — ruído que faz o leitor procurar a diferença que não existe.
+///
+/// ⚠️ QUATRO ALVOS NULLABLE E UM CHECK QUE AMARRA ALVO E GRANDEZA JUNTOS
+/// (`ck_alteracao_valor_alvo_e_grandeza`). Ele faz duas coisas numa expressão:
+/// exige exatamente um alvo preenchido E exige que a `grandeza` seja uma coluna
+/// daquele alvo. Separar em dois CHECKs permitiria o par impossível "ação do PPA
+/// com grandeza `receitaPrimaria`", que passaria pelos dois e não existe em tabela
+/// nenhuma. FK tipada, e não o par `alvoTipo`/`alvoId` do `LancamentoContabil`,
+/// porque aqui o alvo é uma linha DESTE módulo: a integridade referencial é
+/// possível, e onde ela é possível ela não se troca por string.
+///
+/// ⚠️ SÓ QUATRO DAS 14 TABELAS COM QUANTIDADE, e a seleção está justificada na
+/// varredura: a série histórica de exercício encerrado não se altera por lei de
+/// plano; riscos, renúncia, alienação, dívida, RPPS e margem são DECLARAÇÕES de
+/// anexo da LRF, refeitas inteiras, não dotações que sofrem acréscimo; e a meta
+/// FÍSICA é `Decimal(18,6)`, que não cabe nesta coluna de dinheiro sem perder a
+/// casa que a meta persegue (pendência `ALTERACAO-DE-META-FISICA`).
+model AlteracaoDeValorPlanejado {
+  id String @id @default(cuid())
+
+  atoId String
+  ato   AtoDeAlteracaoDoPlanejamento @relation(fields: [atoId], references: [id])
+
+  /// Exatamente UM destes quatro. Ver o CHECK.
+  previsaoReceitaPpaId String?
+  previsaoReceitaPpa   PrevisaoReceitaPpa? @relation(fields: [previsaoReceitaPpaId], references: [id], onDelete: Restrict)
+  programaPpaId        String?
+  programaPpa          ProgramaPpa? @relation(fields: [programaPpaId], references: [id], onDelete: Restrict)
+  acaoPpaId            String?
+  acaoPpa              AcaoPpa? @relation(fields: [acaoPpaId], references: [id], onDelete: Restrict)
+  metaAnualLdoId       String?
+  metaAnualLdo         MetaAnualLdo? @relation(fields: [metaAnualLdoId], references: [id], onDelete: Restrict)
+
+  /// ⚠️ `onDelete: Restrict` NOS QUATRO, e não o `SET NULL` que o Prisma escolhe
+  /// sozinho para relação opcional: com `SET NULL`, apagar a linha planejada zeraria
+  /// os quatro alvos deste item e o CHECK `ck_alteracao_valor_alvo_e_grandeza` faria
+  /// o DELETE falhar com uma violação de check — mensagem que não diz o que houve.
+  /// `Restrict` diz: não se apaga um valor que uma lei já alterou.
+
+  /// A coluna do alvo que mudou, pelo nome que ela tem no schema. O rol fechado
+  /// vive em `alteracao.ts` e um teste o confere contra o DMMF do Prisma — o rol
+  /// não se acredita, se mede contra o schema.
+  grandeza String @db.VarChar(40)
+
+  /// O ajuste, COM SINAL. Dinheiro é `Decimal(18,2)`, sempre.
+  valorAjuste Decimal @db.Decimal(18, 2)
+
+  /// Por que esta linha mudou. Nullable porque o fundamento do ATO costuma ser o
+  /// único motivo que a lei dá — exigir um texto por item faria o operador repetir
+  /// a ementa em cada linha, e campo preenchido por obrigação não informa nada.
+  justificativa String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([atoId])
+  @@index([previsaoReceitaPpaId])
+  @@index([programaPpaId])
+  @@index([acaoPpaId])
+  @@index([metaAnualLdoId])
 }

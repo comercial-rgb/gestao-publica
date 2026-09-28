@@ -588,6 +588,14 @@ enum AcaoDoSistema {
   CADASTRAR_RENUNCIA_RECEITA_LDO
   CADASTRAR_ALIENACAO_LDO
 
+  // ── M02b V18/C13 — o ATO que ALTERA a peça já aprovada (TR 5.9.1.30 · 5.9.2.18).
+  // UMA ação para as DUAS peças e para os dois serviços (registrar o ato, acrescentar item),
+  // e ela NÃO acompanha CADASTRAR_PPA nem CADASTRAR_LDO: digitar a peça que o Executivo
+  // monta e assinar a lei que altera a peça aprovada são autoridades diferentes no ente —
+  // a primeira é do setor de planejamento, a segunda pressupõe ato publicado. Partir em
+  // ALTERAR_PPA e ALTERAR_LDO daria dois crachás que a mesma pessoa sempre recebe junto.
+  ALTERAR_PLANEJAMENTO
+
   // ── M01 V11 V9 — a ENTIDADE CONTÁBIL e a titularidade da receita (TR 5.10.1.3 · 5.38.7).
   // Três ações para quatro serviços: publicar versão é a MESMA autoridade de cadastrar (dizer
   // quem a entidade é), e partir em duas daria ao ente a chance de conceder uma sem a outra,

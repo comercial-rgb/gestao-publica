@@ -12,6 +12,7 @@ import {
   type ChaveAnexoLdo,
 } from "../../modules/m02b-plurianual/anexos/ldo.js";
 import type { AnexoLdo } from "../../modules/m02b-plurianual/anexos/tipos.js";
+import { metasAnuaisVigentes } from "../../modules/m02b-plurianual/comparativo.js";
 
 export { ANEXOS_DA_LDO, ehChaveDeAnexo } from "../../modules/m02b-plurianual/anexos/ldo.js";
 export type { ChaveAnexoLdo } from "../../modules/m02b-plurianual/anexos/ldo.js";
@@ -60,22 +61,24 @@ export async function montarAnexoDaLdo(
   const ex = ldo.exercicio;
 
   switch (chave) {
+    // ⚠️ AS METAS VÊM PELO DONO DA DERIVAÇÃO (V18/C13), e não por `findMany` direto: quando uma
+    // lei altera a meta fiscal, o ajuste é gravado ao lado da linha e o valor vigente é
+    // `original + soma dos ajustes`. Ler a linha crua aqui faria o Anexo de Metas Fiscais
+    // imprimir a meta REVOGADA enquanto o comparativo mostra a vigente — duas verdades sobre o
+    // número que o Prefeito assina. Com zero atos o resultado é idêntico ao de antes.
     case "metas-anuais": {
-      const linhas = await prisma.metaAnualLdo.findMany({
-        where: { ldoId },
-        orderBy: { ano: "asc" },
-      });
+      const linhas = await metasAnuaisVigentes(prisma, { ldoId });
       return anexoMetasAnuais(
         ex,
         linhas.map((m) => ({
           ano: m.ano,
-          receitaTotal: toMoney(m.receitaTotal.toFixed(2)),
-          receitaPrimaria: toMoney(m.receitaPrimaria.toFixed(2)),
-          despesaTotal: toMoney(m.despesaTotal.toFixed(2)),
-          despesaPrimaria: toMoney(m.despesaPrimaria.toFixed(2)),
-          resultadoNominal: toMoney(m.resultadoNominal.toFixed(2)),
-          dividaPublicaConsolidada: toMoney(m.dividaPublicaConsolidada.toFixed(2)),
-          dividaConsolidadaLiquida: toMoney(m.dividaConsolidadaLiquida.toFixed(2)),
+          receitaTotal: m.vigente.receitaTotal,
+          receitaPrimaria: m.vigente.receitaPrimaria,
+          despesaTotal: m.vigente.despesaTotal,
+          despesaPrimaria: m.vigente.despesaPrimaria,
+          resultadoNominal: m.vigente.resultadoNominal,
+          dividaPublicaConsolidada: m.vigente.dividaPublicaConsolidada,
+          dividaConsolidadaLiquida: m.vigente.dividaConsolidadaLiquida,
         }))
       );
     }

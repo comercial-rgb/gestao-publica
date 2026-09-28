@@ -675,6 +675,48 @@ export function derivarRolDeFontesDaConta(
   return saida;
 }
 
+/**
+ * V18 (C13 · TR 5.9.1.30 · 5.9.2.18) — o ATO que ALTERA o PPA ou a LDO já aprovados.
+ *
+ * ⚠️ VAI SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, e não a quem já tem CADASTRAR_PPA ou
+ * CADASTRAR_LDO — que era a derivação "óbvia" e está errada: digitar a peça que o Executivo
+ * monta é trabalho do setor de planejamento; registrar a lei que altera a peça APROVADA
+ * pressupõe ato publicado, e é a mesma distinção que separa `criarFicha` de
+ * `CRIAR_DECRETO_DE_CREDITO` no M03. Derivar daquela daria a alteração da peça a quem
+ * apenas a transcreveu.
+ *
+ * ⚠️ E O ERRO NÃO TEM DETECTOR ADIANTE: o comparativo fecha, o total da peça fecha e o Anexo
+ * de Metas Fiscais fecha — porque o valor vigente é derivado e soma o que houver. O que sobra
+ * é uma meta fiscal alterada sem lei, e quem confronta o resultado apurado contra ela é o
+ * RREO Anexo 6, assinado pelo Prefeito.
+ */
+export function derivarAlteracaoDoPlanejamento(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    if (
+      perfil.permissoes.some(
+        (p) => p.acao === "ALTERAR_PLANEJAMENTO" && p.unidadeOrcId === null
+      )
+    ) {
+      continue;
+    }
+    saida.push({
+      perfilId: perfil.id,
+      perfilNome: perfil.nome,
+      acao: "ALTERAR_PLANEJAMENTO",
+      unidadeOrcId: null,
+    });
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1416,6 +1458,24 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "dinheiro carimbado no lugar errado, e o erro so aparece no controle de destinacao, meses " +
       "depois. Vai so a quem administra permissoes no global.",
     derivar: derivarRolDeFontesDaConta,
+  },
+  {
+    versao: 34,
+    nome: "alteracao-do-planejamento",
+    descricao:
+      "O PPA e a LDO passaram a ter ALTERACAO VERSIONADA (V18, C13): a lei ou o decreto que " +
+      "muda a peca aprovada e uma linha, o valor que ela mexeu e um item COM SINAL, a linha " +
+      "original nunca muda e o valor vigente e derivado. Com isso vem a acao " +
+      "ALTERAR_PLANEJAMENTO, para os dois servicos (registrar o ato, acrescentar item). " +
+      "⚠️ ELA NAO ACOMPANHA CADASTRAR_PPA NEM CADASTRAR_LDO, e essa foi a decisao: digitar a " +
+      "peca que o Executivo monta e trabalho do setor de planejamento; registrar a lei que " +
+      "altera a peca APROVADA pressupoe ato publicado — a mesma distincao que separa criarFicha " +
+      "de CRIAR_DECRETO_DE_CREDITO no M03. " +
+      "⚠️ E O ERRO NAO TEM DETECTOR ADIANTE: o comparativo fecha, o total da peca fecha e o " +
+      "Anexo de Metas Fiscais fecha, porque o vigente e derivado e soma o que houver. O que " +
+      "sobra e meta fiscal alterada sem lei — e quem confronta o apurado contra ela e o RREO " +
+      "Anexo 6. Vai so a quem administra permissoes no global, que a distribui nomeando a pessoa.",
+    derivar: derivarAlteracaoDoPlanejamento,
   },
 ];
 

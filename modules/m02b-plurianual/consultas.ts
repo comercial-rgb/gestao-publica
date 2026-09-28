@@ -1,5 +1,6 @@
-import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { type Money } from "../../packages/contracts/index.js";
 import { resultadoPrimario } from "./dominio.js";
+import { metasAnuaisVigentes } from "./comparativo.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 
 /**
@@ -68,21 +69,18 @@ export async function metaFiscalDoExercicio(
   tx: Tx,
   exercicio: number
 ): Promise<LeituraDaMetaFiscal> {
-  const candidatas = await tx.metaAnualLdo.findMany({
-    where: { ano: exercicio },
-    select: {
-      receitaPrimaria: true,
-      despesaPrimaria: true,
-      resultadoNominal: true,
-      ldo: { select: { exercicio: true } },
-    },
-  });
+  // ⚠️ PELO DONO DA DERIVAÇÃO (V18/C13), e não por `findMany` direto: quando uma lei altera a
+  // meta fiscal, o ajuste fica ao lado da linha e o vigente é `original + soma dos ajustes`.
+  // Ler a linha crua aqui faria o RREO Anexo 6 confrontar o resultado apurado contra a meta
+  // REVOGADA — e publicar cumprimento de meta revogada é pior do que não confrontar. Com zero
+  // atos o número é idêntico ao de antes, e é isso que a suíte deste arquivo prova.
+  const candidatas = await metasAnuaisVigentes(tx, { ano: exercicio });
 
   if (candidatas.length === 0) return { meta: null, pendencia: null };
 
   if (candidatas.length > 1) {
     const quais = candidatas
-      .map((c) => `LDO ${c.ldo.exercicio}`)
+      .map((c) => `LDO ${c.ldoExercicio}`)
       .sort()
       .join(", ");
     return {
@@ -101,11 +99,8 @@ export async function metaFiscalDoExercicio(
     meta: {
       // ⚠️ DERIVADO pela função do domínio — `resultadoPrimario` não é coluna, e a mesma
       // função alimenta o anexo da LDO e o exportador SIGA.
-      resultadoPrimario: resultadoPrimario(
-        toMoney(c.receitaPrimaria.toFixed(2)),
-        toMoney(c.despesaPrimaria.toFixed(2))
-      ),
-      resultadoNominal: toMoney(c.resultadoNominal.toFixed(2)),
+      resultadoPrimario: resultadoPrimario(c.vigente.receitaPrimaria, c.vigente.despesaPrimaria),
+      resultadoNominal: c.vigente.resultadoNominal,
     },
     pendencia: null,
   };

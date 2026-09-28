@@ -322,6 +322,12 @@ describe("instalação limpa e atualização — no banco", () => {
       // so alcanca perfil que JA administra permissoes no global, e a instalacao limpa ainda nao
       // tem nenhum gravado (o bootstrap concede o censo do ente, que ja a inclui).
       { versao: 33, previa: 0, aplicada: false },
+      // V18/C13 — ALTERAR_PLANEJAMENTO. Previa 0 pela razao das anteriores: a derivacao so
+      // alcanca perfil que JA administra permissoes no global, e a instalacao limpa ainda nao tem
+      // nenhum com CONCEDER_ACAO_A_PERFIL gravado. ⚠️ E o zero aqui e tambem a prova de que a
+      // acao ESTA em TODAS_AS_ACOES, logo em ACOES_DO_ENTE: se estivesse fora, o bootstrap nao a
+      // concederia e esta previa viria 1 — foi esse numero que apontou o furo da v32.
+      { versao: 34, previa: 0, aplicada: false },
     ]);
   });
 
