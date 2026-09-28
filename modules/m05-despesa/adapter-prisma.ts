@@ -507,6 +507,54 @@ async function guardsDaOrdem(tx: Tx, p: EmpenharParams): Promise<void> {
 }
 
 /**
+ * AS DIMENSÕES DO EMPENHO (V22) — tudo o que classifica a despesa além da ficha: por onde uma soma
+ * filtra ("empenhado do contrato", "da obra", "da ordem de compra", "do convênio"...).
+ *
+ * ⚠️ TODA LINHA QUE NEGA OU REDUZ UM EMPENHO (anulação total, anulação parcial, estorno da parcial)
+ * COPIA TODAS ELAS do documento de origem. Uma dimensão esquecida numa só dessas linhas faz a soma
+ * filtrada por ela ver o empenho e não ver a redução — o empenho fica contado inteiro para sempre.
+ * Foi assim com a dívida na anulação total e com a obra e a ordem de compra no estorno da parcial,
+ * cada cópia escrita à mão em três lugares. Agora as três passam por `dimensoesDe`, e o teste
+ * `m05-dimensoes-das-anulacoes` confere esta lista contra as colunas do modelo: coluna de vínculo
+ * nova no `Empenho` quebra o teste até ser declarada aqui ou em `VINCULOS_QUE_NAO_SAO_DIMENSAO`.
+ */
+export const DIMENSOES_DO_EMPENHO = [
+  "subelementoId",
+  "contratoId",
+  "classeDeBensId",
+  "dividaId",
+  "obraId",
+  "convenioId",
+  "precatorioId",
+  "consorcioId",
+  "ordemDeCompraId",
+] as const;
+
+/**
+ * Os vínculos do `Empenho` que NÃO se copiam para a anulação, cada um com o motivo: a ficha vai
+ * explícita (é a chave da dotação); o lançamento é o da própria anulação; `estornoDeId` e
+ * `anulacaoParcialDeId` são a própria referência ao original; a solicitação é única por empenho
+ * (índice único) e já foi consumida pelo original.
+ */
+export const VINCULOS_QUE_NAO_SAO_DIMENSAO = [
+  "fichaId",
+  "lancamentoId",
+  "estornoDeId",
+  "anulacaoParcialDeId",
+  "solicitacaoDeEmpenhoId",
+] as const;
+
+type DimensaoDoEmpenho = (typeof DIMENSOES_DO_EMPENHO)[number];
+
+const SELECAO_DAS_DIMENSOES = Object.fromEntries(DIMENSOES_DO_EMPENHO.map((d) => [d, true])) as {
+  readonly [K in DimensaoDoEmpenho]: true;
+};
+
+function dimensoesDe(origem: { readonly [K in DimensaoDoEmpenho]: string | null }): { [K in DimensaoDoEmpenho]: string | null } {
+  return Object.fromEntries(DIMENSOES_DO_EMPENHO.map((d) => [d, origem[d]])) as { [K in DimensaoDoEmpenho]: string | null };
+}
+
+/**
  * M28 (V22) — o EMPENHADO LÍQUIDO de um convênio: Σ dos empenhos que o executam, líquida de
  * anulações totais e parciais (a mesma soma do repositório, `packages/estornaveis`).
  *
@@ -1174,10 +1222,7 @@ export function criarDespesaRepositoryPrisma(
             fichaId: true,
             valor: true,
             categoriaOrdemCronologica: true,
-            contratoId: true,
-            obraId: true,
-            convenioId: true,
-            ordemDeCompraId: true,
+            ...SELECAO_DAS_DIMENSOES,
             estornos: { select: { id: true } },
           },
         });
@@ -1218,15 +1263,10 @@ export function criarDespesaRepositoryPrisma(
             historico: p.historico,
             // a anulação herda a categoria do empenho original
             categoriaOrdemCronologica: original.categoriaOrdemCronologica,
-            // ⚠️ E HERDA O CONTRATO (M11). Sem isto, a soma do empenhado por
-            // contrato veria o empenho original e NÃO veria a anulação dele — o
-            // contrato ficaria eternamente empenhado, e o saldo nunca voltaria.
-            contratoId: original.contratoId,
-            obraId: original.obraId,
-            // M28 (V22) — e o CONVÊNIO, pelo mesmo motivo: sem ele, a soma por convênio veria o
-            // empenho e não veria a anulação (`empenhadoLiquidoDoConvenio`).
-            convenioId: original.convenioId,
-            ordemDeCompraId: original.ordemDeCompraId,
+            // ⚠️ E HERDA TODAS AS DIMENSÕES (contrato, obra, dívida, convênio, ordem...). Sem
+            // isto, a soma do empenhado por contrato veria o empenho original e NÃO veria a
+            // anulação dele — o contrato ficaria eternamente empenhado. Ver DIMENSOES_DO_EMPENHO.
+            ...dimensoesDe(original),
             lancamentoId: lancamento.id,
             estornoDeId: original.id,
             criadoPor: p.criadoPor,
@@ -1274,12 +1314,7 @@ export function criarDespesaRepositoryPrisma(
             fichaId: true,
             numero: true,
             valor: true,
-            contratoId: true,
-            obraId: true,
-            classeDeBensId: true,
-            dividaId: true,
-            convenioId: true,
-            ordemDeCompraId: true,
+            ...SELECAO_DAS_DIMENSOES,
             categoriaOrdemCronologica: true,
             estornoDeId: true,
             anulacaoParcialDeId: true,
@@ -1336,13 +1371,8 @@ export function criarDespesaRepositoryPrisma(
             historico: p.motivo,
             categoriaOrdemCronologica: original.categoriaOrdemCronologica,
             // ⚠️ COPIA as dimensões: sem isso, a soma por CONTRATO veria o empenho e
-            // não veria a redução dele (a lição do bloco 2 do M11).
-            contratoId: original.contratoId,
-            classeDeBensId: original.classeDeBensId,
-            dividaId: original.dividaId,
-            obraId: original.obraId,
-            convenioId: original.convenioId,
-            ordemDeCompraId: original.ordemDeCompraId,
+            // não veria a redução dele (a lição do bloco 2 do M11). Ver DIMENSOES_DO_EMPENHO.
+            ...dimensoesDe(original),
             lancamentoId: lancamento.id,
             // ⚠️ NÃO é estornoDeId: a parcial REDUZ, não NEGA.
             anulacaoParcialDeId: original.id,
@@ -1578,11 +1608,7 @@ export function criarDespesaRepositoryPrisma(
               fichaId: true,
               numero: true,
               valor: true,
-              contratoId: true,
-              obraId: true,
-              classeDeBensId: true,
-              dividaId: true,
-              convenioId: true,
+              ...SELECAO_DAS_DIMENSOES,
               categoriaOrdemCronologica: true,
               anulacaoParcialDeId: true,
               estornos: { select: { id: true } },
@@ -1617,12 +1643,9 @@ export function criarDespesaRepositoryPrisma(
               credorCpfCnpj: "ESTORNO_ANULACAO_PARCIAL",
               historico: p.motivo,
               categoriaOrdemCronologica: parcial.categoriaOrdemCronologica,
-              contratoId: parcial.contratoId,
-              classeDeBensId: parcial.classeDeBensId,
-              dividaId: parcial.dividaId,
-              // M28 (V22) — o estorno da parcial também entra na soma por convênio: sem ele, a
-              // parcial continuaria "viva" para quem filtra pelo convênio.
-              convenioId: parcial.convenioId,
+              // O estorno da parcial entra em toda soma filtrada: sem as dimensões, a parcial
+              // continuaria "viva" para quem filtra por elas. Ver DIMENSOES_DO_EMPENHO.
+              ...dimensoesDe(parcial),
               lancamentoId: lancamento.id,
               estornoDeId: parcial.id,
               criadoPor: p.criadoPor,

@@ -5,7 +5,7 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { AREA_DA_ACAO } from "../../lib/portas/navegacao-permissoes.js";
 import { aplicarAtualizacaoDePermissoes } from "../m16-travamento/atualizacoes-de-permissoes.js";
-import { criarM05Deps, empenhadoLiquidoDoConvenio } from "./adapter-prisma.js";
+import { criarM05Deps, DIMENSOES_DO_EMPENHO, empenhadoLiquidoDoConvenio } from "./adapter-prisma.js";
 import { anularEmpenhoParcial, estornarAnulacaoParcial } from "./anulacao-parcial.js";
 import { roteiroEmpenho, type RoteiroContabil } from "./dominio.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -375,6 +375,16 @@ describe("o convênio no empenho", () => {
       deps
     );
     expect((await empenhadoLiquidoDoConvenio(prisma, c)).toFixed(2)).toBe("1000.00");
+
+    // A PROPRIEDADE (V22): cada linha que nega ou reduz carrega TODAS as dimensões da origem —
+    // não só o convênio. A tupla inteira, com os nulos, tem de ser igual.
+    const dims = Object.fromEntries(DIMENSOES_DO_EMPENHO.map((d) => [d, true])) as Record<(typeof DIMENSOES_DO_EMPENHO)[number], true>;
+    const tupla = async (id: string): Promise<unknown> => prisma.empenho.findUniqueOrThrow({ where: { id }, select: dims });
+    const total = await prisma.empenho.findFirstOrThrow({ where: { estornoDeId: e2.empenhoId }, select: { id: true } });
+    const estornoDaParcial = await prisma.empenho.findFirstOrThrow({ where: { estornoDeId: parcial.anulacaoId }, select: { id: true } });
+    expect(await tupla(total.id)).toEqual(await tupla(e2.empenhoId));
+    expect(await tupla(parcial.anulacaoId)).toEqual(await tupla(e1.empenhoId));
+    expect(await tupla(estornoDaParcial.id)).toEqual(await tupla(e1.empenhoId));
   });
 
   it("t13 convênio inexistente é recusado nomeando — nada gravado", async () => {
