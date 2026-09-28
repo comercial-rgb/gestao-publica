@@ -2028,6 +2028,15 @@ export const FORA_DO_CENSO: Record<string, string> = {
   composicaoDoRecolhimento:
     "LEITURA. De quais retenções um recolhimento já gravado veio, com o valor de cada parcela. " +
     "Projeção da `AlocacaoDoRecolhimento`; não grava nada.",
+  // ── V17/C07 — as eliminações intragovernamentais ────────────────────────────
+  planoDeConsolidacao:
+    "LEITURA. As âncoras de nível 5 do plano instalado, para classificar uma conta como INTRA OFSS " +
+    "(`consolidacao.ts`). Uma consulta e um classificador puro; não grava nada.",
+  eliminacoesIntragovernamentais:
+    "LEITURA. O demonstrativo das operações entre unidades do próprio ente e o resíduo de cada par. " +
+    "⚠️ E A AUSÊNCIA DE AÇÃO É A DECISÃO CENTRAL DELE: a eliminação é DEMONSTRATIVO, não " +
+    "lançamento — nada se escreve no razão, e é assim que a visão individual de cada unidade se " +
+    "preserva. A tela é lida sob `CONSULTAR_RELATORIOS`, como os outros demonstrativos.",
   // ⚠️ ESTA É COMPOSÁVEL INTERNA, não leitura de tela: ela roda DENTRO de `alocarRecolhimento`,
   // na transação dele, e é o número contra o qual a parcela é conferida. Autorizá-la de novo
   // seria cobrar duas vezes pelo mesmo ato.
