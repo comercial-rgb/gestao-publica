@@ -98,7 +98,7 @@ const RUBRICAS: readonly RubricaLida[] = [
 function entrada(extra: Partial<EntradaDoContracheque> = {}): EntradaDoContracheque {
   return {
     competencia: "2026-05",
-    vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: D(1985, 7, 20) },
+    vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: D(1985, 7, 20), tipo: "EFETIVO" },
     vencimentoBase: $("3000.00"),
     gratificacoes: [],
     dias: { dias: 30, explicacao: "30/30 dias" },
@@ -172,7 +172,7 @@ describe("(3) IRRF — quatro cenários, vence o menor; a aplicabilidade vem da 
   // art. 4º § 2º: o simplificado é ALTERNATIVO às deduções do caput, e o inciso IV é a contribuição),
   // e nasceu o D (simplificado + redução, art. 3º-A § 1º). Os números abaixo foram refeitos à mão.
   it("renda 4000 sem dependentes: A = 15% sobre (4000−255−2000) …; o REDUTOR (1000 − 0,2×4000 = 200) e o SIMPLIFICADO são calculados; vence o menor", () => {
-    const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
+    const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF });
     const a = r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS")!;
     const b = r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS_COM_REDUTOR")!;
     const c = r.cenarios.find((c) => c.nome === "DESCONTO_SIMPLIFICADO")!;
@@ -191,25 +191,25 @@ describe("(3) IRRF — quatro cenários, vence o menor; a aplicabilidade vem da 
     expect(r.valor.toFixed(2)).toBe("60.00");
   });
   it("com 3 dependentes as deduções legais vencem o simplificado (600 < 3×200 + …)", () => {
-    const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 3, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
+    const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 3, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF });
     expect(["DEDUCOES_LEGAIS", "DEDUCOES_LEGAIS_COM_REDUTOR"]).toContain(r.cenario);
     expect(r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS")!.deducoes.map((d) => d.tipo)).toContain("DEPENDENTES (3 × 200,00)");
   });
   it("acima da renda máxima do redutor, o redutor zera (cenário B = A)", () => {
-    const r = calcularIrrf({ rendaTributavel: $("6000.00"), contribuicao: $("500.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
+    const r = calcularIrrf({ rendaTributavel: $("6000.00"), contribuicao: $("500.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF });
     const a = r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS")!;
     const b = r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS_COM_REDUTOR")!;
     expect(b.valor.toFixed(2)).toBe(a.valor.toFixed(2));
     expect(b.deducoes.find((d) => d.tipo === "REDUTOR")!.valor.toFixed(2)).toBe("0.00");
   });
   it("tabela SEM redutor e SEM simplificado: só as deduções legais são aplicáveis, e cada inaplicável diz por quê", () => {
-    const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: { ...IRRF, descontoSimplificado: null, redutorBase: null, redutorFator: null, redutorRendaMaxima: null } });
+    const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: { ...IRRF, descontoSimplificado: null, redutorBase: null, redutorFator: null, redutorRendaMaxima: null } });
     expect(r.cenario).toBe("DEDUCOES_LEGAIS");
     expect(r.cenarios.filter((c) => !c.aplicavel).map((c) => c.motivo)).toEqual(["a tabela vigente não traz redutor", "a tabela vigente não traz desconto simplificado", "a tabela vigente não traz desconto simplificado"]);
   });
   it("65 anos ou mais: a parcela isenta da tabela abate a renda nos dois cenários", () => {
-    const sem = calcularIrrf({ rendaTributavel: $("5000.00"), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
-    const com = calcularIrrf({ rendaTributavel: $("5000.00"), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: true, tabela: IRRF });
+    const sem = calcularIrrf({ rendaTributavel: $("5000.00"), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF });
+    const com = calcularIrrf({ rendaTributavel: $("5000.00"), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: true, rendaDeAposentadoriaOuPensao: $("5000.00"), tabela: IRRF });
     expect(com.cenarios[0]!.base.toFixed(2)).toBe(toMoney(sem.cenarios[0]!.base.minus(1900)).toFixed(2));
     expect(com.valor.lt(sem.valor)).toBe(true);
   });
@@ -262,7 +262,7 @@ describe("(6) o contracheque — linhas, totais, memória, hash", () => {
     const c2 = calcularContracheque(entrada());
     expect(c1.totais.proventos.toFixed(2)).toBe("3600.00"); // VENC 3000 + INSAL 20% = 600
     expect(c1.totais.contribuicao.toFixed(2)).toBe("339.00"); // 75 + 180 + 600×14%
-    const irrf = calcularIrrf({ rendaTributavel: $("3600.00"), contribuicao: $("339.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
+    const irrf = calcularIrrf({ rendaTributavel: $("3600.00"), contribuicao: $("339.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF });
     expect(c1.totais.irrf.toFixed(2)).toBe(irrf.valor.toFixed(2));
     expect(c1.totais.liquido.toFixed(2)).toBe(toMoney(c1.totais.proventos.minus(c1.totais.descontos)).toFixed(2));
     expect(c1.sha256).toHaveLength(64);
@@ -310,8 +310,8 @@ describe("(7) a mesma pessoa com duas matrículas — base agregada, teto e impo
     const imp = imposicoesDaPessoa({
       competencia: "2026-05",
       vinculos: [
-        { id: "a", matricula: "A", regime: "RGPS", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("535.00"), rendaTributavel: $("5000.00") },
-        { id: "b", matricula: "B", regime: "RGPS", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("535.00"), rendaTributavel: $("5000.00") },
+        { id: "a", matricula: "A", regime: "RGPS", tipo: "EFETIVO", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("535.00"), rendaTributavel: $("5000.00") },
+        { id: "b", matricula: "B", regime: "RGPS", tipo: "EFETIVO", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("535.00"), rendaTributavel: $("5000.00") },
       ],
       dataNascimento: D(1985, 1, 1), dependentesIr: 0, pensaoAlimenticia: $(0), tabelas: { contribuicao: CONTRIB_RGPS, irrf: IRRF },
     });
@@ -319,15 +319,15 @@ describe("(7) a mesma pessoa com duas matrículas — base agregada, teto e impo
     expect(imp.get("b")!.contribuicao!.valor.toFixed(2)).toBe("477.50");
     expect(imp.get("a")!.contribuicao!.explicacao).toMatch(/bases somadas 10\.000,00 → teto 8\.000,00 = 955,00/);
     // IRRF: uma fonte — renda 10000, contribuição 955, sem dependentes; rateado meio a meio; a soma bate com o cálculo único
-    const total = calcularIrrf({ rendaTributavel: $("10000.00"), contribuicao: $("955.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF }).valor;
+    const total = calcularIrrf({ rendaTributavel: $("10000.00"), contribuicao: $("955.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF }).valor;
     expect(toMoney(imp.get("a")!.irrf!.valor.plus(imp.get("b")!.irrf!.valor)).toFixed(2)).toBe(total.toFixed(2));
   });
   it("o centavo do rateio fica no ÚLTIMO, e a soma fecha exata (bases 1000 e 2000 → terços)", () => {
     const imp = imposicoesDaPessoa({
       competencia: "2026-05",
       vinculos: [
-        { id: "a", matricula: "A", regime: "RGPS", baseContribuicao: $("1000.00"), contribuicaoSozinho: $("75.00"), rendaTributavel: $("1000.00") },
-        { id: "b", matricula: "B", regime: "RGPS", baseContribuicao: $("2000.00"), contribuicaoSozinho: $("165.00"), rendaTributavel: $("2000.00") },
+        { id: "a", matricula: "A", regime: "RGPS", tipo: "EFETIVO", baseContribuicao: $("1000.00"), contribuicaoSozinho: $("75.00"), rendaTributavel: $("1000.00") },
+        { id: "b", matricula: "B", regime: "RGPS", tipo: "EFETIVO", baseContribuicao: $("2000.00"), contribuicaoSozinho: $("165.00"), rendaTributavel: $("2000.00") },
       ],
       dataNascimento: D(1985, 1, 1), dependentesIr: 0, pensaoAlimenticia: $(0), tabelas: { contribuicao: CONTRIB_RGPS, irrf: IRRF },
     });
@@ -341,16 +341,16 @@ describe("(7) a mesma pessoa com duas matrículas — base agregada, teto e impo
     const imp = imposicoesDaPessoa({
       competencia: "2026-05",
       vinculos: [
-        { id: "a", matricula: "A", regime: "RPPS", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("700.00"), rendaTributavel: $("5000.00") },
-        { id: "b", matricula: "B", regime: "RGPS", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("535.00"), rendaTributavel: $("5000.00") },
+        { id: "a", matricula: "A", regime: "RPPS", tipo: "EFETIVO", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("700.00"), rendaTributavel: $("5000.00") },
+        { id: "b", matricula: "B", regime: "RGPS", tipo: "EFETIVO", baseContribuicao: $("5000.00"), contribuicaoSozinho: $("535.00"), rendaTributavel: $("5000.00") },
       ],
       dataNascimento: D(1985, 1, 1), dependentesIr: 0, pensaoAlimenticia: $(0), tabelas: { contribuicao: CONTRIB_RGPS, irrf: IRRF },
     });
     expect(imp.get("a")!.contribuicao).toBeUndefined();
     expect(imp.get("b")!.contribuicao).toBeUndefined();
-    const total = calcularIrrf({ rendaTributavel: $("10000.00"), contribuicao: $("1235.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF }).valor;
+    const total = calcularIrrf({ rendaTributavel: $("10000.00"), contribuicao: $("1235.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela: IRRF }).valor;
     expect(toMoney(imp.get("a")!.irrf!.valor.plus(imp.get("b")!.irrf!.valor)).toFixed(2)).toBe(total.toFixed(2));
-    expect(imposicoesDaPessoa({ competencia: "2026-05", vinculos: [{ id: "a", matricula: "A", regime: "RGPS", baseContribuicao: $(1), contribuicaoSozinho: $(0), rendaTributavel: $(1) }], dataNascimento: D(1985, 1, 1), dependentesIr: 0, pensaoAlimenticia: $(0), tabelas: { contribuicao: CONTRIB_RGPS, irrf: IRRF } }).size).toBe(0);
+    expect(imposicoesDaPessoa({ competencia: "2026-05", vinculos: [{ id: "a", matricula: "A", regime: "RGPS", tipo: "EFETIVO", baseContribuicao: $(1), contribuicaoSozinho: $(0), rendaTributavel: $(1) }], dataNascimento: D(1985, 1, 1), dependentesIr: 0, pensaoAlimenticia: $(0), tabelas: { contribuicao: CONTRIB_RGPS, irrf: IRRF } }).size).toBe(0);
   });
 });
 

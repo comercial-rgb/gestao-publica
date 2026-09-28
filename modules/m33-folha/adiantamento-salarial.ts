@@ -422,6 +422,7 @@ export function calcularContrachequeDoAdiantamentoSalarial(e: EntradaDoAdiantame
     // renda zero ela não muda nada. Ler a data de nascimento aqui pediria mais um campo de
     // entrada para produzir exatamente o mesmo resultado.
     maior65: false,
+    rendaDeAposentadoriaOuPensao: toMoney(0),
     tabela: e.tabelas.irrf,
   });
 

@@ -266,6 +266,11 @@ export interface Faixa {
   readonly ate: Money | null;
   /** 0.0750 = 7,5%. */
   readonly aliquota: Decimal;
+  /**
+   * A parcela a deduzir da tabela progressiva do IRRF, como a lei a publica. Só o IRRF a lê
+   * (`aplicarTabelaDoIrrf`); a contribuição previdenciária é sempre faixa a faixa.
+   */
+  readonly parcelaADeduzir?: Money;
 }
 
 export interface FaixaPercorrida {
@@ -275,6 +280,8 @@ export interface FaixaPercorrida {
   readonly baseNaFaixa: Money;
   readonly aliquota: string;
   readonly valor: Money;
+  /** Presente quando o imposto saiu da fórmula da tabela (base × alíquota − parcela a deduzir). */
+  readonly parcelaADeduzir?: Money;
 }
 
 /** Confere a forma das faixas — ordenadas, limites crescentes, só a última sem limite. */
@@ -315,6 +322,65 @@ export function aplicarFaixas(base: Money, faixas: readonly Faixa[], tabela = "f
     if (f.ate === null || base.lte(f.ate)) break;
   }
   return { valor: toMoney(total), percorridas };
+}
+
+/**
+ * AS PARCELAS A DEDUZIR DE UMA TABELA DO IRRF — declaradas e coerentes, ou ausentes.
+ *
+ * A tabela progressiva mensal é publicada com a coluna "parcela a deduzir" (Lei 11.482/2007 art. 1º,
+ * na redação vigente; a Receita calcula por ela nos "Exemplos de Aplicação da Lei 15.270/2025":
+ * base × alíquota − parcela). A parcela publicada é ARREDONDADA — a de 27,5% em 2026 é 908,73, e a
+ * que sai exata das faixas é 908,72 —, e por isso faixa a faixa e fórmula divergem em um centavo.
+ * Quem vale é a tabela da lei.
+ *
+ * Coerência: na borda inferior de cada faixa, a fórmula dela e a da faixa anterior dão o mesmo
+ * imposto a menos de um centavo (a tabela é publicada em centavos; uma diferença de um centavo ou
+ * mais é parcela digitada errada, não arredondamento). A primeira faixa começa em zero, e a parcela
+ * dela é zero.
+ *
+ * Devolve "DECLARADAS" quando as parcelas fecham; "AUSENTES" quando são todas zero e não fecham
+ * (tabela cadastrada sem a coluna — o motor segue faixa a faixa, como antes); e RECUSA quando há
+ * parcela declarada que não fecha: calcular com ela reteria imposto errado.
+ */
+export function conferirParcelasADeduzir(faixas: readonly Faixa[], tabela: string): "DECLARADAS" | "AUSENTES" {
+  const ordenadas = conferirFaixas(faixas, tabela);
+  const parcela = (f: Faixa): Money => f.parcelaADeduzir ?? toMoney(0);
+  const algumaDeclarada = ordenadas.some((f) => !parcela(f).isZero());
+  const incoerencias: string[] = [];
+  let limiteAnterior = toMoney(0);
+  let anterior: Faixa | null = null;
+  for (const f of ordenadas) {
+    const naBorda = limiteAnterior.times(f.aliquota).minus(parcela(f));
+    const pelaAnterior = anterior === null ? new Decimal(0) : limiteAnterior.times(anterior.aliquota).minus(parcela(anterior));
+    if (naBorda.minus(pelaAnterior).abs().gte("0.01")) {
+      incoerencias.push(
+        `faixa ${f.ordem}: em ${reais(limiteAnterior)} a fórmula dela dá ${reais(toMoney(naBorda))} e a da faixa anterior ${reais(toMoney(pelaAnterior))}`
+      );
+    }
+    if (f.ate !== null) limiteAnterior = toMoney(f.ate);
+    anterior = f;
+  }
+  if (incoerencias.length === 0) return "DECLARADAS";
+  if (!algumaDeclarada) return "AUSENTES";
+  throw new FaixasInvalidasError(
+    tabela,
+    `a parcela a deduzir não fecha com as faixas (${incoerencias.join("; ")}) — confira a tabela publicada`
+  );
+}
+
+/**
+ * O IMPOSTO PELA TABELA PROGRESSIVA DO IRRF: base × alíquota da faixa − parcela a deduzir, com um
+ * arredondamento só. Tabela sem as parcelas (cadastrada antes) segue faixa a faixa.
+ */
+export function aplicarTabelaDoIrrf(base: Money, faixas: readonly Faixa[], tabela = "IRRF"): { readonly valor: Money; readonly percorridas: readonly FaixaPercorrida[] } {
+  if (conferirParcelasADeduzir(faixas, tabela) === "AUSENTES") return aplicarFaixas(base, faixas, tabela);
+  if (base.lte(0)) return { valor: toMoney(0), percorridas: [] };
+  const ordenadas = conferirFaixas(faixas, tabela);
+  const f = ordenadas.find((x) => x.ate === null || base.lte(x.ate)) ?? ordenadas[ordenadas.length - 1]!;
+  const parcela = f.parcelaADeduzir ?? toMoney(0);
+  const valor = toMoney(Decimal.max(0, base.times(f.aliquota).minus(parcela)));
+  if (f.aliquota.isZero()) return { valor, percorridas: [] };
+  return { valor, percorridas: [{ ordem: f.ordem, de: toMoney(0), ate: base, baseNaFaixa: base, aliquota: f.aliquota.toFixed(4), valor, parcelaADeduzir: parcela }] };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -436,17 +502,38 @@ export interface ResultadoDoIrrf {
   readonly fundamentacao: string;
 }
 
+/**
+ * O vínculo cujo pagamento é provento de aposentadoria ou pensão — o único que a parcela isenta dos
+ * 65 anos alcança (IN RFB 1.500/2014 art. 6º I). Os tipos são os de `TipoVinculoRh` (M32).
+ */
+export function proventoDeInatividade(tipo: string): boolean {
+  return tipo === "APOSENTADO" || tipo === "PENSIONISTA";
+}
+
 export function calcularIrrf(p: {
   readonly rendaTributavel: Money;
   readonly contribuicao: Money;
   readonly dependentes: number;
   readonly pensaoAlimenticia: Money;
   readonly maior65: boolean;
+  /**
+   * Quanto da renda é provento de aposentadoria ou pensão. A parcela isenta dos 65 anos só alcança
+   * esses proventos — "os provenientes de aposentadoria e pensão, de transferência para a reserva
+   * remunerada ou de reforma [...] a partir do mês em que o contribuinte completar sessenta e cinco
+   * anos de idade, até o valor mensal previsto na tabela" (IN RFB 1.500/2014 art. 6º I, redação da
+   * IN RFB 2.299/2025; Lei 7.713/1988 art. 6º XV). Salário de servidor ativo com 65 anos não tem a
+   * parcela, e ela nunca passa do próprio provento de inatividade.
+   */
+  readonly rendaDeAposentadoriaOuPensao: Money;
   readonly tabela: TabelaIrrfLida;
 }): ResultadoDoIrrf {
   const t = p.tabela;
   const renda = toMoney(Decimal.max(0, p.rendaTributavel));
-  const isencaoIdoso = p.maior65 && t.isencaoMaior65 !== null ? t.isencaoMaior65 : toMoney(0);
+  const inatividade = toMoney(Decimal.min(renda, Decimal.max(0, p.rendaDeAposentadoriaOuPensao)));
+  const isencaoIdoso = p.maior65 && t.isencaoMaior65 !== null ? toMoney(Decimal.min(t.isencaoMaior65, inatividade)) : toMoney(0);
+  // A renda que a tabela de redução lê: os "rendimentos tributáveis sujeitos à incidência mensal"
+  // (Lei 9.250/1995 art. 3º-A). A parcela do idoso é rendimento ISENTO, e por isso não entra nela.
+  const rendaDaReducao = toMoney(renda.minus(isencaoIdoso));
   const deducaoDependentes = toMoney(t.deducaoPorDependente.times(p.dependentes));
 
   // A — deduções legais: contribuição, dependentes, pensão, parcela do idoso.
@@ -457,12 +544,12 @@ export function calcularIrrf(p: {
     ...(isencaoIdoso.gt(0) ? [{ tipo: "PARCELA_ISENTA_65_ANOS", valor: isencaoIdoso }] : []),
   ];
   const baseA = toMoney(Decimal.max(0, renda.minus(sumMoney(deducoesA.map((d) => d.valor)))));
-  const rA = aplicarFaixas(baseA, t.faixas, `IRRF ${t.id}`);
+  const rA = aplicarTabelaDoIrrf(baseA, t.faixas, `IRRF ${t.id}`);
   const cenarioA: CenarioCalculado = { nome: "DEDUCOES_LEGAIS", aplicavel: true, base: baseA, valor: rA.valor, deducoes: deducoesA, faixas: rA.percorridas };
 
   // B — as mesmas deduções, e a redução do art. 3º-A (quando a tabela a traz), limitada ao imposto.
   let cenarioB: CenarioCalculado;
-  const redutorB = reducaoDoImposto(t, renda, rA.valor);
+  const redutorB = reducaoDoImposto(t, rendaDaReducao, rA.valor);
   if (redutorB !== null) {
     const valorB = toMoney(Decimal.max(0, rA.valor.minus(redutorB)));
     cenarioB = { nome: "DEDUCOES_LEGAIS_COM_REDUTOR", aplicavel: true, base: baseA, valor: valorB, deducoes: [...deducoesA, { tipo: "REDUTOR", valor: redutorB }], faixas: rA.percorridas };
@@ -487,12 +574,12 @@ export function calcularIrrf(p: {
       ...(isencaoIdoso.gt(0) ? [{ tipo: "PARCELA_ISENTA_65_ANOS", valor: isencaoIdoso }] : []),
     ];
     const baseC = toMoney(Decimal.max(0, renda.minus(sumMoney(deducoesC.map((d) => d.valor)))));
-    const rC = aplicarFaixas(baseC, t.faixas, `IRRF ${t.id}`);
+    const rC = aplicarTabelaDoIrrf(baseC, t.faixas, `IRRF ${t.id}`);
     cenarioC = { nome: "DESCONTO_SIMPLIFICADO", aplicavel: true, base: baseC, valor: rC.valor, deducoes: deducoesC, faixas: rC.percorridas };
     // D — o simplificado E a redução: o § 1º do art. 3º-A limita a redução ao imposto "determinado de
     // acordo com a tabela progressiva mensal e com o disposto no art. 4º" — e o § 2º do art. 4º é o
     // simplificado. A Receita aplica assim nos exemplos 2 e 3 (5.000 → 312,89 − 312,89 = 0).
-    const redutorD = reducaoDoImposto(t, renda, rC.valor);
+    const redutorD = reducaoDoImposto(t, rendaDaReducao, rC.valor);
     cenarioD =
       redutorD !== null
         ? { nome: "DESCONTO_SIMPLIFICADO_COM_REDUTOR", aplicavel: true, base: baseC, valor: toMoney(Decimal.max(0, rC.valor.minus(redutorD))), deducoes: [...deducoesC, { tipo: "REDUTOR", valor: redutorD }], faixas: rC.percorridas }
@@ -664,7 +751,7 @@ export interface ImposicoesDaPessoa {
 
 export interface EntradaDoContracheque {
   readonly competencia: string;
-  readonly vinculo: { readonly id: string; readonly matricula: string; readonly regime: RegimePrevidenciario; readonly dataNascimento: Date };
+  readonly vinculo: { readonly id: string; readonly matricula: string; readonly regime: RegimePrevidenciario; readonly dataNascimento: Date; readonly tipo: string };
   readonly vencimentoBase: Money | null;
   readonly gratificacoes: readonly { readonly descricao: string; readonly valor: Money }[];
   readonly dias: DiasComputados;
@@ -770,7 +857,7 @@ export function sha256Canonico(valor: unknown): string {
  * contracheque de 13º. Duas montagens da mesma coisa divergem; uma função compartilhada não.
  */
 export function faixasParaMemoria(f: readonly FaixaPercorrida[]): readonly Record<string, string | number>[] {
-  return f.map((x) => ({ ordem: x.ordem, de: m(x.de), ate: m(x.ate), baseNaFaixa: m(x.baseNaFaixa), aliquota: x.aliquota, valor: m(x.valor) }));
+  return f.map((x) => ({ ordem: x.ordem, de: m(x.de), ate: m(x.ate), baseNaFaixa: m(x.baseNaFaixa), aliquota: x.aliquota, valor: m(x.valor), ...(x.parcelaADeduzir !== undefined ? { parcelaADeduzir: m(x.parcelaADeduzir) } : {}) }));
 }
 
 /** Os cenários do IRRF em forma de memória — a MESMA para os dois motores. */
@@ -960,7 +1047,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
   // 3. IRRF
   const referencia = bordasDaCompetencia(e.competencia).inicio;
   const maior65 = idadeEm(e.vinculo.dataNascimento, referencia) >= 65;
-  const irrfCalculado = calcularIrrf({ rendaTributavel, contribuicao, dependentes: e.dependentesIr, pensaoAlimenticia: e.pensaoAlimenticia, maior65, tabela: e.tabelas.irrf });
+  const irrfCalculado = calcularIrrf({ rendaTributavel, contribuicao, dependentes: e.dependentesIr, pensaoAlimenticia: e.pensaoAlimenticia, maior65, rendaDeAposentadoriaOuPensao: proventoDeInatividade(e.vinculo.tipo) ? rendaTributavel : toMoney(0), tabela: e.tabelas.irrf });
   const irrf = e.imposicoes?.irrf !== undefined ? e.imposicoes.irrf.valor : irrfCalculado.valor;
   if (irrf.gt(0)) {
     linha(rIrrf, irrf, e.imposicoes?.irrf !== undefined ? e.imposicoes.irrf.explicacao : `cenário ${irrfCalculado.cenario}: renda ${reais(rendaTributavel)} − deduções → base ${reais(irrfCalculado.base)} = ${reais(irrf)}`, false);
@@ -1034,7 +1121,7 @@ export function calcularContracheque(e: EntradaDoContracheque): ContrachequeCalc
 export function imposicoesDaPessoa(p: {
   readonly competencia: string;
   /** Cada vínculo com o que o passo 1 calculou SOZINHO: a base antes do teto, a contribuição e a renda tributável. */
-  readonly vinculos: readonly { readonly id: string; readonly matricula: string; readonly regime: RegimePrevidenciario; readonly baseContribuicao: Money; readonly contribuicaoSozinho: Money; readonly rendaTributavel: Money }[];
+  readonly vinculos: readonly { readonly id: string; readonly matricula: string; readonly regime: RegimePrevidenciario; readonly tipo: string; readonly baseContribuicao: Money; readonly contribuicaoSozinho: Money; readonly rendaTributavel: Money }[];
   readonly dataNascimento: Date;
   readonly dependentesIr: number;
   readonly pensaoAlimenticia: Money;
@@ -1064,7 +1151,7 @@ export function imposicoesDaPessoa(p: {
   const contribuicoes = p.vinculos.map((v) => contribPorVinculo.get(v.id) ?? v.contribuicaoSozinho);
   const somaRenda = sumMoney(p.vinculos.map((v) => v.rendaTributavel));
   const referencia = bordasDaCompetencia(p.competencia).inicio;
-  const total = calcularIrrf({ rendaTributavel: somaRenda, contribuicao: sumMoney(contribuicoes), dependentes: p.dependentesIr, pensaoAlimenticia: p.pensaoAlimenticia, maior65: idadeEm(p.dataNascimento, referencia) >= 65, tabela: p.tabelas.irrf });
+  const total = calcularIrrf({ rendaTributavel: somaRenda, contribuicao: sumMoney(contribuicoes), dependentes: p.dependentesIr, pensaoAlimenticia: p.pensaoAlimenticia, maior65: idadeEm(p.dataNascimento, referencia) >= 65, rendaDeAposentadoriaOuPensao: sumMoney(p.vinculos.filter((v) => proventoDeInatividade(v.tipo)).map((v) => v.rendaTributavel)), tabela: p.tabelas.irrf });
   let acumulado = toMoney(0);
   p.vinculos.forEach((v, i) => {
     const ultimo = i === p.vinculos.length - 1;

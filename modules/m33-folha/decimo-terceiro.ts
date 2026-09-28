@@ -9,6 +9,7 @@ import {
   cenariosParaMemoria,
   diasComputados,
   faixasParaMemoria,
+  proventoDeInatividade,
   sha256Canonico,
 
   type ContrachequeCalculado,
@@ -413,7 +414,7 @@ export interface EntradaDoDecimoTerceiro {
   readonly parcela: "ADIANTAMENTO" | "DECIMO_TERCEIRO";
   readonly competencia: string;
   readonly parametro: ParametroLidoDoDecimoTerceiro;
-  readonly vinculo: { readonly id: string; readonly matricula: string; readonly regime: RegimePrevidenciario; readonly dataNascimento: Date };
+  readonly vinculo: { readonly id: string; readonly matricula: string; readonly regime: RegimePrevidenciario; readonly dataNascimento: Date; readonly tipo: string };
   readonly avos: ResultadoDosAvos;
   readonly base: readonly ParcelaDaBase[];
   /** A rubrica que carrega a parcela (13º ou adiantamento, conforme `parcela`). */
@@ -535,6 +536,7 @@ export function calcularContrachequeDoDecimoTerceiro(e: EntradaDoDecimoTerceiro)
     dependentes: e.dependentesIr,
     pensaoAlimenticia: e.pensaoAlimenticia,
     maior65,
+    rendaDeAposentadoriaOuPensao: incideIr && proventoDeInatividade(e.vinculo.tipo) ? valorDaParcela : toMoney(0),
     tabela: e.tabelas.irrf,
   });
   if (incideIr && irrfCalculado.valor.gt(0)) {

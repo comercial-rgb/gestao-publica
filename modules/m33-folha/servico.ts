@@ -35,6 +35,7 @@ import {
   bordasDaCompetencia,
   calcularContracheque,
   conferirFaixas,
+  conferirParcelasADeduzir,
   diasComputados,
   escolherVigente,
   exercicioDaFolha,
@@ -149,6 +150,9 @@ export async function cadastrarTabelaDeContribuicao(prisma: PrismaClient, input:
 export async function cadastrarTabelaIrrf(prisma: PrismaClient, input: CadastrarTabelaIrrfInput): Promise<{ readonly tabelaId: string }> {
   const d = zCadastrarTabelaIrrfInput.parse(input);
   const faixas = conferirFaixas(d.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate ?? null, aliquota: f.aliquota })), `IRRF ${d.competenciaInicio}`);
+  // A parcela a deduzir é a da lei, e o motor calcula por ela: parcela que não fecha com as faixas
+  // se recusa aqui, antes de gravar — depois, cada folha da vigência a recusaria.
+  conferirParcelasADeduzir(d.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate ?? null, aliquota: f.aliquota, ...(f.parcelaADeduzir === undefined ? {} : { parcelaADeduzir: f.parcelaADeduzir }) })), `IRRF ${d.competenciaInicio}`);
   const redutor = [d.redutorBase, d.redutorFator, d.redutorRendaMaxima].filter((x) => x !== null && x !== undefined).length;
   if (redutor !== 0 && redutor !== 3) throw new Error("REDUTOR-INCOMPLETO: o redutor vem com base, fator e renda máxima — os três — ou não vem. Nada foi gravado.");
   // A faixa isenta da tabela de redução (Lei 9.250/1995 art. 3º-A): renda e máximo juntos, e só sobre
@@ -380,7 +384,7 @@ async function lerTabelas(tx: Tx, competencia: string): Promise<{
 }> {
   const [contribs, irrfs, sfs] = await Promise.all([
     tx.tabelaDeContribuicao.findMany({ select: { id: true, regime: true, competenciaInicio: true, competenciaFim: true, teto: true, fundamentacaoLegal: true, faixas: { select: { ordem: true, ate: true, aliquota: true } } } }),
-    tx.tabelaIrrf.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, redutorRendaDaFaixaIsenta: true, redutorMaximoNaFaixaIsenta: true, fundamentacaoLegal: true, faixas: { select: { ordem: true, ate: true, aliquota: true } } } }),
+    tx.tabelaIrrf.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, redutorRendaDaFaixaIsenta: true, redutorMaximoNaFaixaIsenta: true, fundamentacaoLegal: true, faixas: { select: { ordem: true, ate: true, aliquota: true, parcelaADeduzir: true } } } }),
     tx.tabelaSalarioFamilia.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, rendaMaxima: true, valorPorDependente: true, idadeLimite: true, fundamentacaoLegal: true } }),
   ]);
   const contribuicaoDo = (regime: "RGPS" | "RPPS"): TabelaDeContribuicaoLida | null => {
@@ -392,7 +396,7 @@ async function lerTabelas(tx: Tx, competencia: string): Promise<{
       return null; // ausente: só é erro se algum vínculo do regime aparecer
     }
   };
-  const irrf = escolherVigente(irrfs.map((t) => ({ id: t.id, competenciaInicio: t.competenciaInicio, competenciaFim: t.competenciaFim, deducaoPorDependente: toMoney(t.deducaoPorDependente), descontoSimplificado: t.descontoSimplificado === null ? null : toMoney(t.descontoSimplificado), isencaoMaior65: t.isencaoMaior65 === null ? null : toMoney(t.isencaoMaior65), redutorBase: t.redutorBase === null ? null : toMoney(t.redutorBase), redutorFator: t.redutorFator === null ? null : new Decimal(t.redutorFator), redutorRendaMaxima: t.redutorRendaMaxima === null ? null : toMoney(t.redutorRendaMaxima), redutorRendaDaFaixaIsenta: t.redutorRendaDaFaixaIsenta === null ? null : toMoney(t.redutorRendaDaFaixaIsenta), redutorMaximoNaFaixaIsenta: t.redutorMaximoNaFaixaIsenta === null ? null : toMoney(t.redutorMaximoNaFaixaIsenta), fundamentacaoLegal: t.fundamentacaoLegal, faixas: t.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate === null ? null : toMoney(f.ate), aliquota: new Decimal(f.aliquota) })) })), competencia, "IRRF");
+  const irrf = escolherVigente(irrfs.map((t) => ({ id: t.id, competenciaInicio: t.competenciaInicio, competenciaFim: t.competenciaFim, deducaoPorDependente: toMoney(t.deducaoPorDependente), descontoSimplificado: t.descontoSimplificado === null ? null : toMoney(t.descontoSimplificado), isencaoMaior65: t.isencaoMaior65 === null ? null : toMoney(t.isencaoMaior65), redutorBase: t.redutorBase === null ? null : toMoney(t.redutorBase), redutorFator: t.redutorFator === null ? null : new Decimal(t.redutorFator), redutorRendaMaxima: t.redutorRendaMaxima === null ? null : toMoney(t.redutorRendaMaxima), redutorRendaDaFaixaIsenta: t.redutorRendaDaFaixaIsenta === null ? null : toMoney(t.redutorRendaDaFaixaIsenta), redutorMaximoNaFaixaIsenta: t.redutorMaximoNaFaixaIsenta === null ? null : toMoney(t.redutorMaximoNaFaixaIsenta), fundamentacaoLegal: t.fundamentacaoLegal, faixas: t.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate === null ? null : toMoney(f.ate), aliquota: new Decimal(f.aliquota), parcelaADeduzir: toMoney(f.parcelaADeduzir) })) })), competencia, "IRRF");
   const sfCandidatas = sfs.map((t) => ({ id: t.id, competenciaInicio: t.competenciaInicio, competenciaFim: t.competenciaFim, rendaMaxima: toMoney(t.rendaMaxima), valorPorDependente: toMoney(t.valorPorDependente), idadeLimite: t.idadeLimite, fundamentacaoLegal: t.fundamentacaoLegal }));
   let salarioFamilia: TabelaSalarioFamiliaLida | null;
   try {
@@ -563,7 +567,7 @@ async function contrachequesMensaisDaCompetencia(
   const vinculos = await tx.vinculo.findMany({
     where: recorte,
     select: {
-      id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
+      id: true, matricula: true, tipo: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
       servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, nome: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } } } } },
       eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, gratificacaoDescricao: true, gratificacaoValor: true } },
       lancamentosDaFolha: { where: { competenciaInicio: { lte: competencia }, OR: [{ competenciaFim: null }, { competenciaFim: { gte: competencia } }] }, select: { id: true, rubricaId: true, tipo: true, valor: true } },
@@ -641,7 +645,7 @@ async function contrachequesMensaisDaCompetencia(
 
     entradas.push({
       competencia,
-      vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento },
+      vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento, tipo: v.tipo },
       ...(abatimentoDoVinculo === undefined ? {} : { abatimentoDoAdiantamentoSalarial: abatimentoDoVinculo }),
       vencimentoBase: salarioBaseVigenteEm(eventos, fim),
       gratificacoes: gratificacoesVigentesEm(v.eventos.map((e) => ({ ...paraEvento(e), gratificacaoDescricao: e.gratificacaoDescricao, gratificacaoValor: e.gratificacaoValor === null ? null : toMoney(e.gratificacaoValor) })), fim).map((g) => ({ descricao: g.descricao, valor: g.valor })),
@@ -713,7 +717,7 @@ async function contrachequesMensaisDaCompetencia(
     const tabelaContrib = regimes.includes("RGPS") ? tabelas.contribuicao.RGPS : null;
     const imp = imposicoesDaPessoa({
       competencia,
-      vinculos: vs.map((v) => { const c = primeiro.get(v.id)!; return { id: v.id, matricula: v.matricula, regime: v.regimePrevidenciario as RegimePrevidenciario, baseContribuicao: c.contribuicao.baseAntesDoTeto, contribuicaoSozinho: c.totais.contribuicao, rendaTributavel: c.irrf.rendaTributavel }; }),
+      vinculos: vs.map((v) => { const c = primeiro.get(v.id)!; return { id: v.id, matricula: v.matricula, regime: v.regimePrevidenciario as RegimePrevidenciario, tipo: v.tipo, baseContribuicao: c.contribuicao.baseAntesDoTeto, contribuicaoSozinho: c.totais.contribuicao, rendaTributavel: c.irrf.rendaTributavel }; }),
       dataNascimento: e0.vinculo.dataNascimento,
       dependentesIr: e0.dependentesIr,
       pensaoAlimenticia: e0.pensaoAlimenticia,
@@ -1520,7 +1524,7 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
 
   const vinculos = await tx.vinculo.findMany({
     select: {
-      id: true, matricula: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
+      id: true, matricula: true, tipo: true, dataAdmissao: true, regimePrevidenciario: true, servidorId: true,
       servidor: { select: { dataNascimento: true, dependentes: { select: { id: true, dataNascimento: true, invalidezPermanente: true, finalidades: { select: { finalidade: true, dataInicio: true, limiteIdadeAnos: true, dataBaixa: true, encerramento: { select: { dataEfeito: true } } } } } } } },
       eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, regimePrevidenciario: true, gratificacaoDescricao: true, gratificacaoValor: true } },
     },
@@ -1601,7 +1605,7 @@ async function calcularFolhaDoDecimoTerceiroNaTx(
       parcela: eAdiantamento ? "ADIANTAMENTO" : "DECIMO_TERCEIRO",
       competencia,
       parametro,
-      vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento },
+      vinculo: { id: v.id, matricula: v.matricula, regime, dataNascimento: v.servidor.dataNascimento, tipo: v.tipo },
       avos,
       base,
       rubricaDaParcela,

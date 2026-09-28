@@ -106,7 +106,7 @@ function entrada(over: Partial<EntradaDoDecimoTerceiro> = {}): EntradaDoDecimoTe
     parcela: "DECIMO_TERCEIRO",
     competencia: "2026-12",
     parametro: p,
-    vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1990-05-05") },
+    vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1990-05-05"), tipo: "EFETIVO" },
     avos: avosDoExercicio(vida({ dataAdmissao: d("2020-01-01") }), { exercicio: 2026, ultimoMes: "2026-12", diasMinimos: p.diasMinimosDoAvo }),
     base: [{ codigo: "VENC", descricao: "Vencimento", natureza: "VENCIMENTO_BASE", valor: toMoney(3000), memoria: "vencimento-base 3000.00" }],
     rubricaDaParcela: R_13,
@@ -392,6 +392,66 @@ describe("t2 · contracheque do 13º", () => {
     }));
     expect(a.sha256).toBe(b.sha256);
     expect(a.sha256).not.toBe(c.sha256);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// t2b · A REDUÇÃO DO IRRF NO 13º — Lei 9.250/1995 art. 3º-A § 3º (Lei 15.270/2025):
+// "A redução do imposto de que trata este artigo também será aplicada no cálculo do imposto
+// cobrado exclusivamente na fonte no pagamento do décimo terceiro salário"
+// https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15270.htm
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("t2b · redução do IRRF sobre o 13º", () => {
+  /** A tabela mensal de 2026 como a lei a publica (Lei 11.482/2007 art. 1º; Lei 9.250/1995 art. 3º-A). */
+  const IRRF_2026: TabelaIrrfLida = {
+    id: "irrf-2026", competenciaInicio: "2026-01", competenciaFim: null,
+    deducaoPorDependente: toMoney("189.59"), descontoSimplificado: toMoney("607.20"), isencaoMaior65: toMoney("1903.98"),
+    redutorBase: toMoney("978.62"), redutorFator: new Decimal("0.133145"), redutorRendaMaxima: toMoney("7350.00"),
+    redutorRendaDaFaixaIsenta: toMoney("5000.00"), redutorMaximoNaFaixaIsenta: toMoney("312.89"),
+    fundamentacaoLegal: "fixture de teste com os valores publicados",
+    faixas: [
+      { ordem: 1, ate: toMoney("2428.80"), aliquota: new Decimal("0"), parcelaADeduzir: toMoney(0) },
+      { ordem: 2, ate: toMoney("2826.65"), aliquota: new Decimal("0.075"), parcelaADeduzir: toMoney("182.16") },
+      { ordem: 3, ate: toMoney("3751.05"), aliquota: new Decimal("0.15"), parcelaADeduzir: toMoney("394.16") },
+      { ordem: 4, ate: toMoney("4664.68"), aliquota: new Decimal("0.225"), parcelaADeduzir: toMoney("675.49") },
+      { ordem: 5, ate: null, aliquota: new Decimal("0.275"), parcelaADeduzir: toMoney("908.73") },
+    ],
+  };
+  const SEM_REDUTOR: TabelaIrrfLida = { ...IRRF_2026, redutorBase: null, redutorFator: null, redutorRendaMaxima: null, redutorRendaDaFaixaIsenta: null, redutorMaximoNaFaixaIsenta: null };
+  const R_13_IR = rubrica({ id: "r13", codigo: "13", tipo: "PROVENTO", natureza: "VALOR_INFORMADO", ordem: 10, incideContribuicao: true, incideIrrf: true });
+  const com = (vencimento: string, irrf: TabelaIrrfLida, over: Partial<EntradaDoDecimoTerceiro> = {}) =>
+    calcularContrachequeDoDecimoTerceiro(entrada({
+      rubricaDaParcela: R_13_IR,
+      base: [{ codigo: "VENC", descricao: "Vencimento", natureza: "VENCIMENTO_BASE", valor: toMoney(vencimento), memoria: `vencimento-base ${vencimento}` }],
+      tabelas: { contribuicao: TAB_CONTRIB, irrf },
+      parametro: parametro({ decimoTerceiroSofreIrrf: true }),
+      ...over,
+    }));
+
+  /** N=2: um 13º dentro da faixa isenta da redução e outro na faixa decrescente. */
+  it("13º de 4.000: sem a redução seria 114,76 (simplificado); com ela, zero", () => {
+    // contribuição 10% = 400. C: 4000 − 607,20 = 3392,80 × 15% − 394,16 = 114,76. Redução até 312,89, limitada → 0.
+    expect(com("4000.00", SEM_REDUTOR).irrf.valor.toFixed(2)).toBe("114.76");
+    const r = com("4000.00", IRRF_2026);
+    expect(r.irrf.valor.toFixed(2)).toBe("0.00");
+    expect(r.totais.irrf.toFixed(2)).toBe("0.00");
+  });
+  it("13º de 6.000: redução 978,62 − 0,133145 × 6.000 = 179,75 sobre o simplificado (574,29) → 394,54", () => {
+    // contribuição 600. A: 5400 × 27,5% − 908,73 = 576,27; C: 5392,80 × 27,5% − 908,73 = 574,29.
+    // B = 576,27 − 179,75 = 396,52; D = 574,29 − 179,75 = 394,54 → vence D.
+    expect(com("6000.00", SEM_REDUTOR).irrf.valor.toFixed(2)).toBe("574.29");
+    const r = com("6000.00", IRRF_2026);
+    expect(r.irrf.cenario).toBe("DESCONTO_SIMPLIFICADO_COM_REDUTOR");
+    expect(r.irrf.valor.toFixed(2)).toBe("394.54");
+  });
+  it("servidor ATIVO com 70 anos: o 13º dele não tem a parcela isenta dos 65 anos (ela é só de aposentadoria e pensão)", () => {
+    const ativo = com("6000.00", IRRF_2026, { vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1956-01-10"), tipo: "EFETIVO" } });
+    expect(ativo.irrf.cenarios.flatMap((c) => c.deducoes.map((x) => x.tipo))).not.toContain("PARCELA_ISENTA_65_ANOS");
+    expect(ativo.irrf.valor.toFixed(2)).toBe("394.54");
+    const aposentado = com("6000.00", IRRF_2026, { vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1956-01-10"), tipo: "APOSENTADO" } });
+    expect(aposentado.irrf.cenarios[0]!.deducoes.map((x) => x.tipo)).toContain("PARCELA_ISENTA_65_ANOS");
+    expect(aposentado.irrf.valor.lt(ativo.irrf.valor)).toBe(true);
   });
 });
 

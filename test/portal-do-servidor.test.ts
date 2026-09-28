@@ -172,8 +172,8 @@ describe("meus contracheques — só o que o fechamento congelou, e só o meu", 
   it("o contracheque traz a CONTA de cada linha — é o que o servidor confere sem pedir relatório", async () => {
     const [c] = await meuContrachequePara({ usuarioId: usuarioA, identificador: "maria.a@cg.pb.gov.br" }, folhaFechada);
     expect(c?.linhas.map((l) => l.codigo).sort()).toEqual(["IRRF", "PREV", "VENC"]);
-    expect(c?.linhas.find((l) => l.codigo === "VENC")?.memoria).toMatch(/vencimento-base vigente 3000\.00/);
-    expect(c?.linhas.find((l) => l.codigo === "PREV")?.memoria).toMatch(/faixas 1000\.00×0\.0750 \+ 2000\.00×0\.0900/);
+    expect(c?.linhas.find((l) => l.codigo === "VENC")?.memoria).toMatch(/vencimento-base vigente 3\.000,00/);
+    expect(c?.linhas.find((l) => l.codigo === "PREV")?.memoria).toMatch(/faixas 1\.000,00×0\.0750 \+ 2\.000,00×0\.0900/);
   });
 
   it("usuário sem vínculo com pessoa não recebe contracheque de folha nenhuma", async () => {

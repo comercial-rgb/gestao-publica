@@ -85,7 +85,7 @@ function entradaDo13(over: Partial<EntradaDoDecimoTerceiro> = {}): EntradaDoDeci
     parcela: "DECIMO_TERCEIRO",
     competencia: "2026-12",
     parametro: p,
-    vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1990-05-05") },
+    vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1990-05-05"), tipo: "EFETIVO" },
     avos: avosDoExercicio(vida("2020-01-01"), { exercicio: 2026, ultimoMes: "2026-12", diasMinimos: p.diasMinimosDoAvo }),
     base: [{ codigo: "VENC", descricao: "Vencimento", natureza: "VENCIMENTO_BASE", valor: toMoney(3000), memoria: "vencimento-base 3000.00" }],
     rubricaDaParcela: R_13,
@@ -158,7 +158,7 @@ describe("a memória do 13º é legível pela mesma leitura da folha mensal", ()
   it("a folha MENSAL passa pela mesma leitura, com faixas e cenários presentes", () => {
     const e: EntradaDoContracheque = {
       competencia: "2026-05",
-      vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1990-05-05") },
+      vinculo: { id: "v1", matricula: "M-1", regime: "RGPS", dataNascimento: d("1990-05-05"), tipo: "EFETIVO" },
       vencimentoBase: toMoney(3000),
       gratificacoes: [],
       dias: { dias: 30, explicacao: "30/30 dias" },
@@ -250,7 +250,7 @@ describe("a memória da mensal COMPLEMENTAR é legível pela mesma leitura", () 
    */
   const entradaCorreta = (venc: string): EntradaDoContracheque => ({
     competencia: "2026-05",
-    vinculo: { id: "v9", matricula: "M-9", regime: "RGPS", dataNascimento: d("1990-05-05") },
+    vinculo: { id: "v9", matricula: "M-9", regime: "RGPS", dataNascimento: d("1990-05-05"), tipo: "EFETIVO" },
     vencimentoBase: toMoney(venc),
     gratificacoes: [],
     dias: { dias: 30, explicacao: "30/30 dias" },

@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { Decimal, toMoney } from "../../packages/contracts/index.js";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
-import { calcularIrrf, reducaoDoImposto, type CenarioIrrf, type TabelaIrrfLida } from "./dominio.js";
+import { calcularIrrf, conferirParcelasADeduzir, reducaoDoImposto, type CenarioIrrf, type TabelaIrrfLida } from "./dominio.js";
 import { cadastrarTabelaIrrf } from "./servico.js";
 
 /**
@@ -28,13 +28,12 @@ import { cadastrarTabelaIrrf } from "./servico.js";
  * simplificado 607,20) — a mesma que o semeador da demonstração cadastra com a fonte. Aqui ela é
  * fixture de teste de domínio; em produção vem da tabela que o ente cadastra.
  *
- * As contas "à mão" de cada caso estão no comentário ao lado. ⚠️ O MOTOR CALCULA FAIXA A FAIXA,
- * arredondando por faixa (decisão registrada no schema: a parcela a deduzir "só confere"), e na
- * faixa de 27,5% isso fica UM CENTAVO acima da fórmula da Receita (base × alíquota − parcela), porque
- * a parcela 908,73 é ela mesma arredondada (a exata seria 908,7285). Faixa a faixa, à mão:
- *   F2 397,85 × 7,5% = 29,84 · F3 924,40 × 15% = 138,66 · F4 913,63 × 22,5% = 205,57 → 374,07 até 4.664,68.
- * Os casos abaixo afirmam o valor do motor com as duas contas ao lado; a divergência tem teste
- * próprio em (5), que muda de cor no dia em que alguém trocar o método.
+ * As contas "à mão" de cada caso estão no comentário ao lado. O MOTOR CALCULA PELA TABELA DA LEI
+ * (Lei 11.482/2007 art. 1º, com a coluna "parcela a deduzir"): base × alíquota − parcela, um
+ * arredondamento só — como a Receita nos exemplos. Até a V22 ele calculava faixa a faixa e ficava um
+ * centavo acima na faixa de 27,5%, porque a parcela publicada, 908,73, é ela mesma arredondada (a que
+ * sai exata das faixas é 908,72). O faixa a faixa continua valendo só para a tabela cadastrada sem as
+ * parcelas; (5) afirma as duas coisas.
  */
 
 const prisma = criarPrismaDeTeste();
@@ -50,31 +49,33 @@ const TABELA_2026: TabelaIrrfLida = {
   redutorRendaDaFaixaIsenta: $("5000.00"), redutorMaximoNaFaixaIsenta: $("312.89"),
   fundamentacaoLegal: "Lei 15.191/2025 e Lei 15.270/2025 — fixture de teste com os valores publicados pela Receita",
   faixas: [
-    { ordem: 1, ate: $("2428.80"), aliquota: new Decimal("0") },
-    { ordem: 2, ate: $("2826.65"), aliquota: new Decimal("0.075") },
-    { ordem: 3, ate: $("3751.05"), aliquota: new Decimal("0.15") },
-    { ordem: 4, ate: $("4664.68"), aliquota: new Decimal("0.225") },
-    { ordem: 5, ate: null, aliquota: new Decimal("0.275") },
+    { ordem: 1, ate: $("2428.80"), aliquota: new Decimal("0"), parcelaADeduzir: $(0) },
+    { ordem: 2, ate: $("2826.65"), aliquota: new Decimal("0.075"), parcelaADeduzir: $("182.16") },
+    { ordem: 3, ate: $("3751.05"), aliquota: new Decimal("0.15"), parcelaADeduzir: $("394.16") },
+    { ordem: 4, ate: $("4664.68"), aliquota: new Decimal("0.225"), parcelaADeduzir: $("675.49") },
+    { ordem: 5, ate: null, aliquota: new Decimal("0.275"), parcelaADeduzir: $("908.73") },
   ],
 };
+/** A mesma tabela cadastrada sem a coluna da parcela: o motor segue faixa a faixa. */
+const TABELA_SEM_PARCELAS: TabelaIrrfLida = { ...TABELA_2026, faixas: TABELA_2026.faixas.map(({ parcelaADeduzir: _p, ...f }) => f) };
 /** A mesma tabela como era cadastrada antes da coluna: só a fórmula linear. */
 const TABELA_SO_LINEAR: TabelaIrrfLida = { ...TABELA_2026, redutorRendaDaFaixaIsenta: null, redutorMaximoNaFaixaIsenta: null };
 
 const irrf = (renda: string, contribuicao: string, tabela: TabelaIrrfLida = TABELA_2026) =>
-  calcularIrrf({ rendaTributavel: $(renda), contribuicao: $(contribuicao), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela });
+  calcularIrrf({ rendaTributavel: $(renda), contribuicao: $(contribuicao), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $(0), tabela });
 const cen = (r: ReturnType<typeof irrf>, nome: CenarioIrrf) => r.cenarios.find((c) => c.nome === nome)!;
 const reducao = (r: ReturnType<typeof irrf>, nome: CenarioIrrf) => cen(r, nome).deducoes.find((d) => d.tipo === "REDUTOR")?.valor.toFixed(2);
 
 describe("(1) a redução do art. 3º-A — sobre a RENDA, por faixa, limitada ao imposto", () => {
-  it("renda 4.800 (faixa isenta), sem deduções: A 411,28; B = 411,28 − 312,89 (teto da faixa) = 98,39; C 267,89; D 267,89 − 267,89 = 0 → vence D", () => {
-    // A: faixa a faixa 374,07 + 135,32 × 27,5% (37,21) = 411,28 (fórmula: 4800 × 27,5% − 908,73 = 411,27).
-    // B: redução "até 312,89" (a linear daria 978,62 − 0,133145×4800 = 339,52) → 411,28 − 312,89 = 98,39.
-    // C: base 4800 − 607,20 = 4192,80 → 29,84 + 138,66 + 441,75 × 22,5% (99,39) = 267,89 (fórmula: 267,89).
+  it("renda 4.800 (faixa isenta), sem deduções: A 411,27; B = 411,27 − 312,89 (teto da faixa) = 98,38; C 267,89; D 267,89 − 267,89 = 0 → vence D", () => {
+    // A: 4800 × 27,5% − 908,73 = 411,27.
+    // B: redução "até 312,89" (a linear daria 978,62 − 0,133145×4800 = 339,52) → 411,27 − 312,89 = 98,38.
+    // C: base 4800 − 607,20 = 4192,80 → 4192,80 × 22,5% − 675,49 = 267,89.
     // D: redução limitada ao imposto (§ 1º) → 267,89 − 267,89 = 0.
     const r = irrf("4800.00", "0");
-    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("411.28");
+    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("411.27");
     expect(reducao(r, "DEDUCOES_LEGAIS_COM_REDUTOR")).toBe("312.89");
-    expect(cen(r, "DEDUCOES_LEGAIS_COM_REDUTOR").valor.toFixed(2)).toBe("98.39");
+    expect(cen(r, "DEDUCOES_LEGAIS_COM_REDUTOR").valor.toFixed(2)).toBe("98.38");
     expect(cen(r, "DESCONTO_SIMPLIFICADO").valor.toFixed(2)).toBe("267.89");
     expect(reducao(r, "DESCONTO_SIMPLIFICADO_COM_REDUTOR")).toBe("267.89");
     expect(r.cenario).toBe("DESCONTO_SIMPLIFICADO_COM_REDUTOR");
@@ -89,32 +90,31 @@ describe("(1) a redução do art. 3º-A — sobre a RENDA, por faixa, limitada a
     expect(r.cenario).toBe("DESCONTO_SIMPLIFICADO_COM_REDUTOR");
     expect(r.valor.toFixed(2)).toBe("0.00");
   });
-  it("renda 6.000, INSS 649,60 (exemplo 4 da Receita): as deduções legais vencem; redução 978,62 − 0,133145 × 6.000 = 179,75 (a da Receita)", () => {
-    // A: base 5350,40 → 374,07 + 685,72 × 27,5% (188,57) = 562,64 (Receita: 562,63). B = 562,64 − 179,75 = 382,89 (Receita: 382,88).
-    // C: base 5392,80 → 374,07 + 728,12 × 27,5% (200,23) = 574,30. D = 574,30 − 179,75 = 394,55.
+  it("renda 6.000, INSS 649,60 (exemplo 4 da Receita): as deduções legais vencem; A 562,63 e B 382,88, os números da Receita", () => {
+    // A: base 5350,40 × 27,5% − 908,73 = 562,63. Redução 978,62 − 0,133145 × 6.000 = 179,75. B = 382,88.
+    // C: base 5392,80 × 27,5% − 908,73 = 574,29. D = 574,29 − 179,75 = 394,54.
     const r = irrf("6000.00", "649.60");
-    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("562.64");
+    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("562.63");
     expect(reducao(r, "DEDUCOES_LEGAIS_COM_REDUTOR")).toBe("179.75");
-    expect(cen(r, "DESCONTO_SIMPLIFICADO").valor.toFixed(2)).toBe("574.30");
-    expect(cen(r, "DESCONTO_SIMPLIFICADO_COM_REDUTOR").valor.toFixed(2)).toBe("394.55");
+    expect(cen(r, "DESCONTO_SIMPLIFICADO").valor.toFixed(2)).toBe("574.29");
+    expect(cen(r, "DESCONTO_SIMPLIFICADO_COM_REDUTOR").valor.toFixed(2)).toBe("394.54");
     expect(r.cenario).toBe("DEDUCOES_LEGAIS_COM_REDUTOR");
-    expect(r.valor.toFixed(2)).toBe("382.89");
+    expect(r.valor.toFixed(2)).toBe("382.88");
   });
   it("renda 7.350,00 (o limite): 978,62 − 978,61575 = 0,00425 → 0,00; vence A", () => {
-    // A: base 6550 → 374,07 + 1885,32 × 27,5% (518,46) = 892,53 (fórmula: 892,52).
-    // C: base 6742,80 → 374,07 + 2078,12 × 27,5% (571,48) = 945,55 (fórmula: 945,54).
+    // A: base 6550 × 27,5% − 908,73 = 892,52. C: base 6742,80 × 27,5% − 908,73 = 945,54.
     const r = irrf("7350.00", "800.00");
     expect(reducao(r, "DEDUCOES_LEGAIS_COM_REDUTOR")).toBe("0.00");
-    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("892.53");
-    expect(cen(r, "DESCONTO_SIMPLIFICADO").valor.toFixed(2)).toBe("945.55");
+    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("892.52");
+    expect(cen(r, "DESCONTO_SIMPLIFICADO").valor.toFixed(2)).toBe("945.54");
     expect(r.cenario).toBe("DEDUCOES_LEGAIS"); // empate A = B fica com o primeiro
-    expect(r.valor.toFixed(2)).toBe("892.53");
+    expect(r.valor.toFixed(2)).toBe("892.52");
   });
-  it("renda 7.400 (acima, § 2º): redução zero; vence A = 374,07 + 1935,32 × 27,5% (532,21) = 906,28 (fórmula: 906,27)", () => {
+  it("renda 7.400 (acima, § 2º): redução zero; vence A = 6600 × 27,5% − 908,73 = 906,27", () => {
     const r = irrf("7400.00", "800.00");
     expect(reducao(r, "DEDUCOES_LEGAIS_COM_REDUTOR")).toBe("0.00");
     expect(reducao(r, "DESCONTO_SIMPLIFICADO_COM_REDUTOR")).toBe("0.00");
-    expect(r.valor.toFixed(2)).toBe("906.28");
+    expect(r.valor.toFixed(2)).toBe("906.27");
   });
   it("renda 4.000, INSS 373,41 (exemplo 2 da Receita): C = 114,76, e a redução se limita a 114,76 (não 312,89) → zero", () => {
     const r = irrf("4000.00", "373.41");
@@ -124,13 +124,13 @@ describe("(1) a redução do art. 3º-A — sobre a RENDA, por faixa, limitada a
     expect(r.valor.toFixed(2)).toBe("0.00");
   });
   it("renda 7.607,20 sem deduções (exemplo 5 da Receita): simplificado, base 7.000, sem redução — a tabela olha o salário, não a base", () => {
-    // C: 374,07 + 2335,32 × 27,5% (642,21) = 1016,28 (Receita: 1016,27). Redução: 7.607,20 > 7.350 → zero,
+    // C: 7000 × 27,5% − 908,73 = 1016,27 (o número da Receita). Redução: 7.607,20 > 7.350 → zero,
     // embora a BASE (7.000) esteja abaixo de 7.350 — é o ponto do exemplo.
     const r = irrf("7607.20", "0");
     expect(r.cenario).toBe("DESCONTO_SIMPLIFICADO");
     expect(r.base.toFixed(2)).toBe("7000.00");
     expect(reducao(r, "DESCONTO_SIMPLIFICADO_COM_REDUTOR")).toBe("0.00");
-    expect(r.valor.toFixed(2)).toBe("1016.28");
+    expect(r.valor.toFixed(2)).toBe("1016.27");
   });
 });
 
@@ -143,7 +143,7 @@ describe("(2) o desconto simplificado substitui a contribuição previdenciária
     }
   });
   it("a parcela isenta de 65 anos (rendimento isento, Lei 7.713/1988 art. 6º XV) continua saindo da renda no simplificado", () => {
-    const r = calcularIrrf({ rendaTributavel: $("6000.00"), contribuicao: $("600.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: true, tabela: TABELA_2026 });
+    const r = calcularIrrf({ rendaTributavel: $("6000.00"), contribuicao: $("600.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: true, rendaDeAposentadoriaOuPensao: $("6000.00"), tabela: TABELA_2026 });
     expect(cen(r, "DESCONTO_SIMPLIFICADO").base.toFixed(2)).toBe("3488.82"); // 6000 − 607,20 − 1903,98
   });
 });
@@ -170,15 +170,68 @@ describe("(3) NEGAÇÕES com motivo e a tabela antiga", () => {
   });
 });
 
-describe("(5) PENDÊNCIA MEDIDA — faixa a faixa × fórmula da Receita na faixa de 27,5%", () => {
-  it("exemplos 4 e 5 da Receita: o motor fica exatamente 1 centavo acima (562,64 × 562,63; 1.016,28 × 1.016,27)", () => {
-    // Fórmula independente, com a parcela publicada: base × 27,5% − 908,73.
-    const pelaReceita = (base: string) => toMoney($(base).times("0.275").minus("908.73"));
-    for (const [renda, inss, nome, base] of [["6000.00", "649.60", "DEDUCOES_LEGAIS", "5350.40"], ["7607.20", "0", "DESCONTO_SIMPLIFICADO", "7000.00"]] as const) {
+describe("(5) a tabela da lei × o faixa a faixa na faixa de 27,5%", () => {
+  // Fórmula independente, com a parcela publicada: base × 27,5% − 908,73.
+  const pelaReceita = (base: string) => toMoney($(base).times("0.275").minus("908.73"));
+  const casos = [["6000.00", "649.60", "DEDUCOES_LEGAIS", "5350.40"], ["7607.20", "0", "DESCONTO_SIMPLIFICADO", "7000.00"]] as const;
+  it("exemplos 4 e 5 da Receita: com as parcelas cadastradas, o motor dá o número dela (562,63; 1.016,27)", () => {
+    for (const [renda, inss, nome, base] of casos) {
       const c = cen(irrf(renda, inss), nome);
       expect(c.base.toFixed(2)).toBe(base);
-      expect(c.valor.minus(pelaReceita(base)).toFixed(2)).toBe("0.01");
+      expect(c.valor.toFixed(2)).toBe(pelaReceita(base).toFixed(2));
+      expect(c.faixas.map((f) => `${f.ordem}:${f.aliquota}−${f.parcelaADeduzir?.toFixed(2)}`)).toEqual(["5:0.2750−908.73"]);
     }
+  });
+  it("a tabela cadastrada SEM as parcelas segue faixa a faixa, e fica 1 centavo acima — por isso a parcela é da tabela", () => {
+    for (const [renda, inss, nome, base] of casos) {
+      const c = cen(irrf(renda, inss, TABELA_SEM_PARCELAS), nome);
+      expect(c.valor.minus(pelaReceita(base)).toFixed(2)).toBe("0.01");
+      expect(c.faixas.length).toBe(5); // as cinco faixas percorridas, a isenta inclusive
+    }
+  });
+  it("NEGAÇÃO: parcela que não fecha com as faixas (908,73 digitada 98,73) → recusa nomeando a faixa, em vez de reter errado", () => {
+    const errada: TabelaIrrfLida = { ...TABELA_2026, faixas: TABELA_2026.faixas.map((f) => (f.ordem === 5 ? { ...f, parcelaADeduzir: $("98.73") } : f)) };
+    expect(() => irrf("6000.00", "649.60", errada)).toThrow(/FAIXAS-INVALIDAS.*parcela a deduzir não fecha.*faixa 5: em [^;]*4\.664,68/);
+    // um centavo de diferença na borda também não é arredondamento: 908,74
+    const umCentavo: TabelaIrrfLida = { ...TABELA_2026, faixas: TABELA_2026.faixas.map((f) => (f.ordem === 5 ? { ...f, parcelaADeduzir: $("908.74") } : f)) };
+    expect(() => irrf("6000.00", "649.60", umCentavo)).toThrow(/parcela a deduzir não fecha/);
+  });
+  it("conferirParcelasADeduzir: a publicada fecha (DECLARADAS); todas zero em faixas que precisam dela = AUSENTES; parcela na 1ª faixa não fecha", () => {
+    expect(conferirParcelasADeduzir(TABELA_2026.faixas, "t")).toBe("DECLARADAS");
+    expect(conferirParcelasADeduzir(TABELA_SEM_PARCELAS.faixas, "t")).toBe("AUSENTES");
+    expect(() => conferirParcelasADeduzir([{ ordem: 1, ate: null, aliquota: new Decimal("0.1"), parcelaADeduzir: $("5.00") }], "t")).toThrow(/faixa 1: em [^;]*0,00 a fórmula dela dá/);
+  });
+});
+
+describe("(6) a parcela isenta dos 65 anos: só provento de inatividade, e fora da renda da redução", () => {
+  const com65 = (renda: string, inatividade: string) =>
+    calcularIrrf({ rendaTributavel: $(renda), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: true, rendaDeAposentadoriaOuPensao: $(inatividade), tabela: TABELA_2026 });
+  it("servidor ATIVO com 65 anos (nenhum provento de aposentadoria ou pensão): sem parcela isenta — o mesmo imposto de quem tem 40", () => {
+    const ativo = com65("8000.00", "0");
+    expect(ativo.cenarios.flatMap((c) => c.deducoes.map((d) => d.tipo))).not.toContain("PARCELA_ISENTA_65_ANOS");
+    expect(ativo.valor.toFixed(2)).toBe(irrf("8000.00", "0").valor.toFixed(2));
+  });
+  it("aposentado com 65 anos e 7.000 de provento: a redução lê 7.000 − 1.903,98 = 5.096,02, não 7.000", () => {
+    // A: base 5096,02 × 27,5% − 908,73 = 492,68. Redução sobre 5.096,02: 978,62 − 0,133145 × 5.096,02 = 300,11 → B = 192,57.
+    // Se a redução lesse 7.000: 978,62 − 932,015 = 46,61 → B = 446,07. A diferença é o ponto do teste.
+    const r = com65("7000.00", "7000.00");
+    expect(cen(r, "DEDUCOES_LEGAIS").base.toFixed(2)).toBe("5096.02");
+    expect(cen(r, "DEDUCOES_LEGAIS").valor.toFixed(2)).toBe("492.68");
+    expect(reducao(r, "DEDUCOES_LEGAIS_COM_REDUTOR")).toBe("300.11");
+    expect(cen(r, "DEDUCOES_LEGAIS_COM_REDUTOR").valor.toFixed(2)).toBe("192.57");
+  });
+  it("aposentado com 65 anos e 9.000: 9.000 − 1.903,98 = 7.096,02 fica abaixo de 7.350, e a redução existe (lendo 9.000 seria zero)", () => {
+    const r = com65("9000.00", "9000.00");
+    expect(reducao(r, "DEDUCOES_LEGAIS_COM_REDUTOR")).toBe("33.82"); // 978,62 − 0,133145 × 7.096,02 (944,7996) = 33,8204
+  });
+  it("N=2 de proventos: a parcela nunca passa do provento de inatividade (1.200 de pensão + salário) — abate 1.200, não 1.903,98", () => {
+    const r = com65("6000.00", "1200.00");
+    expect(cen(r, "DEDUCOES_LEGAIS").deducoes.find((d) => d.tipo === "PARCELA_ISENTA_65_ANOS")?.valor.toFixed(2)).toBe("1200.00");
+    expect(cen(r, "DEDUCOES_LEGAIS").base.toFixed(2)).toBe("4800.00");
+  });
+  it("com menos de 65 anos, o provento de aposentadoria não tem parcela isenta", () => {
+    const r = calcularIrrf({ rendaTributavel: $("7000.00"), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, rendaDeAposentadoriaOuPensao: $("7000.00"), tabela: TABELA_2026 });
+    expect(cen(r, "DEDUCOES_LEGAIS").base.toFixed(2)).toBe("7000.00");
   });
 });
 
@@ -200,6 +253,10 @@ const BASE_DO_CADASTRO = {
 };
 
 describe("(4) cadastrarTabelaIrrf — a faixa isenta do redutor", () => {
+  it("NEGAÇÃO: parcela a deduzir que não fecha com as faixas → recusa antes de gravar, nomeando a faixa", async () => {
+    await expect(cadastrarTabelaIrrf(prisma, { ...BASE_DO_CADASTRO, faixas: [{ ordem: 1, ate: "2428.80", aliquota: "0" }, { ordem: 2, ate: null, aliquota: "0.275", parcelaADeduzir: "667.00" }] })).rejects.toThrow(/parcela a deduzir não fecha.*faixa 2/);
+    expect(await prisma.tabelaIrrf.count()).toBe(0);
+  });
   it("grava os dois campos e o cálculo da folha os lê de volta", async () => {
     const { tabelaId } = await cadastrarTabelaIrrf(prisma, { ...BASE_DO_CADASTRO, redutorRendaDaFaixaIsenta: "5000.00", redutorMaximoNaFaixaIsenta: "312.89" });
     const t = await prisma.tabelaIrrf.findUniqueOrThrow({ where: { id: tabelaId }, select: { redutorRendaDaFaixaIsenta: true, redutorMaximoNaFaixaIsenta: true } });

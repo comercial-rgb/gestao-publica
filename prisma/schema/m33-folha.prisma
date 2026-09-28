@@ -122,7 +122,9 @@ model FaixaIrrf {
 
   aliquota Decimal @db.Decimal(7, 4)
 
-  /// A parcela a deduzir da fórmula simplificada — usada só para CONFERIR o cálculo faixa a faixa.
+  /// A parcela a deduzir da tabela da lei (Lei 11.482/2007 art. 1º). Desde a V22 o IRRF é base ×
+  /// alíquota − parcela, como a Receita calcula; o cadastro recusa parcela que não fecha com as faixas.
+  /// Todas zero = tabela cadastrada sem a coluna, e o motor segue faixa a faixa.
   parcelaADeduzir Decimal @default(0) @db.Decimal(18, 2)
 
   @@unique([tabelaId, ordem])

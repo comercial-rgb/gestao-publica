@@ -20,6 +20,19 @@ Sem tabela vigente: `TABELA-AUSENTE` nomeando tipo e competência. Duas com o me
 `TABELA-AMBIGUA`. A aplicabilidade dos cenários do IRRF vem dos campos da tabela — não há data
 embutida.
 
+**O imposto sai da tabela da lei (V22):** base × alíquota − parcela a deduzir (Lei 11.482/2007
+art. 1º), um arredondamento só, como a Receita calcula. A parcela publicada é arredondada (908,73
+em 27,5%; a exata das faixas é 908,72), e o faixa a faixa ficava um centavo acima. O cadastro recusa
+parcela que não fecha com as faixas (diferença de um centavo ou mais na borda); tabela sem parcelas
+(todas zero) segue faixa a faixa. A contribuição previdenciária continua faixa a faixa.
+
+**A parcela isenta dos 65 anos só alcança provento de aposentadoria ou pensão** (IN RFB 1.500/2014
+art. 6º I, redação da IN RFB 2.299/2025): vínculo `APOSENTADO` ou `PENSIONISTA` (M32). Servidor
+ativo com 65 anos não a tem, e ela nunca passa do provento de inatividade (pessoa com duas
+matrículas: só a renda da matrícula inativa). Por ser rendimento isento, ela sai da renda que a
+tabela de redução do art. 3º-A lê ("rendimentos tributáveis sujeitos à incidência mensal"). A
+redução vale também no 13º (art. 3º-A § 3º).
+
 **As tabelas dos testes são FIXTURES sintéticas**, com valores redondos para conferir à mão. Não
 afirmam alíquota oficial. O repositório não semeia tabela federal: quem cadastra é o ente, pela
 tela `/folha/tabelas`, a partir da portaria vigente.
