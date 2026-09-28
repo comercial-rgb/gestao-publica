@@ -8,6 +8,20 @@ import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarT
 import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "../../modules/m33-folha/apropriacao.js";
 import { certificarFolha, designarNaFolha, liquidarFolha } from "../../modules/m33-folha/certificacao.js";
 import { documentoTemDigitoValido } from "../../packages/documento/index.js";
+import { criarM02Deps } from "../../modules/m02-planejamento/adapter-prisma.js";
+import { criarFicha } from "../../modules/m02-planejamento/servico.js";
+import { criarDecreto, criarLei, executarCredito } from "../../modules/m03-creditos/index.js";
+import { criarM03DepsAmarrado } from "../../modules/m12-relatorios/adapter-m03.js";
+import {
+  apropriarEncargosDaFolha,
+  apurarEncargosDaFolha,
+  aprovarVersaoDoEncargo,
+  cadastrarComponenteDeEncargo,
+  cadastrarGrupoDosEncargos,
+  cadastrarVersaoDoEncargo,
+  certificarEncargosDaFolha,
+  liquidarEncargosDaFolha,
+} from "../../modules/m33-folha/encargos-servico.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 
@@ -38,6 +52,30 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
  *   obrigação 2.1.1.1.1.01.01 (salários, remunerações e benefícios a pagar).
  * Ficha 103/2026 (319011, fonte 500, órgão 01).
  *
+ * OS ENCARGOS PATRONAIS DA COMPETÊNCIA (V22) — os dois servidores são RGPS, e o ente é "empresa"
+ * para a Seguridade Social (Lei 8.212/1991 art. 15, I: "os órgãos e entidades da administração
+ * pública direta, indireta e fundacional"). Fontes conferidas no texto oficial em 2026-09-28:
+ *  · cota patronal de 20% — Lei 8.212/1991 art. 22, I,
+ *    https://www.planalto.gov.br/ccivil_03/leis/l8212cons.htm
+ *  · RAT de 2% (risco médio) — art. 22, II, "b", com o grau de risco da atividade preponderante do
+ *    Decreto 3.048/1999 Anexo V: CNAE 8411-6/00 "Administração pública em geral" → 2,
+ *    https://www.planalto.gov.br/ccivil_03/decreto/D3048anexov-vol1.htm
+ *  · FAP 1,0000 — VALOR DE DEMONSTRAÇÃO. O FAP é do estabelecimento, divulgado anualmente; não há
+ *    fonte local para o do ente. Por isso a versão do RAT nasce SINTÉTICA (a tela avisa "sem
+ *    validade normativa"), e a da cota patronal não.
+ *  · elemento 13 "Obrigações Patronais" com modalidade 90 (Portaria Interministerial STN/SOF
+ *    163/2001, Anexo II): a 91 é só "quando o recebedor dos recursos também for [...] entidade
+ *    constante desses orçamentos, no âmbito da mesma esfera de Governo" — o RGPS é federal. Daí a
+ *    ficha 104 em 319013, e não em 319113.
+ * Contas do grupo (decisão do contador, conferidas no PCASP carregado; o INSS é autarquia da União,
+ * por isso o 5º nível "inter OFSS - União"): VPD 3.1.2.2.3.01.00 (contribuições previdenciárias -
+ * RGPS) e 3.1.2.2.3.03.00 (seguro de acidente no trabalho); obrigação 2.1.1.4.3.01.01
+ * (contribuições ao RGPS sobre salários e remunerações). Credor: INSS, CNPJ 29.979.036/0001-40.
+ * Dotação: crédito especial por lei e decreto de demonstração, anulando parte da ficha 2.
+ * Papéis: admin cadastra e apura; aprovador-encargos@percursos.local aprova a versão (quem cadastra
+ * não aprova); atestador@percursos.local certifica (designado para os encargos); admin empenha;
+ * liquidante@percursos.local liquida.
+ *
  * Idempotente: cada item é procurado pela chave natural antes de ser criado; o cálculo só roda se
  * a folha não tem cálculo vivo nem fechamento; apropriar e liquidar são idempotentes por si.
  * Recusa rodar fora do banco gestao_publica_local.
@@ -57,6 +95,25 @@ const DATA_DO_ATO = "2026-08-31"; // último dia da competência: empenho, atest
 const FICHA_NUMERO = 103;
 const CONTA_VPD = "3.1.1.2.1.01.01";
 const CONTA_OBRIGACAO = "2.1.1.1.1.01.01";
+const APROVADOR_ENCARGOS = "aprovador-encargos@percursos.local";
+const FICHA_ENCARGOS = 104;
+const NATUREZA_ENCARGOS = "319013";
+const CREDITO_ENCARGOS = "3000.00";
+const LEI_ENCARGOS = { numero: "1.521", data: "2026-08-20" } as const; // dado de demonstração
+const DECRETO_ENCARGOS = { numero: "0042", data: "2026-08-21" } as const; // dado de demonstração
+const CONTA_OBRIGACAO_RGPS = "2.1.1.4.3.01.01";
+const INSS = { cnpj: "29979036000140", nome: "Instituto Nacional do Seguro Social - INSS" };
+const FONTE_PATRONAL =
+  "Lei 8.212/1991 art. 22, I (20% sobre as remunerações dos segurados empregados), c/c art. 15, I (a administração pública direta é empresa para a Seguridade Social) — " +
+  "https://www.planalto.gov.br/ccivil_03/leis/l8212cons.htm";
+const FONTE_RAT =
+  "Lei 8.212/1991 art. 22, II, b (2%, risco médio) e Decreto 3.048/1999 Anexo V (CNAE 8411-6/00 Administração pública em geral, grau 2), " +
+  "× FAP 1,0000 — FAP de DEMONSTRAÇÃO, não o do ente";
+const FONTE_IRRF_REDUCAO =
+  "Lei 15.191/2025 (tabela progressiva mensal, dedução por dependente, desconto simplificado e parcela isenta 65+) " +
+  "e Lei 9.250/1995 art. 3º-A, incluído pela Lei 15.270/2025 (redução: até R$ 5.000,00 até R$ 312,89; de 5.000,01 a 7.350,00, 978,62 − 0,133145 × rendimentos) — " +
+  "https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15270.htm e " +
+  "https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026";
 
 const FONTE_IRRF =
   "Lei 15.191/2025 (tabela progressiva mensal, dedução por dependente, desconto simplificado e parcela isenta 65+) " +
@@ -173,6 +230,35 @@ async function main(): Promise<void> {
         redutorFator: "0.133145",
         redutorRendaMaxima: "7350.00",
         fundamentacaoLegal: FONTE_IRRF,
+        faixas: [
+          { ordem: 1, ate: "2428.80", aliquota: "0" },
+          { ordem: 2, ate: "2826.65", aliquota: "0.075", parcelaADeduzir: "182.16" },
+          { ordem: 3, ate: "3751.05", aliquota: "0.15", parcelaADeduzir: "394.16" },
+          { ordem: 4, ate: "4664.68", aliquota: "0.225", parcelaADeduzir: "675.49" },
+          { ordem: 5, ate: null, aliquota: "0.275", parcelaADeduzir: "908.73" },
+        ],
+        criadoPor: AUTOR,
+      });
+      return { estado: "criado", valor: tabelaId };
+    });
+
+    // ── 1b. a mesma tabela de 2026 com a faixa isenta da redução (V22). A de 2026-01 é FATO e não se
+    // altera; a correção entra como NOVA VIGÊNCIA, a partir da primeira competência ainda não
+    // calculada (a de 2026-08 está fechada). Os valores são os mesmos da de 2026-01, mais a faixa.
+    await passo("Tabela de IRRF desde 2026-09 (com a faixa isenta da redução do art. 3º-A)", async () => {
+      const ja = await prisma.tabelaIrrf.findFirst({ where: { competenciaInicio: "2026-09" }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      const { tabelaId } = await cadastrarTabelaIrrf(prisma, {
+        competenciaInicio: "2026-09",
+        deducaoPorDependente: "189.59",
+        descontoSimplificado: "607.20",
+        isencaoMaior65: "1903.98",
+        redutorBase: "978.62",
+        redutorFator: "0.133145",
+        redutorRendaMaxima: "7350.00",
+        redutorRendaDaFaixaIsenta: "5000.00",
+        redutorMaximoNaFaixaIsenta: "312.89",
+        fundamentacaoLegal: FONTE_IRRF_REDUCAO,
         faixas: [
           { ordem: 1, ate: "2428.80", aliquota: "0" },
           { ordem: 2, ate: "2826.65", aliquota: "0.075", parcelaADeduzir: "182.16" },
@@ -305,9 +391,150 @@ async function main(): Promise<void> {
       const r = await liquidarFolha(prisma, { folhaId, data: D(DATA_DO_ATO), criadoPor: LIQUIDANTE });
       return { estado: r.liquidadas > 0 ? "criado" : "existente", valor: null, detalhe: `${r.liquidadas} liquidada(s), ${r.jaExistiam} já existiam, ${r.pendentes} pendente(s), total ${r.total.toFixed(2)}` };
     });
+
+    // ══ 9. OS ENCARGOS PATRONAIS DA COMPETÊNCIA ═══════════════════════════════════
+    await semearEncargos(prisma, folhaId, idDaRubrica.get("VENC") as string);
   } finally {
     await prisma.$disconnect();
   }
+}
+
+async function semearEncargos(prisma: PrismaClient, folhaId: string, rubricaVenc: string): Promise<void> {
+  // ── 9.1 pré-condições que não se criam aqui (fail-closed) ──
+  const natureza = await prisma.naturezaDespesa.findFirst({ where: { codigoCompleto: NATUREZA_ENCARGOS }, select: { id: true } });
+  if (natureza === null) throw new Error(`A natureza ${NATUREZA_ENCARGOS} não está no catálogo carregado. Nada foi gravado.`);
+  const contas = await prisma.contaPcasp.findMany({ where: { codigo: { in: ["3.1.2.2.3.01.00", "3.1.2.2.3.03.00", CONTA_OBRIGACAO_RGPS] } }, select: { id: true, codigo: true, analitica: true } });
+  const conta = (codigo: string): string => {
+    const c = contas.find((x) => x.codigo === codigo);
+    if (c === undefined || !c.analitica) throw new Error(`A conta ${codigo} precisa existir e ser analítica no PCASP carregado. Nada foi gravado.`);
+    return c.id;
+  };
+  const vpdPatronal = conta("3.1.2.2.3.01.00");
+  const vpdRat = conta("3.1.2.2.3.03.00");
+  const obrigacaoRgps = conta(CONTA_OBRIGACAO_RGPS);
+  const fonte = await prisma.fonteRecurso.findUniqueOrThrow({ where: { codigo: "500" }, select: { id: true } });
+  const fichaDoisId = (await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { exercicio_numero: { exercicio: EXERCICIO, numero: 2 } }, select: { id: true } })).id;
+
+  // ── 9.2 a ficha 104 (nasce sem dotação, como na tela) e o crédito especial que a dota ──
+  const fichaId = await passo(`Ficha ${FICHA_ENCARGOS}/${EXERCICIO} Educação — obrigações patronais (${NATUREZA_ENCARGOS})`, async () => {
+    const ja = await prisma.fichaOrcamentaria.findUnique({ where: { exercicio_numero: { exercicio: EXERCICIO, numero: FICHA_ENCARGOS } }, select: { id: true, naturezaDespesa: { select: { codigoCompleto: true } } } });
+    if (ja !== null) {
+      if (ja.naturezaDespesa.codigoCompleto !== NATUREZA_ENCARGOS) throw new Error(`a ficha ${FICHA_ENCARGOS} já existe com a natureza ${ja.naturezaDespesa.codigoCompleto}.`);
+      return { estado: "existente", valor: ja.id };
+    }
+    const id = await criarFicha({
+      exercicio: EXERCICIO, numero: FICHA_ENCARGOS, exercicioFonte: 1, valorDotado: "0.00", criadoPor: AUTOR,
+      classificacao: { orgao: "01", unidadeOrc: "01001", funcao: "12", subfuncao: "361", programa: "0001", acao: "2001", naturezaDespesa: NATUREZA_ENCARGOS, fonte: "500" },
+    }, criarM02Deps(prisma));
+    return { estado: "criado", valor: id };
+  });
+  const m03 = criarM03DepsAmarrado(prisma);
+  const leiId = await passo(`Lei de crédito especial nº ${LEI_ENCARGOS.numero}/${EXERCICIO} (R$ ${CREDITO_ENCARGOS}) — demonstração`, async () => {
+    const ja = await prisma.leiCredito.findUnique({ where: { ano_numero: { ano: EXERCICIO, numero: LEI_ENCARGOS.numero } }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    const id = await criarLei({ numero: LEI_ENCARGOS.numero, ano: EXERCICIO, tipoCredito: "ESPECIAL", valorAutorizado: CREDITO_ENCARGOS, dataPublicacao: D(LEI_ENCARGOS.data), criadoPor: AUTOR }, m03);
+    return { estado: "criado", valor: id };
+  });
+  const decretoId = await passo(`Decreto nº ${DECRETO_ENCARGOS.numero}/${EXERCICIO} (crédito especial por anulação da ficha 2) — demonstração`, async () => {
+    const ja = await prisma.decretoCredito.findUnique({ where: { ano_numero: { ano: EXERCICIO, numero: DECRETO_ENCARGOS.numero } }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    const id = await criarDecreto({ leiId, numero: DECRETO_ENCARGOS.numero, ano: EXERCICIO, data: D(DECRETO_ENCARGOS.data), origemRecurso: "ANULACAO", criadoPor: AUTOR }, m03);
+    return { estado: "criado", valor: id };
+  });
+  await passo(`Movimentos do decreto ${DECRETO_ENCARGOS.numero}/${EXERCICIO} (anula R$ ${CREDITO_ENCARGOS} da ficha 2; abre a ficha ${FICHA_ENCARGOS})`, async () => {
+    if ((await prisma.itemCredito.count({ where: { decretoId } })) > 0) return { estado: "existente", valor: null };
+    await executarCredito({
+      decretoId,
+      itens: [
+        { fichaId: fichaDoisId, tipo: "ANULACAO", valor: CREDITO_ENCARGOS, fonteId: fonte.id },
+        { fichaId, tipo: "SUPLEMENTACAO", valor: CREDITO_ENCARGOS, fonteId: fonte.id },
+      ],
+      criadoPor: AUTOR,
+    }, m03);
+    return { estado: "criado", valor: null };
+  });
+
+  // ── 9.3 o credor (o regime) ──
+  // Sede em Brasília/DF (cadastro do CNPJ no Portal da Transparência, portaldatransparencia.gov.br/pessoa-juridica/29979036000140).
+  const credorId = await passo(`Pessoa ${INSS.cnpj} ${INSS.nome}`, async () => {
+    const m19 = criarM19Deps(prisma);
+    const ja = await m19.pessoas.buscarPorDocumento(INSS.cnpj);
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    const { pessoaId } = await cadastrarPessoa({ documento: INSS.cnpj, nome: INSS.nome, municipio: "Brasília", uf: "DF", criadoPor: AUTOR }, m19);
+    return { estado: "criado", valor: pessoaId };
+  });
+
+  // ── 9.4 componentes e versões (cadastra o admin, aprova outra pessoa) ──
+  const COMPONENTES = [
+    { codigo: "RGPS-PATRONAL", descricao: "Contribuição patronal ao RGPS (20%)", tipo: "PREVIDENCIA_PATRONAL" as const, aliquota: "0.20", fundamento: FONTE_PATRONAL, sintetica: false, grupo: "ENC-RGPS-PATR", vpd: vpdPatronal, rotuloGrupo: "Contribuição patronal ao RGPS" },
+    { codigo: "RGPS-RAT", descricao: "RAT ajustado pelo FAP (2% × 1,0000)", tipo: "RISCO_AMBIENTAL_DO_TRABALHO" as const, aliquota: "0.02", fundamento: FONTE_RAT, sintetica: true, grupo: "ENC-RGPS-RAT", vpd: vpdRat, rotuloGrupo: "RAT (riscos ambientais do trabalho)" },
+  ];
+  for (const c of COMPONENTES) {
+    const componenteId = await passo(`Componente de encargo ${c.codigo}`, async () => {
+      const ja = await prisma.componenteDeEncargo.findUnique({ where: { codigo: c.codigo }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      const { componenteId } = await cadastrarComponenteDeEncargo(prisma, { codigo: c.codigo, descricao: c.descricao, tipo: c.tipo, regime: "RGPS", criadoPor: AUTOR });
+      return { estado: "criado", valor: componenteId };
+    });
+    const versaoId = await passo(`Versão de ${c.codigo} desde 2026-01 (${c.aliquota} sobre VENC${c.sintetica ? ", sintética" : ""})`, async () => {
+      const ja = await prisma.versaoDoEncargo.findFirst({ where: { componenteId, competenciaInicio: "2026-01" }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      const { versaoId } = await cadastrarVersaoDoEncargo(prisma, { componenteId, competenciaInicio: "2026-01", aliquota: c.aliquota, fundamentacaoLegal: c.fundamento, sintetica: c.sintetica, rubricaIds: [rubricaVenc], criadoPor: AUTOR });
+      return { estado: "criado", valor: versaoId };
+    });
+    await passo(`Aprovação da versão de ${c.codigo} por ${APROVADOR_ENCARGOS}`, async () => {
+      if ((await prisma.aprovacaoDoEncargo.findFirst({ where: { versaoId }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await aprovarVersaoDoEncargo(prisma, { versaoId, motivo: "alíquota, base e fundamento conferidos — demonstração", criadoPor: APROVADOR_ENCARGOS });
+      return { estado: "criado", valor: null };
+    });
+    await passo(`Grupo de empenho ${c.grupo} (ficha ${FICHA_ENCARGOS}, credor INSS)`, async () => {
+      const ja = await prisma.grupoDeEmpenhoDaFolha.findUnique({ where: { codigo: c.grupo }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      const { grupoId } = await cadastrarGrupoDosEncargos(prisma, {
+        codigo: c.grupo, descricao: c.rotuloGrupo, fichaId, serie: "FE", credorId, tipoEmpenho: "ORDINARIO", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
+        contaVariacaoId: c.vpd, contaObrigacaoId: obrigacaoRgps, componenteIds: [componenteId], criadoPor: AUTOR,
+      });
+      return { estado: "criado", valor: grupoId };
+    });
+  }
+
+  // ── 9.5 apurar (admin), designar e certificar (atestador), empenhar (admin), liquidar (liquidante) ──
+  await passo(`Apuração dos encargos de ${COMPETENCIA}`, async () => {
+    const ja = await prisma.apuracaoDeEncargos.findFirst({ where: { folhaId }, orderBy: { numero: "desc" }, select: { numero: true, total: true } });
+    if (ja !== null) return { estado: "existente", valor: null, detalhe: `nº ${ja.numero}, total ${ja.total.toFixed(2)}` };
+    const r = await apurarEncargosDaFolha(prisma, { folhaId, motivo: "encargos patronais da folha da demonstração", criadoPor: AUTOR });
+    return { estado: "criado", valor: null, detalhe: `nº ${r.numero}, completa ${r.completa}, total ${r.total.toFixed(2)} [${r.porComponente.map((p) => `${p.codigo} ${p.total}`).join("; ")}]` };
+  });
+  const pessoaAtestadora = await pessoaPorCpf(prisma, ATESTADORA.cpf, ATESTADORA.nome);
+  await passo(`Designação de ${ATESTADOR} para certificar os encargos (Portaria 001/2026 — demonstração)`, async () => {
+    const u = await prisma.usuario.findUniqueOrThrow({ where: { identificador: ATESTADOR }, select: { id: true } });
+    const ja = await prisma.designacaoNaFolha.findFirst({ where: { usuarioId: u.id, atribuicao: "CERTIFICAR_ENCARGOS_DA_FOLHA", revogacao: null }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: null };
+    await designarNaFolha(prisma, { atribuicao: "CERTIFICAR_ENCARGOS_DA_FOLHA", pessoaId: pessoaAtestadora, usuarioIdentificador: ATESTADOR, atoDesignacao: "Portaria 001/2026 — demonstração", vigenciaInicio: D(ADMISSAO), criadoPor: AUTOR });
+    return { estado: "criado", valor: null };
+  });
+  await passo(`Certificação dos encargos de ${COMPETENCIA} por ${ATESTADOR}`, async () => {
+    const ja = await prisma.certificacaoDosEncargos.findFirst({ where: { apuracao: { folhaId }, tipo: "CERTIFICACAO" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: null };
+    const r = await certificarEncargosDaFolha(prisma, { folhaId, data: D(DATA_DO_ATO), criadoPor: ATESTADOR });
+    return { estado: "criado", valor: null, detalhe: `apuração nº ${r.numero}, sha256 ${r.sha256.slice(0, 12)}…` };
+  });
+  // O empenho e a liquidação dos encargos RECUSAM a repetição (ENCARGOS-JA-EMPENHADOS), em vez de
+  // devolver "já existia" como os da folha salarial: a chave natural se confere aqui antes.
+  const gruposDosEncargos = COMPONENTES.map((c) => c.grupo);
+  await passo(`Empenho dos encargos de ${COMPETENCIA} (em ${DATA_DO_ATO})`, async () => {
+    const ultima = await prisma.apuracaoDeEncargos.findFirst({ where: { folhaId }, orderBy: { numero: "desc" }, select: { id: true } });
+    const feitos = ultima === null ? 0 : await prisma.empenhoDosEncargos.count({ where: { apuracaoId: ultima.id, grupo: { codigo: { in: gruposDosEncargos } } } });
+    if (feitos === gruposDosEncargos.length) return { estado: "existente", valor: null, detalhe: `${feitos} empenho(s) da apuração vigente` };
+    const r = await apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: D(DATA_DO_ATO), criadoPor: AUTOR });
+    return { estado: r.empenhados > 0 ? "criado" : "existente", valor: null, detalhe: `${r.empenhados} empenhado(s), ${r.jaExistiam} já existiam, total ${r.total.toFixed(2)} [${r.porGrupo.map((g) => `${g.codigo} ${g.pedido}`).join("; ")}]` };
+  });
+  await passo(`Liquidação dos encargos de ${COMPETENCIA} por ${LIQUIDANTE}`, async () => {
+    const empenhos = await prisma.empenhoDosEncargos.findMany({ where: { apuracao: { folhaId }, grupo: { codigo: { in: gruposDosEncargos } } }, select: { liquidacao: { select: { id: true } } } });
+    if (empenhos.length > 0 && empenhos.every((e) => e.liquidacao !== null)) return { estado: "existente", valor: null, detalhe: `${empenhos.length} liquidação(ões)` };
+    const r = await liquidarEncargosDaFolha(prisma, { folhaId, data: D(DATA_DO_ATO), criadoPor: LIQUIDANTE });
+    return { estado: r.liquidadas > 0 ? "criado" : "existente", valor: null, detalhe: `${r.liquidadas} liquidada(s), ${r.jaExistiam} já existiam, ${r.pendentes} pendente(s), total ${r.total.toFixed(2)}` };
+  });
 }
 
 main().catch((e: unknown) => {

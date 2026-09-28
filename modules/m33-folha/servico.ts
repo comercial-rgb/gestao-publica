@@ -151,6 +151,14 @@ export async function cadastrarTabelaIrrf(prisma: PrismaClient, input: Cadastrar
   const faixas = conferirFaixas(d.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate ?? null, aliquota: f.aliquota })), `IRRF ${d.competenciaInicio}`);
   const redutor = [d.redutorBase, d.redutorFator, d.redutorRendaMaxima].filter((x) => x !== null && x !== undefined).length;
   if (redutor !== 0 && redutor !== 3) throw new Error("REDUTOR-INCOMPLETO: o redutor vem com base, fator e renda máxima — os três — ou não vem. Nada foi gravado.");
+  // A faixa isenta da tabela de redução (Lei 9.250/1995 art. 3º-A): renda e máximo juntos, e só sobre
+  // o redutor linear, abaixo da renda máxima dele. O CHECK TabelaIrrf_redutor_faixa_isenta_chk repete
+  // a regra no banco; aqui ela recusa antes de abrir a transação, com o motivo.
+  const temRendaIsenta = d.redutorRendaDaFaixaIsenta !== null && d.redutorRendaDaFaixaIsenta !== undefined;
+  const temMaximoIsenta = d.redutorMaximoNaFaixaIsenta !== null && d.redutorMaximoNaFaixaIsenta !== undefined;
+  if (temRendaIsenta !== temMaximoIsenta) throw new Error("REDUTOR-FAIXA-ISENTA-INCOMPLETA: a faixa isenta do redutor vem com a renda e o valor máximo — os dois — ou não vem. Nada foi gravado.");
+  if (temRendaIsenta && redutor !== 3) throw new Error("REDUTOR-FAIXA-ISENTA-SEM-REDUTOR: a faixa isenta só existe junto do redutor (base, fator e renda máxima). Nada foi gravado.");
+  if (temRendaIsenta && !(d.redutorRendaDaFaixaIsenta as Decimal).lt(d.redutorRendaMaxima as Decimal)) throw new Error("REDUTOR-FAIXA-ISENTA-FORA: a renda da faixa isenta precisa ficar abaixo da renda máxima do redutor. Nada foi gravado.");
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarTabelaIrrf, "ENTE");
     const gemea = await tx.tabelaIrrf.findFirst({ where: { competenciaInicio: d.competenciaInicio }, select: { id: true } });
@@ -164,6 +172,8 @@ export async function cadastrarTabelaIrrf(prisma: PrismaClient, input: Cadastrar
         redutorBase: d.redutorBase === null || d.redutorBase === undefined ? null : s2(d.redutorBase),
         redutorFator: d.redutorFator === null || d.redutorFator === undefined ? null : d.redutorFator.toFixed(8),
         redutorRendaMaxima: d.redutorRendaMaxima === null || d.redutorRendaMaxima === undefined ? null : s2(d.redutorRendaMaxima),
+        redutorRendaDaFaixaIsenta: temRendaIsenta ? s2(d.redutorRendaDaFaixaIsenta as Decimal) : null,
+        redutorMaximoNaFaixaIsenta: temMaximoIsenta ? s2(d.redutorMaximoNaFaixaIsenta as Decimal) : null,
         fundamentacaoLegal: d.fundamentacaoLegal, criadoPor: d.criadoPor,
         faixas: { create: d.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate === null || f.ate === undefined ? null : s2(f.ate), aliquota: f.aliquota.toFixed(4), parcelaADeduzir: s2(f.parcelaADeduzir ?? toMoney(0)) })) },
       },
@@ -370,7 +380,7 @@ async function lerTabelas(tx: Tx, competencia: string): Promise<{
 }> {
   const [contribs, irrfs, sfs] = await Promise.all([
     tx.tabelaDeContribuicao.findMany({ select: { id: true, regime: true, competenciaInicio: true, competenciaFim: true, teto: true, fundamentacaoLegal: true, faixas: { select: { ordem: true, ate: true, aliquota: true } } } }),
-    tx.tabelaIrrf.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, fundamentacaoLegal: true, faixas: { select: { ordem: true, ate: true, aliquota: true } } } }),
+    tx.tabelaIrrf.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, redutorRendaDaFaixaIsenta: true, redutorMaximoNaFaixaIsenta: true, fundamentacaoLegal: true, faixas: { select: { ordem: true, ate: true, aliquota: true } } } }),
     tx.tabelaSalarioFamilia.findMany({ select: { id: true, competenciaInicio: true, competenciaFim: true, rendaMaxima: true, valorPorDependente: true, idadeLimite: true, fundamentacaoLegal: true } }),
   ]);
   const contribuicaoDo = (regime: "RGPS" | "RPPS"): TabelaDeContribuicaoLida | null => {
@@ -382,7 +392,7 @@ async function lerTabelas(tx: Tx, competencia: string): Promise<{
       return null; // ausente: só é erro se algum vínculo do regime aparecer
     }
   };
-  const irrf = escolherVigente(irrfs.map((t) => ({ id: t.id, competenciaInicio: t.competenciaInicio, competenciaFim: t.competenciaFim, deducaoPorDependente: toMoney(t.deducaoPorDependente), descontoSimplificado: t.descontoSimplificado === null ? null : toMoney(t.descontoSimplificado), isencaoMaior65: t.isencaoMaior65 === null ? null : toMoney(t.isencaoMaior65), redutorBase: t.redutorBase === null ? null : toMoney(t.redutorBase), redutorFator: t.redutorFator === null ? null : new Decimal(t.redutorFator), redutorRendaMaxima: t.redutorRendaMaxima === null ? null : toMoney(t.redutorRendaMaxima), fundamentacaoLegal: t.fundamentacaoLegal, faixas: t.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate === null ? null : toMoney(f.ate), aliquota: new Decimal(f.aliquota) })) })), competencia, "IRRF");
+  const irrf = escolherVigente(irrfs.map((t) => ({ id: t.id, competenciaInicio: t.competenciaInicio, competenciaFim: t.competenciaFim, deducaoPorDependente: toMoney(t.deducaoPorDependente), descontoSimplificado: t.descontoSimplificado === null ? null : toMoney(t.descontoSimplificado), isencaoMaior65: t.isencaoMaior65 === null ? null : toMoney(t.isencaoMaior65), redutorBase: t.redutorBase === null ? null : toMoney(t.redutorBase), redutorFator: t.redutorFator === null ? null : new Decimal(t.redutorFator), redutorRendaMaxima: t.redutorRendaMaxima === null ? null : toMoney(t.redutorRendaMaxima), redutorRendaDaFaixaIsenta: t.redutorRendaDaFaixaIsenta === null ? null : toMoney(t.redutorRendaDaFaixaIsenta), redutorMaximoNaFaixaIsenta: t.redutorMaximoNaFaixaIsenta === null ? null : toMoney(t.redutorMaximoNaFaixaIsenta), fundamentacaoLegal: t.fundamentacaoLegal, faixas: t.faixas.map((f) => ({ ordem: f.ordem, ate: f.ate === null ? null : toMoney(f.ate), aliquota: new Decimal(f.aliquota) })) })), competencia, "IRRF");
   const sfCandidatas = sfs.map((t) => ({ id: t.id, competenciaInicio: t.competenciaInicio, competenciaFim: t.competenciaFim, rendaMaxima: toMoney(t.rendaMaxima), valorPorDependente: toMoney(t.valorPorDependente), idadeLimite: t.idadeLimite, fundamentacaoLegal: t.fundamentacaoLegal }));
   let salarioFamilia: TabelaSalarioFamiliaLida | null;
   try {

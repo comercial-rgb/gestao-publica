@@ -167,22 +167,28 @@ describe("(2) contribuição por regime", () => {
   });
 });
 
-describe("(3) IRRF — três cenários, vence o menor; a aplicabilidade vem da tabela", () => {
+describe("(3) IRRF — quatro cenários, vence o menor; a aplicabilidade vem da tabela", () => {
+  // ⚠️ V22 — o cenário C deixou de descontar a contribuição junto do simplificado (Lei 9.250/1995
+  // art. 4º § 2º: o simplificado é ALTERNATIVO às deduções do caput, e o inciso IV é a contribuição),
+  // e nasceu o D (simplificado + redução, art. 3º-A § 1º). Os números abaixo foram refeitos à mão.
   it("renda 4000 sem dependentes: A = 15% sobre (4000−255−2000) …; o REDUTOR (1000 − 0,2×4000 = 200) e o SIMPLIFICADO são calculados; vence o menor", () => {
     const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
     const a = r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS")!;
     const b = r.cenarios.find((c) => c.nome === "DEDUCOES_LEGAIS_COM_REDUTOR")!;
     const c = r.cenarios.find((c) => c.nome === "DESCONTO_SIMPLIFICADO")!;
+    const d = r.cenarios.find((c) => c.nome === "DESCONTO_SIMPLIFICADO_COM_REDUTOR")!;
     expect(a.base.toFixed(2)).toBe("3745.00");
     expect(a.valor.toFixed(2)).toBe(porFormulaSimplificada($("3745.00"), IRRF.faixas).toFixed(2)); // 354.88
     expect(b.valor.toFixed(2)).toBe(toMoney(a.valor.minus(200)).toFixed(2));
-    expect(c.base.toFixed(2)).toBe("3145.00");
-    expect(c.valor.toFixed(2)).toBe(porFormulaSimplificada($("3145.00"), IRRF.faixas).toFixed(2)); // 189.88
-    // A = 354,88; B = 154,88; C = 189,88 → vence B (o redutor), e o valor é o de B.
+    // C = 4000 − 600 (o simplificado SUBSTITUI a contribuição) = 3400 → 3400 × 27,5% − 675 = 260,00.
+    expect(c.base.toFixed(2)).toBe("3400.00");
+    expect(c.valor.toFixed(2)).toBe(porFormulaSimplificada($("3400.00"), IRRF.faixas).toFixed(2)); // 260.00
+    // A = 354,88; B = 154,88; C = 260,00; D = 260,00 − 200 = 60,00 → vence D.
     expect(a.valor.toFixed(2)).toBe("354.88");
-    expect(c.valor.toFixed(2)).toBe("189.88");
-    expect(r.cenario).toBe("DEDUCOES_LEGAIS_COM_REDUTOR");
-    expect(r.valor.toFixed(2)).toBe("154.88");
+    expect(c.valor.toFixed(2)).toBe("260.00");
+    expect(d.valor.toFixed(2)).toBe("60.00");
+    expect(r.cenario).toBe("DESCONTO_SIMPLIFICADO_COM_REDUTOR");
+    expect(r.valor.toFixed(2)).toBe("60.00");
   });
   it("com 3 dependentes as deduções legais vencem o simplificado (600 < 3×200 + …)", () => {
     const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 3, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });
@@ -199,7 +205,7 @@ describe("(3) IRRF — três cenários, vence o menor; a aplicabilidade vem da t
   it("tabela SEM redutor e SEM simplificado: só as deduções legais são aplicáveis, e cada inaplicável diz por quê", () => {
     const r = calcularIrrf({ rendaTributavel: $("4000.00"), contribuicao: $("255.00"), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: { ...IRRF, descontoSimplificado: null, redutorBase: null, redutorFator: null, redutorRendaMaxima: null } });
     expect(r.cenario).toBe("DEDUCOES_LEGAIS");
-    expect(r.cenarios.filter((c) => !c.aplicavel).map((c) => c.motivo)).toEqual(["a tabela vigente não traz redutor", "a tabela vigente não traz desconto simplificado"]);
+    expect(r.cenarios.filter((c) => !c.aplicavel).map((c) => c.motivo)).toEqual(["a tabela vigente não traz redutor", "a tabela vigente não traz desconto simplificado", "a tabela vigente não traz desconto simplificado"]);
   });
   it("65 anos ou mais: a parcela isenta da tabela abate a renda nos dois cenários", () => {
     const sem = calcularIrrf({ rendaTributavel: $("5000.00"), contribuicao: $(0), dependentes: 0, pensaoAlimenticia: $(0), maior65: false, tabela: IRRF });

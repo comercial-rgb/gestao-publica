@@ -102,6 +102,14 @@ export function FormTabela(): React.ReactElement {
               <span className={ROTULO}>Redutor — renda máxima</span>
               <input name="redutorRendaMaxima" inputMode="decimal" className={CAMPO} />
             </label>
+            <label className="text-xs text-[color:var(--color-ink-2)]">
+              <span className={ROTULO}>Redutor — renda até a qual o imposto zera</span>
+              <input name="redutorRendaDaFaixaIsenta" inputMode="decimal" placeholder="5000,00" className={CAMPO} />
+            </label>
+            <label className="text-xs text-[color:var(--color-ink-2)]">
+              <span className={ROTULO}>Redutor — redução máxima nessa faixa</span>
+              <input name="redutorMaximoNaFaixaIsenta" inputMode="decimal" placeholder="312,89" className={CAMPO} />
+            </label>
           </>
         ) : null}
 

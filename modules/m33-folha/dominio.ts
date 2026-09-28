@@ -363,7 +363,7 @@ export function contribuicaoMaxima(tabela: TabelaDeContribuicaoLida): Money | nu
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// IRRF — três cenários, vence o menor imposto; a aplicabilidade vem da TABELA
+// IRRF — quatro cenários (A, B = A + redução, C = simplificado, D = C + redução), vence o menor
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface TabelaIrrfLida {
@@ -376,11 +376,45 @@ export interface TabelaIrrfLida {
   readonly redutorBase: Money | null;
   readonly redutorFator: Decimal | null;
   readonly redutorRendaMaxima: Money | null;
+  /**
+   * A PRIMEIRA FAIXA DA TABELA DE REDUÇÃO (Lei 9.250/1995 art. 3º-A, incluído pela Lei 15.270/2025):
+   * até esta renda a redução é "até" o máximo abaixo, "de modo que o imposto devido seja zero" — não
+   * a fórmula linear. Os dois juntos ou nenhum (CHECK), e só com o redutor linear presente. Ausentes
+   * (tabelas cadastradas antes da coluna), o redutor segue só a fórmula linear, como antes.
+   * Opcionais no tipo para que as leituras antigas continuem compilando.
+   */
+  readonly redutorRendaDaFaixaIsenta?: Money | null;
+  readonly redutorMaximoNaFaixaIsenta?: Money | null;
   readonly fundamentacaoLegal: string;
   readonly faixas: readonly Faixa[];
 }
 
-export type CenarioIrrf = "DEDUCOES_LEGAIS" | "DEDUCOES_LEGAIS_COM_REDUTOR" | "DESCONTO_SIMPLIFICADO";
+export type CenarioIrrf = "DEDUCOES_LEGAIS" | "DEDUCOES_LEGAIS_COM_REDUTOR" | "DESCONTO_SIMPLIFICADO" | "DESCONTO_SIMPLIFICADO_COM_REDUTOR";
+
+/**
+ * A REDUÇÃO DO IMPOSTO MENSAL (Lei 9.250/1995 art. 3º-A, incluído pela Lei 15.270/2025,
+ * https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15270.htm, art. 2º):
+ *  · incide sobre os "rendimentos tributáveis sujeitos à incidência mensal" — a RENDA, não a base
+ *    (a Receita, nos "Exemplos de Aplicação da Lei 15.270/2025", exemplo 5: "utiliza-se nessa
+ *    tabela de redução o valor do salário, e não o da base de cálculo");
+ *  · até a renda da faixa isenta: redução de até o máximo da tabela, de modo que o imposto seja zero;
+ *  · daí até a renda máxima: base − fator × renda;
+ *  · § 1º: "fica limitado ao valor do imposto determinado de acordo com a tabela progressiva mensal
+ *    e com o disposto no art. 4º" — por isso recebe o imposto já calculado e nunca o ultrapassa;
+ *  · § 2º: acima da renda máxima, não há redução.
+ * Devolve null quando a tabela não traz redutor.
+ */
+export function reducaoDoImposto(t: TabelaIrrfLida, renda: Money, imposto: Money): Money | null {
+  if (t.redutorBase === null || t.redutorFator === null || t.redutorRendaMaxima === null) return null;
+  if (renda.gt(t.redutorRendaMaxima)) return toMoney(0);
+  const faixaIsenta = t.redutorRendaDaFaixaIsenta ?? null;
+  const maximoIsenta = t.redutorMaximoNaFaixaIsenta ?? null;
+  const bruta =
+    faixaIsenta !== null && maximoIsenta !== null && renda.lte(faixaIsenta)
+      ? maximoIsenta
+      : toMoney(Decimal.max(0, t.redutorBase.minus(t.redutorFator.times(renda))));
+  return toMoney(Decimal.min(bruta, Decimal.max(0, imposto)));
+}
 
 export interface CenarioCalculado {
   readonly nome: CenarioIrrf;
@@ -426,33 +460,50 @@ export function calcularIrrf(p: {
   const rA = aplicarFaixas(baseA, t.faixas, `IRRF ${t.id}`);
   const cenarioA: CenarioCalculado = { nome: "DEDUCOES_LEGAIS", aplicavel: true, base: baseA, valor: rA.valor, deducoes: deducoesA, faixas: rA.percorridas };
 
-  // B — as mesmas deduções, e o redutor da tabela (quando a tabela o traz).
+  // B — as mesmas deduções, e a redução do art. 3º-A (quando a tabela a traz), limitada ao imposto.
   let cenarioB: CenarioCalculado;
-  if (t.redutorBase !== null && t.redutorFator !== null && t.redutorRendaMaxima !== null) {
-    const redutor = renda.gt(t.redutorRendaMaxima) ? toMoney(0) : toMoney(Decimal.max(0, t.redutorBase.minus(t.redutorFator.times(renda))));
-    const valorB = toMoney(Decimal.max(0, rA.valor.minus(redutor)));
-    cenarioB = { nome: "DEDUCOES_LEGAIS_COM_REDUTOR", aplicavel: true, base: baseA, valor: valorB, deducoes: [...deducoesA, { tipo: "REDUTOR", valor: redutor }], faixas: rA.percorridas };
+  const redutorB = reducaoDoImposto(t, renda, rA.valor);
+  if (redutorB !== null) {
+    const valorB = toMoney(Decimal.max(0, rA.valor.minus(redutorB)));
+    cenarioB = { nome: "DEDUCOES_LEGAIS_COM_REDUTOR", aplicavel: true, base: baseA, valor: valorB, deducoes: [...deducoesA, { tipo: "REDUTOR", valor: redutorB }], faixas: rA.percorridas };
   } else {
     cenarioB = { nome: "DEDUCOES_LEGAIS_COM_REDUTOR", aplicavel: false, motivo: "a tabela vigente não traz redutor", base: baseA, valor: toMoney(0), deducoes: [], faixas: [] };
   }
 
-  // C — desconto simplificado no lugar das deduções (contribuição e parcela do idoso continuam).
+  // C — o desconto simplificado NO LUGAR DE TODAS as deduções do caput do art. 4º da Lei 9.250/1995,
+  // inclusive a contribuição previdenciária oficial (inciso IV). § 2º, redação da Lei 14.663/2023
+  // (https://www.planalto.gov.br/ccivil_03/leis/l9250.htm): "Alternativamente às deduções de que
+  // trata o caput deste artigo, poderá ser utilizado desconto simplificado mensal [...] caso seja
+  // mais benéfico ao contribuinte". A Receita, nos exemplos da Lei 15.270/2025 (4.000 com INSS
+  // 373,41 → base 4.000 − 607,20 = 3.392,80), não desconta a contribuição junto.
+  // A parcela do idoso NÃO é dedução do caput que o simplificado substitui: é rendimento ISENTO
+  // (Lei 7.713/1988 art. 6º XV, "sem prejuízo da parcela isenta prevista na tabela"), e por isso sai
+  // da renda em todos os cenários.
   let cenarioC: CenarioCalculado;
+  let cenarioD: CenarioCalculado;
   if (t.descontoSimplificado !== null) {
     const deducoesC = [
-      { tipo: "CONTRIBUICAO_PREVIDENCIARIA", valor: p.contribuicao },
       { tipo: "DESCONTO_SIMPLIFICADO", valor: t.descontoSimplificado },
       ...(isencaoIdoso.gt(0) ? [{ tipo: "PARCELA_ISENTA_65_ANOS", valor: isencaoIdoso }] : []),
     ];
     const baseC = toMoney(Decimal.max(0, renda.minus(sumMoney(deducoesC.map((d) => d.valor)))));
     const rC = aplicarFaixas(baseC, t.faixas, `IRRF ${t.id}`);
     cenarioC = { nome: "DESCONTO_SIMPLIFICADO", aplicavel: true, base: baseC, valor: rC.valor, deducoes: deducoesC, faixas: rC.percorridas };
+    // D — o simplificado E a redução: o § 1º do art. 3º-A limita a redução ao imposto "determinado de
+    // acordo com a tabela progressiva mensal e com o disposto no art. 4º" — e o § 2º do art. 4º é o
+    // simplificado. A Receita aplica assim nos exemplos 2 e 3 (5.000 → 312,89 − 312,89 = 0).
+    const redutorD = reducaoDoImposto(t, renda, rC.valor);
+    cenarioD =
+      redutorD !== null
+        ? { nome: "DESCONTO_SIMPLIFICADO_COM_REDUTOR", aplicavel: true, base: baseC, valor: toMoney(Decimal.max(0, rC.valor.minus(redutorD))), deducoes: [...deducoesC, { tipo: "REDUTOR", valor: redutorD }], faixas: rC.percorridas }
+        : { nome: "DESCONTO_SIMPLIFICADO_COM_REDUTOR", aplicavel: false, motivo: "a tabela vigente não traz redutor", base: baseC, valor: toMoney(0), deducoes: [], faixas: [] };
   } else {
     cenarioC = { nome: "DESCONTO_SIMPLIFICADO", aplicavel: false, motivo: "a tabela vigente não traz desconto simplificado", base: toMoney(0), valor: toMoney(0), deducoes: [], faixas: [] };
+    cenarioD = { nome: "DESCONTO_SIMPLIFICADO_COM_REDUTOR", aplicavel: false, motivo: "a tabela vigente não traz desconto simplificado", base: toMoney(0), valor: toMoney(0), deducoes: [], faixas: [] };
   }
 
-  // Vence o MENOR imposto; empate fica com o primeiro na ordem A, B, C (determinístico).
-  const cenarios = [cenarioA, cenarioB, cenarioC];
+  // Vence o MENOR imposto; empate fica com o primeiro na ordem A, B, C, D (determinístico).
+  const cenarios = [cenarioA, cenarioB, cenarioC, cenarioD];
   const vencedor = cenarios.filter((c) => c.aplicavel).reduce((m, c) => (c.valor.lt(m.valor) ? c : m));
   return { rendaTributavel: renda, base: vencedor.base, valor: vencedor.valor, cenario: vencedor.nome, cenarios, tabelaId: t.id, fundamentacao: t.fundamentacaoLegal };
 }
@@ -1061,6 +1112,8 @@ export const zCadastrarTabelaIrrfInput = z.object({
   redutorBase: zDinheiro.nullable().optional(),
   redutorFator: z.union([z.string(), z.number(), z.instanceof(Decimal)]).transform((v) => new Decimal(v)).nullable().optional(),
   redutorRendaMaxima: zDinheiro.nullable().optional(),
+  redutorRendaDaFaixaIsenta: zDinheiro.nullable().optional(),
+  redutorMaximoNaFaixaIsenta: zDinheiro.nullable().optional(),
   fundamentacaoLegal: zFundamentacao,
   faixas: z.array(zFaixaInput.extend({ parcelaADeduzir: zDinheiro.optional() })).min(1),
   criadoPor: zAutor,

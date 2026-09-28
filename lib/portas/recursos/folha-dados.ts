@@ -780,7 +780,7 @@ export async function verTabela(id: string): Promise<DetalheLido | null> {
       historico: [],
     };
   }
-  const irrf = await prisma.tabelaIrrf.findUnique({ where: { id }, select: { competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, fundamentacaoLegal: true, criadoEm: true, criadoPor: true, faixas: { orderBy: { ordem: "asc" }, select: { ordem: true, ate: true, aliquota: true, parcelaADeduzir: true } } } });
+  const irrf = await prisma.tabelaIrrf.findUnique({ where: { id }, select: { competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, redutorRendaDaFaixaIsenta: true, redutorMaximoNaFaixaIsenta: true, fundamentacaoLegal: true, criadoEm: true, criadoPor: true, faixas: { orderBy: { ordem: "asc" }, select: { ordem: true, ate: true, aliquota: true, parcelaADeduzir: true } } } });
   if (irrf !== null) {
     return {
       titulo: `IRRF — desde ${irrf.competenciaInicio}`, subtitulo: irrf.fundamentacaoLegal, selos: [{ texto: "IRRF", tom: "neutro" }],
@@ -790,6 +790,7 @@ export async function verTabela(id: string): Promise<DetalheLido | null> {
         { rotulo: "Desconto simplificado", valor: irrf.descontoSimplificado === null ? "não se aplica" : toMoney(irrf.descontoSimplificado).toFixed(2) },
         { rotulo: "Parcela isenta (65 anos ou mais)", valor: irrf.isencaoMaior65 === null ? "não há" : toMoney(irrf.isencaoMaior65).toFixed(2) },
         { rotulo: "Redutor", valor: irrf.redutorBase === null ? "não se aplica" : `max(0, ${toMoney(irrf.redutorBase).toFixed(2)} − ${new Decimal(irrf.redutorFator ?? 0).toFixed(8)} × renda), zerado acima de ${toMoney(irrf.redutorRendaMaxima ?? 0).toFixed(2)}` },
+        { rotulo: "Redutor até a renda em que o imposto zera", valor: irrf.redutorRendaDaFaixaIsenta === null || irrf.redutorMaximoNaFaixaIsenta === null ? "não informado — vale só a fórmula acima" : `até ${toMoney(irrf.redutorRendaDaFaixaIsenta).toFixed(2)} de renda, redução de até ${toMoney(irrf.redutorMaximoNaFaixaIsenta).toFixed(2)}, limitada ao imposto` },
         ...irrf.faixas.map((f) => ({ rotulo: `Faixa ${f.ordem}`, valor: `${f.ate === null ? "acima da anterior, sem limite" : `até ${toMoney(f.ate).toFixed(2)}`} · ${pct(f.aliquota)} · parcela a deduzir ${toMoney(f.parcelaADeduzir).toFixed(2)}` })),
         { rotulo: "Fundamentação legal", valor: irrf.fundamentacaoLegal },
         { rotulo: "Cadastrada em", valor: `${diaCivilBr(irrf.criadoEm)} por ${irrf.criadoPor}` },
@@ -838,6 +839,8 @@ export async function criarTabela(c: Campos, faixas: readonly Readonly<Record<st
         ...(opcional(c, "redutorBase") !== undefined ? { redutorBase: decimalDaTela(t(c, "redutorBase")) } : {}),
         ...(opcional(c, "redutorFator") !== undefined ? { redutorFator: decimalDaTela(t(c, "redutorFator")) } : {}),
         ...(opcional(c, "redutorRendaMaxima") !== undefined ? { redutorRendaMaxima: decimalDaTela(t(c, "redutorRendaMaxima")) } : {}),
+        ...(opcional(c, "redutorRendaDaFaixaIsenta") !== undefined ? { redutorRendaDaFaixaIsenta: decimalDaTela(t(c, "redutorRendaDaFaixaIsenta")) } : {}),
+        ...(opcional(c, "redutorMaximoNaFaixaIsenta") !== undefined ? { redutorMaximoNaFaixaIsenta: decimalDaTela(t(c, "redutorMaximoNaFaixaIsenta")) } : {}),
         faixas: linhas.map((l) => ({ ordem: l.ordem, ate: l.ate, aliquota: l.aliquota, ...(l.parcelaADeduzir === undefined ? {} : { parcelaADeduzir: l.parcelaADeduzir }) })),
       });
       return r.tabelaId;

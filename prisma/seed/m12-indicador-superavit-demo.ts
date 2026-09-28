@@ -93,6 +93,14 @@ const CLASSIFICACAO: readonly {
       "próprio permanente (art. 105, § 2º)",
   },
   {
+    codigo: "2.1.1.4.3.01.01",
+    indicador: "F",
+    fundamento:
+      "contribuição patronal ao RGPS a recolher sobre a folha já empenhada e liquidada — o " +
+      "recolhimento não depende de nova autorização orçamentária; é a dívida flutuante do art. 92 " +
+      "(art. 105, § 3º)",
+  },
+  {
     codigo: "2.1.8.8.1.02.00",
     indicador: "F",
     fundamento:

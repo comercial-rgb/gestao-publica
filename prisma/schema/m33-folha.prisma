@@ -93,6 +93,12 @@ model TabelaIrrf {
   redutorFator       Decimal? @db.Decimal(12, 8)
   redutorRendaMaxima Decimal? @db.Decimal(18, 2)
 
+  /// Primeira faixa da tabela de redução (Lei 9.250/1995 art. 3º-A, Lei 15.270/2025): até esta renda,
+  /// redução de até o máximo, de modo que o imposto seja zero. Os dois juntos ou nenhum, e só com o
+  /// redutor linear presente (CHECK TabelaIrrf_redutor_faixa_isenta_chk). Nulos = só a fórmula linear.
+  redutorRendaDaFaixaIsenta  Decimal? @db.Decimal(18, 2)
+  redutorMaximoNaFaixaIsenta Decimal? @db.Decimal(18, 2)
+
   fundamentacaoLegal String
 
   criadoEm  DateTime @default(now())
