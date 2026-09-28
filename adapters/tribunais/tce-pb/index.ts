@@ -15,6 +15,7 @@ import {
   gerarMovimentacaoEntreContas,
   gerarPagamentos,
   gerarEstornoPagamento,
+  gerarConciliacaoBancariaOuRecusa,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -132,7 +133,7 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
 
       // A MESMA lista, na MESMA ordem do `baixarPacoteSagres`. A ordem não muda os bytes (o ZIP
       // ordena por nome), mas mantê-la idêntica torna a comparação entre os dois caminhos trivial.
-      const arquivos = await Promise.all([
+      const gerados = await Promise.all([
         gerarDotacao(prisma, { codUnidadeGestora, exercicio, competencia: mesRef }),
         gerarEmpenhos(prisma, { codUnidadeGestora, dia }),
         gerarLiquidacao(prisma, { codUnidadeGestora, dia }),
@@ -155,6 +156,9 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
           dia,
         }),
       ]);
+      // V21 — a conciliação (§4.27) entra quando a conta fecha; a recusa é da prévia, não do pacote.
+      const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora, cnpjGerenciadora, competencia: mesRef });
+      const arquivos = "arquivo" in conciliacao ? [...gerados, conciliacao.arquivo] : gerados;
 
       const mm = String(dia.getUTCMonth() + 1).padStart(2, "0");
       const dd = String(dia.getUTCDate()).padStart(2, "0");

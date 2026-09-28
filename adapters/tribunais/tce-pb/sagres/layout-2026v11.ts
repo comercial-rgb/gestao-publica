@@ -435,6 +435,66 @@ export const LAYOUT_ESTORNO_PAGAMENTO: LayoutArquivo<EstornoPagamentoFato> = {
   campos: camposEstornoPagamento,
 };
 
+// ═══ 4.27 CONCILIACAOBANCARIA (Mensal) — V21 ═══════════════════════════════════════
+// ⚠️ NÃO SÃO OS VÍNCULOS. O registro explica a diferença entre o saldo do BANCO e o da CONTABILIDADE
+// no fim do mês: uma linha do saldo do extrato (§5.15 tipo 1) e uma por PENDÊNCIA (tipos 2 a 5). Os
+// `VinculoConciliacao` são o que JÁ bateu — mandá-los seria o registro errado. Origem: o relatório
+// derivado `conciliacaoBancaria` (M09), cuja identidade (diferença == Σ pendências) é a trava: conta
+// que não fecha não sai. Conta/agência/banco: a tripla da S2, como em CadastroContaBancaria.
+// `numero`: sequencial por conta, 1 = o saldo, depois as pendências por (data, id). Cheque e documento
+// do débito: sem origem no relatório → zeros/espaços.
+
+export interface ConciliacaoBancariaFato {
+  readonly codUnidadeGestora: string;
+  readonly numeroConta: string;
+  readonly numeroAgencia: string;
+  readonly banco: string;
+  readonly numero: number;
+  /** §5.15 — 1 saldo do extrato; 2/3/4/5 as pendências. */
+  readonly tipoConciliacao: string;
+  readonly descricao: string;
+  readonly data: Date;
+  /** Sempre positivo: o sentido está no tipo. */
+  readonly valor: Money;
+  readonly tipoContaBancaria: string;
+  readonly cnpjGerencia: string;
+}
+
+const camposConciliacao: readonly CampoLayout<ConciliacaoBancariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numContaBancaria", posInicial: 7, posFinal: 19, tipo: "ALFA", obrigatorio: true, origem: "conta.conta+digito", extrair: (f) => f.numeroConta },
+  { nome: "numAgencia", posInicial: 20, posFinal: 25, tipo: "ALFA", obrigatorio: true, origem: "conta.agencia+digito", extrair: (f) => f.numeroAgencia },
+  { nome: "codBanco", posInicial: 26, posFinal: 28, tipo: "ALFA", obrigatorio: true, origem: "conta.banco", extrair: (f) => f.banco },
+  { nome: "numero", posInicial: 29, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "sequencial por conta (1 = saldo)", extrair: (f) => f.numero },
+  { nome: "tipoConciliacao", posInicial: 37, posFinal: 37, tipo: "NUMERICO", obrigatorio: true, origem: "§5.15 pelo lado e o sentido da pendência", extrair: (f) => f.tipoConciliacao },
+  { nome: "descricao", posInicial: 38, posFinal: 187, tipo: "ALFA", obrigatorio: true, origem: "descrição da linha do relatório", extrair: (f) => f.descricao },
+  { nome: "data", posInicial: 188, posFinal: 195, tipo: "DATA", obrigatorio: true, origem: "corte do mês / data do fato pendente", extrair: (f) => f.data },
+  { nome: "numCheque", posInicial: 196, posFinal: 201, tipo: "NUMERICO", obrigatorio: false, origem: "sem origem no relatório → zeros", extrair: () => null },
+  { nome: "numDocDebito", posInicial: 202, posFinal: 212, tipo: "ALFA", obrigatorio: false, origem: "sem origem no relatório → espaços", extrair: () => null },
+  { nome: "valor", posInicial: 213, posFinal: 228, tipo: "VALOR", obrigatorio: true, origem: "|saldo| ou |residual|", extrair: (f) => f.valor },
+  { nome: "tipoContaBancaria", posInicial: 229, posFinal: 229, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1)", extrair: (f) => f.tipoContaBancaria },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 230, posFinal: 243, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+];
+
+export const LAYOUT_CONCILIACAO_BANCARIA: LayoutArquivo<ConciliacaoBancariaFato> = {
+  entidade: "ConciliacaoBancaria",
+  periodicidade: "MENSAL",
+  versao: VERSAO,
+  campos: camposConciliacao,
+};
+
+/**
+ * §5.15 — o TIPO pelo LADO em que a pendência está e pelo SENTIDO do residual. Puro, e exportado para o
+ * teste conferir contra a tabela transcrita à mão do leiaute.
+ *   extrato sem vínculo (o banco registrou, a contabilidade não): entrada → 4, saída → 3
+ *   razão sem vínculo (a contabilidade registrou, o banco não):   entrada → 2, saída → 5
+ */
+export function tipoConciliacaoDe(lado: "EXTRATO" | "RAZAO", residual: Money): string {
+  const entrada = residual.greaterThan(0);
+  if (lado === "EXTRATO") return entrada ? "4" : "3";
+  return entrada ? "2" : "5";
+}
+
 // ═══ 4.16 RECEITAORCAMENTARIA (Diária) ═════════════════════════════════════════
 // Origem: ReceitaArrecadada (m04) + naturezaReceita + fonte + co. A CONTA ARRECADADORA é PARÂMETRO
 // DE EXPORTAÇÃO (a designação da UG), não vínculo por-guia: o modelo NÃO amarra receita a conta —
@@ -663,6 +723,7 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
   LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_CONCILIACAO_BANCARIA,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_DESPESA_EXTRA,

@@ -31,6 +31,7 @@ import {
   gerarMovimentacaoEntreContas,
   gerarPagamentos,
   gerarEstornoPagamento,
+  gerarConciliacaoBancariaOuRecusa,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -171,10 +172,14 @@ async function gerarSagresMensal(prisma: PrismaClient, mes: string): Promise<num
   const [ano, mm] = mes.split("-").map(Number) as [number, number];
   const fimDoMes = new Date(Date.UTC(ano, mm, 0));
   const ug = POC_SAGRES.codUnidadeGestora;
-  const arquivos = await Promise.all([
+  const arquivos: ArquivoGerado[] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: ug, exercicio: ano, competencia: fimDoMes }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: POC_SAGRES.cnpjGerenciadora, competencia: fimDoMes }),
   ]);
+  // V21 — a conciliação (§4.27) quando a conta fecha; quando não, o motivo vai ao console.
+  const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: POC_SAGRES.cnpjGerenciadora, competencia: fimDoMes });
+  if ("arquivo" in conciliacao) arquivos.push(conciliacao.arquivo);
+  else console.log(`  · ${mes} — ConciliacaoBancaria fora do pacote: ${conciliacao.recusa.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "mensal", mes), mes, "MENSAL", arquivos);
 }
 

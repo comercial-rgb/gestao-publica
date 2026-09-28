@@ -91,8 +91,8 @@ describe("formatadores de campo (unitário)", () => {
 });
 
 describe("registry — auto-validação das posições", () => {
-  it("os 11 layouts (V21: + EstornoPagamento §4.13) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
-    expect(LAYOUTS_2026V11).toHaveLength(11);
+  it("os 12 layouts (V21: + EstornoPagamento §4.13 e ConciliacaoBancaria §4.27) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
+    expect(LAYOUTS_2026V11).toHaveLength(12);
     for (const l of LAYOUTS_2026V11) expect(() => validarLayout(l as LayoutArquivo<unknown>)).not.toThrow();
   });
 

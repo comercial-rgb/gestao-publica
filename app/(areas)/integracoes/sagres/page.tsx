@@ -176,6 +176,14 @@ function AvisoSemMovimento({
   );
 }
 
+/** O tipo da violação em português — o enum não vai para a tela. */
+const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA", string> = {
+  OBRIGATORIEDADE: "Campo obrigatório vazio",
+  DOMINIO: "Código fora da tabela",
+  INTEGRIDADE_REFERENCIAL: "Referência inexistente",
+  CONCILIACAO_NAO_FECHA: "Conciliação não fecha",
+};
+
 export default async function SagresPage({
   searchParams,
 }: {
@@ -423,7 +431,7 @@ export default async function SagresPage({
               <ul className="space-y-1 text-sm">
                 {preview.violacoes.map((v, i) => (
                   <li key={i} className="text-[color:var(--color-status-erro-fg)]">
-                    <Badge status="erro">{v.regra}</Badge> <strong>{v.arquivo}</strong>
+                    <Badge status="erro">{ROTULO_DA_REGRA[v.regra]}</Badge> <strong>{v.arquivo}</strong>
                     {v.linha > 0 ? ` · linha ${v.linha}` : " · pacote"} · campo <code>{v.campo}</code>: {v.detalhe}
                   </li>
                 ))}
