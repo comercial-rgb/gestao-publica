@@ -71,6 +71,13 @@ const CLASSIFICACAO: readonly {
       "nova autorização orçamentária; é a dívida flutuante do art. 92 (art. 105, § 3º)",
   },
   {
+    codigo: "2.1.1.1.1.01.01",
+    indicador: "F",
+    fundamento:
+      "salários e remunerações a pagar da folha já empenhada e liquidada — o pagamento não " +
+      "depende de nova autorização orçamentária; é a dívida flutuante do art. 92 (art. 105, § 3º)",
+  },
+  {
     codigo: "1.2.3.1.1.01.01",
     indicador: "P",
     fundamento:

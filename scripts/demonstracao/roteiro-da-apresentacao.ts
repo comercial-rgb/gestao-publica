@@ -22,7 +22,7 @@ export const ROTEIRO: readonly (readonly [string, string])[] = [
   ["RREO anexo 3 (RCL)", "/relatorios/rreo/anexo3?exercicio=2026&bimestre=5"],
   ["RREO anexo 8 (MDE)", "/relatorios/rreo/anexo8?exercicio=2026&bimestre=5"],
   ["RREO anexo 12 (saúde)", "/relatorios/rreo/anexo12?exercicio=2026&bimestre=5"],
-  ["RGF anexo 1 (pessoal)", "/relatorios/rgf/anexo1"],
+  ["RGF anexo 1 (pessoal)", "/relatorios/rgf/anexo1?exercicio=2026&quadrimestre=2"],
   ["PPA", "/planejamento/ppa"],
   ["LDO", "/planejamento/ldo"],
   ["Lei Orçamentária Anual", "/planejamento/loa"],
