@@ -35,6 +35,8 @@ export interface DonoDoAnexo {
   readonly comunicadoId?: string | undefined;
   readonly termoPatrimonialId?: string | undefined;
   readonly documentoFiscalId?: string | undefined;
+  /** V22 — o comprovante bancário da liquidação. */
+  readonly liquidacaoId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -88,6 +90,9 @@ export function FormAnexo({
       ) : null}
       {dono.documentoFiscalId !== undefined ? (
         <input type="hidden" name="documentoFiscalId" value={dono.documentoFiscalId} />
+      ) : null}
+      {dono.liquidacaoId !== undefined ? (
+        <input type="hidden" name="liquidacaoId" value={dono.liquidacaoId} />
       ) : null}
 
       <div>

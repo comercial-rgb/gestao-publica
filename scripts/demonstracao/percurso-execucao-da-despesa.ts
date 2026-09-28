@@ -52,8 +52,26 @@ async function escolherNoSeletor(p: Page, rotulo: string, busca: string, trecho:
   }
 }
 
+/** Clica no gatilho até a janela abrir — antes da hidratação o botão existe e ainda não responde. */
+async function abrirJanela(p: Page, seletor: string): Promise<boolean> {
+  for (let i = 0; i < 10; i++) {
+    const b = await p.$(seletor);
+    await b?.click();
+    if ((await p.waitForSelector("dialog[open]", { timeout: 1500 }).catch(() => null)) !== null) return true;
+  }
+  return false;
+}
+
 async function main(): Promise<void> {
   const navegador = await puppeteer.launch({ headless: true, args: ["--lang=pt-BR"] });
+  try {
+    await percorrer(navegador);
+  } finally {
+    await navegador.close();
+  }
+}
+
+async function percorrer(navegador: Awaited<ReturnType<typeof puppeteer.launch>>): Promise<void> {
   const p = await navegador.newPage();
   await p.setViewport({ width: 1440, height: 900 });
 
@@ -79,17 +97,32 @@ async function main(): Promise<void> {
   afirmar(barra === "rgb(26, 26, 26)", `a barra lateral é grafite (${barra})`);
 
   console.log("3. a ordem de compra preenche o formulário");
-  afirmar(await escolherNoSeletor(p, "Ordem de compra", "003", "OC 003/2026"), "digitar 003 filtra e oferece a OC 003/2026");
-  await p.waitForFunction(() => (document.querySelector('textarea[name="historico"]') as HTMLTextAreaElement | null)?.value.includes("OC 003/2026") === true, { timeout: 15000 }).catch(() => undefined);
+  // ⚠️ A ORDEM NÃO É FIXA: cada corrida empenha uma, e o catálogo só oferece ordem com saldo a
+  // empenhar. O percurso escolhe a primeira oferecida e afirma contra os dados DELA.
+  const campoOrdem = await p.waitForSelector(`::-p-xpath(//label[normalize-space()="Ordem de compra"]/following-sibling::input[@role="combobox"])`);
+  await campoOrdem?.type("OC", { delay: 30 });
+  const primeira = await p.waitForSelector('::-p-xpath(//li[@role="option"][starts-with(normalize-space(.), "OC ")])', { timeout: 15000 }).catch(() => null);
+  const rotuloDaOrdem = ((await primeira?.evaluate((li) => li.querySelector("span")?.textContent ?? "")) ?? "").trim();
+  afirmar(primeira !== null, `digitar "OC" filtra e oferece ordens com saldo (${rotuloDaOrdem})`);
+  if (primeira === null) throw new Error("Nenhuma ordem com saldo a empenhar — rode de novo o semeador ou anule um empenho de ordem.");
+  await primeira.click();
+  const numeroDaOrdem = /^(OC \S+)/.exec(rotuloDaOrdem)?.[1] ?? "";
+  // ⚠️ sem o número, "o histórico cita a ordem" e "a ordem voltou" passariam por vacuidade — já passaram
+  if (numeroDaOrdem === "") throw new Error(`Não li o número da ordem em "${rotuloDaOrdem}".`);
+  const nomeDoCredor = rotuloDaOrdem.split(" — ").slice(1).join(" — ");
+  await p.waitForFunction((n) => (document.querySelector('textarea[name="historico"]') as HTMLTextAreaElement | null)?.value.includes(n) === true, { timeout: 15000 }, numeroDaOrdem).catch(() => undefined);
   const historico = await p.$eval('textarea[name="historico"]', (t) => (t as HTMLTextAreaElement).value);
-  afirmar(historico.startsWith("Empenho referente à Ordem de Compra OC 003/2026"), `o histórico se autopreencheu: "${historico}"`);
+  afirmar(historico.startsWith(`Empenho referente à Ordem de Compra ${numeroDaOrdem}`) && !historico.includes(".."), `o histórico se autopreencheu: "${historico}"`);
   const fichaEscolhida = await p.$eval('select[name="fichaId"]', (s) => (s as HTMLSelectElement).value);
   afirmar(fichaEscolhida !== "", "a ficha da ordem foi selecionada");
-  await p.waitForFunction(() => (document.querySelector('input[type="hidden"][name="credor"]') as HTMLInputElement | null)?.value === "26471983000138", { timeout: 15000 }).catch(() => undefined);
+  await p.waitForFunction(() => /^(\d{11}|\d{14})$/.test((document.querySelector('input[type="hidden"][name="credor"]') as HTMLInputElement | null)?.value ?? ""), { timeout: 15000 }).catch(() => undefined);
   const credor = await p.$eval('input[type="hidden"][name="credor"]', (i) => (i as HTMLInputElement).value);
-  afirmar(credor === "26471983000138", `o credor da ordem veio conferido do cadastro (${credor})`);
+  const textoDoCredor = await p.$eval(`::-p-xpath(//label[normalize-space()="Credor"]/following-sibling::input[@role="combobox"])`, (i) => (i as HTMLInputElement).value);
+  afirmar(/^(\d{11}|\d{14})$/.test(credor) &&textoDoCredor.includes(nomeDoCredor), `o credor da ordem veio conferido do cadastro (${textoDoCredor})`);
   const valor = await p.$eval('input[type="hidden"][name="valor"]', (i) => (i as HTMLInputElement).value);
-  afirmar(valor === "1140.00", `o valor da ordem veio para o campo (${valor})`);
+  afirmar(/^\d+\.\d{2}$/.test(valor),`o valor a empenhar da ordem veio para o campo (${valor})`);
+  const tipoDoEmpenho = await p.$eval('select[name="tipo"]', (s) => (s as HTMLSelectElement).value);
+  afirmar(tipoDoEmpenho !== "", `o tipo do empenho acompanhou a ordem (${tipoDoEmpenho})`);
   const sugestoes = await p.$$eval("[data-sugestoes-de-historico] button", (b) => b.length);
   afirmar(sugestoes >= 1, `há textos sugeridos para o histórico (${sugestoes})`);
   await foto(p, "02-empenho-preenchido-pela-ordem");
@@ -97,7 +130,7 @@ async function main(): Promise<void> {
   console.log("4. o credor se busca por CPF/CNPJ");
   afirmar(await escolherNoSeletor(p, "Credor", "4172", "Papelaria Central"), "digitar 4172 lista a Papelaria Central Ltda");
   await foto(p, "03-credor-por-documento");
-  afirmar(await escolherNoSeletor(p, "Credor", "2647", "Clínica Vida Saudável"), "e volta à Clínica pelo documento");
+  afirmar(await escolherNoSeletor(p, "Credor", credor.slice(0, 5), nomeDoCredor), `e volta ao credor da ordem pelos 5 primeiros dígitos (${credor.slice(0, 5)})`);
 
   console.log("5. emitir e ver na lista");
   const numero = `2026NE9${String(Date.now()).slice(-5)}`;
@@ -114,15 +147,16 @@ async function main(): Promise<void> {
     .waitForSelector("[data-resultado-do-envio]", { timeout: 60000 })
     .then((el) => el?.evaluate((e) => `${e.getAttribute("data-resultado-do-envio") ?? ""}: ${e.textContent ?? ""}`));
   afirmar(resposta?.startsWith("sucesso:") === true, `a emissão foi aceita (${resposta ?? "sem resposta"})`);
+  const valorEmReais = /R\$ ([\d.]+,\d{2})/.exec(resposta ?? "")?.[1] ?? "?";
   await p.goto(`${BASE}/despesa/empenhos`, { waitUntil: "networkidle0", timeout: 120000 });
   const naLista = await p.$(`::-p-xpath(//button[@aria-label="Abrir o empenho ${numero}"])`);
   afirmar(naLista !== null, `o empenho ${numero} está na lista depois de recarregar`);
 
   console.log("6. clicar no número abre o modal");
-  await naLista?.click();
-  const modal = await p.waitForSelector("dialog[open]", { timeout: 10000 }).catch(() => null);
+  await abrirJanela(p, `::-p-xpath(//button[@aria-label="Abrir o empenho ${numero}"])`);
+  const modal = await p.$("dialog[open]");
   const textoDoModal = (await modal?.evaluate((d) => d.textContent ?? "")) ?? "";
-  afirmar(textoDoModal.includes("Clínica Vida Saudável") && textoDoModal.includes("1.140,00"), "o modal mostra o credor pelo nome e o valor em reais");
+  afirmar(textoDoModal.includes(nomeDoCredor) && textoDoModal.includes(valorEmReais), `o modal mostra o credor pelo nome e o valor em reais (${valorEmReais})`);
   afirmar(textoDoModal.includes("Nota de Empenho (PDF)") && textoDoModal.includes("Imprimir") && textoDoModal.includes("dossiê"), "o modal oferece NE em PDF, impressão e o dossiê");
   await foto(p, "04-modal-do-empenho");
   await p.keyboard.press("Escape");
@@ -137,7 +171,104 @@ async function main(): Promise<void> {
   afirmar(xlsx.status === 200 && xlsx.tipo.includes("spreadsheetml") && xlsx.pk, `o Excel sai como .xlsx (${xlsx.status}, ${xlsx.tamanho} bytes)`);
   await foto(p, "05-lista-de-empenhos");
 
-  await navegador.close();
+  console.log("8. o botão principal do modal é legível");
+  await p.goto(`${BASE}/despesa/empenhos`, { waitUntil: "networkidle0", timeout: 120000 });
+  afirmar(await abrirJanela(p, `::-p-xpath(//button[@aria-label="Abrir o empenho ${numero}"])`), "o modal abre de novo depois de recarregar");
+  const cores = await p.$eval("dialog[open] a[href^='/despesa/empenhos/']", (a) => {
+    const c = getComputedStyle(a);
+    return { cor: c.color, fundo: c.backgroundColor, texto: a.textContent ?? "" };
+  });
+  afirmar(cores.texto.includes("dossiê") && cores.cor !== cores.fundo, `"Abrir o dossiê completo" com texto ${cores.cor} sobre ${cores.fundo}`);
+  await p.keyboard.press("Escape");
+
+  console.log("9. liquidação: modal e comprovante do banco");
+  await p.goto(`${BASE}/despesa/liquidacoes`, { waitUntil: "networkidle0", timeout: 180000 });
+  const botoes = await p.$$('button[aria-label^="Abrir a liquidação"]');
+  afirmar(botoes.length > 0, `a lista de liquidações abre por modal (${botoes.length} liquidações)`);
+  const rotuloDaLiq = await botoes[0]?.evaluate((b) => b.getAttribute("aria-label") ?? "");
+  await abrirJanela(p, `button[aria-label="${rotuloDaLiq ?? ""}"]`);
+  const dlg = await p.$("dialog[open]");
+  const textoLiq = (await dlg?.evaluate((d) => d.textContent ?? "")) ?? "";
+  afirmar(textoLiq.includes("Nota fiscal") && textoLiq.includes("Comprovantes") && textoLiq.includes("Responsável pelo atesto"), "o modal da liquidação mostra nota fiscal, atesto e comprovantes");
+  // um PDF mínimo, gerado aqui — o conteúdo não importa, a verificação (SHA-256) sim
+  const pdf = Buffer.from(["%PDF-1.4", "1 0 obj<<>>endobj", "trailer<<>>", "%%EOF", `comprovante ${String(Date.now())}`].join(String.fromCharCode(10)));
+  const caminho = `${PASTA}/comprovante-banco.pdf`;
+  (await import("node:fs")).writeFileSync(caminho, pdf);
+  const arquivo = await p.$('dialog[open] input[type="file"][name="arquivo"]');
+  await arquivo?.uploadFile(caminho);
+  await p.click('dialog[open] form[data-acao="anexar"] button[type="submit"]');
+  const okAnexo = await p
+    .waitForFunction(() => (document.querySelector("dialog[open] form[data-acao='anexar']")?.textContent ?? "").includes("anexado"), { timeout: 60000 })
+    .then(() => true)
+    .catch(() => false);
+  afirmar(okAnexo, "o comprovante foi anexado (mensagem com a verificação)");
+  await foto(p, "06-modal-da-liquidacao-com-comprovante");
+  await p.goto(`${BASE}/despesa/liquidacoes`, { waitUntil: "networkidle0", timeout: 120000 });
+  await abrirJanela(p, `button[aria-label="${rotuloDaLiq ?? ""}"]`);
+  // o ÚLTIMO anexo é o desta corrida (a lista é por ordem de envio); o primeiro pode ser de outra
+  const hrefAnexo = await p
+    .$$eval("dialog[open] [data-comprovantes] a[data-anexo]", (as) => (as.at(-1) as HTMLAnchorElement | undefined)?.href ?? "")
+    .catch(() => "");
+  afirmar(hrefAnexo !== "", "depois de recarregar, o comprovante está na liquidação");
+  const baixado = await p.evaluate(async (u) => {
+    const r = await fetch(u);
+    return { status: r.status, texto: new TextDecoder().decode(await r.arrayBuffer()) };
+  }, hrefAnexo);
+  afirmar(baixado.status === 200 && baixado.texto === pdf.toString("latin1"), `o comprovante baixa íntegro (${baixado.status})`);
+  const excelLiq = await p.$eval('a[download][href*="/despesa/liquidacoes/xlsx"]', (a) => (a as HTMLAnchorElement).href);
+  const xl = await p.evaluate(async (u) => (await fetch(u)).status, excelLiq);
+  afirmar(xl === 200, "a lista de liquidações exporta Excel");
+
+  console.log("10. negação: quem não lê a despesa não baixa o comprovante");
+  const outro = await navegador.createBrowserContext();
+  const q = await outro.newPage();
+  await q.goto(`${BASE}/login`, { waitUntil: "networkidle0", timeout: 120000 });
+  await q.type('input[name="identificador"]', "almoxarifado@percursos.local");
+  await q.type('input[name="senha"]', process.env["PERCURSOS_SENHA_PAPEIS"] ?? "Percurso#2026");
+  await q.click('button[type="submit"]');
+  await q.waitForFunction(() => !location.pathname.startsWith("/login"), { timeout: 120000 }).catch(() => undefined);
+  afirmar(!q.url().includes("/login"), "o almoxarife entrou");
+  await q.goto(`${BASE}/despesa/liquidacoes`, { waitUntil: "networkidle0", timeout: 120000 });
+  const recusaDaTela = await q.evaluate(() => document.body.textContent ?? "");
+  // ⚠️ o MOTIVO: a tela diz que a despesa não está no acesso dele — não só "não abriu"
+  afirmar(/não está no seu acesso|não tem acesso|permissão/i.test(recusaDaTela) && !recusaDaTela.includes("Comprovantes"), "a lista de liquidações recusa o almoxarife por falta de acesso à despesa");
+  const negado = await q.evaluate(async (u) => {
+    const r = await fetch(u);
+    return { status: r.status, texto: new TextDecoder().decode(await r.arrayBuffer()) };
+  }, hrefAnexo);
+  afirmar(negado.status === 404 && !negado.texto.includes("%PDF"), `o download do comprovante responde ${negado.status} sem o conteúdo`);
+  await outro.close();
+
+  console.log("11. anular o empenho do percurso (estorno por registro novo) — e a ordem volta a ser oferecida");
+  // ⚠️ O PERCURSO DEVOLVE O QUE CONSUMIU. Sem isto, cada corrida esgotaria uma ordem ordinária, e a
+  // apresentação ficaria sem ordem com saldo. O estorno é o ato do domínio (append-only), pela tela.
+  await p.goto(`${BASE}/despesa/empenhos`, { waitUntil: "networkidle0", timeout: 120000 });
+  const linha = `//tr[.//button[@aria-label="Abrir o empenho ${numero}"]]`;
+  for (let i = 0; i < 10; i++) {
+    await (await p.$(`::-p-xpath(${linha}//summary)`))?.click();
+    if ((await p.$(`::-p-xpath(${linha}//details[@open])`)) !== null) break;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  const formDaAnulacao = `::-p-xpath(${linha}//details[@open]//form)`;
+  await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="numero"])`))?.type(`2026NA9${String(Date.now()).slice(-5)}`);
+  await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="motivo"])`))?.type("estorno do empenho emitido pelo percurso de teste");
+  await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="data"])`))?.evaluate((i) => {
+    const el = i as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(el, "2026-09-28");
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await (await p.$(`${formDaAnulacao.slice(0, -1)}//button[@type="submit"])`))?.click();
+  await new Promise((r) => setTimeout(r, 3000));
+  await p.goto(`${BASE}/despesa/empenhos`, { waitUntil: "networkidle0", timeout: 120000 });
+  const situacao = await p.$eval(`::-p-xpath(${linha})`, (tr) => tr.textContent ?? "").catch(() => "");
+  afirmar(situacao.includes("Anulado"), `o empenho ${numero} aparece como Anulado — o original continua na lista`);
+  const devolvida = await p.evaluate(async (n) => {
+    const r = await fetch(`/opcoes/ordens-para-empenho?q=${encodeURIComponent(n)}&pagina=1`);
+    const c = (await r.json()) as { opcoes?: { rotulo: string }[] };
+    return (c.opcoes ?? []).some((o) => o.rotulo.startsWith(n));
+  }, numeroDaOrdem);
+  afirmar(devolvida, `a ${numeroDaOrdem} voltou a ser oferecida para empenho`);
+
   console.log(`\n${passos - falhas.length}/${passos} afirmações`);
   if (falhas.length > 0) process.exitCode = 1;
 }

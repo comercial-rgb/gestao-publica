@@ -143,6 +143,35 @@ export async function listarAnexosDoTermo(prisma: PrismaClient, termoPatrimonial
   return anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null }));
 }
 
+/**
+ * V22: os anexos de um conjunto de liquidações (o comprovante do banco, a nota) — por liquidação.
+ *
+ * ⚠️ A ÁREA E A UNIDADE SÃO DA PORTA. Aqui só se exige usuário ativo, como no termo e na pessoa: a
+ * pergunta "esta liquidação é de uma unidade que você lê?" é a do M16, e mora em
+ * `lib/portas/documentos`, que não chama isto sem tê-la respondido para cada liquidação.
+ */
+export async function listarAnexosDasLiquidacoes(
+  prisma: PrismaClient,
+  liquidacaoIds: readonly string[],
+  usuarioIdent: string
+): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  if (u === null || !u.ativo || liquidacaoIds.length === 0) return new Map();
+  const anexos = await prisma.anexo.findMany({
+    where: { liquidacaoId: { in: [...liquidacaoIds] } },
+    select: { id: true, liquidacaoId: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  const m = new Map<string, AnexoNaLista[]>();
+  for (const a of anexos) {
+    if (a.liquidacaoId === null) continue;
+    const lista = m.get(a.liquidacaoId) ?? [];
+    lista.push({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO", movimento: null });
+    m.set(a.liquidacaoId, lista);
+  }
+  return m;
+}
+
 /** Os anexos de um comunicado — a regra de acesso é a do M23 (`podeVerComunicado`). */
 export async function listarAnexosDoComunicado(
   prisma: PrismaClient,

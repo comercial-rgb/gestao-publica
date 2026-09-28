@@ -39,7 +39,12 @@ function revalidarDono(dono: {
   readonly comunicadoId?: string | undefined;
   readonly termoPatrimonialId?: string | undefined;
   readonly documentoFiscalId?: string | undefined;
+  readonly liquidacaoId?: string | undefined;
 }): void {
+  if (dono.liquidacaoId !== undefined) {
+    revalidatePath("/despesa/liquidacoes");
+    return;
+  }
   if (dono.documentoFiscalId !== undefined) {
     revalidatePath(`/licitacoes/documentos-fiscais/${dono.documentoFiscalId}`);
     revalidatePath("/licitacoes/documentos-fiscais");
@@ -83,6 +88,7 @@ export async function anexarArquivoAction(
     const movimentoProcessoId = texto(formData, "movimentoProcessoId");
     const termoPatrimonialId = texto(formData, "termoPatrimonialId");
     const documentoFiscalId = texto(formData, "documentoFiscalId");
+    const liquidacaoId = texto(formData, "liquidacaoId");
 
     const dono = {
       ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
@@ -91,6 +97,7 @@ export async function anexarArquivoAction(
       ...(comunicadoId !== "" ? { comunicadoId } : {}),
       ...(movimentoProcessoId !== "" ? { movimentoProcessoId } : {}),
       ...(documentoFiscalId !== "" ? { documentoFiscalId } : {}),
+      ...(liquidacaoId !== "" ? { liquidacaoId } : {}),
     };
 
     try {

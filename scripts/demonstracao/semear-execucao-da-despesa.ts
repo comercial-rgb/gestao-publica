@@ -404,6 +404,23 @@ async function main(): Promise<void> {
       { numero: "OC 005/2026", ficha: "ac-ficha", fornecedor: "alimentos", processo: false, data: "2026-09-22",
         finalidade: "Coffee break da capacitação de servidores em gestão orçamentária.",
         itens: [{ material: "SV-0006", quantidade: "60", unitario: "17.50" }] },
+      // V22 — mais ordens para a apresentação: sobrar ordem com saldo depois de empenhar, e duas
+      // GLOBAIS, que admitem mais de um empenho até o total (o seletor oferece o residual).
+      { numero: "OC 006/2026", ficha: "ficha-poc", fornecedor: "grafica", processo: true, data: "2026-09-23",
+        finalidade: "Impressão de cartilhas do orçamento participativo.",
+        itens: [{ material: "SV-0001", quantidade: "3000", unitario: "0.30" }] },
+      { numero: "OC 007/2026", ficha: "ficha-poc", fornecedor: "autopecas", processo: true, data: "2026-09-24", tipo: "GLOBAL" as const,
+        finalidade: "Manutenção preventiva da frota administrativa no último trimestre.",
+        itens: [{ material: "SV-0003", quantidade: "4", unitario: "1250.00" }] },
+      { numero: "OC 008/2026", ficha: "ac-ficha-reexec", fornecedor: "clinica", processo: false, data: "2026-09-24",
+        finalidade: "Exames periódicos dos servidores da Secretaria de Saúde.",
+        itens: [{ material: "SV-0004", quantidade: "20", unitario: "95.00" }] },
+      { numero: "OC 009/2026", ficha: "ac-ficha-reexec", fornecedor: "construtora", processo: false, data: "2026-09-25", tipo: "GLOBAL" as const,
+        finalidade: "Reparos na cobertura de escolas municipais.",
+        itens: [{ material: "SV-0005", quantidade: "2", unitario: "1800.00" }] },
+      { numero: "OC 010/2026", ficha: "ac-ficha", fornecedor: "alimentos", processo: false, data: "2026-09-26",
+        finalidade: "Lanche do seminário de controle interno.",
+        itens: [{ material: "SV-0006", quantidade: "40", unitario: "17.50" }] },
     ];
     for (const o of ORDENS) {
       const total = o.itens.reduce((s, i) => s.plus(toMoney(i.quantidade).times(toMoney(i.unitario))), toMoney("0"));
@@ -424,7 +441,7 @@ async function main(): Promise<void> {
         });
         await emitirOrdemDeCompra(prisma, {
           numero: o.numero,
-          tipo: "ORDINARIA",
+          tipo: "tipo" in o ? o.tipo : "ORDINARIA",
           ...(o.processo && processoId !== undefined ? { processoId } : {}),
           fornecedorId,
           dataEmissao: meioDiaCivil(o.data),

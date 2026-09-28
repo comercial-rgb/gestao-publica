@@ -2,6 +2,7 @@ import { formatarMoeda } from "../../packages/contracts/moeda";
 import { toMoney } from "../../packages/contracts/index";
 import { formatarDocumento } from "../../packages/documento/index.js";
 import { homologadoEm, situacaoDoProcesso, vigenciaFimDoContrato } from "../../modules/m11-licitacoes/contratos";
+import { empenhadoLiquidoDaOrdem, TIPO_EMPENHO_DA_ORDEM, valorDaOrdem } from "../../modules/m05-despesa/adapter-prisma";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import { cliente } from "./cliente";
 import type { Identidade } from "./sessao";
@@ -93,7 +94,12 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
     },
   },
 
-  /** ORDENS DE COMPRA com ficha e sem estorno — o empenho nasce delas. Busca pelo número. */
+  /**
+   * ORDENS DE COMPRA com ficha, sem estorno e COM SALDO A EMPENHAR — o empenho nasce delas. Busca
+   * pelo número. O total, o já empenhado e o tipo do empenho vêm das MESMAS funções que o M05 usa
+   * para recusar (`valorDaOrdem`, `empenhadoLiquidoDaOrdem`, `TIPO_EMPENHO_DA_ORDEM`): a ordem
+   * ordinária já empenhada não é oferecida, e a global oferece o residual.
+   */
   "ordens-para-empenho": {
     leitura: "CONSULTAR_DESPESA",
     async buscar(_s, p) {
@@ -117,27 +123,30 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
         },
       });
       const r = paginar(linhas);
-      return {
-        opcoes: r.linhas.map((o) => {
-          const bruto = o.itens.reduce((s, i) => s.plus(toMoney(i.quantidade.toString()).times(toMoney(i.valorUnitario.toString()))), toMoney("0"));
-          const total = bruto.minus(o.desconto === null ? toMoney("0") : toMoney(o.desconto.toFixed(2))).toDecimalPlaces(2).toFixed(2);
-          const nome = o.fornecedor.versoes[0]?.nome ?? formatarDocumento(o.fornecedor.documento);
-          return {
-            valor: o.id,
-            rotulo: `${o.numero} — ${nome}`,
-            detalhe: `${o.finalidade} · ${reais(total)}${o.ficha === null ? "" : ` · ficha ${o.ficha.numero}`}`,
-            dados: {
-              numero: o.numero,
-              fichaId: o.fichaId ?? "",
-              credorDocumento: o.fornecedor.documento,
-              credorNome: nome,
-              objeto: o.finalidade,
-              valor: total,
-            },
-          };
-        }),
-        temMais: r.temMais,
-      };
+      const opcoes: Opcao[] = [];
+      for (const o of r.linhas) {
+        const total = valorDaOrdem(o.itens, o.desconto);
+        const empenhado = await empenhadoLiquidoDaOrdem(cliente(), o.id);
+        const residual = total.minus(empenhado);
+        if (o.tipo === "ORDINARIA" ? empenhado.greaterThan(0) : !residual.greaterThan(0)) continue;
+        const aEmpenhar = (o.tipo === "ORDINARIA" ? total : residual).toFixed(2);
+        const nome = o.fornecedor.versoes[0]?.nome ?? formatarDocumento(o.fornecedor.documento);
+        opcoes.push({
+          valor: o.id,
+          rotulo: `${o.numero} — ${nome}`,
+          detalhe: `${o.finalidade} · a empenhar ${reais(aEmpenhar)}${o.ficha === null ? "" : ` · ficha ${o.ficha.numero}`}`,
+          dados: {
+            numero: o.numero,
+            fichaId: o.fichaId ?? "",
+            credorDocumento: o.fornecedor.documento,
+            credorNome: nome,
+            objeto: o.finalidade,
+            valor: aEmpenhar,
+            tipoEmpenho: TIPO_EMPENHO_DA_ORDEM[o.tipo],
+          },
+        });
+      }
+      return { opcoes, temMais: r.temMais };
     },
   },
 

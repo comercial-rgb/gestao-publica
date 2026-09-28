@@ -1,4 +1,3 @@
-import { Badge } from "../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
@@ -11,11 +10,19 @@ import {
   empenhoEhDeMaterial,
   listarLiquidacoesDaExecucao,
   opcoesDasEntradasDeMaterial,
+  notasDasLiquidacoes,
   PortaSemBancoError,
   type LiquidacaoDaTela,
+  type NotaDaLiquidacao,
   type OpcoesDasEntradasDeMaterial,
 } from "../../../../lib/portas/liquidacao";
-import { listarEmpenhosDaExecucao } from "../../../../lib/portas/empenho";
+import { listarEmpenhosDaExecucao, nomesDosCredores } from "../../../../lib/portas/empenho";
+import { EXTENSOES_ACEITAS, lerAnexosDasLiquidacoes, TAMANHO_MAXIMO_BYTES, type AnexoNaLista } from "../../../../lib/portas/documentos";
+import { BotaoExcel } from "../../../../components/ui/BotaoExcel";
+import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
+import { JanelaDeDetalhe } from "../../../../components/ui/JanelaDeDetalhe";
+import { formatarDocumento } from "../../../../packages/documento/index";
+import { ResumoDaLiquidacao, SituacaoDaLiquidacao } from "./ResumoDaLiquidacao";
 import { FormAnular } from "../FormAnular";
 import {
   EscopoDeLeituraError,
@@ -56,6 +63,7 @@ export default async function LiquidacoesPage({
   let liquidaveis: readonly EmpenhoLiquidavel[];
   let opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   let documentos: readonly { readonly id: string; readonly rotulo: string }[];
+  let extras: Extras;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     const [lista, empenhos, opcoes, docs] = await Promise.all([
@@ -71,6 +79,13 @@ export default async function LiquidacoesPage({
       documentosConferidosParaLiquidar(),
     ]);
     liquidacoes = lista;
+    const ids = lista.map((l) => l.id);
+    const [nomes, notas, anexos] = await Promise.all([
+      nomesDosCredores(lista.map((l) => l.credorCpfCnpj)),
+      notasDasLiquidacoes(ids),
+      lerAnexosDasLiquidacoes(ids),
+    ]);
+    extras = { nomes, notas, anexos };
     opcoesDeMaterial = opcoes;
     documentos = docs;
     // Só o que ainda tem o que liquidar — e o anulado sai fora: não há saldo num fato
@@ -137,10 +152,12 @@ export default async function LiquidacoesPage({
         <>
           <div className="flex justify-end gap-2">
             <BotaoCsv csv={csvLiquidacoes(liquidacoes)} nomeArquivo={`liquidacoes-${recorte.exercicio}.csv`} />
+            <BotaoExcel href={`/despesa/liquidacoes/xlsx?exercicio=${recorte.exercicio}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}`} />
             <BotaoPdf href={`/despesa/liquidacoes/pdf?exercicio=${recorte.exercicio}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}`} />
+            <BotaoImprimir rotulo="Imprimir lista" />
           </div>
           <TabelaDeDados
-            colunas={COLUNAS}
+            colunas={colunas(extras)}
             linhas={liquidacoes}
             keyDe={(l) => l.id}
             legenda={`${liquidacoes.length} liquidação(ões) · valores em R$ · saldo a pagar = liquidado − pago.`}
@@ -151,13 +168,40 @@ export default async function LiquidacoesPage({
   );
 }
 
-const COLUNAS: readonly ColunaTabela<LiquidacaoDaTela>[] = [
+interface Extras {
+  readonly nomes: ReadonlyMap<string, string>;
+  readonly notas: ReadonlyMap<string, NotaDaLiquidacao>;
+  readonly anexos: ReadonlyMap<string, readonly AnexoNaLista[]>;
+}
+
+/**
+ * V22 — o número abre a liquidação por cima da lista (nota fiscal, valores, comprovantes e o envio
+ * do comprovante do banco); a coluna de comprovantes diz quantos há, sem abrir.
+ */
+function colunas(x: Extras): readonly ColunaTabela<LiquidacaoDaTela>[] {
+  return [
   {
     chave: "numero",
     cabecalho: "Nº",
     alinhamento: "esquerda",
     largura: "7rem",
-    celula: (l) => l.numero,
+    celula: (l) => (
+      <JanelaDeDetalhe
+        gatilho={l.numero}
+        rotuloDoGatilho={`Abrir a liquidação ${l.numero}`}
+        titulo={`Liquidação ${l.numero}`}
+        subtitulo={`${dataBr(l.data)} · empenho ${l.empenhoNumero} · fonte ${l.fonteCodigo}`}
+      >
+        <ResumoDaLiquidacao
+          l={l}
+          credorNome={x.nomes.get(l.credorCpfCnpj) ?? null}
+          nota={x.notas.get(l.id)}
+          anexos={x.anexos.get(l.id) ?? []}
+          aceitos={EXTENSOES_ACEITAS}
+          tamanhoMaximoBytes={TAMANHO_MAXIMO_BYTES}
+        />
+      </JanelaDeDetalhe>
+    ),
   },
   {
     chave: "data",
@@ -178,7 +222,25 @@ const COLUNAS: readonly ColunaTabela<LiquidacaoDaTela>[] = [
     cabecalho: "Credor",
     alinhamento: "esquerda",
     largura: "11rem",
-    celula: (l) => l.credorCpfCnpj,
+    celula: (l) => {
+      const nome = x.nomes.get(l.credorCpfCnpj);
+      return (
+        <span className="block min-w-0">
+          {nome !== undefined ? <span className="block truncate text-[color:var(--color-ink)]" title={nome}>{nome}</span> : null}
+          <span className="block text-[11px] text-[color:var(--color-ink-3)]">{formatarDocumento(l.credorCpfCnpj)}</span>
+        </span>
+      );
+    },
+  },
+  {
+    chave: "comprovantes",
+    cabecalho: "Comprovantes",
+    alinhamento: "esquerda",
+    largura: "7rem",
+    celula: (l) => {
+      const n = (x.anexos.get(l.id) ?? []).length;
+      return n === 0 ? <span className="text-xs text-[color:var(--color-ink-3)]">nenhum</span> : <span className="text-xs font-medium text-[color:var(--color-ink)]">{n} anexo{n > 1 ? "s" : ""}</span>;
+    },
   },
   {
     chave: "fonte",
@@ -219,14 +281,7 @@ const COLUNAS: readonly ColunaTabela<LiquidacaoDaTela>[] = [
     cabecalho: "Situação",
     alinhamento: "esquerda",
     largura: "7rem",
-    celula: (l) =>
-      l.anulado ? (
-        <Badge status="erro">Anulada</Badge>
-      ) : l.saldoAPagar === "0.00" ? (
-        <Badge status="ok">Paga</Badge>
-      ) : (
-        <Badge status="alerta">Na fila</Badge>
-      ),
+    celula: (l) => <SituacaoDaLiquidacao l={l} />,
   },
   {
     chave: "acoes",
@@ -241,7 +296,8 @@ const COLUNAS: readonly ColunaTabela<LiquidacaoDaTela>[] = [
         <FormAnular tipo="liquidacao" id={l.id} anulavelSaldo={l.saldoAPagar} estornavel={l.pago === "0.00"} />
       ),
   },
-];
+  ];
+}
 
 /** ⚠️ O CSV É A TELA (TR 7.48). */
 function csvLiquidacoes(liquidacoes: readonly LiquidacaoDaTela[]): string {

@@ -99,6 +99,7 @@ export function FormEmpenho({
   const [credorManual, setCredorManual] = useState(false);
   const [valor, setValor] = useState<{ cru: string; versao: number }>({ cru: "", versao: 0 });
   const [categoria, setCategoria] = useState<Categoria>("");
+  const [tipo, setTipo] = useState<"ORDINARIO" | "GLOBAL" | "ESTIMATIVO">("ORDINARIO");
   const [historico, setHistorico] = useState("");
   const historicoAutomatico = useRef("");
   const [origens, setOrigens] = useState<Origens>({ ordem: null, contrato: null, reserva: null });
@@ -113,6 +114,7 @@ export function FormEmpenho({
     setCredorManual(false);
     setValor({ cru: "", versao: 0 });
     setCategoria("");
+    setTipo("ORDINARIO");
     setHistorico("");
     historicoAutomatico.current = "";
     setOrigens({ ordem: null, contrato: null, reserva: null });
@@ -144,6 +146,9 @@ export function FormEmpenho({
     const v = d["valor"] ?? (tipo === "reserva" ? d["saldo"] : undefined);
     if (v !== undefined && v !== "") setValor((x) => ({ cru: v, versao: x.versao + 1 }));
     if (ehCategoria(d["categoria"])) setCategoria(d["categoria"]);
+    // o tipo do empenho acompanha o tipo da ordem (ordinária → ordinário...) — o M05 recusa o contrário
+    const t = d["tipoEmpenho"];
+    if (t === "ORDINARIO" || t === "GLOBAL" || t === "ESTIMATIVO") setTipo(t);
   }
 
   if (fichas.length === 0) {
@@ -269,7 +274,7 @@ export function FormEmpenho({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Tipo</span>
-          <select name="tipo" defaultValue="ORDINARIO" className={CAMPO}>
+          <select name="tipo" value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} className={CAMPO}>
             <option value="ORDINARIO">Ordinário</option>
             <option value="GLOBAL">Global</option>
             <option value="ESTIMATIVO">Estimativo</option>

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import * as caminhos from "node:path";
 import { join, resolve } from "node:path";
 
 /**
@@ -88,12 +89,32 @@ export function caminhoDoAnexo(
   const caminho = resolve(join(raiz, anexoId.slice(0, 2), anexoId));
 
   // ⚠️ A CONFERÊNCIA DEPOIS DE RESOLVER — ver o cabeçalho.
-  if (!caminho.startsWith(raiz + "/") && caminho !== raiz) {
+  if (!dentroDaRaiz(raiz, caminho)) {
     throw new Error(
       `Caminho de anexo escaparia da raiz de armazenamento. Nada foi lido nem gravado.`
     );
   }
   return caminho;
+}
+
+/**
+ * O caminho resolvido está DENTRO da raiz (ou é ela)?
+ *
+ * ⚠️ PROPRIEDADE, NÃO PREFIXO DE TEXTO. A versão anterior comparava `startsWith(raiz + "/")`, e no
+ * Windows o separador é `\`: TODO anexo, de toda tela, era recusado como "escaparia da raiz"
+ * (medido na V22, ao anexar o comprovante da liquidação). `relative` responde a mesma pergunta nos
+ * dois sistemas: o caminho está dentro se o relativo não sobe (`..`) nem é absoluto (outro disco).
+ * O `modulo` é injetável para o teste afirmar a propriedade com as regras de POSIX e de Windows na
+ * mesma máquina.
+ */
+export function dentroDaRaiz(
+  raiz: string,
+  caminho: string,
+  modulo: Pick<typeof caminhos, "relative" | "isAbsolute" | "sep"> = caminhos
+): boolean {
+  const rel = modulo.relative(raiz, caminho);
+  if (rel === "") return true;
+  return rel !== ".." && !rel.startsWith(`..${modulo.sep}`) && !modulo.isAbsolute(rel);
 }
 
 export function sha256(conteudo: Uint8Array): string {

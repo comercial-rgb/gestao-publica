@@ -30,6 +30,9 @@
   --color-primary-hover: #a64300;
   --color-primary-fg: #ffffff; /* texto sobre a cor de ação */
   --color-primary-soft: #fff3e8; /* fundo de item ativo */
+  /* 8 telas usam `--color-acento` para link, e ele nunca foi definido: o link saía na cor do texto.
+     Fica como apelido da cor de ação (V22). */
+  --color-acento: #c24f00;
 
   /* ── A MARCA DO FORNECEDOR (Engine Sistemas) ──
 

@@ -3,6 +3,7 @@ import { comEscritaAutenticada, sessaoAtual } from "./sessao";
 import {
   exigirLeituraDoEnte,
   exigirLeituraEmAlgumEscopo,
+  autorizarLeituraDoRegistroPara,
   podeLerPara,
   type AcaoDeLeitura,
   type NivelDeLeitura,
@@ -11,6 +12,7 @@ import { anexarArquivo, baixarAnexo } from "../../modules/m22-documentos/anexos"
 import { alcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao";
 import {
   listarAnexosDaPessoa,
+  listarAnexosDasLiquidacoes,
   listarAnexosDoComunicado,
   listarAnexosDoTermo,
   listarAnexosDoProcesso,
@@ -70,6 +72,37 @@ export async function lerAnexosDoProcesso(
   return listarAnexosDoProcesso(cliente(), processoId, sessao.identificador);
 }
 
+/**
+ * V22 — os anexos das liquidações da lista, por liquidação. Cada liquidação é autorizada NA UNIDADE
+ * dela (CONSULTAR_DESPESA); a que não passa simplesmente não entra no mapa — a tela mostra "sem
+ * anexo" para quem não lê a unidade, o que é o mesmo que ela já mostraria da liquidação.
+ */
+export async function lerAnexosDasLiquidacoes(
+  liquidacaoIds: readonly string[]
+): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_DESPESA");
+  if (liquidacaoIds.length === 0) return new Map();
+  const donos = await cliente().liquidacao.findMany({
+    where: { id: { in: [...liquidacaoIds] } },
+    select: { id: true, empenho: { select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } },
+  });
+  const porUnidade = new Map<string, string[]>();
+  for (const d of donos) {
+    const u = d.empenho.ficha.unidadeOrc.codigo;
+    porUnidade.set(u, [...(porUnidade.get(u) ?? []), d.id]);
+  }
+  const autorizadas: string[] = [];
+  for (const [unidade, ids] of porUnidade) {
+    try {
+      await autorizarLeituraDoRegistroPara(sessao, "CONSULTAR_DESPESA", unidade);
+      autorizadas.push(...ids);
+    } catch {
+      // unidade fora do escopo de leitura: nenhum anexo dela
+    }
+  }
+  return listarAnexosDasLiquidacoes(cliente(), autorizadas, sessao.identificador);
+}
+
 export async function lerAnexosDaPessoa(
   pessoaId: string
 ): Promise<readonly AnexoNaLista[]> {
@@ -99,7 +132,9 @@ export async function lerAnexosDoComunicado(
 type LeituraDoDono =
   | { readonly acao: AcaoDeLeitura; readonly nivel: NivelDeLeitura }
   /** V7 M2 U0.1 — documento INTERNO da fiscalização: só quem alcança a fiscalização daquele contrato. */
-  | { readonly fiscalizacaoDoContrato: string };
+  | { readonly fiscalizacaoDoContrato: string }
+  /** V22 — documento da DESPESA (empenho, liquidação): a leitura é a da despesa NA UNIDADE do fato. */
+  | { readonly despesaDaUnidade: string };
 
 async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | null> {
   const a = await cliente().anexo.findUnique({
@@ -116,6 +151,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       ocorrenciaDeFiscalizacaoId: true,
       ocorrenciaDeFiscalizacao: { select: { contratoId: true } },
       medicaoDaOrdem: { select: { ordem: { select: { contratoId: true } } } },
+      empenho: { select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } },
+      liquidacao: { select: { empenho: { select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } },
     },
   });
   if (a === null) return null;
@@ -132,6 +169,10 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   if (a.ocorrenciaDeFiscalizacao !== null) return { fiscalizacaoDoContrato: a.ocorrenciaDeFiscalizacao.contratoId };
   // V7 M2 U7 — a evidência da medição da ordem é interna da fiscalização, como a da ocorrência.
   if (a.medicaoDaOrdem !== null) return { fiscalizacaoDoContrato: a.medicaoDaOrdem.ordem.contratoId };
+  // V22 — o comprovante da liquidação (e o anexo do empenho) seguem a UG do fato, como a escrita
+  // (`escopoDoDono` no M22): quem não lê a despesa DAQUELA unidade não baixa o documento dela.
+  if (a.liquidacao !== null) return { despesaDaUnidade: a.liquidacao.empenho.ficha.unidadeOrc.codigo };
+  if (a.empenho !== null) return { despesaDaUnidade: a.empenho.ficha.unidadeOrc.codigo };
   return null;
 }
 
@@ -156,6 +197,12 @@ export async function entregarAnexo(
   if (dono === null) return null;
   if ("fiscalizacaoDoContrato" in dono) {
     if (!(await alcanceNoContrato(cliente(), sessao.identificador, dono.fiscalizacaoDoContrato)).fiscalizacao) return null;
+  } else if ("despesaDaUnidade" in dono) {
+    try {
+      await autorizarLeituraDoRegistroPara(sessao, "CONSULTAR_DESPESA", dono.despesaDaUnidade);
+    } catch {
+      return null; // recusa de leitura: o download responde como inexistente, sem dizer de quem é
+    }
   } else if (!(await podeLerPara(sessao, dono.acao, dono.nivel))) return null;
   return baixarAnexo(cliente(), anexoId, sessao.identificador);
 }
@@ -193,6 +240,8 @@ export interface AnexarNaTela {
   readonly pessoaId?: string | undefined;
   readonly termoPatrimonialId?: string | undefined;
   readonly documentoFiscalId?: string | undefined;
+  /** V22 — o comprovante do banco (ou outro documento) da liquidação; escopo = a UG do fato. */
+  readonly liquidacaoId?: string | undefined;
 }
 
 export async function anexarNaTela(

@@ -393,13 +393,13 @@ async function guardsDoContrato(
   return c.categoriaOrdemCronologica;
 }
 
-const TIPO_EMPENHO_DA_ORDEM = {
+export const TIPO_EMPENHO_DA_ORDEM = {
   ORDINARIA: "ORDINARIO",
   GLOBAL: "GLOBAL",
   ESTIMATIVA: "ESTIMATIVO",
 } as const;
 
-function valorDaOrdem(
+export function valorDaOrdem(
   itens: readonly { readonly quantidade: { toFixed(n: number): string }; readonly valorUnitario: { toFixed(n: number): string } }[],
   desconto: { toFixed(n: number): string } | null
 ): Money {
@@ -505,7 +505,7 @@ async function guardsDaOrdem(tx: Tx, p: EmpenharParams): Promise<void> {
   }
 }
 
-async function empenhadoLiquidoDaOrdem(tx: Tx, ordemDeCompraId: string): Promise<Money> {
+export async function empenhadoLiquidoDaOrdem(tx: Tx, ordemDeCompraId: string): Promise<Money> {
   const empenhos = await tx.empenho.findMany({
     where: { ordemDeCompraId },
     select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },

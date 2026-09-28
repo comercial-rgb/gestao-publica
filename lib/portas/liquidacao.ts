@@ -231,3 +231,37 @@ export async function opcoesDasEntradasDeMaterial(): Promise<OpcoesDasEntradasDe
 export function empenhoEhDeMaterial(naturezaCodigo: string): boolean {
   return elementoDebitaEstoque(naturezaCodigo.slice(-2));
 }
+
+/** V22 — a nota fiscal de uma liquidação, como a tela a mostra (valor em string, datas civis). */
+export interface NotaDaLiquidacao {
+  readonly numero: string | null;
+  readonly serie: string | null;
+  readonly data: Date | null;
+  readonly valor: string | null;
+  readonly chave: string | null;
+}
+
+/**
+ * V22 — AS NOTAS FISCAIS das liquidações da lista, numa consulta só (número, série, data, valor e
+ * chave). Leitura de exibição para o modal: as liquidações vêm da lista já recortada e autorizada
+ * pela página, e a porta só completa os campos que a consulta do M05 não devolve.
+ */
+export async function notasDasLiquidacoes(ids: readonly string[]): Promise<ReadonlyMap<string, NotaDaLiquidacao>> {
+  if (ids.length === 0) return new Map();
+  const linhas = await cliente().liquidacao.findMany({
+    where: { id: { in: [...ids] } },
+    select: { id: true, notaFiscalNum: true, notaFiscalSerie: true, notaFiscalData: true, notaFiscalValor: true, notaFiscalChave: true },
+  });
+  return new Map(
+    linhas.map((l) => [
+      l.id,
+      {
+        numero: l.notaFiscalNum,
+        serie: l.notaFiscalSerie,
+        data: l.notaFiscalData,
+        valor: l.notaFiscalValor === null ? null : l.notaFiscalValor.toFixed(2),
+        chave: l.notaFiscalChave,
+      },
+    ])
+  );
+}
