@@ -37,6 +37,7 @@ export const ROTEIRO: readonly (readonly [string, string])[] = [
   ["Solicitações de compra", "/licitacoes/solicitacoes"],
   ["Contratos", "/licitacoes/contratos"],
   ["Solicitações de empenho", "/despesa/solicitacoes-de-empenho"],
+  ["Campanhas publicitárias", "/despesa/campanhas-publicitarias"],
   ["Empenhos", "/despesa/empenhos"],
   ["Liquidações", "/despesa/liquidacoes"],
   ["Pagamentos", "/despesa/pagamentos"],
