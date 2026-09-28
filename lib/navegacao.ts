@@ -72,38 +72,38 @@ export function rotaDaArea(a: AreaNav): string {
 }
 
 export const AREAS: readonly AreaNav[] = [
-  { slug: "planejamento", rotulo: "Planejamento", descricao: "LOA, fichas, créditos adicionais e programação financeira (CMD/MBA)." },
-  { slug: "receita", rotulo: "Receita", descricao: "Previsão, arrecadação, reconhecimento pelo fato gerador e dívida ativa." },
+  { slug: "planejamento", rotulo: "Planejamento", descricao: "PPA, LDO, LOA, fichas orçamentárias, créditos adicionais e programação financeira." },
+  { slug: "receita", rotulo: "Receita", descricao: "Previsão, arrecadação, reconhecimento da receita e cadastro tributário." },
   { slug: "despesa", rotulo: "Despesa", descricao: "Empenho, liquidação, pagamento e restos a pagar." },
-  { slug: "financeiro", rotulo: "Financeiro", descricao: "Tesouraria, conciliação bancária e ordem cronológica de pagamentos." },
-  { slug: "patrimonio", rotulo: "Patrimônio", descricao: "Bens, almoxarifado, dívida consolidada e provisões." },
-  { slug: "licitacoes", rotulo: "Licitações e Contratos", descricao: "Processos, contratos, aditivos e obras." },
-  { slug: "contabilidade", rotulo: "Contabilidade", descricao: "Plano de contas PCASP e os lançamentos de partidas dobradas que sustentam os livros." },
-  { slug: "relatorios", rotulo: "Relatórios", descricao: "Livros obrigatórios, balanços, RREO e demonstrativos fiscais." },
+  { slug: "financeiro", rotulo: "Financeiro", descricao: "Tesouraria, movimentação bancária, conciliação e recolhimento de retenções." },
+  { slug: "patrimonio", rotulo: "Patrimônio", descricao: "Bens patrimoniais, almoxarifado, depreciação e termos de responsabilidade." },
+  { slug: "licitacoes", rotulo: "Licitações e Contratos", descricao: "Processos licitatórios, compras, contratos, aditivos e obras." },
+  { slug: "contabilidade", rotulo: "Contabilidade", descricao: "Plano de contas, lançamentos e parametrização contábil do ente." },
+  { slug: "relatorios", rotulo: "Relatórios", descricao: "Livros contábeis, demonstrações, RREO, RGF e relatórios gerenciais." },
   {
     slug: "transparencia",
     rotulo: "Transparência",
-    descricao: "Datasets do portal e exports federais (MSC, MANAD).",
+    descricao: "Dados abertos do portal e arquivos para a STN e a Receita Federal.",
     // A landing INTERNA da área. O endereço público `/transparencia` é o portal do cidadão.
     rota: "/administracao/transparencia",
   },
-  { slug: "protocolo", rotulo: "Protocolo", descricao: "Processos digitais: abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento." },
-  { slug: "comunicacao", rotulo: "Comunicação interna", descricao: "Memorandos, ofícios e circulares, com caixas, leitura registrada e assinatura por tipo." },
-  { slug: "cadastros", rotulo: "Cadastros", descricao: "Pessoas e credores: o cadastro compartilhado que a despesa, as consignações e a folha usam." },
-  { slug: "transferencias", rotulo: "Transferências", descricao: "Convênios de repasse e consórcios públicos — o dinheiro que sai do ente para outro, e o que entra por termo." },
-  { slug: "divida", rotulo: "Dívida e precatórios", descricao: "Dívida fundada, precatórios judiciais e a ordem do art. 100 da Constituição." },
-  { slug: "controle-interno", rotulo: "Controle interno", descricao: "Auditorias, checklist com base legal, irregularidades e o relatório circunstanciado (CF art. 74)." },
-  { slug: "administracao", rotulo: "Administração", descricao: "Usuários, perfis, permissões e registro de operações." },
-  { slug: "integracoes", rotulo: "Integrações", descricao: "Central de integrações: SAGRES TXT/JSON, Banco do Brasil e API TCE-PB." },
-  { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta contratados." },
-  { slug: "pessoal", rotulo: "Pessoal", descricao: "Servidores, vínculos e histórico funcional; cargos e lotações do quadro. Cargo, lotação e salário são derivados dos eventos." },
-  { slug: "folha", rotulo: "Folha", descricao: "Folha de pagamento: tabelas do ente, rubricas, lançamentos, cálculo com memória por servidor e fechamento." },
-  { slug: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "O que é SEU: vínculos, dependentes e contracheques das folhas fechadas — recortado pela pessoa da sessão." },
-  { slug: "meus-servicos", rotulo: "Meus serviços", descricao: "O que você pediu pela carta de serviços — por si ou pela empresa que representa: situação, exigências, documentos e decisão." },
+  { slug: "protocolo", rotulo: "Protocolo", descricao: "Processos digitais, atendimento ao cidadão, ouvidoria e acesso à informação." },
+  { slug: "comunicacao", rotulo: "Comunicação interna", descricao: "Memorandos, ofícios e circulares, com confirmação de leitura e assinatura." },
+  { slug: "cadastros", rotulo: "Cadastros", descricao: "Cadastro único de pessoas físicas e jurídicas, credores e representantes." },
+  { slug: "transferencias", rotulo: "Transferências", descricao: "Convênios de repasse e consórcios públicos." },
+  { slug: "divida", rotulo: "Dívida e precatórios", descricao: "Dívida fundada, dívida ativa e precatórios judiciais." },
+  { slug: "controle-interno", rotulo: "Controle interno", descricao: "Auditorias internas, achados, providências e relatório do controle interno." },
+  { slug: "administracao", rotulo: "Administração", descricao: "Usuários, perfis de acesso, auditoria de operações e configurações do ente." },
+  { slug: "integracoes", rotulo: "Integrações", descricao: "Integrações com o TCE-PB (SAGRES), o Banco do Brasil e demais serviços externos." },
+  { slug: "suporte", rotulo: "Suporte", descricao: "Canais de atendimento e prazos de resposta." },
+  { slug: "pessoal", rotulo: "Pessoal", descricao: "Servidores, vínculos, cargos, funções e lotações." },
+  { slug: "folha", rotulo: "Folha", descricao: "Folha de pagamento: rubricas, tabelas, cálculo, conferência e fechamento." },
+  { slug: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "Seus vínculos, dependentes e contracheques." },
+  { slug: "meus-servicos", rotulo: "Meus serviços", descricao: "Acompanhamento das solicitações feitas pela carta de serviços." },
   // ⚠️ V10 T1 — A ÁREA DO FORNECEDOR. Ela aparece no menu de quem tem `CONSULTAR_LICENCIAMENTO`,
   // e ninguém do município tem: a ação é reservada (`ACOES_DO_FORNECEDOR`, M16). Está em AREAS
   // porque o menu deriva daqui — uma tela fora do mapa seria uma rota que a navegação não conhece.
-  { slug: "licenciamento", rotulo: "Contrato e módulos", descricao: "O contrato comercial desta implantação: módulos habilitados, vigências, suspensões e o histórico de cada mudança." },
+  { slug: "licenciamento", rotulo: "Contrato e módulos", descricao: "Módulos contratados, vigências e histórico do contrato desta implantação." },
 ];
 
 /** Um relatório navegável (rota + rótulo + uma linha). Fonte ÚNICA da landing e do submenu. */
@@ -122,13 +122,13 @@ export const RELATORIOS_RREO: readonly RelatorioNav[] = [
   { href: "/relatorios/rreo/anexo1", numero: "Anexo 1", rotulo: "Balanço Orçamentário", descricao: "Receita e despesa do exercício, por natureza (LRF art. 52)." },
   { href: "/relatorios/rreo/anexo2", numero: "Anexo 2", rotulo: "Despesa por Função/Subfunção", descricao: "Execução da despesa por classificação funcional (LRF art. 52, II)." },
   { href: "/relatorios/rreo/anexo3", numero: "Anexo 3", rotulo: "Receita Corrente Líquida", descricao: "RCL dos últimos 12 meses — base dos limites (LRF art. 53, I)." },
-  { href: "/relatorios/rreo/anexo6", numero: "Anexo 6", rotulo: "Resultado Primário e Nominal", descricao: "O ente se paga? Receitas e despesas sem a dívida, em caixa (LRF art. 53, III)." },
+  { href: "/relatorios/rreo/anexo6", numero: "Anexo 6", rotulo: "Resultado Primário e Nominal", descricao: "Resultado primário e nominal do período (LRF art. 53, III)." },
   { href: "/relatorios/rreo/anexo7", numero: "Anexo 7", rotulo: "Restos a Pagar por Poder e Órgão", descricao: "RP processados e não processados (LRF art. 53, V)." },
   { href: "/relatorios/rreo/anexo8", numero: "Anexo 8", rotulo: "Educação (MDE)", descricao: "Mínimo de 25% e FUNDEB (CF art. 212/212-A)." },
   { href: "/relatorios/rreo/anexo11", numero: "Anexo 11", rotulo: "Alienação de Ativos", descricao: "Receitas de alienação e aplicação dos recursos (LRF art. 53 §1º III)." },
   { href: "/relatorios/rreo/anexo12", numero: "Anexo 12", rotulo: "Saúde (ASPS)", descricao: "Aplicação mínima de 15% em saúde (LC 141/2012)." },
   { href: "/relatorios/rreo/anexo13", numero: "Anexo 13", rotulo: "Parcerias Público-Privadas", descricao: "Contratos de PPP e o teto de 5% da RCL (Lei 11.079/2004)." },
-  { href: "/relatorios/rreo/anexo14", numero: "Anexo 14", rotulo: "Demonstrativo Simplificado", descricao: "A capa do RREO: balanço, resultados, restos a pagar, mínimos e RCL — consolidados dos anexos (LRF art. 48)." },
+  { href: "/relatorios/rreo/anexo14", numero: "Anexo 14", rotulo: "Demonstrativo Simplificado", descricao: "Resumo do RREO: balanço, resultados, restos a pagar, mínimos constitucionais e RCL (LRF art. 48)." },
 ];
 
 /** Os RGF já implementados — fonte única da landing e do submenu. */
@@ -137,8 +137,8 @@ export const RELATORIOS_RGF: readonly RelatorioNav[] = [
   { href: "/relatorios/rgf/anexo2", numero: "Anexo 2", rotulo: "Dívida Consolidada Líquida", descricao: "DCL sobre a RCL ajustada — limite de 120% do Senado e alerta de 108% (LRF art. 55, I, 'b')." },
   { href: "/relatorios/rgf/anexo3", numero: "Anexo 3", rotulo: "Garantias e Contragarantias", descricao: "Garantias concedidas sobre a RCL ajustada — limite de 22% do Senado e alerta de 19,8% (LRF art. 55, I, 'c')." },
   { href: "/relatorios/rgf/anexo4", numero: "Anexo 4", rotulo: "Operações de Crédito", descricao: "Operações de crédito realizadas — limite de 16% da RCL e alerta de 14,4% (LRF art. 55, I, 'd')." },
-  { href: "/relatorios/rgf/anexo5", numero: "Anexo 5", rotulo: "Disponibilidade de Caixa e RP", descricao: "O que sobra em cada fonte — e se o ente pode inscrever restos a pagar (LRF art. 55, III, 'a')." },
-  { href: "/relatorios/rgf/anexo6", numero: "Anexo 6", rotulo: "Demonstrativo Simplificado", descricao: "A capa da gestão fiscal: pessoal, dívida, garantias e operações de crédito — consolidados dos anexos (LRF art. 48)." },
+  { href: "/relatorios/rgf/anexo5", numero: "Anexo 5", rotulo: "Disponibilidade de Caixa e RP", descricao: "Disponibilidade de caixa por fonte e inscrição de restos a pagar (LRF art. 55, III, a)." },
+  { href: "/relatorios/rgf/anexo6", numero: "Anexo 6", rotulo: "Demonstrativo Simplificado", descricao: "Resumo do RGF: pessoal, dívida, garantias e operações de crédito (LRF art. 48)." },
 ];
 
 /**
@@ -150,19 +150,19 @@ export const RELATORIOS_RGF: readonly RelatorioNav[] = [
  * fluxo de trabalho.
  */
 export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
-  { href: "/despesa/empenhos", numero: "Empenhos", rotulo: "Empenhos", descricao: "Empenhado, liquidado, pago e saldos por empenho." },
-  { href: "/despesa/liquidacoes", numero: "Liquidações", rotulo: "Liquidações", descricao: "O marco de exigibilidade da despesa, com o empenho de origem." },
-  { href: "/despesa/ordens", numero: "Ordens de pagamento", rotulo: "Ordens de Pagamento", descricao: "Preparar, autorizar, registrar e conferir — as quatro etapas, cada uma com o seu estado real." },
-  { href: "/despesa/pagamentos", numero: "Fila de pagamentos", rotulo: "Fila de Pagamentos", descricao: "Ordem cronológica por fonte e categoria (Lei 14.133/2021, art. 141)." },
-  { href: "/despesa/ordem-cronologica", numero: "Ordem cronológica", rotulo: "Ordem Cronológica", descricao: "O painel da Lei 14.133: posição, credor, empenho e saldo a pagar, com filtro por fonte (art. 141)." },
+  { href: "/despesa/empenhos", numero: "Empenhos", rotulo: "Empenhos", descricao: "Emissão e consulta de empenhos, com saldos a liquidar e a pagar." },
+  { href: "/despesa/liquidacoes", numero: "Liquidações", rotulo: "Liquidações", descricao: "Liquidação da despesa com nota fiscal, atesto e comprovantes." },
+  { href: "/despesa/ordens", numero: "Ordens de pagamento", rotulo: "Ordens de Pagamento", descricao: "Preparação, autorização e registro das ordens de pagamento." },
+  { href: "/despesa/pagamentos", numero: "Fila de pagamentos", rotulo: "Fila de Pagamentos", descricao: "Fila de pagamentos por fonte e categoria (Lei 14.133/2021, art. 141)." },
+  { href: "/despesa/ordem-cronologica", numero: "Ordem cronológica", rotulo: "Ordem Cronológica", descricao: "Posição de cada credor na ordem cronológica de pagamentos, por fonte (Lei 14.133/2021, art. 141)." },
   // ⚠️ RESTOS A PAGAR MORA NA DESPESA, e não em "Relatórios": a inscrição é despesa de
   // exercício anterior que continua a ser executada — liquidada, paga, cancelada. O Anexo 7 do
   // RREO LÊ essa posição, mas ler um demonstrativo fiscal não é operar a obrigação.
-  { href: "/despesa/restos-a-pagar", numero: "Restos a pagar", rotulo: "Restos a Pagar", descricao: "Despesa inscrita de exercícios anteriores: inscrito, liquidado, pago, cancelado e saldo por inscrição, com liquidação, pagamento, cancelamento e anulações." },
+  { href: "/despesa/restos-a-pagar", numero: "Restos a pagar", rotulo: "Restos a Pagar", descricao: "Execução dos restos a pagar processados e não processados: liquidação, pagamento e cancelamento." },
   // ⚠️ A ASSINATURA MORA NA DESPESA, e não em "Documentos": a pergunta é "a nota de
   // empenho está assinada?", e quem a faz é quem executa a despesa. A FILA, essa sim, é a
   // do ENT02 — reusada, não recriada.
-  { href: "/despesa/assinaturas", numero: "Assinaturas", rotulo: "Assinatura dos Documentos", descricao: "Empenho, liquidação e ordem de pagamento na fila de assinaturas — ordenada, e só conclui com todos." },
+  { href: "/despesa/assinaturas", numero: "Assinaturas", rotulo: "Assinatura dos Documentos", descricao: "Assinatura eletrônica de notas de empenho, liquidações e ordens de pagamento." },
 ];
 
 /**
@@ -176,29 +176,29 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
  * tela; a obra já tinha. O empenho vinculado ao contrato fica na Despesa.
  */
 export const LICITACOES: readonly RelatorioNav[] = [
-  { href: "/licitacoes/processos", numero: "Processos", rotulo: "Processos licitatórios", descricao: "Número, modalidade, objeto e valor licitado; homologação, reserva de dotação e contrato no detalhe." },
-  { href: "/licitacoes/fiscalizacao", numero: "Fiscalização", rotulo: "Fiscalização de contratos", descricao: "Os contratos em que você é gestor, fiscal ou recebedor designado; os administradores da fiscalização." },
-  { href: "/licitacoes/contratos", numero: "Contratos", rotulo: "Contratos e aditivos", descricao: "Valor e vigência derivados dos aditivos; estorno de aditivo; os empenhos que informaram o contrato." },
-  { href: "/licitacoes/solicitacoes", numero: "Solicitações", rotulo: "Solicitações de compra", descricao: "A requisição ao Compras, com itens; autorizar e anular são fatos com data e motivo." },
-  { href: "/licitacoes/pesquisas-de-precos", numero: "Preços", rotulo: "Pesquisas de preços", descricao: "Planilha de preços por item e fornecedor; média, mínimo e máximo derivados." },
-  { href: "/licitacoes/ordens-de-compra", numero: "Ordens", rotulo: "Ordens de compra", descricao: "Ordinária, global ou estimativa, com itens; o recebimento por item e o saldo a receber derivado." },
-  { href: "/licitacoes/documentos-fiscais", numero: "Notas", rotulo: "Documentos fiscais recebidos", descricao: "Nota, recibo ou CT-e do fornecedor, com itens; conferência e cancelamento são fatos. Registrar não liquida." },
-  { href: "/licitacoes/obras", numero: "Obras", rotulo: "Obras e medições", descricao: "Cadastro de obras (IN/INSS/DC 100/2003) e as medições que autorizam liquidar." },
+  { href: "/licitacoes/processos", numero: "Processos", rotulo: "Processos licitatórios", descricao: "Processos licitatórios: modalidade, objeto, homologação e reserva de dotação." },
+  { href: "/licitacoes/fiscalizacao", numero: "Fiscalização", rotulo: "Fiscalização de contratos", descricao: "Contratos sob sua gestão ou fiscalização e o registro das ocorrências." },
+  { href: "/licitacoes/contratos", numero: "Contratos", rotulo: "Contratos e aditivos", descricao: "Contratos, aditivos, vigência, saldo e empenhos vinculados." },
+  { href: "/licitacoes/solicitacoes", numero: "Solicitações", rotulo: "Solicitações de compra", descricao: "Solicitações de compra, com itens, autorização e anulação." },
+  { href: "/licitacoes/pesquisas-de-precos", numero: "Preços", rotulo: "Pesquisas de preços", descricao: "Pesquisa de preços por item e fornecedor, com média, mínimo e máximo." },
+  { href: "/licitacoes/ordens-de-compra", numero: "Ordens", rotulo: "Ordens de compra", descricao: "Ordens de compra ordinárias, globais e estimativas, com recebimento por item." },
+  { href: "/licitacoes/documentos-fiscais", numero: "Notas", rotulo: "Documentos fiscais recebidos", descricao: "Notas fiscais, recibos e CT-e recebidos do fornecedor, com conferência dos itens." },
+  { href: "/licitacoes/obras", numero: "Obras", rotulo: "Obras e medições", descricao: "Cadastro de obras e medições que autorizam a liquidação." },
 ];
 
 export const PLANEJAMENTO: readonly RelatorioNav[] = [
   // V4 §8 (M02b): as peças que vêm ANTES da LOA.
-  { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "O quadriênio e a lei que o instituiu; programas, indicadores, ações e a receita do plano (CF art. 165 §1º)." },
-  { href: "/planejamento/ldo", numero: "LDO", rotulo: "Lei de Diretrizes Orçamentárias", descricao: "O trâmite da LDO, as prioridades e os anexos da LRF (metas e riscos fiscais) em PDF." },
-  { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações — o rol do ente." },
+  { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "Plano Plurianual: programas, indicadores, ações e metas do quadriênio (CF art. 165, § 1º)." },
+  { href: "/planejamento/ldo", numero: "LDO", rotulo: "Lei de Diretrizes Orçamentárias", descricao: "Lei de Diretrizes Orçamentárias: prioridades e anexos de metas e riscos fiscais." },
+  { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações do PPA." },
   // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
-  { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "A lei ou o decreto que alterou a peça aprovada, o valor original preservado e o vigente — com a situação em qualquer data." },
-  { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "A dotação pela chave completa; criar ficha nova (sem crédito — a dotação vem de crédito adicional)." },
-  { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha pela chave completa: inicial, créditos e dotação atualizada." },
-  { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF art. 8º e 13)." },
-  { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Leis autorizadoras e decretos de suplementação e anulação, com o teto da lei." },
-  { href: "/planejamento/recursos-novos", numero: "Recurso novo", rotulo: "Disponibilidade de Recurso Novo", descricao: "O lastro do crédito sem anulação: superávit financeiro, excesso de arrecadação e operação de crédito, por fonte (art. 43 § 1º)." },
-  { href: "/planejamento/reprevisao", numero: "Reprevisão", rotulo: "Reprevisão da Receita", descricao: "Revisão da previsão de arrecadação ao longo do exercício (LRF art. 12)." },
+  { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "Alterações do PPA e da LDO por lei ou decreto, com o valor original e o vigente." },
+  { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
+  { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
+  { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
+  { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },
+  { href: "/planejamento/recursos-novos", numero: "Recurso novo", rotulo: "Disponibilidade de Recurso Novo", descricao: "Superávit financeiro, excesso de arrecadação e operações de crédito que lastreiam créditos adicionais (Lei 4.320, art. 43)." },
+  { href: "/planejamento/reprevisao", numero: "Reprevisão", rotulo: "Reprevisão da Receita", descricao: "Revisão da previsão de receita ao longo do exercício (LRF art. 12)." },
 ];
 
 /**
@@ -211,18 +211,18 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
  * quando falta extrato — cada lado no seu papel, sem o anel de links que existia antes.
  */
 export const FINANCEIRO: readonly RelatorioNav[] = [
-  { href: "/financeiro/consignacoes", numero: "Consignações", rotulo: "Consignações", descricao: "Em que conta do plano a retenção na fonte vira dívida com o consignatário — decisão contábil do ente, com fundamento e histórico. Sem conta decidida, a consignação não é oferecida no pagamento." },
-  { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Consignações, retenções na fonte e recolhimentos — o dinheiro de terceiros no caixa." },
-  { href: "/financeiro/extraorcamentario/recolher", numero: "Recolher consignações", rotulo: "Recolher consignações", descricao: "A guia de recolhimento composta das retenções que ela quita — do exercício corrente e dos anteriores, com o que cada uma ainda tem a recolher." },
-  { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Extrato do banco × razão: correspondências, pendências dos dois lados e a diferença toda nomeada." },
+  { href: "/financeiro/consignacoes", numero: "Consignações", rotulo: "Consignações", descricao: "Contas contábeis das consignações e retenções na fonte, por tipo." },
+  { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Retenções, consignações e demais ingressos e dispêndios extraorçamentários." },
+  { href: "/financeiro/extraorcamentario/recolher", numero: "Recolher consignações", rotulo: "Recolher consignações", descricao: "Recolhimento das retenções do exercício e de exercícios anteriores." },
+  { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Conciliação entre o extrato bancário e os lançamentos contábeis." },
   // ⚠️ A CONCILIAÇÃO POR PERÍODO é entrada PRÓPRIA, e não uma aba da de cima. São duas
   // perguntas diferentes: aquela responde "como está agora?"; esta responde "qual foi a
   // conciliação de junho, quem a encerrou, e o que ela deixou para julho?". Foi a
   // distinção que o ADR de 2026-09-10 registrou — e esconder a segunda dentro da primeira
   // faria o fechamento parecer um detalhe de uma tela de consulta.
-  { href: "/financeiro/conciliacao/periodo", numero: "Períodos", rotulo: "Conciliação por período", descricao: "Abrir, justificar o que fica em aberto e encerrar — o período seguinte herda o não resolvido, por referência." },
-  { href: "/financeiro/movimentacao", numero: "Movimentação", rotulo: "Movimentação Bancária", descricao: "Depósito, saque, aplicação, resgate, rendimento e tarifa — com saldo por fonte no momento da operação." },
-  { href: "/financeiro/lotes", numero: "Lotes", rotulo: "Lotes e Borderô", descricao: "Agrupar ordens autorizadas, fechar, gerar o borderô assinável e baixar pelo retorno do banco." },
+  { href: "/financeiro/conciliacao/periodo", numero: "Períodos", rotulo: "Conciliação por período", descricao: "Abertura, justificativa de pendências e encerramento da conciliação mensal." },
+  { href: "/financeiro/movimentacao", numero: "Movimentação", rotulo: "Movimentação Bancária", descricao: "Depósitos, saques, aplicações, resgates, rendimentos e tarifas bancárias." },
+  { href: "/financeiro/lotes", numero: "Lotes", rotulo: "Lotes e Borderô", descricao: "Agrupamento de ordens de pagamento, borderô e baixa pelo retorno bancário." },
 ];
 
 /**
@@ -232,47 +232,47 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
  * são a BASE (o plano que classifica e os lançamentos que registram). Quem audita chega por aqui.
  */
 export const CONTABILIDADE: readonly RelatorioNav[] = [
-  { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Em que contas do plano cada movimento de dotação lança — dotação inicial, crédito adicional por tipo, anulação, reserva. Decisão contábil do ente, versionada e com fundamento; sem roteiro o movimento é recusado." },
-  { href: "/contabilidade/roteiros-de-restos-a-pagar", numero: "Contas dos restos a pagar", rotulo: "Contas dos restos a pagar", descricao: "Em que contas cada ato de restos a pagar lança — liquidação do não processado, pagamento, cancelamento do processado e do não processado. Versionada e com motivo registrado; operação sem contas informadas é recusada." },
+  { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Contas contábeis de cada movimento orçamentário: dotação, créditos adicionais, anulação e reserva." },
+  { href: "/contabilidade/roteiros-de-restos-a-pagar", numero: "Contas dos restos a pagar", rotulo: "Contas dos restos a pagar", descricao: "Contas contábeis de liquidação, pagamento e cancelamento de restos a pagar." },
   // V11 V9.3 — irmã do roteiro orçamentário, e pela mesma razão: o plano parte 7.2.1.1 por
   // natureza do recurso, e quem diz de que natureza é cada fonte do município é o ente. Sem esta
   // tela a arrecadação era impossível em instalação nova.
-  { href: "/contabilidade/natureza-das-fontes", numero: "Natureza das fontes", rotulo: "Natureza das fontes", descricao: "De que natureza é cada fonte de recurso — ordinária, vinculada, extraorçamentária, de compensação financeira ou outra. É ela que diz em qual conta do controle da disponibilidade a arrecadação entra; fonte sem natureza declarada tem a arrecadação recusada." },
-  { href: "/contabilidade/plano-de-contas", numero: "Plano de contas", rotulo: "Plano de Contas PCASP", descricao: "As contas por classe, com natureza do saldo e a posição de cada uma (STN/PCASP)." },
-  { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "As partidas dobradas, com nº de controle, histórico e o caminho até o documento de origem." },
+  { href: "/contabilidade/natureza-das-fontes", numero: "Natureza das fontes", rotulo: "Natureza das fontes", descricao: "Natureza de cada fonte de recurso e a conta de controle da disponibilidade correspondente." },
+  { href: "/contabilidade/plano-de-contas", numero: "Plano de contas", rotulo: "Plano de Contas PCASP", descricao: "Plano de Contas Aplicado ao Setor Público, com natureza do saldo e classificação." },
+  { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "Lançamentos em partidas dobradas, com número de controle, histórico e documento de origem." },
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa
   // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
-  { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "O apurado nos fatos, o declarado, o já utilizado em créditos e o que ainda cabe, fonte a fonte." },
+  { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "Superávit financeiro apurado, utilizado e disponível, por fonte de recurso." },
   // V19/C05 — o custo por centro fica na CONTABILIDADE, e não em relatórios gerenciais: a
   // apropriação referencia a liquidação e NÃO lança no razão, o que é uma decisão contábil que
   // precisa ficar perto de quem a entende. Quem audita chega por aqui.
-  { href: "/contabilidade/custos", numero: "Custo por centro", rotulo: "Custo por centro", descricao: "Quanto custou cada centro no período, pela competência do custo, e a composição de cada total até a liquidação, o empenho e o credor. A apropriação não lança a despesa de novo: ela diz a que centros o custo já reconhecido pertence." },
+  { href: "/contabilidade/custos", numero: "Custo por centro", rotulo: "Custo por centro", descricao: "Apuração de custos por centro de custo, com a composição de cada valor." },
   // V20 — a virada das classes 5 e 6, que a apuracao do resultado NAO faz. Fica na contabilidade
   // porque a decisao ENCERRA/TRANSFERE e contabil, e porque quem audita a virada chega por aqui.
-  { href: "/contabilidade/virada-dos-controles", numero: "Virada dos controles", rotulo: "Virada das contas de controle", descricao: "O que morre em 31 de dezembro e o que atravessa para o exercício seguinte. A apuração do resultado zera as variações patrimoniais; a dotação, o crédito e a previsão de receita são de outro subsistema e precisam de decisão declarada, conta por conta, com justificativa." },
+  { href: "/contabilidade/virada-dos-controles", numero: "Virada dos controles", rotulo: "Virada das contas de controle", descricao: "Encerramento do exercício: encerramento ou transferência das contas de controle orçamentário para o exercício seguinte." },
 ];
 
 /** Os relatórios GERENCIAIS — consulta livre com export aberto (TR 7.48). */
 export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
-  { href: "/relatorios/gerenciais", numero: "Gerenciais", rotulo: "Relatórios Gerenciais", descricao: "Consulta de empenhos com filtro por credor e fonte, exportável em PDF e CSV." },
+  { href: "/relatorios/gerenciais", numero: "Gerenciais", rotulo: "Relatórios Gerenciais", descricao: "Consulta de empenhos por credor e fonte, com exportação em PDF e CSV." },
 ];
 
 /** A EXECUÇÃO DA RECEITA — fonte única da landing de /receita e do submenu. */
 export const EXECUCAO_RECEITA: readonly RelatorioNav[] = [
-  { href: "/receita/arrecadacoes", numero: "Arrecadação", rotulo: "Arrecadação", descricao: "Guias do exercício e receita realizada líquida." },
+  { href: "/receita/arrecadacoes", numero: "Arrecadação", rotulo: "Arrecadação", descricao: "Guias de arrecadação e receita realizada no exercício." },
   // V7 B1 — a primeira unidade tributária: cadastrar, parametrizar e SIMULAR (sem lançar nem constituir dívida).
-  { href: "/receita/imoveis", numero: "Imóveis", rotulo: "Cadastro imobiliário", descricao: "Imóveis com histórico de cadastro, pessoas vinculadas e simulação com memória." },
-  { href: "/receita/parametros-tributarios", numero: "Parâmetros", rotulo: "Parâmetros do tributo", descricao: "A fórmula e os valores do município, por exercício e vigência, com fundamento." },
+  { href: "/receita/imoveis", numero: "Imóveis", rotulo: "Cadastro imobiliário", descricao: "Cadastro imobiliário, proprietários e simulação do imposto." },
+  { href: "/receita/parametros-tributarios", numero: "Parâmetros", rotulo: "Parâmetros do tributo", descricao: "Fórmulas, alíquotas e valores dos tributos municipais por exercício." },
 ];
 
 /** As páginas de ADMINISTRAÇÃO — fonte única da landing e do submenu. */
 export const ADMINISTRACAO: readonly RelatorioNav[] = [
-  { href: "/administracao/usuarios", numero: "Usuários", rotulo: "Usuários", descricao: "Identidades, estado e perfis." },
-  { href: "/administracao/perfis", numero: "Perfis", rotulo: "Perfis e Permissões", descricao: "O que cada perfil concede — o censo do M16." },
-  { href: "/administracao/auditoria", numero: "Auditoria", rotulo: "Auditoria", descricao: "Registro de operações da borda." },
-  { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Troca a própria senha — revoga as sessões abertas." },
-  { href: "/administracao/apresentacao", numero: "Apresentação", rotulo: "Apresentação do ente", descricao: "Nome de exibição, imagem institucional, contatos, tema e canais — versionado, com autor." },
-  { href: "/administracao/sistema", numero: "Sistema", rotulo: "Sobre o sistema", descricao: "Proveniência do build, ambiente e as atualizações de permissões instaladas." },
+  { href: "/administracao/usuarios", numero: "Usuários", rotulo: "Usuários", descricao: "Cadastro de usuários, situação e perfis de acesso." },
+  { href: "/administracao/perfis", numero: "Perfis", rotulo: "Perfis e Permissões", descricao: "Perfis de acesso e as permissões de cada um." },
+  { href: "/administracao/auditoria", numero: "Auditoria", rotulo: "Auditoria", descricao: "Registro das operações realizadas no sistema." },
+  { href: "/administracao/senha", numero: "Senha", rotulo: "Trocar Senha", descricao: "Alteração da própria senha." },
+  { href: "/administracao/apresentacao", numero: "Apresentação", rotulo: "Apresentação do ente", descricao: "Nome, brasão, contatos, tema e canais de atendimento do ente." },
+  { href: "/administracao/sistema", numero: "Sistema", rotulo: "Sobre o sistema", descricao: "Versão, ambiente e atualizações instaladas." },
 ];
 
 /**
@@ -283,7 +283,7 @@ export const ADMINISTRACAO: readonly RelatorioNav[] = [
  * seria menu para parecer sistema.
  */
 export const PORTAL_DO_SERVIDOR: readonly RelatorioNav[] = [
-  { href: "/portal-do-servidor", numero: "Minha ficha", rotulo: "Minha ficha e meus contracheques", descricao: "Seus vínculos com cargo, lotação e situação de hoje, seus dependentes e os contracheques das folhas já fechadas." },
+  { href: "/portal-do-servidor", numero: "Minha ficha", rotulo: "Minha ficha e meus contracheques", descricao: "Seus vínculos, cargo, lotação, dependentes e contracheques." },
 ];
 
 /**
@@ -291,54 +291,54 @@ export const PORTAL_DO_SERVIDOR: readonly RelatorioNav[] = [
  * fora da área autenticada; aqui mora só o que é da pessoa da sessão ou de quem ela representa hoje.
  */
 export const MEUS_SERVICOS: readonly RelatorioNav[] = [
-  { href: "/meus-servicos", numero: "Solicitações", rotulo: "Minhas solicitações", descricao: "Os pedidos protocolados por você ou pela empresa que você representa, com a situação, as exigências e a decisão." },
-  { href: "/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "Os serviços que o ente oferece, com requisitos, documentos, prazo e fundamento — e o formulário para pedir." },
+  { href: "/meus-servicos", numero: "Solicitações", rotulo: "Minhas solicitações", descricao: "Solicitações feitas por você ou pela empresa que representa, com situação e decisão." },
+  { href: "/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "Serviços oferecidos pelo ente, com requisitos, documentos e prazos." },
 ];
 
 /** FOLHA (M33) — fonte única da landing e do submenu. */
 export const FOLHA: readonly RelatorioNav[] = [
-  { href: "/folha/folhas", numero: "Folhas", rotulo: "Folhas de pagamento", descricao: "A folha de cada competência: cálculo numerado com memória por servidor, cancelamento e fechamento como fatos." },
-  { href: "/folha/rubricas", numero: "Rubricas", rotulo: "Rubricas", descricao: "Proventos e descontos: natureza, incidências e proporcionalidade aos dias." },
-  { href: "/folha/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos", descricao: "Valores fixos (por vigência) e variáveis (por competência) informados por matrícula." },
-  { href: "/folha/tabelas", numero: "Tabelas", rotulo: "Tabelas do ente", descricao: "Contribuição previdenciária por regime, IRRF e salário-família, vigentes por competência, com a fundamentação legal." },
-  { href: "/folha/parametros-do-13", numero: "13º", rotulo: "Parâmetros do 13º", descricao: "Por exercício: quantos dias fazem um mês contar um avo, quantos avos tem o ano, o percentual da 1ª parcela, se o 13º sofre contribuição e imposto, e quais rubricas compõem a base — com o ato que fundamenta, por número, ano e dispositivo. Sem parâmetro, a folha de 13º recusa calcular." },
-  { href: "/folha/parametros-do-adiantamento-salarial", numero: "Vale", rotulo: "Parâmetros do adiantamento salarial", descricao: "Por competência: o percentual do vale, sobre que base ele incide (a remuneração do mês anterior ou a projetada do próprio mês), qual rubrica paga e qual abate na folha mensal, e qual estado o vale precisa ter alcançado para ser abatido — fechado, certificado ou pago. Com o ato que fundamenta, por número, ano e dispositivo. Sem parâmetro, a folha de adiantamento salarial recusa calcular." },
-  { href: "/folha/grupos-de-empenho", numero: "Grupos de empenho", rotulo: "Grupos de empenho", descricao: "Como a folha vira despesa: quais rubricas empenham em qual ficha, e se o empenho é por servidor ou um só para o grupo." },
-  { href: "/folha/encargos", numero: "Encargos", rotulo: "Encargos do empregador", descricao: "Os encargos que o ente deve sobre a folha, por regime: versões com alíquota, base, teto e fundamento, aprovadas por outra pessoa." },
-  { href: "/folha/designacoes", numero: "Designações", rotulo: "Designações para o atesto", descricao: "Quem o ente designou para certificar a folha, por qual ato administrativo e até quando. Sem designação vigente, o atesto recusa." },
-  { href: "/folha/esocial", numero: "eSocial", rotulo: "Consistência para o eSocial", descricao: "O que o cadastro ainda não tem para atender o leiaute registrado do eSocial. Não gera, não assina e não transmite arquivo: sem o leiaute oficial obtido, a consulta recusa e diz o que falta." },
+  { href: "/folha/folhas", numero: "Folhas", rotulo: "Folhas de pagamento", descricao: "Folha de cada competência: cálculo por servidor, conferência e fechamento." },
+  { href: "/folha/rubricas", numero: "Rubricas", rotulo: "Rubricas", descricao: "Proventos e descontos, com incidências e proporcionalidade." },
+  { href: "/folha/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos", descricao: "Lançamentos fixos e variáveis por matrícula." },
+  { href: "/folha/tabelas", numero: "Tabelas", rotulo: "Tabelas do ente", descricao: "Tabelas de contribuição previdenciária, IRRF e salário-família por vigência." },
+  { href: "/folha/parametros-do-13", numero: "13º", rotulo: "Parâmetros do 13º", descricao: "Regras de cálculo do 13º salário por exercício, com o ato normativo de referência." },
+  { href: "/folha/parametros-do-adiantamento-salarial", numero: "Vale", rotulo: "Parâmetros do adiantamento salarial", descricao: "Regras do adiantamento salarial por competência, com o ato normativo de referência." },
+  { href: "/folha/grupos-de-empenho", numero: "Grupos de empenho", rotulo: "Grupos de empenho", descricao: "Agrupamento das rubricas da folha por ficha orçamentária para empenho." },
+  { href: "/folha/encargos", numero: "Encargos", rotulo: "Encargos do empregador", descricao: "Encargos patronais por regime previdenciário, com alíquotas e vigências." },
+  { href: "/folha/designacoes", numero: "Designações", rotulo: "Designações para o atesto", descricao: "Servidores designados para atestar a folha, com o ato e a vigência." },
+  { href: "/folha/esocial", numero: "eSocial", rotulo: "Consistência para o eSocial", descricao: "Verificação dos dados cadastrais exigidos pelo eSocial." },
 ];
 
 /** PESSOAL (M32) — fonte única da landing e do submenu. */
 export const PESSOAL: readonly RelatorioNav[] = [
-  { href: "/pessoal/servidores", numero: "Servidores", rotulo: "Servidores", descricao: "A ficha do servidor sobre a pessoa do cadastro único; vínculos com cargo, lotação e salário derivados dos eventos." },
-  { href: "/pessoal/cargos", numero: "Cargos", rotulo: "Cargos", descricao: "O quadro: vagas fixadas em lei e vagas ocupadas contadas a cada leitura." },
-  { href: "/pessoal/funcoes", numero: "Funções", rotulo: "Funções", descricao: "A atribuição EXERCIDA, distinta do cargo: designada e dispensada por movimentação, com data de efeito." },
-  { href: "/pessoal/lotacoes", numero: "Lotações", rotulo: "Lotações", descricao: "A árvore de lotações, com a unidade orçamentária quando houver." },
+  { href: "/pessoal/servidores", numero: "Servidores", rotulo: "Servidores", descricao: "Ficha funcional, vínculos, cargo, lotação e histórico do servidor." },
+  { href: "/pessoal/cargos", numero: "Cargos", rotulo: "Cargos", descricao: "Quadro de cargos, vagas criadas por lei e vagas ocupadas." },
+  { href: "/pessoal/funcoes", numero: "Funções", rotulo: "Funções", descricao: "Funções gratificadas e de confiança, designações e dispensas." },
+  { href: "/pessoal/lotacoes", numero: "Lotações", rotulo: "Lotações", descricao: "Estrutura de lotações e unidades orçamentárias correspondentes." },
 ];
 
 /** Os CADASTROS BASE — fonte única da landing e do submenu. */
 /** O PROTOCOLO — fonte única da landing e do submenu. */
 export const PROTOCOLO: readonly RelatorioNav[] = [
-  { href: "/protocolo/processos", numero: "Processos", rotulo: "Processos digitais", descricao: "Abertura, tramitação entre setores, parecer, readequação, encerramento e arquivamento — com a situação derivada dos movimentos." },
-  { href: "/protocolo/solicitacoes", numero: "Solicitações", rotulo: "Mesa das solicitações", descricao: "Os pedidos que chegaram pela carta de serviços: quantos aguardam recebimento, análise, resposta do requerente e decisão, por setor." },
-  { href: "/protocolo/ouvidoria", numero: "Ouvidoria", rotulo: "Mesa da ouvidoria", descricao: "Manifestações recebidas sem conta: triagem interna, resposta ao manifestante pelo código de acompanhamento e encerramento. Sigilosas." },
-  { href: "/protocolo/acesso-a-informacao", numero: "Acesso à informação", rotulo: "Acesso à informação", descricao: "O prazo que o ente promete a quem pede informação, a norma federal que o fixa e a regulamentação local, versionados por vigência. Sem configuração publicada, o pedido corre e o sistema não promete data." },
-  { href: "/protocolo/acesso-a-informacao/pedidos", numero: "Pedidos de acesso", rotulo: "Pedidos de acesso à informação", descricao: "O rito de cada pedido: para onde foi, o prazo pela norma que valia quando ele entrou, prorrogação motivada, resposta classificada e recurso. O que o requerente lê fica separado do que instrui o processo." },
-  { href: "/protocolo/avaliacoes", numero: "Avaliações", rotulo: "Avaliação dos serviços", descricao: "A escala e o método em versões, e a moderação das avaliações por abuso ou dado pessoal, com motivo." },
-  { href: "/protocolo/guiches", numero: "Guichês", rotulo: "Atendimento presencial", descricao: "Unidades, guichês, o que cada um atende e a oferta de horários com capacidade. Um horário só existe se tiver sido publicado — não há expediente padrão. Separada da agenda da fiscalização." },
-  { href: "/protocolo/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "O que o ente oferece ao público: serviço, versão do formulário, prazo com fundamento e as etapas copiadas do roteiro real." },
-  { href: "/consulta", numero: "Consulta", rotulo: "Acompanhar processo", descricao: "Consulta pelo número e pelo código verificador, SEM SENHA — fora da área autenticada, porque quem a usa é o requerente." },
+  { href: "/protocolo/processos", numero: "Processos", rotulo: "Processos digitais", descricao: "Abertura, tramitação, pareceres e arquivamento de processos digitais." },
+  { href: "/protocolo/solicitacoes", numero: "Solicitações", rotulo: "Mesa das solicitações", descricao: "Solicitações recebidas pela carta de serviços, por setor e situação." },
+  { href: "/protocolo/ouvidoria", numero: "Ouvidoria", rotulo: "Mesa da ouvidoria", descricao: "Manifestações da ouvidoria: triagem, resposta e encerramento." },
+  { href: "/protocolo/acesso-a-informacao", numero: "Acesso à informação", rotulo: "Acesso à informação", descricao: "Prazos e regulamentação dos pedidos de acesso à informação (Lei 12.527/2011)." },
+  { href: "/protocolo/acesso-a-informacao/pedidos", numero: "Pedidos de acesso", rotulo: "Pedidos de acesso à informação", descricao: "Tramitação, prazos, prorrogação, resposta e recurso de cada pedido de informação." },
+  { href: "/protocolo/avaliacoes", numero: "Avaliações", rotulo: "Avaliação dos serviços", descricao: "Avaliação dos serviços pelos cidadãos e moderação das avaliações." },
+  { href: "/protocolo/guiches", numero: "Guichês", rotulo: "Atendimento presencial", descricao: "Unidades de atendimento presencial, guichês e agenda de horários." },
+  { href: "/protocolo/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "Carta de serviços: formulários, prazos e etapas de cada serviço." },
+  { href: "/consulta", numero: "Consulta", rotulo: "Acompanhar processo", descricao: "Consulta pública do andamento de um processo pelo número e código verificador." },
 ];
 
 /** A COMUNICAÇÃO INTERNA — fonte única da landing e do submenu. */
 export const COMUNICACAO: readonly RelatorioNav[] = [
-  { href: "/comunicacao/comunicados", numero: "Comunicados", rotulo: "Memorandos, ofícios e circulares", descricao: "Caixas de entrada, saída, rascunhos, favoritos e arquivados — calculadas para quem olha." },
+  { href: "/comunicacao/comunicados", numero: "Comunicados", rotulo: "Memorandos, ofícios e circulares", descricao: "Caixas de entrada e saída, rascunhos e arquivo de memorandos, ofícios e circulares." },
 ];
 
 export const CADASTROS: readonly RelatorioNav[] = [
-  { href: "/cadastros/pessoas", numero: "Pessoas", rotulo: "Pessoas e Credores", descricao: "Uma pessoa, vários papéis. Cadastro append-only: alterar cria versão, e o histórico fica." },
-  { href: "/cadastros/representacoes", numero: "Representações", rotulo: "Representações", descricao: "Quem age em nome de uma pessoa jurídica: a conta de uma pessoa física, o documento que fundamenta, a vigência e a revogação." },
+  { href: "/cadastros/pessoas", numero: "Pessoas", rotulo: "Pessoas e Credores", descricao: "Cadastro de pessoas físicas e jurídicas, credores e histórico de alterações." },
+  { href: "/cadastros/representacoes", numero: "Representações", rotulo: "Representações", descricao: "Representantes legais de pessoas jurídicas, com documento e vigência." },
 ];
 
 /**
@@ -350,17 +350,17 @@ export const CADASTROS: readonly RelatorioNav[] = [
  * diferença em voz alta.
  */
 export const RELATORIOS_DESIGNER: readonly RelatorioNav[] = [
-  { href: "/relatorios/designer", numero: "Designer", rotulo: "Modelos do usuário", descricao: "Relatórios desenhados pela entidade, com campos calculados por gramática segura e execução em segundo plano." },
+  { href: "/relatorios/designer", numero: "Designer", rotulo: "Modelos do usuário", descricao: "Relatórios personalizados montados pelo próprio ente." },
 ];
 
 /** Os livros obrigatórios com página — fonte única da landing. */
 export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
-  { href: "/relatorios/livros/diario", numero: "Diário", rotulo: "Livro Diário", descricao: "Todos os lançamentos, em ordem cronológica estável." },
-  { href: "/relatorios/livros/razao", numero: "Razão", rotulo: "Razão Analítico", descricao: "O razão de uma conta, com saldo corrente linha a linha." },
-  { href: "/relatorios/livros/balancete", numero: "Balancete", rotulo: "Balancete de Verificação", descricao: "Saldo e movimento por conta; prova que ΣD = ΣC (art. 50)." },
-  { href: "/relatorios/consistencia", numero: "Consistência", rotulo: "Relatório de Consistência", descricao: "As identidades dos demonstrativos, conferidas num lugar só — o diagnóstico pré-envio." },
-  { href: "/relatorios/eliminacoes-intra", numero: "Eliminações", rotulo: "Eliminações Intragovernamentais", descricao: "As operações entre as unidades do próprio ente, que saem do consolidado — e o resíduo que ainda não fecha." },
-  { href: "/relatorios/atualizacoes-orcamentarias", numero: "Atualizações", rotulo: "Atualizações Orçamentárias", descricao: "Todo movimento de crédito adicional, por ficha, decreto, fonte e UG." },
+  { href: "/relatorios/livros/diario", numero: "Diário", rotulo: "Livro Diário", descricao: "Livro Diário com todos os lançamentos em ordem cronológica." },
+  { href: "/relatorios/livros/razao", numero: "Razão", rotulo: "Razão Analítico", descricao: "Razão de uma conta, com saldo anterior, movimentos e saldo final." },
+  { href: "/relatorios/livros/balancete", numero: "Balancete", rotulo: "Balancete de Verificação", descricao: "Saldos e movimentos por conta, com a conferência de débitos e créditos." },
+  { href: "/relatorios/consistencia", numero: "Consistência", rotulo: "Relatório de Consistência", descricao: "Verificação da consistência entre os demonstrativos antes do envio aos órgãos de controle." },
+  { href: "/relatorios/eliminacoes-intra", numero: "Eliminações", rotulo: "Eliminações Intragovernamentais", descricao: "Operações entre unidades do próprio ente, excluídas na consolidação." },
+  { href: "/relatorios/atualizacoes-orcamentarias", numero: "Atualizações", rotulo: "Atualizações Orçamentárias", descricao: "Créditos adicionais por ficha, decreto, fonte e unidade gestora." },
 ];
 
 /**
@@ -370,10 +370,10 @@ export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
  * com funções próprias. Estes quatro são os demonstrativos dos arts. 102 a 105 e a DVP.
  */
 export const RELATORIOS_DEMONSTRACOES: readonly RelatorioNav[] = [
-  { href: "/relatorios/demonstracoes/balanco-orcamentario", numero: "Anexo 12", rotulo: "Balanço Orçamentário", descricao: "Receita prevista e realizada, despesa fixada e executada (art. 102)." },
-  { href: "/relatorios/demonstracoes/balanco-financeiro", numero: "Anexo 13", rotulo: "Balanço Financeiro", descricao: "Ingressos e dispêndios por fonte, e o saldo em espécie (art. 103)." },
-  { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro do art. 105." },
-  { href: "/relatorios/demonstracoes/variacoes-patrimoniais", numero: "Anexo 15", rotulo: "Variações Patrimoniais", descricao: "Variações aumentativas e diminutivas, e o resultado patrimonial." },
+  { href: "/relatorios/demonstracoes/balanco-orcamentario", numero: "Anexo 12", rotulo: "Balanço Orçamentário", descricao: "Receita prevista e realizada, despesa fixada e executada (Lei 4.320, art. 102)." },
+  { href: "/relatorios/demonstracoes/balanco-financeiro", numero: "Anexo 13", rotulo: "Balanço Financeiro", descricao: "Ingressos, dispêndios e saldos de caixa do exercício (Lei 4.320, art. 103)." },
+  { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro financeiro e permanente (Lei 4.320, art. 105)." },
+  { href: "/relatorios/demonstracoes/variacoes-patrimoniais", numero: "Anexo 15", rotulo: "Variações Patrimoniais", descricao: "Variações patrimoniais aumentativas e diminutivas e o resultado do exercício." },
 ];
 
 /** Uma relação entre relatórios — a rota do parente + POR QUE eles se falam (a identidade testada). */
@@ -468,14 +468,14 @@ export function rotuloDaRota(href: string): string | null {
  * recusa.
  */
 export const TRANSFERENCIAS: readonly RelatorioNav[] = [
-  { href: "/transferencias/convenios", numero: "Convênios", rotulo: "Convênios de Repasse", descricao: "Termos em que o ente concede ou recebe: saldo a liberar, pendente de prestação de contas e glosado, cada um a sua conta." },
-  { href: "/transferencias/consorcios", numero: "Consórcios", rotulo: "Consórcios Públicos", descricao: "Rateio anual, aditivos e repasses — o repasse só acontece dentro do contrato do exercício." },
+  { href: "/transferencias/convenios", numero: "Convênios", rotulo: "Convênios de Repasse", descricao: "Convênios concedidos e recebidos: liberações, prestação de contas e glosas." },
+  { href: "/transferencias/consorcios", numero: "Consórcios", rotulo: "Consórcios Públicos", descricao: "Contratos de rateio, aditivos e repasses aos consórcios públicos." },
 ];
 
 export const DIVIDA: readonly RelatorioNav[] = [
-  { href: "/divida/precatorios", numero: "Precatórios", rotulo: "Precatórios Judiciais", descricao: "A fila do art. 100: alimentar antes de comum, a preferência do §2º, depois a data de apresentação." },
-  { href: "/divida/fundada", numero: "Dívida fundada", rotulo: "Dívida Fundada", descricao: "A dívida consolidada da LRF: ingresso pela receita, amortização pela despesa, e só a atualização monetária nasce no cadastro." },
-  { href: "/divida/ativa", numero: "Dívida ativa", rotulo: "Dívida Ativa", descricao: "O crédito do ente contra o contribuinte (art. 39 da Lei 4.320/64): inscrição, atualização, cancelamento — o recebimento entra pela receita." },
+  { href: "/divida/precatorios", numero: "Precatórios", rotulo: "Precatórios Judiciais", descricao: "Ordem de pagamento de precatórios judiciais (CF art. 100)." },
+  { href: "/divida/fundada", numero: "Dívida fundada", rotulo: "Dívida Fundada", descricao: "Dívida consolidada: contratação, amortização e atualização monetária." },
+  { href: "/divida/ativa", numero: "Dívida ativa", rotulo: "Dívida Ativa", descricao: "Inscrição, atualização e cancelamento da dívida ativa (Lei 4.320, art. 39)." },
 ];
 
 /**
@@ -485,14 +485,14 @@ export const DIVIDA: readonly RelatorioNav[] = [
  * porque é dela que saem ao mesmo tempo o hub da área e o índice da busca global.
  */
 export const ALMOXARIFADO: readonly RelatorioNav[] = [
-  { href: "/patrimonio/almoxarifado/classes", numero: "Classes", rotulo: "Classes de Material", descricao: "A amarração entre o eixo físico e o contábil: é a classe que diz em que conta de estoque a entrada e a saída batem no razão." },
-  { href: "/patrimonio/almoxarifado/grupos", numero: "Grupos", rotulo: "Grupos de Material", descricao: "A árvore que organiza o catálogo — um grupo pode ter grupo pai, e é assim que 'Expediente' fica dentro de 'Consumo'." },
-  { href: "/patrimonio/almoxarifado/unidades", numero: "Unidades", rotulo: "Unidades de Medida", descricao: "A medida em que o saldo é contado. Sem ela o material não se cadastra: somar caixas com unidades produz um número sem significado." },
-  { href: "/patrimonio/almoxarifado/materiais", numero: "Materiais", rotulo: "Materiais", descricao: "Unidade de estoque, grupo, classe contábil e CATMAT — mais o mínimo e o máximo por depósito. O saldo não mora aqui: ele é derivado dos movimentos." },
-  { href: "/patrimonio/almoxarifado/depositos", numero: "Depósitos", rotulo: "Depósitos", descricao: "Onde o material fica, sob qual unidade gestora e com qual responsável — e os bloqueios que recusam movimentação enquanto vigem." },
-  { href: "/patrimonio/almoxarifado/estoque", numero: "Posição", rotulo: "Posição de Estoque", descricao: "Quanto havia de cada material, num depósito, NUMA DATA — com preço médio, mínimo e máximo, e os lotes vencidos e a vencer. É a pergunta que refuta uma coluna de saldo: coluna só sabe responder 'agora'." },
-  { href: "/patrimonio/almoxarifado/requisicoes", numero: "Requisições", rotulo: "Requisições de Material", descricao: "O setor pede, o almoxarifado atende — e o atendimento pode ser parcial. O que falta é a diferença entre o solicitado e as saídas vinculadas." },
-  { href: "/patrimonio/almoxarifado/inventarios", numero: "Inventários", rotulo: "Inventários de Estoque", descricao: "Enquanto aberto, bloqueia a movimentação do depósito — é isso que torna a contagem comparável com a posição na data de abertura." },
+  { href: "/patrimonio/almoxarifado/classes", numero: "Classes", rotulo: "Classes de Material", descricao: "Classes de material e as contas contábeis de estoque correspondentes." },
+  { href: "/patrimonio/almoxarifado/grupos", numero: "Grupos", rotulo: "Grupos de Material", descricao: "Grupos e subgrupos do catálogo de materiais." },
+  { href: "/patrimonio/almoxarifado/unidades", numero: "Unidades", rotulo: "Unidades de Medida", descricao: "Unidades de medida do estoque." },
+  { href: "/patrimonio/almoxarifado/materiais", numero: "Materiais", rotulo: "Materiais", descricao: "Catálogo de materiais, com classe contábil, CATMAT e estoque mínimo e máximo." },
+  { href: "/patrimonio/almoxarifado/depositos", numero: "Depósitos", rotulo: "Depósitos", descricao: "Depósitos, unidade gestora responsável e bloqueios de movimentação." },
+  { href: "/patrimonio/almoxarifado/estoque", numero: "Posição", rotulo: "Posição de Estoque", descricao: "Posição de estoque em qualquer data, com preço médio e lotes a vencer." },
+  { href: "/patrimonio/almoxarifado/requisicoes", numero: "Requisições", rotulo: "Requisições de Material", descricao: "Requisições de material dos setores e o atendimento total ou parcial." },
+  { href: "/patrimonio/almoxarifado/inventarios", numero: "Inventários", rotulo: "Inventários de Estoque", descricao: "Inventário de estoque, com bloqueio da movimentação durante a contagem." },
 ];
 
 /**
@@ -504,9 +504,9 @@ export const ALMOXARIFADO: readonly RelatorioNav[] = [
  * do acervo POR um motivo, e entra nele POR um tipo de incorporação.
  */
 export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
-  { href: "/patrimonio/localizacoes", numero: "Localizações", rotulo: "Localizações Físicas", descricao: "Onde o bem fica, em árvore: prédio, andar, sala — com o setor que responde pela guarda. É para cá que a transferência move o bem, e é por aqui que o inventário sabe onde procurar." },
-  { href: "/patrimonio/motivos-de-baixa", numero: "Motivos", rotulo: "Motivos de Baixa", descricao: "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente e se cadastra aqui — não é uma lista fechada no sistema." },
-  { href: "/patrimonio/tipos-de-incorporacao", numero: "Incorporação", rotulo: "Tipos de Incorporação", descricao: "Como o bem entrou: adquirido, doação, comodato, permuta. Doação e compra produzem lançamentos diferentes, e é o tipo que explica a entrada." },
+  { href: "/patrimonio/localizacoes", numero: "Localizações", rotulo: "Localizações Físicas", descricao: "Prédios, andares e salas, com o setor responsável pela guarda dos bens." },
+  { href: "/patrimonio/motivos-de-baixa", numero: "Motivos", rotulo: "Motivos de Baixa", descricao: "Motivos de baixa de bens: alienação, doação, inservibilidade, furto e outros." },
+  { href: "/patrimonio/tipos-de-incorporacao", numero: "Incorporação", rotulo: "Tipos de Incorporação", descricao: "Formas de incorporação de bens: aquisição, doação, comodato e permuta." },
 ];
 
 /**
@@ -517,9 +517,9 @@ export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
  * uma classe, e sem classe cadastrada o seletor nasce vazio.
  */
 export const ACERVO: readonly RelatorioNav[] = [
-  { href: "/patrimonio/classes-de-bens", numero: "Classes", rotulo: "Classes de Bens", descricao: "Como o acervo se agrupa — móveis e imóveis — e, para cada grupo, a conta do ativo em que os bens daquela classe são registrados na contabilidade." },
-  { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "O acervo bem a bem: o que é, em que classe entra, quando foi adquirido e como entrou. O valor não se informa aqui — ele vem dos movimentos patrimoniais." },
-  { href: "/patrimonio/meus-bens", numero: "Meus bens", rotulo: "Bens sob minha responsabilidade", descricao: "Os bens pelos quais VOCÊ responde hoje — derivados do último movimento de responsável de cada bem, para o usuário vinculado a uma pessoa do cadastro." },
+  { href: "/patrimonio/classes-de-bens", numero: "Classes", rotulo: "Classes de Bens", descricao: "Classes de bens móveis e imóveis e a conta contábil de cada uma." },
+  { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "Cadastro de bens patrimoniais: classe, aquisição, incorporação e valor." },
+  { href: "/patrimonio/meus-bens", numero: "Meus bens", rotulo: "Bens sob minha responsabilidade", descricao: "Bens sob sua responsabilidade." },
 ];
 
 /**
@@ -532,13 +532,13 @@ export const ACERVO: readonly RelatorioNav[] = [
  * cadastrado e nenhum bem podia receber um centavo.
  */
 export const ROTEIROS_CONTABEIS: readonly RelatorioNav[] = [
-  { href: "/patrimonio/roteiros", numero: "Roteiros", rotulo: "Roteiros Contábeis do Patrimônio", descricao: "Em que par de contas do PCASP cada evento do bem bate na contabilidade — aquisição, reavaliação, depreciação, baixa. Evento sem roteiro não é registrado: o sistema recusa em vez de escolher a conta." },
-  { href: "/patrimonio/roteiros-de-resultado", numero: "Resultado", rotulo: "Roteiros do Resultado da Alienação", descricao: "O ganho e a perda apurados na venda do bem. Não mexem no ativo — ele já saiu pela baixa —, e por isso têm roteiro separado dos eventos do bem." },
-  { href: "/patrimonio/parametros-de-atualizacao", numero: "Parâmetros", rotulo: "Parâmetros de Depreciação", descricao: "Método, vida útil e valor residual de cada classe, em versões com autor, motivo e vigência. A competência processada guarda a memória de cálculo com a versão que usou." },
-  { href: "/patrimonio/termos", numero: "Termos", rotulo: "Termos Patrimoniais", descricao: "O termo de responsabilidade (individual, setorial ou por responsável) e o de baixa. Emitir registra o movimento de cada bem; o papel sai em PDF pelo detalhe." },
-  { href: "/patrimonio/competencia", numero: "Competência", rotulo: "Processamento por Competência", descricao: "A depreciação, amortização ou exaustão do mês, por classe: prévia com a memória de cálculo antes de lançar, e o histórico do que já foi processado." },
+  { href: "/patrimonio/roteiros", numero: "Roteiros", rotulo: "Roteiros Contábeis do Patrimônio", descricao: "Contas contábeis de aquisição, reavaliação, depreciação e baixa de bens." },
+  { href: "/patrimonio/roteiros-de-resultado", numero: "Resultado", rotulo: "Roteiros do Resultado da Alienação", descricao: "Contas contábeis de ganho e perda na alienação de bens." },
+  { href: "/patrimonio/parametros-de-atualizacao", numero: "Parâmetros", rotulo: "Parâmetros de Depreciação", descricao: "Método, vida útil e valor residual para depreciação, por classe." },
+  { href: "/patrimonio/termos", numero: "Termos", rotulo: "Termos Patrimoniais", descricao: "Termos de responsabilidade e de baixa, emitidos em PDF." },
+  { href: "/patrimonio/competencia", numero: "Competência", rotulo: "Processamento por Competência", descricao: "Cálculo mensal de depreciação, amortização e exaustão, com prévia antes do lançamento." },
 ];
 
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
-  { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Roteiro com base legal, achados com providência e prazo, e o relatório circunstanciado que se assina." },
+  { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Auditorias internas: roteiro com base legal, achados, providências e relatório." },
 ];

@@ -57,6 +57,20 @@ const CLASSIFICACAO: readonly {
       "orçamentária (art. 105, § 1º)",
   },
   {
+    codigo: "1.1.1.1.1.50.00",
+    indicador: "F",
+    fundamento:
+      "aplicação financeira de liquidez imediata — disponibilidade, realizável " +
+      "independentemente de autorização orçamentária (art. 105, § 1º)",
+  },
+  {
+    codigo: "2.1.3.1.1.01.01",
+    indicador: "F",
+    fundamento:
+      "fornecedor a pagar por despesa já empenhada e liquidada — o pagamento não depende de " +
+      "nova autorização orçamentária; é a dívida flutuante do art. 92 (art. 105, § 3º)",
+  },
+  {
     codigo: "1.2.3.1.1.01.01",
     indicador: "P",
     fundamento:
