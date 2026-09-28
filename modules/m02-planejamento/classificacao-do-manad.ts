@@ -14,8 +14,8 @@ import { TIPO_MANAD } from "../m01-core-contabil/tipo-manad.js";
  * - NATUREZA DA DESPESA (L700) e NATUREZA DA RECEITA (L200): sintética ou analítica
  *   (IND_TIPO_CONTA: S ou A) e o nível da conta na hierarquia (NM_NIVEL_CONTA).
  *
- * ⚠️ FORA DE `manad/` DE PROPÓSITO: aquela pasta é o gerador, que não grava nada (invariante t8 de
- * `m14-manad.test.ts`). Isto é cadastro, e grava.
+ * ⚠️ NO M02, E NÃO NO M14, DE PROPÓSITO: o módulo das exportações não grava nada (invariantes t7 da
+ * MSC e t8 do MANAD). Isto é o cadastro orçamentário do M02, e grava.
  *
  * ⚠️ O GERADOR CONTINUA FAIL-CLOSED e continua sem escolher por ninguém: estes serviços são a
  * porta pela qual o ente escolhe. Até a V22 essas colunas existiam e nada as escrevia — o MANAD

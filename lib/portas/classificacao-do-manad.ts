@@ -7,7 +7,7 @@ import {
   TIPO_DE_CONTA_MANAD,
   TIPO_MANAD_DA_ACAO,
   type ResultadoDaClassificacao,
-} from "../../modules/m14-exports-federais/classificacao-do-manad.js";
+} from "../../modules/m02-planejamento/classificacao-do-manad.js";
 import { TIPO_MANAD } from "../../modules/m01-core-contabil/tipo-manad.js";
 import {
   declararCentralizacaoDaEscrituracao,

@@ -20,7 +20,7 @@ const PREVISOES = [
   { natureza: "11180111", rotulo: "IPTU", valor: "180000.00" },
   { natureza: "11180141", rotulo: "ITBI", valor: "60000.00" },
   { natureza: "11180231", rotulo: "ISSQN", valor: "220000.00" },
-  { natureza: "11130311", rotulo: "IRRF – Trabalho", valor: "50000.00" },
+  { natureza: "11130311", rotulo: "IRRF - Trabalho", valor: "50000.00" },
 ] as const;
 
 async function main(): Promise<void> {

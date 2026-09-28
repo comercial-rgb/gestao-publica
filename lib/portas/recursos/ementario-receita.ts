@@ -36,7 +36,7 @@ export const EMENTARIO_DA_RECEITA: DefinicaoDeRecurso = definirRecurso({
       tipo: "texto",
       obrigatorio: true,
       largura: 3,
-      placeholder: "IPTU – Principal",
+      placeholder: "IPTU - Principal",
       ajuda: "Como consta no ementário da receita do ente.",
     },
   ],

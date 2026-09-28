@@ -766,6 +766,7 @@ async function blocoL(
             select: {
               tipo: true,
               subsistema: true,
+              valor: true,
               conta: { select: { codigo: true } },
             },
           },
@@ -785,27 +786,29 @@ async function blocoL(
     const raizPag = raizDo(p, pagPorId);
     const ficha = fichaPorId.get(e.fichaId)!;
 
-    const contas = contasDoPagamento(p.id, p.lancamento.partidas);
     const orgUn = `${ficha.orgao.codigo}${ficha.unidadeOrc.codigo}`;
 
-    linhas.push({
-      reg: "L150",
-      campos: [
-        alfa(nmEmp(raizFicha, raizE.numero), onde("L150", "NM_EMP")),
-        alfa(
-          nmEmp(raizFicha, `${raizE.numero}-${raizLiq.numero}-${raizPag.numero}`),
-          onde("L150", "NM_PGTO")
-        ),
-        data(p.data),
-        valor(m(p.valor)),
-        indDebCred(p, pagPorId),
-        alfa(p.lancamento.historico, onde("L150", "HIST_PGTO")),
-        numero(contas.debito, onde("L150", "CTA_DEBITO")),
-        numero(orgUn, onde("L150", "COD_ORG_UN_DEB")),
-        numero(contas.credito, onde("L150", "CTA_CREDITO")),
-        numero(orgUn, onde("L150", "COD_ORG_UN_CRE")),
-      ],
-    });
+    // Um registro por perna patrimonial — ver `pernasDoPagamento` (o pagamento com retenção).
+    for (const perna of pernasDoPagamento(p.id, m(p.valor), p.lancamento.partidas)) {
+      linhas.push({
+        reg: "L150",
+        campos: [
+          alfa(nmEmp(raizFicha, raizE.numero), onde("L150", "NM_EMP")),
+          alfa(
+            nmEmp(raizFicha, `${raizE.numero}-${raizLiq.numero}-${raizPag.numero}`),
+            onde("L150", "NM_PGTO")
+          ),
+          data(p.data),
+          valor(perna.valor),
+          indDebCred(p, pagPorId),
+          alfa(p.lancamento.historico, onde("L150", "HIST_PGTO")),
+          numero(perna.debito, onde("L150", "CTA_DEBITO")),
+          numero(orgUn, onde("L150", "COD_ORG_UN_DEB")),
+          numero(perna.credito, onde("L150", "CTA_CREDITO")),
+          numero(orgUn, onde("L150", "COD_ORG_UN_CRE")),
+        ],
+      });
+    }
   }
 
   // ═══ L200 — BALANCETE DA RECEITA (Anexo 10) ═══
@@ -1091,6 +1094,68 @@ function contasDoPagamento(
   // decimal; deixá-los faria a Receita rejeitar o campo.
   const soDigitos = (c: string): string => c.replace(/\D/g, "");
   return { debito: soDigitos(debitos[0]!), credito: soDigitos(creditos[0]!) };
+}
+
+/**
+ * ⚠️ O PAGAMENTO COM RETENÇÃO NO L150 (V22) — UM REGISTRO POR PERNA.
+ *
+ * O manual (MANAD v1.0.0.2, registro L150) dá a cada registro UMA conta a débito e UMA a crédito
+ * "do balancete de verificação", e declara a ocorrência do L150 como "vários". O pagamento com
+ * retenção tem, no razão, UM débito patrimonial (a obrigação com o fornecedor, pelo bruto) e DOIS
+ * créditos (o banco pelo líquido e a consignação pelo retido). Então ele sai em um L150 por conta
+ * credora: cada registro é um par que o razão FEZ, com o valor daquela perna — nenhuma conta é
+ * escolhida em lugar de outra, e a soma dos registros é o valor do pagamento.
+ *
+ * O estorno é o espelho: um crédito (o fornecedor) e vários débitos — um registro por conta
+ * devedora. Com mais de uma conta dos DOIS lados não há pareamento possível sem inventar, e o
+ * gerador continua recusando (`contasDoPagamento`). E se a soma das pernas não fechar com o valor
+ * do pagamento, também recusa: o registro diria um valor que o documento não tem.
+ */
+export function pernasDoPagamento(
+  pagamentoId: string,
+  valorDoPagamento: Money,
+  partidas: readonly {
+    readonly tipo: string;
+    readonly subsistema: string;
+    readonly valor: { toFixed(n: number): string };
+    readonly conta: { readonly codigo: string };
+  }[]
+): readonly { readonly debito: string; readonly credito: string; readonly valor: Money }[] {
+  const patrimoniais = partidas.filter((p) => p.subsistema === "PATRIMONIAL");
+  const porConta = (tipo: string): Map<string, Money> => {
+    const s = new Map<string, Money>();
+    for (const p of patrimoniais.filter((x) => x.tipo === tipo)) {
+      s.set(p.conta.codigo, (s.get(p.conta.codigo) ?? toMoney("0")).plus(m(p.valor)) as Money);
+    }
+    return s;
+  };
+  const debitos = porConta("DEBITO");
+  const creditos = porConta("CREDITO");
+  if (debitos.size === 1 && creditos.size === 1) {
+    const c = contasDoPagamento(pagamentoId, partidas);
+    return [{ ...c, valor: valorDoPagamento }];
+  }
+  const soDigitos = (c: string): string => c.replace(/\D/g, "");
+  let pernas: { debito: string; credito: string; valor: Money }[];
+  if (debitos.size === 1 && creditos.size > 1) {
+    const [deb] = [...debitos.keys()];
+    pernas = [...creditos].map(([cred, v]) => ({ debito: soDigitos(deb!), credito: soDigitos(cred), valor: v }));
+  } else if (creditos.size === 1 && debitos.size > 1) {
+    const [cred] = [...creditos.keys()];
+    pernas = [...debitos].map(([deb, v]) => ({ debito: soDigitos(deb), credito: soDigitos(cred!), valor: v }));
+  } else {
+    // Mais de uma conta dos dois lados (ou nenhuma): a recusa nomeada de sempre.
+    return [contasDoPagamento(pagamentoId, partidas)].map((c) => ({ ...c, valor: valorDoPagamento }));
+  }
+  const soma = pernas.reduce((s, x) => s.plus(x.valor) as Money, toMoney("0"));
+  if (!soma.eq(valorDoPagamento)) {
+    throw new Error(
+      `MANAD — o pagamento ${pagamentoId} tem pernas patrimoniais que somam ${soma.toFixed(2)}, e o ` +
+        `valor do pagamento é ${valorDoPagamento.toFixed(2)}. Um registro por perna só é fiel ao razão ` +
+        `se as pernas somarem o pagamento; o gerador não ajusta nenhuma delas.`
+    );
+  }
+  return pernas;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -1603,17 +1668,40 @@ async function l750(
     contratos.map((c) => [c.contratadoDocumento, c.contratadoNome])
   );
 
+  // V22 — E DO CADASTRO DE PESSOAS (o credor do empenho): nome e endereço da versão do cadastro
+  // VIGENTE NO EXERCÍCIO (a última criada até 31/12); cadastro feito depois do exercício entra pela
+  // primeira versão, que é o que se sabe do credor. O nome do CONTRATO continua prevalecendo quando
+  // existe — é o nome com que o fornecedor se obrigou.
+  const fimDoExercicio = new Date(Date.UTC(exercicio, 11, 31, 23, 59, 59));
+  const pessoas = await leitor.pessoa.findMany({
+    where: { documento: { in: documentos } },
+    select: {
+      documento: true,
+      versoes: {
+        orderBy: { criadoEm: "asc" },
+        select: { nome: true, logradouro: true, numero: true, complemento: true, bairro: true, municipio: true, uf: true, cep: true, criadoEm: true },
+      },
+    },
+  });
+  const cadastroPorDoc = new Map(
+    pessoas.flatMap((p) => {
+      const ate = p.versoes.filter((v) => v.criadoEm <= fimDoExercicio);
+      const v = ate.length > 0 ? ate[ate.length - 1] : p.versoes[0];
+      return v === undefined ? [] : [[p.documento, v] as const];
+    })
+  );
+  for (const [doc, v] of cadastroPorDoc) if (!nomePorDoc.has(doc)) nomePorDoc.set(doc, v.nome);
+
   const semNome = documentos.filter((d) => !nomePorDoc.has(d));
   if (semNome.length > 0) {
     pendencias.push({
       registro: "L750",
       quantidade: semNome.length,
       motivo:
-        "NOM_FORNECEDOR sai VAZIO (3.1.9) para credores SEM CONTRATO: o nome do credor só " +
-        "existe no repositório dentro do `Contrato` (M11). Um empenho de diária, de folha " +
-        "ou de sentença não tem contrato — e o repositório não tem cadastro de credores. " +
-        "⚠️ O endereço, a cidade, a UF e o CEP do fornecedor saem vazios SEMPRE, pelo mesmo " +
-        "motivo. Se a Receita exigir, é CADASTRO DE CREDORES novo — não é derivável.",
+        "NOM_FORNECEDOR sai VAZIO (3.1.9) para credores sem contrato E sem cadastro de pessoa: " +
+        "o nome vem do contrato (M11) ou do cadastro de pessoas, e estes documentos não estão em " +
+        "nenhum dos dois. O endereço, a cidade, a UF e o CEP também saem vazios para eles. " +
+        "Cadastre o credor em Pessoas para que o arquivo o identifique.",
     });
   }
 
@@ -1638,6 +1726,17 @@ async function l750(
       );
     }
     const pf = so.length === 11;
+    const cad = cadastroPorDoc.get(doc);
+    const endereco =
+      cad === undefined || cad.logradouro === null || cad.logradouro.trim() === ""
+        ? null
+        : [
+            [cad.logradouro, cad.numero, cad.complemento].filter((x) => x !== null && x.trim() !== "").join(", "),
+            cad.bairro,
+          ]
+            .filter((x) => x !== null && x.trim() !== "")
+            .join(" - ");
+    const cep = cad?.cep === null || cad?.cep === undefined ? "" : cad.cep.replace(/\D/g, "");
 
     return {
       reg: "L750",
@@ -1652,10 +1751,11 @@ async function l750(
         pf ? numeroFixo(so, 11, onde("L750", "CPF_FORNECEDOR")) : "",
         // NIT — obrigatório para contribuinte individual. Não modelado.
         "",
-        "",
-        "",
-        "",
-        "",
+        // 09|END  10|CID  11|UF  12|CEP — do cadastro de pessoas (V22); vazios sem cadastro.
+        alfa(endereco, onde("L750", "END_FORNECEDOR")),
+        alfa(cad?.municipio ?? null, onde("L750", "CID_FORNECEDOR")),
+        alfa(cad?.uf ?? null, onde("L750", "UF_FORNECEDOR")),
+        cep === "" ? "" : numeroFixo(cep, 8, onde("L750", "CEP_FORNECEDOR")),
         "",
       ],
     };

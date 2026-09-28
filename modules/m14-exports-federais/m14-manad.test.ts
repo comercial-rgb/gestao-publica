@@ -598,7 +598,35 @@ describe("M14 — MANAD (TR 7.36)", () => {
     expect(p).toBeDefined();
     expect(p.quantidade).toBe(1); // ⚠️ A PENDÊNCIA TEM TAMANHO: 1 credor sem nome.
     expect(p.motivo).toMatch(/NOM_FORNECEDOR sai VAZIO/);
-    expect(p.motivo).toMatch(/CADASTRO DE CREDORES/);
+    expect(p.motivo).toMatch(/sem contrato E sem cadastro de pessoa/);
+    expect(p.motivo).toMatch(/Cadastre o credor em Pessoas/);
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // t6b (V22) — sem contrato, mas COM cadastro de pessoa: nome e endereço da versão vigente no
+  // exercício. N=2 versões: a de 2026 vale; a de 2027 (depois do exercício) não.
+  // ═══════════════════════════════════════════════════════════════════════════
+  it("t6b: credor com cadastro de pessoa sai com o nome e o endereço da versão vigente no exercício", async () => {
+    await ciclo2026();
+    const pessoa = await prisma.pessoa.create({ data: { documento: CREDOR_PJ, tipo: "JURIDICA", criadoPor: "TESTE" }, select: { id: true } });
+    await prisma.versaoDePessoa.create({
+      data: {
+        pessoaId: pessoa.id, nome: "Alfa Comércio Ltda", logradouro: "Rua das Flores", numero: "10", bairro: "Centro",
+        municipio: "Campina Grande", uf: "PB", cep: "58400000", criadoPor: "TESTE", criadoEm: new Date("2026-03-01T12:00:00Z"),
+      },
+    });
+    await prisma.versaoDePessoa.create({
+      data: {
+        pessoaId: pessoa.id, nome: "Alfa Serviços Ltda", logradouro: "Avenida Nova", numero: "99", bairro: "Catolé",
+        municipio: "Recife", uf: "PE", cep: "50000000", motivo: "mudança de razão social", criadoPor: "TESTE",
+        criadoEm: new Date("2027-02-01T12:00:00Z"),
+      },
+    });
+    const manad = await gerarManad(prisma, PERIODO_2026);
+    expect(textoDe(manad, "L750")).toEqual([
+      `L750|2026|${CREDOR_PJ}|Alfa Comércio Ltda|2|${CREDOR_PJ}|||Rua das Flores, 10 - Centro|Campina Grande|PB|58400000|`,
+    ]);
+    expect(manad.pendencias.find((x) => x.registro === "L750")).toBeUndefined();
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

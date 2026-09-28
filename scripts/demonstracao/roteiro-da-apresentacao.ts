@@ -17,6 +17,7 @@ export const ROTEIRO: readonly (readonly [string, string])[] = [
   ["Fluxos de caixa (DFC)", "/relatorios/demonstracoes/fluxos-de-caixa"],
   ["Arquivos para a STN e a Receita", "/contabilidade/exportacoes-federais"],
   ["Responsáveis técnicos", "/contabilidade/exportacoes-federais/responsaveis"],
+  ["Classificação para o arquivo da Receita", "/contabilidade/exportacoes-federais/classificacao"],
   ["RREO anexo 1", "/relatorios/rreo/anexo1"],
   ["RREO anexo 3 (RCL)", "/relatorios/rreo/anexo3?exercicio=2026&bimestre=5"],
   ["RREO anexo 8 (MDE)", "/relatorios/rreo/anexo8?exercicio=2026&bimestre=5"],

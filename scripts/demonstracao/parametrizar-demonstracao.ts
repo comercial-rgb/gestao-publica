@@ -1,6 +1,26 @@
 import "dotenv/config";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import { publicarRoteiroOrcamentario } from "../../modules/m05-despesa/servico-roteiro-orcamentario.js";
+import {
+  classificarAcaoParaOManad,
+  classificarNaturezaDespesaParaOManad,
+  classificarNaturezaReceitaParaOManad,
+  classificarUnidadeParaOManad,
+} from "../../modules/m02-planejamento/classificacao-do-manad.js";
+
+/**
+ * A CLASSIFICAÇÃO PARA O MANAD deste banco — o que o ente responderia na tela
+ * `/contabilidade/exportacoes-federais/classificacao`, pelo MESMO serviço, e só onde está pendente:
+ * - as unidades são secretarias da Prefeitura (administração direta): 01 - Prefeitura;
+ * - não há regime próprio de previdência neste banco: toda ação é 02 - Demais;
+ * - as naturezas cadastradas são o último desdobramento do código, portanto analíticas, no nível do
+ *   último campo: despesa C.G.MM.EE = nível 4; receita C.O.E.DD.D.T = nível 7 (as 7 posições da
+ *   estrutura da natureza da receita, Portaria STN/MF 1.458/2025).
+ */
+const TIPO_DAS_UNIDADES = "01";
+const TIPO_DAS_ACOES = "02";
+const NIVEL_DA_DESPESA = 4;
+const NIVEL_DA_RECEITA = 7;
 
 /**
  * PARAMETRIZAÇÃO DE DEMONSTRAÇÃO (V22) — as decisões contábeis que o ente tomaria na tela de
@@ -98,6 +118,32 @@ async function main(): Promise<void> {
       console.log(`+ natureza 11130211: "${n.descricao}" -> "${IRPJ}"`);
     } else if (n !== null) {
       console.log("= natureza 11130211: descrição oficial");
+    }
+    // As descrições do ementário foram gravadas com meia-risca ("IPTU – Principal"); a tabela
+    // oficial da STN usa hífen ("IPTU - Principal"), e a meia-risca não existe no Latin-1 do
+    // arquivo da Receita — o MANAD recusava o cadastro. Corrigido na origem
+    // (`lib/portas/recursos/ementario-receita.ts`) e, aqui, no que já estava gravado.
+    for (const r of await prisma.naturezaReceita.findMany({ where: { descricao: { contains: "–" } }, select: { codigo: true, descricao: true } })) {
+      const nova = r.descricao.replace(/\s*–\s*/g, " - ");
+      await prisma.naturezaReceita.update({ where: { codigo: r.codigo }, data: { descricao: nova } });
+      console.log(`+ natureza ${r.codigo}: "${r.descricao}" -> "${nova}"`);
+    }
+
+    for (const u of await prisma.unidadeOrcamentaria.findMany({ where: { tipoManad: null }, select: { id: true, codigo: true } })) {
+      await classificarUnidadeParaOManad(prisma, { unidadeId: u.id, tipo: TIPO_DAS_UNIDADES, criadoPor: AUTOR });
+      console.log(`+ MANAD: unidade ${u.codigo} -> ${TIPO_DAS_UNIDADES}`);
+    }
+    for (const a of await prisma.acao.findMany({ where: { tipoManad: null }, select: { id: true, codigo: true } })) {
+      await classificarAcaoParaOManad(prisma, { acaoId: a.id, tipo: TIPO_DAS_ACOES, criadoPor: AUTOR });
+      console.log(`+ MANAD: ação ${a.codigo} -> ${TIPO_DAS_ACOES}`);
+    }
+    for (const d of await prisma.naturezaDespesa.findMany({ where: { OR: [{ indTipoContaManad: null }, { nivelContaManad: null }] }, select: { id: true, codigoCompleto: true } })) {
+      await classificarNaturezaDespesaParaOManad(prisma, { naturezaId: d.id, tipoDeConta: "A", nivel: NIVEL_DA_DESPESA, criadoPor: AUTOR });
+      console.log(`+ MANAD: natureza da despesa ${d.codigoCompleto} -> A/${NIVEL_DA_DESPESA}`);
+    }
+    for (const r of await prisma.naturezaReceita.findMany({ where: { OR: [{ indTipoContaManad: null }, { nivelContaManad: null }] }, select: { id: true, codigo: true } })) {
+      await classificarNaturezaReceitaParaOManad(prisma, { naturezaId: r.id, tipoDeConta: "A", nivel: NIVEL_DA_RECEITA, criadoPor: AUTOR });
+      console.log(`+ MANAD: natureza da receita ${r.codigo} -> A/${NIVEL_DA_RECEITA}`);
     }
   } finally {
     await prisma.$disconnect();
