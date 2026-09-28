@@ -88,7 +88,7 @@ export default async function BensPage({
 
       {/* ── POSIÇÃO POR CLASSE (5.86) ── */}
       <Card>
-        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Posição patrimonial por classe (5.86)</h2>
+        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Posição patrimonial por classe</h2>
         {posicao.classes.length === 0 ? (
           <p className="text-sm text-[color:var(--color-ink-3)]">Sem bens registrados no exercício.</p>
         ) : (
@@ -127,7 +127,7 @@ export default async function BensPage({
 
       {/* ── DÍVIDA CONSOLIDADA (5.82-5.83) ── */}
       <Card>
-        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Dívida consolidada por tipo (5.82–5.83)</h2>
+        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Dívida consolidada por tipo</h2>
         {!temDivida ? (
           <p className="text-sm text-[color:var(--color-ink-3)]">Sem dívida consolidada no exercício. (O mesmo saldo alimenta o RGF Anexo 2.)</p>
         ) : (

@@ -118,6 +118,95 @@ function semComentarios(fonte: string): string {
   );
 }
 
+/**
+ * ═══ O TEXTO QUE O USUÁRIO REALMENTE VÊ ═══
+ *
+ * ⚠️ VARRER A LINHA INTEIRA NÃO SERVE PARA ESTA SEGUNDA GUARDA, e a diferença é a que separa um
+ * instrumento de um estorvo: `modo === "MOCK"` é comparação interna legítima e `<Badge>MOCK</Badge>`
+ * é vazamento. A primeira guarda deste arquivo (número de cláusula) podia varrer a linha porque o
+ * padrão dela quase não existe fora de prosa; jargão de desenvolvimento existe o tempo todo em
+ * código, e um guard que não distinguisse ensinaria a desligá-lo.
+ *
+ * Então aqui se extrai o que é CANDIDATO A SER LIDO por gente:
+ *   · literal de string com pelo menos dois espaços — prosa, não identificador;
+ *   · texto de JSX entre `>` e `<`.
+ *
+ * E se descarta o que é notoriamente máquina: classe de estilo (`var(--…)`) e a interpolação de
+ * template (`${…}`), que carrega nome de campo por construção e não é o que se lê na tela.
+ */
+function textoVisivel(fonte: string): readonly { readonly linha: number; readonly texto: string }[] {
+  const saida: { linha: number; texto: string }[] = [];
+  for (const [i, linha] of semComentarios(fonte).split("\n").entries()) {
+    for (const m of linha.matchAll(/"([^"\\]{8,}?)"|'([^'\\]{8,}?)'|`([^`\\]{8,}?)`/g)) {
+      const bruto = m[1] ?? m[2] ?? m[3] ?? "";
+      if (bruto.includes("var(--")) continue;
+      const texto = bruto.replace(/\$\{[^}]*\}/g, " ");
+      if ((texto.match(/ /g)?.length ?? 0) >= 2) saida.push({ linha: i + 1, texto });
+    }
+    for (const m of linha.matchAll(/>([^<>{}]*[A-Za-zÀ-ÿ][^<>{}]*)</g)) {
+      saida.push({ linha: i + 1, texto: m[1] ?? "" });
+    }
+  }
+  return saida;
+}
+
+/**
+ * NÚMERO DE CLÁUSULA **NU** — o furo que a V17 nomeou como `CLAUSULA-NUA-FORA-DO-PADRAO`.
+ *
+ * O padrão de cima exige `TR` ou `§` na frente. Faltava o caso mais comum: o número entre
+ * parênteses, sozinho — "Posição patrimonial por classe (5.86)", "Pré-envio (7.27)". Medido: 12
+ * ocorrências em seis arquivos, incluindo títulos de PDF que podem ser impressos e entregues.
+ *
+ * ⚠️ TRÊS COISAS NÃO CASAM, E AS TRÊS EXCLUSÕES FORAM MEDIDAS na primeira execução deste teste:
+ *
+ *   · **dinheiro** — o parêntese só pode conter dígito, ponto, espaço e separador; `(1.000,00)` tem
+ *     vírgula e sai. Um guard que acusa valor é um guard que alguém desliga na primeira semana.
+ *   · **código de conta do PCASP** — `(5.2.2.1.3)` e `(3.1 — pessoal)` são vocabulário contábil
+ *     legítimo, e apareciam no formulário do roteiro e nos descritores da folha. O que os separa de
+ *     uma cláusula é a forma: conta tem grupos de UM dígito (`X.X.X.X.X.NN.NN`), cláusula tem um
+ *     grupo de DOIS OU MAIS logo depois do primeiro ponto (`5.86`, `7.27`, `5.128`). Daí o
+ *     `\d{1,2}\.\d{2,}`. E o parêntese com letra dentro (`— pessoal`) sai pela espreita.
+ *   · **percentual de exemplo** — `(0.20 = 20%)` tem `=` e `%`, que não estão no conjunto.
+ *
+ * ⚠️ E O QUE ELE NÃO PEGA, DITO: cláusula de quatro grupos com todos os tails de um dígito —
+ * `(5.9.1.3)` — é indistinguível de um prefixo de conta pela FORMA. Para essas continua valendo o
+ * padrão com `TR`/`§` acima. Pendência nomeada: `CLAUSULA-DE-QUATRO-GRUPOS-INDISTINGUIVEL`.
+ */
+const CLAUSULA_NUA = /\((?=[\d\s.;–\-/]+\))[\d\s.;–\-/]*?(\d{1,2}\.\d{2,}(?:\.\d+)*)/g;
+
+/**
+ * JARGÃO DE DESENVOLVIMENTO — o que não se diz a um servidor municipal.
+ *
+ * ⚠️ `JSON Schema` NÃO ENTRA, e a exceção é do tribunal: o TCE-PB publica os JSON Schemas da
+ * Captura 2.0 com esse nome, e é assim que o operador vai procurá-los. O que sai é `schema` solto.
+ *
+ * ⚠️ `Prisma` E `DMMF` SAÍRAM DA LISTA na primeira execução, e o motivo é bom: eles não aparecem
+ * em prosa nenhuma — são identificadores de código — e produziam FALSO POSITIVO em template de SQL
+ * (`Prisma.sql`…`), onde o extrator lê o trecho ENTRE dois templates como se fosse texto. Guard que
+ * acusa o que não é o alvo é guard que alguém desliga.
+ *
+ * ⚠️ `SEM-DADO` E OUTROS DE DOIS SEGMENTOS TAMBÉM NÃO ENTRAM: rótulo curto em caixa alta é
+ * vocabulário de tela legítimo ("SEM DADO", "A PAGAR"). O que denuncia nome de pendência interna é
+ * a terceira perna — `DEFINICAO-JA-REVOGADA`, `ROTEIRO-SEM-NIVEL-DE-CONSOLIDACAO`.
+ */
+const JARGAO: readonly { readonly nome: string; readonly padrao: RegExp }[] = [
+  { nome: "MOCK", padrao: /\bMOCK\b/g },
+  { nome: "POC", padrao: /\bPOC\b/g },
+  { nome: "fixture", padrao: /\bfixtures?\b/gi },
+  { nome: "fail-closed", padrao: /\bfail-closed\b/gi },
+  { nome: "append-only", padrao: /\bappend-only\b/gi },
+  { nome: "invariante", padrao: /\binvariante\b/gi },
+  { nome: "smoke", padrao: /\bsmoke\b/gi },
+  { nome: "TODO/FIXME", padrao: /\b(?:TODO|FIXME)\b/g },
+  { nome: "schema (fora de \"JSON Schema\")", padrao: /(?<!JSON )\bschemas?\b/gi },
+  { nome: "nome de constraint do banco", padrao: /\b(?:ck|uq|fk|pk|idx)_[a-z0-9_]{3,}\b/g },
+  // ⚠️ A MÁSCARA DE DATA NÃO É PENDÊNCIA: `AAAA-MM-DD` tem a mesma forma e é rótulo legítimo de
+  // campo. A espreita negativa tira as máscaras (só A, M, D, Y) e mantém `DEFINICAO-JA-REVOGADA`.
+  { nome: "nome de pendência interna", padrao: /\b(?![AMDY]+(?:-[AMDY]+)+\b)[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}(?:-[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9]{2,}){2,}\b/g },
+  { nome: "arquivo de código", padrao: /\b[\w.-]+\.tsx?\b/g },
+  { nome: "caminho de módulo", padrao: /\bmodules\/m\d+/g },
+];
+
 describe("rótulos de conformidade — nenhum identificador de catálogo em tela", () => {
   it("nenhum número de cláusula do catálogo em texto renderizado", () => {
     const infratores: string[] = [];
@@ -167,6 +256,61 @@ describe("rótulos de conformidade — nenhum identificador de catálogo em tela
           "dizer isso ao usuário. Se o rótulo da coluna sumiu, a exceção deixou de se justificar."
       ).toBe(true);
     }
+  });
+
+  /**
+   * ⚠️ ESTE TESTE NASCEU DE UM FURO MEDIDO. O padrão de cima exige `TR` ou `§`; "Pré-envio (7.27)"
+   * e "Posição patrimonial por classe (5.86)" passavam por ele — e estavam em tela e em PDF.
+   */
+  it("nenhum número de cláusula NU (entre parênteses, sem TR nem §) em texto visível", () => {
+    const infratores: string[] = [];
+    for (const arquivo of arquivosDaCamadaDeApresentacao()) {
+      if (EXCECOES_NOMEADAS.includes(arquivo)) continue;
+      for (const { linha, texto } of textoVisivel(readFileSync(arquivo, "utf8"))) {
+        const achados = texto.match(CLAUSULA_NUA);
+        if (achados !== null) {
+          infratores.push(`${arquivo}:${linha} → ${achados.join(", ")}\n    ${texto.trim().slice(0, 140)}`);
+        }
+      }
+    }
+    expect(
+      infratores,
+      "\n\n⚠️ NÚMERO DE CLÁUSULA NU EM TEXTO VISÍVEL.\n\n" +
+        "O número entre parênteses no fim de um título — \"Posição patrimonial por classe (5.86)\" —\n" +
+        "é a mesma declaração de atendimento que \"TR 5.86\", só sem o prefixo. Quem lê não tem como\n" +
+        "conferir, e num PDF impresso ele fica no papel.\n\n" +
+        "Como corrigir: apague o número. Se a rastreabilidade importa, ela vai para COMENTÁRIO.\n\n" +
+        "Ocorrências:\n"
+    ).toEqual([]);
+  });
+
+  /**
+   * ⚠️ E ESTE NASCEU DE UM PEDIDO EXPLÍCITO ANTES DE UMA APRESENTAÇÃO: nenhum texto de instrução
+   * de código nas telas. O levantamento achou vinte ocorrências — `FIXTURE POC (modo MOCK)`,
+   * `DRAFT → VALIDATED_LOCAL`, `fail-closed`, `invariante do motor de partidas`.
+   */
+  it("nenhum jargão de desenvolvimento em texto visível", () => {
+    const infratores: string[] = [];
+    for (const arquivo of arquivosDaCamadaDeApresentacao()) {
+      if (EXCECOES_NOMEADAS.includes(arquivo)) continue;
+      for (const { linha, texto } of textoVisivel(readFileSync(arquivo, "utf8"))) {
+        const achados = JARGAO.flatMap((j) => (j.padrao.test(texto) ? [j.nome] : []));
+        // ⚠️ `test` com `/g` guarda `lastIndex`: reiniciar é obrigatório, senão a segunda linha
+        // é examinada do meio para a frente e o guard passa a cegar em silêncio.
+        for (const j of JARGAO) j.padrao.lastIndex = 0;
+        if (achados.length > 0) {
+          infratores.push(`${arquivo}:${linha} → ${achados.join(", ")}\n    ${texto.trim().slice(0, 140)}`);
+        }
+      }
+    }
+    expect(
+      infratores,
+      "\n\n⚠️ JARGÃO DE DESENVOLVIMENTO EM TEXTO VISÍVEL.\n\n" +
+        "MOCK, POC, fixture, fail-closed, append-only, nome de constraint, nome de arquivo .ts:\n" +
+        "nada disso diz o que o sistema FAZ para quem opera. Estado interno de máquina de estados\n" +
+        "(DRAFT, VALIDATED_LOCAL) precisa de rótulo em português.\n\n" +
+        "Ocorrências:\n"
+    ).toEqual([]);
   });
 
   it("o vocabulário de negócio NÃO foi varrido junto", () => {

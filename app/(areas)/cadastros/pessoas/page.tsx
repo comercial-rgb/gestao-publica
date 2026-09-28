@@ -172,7 +172,7 @@ export default async function PessoasPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O cadastro é <strong>append-only</strong>: alterar não reescreve o registro, cria
+        O cadastro é <strong>acrescentado, nunca reescrito</strong>: alterar não apaga o registro, cria
         uma <strong>versão nova</strong>. A anterior continua no histórico, com autor,
         momento e motivo. <strong>Desativar também é uma versão</strong> — e por isso tem
         motivo e autor, em vez de ser um interruptor sem história.

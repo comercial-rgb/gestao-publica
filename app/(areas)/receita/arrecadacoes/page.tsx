@@ -116,7 +116,7 @@ export default async function ArrecadacoesPage({
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        O registro é <strong>append-only</strong>: a guia anulada continua na lista, e a anulação
+        Nada é reescrito: a guia anulada continua na lista, e a anulação
         aparece ao lado dela com sinal negativo. O <strong>total</strong> é a receita realizada
         líquida — Σ(arrecadações) − Σ(anulações). O corte é pela{" "}
         <strong>data de arrecadação</strong> (o fato), nunca pela data de digitação. O rol da

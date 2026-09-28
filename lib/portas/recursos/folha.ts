@@ -317,7 +317,7 @@ export const LANCAMENTOS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   rota: "/folha/lancamentos",
   descricao:
     "Um valor informado para uma rubrica de valor informado de uma matrícula: FIXO vale por competências consecutivas " +
-    "(vigência), VARIÁVEL vale numa competência só. Append-only: encerrar um fixo é dizer a competência final.",
+    "(vigência), VARIÁVEL vale numa competência só. Nada é reescrito: encerrar um fixo é dizer a competência final.",
   campos: [
     { nome: "vinculoId", rotulo: "Matrícula", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "rubricaId", rotulo: "Rubrica (só as de valor informado)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },

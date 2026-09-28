@@ -102,7 +102,7 @@ const CLASSES_PATRIMONIAIS = ["1", "2", "3", "4"] as const;
 
 const AVISO_DA_SUBSTITUICAO =
   "O roteiro novo vale para os movimentos FUTUROS deste evento. Os lançamentos já " +
-  "gravados continuam apontando para as contas anteriores — o razão é append-only, e " +
+  "gravados continuam apontando para as contas anteriores — nada no razão é reescrito, e " +
   "corrigir o passado é lançamento novo, não alteração.";
 
 export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({

@@ -63,7 +63,7 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
     {
       chave: "captura",
       titulo: "SAGRES Captura 2.0 — JSON",
-      descricao: "Mesma massa em JSON, validada contra o schema oficial e simulada (MOCK → SIMULATED).",
+      descricao: "Mesma massa em JSON, validada contra o contrato oficial e simulada.",
       modo: "MOCK",
       estado: "SIMULACAO",
       ultimoEvento: resumoOperacao(opCaptura),
@@ -99,7 +99,7 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
       acaoRotulo: "Comparar local × TCE",
       // Recorte 3/32 rotas (dotacoes/empenhos/pagamentos); SANDBOX/LIVE exigem token do TCE.
       detalhe:
-        "Fixtures conformes ao OpenAPI oficial (openapi-sagrescaptura.json). Recorte da demo: 3 de 32 rotas. " +
+        "Massa conforme o contrato oficial publicado (openapi-sagrescaptura.json). Recorte da demonstração: 3 de 32 rotas. " +
         "SANDBOX/LIVE exigem token (por configuração) — respondem CREDENTIAL_NOT_CONFIGURED, sem fallback.",
     },
   ];

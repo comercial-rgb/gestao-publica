@@ -127,7 +127,7 @@ export default async function CmdMbaPage({
         duodécimos); o <strong>MBA</strong> reparte a receita prevista em <strong>seis metas bimestrais</strong>. A
         distribuição <strong>fecha ao centavo</strong> com a LOA: cada parcela leva o valor truncado a dois decimais e o{" "}
         <strong>último período absorve a diferença</strong> — por isso dezembro (ou o 6º bimestre) costuma diferir dos
-        demais em alguns centavos. Planos são <strong>versionados e append-only</strong>: retificar é publicar decreto
+        demais em alguns centavos. Planos são <strong>versionados, e nenhuma versão é reescrita</strong>: retificar é publicar decreto
         novo, e a versão anterior fica na base. Exibe-se aqui a <strong>vigente</strong> — a de vigência mais recente já
         decorrida, o mesmo critério contra o qual a limitação de empenho julga o empenho.
       </div>
@@ -251,7 +251,7 @@ export default async function CmdMbaPage({
       <p className="text-xs text-[color:var(--color-ink-3)]">
         A <strong>limitação de empenho</strong> é <strong>opt-in por exercício</strong>: ausente, ela está
         DESLIGADA e o cronograma acima é planejamento, não trava. Ligada, o empenho passa a ser julgado contra a cota da
-        fonte no mês — e uma fonte <strong>sem cota</strong> naquele mês é rejeitada (fail-closed), o que é diferente de
+        fonte no mês — e uma fonte <strong>sem cota</strong> naquele mês é rejeitada, o que é diferente de
         uma cota de valor 0,00 (bloqueio deliberado). As{" "}
         <a href="/receita/arrecadacao" className="text-[color:var(--color-primary)] hover:underline">arrecadações</a>{" "}
         que alimentam o confronto são as do M04.

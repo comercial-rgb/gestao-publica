@@ -96,9 +96,9 @@ export default async function ExtraorcamentarioPage({
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         O extraorçamentário é <strong>dinheiro de terceiros</strong>: entra sem ser receita, sai sem ser
         despesa, não toca dotação. A <strong>retenção na fonte</strong> nasce dentro de um pagamento (o
-        líquido vai ao fornecedor; o retido vira <strong>passivo com o consignatário</strong>, 5.25/5.41).
+        líquido vai ao fornecedor; o retido vira <strong>passivo com o consignatário</strong>).
         O <strong>recolhimento</strong> (despesa extra) repassa o retido — e nunca repassa mais do que se
-        reteve (o saldo é fail-closed, 5.45/5.107).
+        reteve (o saldo nunca fica negativo).
       </div>
 
       {/* ── C37: RETIDO, RECOLHIDO, ESTORNADO E A RECOLHER, SEPARADOS ── */}

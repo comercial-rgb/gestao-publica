@@ -126,7 +126,7 @@ export default async function ConciliacaoBancariaPage({
 
       {/* ══ HONESTIDADE, NO TOPO — não é nota de rodapé (DIRETIVA §4/§7) ══ */}
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
-        <strong className="text-[color:var(--color-ink)]">Origem dos dados: FIXTURE POC (modo MOCK).</strong>{" "}
+        <strong className="text-[color:var(--color-ink)]">Origem dos dados: massa de demonstração (simulada).</strong>{" "}
         As linhas do extrato abaixo vieram de uma <strong>massa sintética</strong> no formato da API de
         Extratos do Banco do Brasil, normalizada e importada pelo caminho real do sistema.{" "}
         <strong>Nenhuma chamada financeira real foi feita</strong> — nem de consulta de saldo/extrato,

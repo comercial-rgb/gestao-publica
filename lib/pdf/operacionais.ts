@@ -320,7 +320,7 @@ export async function montarGuiaArrecadacao(p: { readonly exercicio: number; rea
     subtitulo: "Documento da receita orçamentária",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [identificacao, valores],
-    notas: [g.sinal === -1 ? "Esta guia é uma ANULAÇÃO (ato próprio, append-only)." : "Valores em R$ · registro append-only (a guia anulada permanece na base)."],
+    notas: [g.sinal === -1 ? "Esta guia é uma ANULAÇÃO — ato próprio, que não substitui o original." : "Valores em R$ · a guia anulada permanece registrada."],
   };
 }
 
@@ -392,7 +392,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
     lerSaldosExtra(), lerRetencoes({ exercicio: p.exercicio }), lerDispendiosExtra({ exercicio: p.exercicio }),
   ]);
   const secaoSaldos: SecaoPdf = {
-    titulo: "Saldos por consignatário (5.41)",
+    titulo: "Saldos por consignatário",
     colunas: [
       { rotulo: "Tipo" }, { rotulo: "Consignatário" }, { rotulo: "Ingressado", alinhamento: "direita" },
       { rotulo: "Recolhido", alinhamento: "direita" }, { rotulo: "Saldo a repassar", alinhamento: "direita" },
@@ -400,7 +400,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
     linhas: saldos.map((s) => [`${s.tipoCodigo} ${s.tipoDescricao}`, s.consignatario, brl(s.ingressado), brl(s.dispendido), brl(s.saldo)]),
   };
   const secaoRet: SecaoPdf = {
-    titulo: "Retenções na fonte (5.25)",
+    titulo: "Retenções na fonte",
     colunas: [
       { rotulo: "Data" }, { rotulo: "Tipo" }, { rotulo: "Consignatário" }, { rotulo: "Empenho" },
       { rotulo: "Pagamento" }, { rotulo: "Valor", alinhamento: "direita" },
@@ -408,7 +408,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
     linhas: retencoes.map((r) => [dataBr(r.data), r.tipoCodigo, r.consignatario, r.empenhoNumero ?? "—", r.pagamentoNumero ?? "—", brl(r.valor)]),
   };
   const secaoDisp: SecaoPdf = {
-    titulo: "Recolhimentos — despesa extra (5.43–5.45)",
+    titulo: "Recolhimentos — despesa extra",
     colunas: [
       { rotulo: "Data" }, { rotulo: "Tipo" }, { rotulo: "Consignatário" }, { rotulo: "Histórico" },
       { rotulo: "Valor", alinhamento: "direita" },
@@ -421,7 +421,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
     subtitulo: "Dinheiro de terceiros no caixa",
     periodo: `Exercício ${p.exercicio}`,
     secoes: [secaoSaldos, secaoRet, secaoDisp],
-    notas: ["Valores em R$ · o saldo a repassar é o que o ente ainda deve ao consignatário; o recolhimento nunca excede o retido (5.45/5.107)."],
+    notas: ["Valores em R$ · o saldo a repassar é o que o ente ainda deve ao consignatário; o recolhimento nunca excede o retido."],
   };
 }
 
@@ -429,7 +429,7 @@ export async function montarExtraorcamentario(p: { readonly exercicio: number })
 export async function montarPatrimonio(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
   const [pos, div] = await Promise.all([lerPosicaoPatrimonial({ exercicio: p.exercicio }), lerDividas({ exercicio: p.exercicio })]);
   const posicao: SecaoPdf = {
-    titulo: "Posição patrimonial por classe (5.86)",
+    titulo: "Posição patrimonial por classe",
     colunas: [
       { rotulo: "Classe" }, { rotulo: "Conta" }, { rotulo: "Saldo anterior", alinhamento: "direita" },
       { rotulo: "Ingressos", alinhamento: "direita" }, { rotulo: "Atualizações", alinhamento: "direita" },
@@ -442,7 +442,7 @@ export async function montarPatrimonio(p: { readonly exercicio: number }): Promi
     totais: [pos.classes.length],
   };
   const divida: SecaoPdf = {
-    titulo: "Dívida consolidada por tipo (5.82–5.83)",
+    titulo: "Dívida consolidada por tipo",
     colunas: [{ rotulo: "Tipo" }, { rotulo: "Saldo", alinhamento: "direita" }],
     linhas: [["Mobiliária", brl(div.mobiliaria)], ["Contratual", brl(div.contratual)], ["Total (DC)", brl(div.total)]],
     totais: [2],
@@ -656,14 +656,14 @@ export async function montarProgramacaoFinanceira(p: { readonly exercicio: numbe
     );
     notas.push(
       `CMD vigente: versão ${v.numero}, ato ${v.atoRef}, com efeitos desde ${dataBr(v.vigenteDesde)} ` +
-        `(registrada por ${v.criadoPor}). ${cmd.versoes} versão(ões) no exercício — as anteriores permanecem na base (append-only).`
+        `(registrada por ${v.criadoPor}). ${cmd.versoes} versão(ões) no exercício — as anteriores permanecem registradas.`
     );
     const semCota = v.linhas.filter((l) => l.periodosSemLinha.length > 0);
     if (semCota.length > 0) {
       notas.push(
         `⚠️ Fonte(s) com MÊS SEM COTA (ausência, não zero): ${semCota
           .map((l) => `${l.fonteCodigo} → ${l.periodosSemLinha.map((i) => MESES[i - 1] ?? i).join(", ")}`)
-          .join(" · ")}. Com a limitação de empenho ATIVA, empenhar em fonte/mês sem cota é rejeitado (fail-closed).`
+          .join(" · ")}. Com a limitação de empenho ATIVA, empenhar em fonte/mês sem cota é rejeitado.`
       );
     }
   } else {

@@ -24,7 +24,7 @@ export default async function ReprevisaoPage({
   const bruto = Array.isArray(sp["exercicio"]) ? sp["exercicio"][0] : sp["exercicio"];
   const exercicio = bruto !== undefined && !Number.isNaN(Number.parseInt(bruto, 10)) ? Number.parseInt(bruto, 10) : 2026;
 
-  const cabecalho = <PageHeader titulo="Reprevisão de Receita" subtitulo={`Reestimativas do exercício ${exercicio} (LRF art. 12) — append-only`} />;
+  const cabecalho = <PageHeader titulo="Reprevisão de Receita" subtitulo={`Reestimativas do exercício ${exercicio} (LRF art. 12) — cada reestimativa fica registrada`} />;
 
   let reprevisoes: readonly ReprevisaoRegistrada[];
   try {

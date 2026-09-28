@@ -271,7 +271,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "anotacao", rotulo: "Anotar na ficha", acaoDoCenso: "REGISTRAR_ANOTACAO",
-      aviso: "Elogio, advertência, suspensão, ocorrência ou observação — append-only, com autor.",
+      aviso: "Elogio, advertência, suspensão, ocorrência ou observação — registro permanente, com autor.",
       campos: [
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_ANOTACAO },
         { nome: "data", rotulo: "Data", tipo: "data", obrigatorio: true, largura: 1 },

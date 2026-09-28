@@ -797,7 +797,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
       await comEscritaAutenticada("REGISTRAR_ANOTACAO", (criadoPor) =>
         registrarAnotacaoServidor(prisma, { servidorId, data: dia(c, "data"), tipo: t(c, "tipo") as "ELOGIO", titulo: t(c, "titulo"), texto: t(c, "texto"), criadoPor })
       );
-      return "Anotação registrada na ficha (append-only, com autor).";
+      return "Anotação registrada na ficha (permanente, com autor).";
     }
     case "treinamento": {
       await comEscritaAutenticada("REGISTRAR_TREINAMENTO", (criadoPor) =>

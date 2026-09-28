@@ -27,6 +27,35 @@ async function acaoSimular(formData: FormData): Promise<void> {
   revalidatePath("/integracoes/captura");
 }
 
+/**
+ * OS ESTADOS E OS MODOS EM PORTUGUÊS.
+ *
+ * ⚠️ ELES ERAM IMPRESSOS CRUS — `DRAFT`, `VALIDATED_LOCAL`, `SUBMITTED_MOCK`, `MOCK`. São nomes da
+ * máquina de estados interna, e um servidor municipal não lê estado de enum. O que ele lê é o que
+ * aconteceu com o arquivo dele. O valor interno continua sendo o do banco; o que muda é a leitura.
+ */
+const ROTULO_DO_ESTADO: Readonly<Record<string, string>> = {
+  DRAFT: "Rascunho",
+  VALIDATED_LOCAL: "Validado localmente",
+  SUBMITTED_MOCK: "Submissão simulada",
+  SIMULATED: "Simulado",
+  REJECTED_LOCAL: "Recusado na validação",
+};
+
+const ROTULO_DO_MODO: Readonly<Record<string, string>> = {
+  MOCK: "Simulação",
+  SANDBOX: "Homologação",
+  LIVE: "Produção",
+};
+
+function rotuloDoEstado(e: string): string {
+  return ROTULO_DO_ESTADO[e] ?? e;
+}
+
+function rotuloDoModo(m: string): string {
+  return ROTULO_DO_MODO[m] ?? m;
+}
+
 function BannerHonesto(): React.ReactElement {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
@@ -36,8 +65,8 @@ function BannerHonesto(): React.ReactElement {
             Comissão, e uma constante no JSX viraria mentira silenciosa no dia em que o TCE
             publicasse mais uma entidade. Ver `totalDeSchemasOficiais` no M18. */}
         <li>✓ JSON conforme os <strong>{contarSchemasOficiais()} JSON Schemas oficiais</strong> do TCE (draft 2020-12, versionados no repo com SHA-256 no manifesto).</li>
-        <li>Modo: <Badge status="neutro">MOCK</Badge> — a simulação gera apenas um <code>simulationId</code> interno.</li>
-        <li>⚠ <strong>Transmissão externa não realizada.</strong> SANDBOX/LIVE respondem <code>CREDENTIAL_NOT_CONFIGURED</code> até haver credencial — nunca caem em MOCK.</li>
+        <li>Modo: <Badge status="neutro">Simulação</Badge> — a execução gera apenas um identificador interno de simulação.</li>
+        <li>⚠ <strong>Transmissão externa não realizada.</strong> Homologação e produção respondem <strong>credencial não configurada</strong> até haver credencial — e nunca voltam a simular.</li>
         <li>○ Nenhum protocolo, recibo ou aceite do TCE: isso só existe com resposta real.</li>
       </ul>
     </div>
@@ -58,7 +87,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-6">
-      <PageHeader titulo="SAGRES Captura 2.0 — JSON" subtitulo="A mesma massa do TXT, em JSON, validada contra o schema oficial e simulada (MOCK)." />
+      <PageHeader titulo="SAGRES Captura 2.0 — JSON" subtitulo="A mesma massa do TXT, em JSON, validada contra o contrato oficial e simulada." />
       <BannerHonesto />
 
       {erro !== null && (
@@ -75,11 +104,11 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
           <ul className="space-y-1 text-sm">
             {execucoes.map((x) => (
               <li key={x.correlationId} className="flex flex-wrap items-center gap-2">
-                <Badge status={x.estado === "SIMULATED" ? "ok" : x.estado === "REJECTED_LOCAL" ? "erro" : "neutro"}>{x.estado}</Badge>
+                <Badge status={x.estado === "SIMULATED" ? "ok" : x.estado === "REJECTED_LOCAL" ? "erro" : "neutro"}>{rotuloDoEstado(x.estado)}</Badge>
                 <strong>{x.entidade}</strong>
-                <span className="text-[color:var(--color-ink-2)]">DRAFT → VALIDATED_LOCAL → {x.estado === "SIMULATED" ? "SUBMITTED_MOCK → SIMULATED" : x.estado}</span>
-                {x.simulationId !== null && <code className="text-xs text-[color:var(--color-ink-3)]">sim:{x.simulationId.slice(0, 8)}</code>}
-                <code className="ml-auto text-xs text-[color:var(--color-ink-3)]">{x.modo}</code>
+                <span className="text-[color:var(--color-ink-2)]">Rascunho → validado localmente → {x.estado === "SIMULATED" ? "submissão simulada → simulado" : rotuloDoEstado(x.estado).toLowerCase()}</span>
+                {x.simulationId !== null && <span className="text-xs text-[color:var(--color-ink-3)]">simulação {x.simulationId.slice(0, 8)}</span>}
+                <span className="ml-auto text-xs text-[color:var(--color-ink-3)]">{rotuloDoModo(x.modo)}</span>
               </li>
             ))}
           </ul>
@@ -93,7 +122,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
             <strong>{p.rotulo}</strong>
             <span className="text-[color:var(--color-ink-2)]">{p.registros} registro(s)</span>
             {p.violacoes.length === 0 ? (
-              <Badge status="ok">schema oficial · válido</Badge>
+              <Badge status="ok">contrato oficial · válido</Badge>
             ) : (
               <Badge status="erro">{p.violacoes.length} violação(ões)</Badge>
             )}
@@ -102,7 +131,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
               <input type="hidden" name="entidade" value={p.entidade} />
               <button type="submit" disabled={p.registros === 0}
                 className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)] disabled:opacity-40">
-                Simular submissão (MOCK)
+                Simular submissão
               </button>
             </form>
           </div>

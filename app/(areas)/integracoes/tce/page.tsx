@@ -50,11 +50,11 @@ export default async function ConsultaTcePage(): Promise<React.ReactElement> {
 
       <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-5 text-sm">
         <p className="font-semibold text-[color:var(--color-ink)]">
-          <Badge status="neutro">MODO MOCK</Badge> Retorno sintético — simulação executada
+          <Badge status="neutro">Simulação</Badge> Retorno sintético — simulação executada
         </p>
         <p className="mt-1 text-[color:var(--color-ink-2)]">
-          Os dados do "TCE" vêm de <strong>fixtures conformes ao schema oficial</strong> (OpenAPI versionado), não de uma consulta real.
-          <strong> Nenhuma transmissão externa foi realizada.</strong> SANDBOX/LIVE exigem token (por configuração) e respondem <code>CREDENTIAL_NOT_CONFIGURED</code> — sem fallback.
+          Os dados do "TCE" vêm de <strong>massa conforme o contrato oficial</strong> (OpenAPI versionado), não de uma consulta real.
+          <strong> Nenhuma transmissão externa foi realizada.</strong> SANDBOX/LIVE exigem token (por configuração) e respondem <strong>credencial não configurada</strong> — e não há caminho alternativo.
         </p>
       </div>
 

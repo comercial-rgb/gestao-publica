@@ -58,7 +58,7 @@ export class LiquidacaoDeMaterialBloqueadaError extends Error {
         `Mas a entrada no almoxarifado é ato do M10 (classe de material e quantidade), e ` +
         `liquidar sem ela deixaria o razão com estoque que nenhum movimento explica: a ` +
         `amarração razão × almoxarifado passaria a acusar divergência para sempre. Os dois ` +
-        `são UM ato, e ele é do domínio. Pendência LIQUIDACAO-MATERIAL-ALMOXARIFADO. ` +
+        `são UM ato, e ele ainda não tem tela. ` +
         `Nada foi gravado.`
     );
     this.name = "LiquidacaoDeMaterialBloqueadaError";

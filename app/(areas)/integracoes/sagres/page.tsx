@@ -107,19 +107,19 @@ function BannerHonesto(): React.ReactElement {
  * silenciosa é buraco.
  */
 const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: string; readonly exporta: boolean; readonly nota: string }[] = [
-  { entidade: "Dotacao", secao: "§4.4", exporta: true, nota: "FichaOrcamentaria (a ficha foi desenhada como esta tabela)." },
-  { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Empenho + Ficha." },
-  { entidade: "Liquidacao", secao: "§4.10", exporta: true, nota: "Liquidacao + Empenho + Ficha." },
-  { entidade: "Pagamentos", secao: "§4.12", exporta: true, nota: "Pagamento + conta pagadora (tripla bancária)." },
-  { entidade: "Retencao", secao: "§4.14", exporta: true, nota: "M07 ingresso com pagamentoId; de-para TipoConsignacao → TipoRetencao §5.24." },
-  { entidade: "ReceitaOrcamentaria", secao: "§4.16", exporta: true, nota: "ReceitaArrecadada; conta arrecadadora é parâmetro de exportação." },
-  { entidade: "DespesaExtra", secao: "§4.20", exporta: true, nota: "M07 dispêndio; fonte STN (860/861/862/869) é parâmetro de exportação." },
-  { entidade: "CadastroContaBancaria", secao: "§4.23", exporta: true, nota: "ContaBancaria (tripla banco/agência/conta)." },
-  { entidade: "SaldoMensal", secao: "§4.26", exporta: true, nota: "Soma do extrato até o fim do mês." },
-  { entidade: "MovimentacaoEntreContas", secao: "§4.59", exporta: true, nota: "TransferenciaEntreContas (M09)." },
-  { entidade: "EstornoRetencao", secao: "§4.15", exporta: false, nota: "O M07 já modela ESTORNO_INGRESSO — falta só o layout/exporter. Não implementado nesta POC." },
-  { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: false, nota: "O M07 já modela ESTORNO_DISPENDIO — falta só o layout/exporter. Não implementado nesta POC." },
-  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Exige retenção sobre restos a pagar; a POC não produz essa massa." },
+  { entidade: "Dotacao", secao: "§4.4", exporta: true, nota: "Sai das fichas orçamentárias do exercício." },
+  { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Sai dos empenhos, com a classificação da ficha." },
+  { entidade: "Liquidacao", secao: "§4.10", exporta: true, nota: "Sai das liquidações, com o empenho e a ficha." },
+  { entidade: "Pagamentos", secao: "§4.12", exporta: true, nota: "Sai dos pagamentos, com a conta que pagou." },
+  { entidade: "Retencao", secao: "§4.14", exporta: true, nota: "Sai das retenções feitas dentro de pagamentos, pelo de-para do tipo de retenção (§5.24)." },
+  { entidade: "ReceitaOrcamentaria", secao: "§4.16", exporta: true, nota: "Sai da receita arrecadada; a conta arrecadadora é informada na exportação." },
+  { entidade: "DespesaExtra", secao: "§4.20", exporta: true, nota: "Sai dos recolhimentos; a fonte (860/861/862/869) é informada na exportação." },
+  { entidade: "CadastroContaBancaria", secao: "§4.23", exporta: true, nota: "Sai do cadastro das contas bancárias (banco, agência e conta)." },
+  { entidade: "SaldoMensal", secao: "§4.26", exporta: true, nota: "Soma do extrato bancário até o fim do mês." },
+  { entidade: "MovimentacaoEntreContas", secao: "§4.59", exporta: true, nota: "Sai das transferências entre contas do próprio ente." },
+  { entidade: "EstornoRetencao", secao: "§4.15", exporta: false, nota: "O estorno da retenção já é registrado; a exportação desta entidade ainda não foi construída." },
+  { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: false, nota: "O estorno do recolhimento já é registrado; a exportação desta entidade ainda não foi construída." },
+  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Exige retenção sobre restos a pagar — não há esse fato na massa de demonstração." },
 ];
 
 /** aaaa-mm-dd a partir de um Date UTC — o mesmo formato que a porta e o `<input type="date">` usam. */
@@ -384,7 +384,7 @@ export default async function SagresPage({
         <>
           <Card>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-              <span><span className="text-[color:var(--color-ink-2)]">UG:</span> <strong>{preview.codUnidadeGestora}</strong> <Badge status="neutro">POC</Badge></span>
+              <span><span className="text-[color:var(--color-ink-2)]">UG:</span> <strong>{preview.codUnidadeGestora}</strong> <Badge status="neutro">Demonstração</Badge></span>
               <span>
                 <span className="text-[color:var(--color-ink-2)]">Competência diária:</span> <strong>{preview.competenciaDiaria}</strong>{" "}
                 <Badge status={movimentoDoDia !== undefined ? "ok" : "alerta"}>

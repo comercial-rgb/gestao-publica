@@ -190,7 +190,7 @@ export default async function LancamentosPage({
         // é grave e a tela tem de gritar em vez de exibir o número torto como se fosse normal.
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink)]">
           <strong>{desbalanceados} lançamento(s) com ΣD ≠ ΣC</strong> no recorte. Isso não deveria
-          acontecer: o balanceamento é invariante do motor de partidas. Verifique a consistência do
+          acontecer: o balanceamento é regra permanente da contabilidade. Confira a consistência do
           razão em <a href="/relatorios/consistencia" className="text-[color:var(--color-primary)] hover:underline">Relatórios · Consistência</a>.
         </div>
       ) : null}

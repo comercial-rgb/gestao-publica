@@ -360,7 +360,7 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
       href: "/administracao/auditoria",
       explicacao:
         "O log da borda registra QUEM fez O QUÊ e QUANDO — mas não a qual registro. " +
-        "Pendência nomeada AUDITORIA-SEM-EIXO-DE-REGISTRO.",
+        "O eixo de registro deste rol ainda não foi definido.",
     },
   ],
 });

@@ -35,7 +35,7 @@ export default async function ImportadoresPage(): Promise<React.ReactElement> {
           <li>✓ O <strong>mapa de colunas</strong> é configuração (como o SPEC do banco e a registry do SAGRES): trocar de folha é trocar o mapa, não o código.</li>
           <li>✓ A <strong>prévia não grava nada</strong>. Um arquivo com qualquer violação <strong>não é confirmável</strong> — o erro nomeia linha e campo.</li>
           <li>✓ A confirmação gera os fatos pelos <strong>serviços reais</strong> (empenho → liquidação → pagamento com retenções; arrecadação), com a mesma autorização e trilha de sempre.</li>
-          <li>⚠ <strong>Não existe layout oficial de folha do município</strong> — o arquivo é insumo do ente. As fixtures da POC são <strong>sintéticas</strong> (nenhum servidor ou contribuinte real).</li>
+          <li>⚠ <strong>Não existe layout oficial de folha do município</strong> — o arquivo é insumo do ente. Os dados de demonstração são <strong>sintéticos</strong> (nenhum servidor ou contribuinte real).</li>
           <li>○ Reimportar o mesmo arquivo é <strong>recusa nomeada</strong> (idempotência por SHA-256 da origem).</li>
         </ul>
       </div>
