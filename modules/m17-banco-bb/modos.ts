@@ -38,13 +38,13 @@ export function credencialBbConfigurada(env: NodeJS.ProcessEnv = process.env): b
 export function estadoDoModoBb(modo: ModoBb, env: NodeJS.ProcessEnv = process.env): EstadoModoBb {
   switch (modo) {
     case "MOCK":
-      return { modo, estado: "DISPONIVEL", mensagem: "Fixtures SPEC_BB — leitura sintética, sem chamada externa." };
+      return { modo, estado: "DISPONIVEL", mensagem: "Massa sintética no formato do banco — leitura local, sem nenhuma chamada externa." };
     case "SANDBOX":
       return credencialBbConfigurada(env)
-        ? { modo, estado: "DISPONIVEL", mensagem: "Homologação do BB — credencial presente; leitura real ativável." }
-        : { modo, estado: "CREDENTIAL_NOT_CONFIGURED", mensagem: "SANDBOX exige credencial (BB_APP_A_*) — ainda não configurada. Sem fallback para MOCK." };
+        ? { modo, estado: "DISPONIVEL", mensagem: "Homologação do Banco do Brasil — credencial presente; leitura real pode ser ativada." }
+        : { modo, estado: "CREDENTIAL_NOT_CONFIGURED", mensagem: "A homologação exige credencial, e ela ainda não foi configurada. Não há retorno simulado por acaso: sem credencial, nada é lido." };
     case "LIVE":
-      return { modo, estado: "BLOQUEADO", mensagem: "LIVE (produção) bloqueado nesta missão — nenhuma chamada financeira real (DIRETIVA §4)." };
+      return { modo, estado: "BLOQUEADO", mensagem: "Produção bloqueada neste ambiente — nenhuma chamada financeira real é feita." };
   }
 }
 

@@ -218,6 +218,22 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
     return filha.codigo;
   };
   const idBancos = await idDe(CONTA_BANCOS);
+  /**
+   * ⚠️ A CONTA B TEM CONTA CONTÁBIL PRÓPRIA, E A CORREÇÃO É DE CONCILIAÇÃO (V19).
+   *
+   * As duas contas bancárias apontavam para a MESMA analítica ("BANCOS CONTA MOVIMENTO - DEMAIS
+   * CONTAS"). O efeito: a transferência de A para B ficava NEUTRA no razão (débito e crédito na
+   * mesma conta contábil) e VISÍVEL no extrato de A — e a conciliação da conta A não tinha como
+   * fechar, porque o extrato é POR CONTA BANCÁRIA e o razão é POR CONTA CONTÁBIL. Medido: extrato
+   * 27.500,00 contra contábil 30.000,00, com 2.500,00 sem explicação, e a tela mostrando a recusa
+   * do guard em vez do painel — que é o comportamento CERTO do guard.
+   *
+   * A conta B passa a ser a APLICAÇÃO FINANCEIRA, com a analítica dela. Não é contorno: é a
+   * operação real que o município faz (sobra de caixa da conta movimento para a aplicação de
+   * liquidez imediata), e o lançamento permutativo passa a ter as duas pernas em contas diferentes,
+   * como a escrituração exige.
+   */
+  const idAplicacao = await idDe("1.1.1.1.1.50.00");
 
   // (2) DOMÍNIO. Órgão/UO são POC (99/99001); o resto é referência COMPARTILHADA — UPSERT por chave.
   const orgao = await prisma.orgao.upsert({ where: { codigo: "99" }, update: {}, create: { id: "org-poc", codigo: "99", nome: "PREFEITURA MODELO - POC" } });
@@ -299,7 +315,7 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   await prisma.contaBancaria.createMany({
     data: [
       { id: "cb-poc-a", codigo: "CC-POC-A", descricao: "CONTA MOVIMENTO POC A", fonteId: fonte.id, contaContabilId: idBancos, banco: "001", agencia: "1234", digitoAgencia: "0", conta: "11111", digitoConta: "1" },
-      { id: "cb-poc-b", codigo: "CC-POC-B", descricao: "CONTA MOVIMENTO POC B", fonteId: fonte.id, contaContabilId: idBancos, banco: "001", agencia: "5678", digitoAgencia: "0", conta: "22222", digitoConta: "2" },
+      { id: "cb-poc-b", codigo: "CC-POC-B", descricao: "APLICACAO FINANCEIRA POC", fonteId: fonte.id, contaContabilId: idAplicacao, banco: "001", agencia: "5678", digitoAgencia: "0", conta: "22222", digitoConta: "2" },
     ],
   });
 
@@ -321,7 +337,7 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   // (5) TRANSFERÊNCIA entre as duas contas (TR 5.61, F1) — pelo funil.
   await transferirEntreContas(prisma, {
     contaOrigemId: "cb-poc-a", contaDestinoId: "cb-poc-b", valor: "2500.00",
-    data: D(7, 15), codigo: "1", historico: "Transferencia entre contas proprias - POC", criadoPor: por,
+    data: D(7, 15), codigo: "1", historico: "Aplicacao financeira de sobra de caixa - POC", criadoPor: por,
   });
 
   // (6) EXTRATO BB via o CAMINHO REAL (fixture SPEC_BB → normalização M17 → importarExtratoBb), origem
@@ -336,11 +352,19 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
 
   // ═══ MASSA AMPLIADA (S7, F3) — determinística e idempotente (guarda pela UG POC, no topo) ═══
 
-  // (8) RECEITA ORÇAMENTÁRIA (05/jul) — arrecadação pelo funil real (razão balanceado). A conta
-  // arrecadadora é PARÂMETRO de exportação (o modelo não amarra receita a conta — art. 167).
+  // (8) RECEITA ORÇAMENTÁRIA (05/jul) — arrecadação pelo funil real (razão balanceado).
+  //
+  // ⚠️ A GUIA DECLARA A CONTA QUE RECEBEU O DINHEIRO (V19), e a ausência dela quebrava a
+  // conciliação bancária da demonstração. O campo é opcional no domínio (o legado importado não o
+  // tem) e EXIGIDO pela tela; aqui ele faltava, e o efeito era exatamente o que a recusa do guard
+  // da conciliação dizia, com estas palavras: *"há 1 arrecadação da fonte desta conta SEM conta
+  // bancária declarada — se o razão dela debitou a conta contábil 1.1.1.1.1.19.00, atribua a
+  // conta"*. O crédito de 80.000,00 aparecia no extrato de CC-POC-A e não tinha, do lado do razão,
+  // nada atribuível àquela conta: a identidade da conciliação não fechava e a tela mostrava a
+  // recusa em vez do painel. Declarar a conta é o que o operador faria pela tela.
   const depsM04 = criarM04Deps(prisma);
   await registrarArrecadacao(
-    { exercicio: 2026, naturezaReceita: "11130211", fonte: "500", co: "0001", exercicioFonte: 1, valor: "80000.00", dataArrecadacao: D(7, 5), numeroReceita: "7", criadoPor: por },
+    { exercicio: 2026, naturezaReceita: "11130211", fonte: "500", co: "0001", exercicioFonte: 1, valor: "80000.00", dataArrecadacao: D(7, 5), numeroReceita: "7", contaBancaria: "CC-POC-A", criadoPor: por },
     R_ARRECADACAO, depsM04
   );
 

@@ -69,7 +69,26 @@ const UNIDADE = { id: "ac-uo", codigo: "01001", descricao: "Secretaria de Admini
 const PROGRAMA = { id: "ac-prg", codigo: "0001", descricao: "Gestao Administrativa" };
 const ACAO = { id: "ac-aca", codigo: "2001", descricao: "Manutencao dos Servicos Administrativos" };
 const FONTE = { id: "ac-fnt", codigo: "500", descricao: "Recursos nao vinculados de impostos" };
-const CONTA_BANCARIA = { id: "ac-cb", codigo: "CC-500-01", descricao: "Conta movimento - fonte 500" };
+/**
+ * ⚠️ A TRIPLA BANCÁRIA É OBRIGATÓRIA, E A AUSÊNCIA DELA ERA FALHA DE EXPORTAÇÃO (V19).
+ *
+ * `banco/agência/conta` (com os dígitos) são exigidos pelo cadastro de conta bancária do leiaute do
+ * tribunal, e o gerador é fail-closed: ele RECUSA exportar uma conta sem a tripla, nomeando-a. Esta
+ * conta do cenário de aceite nascia sem ela, e o efeito só aparecia longe daqui — a geração do
+ * pacote de contingência parava em "a conta CC-500-01 não tem a identificação bancária", num
+ * comando que não tem nada a ver com este seed. Em município nenhum existe conta bancária sem
+ * agência e número; a massa passa a refletir isso.
+ */
+const CONTA_BANCARIA = {
+  id: "ac-cb",
+  codigo: "CC-500-01",
+  descricao: "Conta movimento - fonte 500",
+  banco: "001",
+  agencia: "4321",
+  digitoAgencia: "0",
+  conta: "33333",
+  digitoConta: "3",
+};
 const FICHA_ID = "ac-ficha";
 const FICHA_NUMERO = 1;
 
@@ -156,7 +175,15 @@ if (contaBancos === null) {
 }
 await prisma.contaBancaria.upsert({
   where: { codigo: CONTA_BANCARIA.codigo },
-  update: { descricao: CONTA_BANCARIA.descricao, contaContabilId: contaBancos.id },
+  update: {
+    descricao: CONTA_BANCARIA.descricao,
+    contaContabilId: contaBancos.id,
+    banco: CONTA_BANCARIA.banco,
+    agencia: CONTA_BANCARIA.agencia,
+    digitoAgencia: CONTA_BANCARIA.digitoAgencia,
+    conta: CONTA_BANCARIA.conta,
+    digitoConta: CONTA_BANCARIA.digitoConta,
+  },
   create: { ...CONTA_BANCARIA, fonteId: FONTE.id, contaContabilId: contaBancos.id },
 });
 

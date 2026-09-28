@@ -188,6 +188,22 @@ rodar(
   ["tsx", "prisma/seed/sagres-poc.ts"],
   /posição \d+ da fila|Conta SINTÉTICA 5\.2\.2\.1\.2\.00\.00 no roteiro orçamentário de ANULACAO_CREDITO/
 );
+/**
+ * ⚠️ OS DOIS SEEDS QUE FALTAVAM NESTA SEQUÊNCIA, E O CONFERIDOR PRÉ-APRESENTAÇÃO ACHOU (V19).
+ *
+ * `npm run poc:conferir` reprovou o banco montado por este script em dois pontos do BLOCO 1 — "CMD
+ * vigente com cotas > 0: NENHUMA versão" e "fila do art. 141 com saldo a pagar: FILA VAZIA" — e os
+ * dois já tinham seed pronto, fora desta lista: `poc-programacao.ts` (a previsão da receita mais o
+ * cronograma e as metas propostos dela) e `poc-fila.ts` (uma despesa liquidada e NÃO paga, sem a
+ * qual a ordem cronológica não tem o que ordenar, porque a massa principal paga tudo o que liquida).
+ *
+ * Eles vêm DEPOIS da massa principal de propósito: os dois rodam SOBRE ela, com guarda própria.
+ */
+rodar("previsão da receita e programação financeira (CMD/MBA da LOA)", "npx", [
+  "tsx",
+  "prisma/seed/poc-programacao.ts",
+]);
+rodar("fila da ordem cronológica (despesa liquidada e não paga)", "npx", ["tsx", "prisma/seed/poc-fila.ts"]);
 rodar("operador restrito (percurso de dois atores)", "npx", ["tsx", "scripts/poc-usuario-restrito.ts"]);
 // V6 P1.3 — quatro usuários por papel (compras, almoxarifado, contabilidade, tesouraria): nunca o admin em todos os passos.
 rodar("usuários por papel (cadeia por papel)", "npx", ["tsx", "scripts/percursos-usuarios-por-papel.ts"]);

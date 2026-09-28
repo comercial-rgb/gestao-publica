@@ -5,6 +5,7 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
+import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
 import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
@@ -148,7 +149,7 @@ export default async function ConciliacaoBancariaPage({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <Badge status="neutro">origem {extrato.origem}</Badge>
-            <Badge status={modo.estado === "DISPONIVEL" ? "ok" : "alerta"}>modo {modo.modo}</Badge>
+            <Badge status={modo.estado === "DISPONIVEL" ? "ok" : "alerta"}>{rotuloDoModoDeIntegracao(modo.modo)}</Badge>
           </div>
         </div>
 

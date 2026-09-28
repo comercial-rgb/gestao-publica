@@ -14,7 +14,7 @@ export const RESPOSTA_BB_POC_CONTA_A: Record<string, unknown> = {
   listaLancamento: [
     { dataLancamento: 5072026, valorLancamento: 80000.0, indicadorTipoLancamento: "C", textoDescricaoHistorico: "REPASSE RECURSOS ORDINARIOS POC", numeroDocumento: 1001, numeroLancamento: 1 },
     { dataLancamento: 14072026, valorLancamento: 50000.0, indicadorTipoLancamento: "D", textoDescricaoHistorico: "PAGAMENTO SERVICOS POC", numeroDocumento: 2001, numeroLancamento: 2 },
-    { dataLancamento: 15072026, valorLancamento: 2500.0, indicadorTipoLancamento: "D", textoDescricaoHistorico: "TRANSFERENCIA P/ CONTA B POC", numeroDocumento: 3001, numeroLancamento: 3 },
+    { dataLancamento: 15072026, valorLancamento: 2500.0, indicadorTipoLancamento: "D", textoDescricaoHistorico: "APLICACAO FINANCEIRA POC", numeroDocumento: 3001, numeroLancamento: 3 },
   ],
 };
 

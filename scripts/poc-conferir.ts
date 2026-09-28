@@ -656,6 +656,16 @@ function scriptDeSondagem(sondas: readonly Sonda[]): string {
 interface TelaDoRoteiro {
   readonly rota: string;
   readonly sondas: readonly Sonda[];
+  /**
+   * ⚠️ A ROTA QUE PRECISA DE UM PERÍODO COM MOVIMENTO (V19).
+   *
+   * A tela do SAGRES tem competência DIÁRIA e MENSAL, e sem parâmetro ela abre no DIA DE HOJE. A
+   * massa de demonstração tem movimento em doze dias de julho a setembro — então, em qualquer data
+   * fora dessa janela, a tela dizia corretamente "este dia não tem movimento", não havia pacote, e
+   * o conferidor reprovava três sondas. Era um **falso NÃO INICIAR**: não falava do sistema, falava
+   * do calendário. O BLOCO 1 já apura os dias com movimento; esta marca faz o BLOCO 3 usá-los.
+   */
+  readonly usaPeriodoComMovimento?: true;
 }
 
 const TELAS: readonly TelaDoRoteiro[] = [
@@ -732,6 +742,7 @@ const TELAS: readonly TelaDoRoteiro[] = [
   },
   {
     rota: "/integracoes/sagres",
+    usaPeriodoComMovimento: true,
     sondas: [
       { rotulo: "botão baixar pacote", tipo: "seletor", alvo: 'a[href^="/integracoes/sagres/download"]', minimo: 1 },
       // A RÉGUA DE POSIÇÕES é o argumento central do passo SAGRES ("cada campo na coluna exata").
@@ -746,16 +757,28 @@ const TELAS: readonly TelaDoRoteiro[] = [
   },
 ];
 
-async function bloco3Conteudo(page: Page): Promise<void> {
+async function bloco3Conteudo(
+  page: Page,
+  dias: readonly string[],
+  meses: readonly string[]
+): Promise<void> {
   console.log("\n═══ BLOCO 3 — CONTEÚDO E BOTÕES (o que será clicado) ═══");
 
   for (const tela of TELAS) {
-    const nav = await visitar(page, tela.rota).catch((e: unknown) => ({
+    // ⚠️ O ÚLTIMO dia e o último mês COM MOVIMENTO — ver `usaPeriodoComMovimento`. Sem eles a rota
+    // vai crua e a tela abre no dia de hoje, que quase nunca é um dia da massa.
+    const ultimoDia = dias.at(-1);
+    const ultimoMes = meses.at(-1);
+    const rota =
+      tela.usaPeriodoComMovimento === true && ultimoDia !== undefined && ultimoMes !== undefined
+        ? `${tela.rota}?dia=${ultimoDia}&mes=${ultimoMes}`
+        : tela.rota;
+    const nav = await visitar(page, rota).catch((e: unknown) => ({
       ok: false,
       detalhe: e instanceof Error ? e.message : String(e),
     }));
     if (!nav.ok) {
-      conferir(3, tela.rota, false, `não abriu (${nav.detalhe})`, `veja o BLOCO 2 — a rota ${tela.rota} não responde`);
+      conferir(3, rota, false, `não abriu (${nav.detalhe})`, `veja o BLOCO 2 — a rota ${rota} não responde`);
       continue;
     }
 
@@ -793,7 +816,7 @@ async function bloco3Conteudo(page: Page): Promise<void> {
     if (faltando(resultados) && ((await page.evaluate(SCRIPT_TELA_QUEBRADA)) as boolean)) {
       conferir(
         3,
-        `${tela.rota} · tela quebrou (client-side)`,
+        `${rota} · tela quebrou (client-side)`,
         false,
         'a tela caiu em "Application error: a client-side exception" — quase sempre ChunkLoadError de build velho',
         "pare o servidor e suba de novo a partir do build atual: npm run build && npx next start -p 3000"
@@ -809,14 +832,14 @@ async function bloco3Conteudo(page: Page): Promise<void> {
       const ok = r.achados >= s.minimo;
       conferir(
         3,
-        `${tela.rota} · ${s.rotulo}`,
+        `${rota} · ${s.rotulo}`,
         ok,
         ok
           ? `${r.achados} encontrado(s)${r.obs !== "" ? ` — ${r.obs}` : ""}`
           : // A instrução manda dizer EXATAMENTE o que não foi encontrado: é o que permite corrigir
             // sem reabrir o script a 40 minutos da apresentação.
             `NÃO ENCONTRADO — ${s.tipo === "texto" ? `texto "${r.alvo}"` : `seletor \`${r.alvo}\``}${r.obs !== "" ? ` (${r.obs})` : ""}`,
-        `abra ${BASE}${tela.rota} e confirme o elemento; se a tela está vazia, recarregue a massa (npm run seed:sagres-poc)`
+        `abra ${BASE}${rota} e confirme o elemento; se a tela está vazia, recarregue a massa (npm run seed:sagres-poc)`
       );
     }
   }
@@ -1077,7 +1100,7 @@ async function main(): Promise<void> {
   let browser: Browser | undefined;
   let anonimo: BrowserContext | undefined;
   try {
-    const { dias } = await bloco1Massa(prisma);
+    const { dias, meses } = await bloco1Massa(prisma);
 
     browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
@@ -1106,7 +1129,7 @@ async function main(): Promise<void> {
     }
 
     await bloco2Rotas(page, paginaAnonima);
-    await bloco3Conteudo(page);
+    await bloco3Conteudo(page, dias, meses);
     conferirChunksObservados();
     bloco4Contingencia(dias);
   } finally {

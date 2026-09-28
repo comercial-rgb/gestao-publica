@@ -10,6 +10,7 @@ import {
   type EntidadeCaptura,
 } from "../../../../lib/portas/captura";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
 /**
@@ -42,18 +43,14 @@ const ROTULO_DO_ESTADO: Readonly<Record<string, string>> = {
   REJECTED_LOCAL: "Recusado na validação",
 };
 
-const ROTULO_DO_MODO: Readonly<Record<string, string>> = {
-  MOCK: "Simulação",
-  SANDBOX: "Homologação",
-  LIVE: "Produção",
-};
-
 function rotuloDoEstado(e: string): string {
   return ROTULO_DO_ESTADO[e] ?? e;
 }
 
 function rotuloDoModo(m: string): string {
-  return ROTULO_DO_MODO[m] ?? m;
+  // ⚠️ O mapa mora em `lib/rotulos-de-modo.ts`: a conciliação bancária mostra o MESMO modo, e duas
+  // cópias divergiriam no dia em que um modo novo entrasse.
+  return rotuloDoModoDeIntegracao(m);
 }
 
 function BannerHonesto(): React.ReactElement {

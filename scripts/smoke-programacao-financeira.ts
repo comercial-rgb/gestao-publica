@@ -158,33 +158,40 @@ async function main(): Promise<void> {
       `situação lida: "${antes}"`
     );
 
-    // ══ 3. O CRONOGRAMA PROPOSTO DA LEI ORÇAMENTÁRIA ══
+    // ══ 3. O CRONOGRAMA — PROPOSTO AGORA, OU JÁ PROPOSTO PELA PREPARAÇÃO ══
+    //
+    // ⚠️ AS DUAS SAÍDAS SÃO VÁLIDAS, e a distinção importa: `proporCmdDaLoa` grava a versão **1** —
+    // é a proposta inicial, não uma retificação. Num banco que já tem a versão 1 (a sequência de
+    // preparação semeia a programação, porque o conferidor pré-apresentação cobra cronograma com
+    // cotas), propor de novo é recusado pela unicidade, e essa recusa é CERTA. O que este passo
+    // afirma, então, é o ESTADO: existe cronograma com as doze cotas. Retificar é publicar versão
+    // nova, que é outro ato e tem serviço próprio.
     const r1 = await preencherEEnviar(page, "propor-cronograma", [
       { sel: 'input[name="atoRef"]', valor: `Decreto ${SUF}/${String(ANO)}` },
       { sel: 'input[name="vigenteDesde"]', valor: `${String(ANO)}-01-01`, tipo: "data" },
     ]);
     nota(`propor cronograma: ${r1.tipo} — ${r1.texto.slice(0, 160)}`);
-    conferir(
-      "3.1 o cronograma é proposto da previsão da lei orçamentária, em doze cotas",
-      r1.tipo === "ok" && /12 cota/i.test(r1.texto),
-      `${r1.tipo}: ${r1.texto.slice(0, 220)}`
-    );
+    const propostoAgora = r1.tipo === "ok" && /12 cota/i.test(r1.texto);
 
     const r2 = await preencherEEnviar(page, "propor-metas", [
       { sel: 'input[name="atoRef"]', valor: `Decreto ${SUF}-M/${String(ANO)}` },
       { sel: 'input[name="vigenteDesde"]', valor: `${String(ANO)}-01-01`, tipo: "data" },
     ]);
-    conferir(
-      "3.2 as metas bimestrais são propostas, em seis metas",
-      r2.tipo === "ok" && /6 meta/i.test(r2.texto),
-      `${r2.tipo}: ${r2.texto.slice(0, 220)}`
-    );
+    nota(`propor metas: ${r2.tipo} — ${r2.texto.slice(0, 120)}`);
 
     await irPara(n, page, rota);
     const comCronograma = await texto(page);
+    // ⚠️ O ESTADO, E NÃO O CAMINHO: doze cotas de 12.500,00 na matriz — o número que a comissão
+    // confere de cabeça (previsão de 150.000,00 repartida em doze).
     conferir(
-      "3.3 a matriz do cronograma aparece com a fonte e os doze meses",
-      /500/.test(comCronograma) && /dezembro|Dez/i.test(comCronograma),
+      "3.1 existe cronograma vigente com as doze cotas da fonte" +
+        (propostoAgora ? " (proposto AGORA, pela tela)" : " (proposto na preparação do ambiente)"),
+      /500/.test(comCronograma) && /12\.500,00/.test(comCronograma),
+      comCronograma.slice(0, 400)
+    );
+    conferir(
+      "3.2 a matriz cobre os doze meses, até dezembro",
+      /dezembro|Dez/i.test(comCronograma),
       comCronograma.slice(0, 300)
     );
 
