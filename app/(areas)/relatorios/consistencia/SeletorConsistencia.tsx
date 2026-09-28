@@ -5,11 +5,17 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 /** SELETOR de exercício × escopo do Relatório de Consistência — ilha client, o dado mora na URL. */
 const CLASSE = "h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-2 text-sm text-[color:var(--color-ink)] focus-visible:outline-2";
 
+/**
+ * ⚠️ OS RÓTULOS PERDERAM OS NÚMEROS ENTRE PARÊNTESES (V17), e a razão é a regra da casa: nenhum
+ * identificador de cláusula em tela. Estavam como "Pré-envio (7.27)", "Mensal (5.128)" — e
+ * `test/ui/rotulos-de-conformidade.test.ts` não os pegou porque o padrão dele exige o prefixo `TR`
+ * ou o `§`, e aqui o número estava NU. Pendência do instrumento: **CLAUSULA-NUA-FORA-DO-PADRAO**.
+ */
 const ESCOPOS: readonly { readonly valor: string; readonly rotulo: string }[] = [
-  { valor: "PRE_ENVIO", rotulo: "Pré-envio (7.27)" },
-  { valor: "MENSAL", rotulo: "Mensal (5.128)" },
-  { valor: "PLANEJAMENTO", rotulo: "Planejamento (5.129)" },
-  { valor: "ANUAL", rotulo: "Anual (5.130)" },
+  { valor: "PRE_ENVIO", rotulo: "Antes de enviar" },
+  { valor: "MENSAL", rotulo: "Mensal" },
+  { valor: "PLANEJAMENTO", rotulo: "Planejamento" },
+  { valor: "ANUAL", rotulo: "Anual" },
 ];
 
 export function SeletorConsistencia({ exercicio, escopo }: { readonly exercicio: number; readonly escopo: string }): React.ReactElement {

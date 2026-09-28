@@ -350,6 +350,7 @@ export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
   { href: "/relatorios/livros/razao", numero: "Razão", rotulo: "Razão Analítico", descricao: "O razão de uma conta, com saldo corrente linha a linha." },
   { href: "/relatorios/livros/balancete", numero: "Balancete", rotulo: "Balancete de Verificação", descricao: "Saldo e movimento por conta; prova que ΣD = ΣC (art. 50)." },
   { href: "/relatorios/consistencia", numero: "Consistência", rotulo: "Relatório de Consistência", descricao: "As identidades dos demonstrativos, conferidas num lugar só — o diagnóstico pré-envio." },
+  { href: "/relatorios/eliminacoes-intra", numero: "Eliminações", rotulo: "Eliminações Intragovernamentais", descricao: "As operações entre as unidades do próprio ente, que saem do consolidado — e o resíduo que ainda não fecha." },
   { href: "/relatorios/atualizacoes-orcamentarias", numero: "Atualizações", rotulo: "Atualizações Orçamentárias", descricao: "Todo movimento de crédito adicional, por ficha, decreto, fonte e UG." },
 ];
 
