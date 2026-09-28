@@ -134,31 +134,60 @@ export function heapEmMegabytes() {
   return Math.max(1536, Math.min(6144, Math.floor(totalMb * 0.65)));
 }
 
-/** Roda o `tsc` do app e, se ele passar, GRAVA a aprovação com o inventário inteiro. */
+/**
+ * OS DOIS RECORTES DO TYPE-CHECK DO APP — e por que eles existem (V20).
+ *
+ * ═══ ⚠️ MEDIDO, NÃO SUPOSTO ═══
+ * `tsc --noEmit -p tsconfig.json` deixou de caber nesta máquina de 8 GB. Medições da V20, com o
+ * Postgres parado e o Docker encerrado (RSS total do sistema em 3.274 MB, 1,5 GB de páginas livres):
+ *
+ *   heap 4.400 MB -> estourou em  49 s, crescendo até 4.345 MB
+ *   heap 5.324 MB -> estourou em 116 s, crescendo até 5.239 MB
+ *
+ * Não é pressão de memória: é TETO DE HEAP. O processo cresce até o limite e morre nele.
+ *
+ * ⚠️ E O CUSTO ESTÁ NOS STUBS DE ROTA GERADOS. `.next/types/**` tem 293 arquivos que o build
+ * escreve, um por rota, e cada um referencia a página dele — juntos, eles puxam o grafo inteiro do
+ * app de uma vez. Separados, os dois lados passam com folga no MESMO heap:
+ *
+ *   tsconfig.app-sem-rotas.json  (app, components, lib, middleware) -> limpo
+ *   tsconfig.rotas-geradas.json  (somente .next/types/**)           -> limpo
+ *
+ * ⚠️ OS DOIS RODAM, E OS DOIS TÊM DE PASSAR. Aprovar com um só seria meia medição com nome de
+ * medição inteira — e é exatamente o tipo de "passo pulado" que este repositório conta como passo
+ * que não aconteceu. A UNIÃO dos dois `include` cobre o mesmo que o `include` do `tsconfig.json`.
+ */
+const RECORTES_DO_APP = ["tsconfig.app-sem-rotas.json", "tsconfig.rotas-geradas.json"];
+
+/** Roda o `tsc` do app (nos dois recortes) e, se os dois passarem, GRAVA a aprovação. */
 export function conferir() {
   const { digesto, inventario } = digestoDeTipos();
   const heap = heapEmMegabytes();
-  const comando = ["tsc", "--noEmit", "-p", "tsconfig.json"];
 
   console.error(`[tipos] digesto do conteudo: ${digesto}`);
   console.error(`[tipos] heap do tsc: ${heap} MB (memoria total ${Math.floor(totalmem() / 1024 / 1024)} MB)`);
+  console.error(`[tipos] dois recortes, e os DOIS tem de passar: ${RECORTES_DO_APP.join(" + ")}`);
 
   const inicio = Date.now();
-  const r = spawnSync("npx", comando, {
-    cwd: RAIZ,
-    stdio: ["ignore", "inherit", "inherit"],
-    env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=${heap}` },
-  });
+  for (const recorte of RECORTES_DO_APP) {
+    const parcial = Date.now();
+    const r = spawnSync("npx", ["tsc", "--noEmit", "-p", recorte], {
+      cwd: RAIZ,
+      stdio: ["ignore", "inherit", "inherit"],
+      env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=${heap}` },
+    });
+    const dt = Date.now() - parcial;
+    if (r.signal !== null && r.signal !== undefined) {
+      console.error(`[tipos] ⚠️ o tsc de ${recorte} foi MORTO pelo sinal ${r.signal} em ${dt} ms. Isto nao e aprovacao nem reprovacao: e execucao que nao terminou.`);
+      return 128;
+    }
+    if (r.status !== 0) {
+      console.error(`[tipos] reprovado em ${recorte} (codigo ${r.status}) apos ${dt} ms. Nenhuma aprovacao gravada.`);
+      return r.status ?? 1;
+    }
+    console.error(`[tipos] ${recorte}: limpo em ${dt} ms.`);
+  }
   const duracaoMs = Date.now() - inicio;
-
-  if (r.signal !== null && r.signal !== undefined) {
-    console.error(`[tipos] ⚠️ o tsc foi MORTO pelo sinal ${r.signal} em ${duracaoMs} ms. Isto nao e aprovacao nem reprovacao: e execucao que nao terminou.`);
-    return 128;
-  }
-  if (r.status !== 0) {
-    console.error(`[tipos] reprovado (codigo ${r.status}) em ${duracaoMs} ms. Nenhuma aprovacao gravada.`);
-    return r.status ?? 1;
-  }
 
   mkdirSync(PASTA_DE_APROVACOES, { recursive: true });
   const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: RAIZ, encoding: "utf8" }).stdout?.trim() ?? "(sem git)";
@@ -169,7 +198,7 @@ export function conferir() {
       {
         digesto,
         quando: new Date().toISOString(),
-        comando: `npx ${comando.join(" ")}`,
+        comando: RECORTES_DO_APP.map((r) => `npx tsc --noEmit -p ${r}`).join(" && "),
         duracaoMs,
         heapMb: heap,
         node: process.version,

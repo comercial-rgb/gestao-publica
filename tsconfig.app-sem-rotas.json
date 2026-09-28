@@ -1,0 +1,15 @@
+{
+  "//": "RECORTE DE MEDIÇÃO — o MESMO tsconfig do app, sem `.next/types/**`. Ver o motivo em ESTADO-EXECUCAO.md (V20): o type-check do app inteiro pede mais de 5.324 MB de heap e nao cabe nesta maquina de 8 GB; os 293 arquivos de rota gerados pelo build sao a parte que se pode medir em SEPARADO, e sao eles que puxam o grafo inteiro de uma vez. Este recorte NAO substitui o config do app: ele cobre app/, components/ e lib/ e deixa os stubs de rota para uma corrida propria. Passo pulado e passo que nao aconteceu — registre qual dos dois rodou.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "tsBuildInfoFile": "./tsconfig.app-sem-rotas.tsbuildinfo" },
+  "include": [
+    "next-env.d.ts",
+    "middleware.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
+    "components/**/*.ts",
+    "components/**/*.tsx",
+    "lib/**/*.ts",
+    "lib/**/*.tsx"
+  ]
+}

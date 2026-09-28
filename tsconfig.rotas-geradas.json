@@ -1,0 +1,6 @@
+{
+  "//": "RECORTE DE MEDIÇÃO — SOMENTE os stubs de rota que o `next build` gera em `.next/types/`. Eles conferem a assinatura de cada page/route (params, searchParams, handlers) contra o que o Next espera, e sao a metade do config do app que nao cabe junto com o resto nesta maquina. Roda-los em separado mantem a cobertura; rodar so um dos dois e meia medicao, e isso se registra.",
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "tsBuildInfoFile": "./tsconfig.rotas-geradas.tsbuildinfo" },
+  "include": ["next-env.d.ts", ".next/types/**/*.ts"]
+}
