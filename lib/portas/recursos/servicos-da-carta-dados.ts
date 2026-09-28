@@ -52,7 +52,7 @@ export async function listarServicosDaCarta(c: ConsultaDoMolde): Promise<PaginaD
       const rascunhos = s.versoes.filter((v) => v.publicacao === null);
       return {
         id: s.id, titulo: s.titulo, endereco: `/servicos/${s.slug}`, tipo: ROTULO_DO_TIPO[s.tipo] ?? s.tipo,
-        publicada: publicada === undefined ? "nenhuma — fora da carta" : `versão ${publicada.numero} desde ${diaCivilBr(publicada.publicacao?.criadoEm ?? publicada.criadoEm)}`,
+        publicada: publicada === undefined ? "nenhuma (não publicado)" : `versão ${publicada.numero} desde ${diaCivilBr(publicada.publicacao?.criadoEm ?? publicada.criadoEm)}`,
         rascunho: rascunhos.length === 0 ? "—" : rascunhos.map((v) => `v${v.numero}`).join(", "),
         solicitacoes: String(s.versoes.reduce((n, v) => n + v._count.solicitacoes, 0)),
       };
@@ -67,11 +67,11 @@ export async function verServicoDaCarta(id: string): Promise<(DetalheLido & { re
     { rotulo: "Endereço público", valor: `/servicos/${s.slug}` },
     { rotulo: "Tipo", valor: ROTULO_DO_TIPO[s.tipo] ?? s.tipo },
     { rotulo: "Público e categoria", valor: `${s.publico} · ${s.categoria}` },
-    { rotulo: "Assunto do protocolo", valor: `${s.assunto.codigo} — ${s.assunto.nome}`, nota: "Roteiro, sigilo e termo de aceite vêm do assunto." },
+    { rotulo: "Assunto do protocolo", valor: `${s.assunto.codigo} — ${s.assunto.nome}`, nota: "Tramitação, sigilo e termo de aceite são definidos pelo assunto." },
     ...s.versoes.map((v) => {
       const campos = (v.campos as unknown as CampoDoFormulario[]) ?? [];
       return {
-        rotulo: `Versão ${v.numero} — ${v.publicacao === null ? "RASCUNHO" : `publicada em ${diaCivilBr(v.publicacao.criadoEm)}`}`,
+        rotulo: `Versão ${v.numero} — ${v.publicacao === null ? "rascunho" : `publicada em ${diaCivilBr(v.publicacao.criadoEm)}`}`,
         valor: [
           v.descricao,
           `Requisitos: ${v.requisitos}`,
@@ -81,7 +81,7 @@ export async function verServicoDaCarta(id: string): Promise<(DetalheLido & { re
           `Prazo: ${v.prazoDias === null ? "não declarado" : `${v.prazoDias} dias — ${v.fundamentoDoPrazo ?? ""}`}`,
           `Entrada: ${v.setorDeEntrada.codigo} — ${v.setorDeEntrada.nome}`,
           `Formulário: ${campos.map((c) => `${c.rotulo} (${c.tipo}${c.obrigatorio ? ", obrigatório" : ""})`).join("; ")}`,
-          ...(v.publicacao === null ? [] : [`Etapas publicadas: ${((v.publicacao.etapas as unknown as { ordem: number; setor: string }[]) ?? []).map((e) => `${e.ordem}. ${e.setor}`).join("; ") || "o assunto não tem roteiro"}`]),
+          ...(v.publicacao === null ? [] : [`Etapas publicadas: ${((v.publicacao.etapas as unknown as { ordem: number; setor: string }[]) ?? []).map((e) => `${e.ordem}. ${e.setor}`).join("; ") || "o assunto não tem etapas definidas"}`]),
           `Solicitações nesta versão: ${v._count.solicitacoes}`,
         ].join("\n"),
         tipo: "longo" as const,
@@ -99,7 +99,7 @@ export async function verServicoDaCarta(id: string): Promise<(DetalheLido & { re
   return {
     titulo: s.titulo,
     subtitulo: `/servicos/${s.slug} · ${ROTULO_DO_TIPO[s.tipo] ?? s.tipo}`,
-    selos: publicada === undefined ? [{ texto: "FORA DA CARTA — nenhuma versão publicada", tom: "alerta" }] : [{ texto: `NA CARTA — versão ${publicada.numero}`, tom: "ok" }],
+    selos: publicada === undefined ? [{ texto: "Não publicado na carta de serviços", tom: "alerta" }] : [{ texto: `Publicado na carta — versão ${publicada.numero}`, tom: "ok" }],
     dados,
     historico,
     slug: s.slug,
@@ -140,7 +140,7 @@ export async function acaoDoServicoDaCarta(acao: string, servicoId: string, c: C
   const versaoDoFormulario = t(c, "__versao");
   if (versaoDoFormulario !== "" && versaoDoEstado(await rascunhos(servicoId)) !== versaoDoFormulario) throw new RegistroMudouError("Este serviço");
   const r = await comEscritaAutenticada("CONFIGURAR_CARTA_DE_SERVICOS", (criadoPor) => publicarVersaoDoServico(cliente(), { versaoId: t(c, "versaoId"), criadoPor }));
-  return `Versão publicada — é a que a carta mostra agora, com ${r.etapas} etapa(s) copiada(s) do roteiro do assunto.`;
+  return `Versão publicada na carta de serviços, com ${r.etapas} etapa(s) do assunto.`;
 }
 
 export interface LinhaDoCampoDoFormulario {

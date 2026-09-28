@@ -198,16 +198,16 @@ export async function verMaterial(id: string): Promise<DetalheLido | null> {
     ],
     dados: [
       { rotulo: "Descrição detalhada", valor: m.descricaoDetalhada, tipo: "longo",
-        nota: "É esta que vai para o termo de referência da compra." },
+        nota: "Descrição utilizada no termo de referência da compra." },
       { rotulo: "Grupo", valor: `${m.grupo.codigo} — ${m.grupo.descricao}` },
       { rotulo: "Classe contábil", valor: `${m.classeDeMaterial.codigo} — ${m.classeDeMaterial.descricao}`,
-        nota: "É por ela que a entrada e a saída movem a conta de estoque no razão." },
+        nota: "Define a conta de estoque movimentada nas entradas e saídas." },
       { rotulo: "Categoria", valor: ROTULO_DA_CATEGORIA[m.categoria] ?? m.categoria },
       { rotulo: "Unidade de estoque",
         valor: unidadeDeEstoque === undefined
           ? "não declarada"
           : `${unidadeDeEstoque.unidadeDeMedida.sigla} — ${unidadeDeEstoque.unidadeDeMedida.descricao}`,
-        nota: "É a unidade em que o saldo é contado; o fator dela é 1 por definição." },
+        nota: "Unidade em que o saldo é controlado (fator 1)." },
       { rotulo: "Outras unidades",
         valor: m.unidades.filter((u) => !u.ehDeEstoque).length === 0
           ? "nenhuma"
@@ -221,7 +221,7 @@ export async function verMaterial(id: string): Promise<DetalheLido | null> {
         valor: m.elementosDeDespesa.length === 0
           ? "nenhum"
           : m.elementosDeDespesa.map((x) => `${x.naturezaDespesa.codigoCompleto} — ${x.naturezaDespesa.descricao}`).join(" · "),
-        nota: "Sem elemento relacionado, a ordem de compra não sabe em que natureza empenhar." },
+        nota: "Define a natureza em que a ordem de compra é empenhada." },
       { rotulo: "Mínimo e máximo por depósito",
         valor: m.parametros.length === 0
           ? "não definidos"
@@ -350,7 +350,7 @@ export async function verDeposito(id: string): Promise<DetalheLido | null> {
     ],
     dados: [
       { rotulo: "Unidade gestora", valor: `${d.unidadeOrc.codigo} — ${d.unidadeOrc.descricao}`,
-        nota: "Quem pode movimentar este depósito é quem tem permissão nesta unidade." },
+        nota: "Podem movimentar este depósito os usuários com permissão nesta unidade." },
       { rotulo: "Responsável",
         valor: d.responsavel === null ? "não designado" : `${d.responsavel.versoes[0]?.nome ?? "sem nome na versão vigente"} · ${d.responsavel.documento}` },
       { rotulo: "Bloqueios vigentes",
@@ -362,7 +362,7 @@ export async function verDeposito(id: string): Promise<DetalheLido | null> {
               ...(inventarioAberto ? ["inventário aberto"] : []),
             ].join(" · ")
           : "nenhum",
-        nota: "Inventário aberto bloqueia por si — é o que torna a contagem comparável." },
+        nota: "Enquanto houver inventário aberto, a movimentação fica bloqueada." },
       { rotulo: "Criado em", valor: diaCivilBr(d.criadoEm), tipo: "data" },
     ],
     historico: [
@@ -542,9 +542,9 @@ export async function verRequisicao(id: string): Promise<DetalheLido | null> {
       { rotulo: "Solicitante", valor: r.solicitante },
       { rotulo: "Data da requisição", valor: diaCivilBr(r.dataRequisicao), tipo: "data" },
       { rotulo: "Total solicitado", valor: p.solicitado,
-        nota: "Somado dos itens, na unidade de estoque de cada material." },
+        nota: "Soma dos itens, na unidade de estoque de cada material." },
       { rotulo: "Ainda não atendido", valor: p.naoAtendido,
-        nota: "Derivado: solicitado menos as saídas vinculadas ao item. Não existe coluna de atendido." },
+        nota: "Quantidade solicitada menos as saídas já registradas para o item." },
       ...r.itens.map((i) => ({
         rotulo: `Item ${i.material.codigo}`,
         valor:
@@ -557,7 +557,7 @@ export async function verRequisicao(id: string): Promise<DetalheLido | null> {
             }))
           ).toFixed(3)}`,
         ...(i.material.controlaLote
-          ? { nota: "Material com lote: a saída EXIGE de qual lote sai." }
+          ? { nota: "Material controlado por lote: cada saída deve indicar o lote." }
           : {}),
       })),
     ],
@@ -682,15 +682,15 @@ export async function verInventarioDeEstoque(id: string): Promise<DetalheLido | 
         valor: aberto ? "em aberto" : diaCivilBr(inv.dataFechamento!), tipo: "data" },
       { rotulo: "Termo de abertura",
         valor: inv.termoAbertura?.nomeOriginal ?? "não anexado",
-        nota: "O termo é um documento do acervo — ele entra na fila de assinaturas." },
+        nota: "O termo é incluído no acervo de documentos e segue para assinatura." },
       { rotulo: "Termo de fechamento", valor: inv.termoFechamento?.nomeOriginal ?? "não anexado" },
       { rotulo: "Contagens registradas", valor: String(inv.contagens.length), tipo: "inteiro" },
       { rotulo: "Divergências",
         valor: divergencias.length === 0 ? "nenhuma" : divergencias.join(" · "),
         tipo: "longo",
         nota:
-          "Comparado contra a posição NA DATA DE ABERTURA. Divergência não vira ajuste " +
-          "automático: ajuste é movimento próprio, com motivo." },
+          "Comparação com o saldo na data de abertura. A divergência não gera ajuste " +
+          "automático; o ajuste é registrado como movimento próprio, com motivo." },
     ],
     historico: inv.contagens.map((c) => ({
       id: c.id,
@@ -1103,7 +1103,7 @@ export async function verClasseDeMaterial(id: string): Promise<DetalheLido | nul
     selos: [{ texto: x.ativa ? "Ativa" : "Inativa", tom: x.ativa ? "ok" : "neutro" }],
     dados: [
       { rotulo: "Conta de estoque", valor: `${x.contaContabil.codigo} — ${x.contaContabil.nome}`,
-        nota: "É nela que o valor do estoque desta classe fica, e é ela que a entrada e a saída movem." },
+        nota: "Conta em que o valor do estoque desta classe é registrado nas entradas e saídas." },
       { rotulo: "Materiais nesta classe", valor: String(x.materiais.length), tipo: "inteiro" },
       { rotulo: "Criada em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
     ],
@@ -1234,7 +1234,7 @@ export async function verUnidadeDeMedida(id: string): Promise<DetalheLido | null
       { rotulo: "Uso como unidade de estoque",
         valor: String(x.materiais.filter((m) => m.ehDeEstoque).length),
         tipo: "inteiro",
-        nota: "A unidade de estoque tem fator 1 por definição — ela é a própria medida do saldo." },
+        nota: "A unidade de estoque tem fator 1, pois é a medida do saldo." },
       { rotulo: "Criada em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
     ],
     historico: x.materiais.map((m) => ({

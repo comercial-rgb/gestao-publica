@@ -130,7 +130,7 @@ export async function verPlano(id: string): Promise<DetalheLido | null> {
       motivo: `${x.areaTematica.codigo} — ${x.areaTematica.descricao}${x.estrategia === null ? "" : ` · ${x.estrategia}`}`,
       valor: x.valorPrevisto.toFixed(2),
       href: `/planejamento/ppa/programas/${x.id}`,
-      hrefRotulo: "abrir o programa no plano",
+      hrefRotulo: "Abrir o programa no plano",
     })),
     ...p.previsoes.map((x) => ({
       id: x.id,
@@ -159,10 +159,10 @@ export async function verPlano(id: string): Promise<DetalheLido | null> {
       { texto: `${p.previsoes.length} previsão(ões) de receita`, tom: "neutro" },
     ],
     dados: [
-      { rotulo: "Quadriênio", valor: `${p.anoInicio} a ${p.anoFim}`, nota: "Quatro exercícios, as duas pontas inclusas (CF art. 165 §1º)." },
+      { rotulo: "Quadriênio", valor: `${p.anoInicio} a ${p.anoFim}`, nota: "Quatro exercícios, incluindo o primeiro e o último (CF, art. 165, § 1º)." },
       { rotulo: "Lei", valor: p.leiRef },
       { rotulo: "Publicação", valor: diaCivilBr(p.dataPublicacao), tipo: "data" },
-      { rotulo: "Valor previsto dos programas", valor: totalPrevisto.toFixed(2), tipo: "dinheiro", nota: "Soma dos tetos por programa — não é a soma das ações." },
+      { rotulo: "Valor previsto dos programas", valor: totalPrevisto.toFixed(2), tipo: "dinheiro", nota: "Soma dos valores previstos dos programas, independentemente da soma das ações." },
       { rotulo: "Cadastrado em", valor: diaCivilBr(p.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: p.criadoPor },
     ],
@@ -314,12 +314,12 @@ export async function verProgramaDoPpa(id: string): Promise<DetalheLido | null> 
     ],
     dados: [
       { rotulo: "Plano", valor: `${p.plano.anoInicio} a ${p.plano.anoFim}` },
-      { rotulo: "Objetivo do programa", valor: p.programa.objetivo ?? "— (não informado no cadastro do programa)", nota: "O objetivo é do programa (planejamento) e não se repete por plano." },
+      { rotulo: "Objetivo do programa", valor: p.programa.objetivo ?? "— (não informado no cadastro do programa)", nota: "Objetivo definido no cadastro do programa." },
       { rotulo: "Área temática", valor: `${p.areaTematica.codigo} — ${p.areaTematica.descricao}` },
       { rotulo: "Público-alvo", valor: p.publicoAlvo === null ? "—" : `${p.publicoAlvo.codigo} — ${p.publicoAlvo.descricao}` },
       { rotulo: "Estratégia neste plano", valor: p.estrategia ?? "—", tipo: "longo" },
       { rotulo: "Valor previsto do quadriênio", valor: p.valorPrevisto.toFixed(2), tipo: "dinheiro" },
-      { rotulo: "Soma das metas financeiras das ações", valor: somaDasAcoes.toFixed(2), tipo: "dinheiro", nota: "A diferença entre o previsto e a soma das ações é o que o controle interno confere." },
+      { rotulo: "Soma das metas financeiras das ações", valor: somaDasAcoes.toFixed(2), tipo: "dinheiro", nota: "A diferença entre o valor previsto e a soma das ações serve de conferência." },
       { rotulo: "Cadastrado em", valor: diaCivilBr(p.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: p.criadoPor },
     ],
@@ -529,7 +529,7 @@ export async function verLdo(id: string): Promise<DetalheLido | null> {
         `Meta anual ${m.ano}`,
         m.criadoEm,
         m.criadoPor,
-        `Receita total ${m.receitaTotal.toFixed(2)} (primária ${m.receitaPrimaria.toFixed(2)}) · despesa total ${m.despesaTotal.toFixed(2)} (primária ${m.despesaPrimaria.toFixed(2)}) · resultado primário DERIVADO ${resultadoPrimario(toMoney(m.receitaPrimaria.toFixed(2)), toMoney(m.despesaPrimaria.toFixed(2))).toFixed(2)} · nominal ${m.resultadoNominal.toFixed(2)}`
+        `Receita total ${m.receitaTotal.toFixed(2)} (primária ${m.receitaPrimaria.toFixed(2)}) · despesa total ${m.despesaTotal.toFixed(2)} (primária ${m.despesaPrimaria.toFixed(2)}) · resultado primário ${resultadoPrimario(toMoney(m.receitaPrimaria.toFixed(2)), toMoney(m.despesaPrimaria.toFixed(2))).toFixed(2)} · nominal ${m.resultadoNominal.toFixed(2)}`
       )
     ),
     ...l.riscos.map((r) => linha(r.id, `Risco fiscal (passivo ${r.codigoPassivo}): ${r.descricaoPassivo}`, r.criadoEm, r.criadoPor, `Providência: ${r.descricaoProvidencia} (${r.valorProvidencia.toFixed(2)})`, r.valorPassivo.toFixed(2))),
@@ -552,7 +552,7 @@ export async function verLdo(id: string): Promise<DetalheLido | null> {
     ],
     dados: [
       { rotulo: "Exercício", valor: String(l.exercicio) },
-      { rotulo: "Trâmite", valor: situacao, nota: "Derivado das datas — não há coluna de situação." },
+      { rotulo: "Trâmite", valor: situacao, nota: "Conforme as datas de envio, devolução e sanção." },
       { rotulo: "Envio ao Legislativo", valor: l.dataEnvioLegislativo === null ? "—" : diaCivilBr(l.dataEnvioLegislativo), tipo: "data" },
       { rotulo: "Devolução ao Executivo", valor: l.dataDevolucaoExecutivo === null ? "—" : diaCivilBr(l.dataDevolucaoExecutivo), tipo: "data" },
       { rotulo: "Protocolo", valor: l.numeroProtocolo ?? "—" },

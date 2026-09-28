@@ -242,8 +242,8 @@ export async function protocolarNaTela(campos: Campos): Promise<string> {
     return (
       `Pedido de acesso à informação protocolado sob o número ${r.protocolo}. ` +
       (r.configuracaoVersao === null
-        ? "O ente ainda não publicou a configuração do prazo: o pedido corre, e a data será informada quando houver norma publicada."
-        : `O prazo segue a versão ${r.configuracaoVersao} da configuração, que fica registrada neste pedido.`)
+        ? "O ente ainda não publicou a configuração do prazo; o pedido segue normalmente, e a data limite será informada após a publicação."
+        : `O prazo segue a versão ${r.configuracaoVersao} da configuração, registrada neste pedido.`)
     );
   });
 }
@@ -258,8 +258,8 @@ export async function distribuirNaTela(campos: Campos): Promise<string> {
       criadoPor,
     });
     return r.repetido
-      ? "Este encaminhamento já estava registrado. Nada foi feito de novo — nem o processo foi tramitado outra vez."
-      : "Pedido encaminhado ao setor, e o processo tramitou junto.";
+      ? "Este encaminhamento já estava registrado; nenhuma nova tramitação foi feita."
+      : "Pedido encaminhado ao setor, com a tramitação do processo correspondente.";
   });
 }
 
@@ -271,8 +271,8 @@ export async function receberNaTela(campos: Campos): Promise<string> {
       criadoPor,
     });
     return r.repetido
-      ? "Este recebimento já estava registrado. Nada foi feito de novo."
-      : "Pedido recebido no setor. O processo foi recebido junto.";
+      ? "Este recebimento já estava registrado."
+      : "Pedido recebido no setor, juntamente com o processo correspondente.";
   });
 }
 
@@ -286,8 +286,8 @@ export async function prorrogarNaTela(campos: Campos): Promise<string> {
       criadoPor,
     });
     return r.repetido
-      ? "Esta prorrogação já estava registrada. O prazo não foi esticado outra vez."
-      : "Prorrogação registrada. O novo limite aparece no prazo acima, e o requerente lê a mensagem na consulta dele.";
+      ? "Esta prorrogação já estava registrada; o prazo não foi prorrogado novamente."
+      : "Prorrogação registrada. O novo prazo aparece acima, e a mensagem fica disponível ao requerente na consulta do pedido.";
   });
 }
 
@@ -304,10 +304,10 @@ export async function responderNaTela(campos: Campos): Promise<string> {
       sufixoDaChave: t(campos, "__chave"),
       criadoPor,
     });
-    if (r.repetido) return "Este registro já existia. Nada foi gravado de novo.";
+    if (r.repetido) return "Este registro já existia; nada foi alterado.";
     return entregar
-      ? "Resposta ENTREGUE ao requerente. Ela passa a valer para a contagem do prazo de recurso."
-      : "Prévia registrada. Ela NÃO foi entregue: não aparece para o requerente e não inicia prazo de recurso.";
+      ? "Resposta entregue ao requerente. A partir dela, conta-se o prazo para recurso."
+      : "Prévia registrada, ainda não entregue: não aparece para o requerente e não inicia prazo de recurso.";
   });
 }
 
@@ -319,7 +319,7 @@ export async function interporNaTela(campos: Campos): Promise<string> {
       sufixoDaChave: t(campos, "__chave"),
       criadoPor,
     });
-    return r.repetido ? "Este recurso já estava registrado." : "Recurso registrado, e ele aguarda decisão.";
+    return r.repetido ? "Este recurso já estava registrado." : "Recurso registrado, aguardando decisão.";
   });
 }
 
@@ -333,6 +333,6 @@ export async function decidirRecursoNaTela(campos: Campos): Promise<string> {
       sufixoDaChave: t(campos, "__chave"),
       criadoPor,
     });
-    return r.repetido ? "Esta decisão já estava registrada." : "Recurso decidido, e o requerente lê a decisão na consulta dele.";
+    return r.repetido ? "Esta decisão já estava registrada." : "Recurso decidido. A decisão fica disponível ao requerente na consulta do pedido.";
   });
 }

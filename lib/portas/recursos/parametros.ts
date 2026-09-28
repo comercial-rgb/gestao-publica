@@ -29,25 +29,25 @@ const CAMPOS_DA_VERSAO: readonly CampoDoMolde[] = [
   {
     nome: "metodo", rotulo: "Método", tipo: "selecao", obrigatorio: true, largura: 2,
     opcoes: OPCOES_DE_METODO,
-    ajuda: "MCASP 1.1.5: depreciação para tangíveis, amortização para intangíveis, exaustão para recursos naturais.",
+    ajuda: "MCASP: depreciação para bens tangíveis, amortização para intangíveis e exaustão para recursos naturais.",
   },
   { nome: "vidaUtilMeses", rotulo: "Vida útil (meses)", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 1200 },
   {
     nome: "percentualResidual", rotulo: "Valor residual (%)", tipo: "inteiro", obrigatorio: true, largura: 1,
     minimo: 0, maximo: 99,
-    ajuda: "A fração do valor que NÃO se deprecia. 10 = 10%. Um residual de 100% significaria que o bem nunca se deprecia.",
+    ajuda: "Percentual do valor que não é depreciado. Ex.: 10 = 10%.",
   },
   {
     nome: "vigenteDesde", rotulo: "Vigente desde a competência (AAAA-MM)", tipo: "texto", largura: 2,
     placeholder: "2026-05",
     ajuda:
-      "A primeira competência calculada por esta versão. Em branco: a seguinte à última já processada " +
-      "(ou desde o início). Uma competência já processada não é alcançada — para corrigir o passado, " +
-      "estorne a execução e reprocesse.",
+      "Primeira competência calculada com esta versão. Em branco, vale a partir da competência seguinte " +
+      "à última processada. Competências já processadas não são alteradas; para corrigi-las, estorne o " +
+      "processamento e processe novamente.",
   },
   {
     nome: "motivo", rotulo: "Motivo da versão", tipo: "texto", obrigatorio: true, largura: 4,
-    ajuda: "Por que este parâmetro. Quem ler o histórico daqui a um ano não terá a quem perguntar.",
+    ajuda: "Justificativa do parâmetro, que ficará registrada no histórico.",
   },
 ];
 
@@ -57,9 +57,9 @@ export const PARAMETROS_DE_ATUALIZACAO: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Parâmetro da classe",
   rota: "/patrimonio/parametros-de-atualizacao",
   descricao:
-    "Método, vida útil e valor residual de cada classe de bens — a régua da atualização por " +
-    "competência. Cada definição é uma versão com autor, motivo e vigência; classe sem parâmetro " +
-    "não é atualizada, e o sistema recusa em vez de inventar uma vida útil.",
+    "Método, vida útil e valor residual de cada classe de bens, usados na depreciação, amortização " +
+    "ou exaustão mensal. Cada definição é registrada como versão, com responsável, motivo e vigência. " +
+    "Sem parâmetro, a classe não é atualizada.",
   campos: [
     { nome: "classeDeBensId", rotulo: "Classe de bens", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     ...CAMPOS_DA_VERSAO,
@@ -92,8 +92,8 @@ export const PARAMETROS_DE_ATUALIZACAO: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Definir nova versão do parâmetro",
       acaoDoCenso: "DEFINIR_PARAMETRO_DE_ATUALIZACAO",
       aviso:
-        "A versão nova vale a partir da competência que ela declara (ou da seguinte à última processada). " +
-        "As já processadas guardam a memória de cálculo com a versão que usaram — nada do passado muda.",
+        "A nova versão vale a partir da competência informada (ou da seguinte à última processada). " +
+        "As competências já processadas mantêm a versão utilizada.",
       campos: CAMPOS_DA_VERSAO,
     },
     {
@@ -101,8 +101,8 @@ export const PARAMETROS_DE_ATUALIZACAO: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Encerrar a atualização desta classe",
       acaoDoCenso: "DEFINIR_PARAMETRO_DE_ATUALIZACAO",
       aviso:
-        "Grava uma versão que declara a classe como NÃO atualizável: o processamento por " +
-        "competência passa a recusá-la. Para retomar, defina uma versão nova.",
+        "Registra uma versão que encerra a atualização da classe; o processamento mensal deixa " +
+        "de considerá-la. Para retomar, defina uma nova versão.",
       campos: [
         { nome: "motivo", rotulo: "Motivo do encerramento", tipo: "texto", obrigatorio: true, largura: 4 },
       ],

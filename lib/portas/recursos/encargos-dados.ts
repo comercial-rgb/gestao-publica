@@ -58,7 +58,7 @@ export async function listarComponentesDeEncargo(c: ConsultaDoMolde): Promise<Pa
       const v = k.versoes.find((x) => x.aprovacao !== null && vigente(x, hoje));
       return {
         id: k.id, codigo: k.codigo, descricao: k.descricao, tipo: ROTULO_DO_TIPO[k.tipo] ?? k.tipo, regime: k.regime,
-        vigente: v === undefined ? "nenhuma aprovada" : `${pct(v.aliquota)} desde ${v.competenciaInicio}${v.sintetica ? " (SINTÉTICA)" : ""}`,
+        vigente: v === undefined ? "nenhuma aprovada" : `${pct(v.aliquota)} desde ${v.competenciaInicio}${v.sintetica ? " (versão sintética de demonstração)" : ""}`,
         grupo: k.grupoDeEmpenho?.grupo.codigo ?? "sem grupo",
       };
     }),
@@ -72,11 +72,11 @@ export async function verComponenteDeEncargo(id: string): Promise<(DetalheLido &
     { rotulo: "Código", valor: k.codigo },
     { rotulo: "Descrição", valor: k.descricao },
     { rotulo: "Tipo", valor: ROTULO_DO_TIPO[k.tipo] ?? k.tipo },
-    { rotulo: "Regime do contracheque", valor: k.regime, nota: "Contracheque de outro regime: o componente é NÃO APLICÁVEL a ele." },
-    { rotulo: "Grupo de empenho", valor: k.grupoDeEmpenho?.grupo.codigo ?? "", nota: "Sem grupo, a apuração calcula e o empenho recusa nomeando o componente." },
+    { rotulo: "Regime do contracheque", valor: k.regime, nota: "O componente não se aplica a contracheques de outro regime." },
+    { rotulo: "Grupo de empenho", valor: k.grupoDeEmpenho?.grupo.codigo ?? "", nota: "Sem grupo de empenho, a apuração é feita, mas o empenho do componente não é realizado." },
     ...k.versoes.map((v) => ({
       rotulo: `Versão desde ${v.competenciaInicio}${v.competenciaFim === null ? "" : ` até ${v.competenciaFim}`}`,
-      valor: `${pct(v.aliquota)} sobre ${v.incidencias.map((i) => i.rubrica.codigo).sort().join(" + ")}${v.teto === null ? "" : `, teto ${toMoney(v.teto).toFixed(2)}`} — ${v.aprovacao === null ? "AGUARDANDO APROVAÇÃO" : "aprovada"}${v.sintetica ? " — SINTÉTICA (perfil de teste, sem validade normativa)" : ""}`,
+      valor: `${pct(v.aliquota)} sobre ${v.incidencias.map((i) => i.rubrica.codigo).sort().join(" + ")}${v.teto === null ? "" : `, teto ${toMoney(v.teto).toFixed(2)}`} — ${v.aprovacao === null ? "aguardando aprovação" : "aprovada"}${v.sintetica ? " — versão sintética de demonstração, sem validade normativa" : ""}`,
       nota: `Fundamento: ${v.fundamentacaoLegal}`,
       tipo: "longo" as const,
     })),
@@ -85,13 +85,13 @@ export async function verComponenteDeEncargo(id: string): Promise<(DetalheLido &
     { id: `k-${k.id}`, oQue: "Componente cadastrado", quando: diaCivilBr(k.criadoEm), registradoEm: diaCivilBr(k.criadoEm), por: k.criadoPor },
     ...k.versoes.flatMap((v) => [
       { id: v.id, oQue: `Versão desde ${v.competenciaInicio} cadastrada (${pct(v.aliquota)})`, quando: diaCivilBr(v.criadoEm), registradoEm: diaCivilBr(v.criadoEm), por: v.criadoPor, motivo: v.fundamentacaoLegal },
-      ...(v.aprovacao === null ? [] : [{ id: v.aprovacao.id, oQue: `Versão desde ${v.competenciaInicio} APROVADA`, quando: diaCivilBr(v.aprovacao.criadoEm), registradoEm: diaCivilBr(v.aprovacao.criadoEm), por: v.aprovacao.criadoPor, motivo: v.aprovacao.motivo }]),
+      ...(v.aprovacao === null ? [] : [{ id: v.aprovacao.id, oQue: `Versão desde ${v.competenciaInicio} aprovada`, quando: diaCivilBr(v.aprovacao.criadoEm), registradoEm: diaCivilBr(v.aprovacao.criadoEm), por: v.aprovacao.criadoPor, motivo: v.aprovacao.motivo }]),
     ]),
   ];
   return {
     titulo: `${k.codigo} — ${k.descricao}`,
     subtitulo: `${ROTULO_DO_TIPO[k.tipo] ?? k.tipo} · ${k.regime}`,
-    selos: k.versoes.some((v) => v.aprovacao === null) ? [{ texto: "VERSÃO AGUARDANDO APROVAÇÃO", tom: "alerta" }] : [],
+    selos: k.versoes.some((v) => v.aprovacao === null) ? [{ texto: "Versão aguardando aprovação", tom: "alerta" }] : [],
     dados,
     historico,
     versoes: k.versoes.map((v) => ({ id: v.id, rotulo: `desde ${v.competenciaInicio} — ${pct(v.aliquota)}`, aprovada: v.aprovacao !== null })),
@@ -124,7 +124,7 @@ export async function criarComponenteDeEncargo(c: Campos): Promise<string> {
 export async function acaoDoComponenteDeEncargo(acao: string, _componenteId: string, c: Campos): Promise<string> {
   if (acao !== "aprovar-versao") throw new Error(`Ação desconhecida: ${acao}`);
   await comEscritaAutenticada("APROVAR_ENCARGO_DA_FOLHA", (criadoPor) => aprovarVersaoDoEncargo(cliente(), { versaoId: t(c, "versaoId"), ...(t(c, "motivo") !== "" ? { motivo: t(c, "motivo") } : {}), criadoPor }));
-  return "Versão APROVADA. Ela passa a valer nas apurações das competências da vigência; as apurações já gravadas NÃO mudam — apure de novo para ver a diferença.";
+  return "Versão aprovada. Ela passa a valer nas apurações das competências da vigência; as apurações já registradas não mudam. Para aplicar a nova versão, apure novamente.";
 }
 
 export interface RubricaParaBase {

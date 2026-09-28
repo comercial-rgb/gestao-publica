@@ -75,8 +75,8 @@ export function CabecalhoPublico({
         // que fazer com ela, e escondê-la faria a demonstração parecer configurada quando não está.
         <p className="border-t border-[color:var(--color-border)] bg-[color:var(--color-status-alerta-bg)] px-4 py-1.5 text-xs text-[color:var(--color-status-alerta-fg)] sm:px-6">
           {identidade.pendencia === "BANCO_INDISPONIVEL"
-            ? "As consultas estão indisponíveis agora: o banco de dados não respondeu."
-            : "A identidade da instituição ainda não foi configurada em Administração › Apresentação."}
+            ? "As consultas estão temporariamente indisponíveis. Tente novamente em alguns instantes."
+            : "A identificação da instituição ainda não foi configurada (Administração › Apresentação)."}
         </p>
       ) : null}
     </header>

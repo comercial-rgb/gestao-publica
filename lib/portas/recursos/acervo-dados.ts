@@ -154,7 +154,7 @@ export async function verClasseDeBens(id: string): Promise<DetalheLido | null> {
       {
         rotulo: "Conta do ativo",
         valor: `${x.contaContabilAtivo.codigo} — ${x.contaContabilAtivo.nome}`,
-        nota: "É por esta conta que os bens desta classe entram na contabilidade. Ela é sempre analítica: conta sintética não recebe lançamento.",
+        nota: "Conta analítica em que os bens desta classe são registrados na contabilidade.",
       },
       { rotulo: "Espécie", valor: ROTULO_DA_ESPECIE[x.especie] ?? x.especie },
       { rotulo: "Bens nesta classe", valor: String(x._count.bens), tipo: "inteiro" },
@@ -427,7 +427,7 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
       {
         rotulo: "Classe",
         valor: `${x.classeDeBens.codigo} — ${x.classeDeBens.descricao}`,
-        nota: `Os bens desta classe entram pela conta ${x.classeDeBens.contaContabilAtivo.codigo} — ${x.classeDeBens.contaContabilAtivo.nome}.`,
+        nota: `Os bens desta classe são registrados na conta ${x.classeDeBens.contaContabilAtivo.codigo} — ${x.classeDeBens.contaContabilAtivo.nome}.`,
       },
       {
         rotulo: "Como entrou",
@@ -444,13 +444,13 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
         rotulo: "Valor contábil",
         valor: valorContabil.toFixed(2),
         tipo: "dinheiro",
-        nota: "Soma dos movimentos de valor, com o sinal de cada tipo. É o teto de uma baixa: não se baixa mais do que o bem vale.",
+        nota: "Resultado dos movimentos de valor registrados. A baixa não pode superar este valor.",
       },
       {
         rotulo: "Movimentos de valor",
         valor: String(x._count.movimentos),
         tipo: "inteiro",
-        nota: "Aquisição, reavaliação, depreciação e baixa. O cadastro do bem não cria nenhum deles: valor é outro ato.",
+        nota: "Aquisição, reavaliação, depreciação e baixa, registradas separadamente do cadastro do bem.",
       },
       { rotulo: "Cadastrado em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: x.criadoPor },
@@ -479,7 +479,7 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
           estornado: m.estornos.length > 0,
           // V3 (pacote 2, unidade 4): a análise do estorno — só para o movimento VIVO e original.
           ...(m.estornoDeId === null && m.estornos.length === 0
-            ? { href: rotaDoEstorno("valor", m.id), hrefRotulo: "analisar estorno" }
+            ? { href: rotaDoEstorno("valor", m.id), hrefRotulo: "Analisar estorno" }
             : {}),
         };
       }),
@@ -492,7 +492,7 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
         motivo: m.motivo,
         estornado: m.estornos.length > 0,
         ...(m.estornoDeId === null && m.estornos.length === 0
-          ? { href: rotaDoEstorno("gestao", m.id), hrefRotulo: "analisar estorno" }
+          ? { href: rotaDoEstorno("gestao", m.id), hrefRotulo: "Analisar estorno" }
           : {}),
       })),
     ],

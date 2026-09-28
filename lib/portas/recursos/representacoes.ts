@@ -17,14 +17,15 @@ export const REPRESENTACOES: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Representação",
   rota: "/cadastros/representacoes",
   descricao:
-    "Quem age em nome de uma pessoa do cadastro pela carta de serviços: a conta de uma pessoa física, o documento que " +
-    "fundamenta e a vigência. Revogada, a conta deixa de protocolar, acompanhar e baixar documentos da representada.",
+    "Representantes autorizados a agir em nome de uma pessoa nos serviços pela internet, com o documento que " +
+    "fundamenta a representação e a vigência. Após a revogação, o representante não pode mais protocolar, " +
+    "acompanhar pedidos nem baixar documentos da representada.",
   campos: [
     { nome: "representadaId", rotulo: "Pessoa representada", tipo: "referencia", catalogo: "pessoas", obrigatorio: true, largura: 2 },
-    { nome: "representanteUsuario", rotulo: "Conta do representante (pessoa física vinculada)", tipo: "referencia", catalogo: "contas-com-pessoa-fisica", obrigatorio: true, largura: 2 },
+    { nome: "representanteUsuario", rotulo: "Usuário do representante (pessoa física)", tipo: "referencia", catalogo: "contas-com-pessoa-fisica", obrigatorio: true, largura: 2 },
     { nome: "fundamento", rotulo: "Documento que fundamenta (procuração, contrato social, ata)", tipo: "texto", obrigatorio: true, largura: 4 },
     { nome: "vigenciaInicio", rotulo: "Início da vigência", tipo: "data", obrigatorio: true, largura: 1 },
-    { nome: "vigenciaFim", rotulo: "Fim da vigência (vazio = sem termo)", tipo: "data", largura: 1 },
+    { nome: "vigenciaFim", rotulo: "Fim da vigência (em branco, sem prazo)", tipo: "data", largura: 1 },
   ],
   colunas: [
     { nome: "representada", cabecalho: "Representada", tipo: "link" },
@@ -36,7 +37,7 @@ export const REPRESENTACOES: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "revogar", rotulo: "Revogar a representação", acaoDoCenso: "REGISTRAR_REPRESENTACAO", irreversivel: true,
-      aviso: "A partir do dia do efeito, a conta não age nem acompanha em nome da representada. O que já foi protocolado continua registrado com a representação usada.",
+      aviso: "A partir da data de efeito, o representante não pode agir nem acompanhar pedidos em nome da representada. Os protocolos já feitos permanecem registrados com a representação utilizada.",
       campos: [
         { nome: "dataEfeito", rotulo: "Data de efeito", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },

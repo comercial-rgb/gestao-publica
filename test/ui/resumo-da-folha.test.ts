@@ -69,7 +69,7 @@ describe("CSV e PDF — a mesma consulta, conferida pelo conteúdo", () => {
     expect(plano).toContain("Resumo da folha mensal de 2026-05");
     expect(plano).toContain("86.419.752,30");
     expect(plano).toContain("Patronal (ente)");
-    expect(plano).toContain("não se soma ao líquido");
+    expect(plano).toContain("não altera o líquido");
     expect(plano).toContain("Custo do ente (bruto + patronal)");
     expect(plano.replace(/ /g, "")).toContain("PROFESSORAMARIADASDORES");
   }, 90_000);

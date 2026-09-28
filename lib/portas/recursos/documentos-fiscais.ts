@@ -34,8 +34,8 @@ export const DOCUMENTOS_FISCAIS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Documento fiscal recebido",
   rota: "/licitacoes/documentos-fiscais",
   descricao:
-    "A nota, o recibo ou o CT-e do fornecedor, com itens. Conferir contra a origem é um fato; " +
-    "cancelar é outro. Registrar o documento não dá entrada em estoque nem liquida a despesa.",
+    "Notas fiscais, recibos e CT-e recebidos dos fornecedores, com os itens. A conferência e o cancelamento são " +
+    "registrados separadamente. O registro do documento não dá entrada em estoque nem liquida a despesa.",
   campos: [
     { nome: "emitenteId", rotulo: "Emitente", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "modelo", rotulo: "Modelo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_MODELO },
@@ -73,7 +73,7 @@ export const DOCUMENTOS_FISCAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Conferir o documento",
       acaoDoCenso: "CONFERIR_DOCUMENTO_FISCAL",
       aviso:
-        "A conferência é um fato com data e motivo. Não afirma autorização fiscal. Documento já conferido, cancelado ou substituído é recusado.",
+        "Registra a conferência com data e motivo, sem validar a autorização fiscal do documento. Não se aplica a documento já conferido, cancelado ou substituído.",
       campos: [
         { nome: "data", rotulo: "Data da conferência", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo (mínimo 5 caracteres)", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -85,7 +85,7 @@ export const DOCUMENTOS_FISCAIS: DefinicaoDeRecurso = definirRecurso({
       acaoDoCenso: "CANCELAR_DOCUMENTO_FISCAL",
       irreversivel: true,
       aviso:
-        "Cancelar é um fato novo; o original permanece. Documento que já lastreia recebimento ou liquidação viva é recusado.",
+        "O cancelamento é registrado e o documento original permanece no histórico. Não se aplica a documento vinculado a recebimento ou liquidação ativos.",
       campos: [
         { nome: "data", rotulo: "Data do cancelamento", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo (mínimo 5 caracteres)", tipo: "texto", obrigatorio: true, largura: 3 },

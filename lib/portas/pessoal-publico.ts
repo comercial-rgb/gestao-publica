@@ -78,10 +78,10 @@ export interface DemonstrativoDePessoal {
 }
 
 const SEM_POLITICA =
-  "O município ainda não declarou a política de publicação de pessoal. O demonstrativo por servidor depende de um ato do ente que diga, com fundamento, quais informações são publicáveis — e enquanto esse ato não existir, nada por servidor é publicado. Os totais por unidade abaixo não dependem dele: não contêm dado pessoal.";
+  "O município ainda não aprovou a política de publicação de pessoal. Sem esse ato, com o respectivo fundamento legal, o demonstrativo por servidor não é publicado. Os totais por unidade, que não contêm dados pessoais, permanecem disponíveis.";
 
 const SEM_FOLHA_FECHADA =
-  "Não há folha fechada nesta competência. O demonstrativo publica apenas folhas fechadas: uma folha ainda em cálculo muda a cada recálculo, e publicá-la faria o portal exibir números que mudam sozinhos.";
+  "Não há folha fechada nesta competência. O demonstrativo apresenta apenas folhas fechadas, cujos valores não estão mais sujeitos a recálculo.";
 
 export async function demonstrativoDePessoal(competenciaPedida: string): Promise<DemonstrativoDePessoal> {
   const prisma = cliente();

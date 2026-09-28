@@ -161,8 +161,8 @@ export function DetalheDeRecurso({
               correção é um valor novo, e o anterior continua visível no histórico. */}
           {(camposAdicionais ?? []).length === 0 ? (
             <p className="text-xs text-[color:var(--color-ink-2)]">
-              Esta entidade não declarou campo adicional nenhum para {def.rotuloSingular.toLowerCase()}.
-              Campos adicionais se cadastram por unidade gestora — não são coluna do sistema.
+              Esta entidade não definiu campos adicionais para {def.rotuloSingular.toLowerCase()}.
+              Os campos adicionais são cadastrados por unidade gestora.
             </p>
           ) : (
             <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -185,9 +185,8 @@ export function DetalheDeRecurso({
         <Card>
           <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Anexos</h2>
           <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
-            O download passa pelo servidor, que confere a verificação (SHA-256) do arquivo antes
-            de entregá-lo: um arquivo trocado no disco depois de anexado é recusado em vez de ser
-            servido como se fosse o original.
+            Antes de cada download, o sistema confere a integridade do arquivo. Um arquivo
+            alterado depois de anexado não é entregue.
           </p>
           {anexos}
         </Card>
@@ -200,8 +199,8 @@ export function DetalheDeRecurso({
               aconteceu) e o instante do REGISTRO (quando alguém digitou). Mostrar só uma
               faria o movimento de março, lançado em maio, parecer de maio. */}
           <p className="mb-3 text-[11px] text-[color:var(--color-ink-2)]">
-            Cada linha é um movimento gravado — nada aqui se apaga nem se altera. A correção de
-            um movimento é outro movimento, que aponta para o original.
+            Os registros do histórico não podem ser alterados nem excluídos. A correção de um
+            movimento é registrada como novo movimento, vinculado ao original.
           </p>
           {(historico ?? []).length === 0 ? (
             <p className="text-xs text-[color:var(--color-ink-3)]">
@@ -256,11 +255,10 @@ export function DetalheDeRecurso({
               segunda contagem nesta tela seria a segunda verdade sobre a mesma execução. O
               link leva à consulta que já existe, com o filtro deste registro aplicado. */}
           <p className="mb-3 text-[11px] text-[color:var(--color-ink-2)]">
-            Os números não são recontados aqui: cada link leva à consulta que já responde
-            aquela pergunta, com o filtro deste registro aplicado.
+            Cada link abre a consulta correspondente, já filtrada por este registro.
           </p>
           {(def.relacionados ?? []).length === 0 ? (
-            <EstadoVazio titulo="Nada relacionado" descricao="Este cadastro não aponta para outra consulta." />
+            <EstadoVazio titulo="Nada relacionado" descricao="Não há consultas relacionadas a este cadastro." />
           ) : (
             <ul className="space-y-3">
               {(def.relacionados ?? []).map((r) => (

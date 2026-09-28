@@ -66,7 +66,7 @@ export async function etiquetasDosBens(ids: readonly string[]): Promise<LoteDeEt
       continue;
     }
     if (!textoCodificavelEmCode128(b.codigoDeBarras)) {
-      semCodigo.push({ id: b.id, numeroTombamento: b.numeroTombamento, descricao: b.descricao, motivo: `o código gravado "${b.codigoDeBarras}" tem caractere fora do ASCII e não cabe em Code 128` });
+      semCodigo.push({ id: b.id, numeroTombamento: b.numeroTombamento, descricao: b.descricao, motivo: `o código "${b.codigoDeBarras}" contém caracteres não aceitos no código de barras` });
       continue;
     }
     etiquetas.push({

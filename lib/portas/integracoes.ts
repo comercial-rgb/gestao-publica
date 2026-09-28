@@ -51,8 +51,8 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
     {
       chave: "sagres",
       titulo: "SAGRES 2026 — TXT",
-      descricao: "Arquivos diário e mensal em largura fixa, validados e empacotados (ZIP + manifesto SHA-256).",
-      modo: "GERAÇÃO LOCAL",
+      descricao: "Arquivos diário e mensal no leiaute de largura fixa, validados e reunidos em pacote compactado com manifesto de integridade.",
+      modo: "Geração local",
       estado: "OPERACIONAL",
       ultimoEvento: resumoOperacao(opSagres),
       hash: null,
@@ -63,8 +63,8 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
     {
       chave: "captura",
       titulo: "SAGRES Captura 2.0 — JSON",
-      descricao: "Mesma massa em JSON, validada contra o contrato oficial e simulada.",
-      modo: "MOCK",
+      descricao: "Os mesmos dados em formato JSON, validados conforme o leiaute oficial, com envio simulado.",
+      modo: "Modo de demonstração",
       estado: "SIMULACAO",
       ultimoEvento: resumoOperacao(opCaptura),
       hash: ultimaCaptura?.hashPayload ?? null,
@@ -75,8 +75,8 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
     {
       chave: "bb",
       titulo: "Banco do Brasil",
-      descricao: "Extrato e saldo (leitura). Agência/conta mascaradas na UI e no log; nenhuma chamada financeira.",
-      modo: "MOCK",
+      descricao: "Consulta de extrato e saldo, somente leitura. Agência e conta aparecem mascaradas, e nenhuma operação financeira é realizada.",
+      modo: "Modo de demonstração",
       estado: bbSandbox.estado === "DISPONIVEL" ? "OPERACIONAL" : "AGUARDANDO_CREDENCIAL",
       ultimoEvento: resumoOperacao(opSagres), // o extrato BB entra pela importação (IMPORTAR_EXTRATO)
       hash: null,
@@ -85,13 +85,13 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
       // ela responde ("o banco e o razão batem?") é de tesouraria, não de canal.
       acaoHref: "/financeiro/conciliacao",
       acaoRotulo: "Abrir conciliação bancária",
-      detalhe: `SANDBOX: ${bbSandbox.mensagem} · LIVE: bloqueado (DIRETIVA §4).`,
+      detalhe: `Homologação: ${bbSandbox.mensagem} · Produção: envio real desativado neste ambiente.`,
     },
     {
       chave: "apitce",
       titulo: "API de Consulta TCE-PB",
-      descricao: "Gateway de consulta (UG/período) — comparação dados locais × TCE.",
-      modo: "MOCK",
+      descricao: "Consulta por unidade gestora e período, com comparação entre os dados locais e os do Tribunal.",
+      modo: "Modo de demonstração",
       estado: "SIMULACAO",
       ultimoEvento: resumoOperacao(opTce),
       hash: null,
@@ -99,8 +99,8 @@ export async function montarCentralIntegracoes(): Promise<readonly CardIntegraca
       acaoRotulo: "Comparar local × TCE",
       // Recorte 3/32 rotas (dotacoes/empenhos/pagamentos); SANDBOX/LIVE exigem token do TCE.
       detalhe:
-        "Massa conforme o contrato oficial publicado (openapi-sagrescaptura.json). Recorte da demonstração: 3 de 32 rotas. " +
-        "SANDBOX/LIVE exigem token (por configuração) — respondem CREDENTIAL_NOT_CONFIGURED, sem fallback.",
+        "Dados de demonstração no leiaute oficial publicado pelo Tribunal, restritos a dotações, empenhos e pagamentos. " +
+        "A consulta real exige credencial do TCE-PB, ainda não configurada neste ambiente.",
     },
   ];
 }

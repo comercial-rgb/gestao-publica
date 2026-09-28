@@ -375,11 +375,11 @@ export async function verDocumentoFiscal(
         rotulo: "A liquidar",
         valor: saldo.aLiquidar.toFixed(2),
         tipo: "dinheiro",
-        nota: "Total − Σ liquidações vivas (anulações copiam a FK e não inflacionam).",
+        nota: "Valor total menos as liquidações registradas, descontadas as anulações.",
       },
       {
         rotulo: "Validação estrutural",
-        valor: d.validacaoEstrutural ?? "— (digitação; não é autorização fiscal)",
+        valor: d.validacaoEstrutural ?? "— (documento digitado, sem validação de autorização fiscal)",
         tipo: "longo",
       },
       { rotulo: "Registrado em", valor: diaCivilBr(d.criadoEm), tipo: "data" },

@@ -127,7 +127,7 @@ export async function analiseDoEstorno(eixo: EixoDoEstorno, movimentoId: string)
         temMemoria: m.temMemoria,
         execucao: a.execucao === null ? null : { competencia: a.execucao.competencia, escopo: a.execucao.escopo === "BEM" ? "um bem" : "a classe", itens: a.execucao.itens },
         arrastados: a.arrastados.map((x) => itemDeValor(x, null)),
-        resultados: a.resultados.map((r) => (r.origemTipo === "PATRIMONIAL_GANHO_ALIENACAO" ? "o lançamento do GANHO na alienação" : "o lançamento da PERDA na alienação")),
+        resultados: a.resultados.map((r) => (r.origemTipo === "PATRIMONIAL_GANHO_ALIENACAO" ? "o lançamento do ganho na alienação" : "o lançamento da perda na alienação")),
         dependentes: a.dependentes.map((d) => itemDeValor(d, d.porque, d.impacto)),
         informativos: a.posterioresDoBem.map((x) => itemDeValor(x, null)),
         bloqueios: a.bloqueios,

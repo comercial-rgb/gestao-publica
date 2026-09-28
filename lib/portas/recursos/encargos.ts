@@ -32,9 +32,9 @@ export const ENCARGOS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Componente de encargo",
   rota: "/folha/encargos",
   descricao:
-    "Os encargos que o ENTE deve sobre a folha, por regime: cada componente com versões vigentes por competência, " +
-    "alíquota, base (as rubricas que incidem), teto e fundamento. Não é desconto do servidor e não muda o contracheque. " +
-    "A versão só entra no cálculo depois de aprovada por outra pessoa.",
+    "Encargos patronais sobre a folha, por regime: cada componente com versões por competência, alíquota, rubricas " +
+    "da base, teto e fundamento legal. Não são descontos do servidor e não alteram o contracheque. Cada versão só é " +
+    "aplicada após aprovação por pessoa diferente de quem a cadastrou.",
   campos: [
     { nome: "codigo", rotulo: "Código (maiúsculas, dígitos e hífen)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "RGPS-PATRONAL" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -53,7 +53,7 @@ export const ENCARGOS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "aprovar-versao", rotulo: "Aprovar uma versão", acaoDoCenso: "APROVAR_ENCARGO_DA_FOLHA",
-      aviso: "Aprovar é conferir alíquota, base, teto e fundamento contra o ato do ente. Quem cadastrou a versão não a aprova. Uma versão SINTÉTICA é perfil de teste e continua dita como tal.",
+      aviso: "Confira alíquota, base, teto e fundamento com o ato do ente antes de aprovar. Quem cadastrou a versão não pode aprová-la. Versões de demonstração continuam identificadas como tal.",
       campos: [
         { nome: "versaoId", rotulo: "Versão a aprovar", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "motivo", rotulo: "Observação da conferência (opcional)", tipo: "texto", largura: 2 },

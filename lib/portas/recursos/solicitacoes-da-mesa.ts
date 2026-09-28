@@ -26,8 +26,8 @@ export const SOLICITACOES_DA_MESA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Solicitação",
   rota: "/protocolo/solicitacoes",
   descricao:
-    "Os pedidos protocolados pela carta de serviços. Cada um é um processo digital: tramitar, receber e pedir parecer " +
-    "acontecem no processo; aqui a mesa emite exigência ao requerente, decide e libera documento de resposta.",
+    "Pedidos protocolados pela carta de serviços. Cada pedido tramita como processo digital; nesta tela são " +
+    "emitidas exigências ao requerente, registradas as decisões e liberados os documentos de resposta.",
   campos: [],
   colunas: [
     { nome: "protocolo", cabecalho: "Protocolo", tipo: "link" },
@@ -44,12 +44,12 @@ export const SOLICITACOES_DA_MESA: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "emitir-exigencia", rotulo: "Emitir exigência ao requerente", acaoDoCenso: "DECIDIR_SOLICITACAO_DE_SERVICO",
-      aviso: "O texto vai ao requerente como está escrito — sem despacho interno, parecer ou nome de servidor. Enquanto não houver resposta, a solicitação não é decidida.",
+      aviso: "O texto é enviado ao requerente exatamente como escrito; não inclua despacho interno, parecer ou nome de servidor. A solicitação aguarda a resposta do requerente para ser decidida.",
       campos: [{ nome: "mensagemAoRequerente", rotulo: "Mensagem ao requerente (o que falta e como enviar)", tipo: "textoLongo", obrigatorio: true, largura: 4 }],
     },
     {
       nome: "decidir", rotulo: "Decidir a solicitação", acaoDoCenso: "DECIDIR_SOLICITACAO_DE_SERVICO", irreversivel: true,
-      aviso: "A decisão encerra o processo. A mensagem é o que o requerente lê; o fundamento interno fica no processo e não é mostrado a ele. Deferir uma atualização cadastral cria a versão nova do cadastro — e recusa se o cadastro mudou desde o pedido.",
+      aviso: "A decisão encerra o processo. O requerente recebe apenas a mensagem; o fundamento interno fica registrado no processo. O deferimento de atualização cadastral gera nova versão do cadastro, desde que o cadastro não tenha sido alterado após o pedido.",
       campos: [
         { nome: "resultado", rotulo: "Resultado", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [{ valor: "DEFERIDA", rotulo: "Deferida" }, { valor: "INDEFERIDA", rotulo: "Indeferida" }] },
         { nome: "mensagemAoRequerente", rotulo: "Mensagem ao requerente", tipo: "textoLongo", obrigatorio: true, largura: 3 },

@@ -26,8 +26,8 @@ export const CLASSES_DE_BENS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Classe de bens",
   rota: "/patrimonio/classes-de-bens",
   descricao:
-    "Como o acervo se agrupa — móveis e imóveis, por natureza — e, para cada grupo, a conta " +
-    "do ativo em que os bens daquela classe são registrados na contabilidade.",
+    "Classificação dos bens móveis e imóveis por natureza, com a conta do ativo em que os bens de " +
+    "cada classe são registrados na contabilidade.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "1.2.3" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -52,7 +52,7 @@ export const CLASSES_DE_BENS: DefinicaoDeRecurso = definirRecurso({
       obrigatorio: true,
       largura: 3,
       opcoes: [],
-      ajuda: "Onde os bens desta classe entram na contabilidade. Só contas analíticas do ativo.",
+      ajuda: "Conta do ativo em que os bens desta classe são registrados. Apenas contas analíticas.",
     },
   ],
   colunas: [
@@ -96,8 +96,8 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Bem patrimonial",
   rota: "/patrimonio/bens-patrimoniais",
   descricao:
-    "O acervo do município, bem a bem: o que é, em que classe entra, quando foi adquirido e " +
-    "como entrou. O valor não se informa aqui — ele vem dos movimentos patrimoniais.",
+    "Cadastro dos bens patrimoniais do município: descrição, classe, data e forma de incorporação. " +
+    "O valor do bem é formado pelos movimentos patrimoniais registrados.",
   campos: [
     {
       nome: "numeroTombamento",
@@ -108,7 +108,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       placeholder: "TOMB-0001",
       // ⚠️ INFORMADO, NÃO GERADO — e a ajuda diz isso a quem digita, porque a pergunta
       // "de onde tiro este número?" nasce na primeira vez que alguém abre esta tela.
-      ajuda: "A numeração é do município. O sistema não a inventa.",
+      ajuda: "Número de tombamento adotado pelo município.",
     },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
     {
@@ -118,7 +118,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       obrigatorio: true,
       largura: 2,
       opcoes: [],
-      ajuda: "É a classe que determina em que conta do ativo o bem é registrado.",
+      ajuda: "A classe define a conta do ativo em que o bem é registrado.",
     },
     { nome: "dataAquisicao", rotulo: "Data de aquisição", tipo: "data", obrigatorio: true, largura: 1 },
     {
@@ -127,7 +127,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       tipo: "selecao",
       largura: 2,
       opcoes: [],
-      ajuda: "Opcional. Adquirido, recebido em doação, comodato, permuta — conforme o rol do ente.",
+      ajuda: "Opcional. Aquisição, doação, comodato, permuta, conforme os tipos cadastrados pelo ente.",
     },
   ],
   colunas: [
@@ -195,7 +195,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       nome: "mover-localizacao",
       rotulo: "Mover de localização",
       acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",
-      aviso: "Muda onde o bem está guardado. Não toca a contabilidade — valor é outro eixo.",
+      aviso: "Altera a localização do bem, sem efeito contábil.",
       campos: [
         { nome: "localizacaoId", rotulo: "Nova localização", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -206,7 +206,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       nome: "atribuir-responsavel",
       rotulo: "Atribuir responsável",
       acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",
-      aviso: "Quem responde pela guarda do bem a partir desta data. O bem continua sendo do ente.",
+      aviso: "Define o responsável pela guarda do bem a partir desta data. A propriedade continua sendo do ente.",
       campos: [
         { nome: "responsavelId", rotulo: "Responsável", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -267,8 +267,8 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Gerar etiqueta",
       acaoDoCenso: "GERAR_ETIQUETA_DE_BEM",
       aviso:
-        "O código é o próprio número de tombamento. Se o bem já tem etiqueta, esta ação " +
-        "devolve a mesma — reimprimir não muda o código já colado.",
+        "O código de barras corresponde ao número de tombamento. Se o bem já possui etiqueta, " +
+        "a reimpressão mantém o mesmo código.",
     },
 
     // ═══ ENT12 — O EIXO DE VALOR, e ele é OUTRO EIXO ═══
@@ -288,8 +288,8 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Registrar entrada de valor",
       acaoDoCenso: "REGISTRAR_ENTRADA_AVULSA",
       aviso:
-        "Esta ação LANÇA NO RAZÃO, ao contrário das de gestão. O evento precisa ter roteiro " +
-        "contábil parametrizado; sem ele o sistema recusa em vez de escolher uma conta.",
+        "Esta ação gera lançamento contábil. O evento precisa ter roteiro contábil cadastrado; " +
+        "sem roteiro, o registro não é realizado.",
       campos: [
         {
           // ⚠️ ROL FECHADO, e os dois valores são os que `zEntradaAvulsaInput` aceita. A
@@ -311,9 +311,9 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Baixar do acervo",
       acaoDoCenso: "BAIXAR_BEM",
       aviso:
-        "Reduz o valor contábil do bem e lança no razão. Não se baixa mais do que o bem vale " +
-        "— o valor atual está nos dados acima. A venda com apuração de ganho ou perda é a ação " +
-        "\"Alienar\", abaixo.",
+        "Reduz o valor contábil do bem e gera lançamento contábil. A baixa não pode superar o " +
+        "valor atual do bem, informado nos dados acima. Para venda com apuração de ganho ou perda, " +
+        "use a ação \"Alienar\".",
       campos: [
         {
           nome: "tipo", rotulo: "Tipo de baixa", tipo: "selecao", obrigatorio: true, largura: 1,
@@ -325,7 +325,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
         // V3 (pacote 2) — O MOTIVO DO ROL DO ENTE (TR 5.19.30), ligado ao ato. As opções vêm
         // de `MotivoDeBaixa` ativos (chaveadas pelo nome do campo); o texto livre continua
         // sendo o histórico. O domínio recusa motivo inativo ou inexistente.
-        { nome: "motivoDeBaixaId", rotulo: "Motivo de baixa (rol do ente)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "motivoDeBaixaId", rotulo: "Motivo de baixa", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Histórico (texto livre)", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -342,8 +342,8 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Reavaliar",
       acaoDoCenso: "REGISTRAR_REAVALIACAO",
       aviso:
-        "Lança no razão pelo roteiro de REAVALIACAO_AUMENTO ou REAVALIACAO_REDUCAO. A redução " +
-        "não passa do valor contábil da classe. Informe o valor da VARIAÇÃO, não o novo valor " +
+        "Gera lançamento contábil pelo roteiro de reavaliação (aumento ou redução). A redução " +
+        "não pode superar o valor contábil. Informe o valor da variação, e não o novo valor " +
         "do bem.",
       campos: [
         {
@@ -363,9 +363,9 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Registrar redução ao valor recuperável",
       acaoDoCenso: "REGISTRAR_IMPAIRMENT",
       aviso:
-        "Impairment (MCASP): o bem passou a valer menos do que os livros dizem, por dano, " +
-        "obsolescência ou desuso. Lança no razão pelo roteiro de IMPAIRMENT e não passa do " +
-        "valor contábil da classe.",
+        "Redução ao valor recuperável (MCASP): registra a perda de valor do bem por dano, " +
+        "obsolescência ou desuso. Gera lançamento contábil pelo roteiro correspondente e não " +
+        "pode superar o valor contábil.",
       campos: [
         { nome: "valor", rotulo: "Valor da redução (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -380,22 +380,22 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Alienar (venda com apuração de ganho ou perda)",
       acaoDoCenso: "ALIENAR_BEM",
       aviso:
-        "Operação composta, numa só transação: baixa o valor bruto do bem, baixa a depreciação " +
-        "acumulada dele e apura ganho ou perda contra o valor da venda. A receita da venda é " +
-        "identificada pela GUIA (exercício e número da arrecadação) e precisa ser uma " +
-        "arrecadação viva de alienação de bens. Precisam estar parametrizados os roteiros de " +
-        "BAIXA_ALIENACAO, BAIXA_DE_ATUALIZACAO_ACUMULADA e do resultado (ganho ou perda).",
+        "Em uma única operação, baixa o valor bruto do bem e a depreciação acumulada e apura o " +
+        "ganho ou a perda em relação ao valor da venda. A receita da venda é identificada pela " +
+        "guia (exercício e número da arrecadação), que deve corresponder a uma arrecadação de " +
+        "alienação de bens não estornada. Exige roteiros contábeis cadastrados para a baixa por " +
+        "alienação, a baixa da depreciação acumulada e o resultado (ganho ou perda).",
       campos: [
         { nome: "valorVenda", rotulo: "Valor da venda (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         {
           nome: "exercicioDaReceita", rotulo: "Exercício da receita", tipo: "inteiro", largura: 1,
-          minimo: 2000, maximo: 2100, ajuda: "Em branco: o ano da data do fato.",
+          minimo: 2000, maximo: 2100, ajuda: "Em branco, considera o ano da data do fato.",
         },
         {
           nome: "numeroDaReceita", rotulo: "Número da receita arrecadada (guia)", tipo: "texto", largura: 2,
-          ajuda: "Em branco: a alienação é registrada sem receita vinculada, e a venda fica a conciliar.",
+          ajuda: "Em branco, a alienação é registrada sem receita vinculada, e a venda fica pendente de conciliação.",
         },
-        { nome: "motivoDeBaixaId", rotulo: "Motivo de baixa (rol do ente)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "motivoDeBaixaId", rotulo: "Motivo de baixa", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Histórico (edital, leilão, comprador)", tipo: "texto", obrigatorio: true, largura: 3 },
       ],
@@ -413,7 +413,7 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
     {
       rotulo: "Etiqueta para impressão",
       href: "/patrimonio/etiquetas?bens={id}",
-      explicacao: "A folha com o código de barras (Code 128) deste bem. Para vários bens de uma vez, marque-os na lista do acervo.",
+      explicacao: "Etiqueta com o código de barras deste bem. Para vários bens, selecione-os na lista do acervo.",
     },
   ],
 });

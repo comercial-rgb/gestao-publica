@@ -119,22 +119,20 @@ export async function verLocalizacao(id: string): Promise<DetalheLido | null> {
       {
         rotulo: "Setor responsável",
         valor: x.setor === null ? "—" : `${x.setor.codigo} — ${x.setor.nome}`,
-        nota: "Quem responde pelo que está guardado aqui. O bem continua sendo do ente; o setor é a guarda.",
+        nota: "Setor responsável pela guarda dos bens neste local.",
       },
       {
         rotulo: "Consulta pública de bens",
         valor: x.publicavelNaTransparencia ? "Localização divulgada" : "Localização não divulgada",
         nota:
-          "Quando não divulgada, os bens guardados aqui continuam na consulta pública — o que " +
-          "não aparece é o LUGAR. É assim que um depósito de acesso restrito fica de fora sem " +
-          "sumir com o patrimônio.",
+          "Quando não divulgada, os bens continuam na consulta pública, sem a indicação deste local.",
       },
       { rotulo: "Sublocalizações", valor: String(x.filhos.length), tipo: "inteiro" },
       {
         rotulo: "Movimentos de bem nesta localização",
         valor: String(x._count.movimentos),
         tipo: "inteiro",
-        nota: "Transferências e demais movimentos de gestão que apontam para cá.",
+        nota: "Transferências e demais movimentações de bens para este local.",
       },
       { rotulo: "Criada em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Criada por", valor: x.criadoPor },
@@ -213,8 +211,8 @@ export async function definirDivulgacaoNaTela(c: Campos): Promise<string> {
     })
   );
   return r.para
-    ? "Localização passou a ser DIVULGADA na consulta pública de bens. Os bens guardados aqui já apareciam; o que passa a aparecer é o LUGAR."
-    : "Localização passou a ser RESERVADA. Os bens continuam na consulta pública — o que deixa de aparecer é o LUGAR.";
+    ? "A localização passou a ser divulgada na consulta pública de bens."
+    : "A localização deixou de ser divulgada. Os bens continuam na consulta pública, sem a indicação deste local.";
 }
 
 export async function criarLocalizacao(c: Campos): Promise<void> {
@@ -278,7 +276,7 @@ export async function verMotivoDeBaixa(id: string): Promise<DetalheLido | null> 
       {
         rotulo: "O que este motivo significa",
         valor: x.descricao,
-        nota: "O rol é do ente — a baixa registra QUAL motivo, e o motivo explica a saída do bem.",
+        nota: "Motivo definido pelo ente e registrado em cada baixa.",
       },
       { rotulo: "Criado em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Criado por", valor: x.criadoPor },
@@ -369,7 +367,7 @@ export async function verTipoDeIncorporacao(id: string): Promise<DetalheLido | n
         rotulo: "Bens incorporados por este tipo",
         valor: String(x.bens.length),
         tipo: "inteiro",
-        nota: "A incorporação é o que explica a entrada do bem — doação e compra produzem lançamentos diferentes.",
+        nota: "Forma de entrada do bem no acervo; aquisição e doação geram lançamentos contábeis distintos.",
       },
       { rotulo: "Criado em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Criado por", valor: x.criadoPor },

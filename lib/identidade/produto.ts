@@ -77,12 +77,12 @@ export interface Canal {
 }
 
 export const CANAIS: readonly Canal[] = [
-  { id: "gestao-interna", rotulo: "Gestão interna", descricao: "Contabilidade, orçamento, compras, patrimônio, protocolo e administração — com sessão.", href: "/login" },
-  { id: "transparencia", rotulo: "Transparência", descricao: "Demonstrativos fiscais em PDF, sem cadastro.", href: "/transparencia/demonstrativos" },
-  { id: "consulta-publica", rotulo: "Acompanhar processo", descricao: "Situação e movimentos pelo número e pelo código verificador.", href: "/consulta" },
-  { id: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "Vínculo, dependentes e contracheques — com a sua conta de servidor.", href: "/portal-do-servidor" },
-  { id: "portal-do-cidadao", rotulo: "Carta de serviços", descricao: "Serviços publicados, pedido pela internet e acompanhamento do requerente.", href: "/servicos" },
-  { id: "fornecedor", rotulo: "Fornecedor", descricao: "Complemento documental pelo representante da empresa, com representação registrada.", href: "/servicos?publico=FORNECEDOR" },
+  { id: "gestao-interna", rotulo: "Gestão interna", descricao: "Contabilidade, orçamento, compras, patrimônio, protocolo e administração, com acesso por usuário e senha.", href: "/login" },
+  { id: "transparencia", rotulo: "Transparência", descricao: "Demonstrativos fiscais em PDF, com acesso livre.", href: "/transparencia/demonstrativos" },
+  { id: "consulta-publica", rotulo: "Acompanhar processo", descricao: "Situação e andamento do processo, pelo número e pelo código verificador.", href: "/consulta" },
+  { id: "portal-do-servidor", rotulo: "Portal do Servidor", descricao: "Vínculo, dependentes e contracheques, com acesso pela conta do servidor.", href: "/portal-do-servidor" },
+  { id: "portal-do-cidadao", rotulo: "Carta de serviços", descricao: "Serviços disponíveis, solicitação pela internet e acompanhamento do pedido.", href: "/servicos" },
+  { id: "fornecedor", rotulo: "Fornecedor", descricao: "Envio de documentos complementares pelo representante legal da empresa.", href: "/servicos?publico=FORNECEDOR" },
 ];
 
 /**

@@ -23,12 +23,12 @@ export const FICHAS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Ficha orçamentária",
   rota: "/planejamento/fichas",
   descricao:
-    "A dotação pela chave completa (unidade, funcional-programática, natureza e fonte). A ficha criada aqui nasce SEM " +
-    "crédito: a dotação dela vem da LOA ou de crédito adicional, com lei e decreto — nunca desta tela.",
+    "Fichas de dotação pela classificação completa (unidade, funcional-programática, natureza e fonte). A ficha é " +
+    "criada sem saldo; a dotação provém da LOA ou de crédito adicional, com lei e decreto.",
   campos: [
     { nome: "exercicio", rotulo: "Exercício (só os abertos)", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [] },
     { nome: "numero", rotulo: "Número da ficha no exercício", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, ajuda: "Único no exercício." },
-    { nome: "unidadeOrc", rotulo: "Unidade orçamentária", tipo: "referencia", catalogo: "unidades-para-ficha", obrigatorio: true, largura: 2, ajuda: "Só as unidades em que você pode criar ficha. O órgão vem da unidade." },
+    { nome: "unidadeOrc", rotulo: "Unidade orçamentária", tipo: "referencia", catalogo: "unidades-para-ficha", obrigatorio: true, largura: 2, ajuda: "Unidades em que você tem permissão para criar ficha. O órgão é o da unidade." },
     { nome: "funcao", rotulo: "Função", tipo: "referencia", catalogo: "funcoes", obrigatorio: true, largura: 2 },
     { nome: "subfuncao", rotulo: "Subfunção", tipo: "referencia", catalogo: "subfuncoes", obrigatorio: true, largura: 2 },
     { nome: "programa", rotulo: "Programa", tipo: "referencia", catalogo: "programas", obrigatorio: true, largura: 2 },
@@ -57,6 +57,6 @@ export const FICHAS: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados", "historico", "relacionados"],
   relacionados: [
     { rotulo: "Quadro de detalhamento da despesa", href: "/planejamento/qdd", explicacao: "A dotação inicial, os créditos e a dotação atualizada de todas as fichas." },
-    { rotulo: "Créditos adicionais", href: "/planejamento/creditos-adicionais", explicacao: "Onde a ficha criada durante a execução recebe dotação: lei, decreto e itens de suplementação e anulação." },
+    { rotulo: "Créditos adicionais", href: "/planejamento/creditos-adicionais", explicacao: "Onde a ficha criada durante a execução recebe dotação, com lei, decreto e itens de suplementação e anulação." },
   ],
 });

@@ -288,7 +288,7 @@ export async function abrirGuiche(input: { readonly unidadeId: string; readonly 
   await comEscritaAutenticada("CONFIGURAR_AGENDA_DO_GUICHE", (criadoPor) =>
     criarGuiche(cliente(), { ...input, criadoPor })
   );
-  return `Guichê "${input.nome}" criado. Ele ainda não atende serviço nenhum e não tem horário publicado.`;
+  return `Guichê "${input.nome}" criado. Ainda não há serviço habilitado nem horário publicado para ele.`;
 }
 
 export async function definirServicoDoGuiche(input: {
@@ -304,8 +304,8 @@ export async function definirServicoDoGuiche(input: {
   );
   if (!input.habilitado) return "Serviço desabilitado neste guichê. As reservas já marcadas continuam valendo.";
   return input.agendamentoPublico
-    ? "Serviço habilitado neste guichê, e ABERTO à marcação pelo portal do cidadão."
-    : "Serviço habilitado neste guichê, atendido SÓ pelo balcão — o cidadão não o marca pela internet.";
+    ? "Serviço habilitado neste guichê e disponível para agendamento pelo portal do cidadão."
+    : "Serviço habilitado neste guichê apenas para atendimento presencial, sem agendamento pela internet.";
 }
 
 export async function publicarOfertaDeHorarios(input: {
@@ -342,7 +342,7 @@ export async function declararExcecaoDoCalendario(input: {
       : input.tipo === "EXPEDIENTE_ESPECIAL"
         ? `com expediente especial das ${input.horaInicio} às ${input.horaFim}`
         : `de volta ao expediente normal`;
-  return `${dia} ${oQue}: ${input.motivo}. (decisão ${r.sequencia} deste dia — as anteriores continuam no histórico)`;
+  return `${dia} ${oQue}: ${input.motivo}. (alteração nº ${r.sequencia} deste dia; as anteriores permanecem no histórico)`;
 }
 
 /**
@@ -360,8 +360,8 @@ export async function marcarAtendimento(input: {
   const pessoa = await cliente().pessoa.findUnique({ where: { documento }, select: { id: true } });
   if (pessoa === null) {
     throw new Error(
-      `Não há pessoa com o documento ${input.documento} no cadastro. Cadastre-a antes de marcar — ` +
-        `uma pessoa criada aqui entraria sem nome e sem endereço. Nada foi reservado.`
+      `Não há pessoa com o documento ${input.documento} no cadastro. Cadastre a pessoa antes de agendar o atendimento. ` +
+        `Nenhuma reserva foi feita.`
     );
   }
 
@@ -385,15 +385,15 @@ export async function marcarAtendimento(input: {
   return r.jaExistia
     ? `Esta marcação já tinha sido feita — código ${r.codigo}. Nada foi duplicado.`
     : `Atendimento marcado para ${input.dia.split("-").reverse().join("/")} às ${input.horaInicio}. ` +
-      `Número de atendimento ${r.codigo}. ENTREGUE à pessoa o código de acompanhamento ` +
-      `${r.segredo ?? ""} — é com ele que ela consulta e cancela pela internet, e ele não se recupera.`;
+      `Número de atendimento ${r.codigo}. Entregue à pessoa o código de acompanhamento ` +
+      `${r.segredo ?? ""}, necessário para consultar e cancelar pela internet. O código não pode ser recuperado depois.`;
 }
 
 export async function confirmarPresenca(reservaId: string): Promise<string> {
   await comEscritaAutenticada("REGISTRAR_ATENDIMENTO_NO_GUICHE", (criadoPor) =>
     confirmarReservaDeAtendimento(cliente(), { reservaId, criadoPor })
   );
-  return "Presença confirmada. A vaga continua ocupada — confirmar não libera lugar.";
+  return "Presença confirmada. A vaga permanece reservada.";
 }
 
 export async function registrarAtendimento(input: {
@@ -405,14 +405,14 @@ export async function registrarAtendimento(input: {
       ...(input.observacao === undefined || input.observacao === "" ? {} : { observacao: input.observacao }),
     })
   );
-  return "Atendimento registrado. A partir daqui a reserva não se cancela nem se remarca.";
+  return "Atendimento registrado. A partir de agora, a reserva não pode ser cancelada nem remarcada.";
 }
 
 export async function cancelarMarcacao(input: { readonly reservaId: string; readonly motivo: string }): Promise<string> {
   await comEscritaAutenticada("RESERVAR_ATENDIMENTO_NO_GUICHE", (criadoPor) =>
     cancelarReservaDeAtendimento(cliente(), { ...input, criadoPor })
   );
-  return "Marcação cancelada, com o motivo no histórico. O lugar voltou a ficar livre.";
+  return "Marcação cancelada, com o motivo registrado no histórico. O horário voltou a ficar livre.";
 }
 
 export async function remarcarAtendimento(input: {

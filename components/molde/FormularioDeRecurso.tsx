@@ -150,7 +150,7 @@ function Campo({
             {...comum}
             opcoes={[]}
             desabilitado
-            ajuda={`Nenhuma opção cadastrada para ${campo.rotulo.toLowerCase()}. Cadastre antes de usar esta tela.`}
+            ajuda={`Nenhuma opção cadastrada para ${campo.rotulo.toLowerCase()}. Faça o cadastro antes de prosseguir.`}
           />
         );
       }

@@ -36,8 +36,8 @@ export const LOCALIZACOES_FISICAS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Localização física",
   rota: "/patrimonio/localizacoes",
   descricao:
-    "Onde o bem fica, em árvore: prédio, andar, sala. É para cá que um movimento de gestão " +
-    "transfere o bem, e é por aqui que o inventário sabe onde procurar.",
+    "Locais físicos dos bens, em estrutura hierárquica: prédio, andar e sala. São usados nas " +
+    "transferências e no inventário.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "PRE-01.02" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -47,7 +47,7 @@ export const LOCALIZACOES_FISICAS: DefinicaoDeRecurso = definirRecurso({
       tipo: "selecao",
       largura: 2,
       opcoes: [],
-      ajuda: "Em branco para o primeiro nível — um prédio, por exemplo.",
+      ajuda: "Em branco para o primeiro nível, como um prédio.",
     },
     {
       nome: "setorId",
@@ -55,7 +55,7 @@ export const LOCALIZACOES_FISICAS: DefinicaoDeRecurso = definirRecurso({
       tipo: "selecao",
       largura: 2,
       opcoes: [],
-      ajuda: "Opcional. O setor responde pelo que está guardado aqui.",
+      ajuda: "Opcional. Setor responsável pelos bens guardados neste local.",
     },
     {
       nome: "publicavelNaTransparencia",
@@ -63,9 +63,8 @@ export const LOCALIZACOES_FISICAS: DefinicaoDeRecurso = definirRecurso({
       tipo: "booleano",
       largura: 4,
       ajuda:
-        "Desmarcado, os bens guardados aqui continuam aparecendo na consulta pública — o que " +
-        "não aparece é o lugar. Deixe desmarcado para depósitos, cofres e locais de acesso " +
-        "restrito.",
+        "Desmarcado, os bens continuam na consulta pública, mas sem a indicação deste local. " +
+        "Recomendado para depósitos, cofres e locais de acesso restrito.",
     },
   ],
   colunas: [
@@ -96,8 +95,8 @@ export const MOTIVOS_DE_BAIXA: DefinicaoDeRecurso = definirRecurso({
   // atendimento a quem não tem como conferir — o rastro pertence ao código, o rótulo
   // pertence ao negócio. Foi assim que este lote reprovou no portão da primeira vez.
   descricao:
-    "Por que um bem sai do acervo: alienação, doação, inservível, furto. O rol é do ente e " +
-    "se cadastra aqui, em vez de ser uma lista fechada no sistema.",
+    "Motivos de baixa de bens do acervo, como alienação, doação, inservibilidade ou furto, " +
+    "definidos pelo ente.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "BX-01" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -122,8 +121,8 @@ export const TIPOS_DE_INCORPORACAO: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Tipo de incorporação",
   rota: "/patrimonio/tipos-de-incorporacao",
   descricao:
-    "Como o bem entrou no acervo: adquirido, recebido em doação, comodato, permuta. A TR " +
-    "5.19.3 e a 5.19.7 pedem que outras incorporações sejam configuráveis pela instituição.",
+    "Formas de incorporação de bens ao acervo, como aquisição, doação, comodato e permuta, " +
+    "definidas pelo ente.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "INC-01" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 3 },

@@ -58,9 +58,9 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Servidor",
   rota: "/pessoal/servidores",
   descricao:
-    "A ficha do servidor sobre a PESSOA do cadastro único: CPF, nome, endereço e contatos vivem lá; aqui ficam os dados " +
-    "civis próprios, os vínculos (matrículas) e o histórico funcional. Cargo, lotação, salário e situação de cada vínculo " +
-    "são derivados dos eventos — nunca colunas.",
+    "Ficha funcional do servidor: dados civis complementares, vínculos (matrículas) e histórico funcional. CPF, nome, " +
+    "endereço e contatos são mantidos no cadastro único de pessoas. Cargo, lotação, salário e situação de cada vínculo " +
+    "resultam das movimentações registradas.",
   campos: [
     { nome: "pessoaId", rotulo: "Pessoa do cadastro único (física)", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
     { nome: "nomeSocial", rotulo: "Nome social (opcional)", tipo: "texto", largura: 1 },
@@ -83,7 +83,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     // ⚠️ A MATRÍCULA MOSTRADA É A DO VÍNCULO QUE CASOU COM O FILTRO — ver `listarServidores`.
     // Sem esta coluna, quem procura "cargo de motorista" recebe a linha de uma pessoa com duas
     // matrículas e não sabe QUAL delas é a de motorista.
-    { nome: "matricula", cabecalho: "Matrícula (vínculo mostrado)", tipo: "texto" },
+    { nome: "matricula", cabecalho: "Matrícula", tipo: "texto" },
     { nome: "cargo", cabecalho: "Cargo (na data de referência)", tipo: "texto" },
     { nome: "lotacao", cabecalho: "Lotação (na data de referência)", tipo: "texto" },
     { nome: "funcao", cabecalho: "Função (na data de referência)", tipo: "texto" },
@@ -116,17 +116,17 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
    */
   filtros: [
     { nome: "q", rotulo: "Busca geral (nome, CPF ou matrícula)", tipo: "texto", largura: 2 },
-    { nome: "nome", rotulo: "Nome (civil ou social)", tipo: "texto", largura: 2, placeholder: "acha pelos dois" },
+    { nome: "nome", rotulo: "Nome (civil ou social)", tipo: "texto", largura: 2, placeholder: "Nome civil ou nome social" },
     { nome: "matricula", rotulo: "Matrícula", tipo: "texto", largura: 1 },
     { nome: "cargo", rotulo: "Cargo (código ou denominação)", tipo: "texto", largura: 2 },
     { nome: "lotacao", rotulo: "Local de trabalho (código ou nome da lotação)", tipo: "texto", largura: 2 },
-    { nome: "funcao", rotulo: "Função exercida (código ou denominação)", tipo: "texto", largura: 2, placeholder: "a atribuição, não o cargo" },
-    { nome: "centroDeCusto", rotulo: "Centro de custo (código ou nome do setor)", tipo: "texto", largura: 2, placeholder: "onde a despesa é apropriada" },
+    { nome: "funcao", rotulo: "Função exercida (código ou denominação)", tipo: "texto", largura: 2, placeholder: "Ex.: coordenação, chefia" },
+    { nome: "centroDeCusto", rotulo: "Centro de custo (código ou nome do setor)", tipo: "texto", largura: 2, placeholder: "Código ou nome do setor" },
     { nome: "regimeJuridico", rotulo: "Regime jurídico", tipo: "texto", largura: 1, placeholder: "Estatutário, CLT..." },
     { nome: "regimePrev", rotulo: "Regime previdenciário", tipo: "selecao", largura: 1, opcoes: [
       { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" },
       { valor: "ISENTO", rotulo: "Isento" },
-      { valor: "NAO_INFORMADO", rotulo: "Não informado (a folha recusa calcular)" },
+      { valor: "NAO_INFORMADO", rotulo: "Não informado (folha não calculada)" },
     ] },
     { nome: "admitidoDe", rotulo: "Admitido de", tipo: "data", largura: 1 },
     { nome: "admitidoAte", rotulo: "Admitido até", tipo: "data", largura: 1 },
@@ -137,17 +137,17 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     // previdenciário são derivados: "cargo hoje" e "cargo na competência de maio" dão listas
     // diferentes, e a promoção de junho move o servidor de uma para a outra. Vazio = hoje, e a
     // coluna do cargo deriva na MESMA data que o filtro usou.
-    { nome: "dataRef", rotulo: "Data de referência (cargo, lotação, função, centro de custo e regime previdenciário)", tipo: "data", largura: 2, placeholder: "vazio = hoje" },
+    { nome: "dataRef", rotulo: "Data de referência (cargo, lotação, função, centro de custo e regime previdenciário)", tipo: "data", largura: 2, placeholder: "Em branco, data de hoje" },
   ],
   acoes: [
     {
       nome: "admitir", rotulo: "Admitir (novo vínculo)", acaoDoCenso: "ADMITIR_SERVIDOR",
-      aviso: "Cria a matrícula e o evento de admissão com cargo, lotação e salário. Segunda matrícula da mesma pessoa é aceita com ALERTA de acumulação.",
+      aviso: "Cria a matrícula e registra a admissão com cargo, lotação e salário. Uma segunda matrícula da mesma pessoa é aceita com alerta de acumulação de cargos.",
       campos: [
         { nome: "matricula", rotulo: "Matrícula (única no ente)", tipo: "texto", obrigatorio: true, largura: 1 },
         { nome: "tipo", rotulo: "Tipo de vínculo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_TIPO_DE_VINCULO },
-        { nome: "regimeJuridico", rotulo: "Regime jurídico (como a lei do ente o nomeia)", tipo: "texto", obrigatorio: true, largura: 2 },
-        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (a folha exige)", tipo: "selecao", largura: 1, opcoes: [
+        { nome: "regimeJuridico", rotulo: "Regime jurídico (conforme a lei do ente)", tipo: "texto", obrigatorio: true, largura: 2 },
+        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (necessário para a folha)", tipo: "selecao", largura: 1, opcoes: [
           { valor: "RGPS", rotulo: "RGPS — regime geral" },
           { valor: "RPPS", rotulo: "RPPS — regime próprio" },
           { valor: "ISENTO", rotulo: "Isento" },
@@ -165,7 +165,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "movimentar", rotulo: "Movimentar (cargo, lotação, função, centro de custo, afastamento, retorno, regime)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
-      aviso: "Muda ONDE e EM QUE o servidor trabalha; não muda quanto recebe — a gratificação que costuma acompanhar uma função é ato à parte, em Alterar remuneração. Afastamento e retorno não levam cargo nem lotação. A dispensa de função não pede função: ela encerra a que estiver vigente. Tudo vale a partir da data do fato: a folha de cada competência aplica o que valia naquela competência.",
+      aviso: "Registra mudança de cargo, lotação, função, centro de custo, regime ou afastamento, sem alterar a remuneração; a gratificação de função é registrada em Alterar remuneração. A dispensa encerra a função vigente. A movimentação vale a partir da data do fato, e a folha de cada competência considera a situação vigente naquela competência.",
       campos: [
         { nome: "vinculoId", rotulo: "Vínculo (matrícula)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
@@ -184,16 +184,16 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
           { valor: "MUDANCA_CENTRO_DE_CUSTO", rotulo: "Mudança de centro de custo" },
         ] },
         { nome: "data", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
-        { nome: "cargoId", rotulo: "Cargo de destino (só mudança de cargo)", tipo: "selecao", largura: 2, opcoes: [] },
-        { nome: "lotacaoId", rotulo: "Lotação de destino (só mudança de lotação)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "cargoId", rotulo: "Cargo de destino (mudança de cargo)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "lotacaoId", rotulo: "Lotação de destino (mudança de lotação)", tipo: "selecao", largura: 2, opcoes: [] },
         // ⚠️ A DISPENSA NÃO TEM CAMPO DE FUNÇÃO, E ISSO É O DESENHO. Ela ENCERRA a que estiver
         // vigente — `funcaoVigenteEm` decide pelo TIPO do evento, não pela nulidade da coluna, e
         // o CHECK `ck_historico_vinculo_funcao` é bicondicional: dispensa COM função não grava.
         // Preencher os dois faria "dispensou de diretor" e "designou para diretor" terem as
         // mesmas colunas na ficha funcional.
-        { nome: "funcaoId", rotulo: "Função de destino (só designação — a dispensa encerra a vigente)", tipo: "selecao", largura: 2, opcoes: [] },
-        { nome: "centroDeCustoId", rotulo: "Centro de custo de destino (só mudança de centro de custo)", tipo: "selecao", largura: 2, opcoes: [] },
-        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (só mudança de regime)", tipo: "selecao", largura: 2, opcoes: [
+        { nome: "funcaoId", rotulo: "Função de destino (designação para função)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "centroDeCustoId", rotulo: "Centro de custo de destino (mudança de centro de custo)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "regimePrevidenciario", rotulo: "Regime previdenciário (mudança de regime)", tipo: "selecao", largura: 2, opcoes: [
           { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" }, { valor: "ISENTO", rotulo: "Isento" },
         ] },
         { nome: "motivo", rotulo: "Motivo / fundamento", tipo: "texto", obrigatorio: true, largura: 4 },
@@ -201,14 +201,14 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "alterar-remuneracao", rotulo: "Alterar remuneração (promoção, reajuste, gratificação)", acaoDoCenso: "ALTERAR_REMUNERACAO",
-      aviso: "Muda QUANTO o servidor recebe. Promoção exige cargo e salário; reajuste exige salário; gratificação exige descrição e valor.",
+      aviso: "Altera a remuneração do servidor. Promoção exige cargo e salário; reajuste exige salário; gratificação exige descrição e valor.",
       campos: [
         { nome: "vinculoId", rotulo: "Vínculo (matrícula)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
           { valor: "PROMOCAO", rotulo: "Promoção" }, { valor: "REAJUSTE_SALARIAL", rotulo: "Reajuste salarial" }, { valor: "GRATIFICACAO", rotulo: "Gratificação" },
         ] },
         { nome: "data", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
-        { nome: "cargoId", rotulo: "Cargo (só promoção)", tipo: "selecao", largura: 2, opcoes: [] },
+        { nome: "cargoId", rotulo: "Cargo (promoção)", tipo: "selecao", largura: 2, opcoes: [] },
         { nome: "salarioBase", rotulo: "Salário base novo (R$)", tipo: "dinheiro", largura: 1 },
         { nome: "gratificacaoDescricao", rotulo: "Gratificação — descrição", tipo: "texto", largura: 2 },
         { nome: "gratificacaoValor", rotulo: "Gratificação — valor (R$)", tipo: "dinheiro", largura: 1 },
@@ -216,11 +216,11 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
       ],
     },
     {
-      nome: "informar-regime", rotulo: "Informar o regime previdenciário (carga do legado)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
-      aviso: "Para o vínculo que veio do cadastro antigo SEM regime declarado — inclusive o já DESLIGADO, que a folha ainda precisa pagar pelos dias em que viveu. A data tem de estar dentro da vida do vínculo (não antes da admissão, não depois do desligamento): é um fato que já era verdade, não uma movimentação nova.",
+      nome: "informar-regime", rotulo: "Informar o regime previdenciário (vínculos migrados)", acaoDoCenso: "MOVIMENTAR_SERVIDOR",
+      aviso: "Para vínculos migrados do sistema anterior sem regime previdenciário informado, inclusive os já desligados com valores a pagar. A data deve estar entre a admissão e o desligamento. O registro corrige o cadastro e não constitui nova movimentação.",
       campos: [
-        { nome: "vinculoRegimeId", rotulo: "Vínculo (matrícula) — inclui os desligados", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
-        { nome: "data", rotulo: "A partir de (dentro da vida do vínculo)", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "vinculoRegimeId", rotulo: "Vínculo (matrícula), inclusive desligados", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "data", rotulo: "A partir de (entre a admissão e o desligamento)", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "regimePrevidenciario", rotulo: "Regime previdenciário", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
           { valor: "RGPS", rotulo: "RGPS — regime geral" }, { valor: "RPPS", rotulo: "RPPS — regime próprio" }, { valor: "ISENTO", rotulo: "Isento" },
         ] },
@@ -229,7 +229,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "desligar", rotulo: "Desligar", acaoDoCenso: "DESLIGAR_SERVIDOR", irreversivel: true,
-      aviso: "Encerra o vínculo: é terminal. Readmitir é OUTRO vínculo, com outra matrícula.",
+      aviso: "Encerra o vínculo de forma definitiva. A readmissão exige novo vínculo, com outra matrícula.",
       campos: [
         { nome: "vinculoId", rotulo: "Vínculo (matrícula)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "data", rotulo: "Data do desligamento", tipo: "data", obrigatorio: true, largura: 1 },
@@ -238,10 +238,10 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "dependente", rotulo: "Cadastrar dependente", acaoDoCenso: "GERIR_DEPENDENTE",
-      aviso: "A baixa por IDADE é derivada do limite legal da finalidade; só a baixa por fato é um ato.",
+      aviso: "A baixa por idade ocorre automaticamente no limite legal da finalidade; as demais baixas são registradas em Encerrar finalidade de dependente.",
       campos: [
         { nome: "nome", rotulo: "Nome", tipo: "texto", obrigatorio: true, largura: 2 },
-        { nome: "cpf", rotulo: "CPF (opcional — recém-nascido entra sem)", tipo: "texto", largura: 1 },
+        { nome: "cpf", rotulo: "CPF (opcional para recém-nascido)", tipo: "texto", largura: 1 },
         { nome: "dataNascimento", rotulo: "Nascimento", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "grauParentesco", rotulo: "Parentesco", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_PARENTESCO },
         { nome: "finalidade", rotulo: "Finalidade", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_FINALIDADE },
@@ -251,7 +251,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "encerrar-finalidade", rotulo: "Encerrar finalidade de dependente", acaoDoCenso: "BAIXAR_DEPENDENTE", irreversivel: true,
-      aviso: "Óbito, perda da guarda, decisão judicial, saída do plano: o encerramento é FATO com data de efeito, motivo e autor. Folha já fechada não é recalculada — se o efeito alcançar competências fechadas, elas são nomeadas para retificação. Reativar é cadastrar finalidade nova.",
+      aviso: "Óbito, perda da guarda, decisão judicial ou saída do plano: o encerramento é registrado com data de efeito, motivo e responsável. Folhas já fechadas não são recalculadas; se o efeito alcançar competências fechadas, elas são indicadas para retificação. Para reativar, cadastre nova finalidade.",
       campos: [
         { nome: "finalidadeId", rotulo: "Dependente e finalidade vigente", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "dataEfeito", rotulo: "Data de efeito", tipo: "data", obrigatorio: true, largura: 1 },
@@ -271,7 +271,7 @@ export const SERVIDORES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "anotacao", rotulo: "Anotar na ficha", acaoDoCenso: "REGISTRAR_ANOTACAO",
-      aviso: "Elogio, advertência, suspensão, ocorrência ou observação — registro permanente, com autor.",
+      aviso: "Elogio, advertência, suspensão, ocorrência ou observação. O registro é permanente e identifica o responsável.",
       campos: [
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_ANOTACAO },
         { nome: "data", rotulo: "Data", tipo: "data", obrigatorio: true, largura: 1 },
@@ -300,8 +300,8 @@ export const CARGOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Cargo",
   rota: "/pessoal/cargos",
   descricao:
-    "O quadro de pessoal: cada cargo com as vagas FIXADAS em lei; as vagas OCUPADAS são contadas a cada leitura pelos " +
-    "vínculos vivos naquele cargo — é esse número que autoriza a próxima nomeação. Criar a vaga e ocupá-la são ações distintas.",
+    "Quadro de pessoal: cargos com as vagas fixadas em lei e as vagas ocupadas pelos vínculos ativos. A nomeação depende " +
+    "de vaga disponível.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "denominacao", rotulo: "Denominação", tipo: "texto", obrigatorio: true, largura: 2 },
@@ -352,10 +352,8 @@ export const FUNCOES: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Função",
   rota: "/pessoal/funcoes",
   descricao:
-    "As funções que o ente pode designar — a atribuição EXERCIDA, distinta do cargo (o posto que a lei criou). " +
-    "Designar e dispensar são movimentações do vínculo, com data de efeito; quem exerce cada função é contado a " +
-    "cada leitura pelos eventos, nunca guardado em coluna. A gratificação que costuma acompanhar uma função é ato " +
-    "à parte, em Alterar remuneração.",
+    "Funções que o ente pode designar, distintas dos cargos criados em lei. A designação e a dispensa são registradas " +
+    "como movimentação do vínculo, com data de efeito. A gratificação de função é registrada em Alterar remuneração.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "denominacao", rotulo: "Denominação", tipo: "texto", obrigatorio: true, largura: 2 },
@@ -380,8 +378,8 @@ export const LOTACOES: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Lotação",
   rota: "/pessoal/lotacoes",
   descricao:
-    "A árvore de lotações do ente (secretaria, departamento, escola…), com a unidade orçamentária quando houver. Os " +
-    "lotados em cada uma são contados pelos vínculos vivos — nunca coluna.",
+    "Estrutura de lotações do ente (secretaria, departamento, escola), com a unidade orçamentária correspondente, quando " +
+    "houver, e a quantidade de servidores lotados.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "nome", rotulo: "Nome", tipo: "texto", obrigatorio: true, largura: 2 },

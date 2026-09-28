@@ -164,10 +164,10 @@ export async function verProcesso(id: string): Promise<DetalheLido | null> {
   const historico: LinhaDoHistorico[] = [
     ...(p.homologacao === null
       ? []
-      : [{ id: p.homologacao.id, oQue: "Homologação do processo", quando: diaCivilBr(p.homologacao.data), registradoEm: diaCivilBr(p.homologacao.criadoEm), por: p.homologacao.criadoPor, motivo: "Evento de homologação (fato registrado depois do cadastro)." }]),
+      : [{ id: p.homologacao.id, oQue: "Homologação do processo", quando: diaCivilBr(p.homologacao.data), registradoEm: diaCivilBr(p.homologacao.criadoEm), por: p.homologacao.criadoPor, motivo: "Homologação registrada após o cadastro do processo." }]),
     ...reservas.map((r) => ({
       id: r.id,
-      oQue: `Reserva de dotação na ficha ${r.fichaNumero}${r.liberada ? " — LIBERADA" : ""}`,
+      oQue: `Reserva de dotação na ficha ${r.fichaNumero}${r.liberada ? " — liberada" : ""}`,
       quando: diaCivilBr(r.criadoEm),
       registradoEm: diaCivilBr(r.criadoEm),
       por: r.criadoPor,
@@ -184,7 +184,7 @@ export async function verProcesso(id: string): Promise<DetalheLido | null> {
       motivo: `Valor inicial ${c.valorInicial.toFixed(2)} · atualizado ${c.atualizado.toFixed(2)}`,
       valor: c.atualizado.toFixed(2),
       href: `/licitacoes/contratos/${c.id}`,
-      hrefRotulo: "abrir o contrato",
+      hrefRotulo: "Abrir o contrato",
     })),
   ];
   return {
@@ -193,17 +193,17 @@ export async function verProcesso(id: string): Promise<DetalheLido | null> {
     selos: [
       { texto: ROTULO_DA_SITUACAO[situacao] ?? situacao, tom: situacao === "HOMOLOGADO" ? "ok" : "alerta" },
       { texto: `${p.contratos.length} contrato(s)`, tom: "neutro" },
-      ...(reservadoVivo.greaterThan(0) ? [{ texto: `reserva viva ${reservadoVivo.toFixed(2)}`, tom: "neutro" as const }] : []),
+      ...(reservadoVivo.greaterThan(0) ? [{ texto: `saldo reservado ${reservadoVivo.toFixed(2)}`, tom: "neutro" as const }] : []),
     ],
     dados: [
       { rotulo: "Número", valor: p.numeroProcesso },
       { rotulo: "Modalidade", valor: `${modalidade(p.modalidade)} — ${MODALIDADES[p.modalidade as keyof typeof MODALIDADES]?.base ?? ""}` },
       { rotulo: "Hipótese de dispensa", valor: p.hipoteseDispensa === null ? "— (não é dispensa)" : ROTULO_DA_HIPOTESE[p.hipoteseDispensa] ?? p.hipoteseDispensa },
       { rotulo: "Objeto", valor: p.objeto, tipo: "longo" },
-      { rotulo: "Valor licitado", valor: p.valorLicitado.toFixed(2), tipo: "dinheiro", nota: "Teto da estimativa; o contrato sai do lance e não é comparado aqui — é assunto de relatório." },
-      { rotulo: "Homologação", valor: homologacao === null ? "Ainda não homologado" : diaCivilBr(homologacao), tipo: "data", nota: "Derivada: a data do cadastro ou o evento de homologação, o que existir." },
+      { rotulo: "Valor licitado", valor: p.valorLicitado.toFixed(2), tipo: "dinheiro", nota: "Valor estimado da contratação. O valor contratado resulta da proposta vencedora." },
+      { rotulo: "Homologação", valor: homologacao === null ? "Ainda não homologado" : diaCivilBr(homologacao), tipo: "data", nota: "Data informada no cadastro ou registrada na homologação." },
       { rotulo: "Total contratado (atualizado)", valor: totalContratado.toFixed(2), tipo: "dinheiro" },
-      { rotulo: "Reserva viva", valor: reservadoVivo.toFixed(2), tipo: "dinheiro", nota: "Reservado menos o que os empenhos já consumiram, sem as liberadas. Orientação: quem decide é a despesa na transação." },
+      { rotulo: "Saldo da reserva", valor: reservadoVivo.toFixed(2), tipo: "dinheiro", nota: "Valor reservado, descontados os empenhos emitidos e as liberações. A disponibilidade é conferida na emissão do empenho." },
       { rotulo: "Cadastrado em", valor: diaCivilBr(p.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: p.criadoPor },
     ],
@@ -353,12 +353,12 @@ export async function verContrato(id: string): Promise<DetalheLido | null> {
     dados: [
       { rotulo: "Processo", valor: `${x.processo.numeroProcesso} — ${modalidade(x.processo.modalidade)}` },
       { rotulo: "Contratado", valor: `${x.contratadoNome} · ${formatarDocumento(x.contratadoDocumento)}` },
-      { rotulo: "Objeto", valor: x.objeto ?? "— (o objeto é o do processo)", tipo: "longo" },
+      { rotulo: "Objeto", valor: x.objeto ?? "— (mesmo objeto do processo)", tipo: "longo" },
       { rotulo: "Valor inicial", valor: x.valorInicial.toFixed(2), tipo: "dinheiro" },
-      { rotulo: "Valor atualizado", valor: atualizado.toFixed(2), tipo: "dinheiro", nota: "Derivado dos aditivos vivos — nunca uma coluna." },
-      { rotulo: "Empenhado no contrato", valor: empenhado.toFixed(2), tipo: "dinheiro", nota: "Bruto dos empenhos que informaram este contrato." },
+      { rotulo: "Valor atualizado", valor: atualizado.toFixed(2), tipo: "dinheiro", nota: "Valor inicial ajustado pelos aditivos registrados." },
+      { rotulo: "Empenhado no contrato", valor: empenhado.toFixed(2), tipo: "dinheiro", nota: "Valor bruto dos empenhos vinculados a este contrato." },
       { rotulo: "Vigência inicial", valor: `${diaCivilBr(x.vigenciaInicio)} a ${diaCivilBr(x.vigenciaFimInicial)}` },
-      { rotulo: "Fim da vigência atualizado", valor: diaCivilBr(fim), tipo: "data", nota: "Derivado das prorrogações vivas." },
+      { rotulo: "Fim da vigência atualizado", valor: diaCivilBr(fim), tipo: "data", nota: "Considera as prorrogações registradas." },
       { rotulo: "Categoria (art. 141)", valor: x.categoriaOrdemCronologica },
       // ⚠️ O campo em texto é carga anterior (V7 M2.1). Com o rótulo "Fiscal do contrato" e "(não designado)", a tela
       // contradizia a designação vigente mostrada no acompanhamento — achado da captura do percurso sobre 5937f41.
@@ -383,10 +383,10 @@ export async function verContrato(id: string): Promise<DetalheLido | null> {
         quando: diaCivilBr(e.data),
         registradoEm: diaCivilBr(e.criadoEm),
         por: e.criadoPor,
-        motivo: "Empenho que informou este contrato na emissão.",
+        motivo: "Empenho vinculado a este contrato na emissão.",
         valor: e.valor.toFixed(2),
         href: `/despesa/empenhos/${e.id}`,
-        hrefRotulo: "abrir o dossiê do empenho",
+        hrefRotulo: "Abrir o dossiê do empenho",
       })),
     ],
   };

@@ -166,9 +166,7 @@ export async function verRoteiroPatrimonial(tipo: string): Promise<DetalheLido |
   return comVersoes(
     detalheDoRoteiro(evento.rotulo, r, {
       semRoteiro:
-        "Enquanto este evento não tiver roteiro, o sistema RECUSA registrar qualquer " +
-        "movimento dele — e a recusa é deliberada: sem roteiro, lançar exigiria escolher uma " +
-        "conta, e o sistema não escolhe conta do PCASP por conta própria.",
+        "Sem roteiro cadastrado, os movimentos deste evento não são registrados.",
     }),
     versoes
   );
@@ -196,8 +194,8 @@ function comVersoes(detalhe: DetalheLido, versoes: readonly VersaoDeRoteiroLida[
     historico: versoes.map((v) => ({
       id: v.id,
       oQue:
-        `Versão ${v.numero} — ${v.situacao === "PUBLICADA" ? "publicada" : "PROPOSTA (não vigora)"}: ` +
-        `${conta(v.contaDebito)}  ->  ${conta(v.contaCredito)}` +
+        `Versão ${v.numero} — ${v.situacao === "PUBLICADA" ? "publicada" : "proposta (ainda não publicada)"}: ` +
+        `${conta(v.contaDebito)} → ${conta(v.contaCredito)}` +
         (v.vigente ? " (em vigor)" : v.vigenciaFim !== null ? ` (vigorou até ${diaCivilBr(v.vigenciaFim)})` : "") +
         (v.movimentos > 0 ? ` · ${v.movimentos} movimento(s) lançado(s) por ela` : ""),
       quando: diaCivilBr(v.publicadaEm ?? v.criadoEm),
@@ -310,8 +308,8 @@ export async function verRoteiroDeResultado(chave: string): Promise<DetalheLido 
   const r = (await gravadosDeResultado()).get(chave);
   return detalheDoRoteiro(evento.rotulo, r, {
     semRoteiro:
-      "Sem este roteiro, a alienação de bem é RECUSADA no momento de apurar o resultado — " +
-      "a baixa e o ganho são o mesmo ato, e metade dele não se grava.",
+      "Sem este roteiro, a alienação de bens não é registrada, pois a baixa e a apuração " +
+      "do resultado ocorrem na mesma operação.",
   });
 }
 
@@ -377,12 +375,12 @@ function detalheDoRoteiro(
       {
         rotulo: "Conta de débito",
         valor: conta(r.contaDebito),
-        nota: "A perna devedora do lançamento que este evento produz.",
+        nota: "Conta debitada no lançamento deste evento.",
       },
       {
         rotulo: "Conta de crédito",
         valor: conta(r.contaCredito),
-        nota: "A contrapartida. As duas pernas são do subsistema patrimonial.",
+        nota: "Conta creditada no lançamento; ambas as contas são patrimoniais.",
       },
       { rotulo: "Parametrizado em", valor: diaCivilBr(r.criadoEm), tipo: "data" },
       { rotulo: "Parametrizado por", valor: r.criadoPor },

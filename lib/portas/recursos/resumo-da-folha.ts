@@ -136,8 +136,8 @@ export async function documentoDoResumo(r: ResumoDaFolha): Promise<DocumentoPdf>
     periodo: `Competência ${r.competencia}`,
     secoes: [principal, componentes],
     notas: [
-      "Bruto menos descontos é o líquido do servidor. O patronal é obrigação do ente: não se soma ao líquido nem dele se desconta.",
-      r.custoDoEnte === null ? "Custo do ente (bruto + patronal): indisponível — os encargos não foram apurados." : `Custo do ente (bruto + patronal): ${brl(r.custoDoEnte)}.`,
+      "Líquido do servidor = bruto − descontos. A contribuição patronal é obrigação do ente e não altera o líquido.",
+      r.custoDoEnte === null ? "Custo do ente (bruto + patronal): indisponível, pois os encargos não foram apurados." : `Custo do ente (bruto + patronal): ${brl(r.custoDoEnte)}.`,
       `Filtros: regime ${r.filtros.regime === "" ? "todos" : r.filtros.regime}; lotação ${r.filtros.lotacao === "" ? "todas" : `"${r.filtros.lotacao}"`}.`,
       "Relatório de posição da apuração vigente na data da emissão; não substitui contracheque nem guia de recolhimento.",
     ],

@@ -101,9 +101,9 @@ export const OPCOES_DE_CHAVE: readonly { readonly valor: string; readonly rotulo
 const CLASSES_PATRIMONIAIS = ["1", "2", "3", "4"] as const;
 
 const AVISO_DA_SUBSTITUICAO =
-  "O roteiro novo vale para os movimentos FUTUROS deste evento. Os lançamentos já " +
-  "gravados continuam apontando para as contas anteriores — nada no razão é reescrito, e " +
-  "corrigir o passado é lançamento novo, não alteração.";
+  "O novo roteiro vale para os próximos movimentos deste evento. Os lançamentos já " +
+  "registrados mantêm as contas anteriores; correções de lançamentos passados são feitas " +
+  "por novo lançamento.";
 
 export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   nome: "roteiros-patrimoniais",
@@ -111,9 +111,8 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Roteiro contábil",
   rota: "/patrimonio/roteiros",
   descricao:
-    "Em que par de contas do PCASP cada evento do bem bate na contabilidade — aquisição, " +
-    "reavaliação, depreciação, baixa. Evento sem roteiro NÃO é registrado: o sistema " +
-    "recusa em vez de escolher uma conta.",
+    "Contas do PCASP de débito e de crédito de cada evento patrimonial: aquisição, reavaliação, " +
+    "depreciação e baixa. Sem roteiro cadastrado, o evento não é registrado.",
   campos: [
     {
       nome: "tipo",
@@ -123,8 +122,8 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       largura: 2,
       opcoes: OPCOES_DE_TIPO,
       ajuda:
-        "Os treze eventos que movem o valor do bem. Os estornos não aparecem: o lançamento " +
-        "contrário é gerado invertendo as pernas do original.",
+        "Eventos que alteram o valor do bem. Os estornos não aparecem na lista: o lançamento " +
+        "de estorno inverte as contas do original.",
     },
     {
       nome: "contaDebitoId",
@@ -133,7 +132,7 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       obrigatorio: true,
       largura: 3,
       opcoes: [],
-      ajuda: "Só contas analíticas das classes 1 a 4 — as que formam lançamento patrimonial.",
+      ajuda: "Apenas contas analíticas das classes 1 a 4 (patrimoniais).",
     },
     {
       nome: "contaCreditoId",
@@ -142,7 +141,7 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       obrigatorio: true,
       largura: 3,
       opcoes: [],
-      ajuda: "A contrapartida. Débito e crédito não podem ser a mesma conta.",
+      ajuda: "Conta de contrapartida, diferente da conta de débito.",
     },
   ],
   colunas: [
@@ -172,12 +171,12 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Propor nova versão das contas",
       acaoDoCenso: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
       aviso:
-        "A proposta é validada pelo motor contábil e fica registrada com o seu nome e o motivo. " +
-        "Ela NÃO vigora até ser publicada — e publicar é outro ato, de quem aprova.",
+        "A proposta é validada e registrada com o seu nome e o motivo. Ela só passa a valer " +
+        "depois de publicada por quem tem permissão de aprovação.",
       campos: [
         { nome: "contaDebitoId", rotulo: "Conta de débito proposta", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
         { nome: "contaCreditoId", rotulo: "Conta de crédito proposta", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
-        { nome: "motivo", rotulo: "Motivo da nova versão", tipo: "texto", obrigatorio: true, largura: 4, ajuda: "Por que as contas mudam. Quem ler o histórico daqui a um ano não terá a quem perguntar." },
+        { nome: "motivo", rotulo: "Motivo da nova versão", tipo: "texto", obrigatorio: true, largura: 4, ajuda: "Justificativa da alteração das contas, que ficará registrada no histórico." },
       ],
     },
     {
@@ -185,9 +184,9 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Publicar a proposta pendente",
       acaoDoCenso: "PUBLICAR_ROTEIRO_PATRIMONIAL",
       aviso:
-        "Publica a proposta mais recente deste evento: a partir de agora os movimentos FUTUROS " +
-        "lançam por ela. A versão anterior fica no histórico, e os lançamentos já feitos " +
-        "continuam apontando para a versão que usaram.",
+        "Publica a proposta mais recente deste evento, que passa a valer para os próximos " +
+        "movimentos. A versão anterior permanece no histórico, e os lançamentos já feitos " +
+        "mantêm a versão utilizada.",
       campos: [],
     },
     {
@@ -195,9 +194,9 @@ export const ROTEIROS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
       // Continua ato à parte do criar: o serviço RECUSA a substituição pelo caminho de criar,
       // para que ninguém sobrescreva um roteiro por ter digitado o tipo errado.
       nome: "reparametrizar",
-      rotulo: "Trocar as contas agora (propor e publicar num ato)",
+      rotulo: "Alterar as contas (propor e publicar de uma vez)",
       acaoDoCenso: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
-      aviso: AVISO_DA_SUBSTITUICAO + " Este ato exige também o crachá de publicar.",
+      aviso: AVISO_DA_SUBSTITUICAO + " Exige também a permissão de publicar roteiros.",
       campos: [
         { nome: "contaDebitoId", rotulo: "Nova conta de débito", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
         { nome: "contaCreditoId", rotulo: "Nova conta de crédito", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: [] },
@@ -219,8 +218,8 @@ export const ROTEIROS_DE_RESULTADO: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Roteiro do resultado",
   rota: "/patrimonio/roteiros-de-resultado",
   descricao:
-    "O ganho e a perda apurados quando o bem é vendido. Não mexem no ativo — ele já saiu " +
-    "pela baixa —, e por isso têm roteiro próprio, separado dos eventos do bem.",
+    "Contas do ganho e da perda apurados na venda de bens. Têm roteiro próprio, separado dos " +
+    "eventos do bem, pois o ativo é baixado em lançamento distinto.",
   campos: [
     {
       nome: "chave",
@@ -230,8 +229,8 @@ export const ROTEIROS_DE_RESULTADO: DefinicaoDeRecurso = definirRecurso({
       largura: 2,
       opcoes: OPCOES_DE_CHAVE,
       ajuda:
-        "Ganho quando o preço de venda supera o valor contábil do bem; perda no caso " +
-        "contrário. A apuração é do sistema — aqui se diz apenas onde ela é lançada.",
+        "Ganho quando o preço de venda supera o valor contábil do bem; perda, no caso " +
+        "contrário. O sistema apura o resultado; aqui se definem as contas do lançamento.",
     },
     {
       nome: "contaDebitoId",
@@ -240,7 +239,7 @@ export const ROTEIROS_DE_RESULTADO: DefinicaoDeRecurso = definirRecurso({
       obrigatorio: true,
       largura: 3,
       opcoes: [],
-      ajuda: "Só contas analíticas das classes 1 a 4.",
+      ajuda: "Apenas contas analíticas das classes 1 a 4.",
     },
     {
       nome: "contaCreditoId",

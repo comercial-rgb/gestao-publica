@@ -129,15 +129,15 @@ export async function verParametro(classeId: string): Promise<DetalheLido | null
       rotulo: "Parâmetro",
       valor: "Nenhum",
       nota:
-        "Enquanto esta classe não tiver parâmetro, o processamento por competência a RECUSA — e a " +
-        "recusa é deliberada: o MCASP sugere vidas úteis, mas quem decide é o ente.",
+        "Sem parâmetro, esta classe não entra no processamento mensal. O MCASP sugere vidas úteis, " +
+        "mas a definição cabe ao ente.",
     });
   } else {
     dados.push({ rotulo: "Método", valor: ROTULO_DO_METODO[vigente.metodo] ?? vigente.metodo });
-    dados.push({ rotulo: "Vida útil", valor: `${vigente.vidaUtilMeses} meses`, nota: "A parcela mensal é (base − residual) ÷ vida útil; a última parcela ajusta o resto e para no residual." });
+    dados.push({ rotulo: "Vida útil", valor: `${vigente.vidaUtilMeses} meses`, nota: "Parcela mensal = (base − valor residual) ÷ vida útil; a última parcela ajusta o arredondamento até o valor residual." });
     dados.push({ rotulo: "Valor residual", valor: residualEmPorcento(vigente.percentualResidual) });
     dados.push({ rotulo: "Em vigor", valor: vigente.ativo ? "Sim — a classe é atualizada" : "Não — a atualização foi encerrada" });
-    dados.push({ rotulo: "Vigência", valor: vigente.vigenteDesde === null ? "desde o início" : `desde a competência ${diaCivilBr(vigente.vigenteDesde).slice(3)}`, nota: "A prévia de cada competência usa a versão cuja vigência a alcança — não a mais recente." });
+    dados.push({ rotulo: "Vigência", valor: vigente.vigenteDesde === null ? "desde o início" : `desde a competência ${diaCivilBr(vigente.vigenteDesde).slice(3)}`, nota: "Cada competência é calculada com a versão vigente naquela competência." });
     const v = versoes.find((x) => x.vigente);
     if (v !== undefined) {
       dados.push({ rotulo: "Motivo da versão em vigor", valor: v.motivo });
@@ -153,7 +153,7 @@ export async function verParametro(classeId: string): Promise<DetalheLido | null
     historico: versoes.map((v) => ({
       id: v.id,
       oQue:
-        `Versão ${v.numero} — ${v.ativo ? `${ROTULO_DO_METODO[v.metodo] ?? v.metodo}, ${v.vidaUtilMeses} meses, residual ${residualEmPorcento(v.percentualResidual)}` : "ATUALIZAÇÃO ENCERRADA"}` +
+        `Versão ${v.numero} — ${v.ativo ? `${ROTULO_DO_METODO[v.metodo] ?? v.metodo}, ${v.vidaUtilMeses} meses, residual ${residualEmPorcento(v.percentualResidual)}` : "atualização encerrada"}` +
         (v.vigenteDesde === null ? " · desde o início" : ` · vigente desde ${v.vigenteDesde}`) +
         (v.vigente ? " (a mais recente)" : v.vigenciaFim !== null ? ` (substituída em ${diaCivilBr(v.vigenciaFim)})` : "") +
         (v.atualizacoes > 0 ? ` · ${v.atualizacoes} competência(s) calculada(s) por ela` : ""),
@@ -220,7 +220,7 @@ export async function acaoDoParametro(acao: string, classeId: string, c: Campos)
       // continua legível no histórico; só a atualização para. Sem parâmetro, não há o que encerrar.
       const vigente = await parametroVigente(prisma, classeId);
       if (vigente === null) {
-        throw new Error("Esta classe não tem parâmetro de atualização — não há o que encerrar. Nada foi gravado.");
+        throw new Error("Esta classe não tem parâmetro de atualização a encerrar. Nada foi gravado.");
       }
       return definirParametroDeAtualizacao(prisma, {
         classeDeBensId: classeId,

@@ -54,8 +54,8 @@ export interface FormsDoRecursoProps {
 /** O que a barra mostra quando não sabe: travar, nunca liberar. */
 const SEM_CONFERENCIA: DisponibilidadeDaAcao = {
   apresentacao: "bloqueada",
-  motivo: "Não foi possível conferir se este ato cabe agora neste registro.",
-  providencia: "Recarregue a página. Enquanto a conferência não voltar, o ato não é oferecido.",
+  motivo: "Não foi possível verificar a disponibilidade desta ação para este registro.",
+  providencia: "Recarregue a página. A ação volta a ser oferecida após a verificação.",
 };
 
 function disponibilidadeDe(
@@ -95,11 +95,11 @@ function AcaoIndisponivel({
     >
       <h2 id={`${idMotivo}-t`} className="text-sm font-semibold text-[color:var(--color-ink-2)]">{acao.rotulo}</h2>
       <p id={idMotivo} role={emCurso ? "status" : undefined} className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-        {disp.motivo ?? (emCurso ? "Há uma execução em curso sobre este registro." : "Este ato não está disponível agora.")}
+        {disp.motivo ?? (emCurso ? "Há uma operação em andamento sobre este registro." : "Esta ação não está disponível no momento.")}
         {disp.providencia !== undefined ? <span className="block">{disp.providencia}</span> : null}
       </p>
       {disp.providenciaHref !== undefined ? (
-        <a href={disp.providenciaHref} className="mt-1 inline-block text-xs underline underline-offset-2">Ir para onde se resolve</a>
+        <a href={disp.providenciaHref} className="mt-1 inline-block text-xs underline underline-offset-2">Resolver a pendência</a>
       ) : null}
       <button
         type="button"
@@ -128,8 +128,8 @@ function comOpcoes(
 function SemPermissao({ o_que }: { readonly o_que: string }): React.ReactElement {
   return (
     <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
-      Você não tem a permissão necessária para {o_que}. Peça ao administrador do sistema —
-      a concessão é por ação, e é registrada.
+      Você não tem a permissão necessária para {o_que}. Solicite a permissão ao administrador
+      do sistema.
     </p>
   );
 }
@@ -250,14 +250,14 @@ export function FormsDoRecurso({
       {indice.length >= 3 ? (
         // O ÍNDICE DOS ATOS: com três ou mais atos na barra, a pessoa vê de uma vez o que pode fazer (e o
         // que está travado) e salta para o formulário, em vez de rolar por todos. Âncoras, sem estado.
-        <nav aria-label="Atos deste registro" data-indice-dos-atos className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Atos deste registro</h2>
+        <nav aria-label="Ações deste registro" data-indice-dos-atos className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-4 py-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Ações deste registro</h2>
           <ul className="mt-2 flex flex-wrap gap-2">
             {indice.map(({ acao, apresentacao }) => (
               <li key={acao.nome}>
                 <a href={`#ato-${acao.nome}`} className="inline-flex min-h-9 items-center gap-2 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 text-xs text-[color:var(--color-ink)] hover:border-[color:var(--color-primary)]">
                   {acao.rotulo}
-                  {apresentacao !== "disponivel" ? <span className="text-[color:var(--color-ink-3)]">({apresentacao === "em-processamento" ? "em processamento" : "travado"})</span> : null}
+                  {apresentacao !== "disponivel" ? <span className="text-[color:var(--color-ink-3)]">({apresentacao === "em-processamento" ? "em processamento" : "indisponível"})</span> : null}
                 </a>
               </li>
             ))}
@@ -267,22 +267,22 @@ export function FormsDoRecurso({
       {barra}
       {semPermissao.length > 0 ? (
         <div data-acoes-sem-permissao className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Fora do seu perfil</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Ações não autorizadas para o seu perfil</h2>
           <ul className="mt-2 space-y-1">
             {semPermissao.map((a) => (
               <li key={a.nome} className="text-xs text-[color:var(--color-ink-2)]">Você não tem a permissão necessária para {a.rotulo.toLowerCase()}.</li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Peça ao administrador do sistema — a concessão é por ação, e é registrada.</p>
+          <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Solicite a permissão ao administrador do sistema.</p>
         </div>
       ) : null}
       {naoAplicaveis.length > 0 ? (
         <div data-acoes-nao-aplicaveis className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Atos que não cabem mais neste registro</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Ações já realizadas ou não aplicáveis</h2>
           <ul className="mt-2 space-y-1">
             {naoAplicaveis.map(({ acao, disp }) => (
               <li key={acao.nome} data-acao-estado="nao-aplicavel" data-acao-nome={acao.nome} className="text-xs text-[color:var(--color-ink-2)]">
-                <span className="font-medium text-[color:var(--color-ink)]">{acao.rotulo}:</span> {disp.motivo ?? "já praticado ou fora do estado do registro."}
+                <span className="font-medium text-[color:var(--color-ink)]">{acao.rotulo}:</span> {disp.motivo ?? "ação já realizada ou não aplicável à situação atual."}
               </li>
             ))}
           </ul>

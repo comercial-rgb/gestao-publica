@@ -44,16 +44,15 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Processo licitatório",
   rota: "/licitacoes/processos",
   descricao:
-    "O processo de contratação (Lei 14.133/2021): número, modalidade, objeto e valor licitado; a dispensa leva a " +
-    "hipótese do art. 75. Homologar, reservar a dotação e contratar são atos do detalhe. A situação é derivada da " +
-    "homologação — não há coluna de status.",
+    "Processos de contratação (Lei 14.133/2021): número, modalidade, objeto e valor licitado; na dispensa, a " +
+    "hipótese do art. 75. A homologação, a reserva de dotação e o contrato são registrados no detalhe do processo.",
   campos: [
     { nome: "numeroProcesso", rotulo: "Número do processo", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026/001" },
     { nome: "modalidade", rotulo: "Modalidade", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: OPCOES_DE_MODALIDADE },
-    { nome: "valorLicitado", rotulo: "Valor licitado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1, ajuda: "A estimativa que o certame disputa; o contrato sai do lance." },
+    { nome: "valorLicitado", rotulo: "Valor licitado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1, ajuda: "Valor estimado da contratação; o valor do contrato resulta da proposta vencedora." },
     { nome: "objeto", rotulo: "Objeto", tipo: "textoLongo", obrigatorio: true, largura: 3 },
-    { nome: "hipoteseDispensa", rotulo: "Hipótese de dispensa (só para DISPENSA)", tipo: "selecao", largura: 1, opcoes: OPCOES_DE_HIPOTESE, ajuda: "Contratação direta sem base legal é a primeira coisa que o TCE procura." },
-    { nome: "dataHomologacao", rotulo: "Data da homologação (se já homologado)", tipo: "data", largura: 1, ajuda: "Em branco: homologa-se depois, pelo detalhe." },
+    { nome: "hipoteseDispensa", rotulo: "Hipótese de dispensa (somente para dispensa)", tipo: "selecao", largura: 1, opcoes: OPCOES_DE_HIPOTESE, ajuda: "Fundamento legal da contratação direta." },
+    { nome: "dataHomologacao", rotulo: "Data da homologação (se já homologado)", tipo: "data", largura: 1, ajuda: "Em branco, a homologação pode ser registrada depois, no detalhe do processo." },
   ],
   colunas: [
     { nome: "numeroProcesso", cabecalho: "Processo", tipo: "link", ordenavel: true },
@@ -71,12 +70,12 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "homologar", rotulo: "Homologar o processo", acaoDoCenso: "HOMOLOGAR_PROCESSO",
-      aviso: "A homologação é um FATO com data e autor; homologar duas vezes é recusado. Sem ela não há o que contratar.",
+      aviso: "A homologação é registrada com data e responsável e só pode ser feita uma vez. O contrato depende da homologação.",
       campos: [{ nome: "data", rotulo: "Data da homologação", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "reservar", rotulo: "Reservar dotação para este processo", acaoDoCenso: "RESERVAR_DOTACAO",
-      aviso: "A reserva bloqueia o valor na ficha e fica VINCULADA ao processo: só um empenho com contrato deste processo a consome.",
+      aviso: "A reserva bloqueia o valor na ficha e fica vinculada ao processo; somente empenho de contrato deste processo pode utilizá-la.",
       campos: [
         { nome: "fichaId", rotulo: "Ficha (dotação)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "valor", rotulo: "Valor reservado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
@@ -85,7 +84,7 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "liberar-reserva", rotulo: "Liberar reserva não utilizada", acaoDoCenso: "LIBERAR_RESERVA",
-      aviso: "Liberar devolve à ficha o que a reserva ainda bloqueia; a reserva original fica no razão, com a liberação apontando para ela.",
+      aviso: "Devolve à ficha o saldo ainda reservado. A reserva original permanece registrada, vinculada à liberação.",
       campos: [
         { nome: "reservaId", rotulo: "Reserva", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "historico", rotulo: "Histórico", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "liberação do saldo não contratado" },
@@ -93,7 +92,7 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "contratar", rotulo: "Cadastrar contrato deste processo", acaoDoCenso: "CADASTRAR_CONTRATO",
-      aviso: "Só processo HOMOLOGADO recebe contrato; a vigência não começa antes da homologação, e a dispensa por valor confere o teto vigente.",
+      aviso: "Somente processo homologado pode receber contrato. A vigência não pode começar antes da homologação, e a dispensa por valor observa o limite vigente.",
       campos: [
         { nome: "numeroContrato", rotulo: "Número do contrato", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "CT-2026-001" },
         { nome: "contratadoDocumento", rotulo: "CPF/CNPJ do contratado", tipo: "cpfCnpj", obrigatorio: true, largura: 1 },
@@ -109,7 +108,7 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados", "historico", "relacionados"],
   relacionados: [
     { rotulo: "Contratos deste processo", href: "/licitacoes/contratos?processo={id}", explicacao: "Cada contrato com o valor e a vigência atualizados pelos aditivos." },
-    { rotulo: "Empenhos vinculados", href: "/despesa/empenhos", explicacao: "O empenho informa o contrato (e a reserva) deste processo na emissão — é o que libera a reserva vinculada." },
+    { rotulo: "Empenhos vinculados", href: "/despesa/empenhos", explicacao: "Empenhos emitidos com contrato deste processo, que utilizam a reserva vinculada." },
   ],
 });
 
@@ -119,8 +118,8 @@ export const CONTRATOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Contrato",
   rota: "/licitacoes/contratos",
   descricao:
-    "O contrato de cada processo homologado. Valor atualizado e fim da vigência são DERIVADOS dos aditivos " +
-    "(acréscimo, supressão, prorrogação); corrigir um aditivo é estorná-lo. O contrato entra pelo detalhe do processo.",
+    "Contratos dos processos homologados. O valor atualizado e o fim da vigência consideram os aditivos (acréscimo, " +
+    "supressão e prorrogação); a correção de um aditivo é feita por estorno. O contrato é registrado no detalhe do processo.",
   campos: [],
   colunas: [
     { nome: "numeroContrato", cabecalho: "Contrato", tipo: "link", ordenavel: true },
@@ -132,21 +131,21 @@ export const CONTRATOS: DefinicaoDeRecurso = definirRecurso({
   ],
   filtros: [
     { nome: "q", rotulo: "Número ou contratado", tipo: "texto", largura: 2 },
-    { nome: "processo", rotulo: "Processo", tipo: "texto", largura: 1, placeholder: "número ou id" },
+    { nome: "processo", rotulo: "Processo", tipo: "texto", largura: 1, placeholder: "Número do processo" },
     { nome: "situacao", rotulo: "Situação", tipo: "selecao", largura: 1, opcoes: [{ valor: "VIGENTE", rotulo: "Vigente" }, { valor: "ENCERRADO", rotulo: "Encerrado" }] },
   ],
   acoes: [
     {
       nome: "aditivo", rotulo: "Registrar aditivo", acaoDoCenso: "REGISTRAR_ADITIVO",
-      aviso: "Um aditivo fala de UMA dimensão: valor (acréscimo ou supressão) OU prazo (dias). Supressão acima do saldo não empenhado é recusada.",
+      aviso: "Cada aditivo trata de valor (acréscimo ou supressão) ou de prazo (dias). A supressão não pode superar o saldo não empenhado.",
       campos: [
         { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
           { valor: "ACRESCIMO_VALOR", rotulo: "Acréscimo de valor" },
           { valor: "SUPRESSAO_VALOR", rotulo: "Supressão de valor" },
           { valor: "PRORROGACAO_PRAZO", rotulo: "Prorrogação de prazo" },
         ] },
-        { nome: "valor", rotulo: "Valor (R$) — só para acréscimo/supressão", tipo: "dinheiro", largura: 1 },
-        { nome: "dias", rotulo: "Dias — só para prorrogação", tipo: "inteiro", largura: 1, minimo: 1, maximo: 3650 },
+        { nome: "valor", rotulo: "Valor (R$), para acréscimo ou supressão", tipo: "dinheiro", largura: 1 },
+        { nome: "dias", rotulo: "Dias, para prorrogação", tipo: "inteiro", largura: 1, minimo: 1, maximo: 3650 },
         { nome: "data", rotulo: "Data do aditivo", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "numeroAditivo", rotulo: "Número do aditivo", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "TA-01" },
         { nome: "motivo", rotulo: "Motivo (mínimo 10 caracteres)", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -154,7 +153,7 @@ export const CONTRATOS: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "estornar-movimento", rotulo: "Estornar aditivo", acaoDoCenso: "ESTORNAR_MOVIMENTO_CONTRATUAL",
-      aviso: "O estorno é outro movimento, com sinal contrário, apontando para o original. Um estorno não se estorna.",
+      aviso: "O estorno é registrado como novo movimento, com sinal contrário, vinculado ao original. Um estorno não pode ser estornado.",
       campos: [
         { nome: "movimentoId", rotulo: "Aditivo a estornar", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "data", rotulo: "Data do estorno", tipo: "data", obrigatorio: true, largura: 1 },

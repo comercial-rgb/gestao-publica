@@ -109,6 +109,6 @@ export async function publicarConfiguracaoNaTela(campos: Campos): Promise<string
       observacao: opcional(campos, "observacao"),
       criadoPor,
     });
-    return `Configuração do acesso à informação publicada na versão ${r.versao}. As versões anteriores continuam valendo para os pedidos protocolados sob elas.`;
+    return `Configuração do acesso à informação publicada na versão ${r.versao}. As versões anteriores continuam aplicáveis aos pedidos protocolados durante a sua vigência.`;
   });
 }

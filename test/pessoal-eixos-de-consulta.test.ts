@@ -228,7 +228,7 @@ describe("(B) a consulta pela porta — o 'E' sobre o mesmo vínculo, com banco"
   it("O TETO RECUSA E NOMEIA O MOTIVO — e não trunca (as duas direções)", async () => {
     // Direção 1: teto abaixo do conjunto ⇒ recusa, dizendo quantos e que NÃO truncou.
     await expect(listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(ConsultaDePessoalAmplaDemaisError);
-    await expect(listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(/alcança 2 servidores, acima do teto de 1[\s\S]*NÃO foi truncada/);
+    await expect(listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 1 })).rejects.toThrow(/abrange 2 servidores, acima do limite de 1[\s\S]*Nenhum resultado parcial foi exibido/);
     // Direção 2: teto acima ⇒ a MESMA consulta responde inteira. Sem isto, a recusa poderia estar
     // acontecendo por outro motivo qualquer.
     const r = await listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 2 });
@@ -241,8 +241,8 @@ describe("(B) a consulta pela porta — o 'E' sobre o mesmo vínculo, com banco"
     const erro = await listarServidoresPara(leitor, consulta({ situacao: "ATIVO" }), { teto: 0 }).catch((e: unknown) => e);
     expect(erro).toBeInstanceOf(ConsultaDePessoalAmplaDemaisError);
     const msg = (erro as Error).message;
-    expect(msg).toMatch(/NÃO foi truncada/);
-    expect(msg).toMatch(/Estreite por nome, matrícula, data de admissão ou regime jurídico/);
+    expect(msg).toMatch(/Nenhum resultado parcial foi exibido/);
+    expect(msg).toMatch(/Refine a pesquisa por nome, matrícula, data de admissão ou regime jurídico/);
     // E não vaza identificador de cláusula nem selo de conformidade para quem lê a tela.
     expect(msg).not.toMatch(/5\.12|TR |conformidade|cobertura/);
   });

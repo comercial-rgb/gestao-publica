@@ -28,14 +28,14 @@ const OPCOES_DE_NATUREZA = [
   // outra no papel de abatimento. Faltando aqui, o operador não consegue criar a rubrica, o
   // parâmetro não pode ser cadastrado, e a folha de 13º nunca é calculada — tudo isso com o
   // domínio inteiro funcionando e nenhum teste vermelho.
-  { valor: "ABATIMENTO_DO_ADIANTAMENTO_DO_13", rotulo: "Abatimento do adiantamento do 13º (lido da folha da 1ª parcela)" },
+  { valor: "ABATIMENTO_DO_ADIANTAMENTO_DO_13", rotulo: "Abatimento do adiantamento do 13º (1ª parcela)" },
   // ⚠️ V13 — SEM ESTA LINHA A CADEIA DO ADIANTAMENTO SALARIAL NÃO EXISTE PELA INTERFACE, e o
   // defeito é exatamente o `ROTULO-CRU-DO-TIPO-DE-FOLHA` ao contrário: nenhum compilador cobra
   // este array. É a única natureza que o motor MENSAL sabe ler para abater o vale, e o parâmetro
   // do adiantamento RECUSA qualquer outra no papel de abatimento. Faltando aqui, o operador não
   // consegue criar a rubrica, o parâmetro não pode ser cadastrado, e o vale nunca é abatido —
   // tudo isso com o domínio inteiro funcionando e nenhum teste vermelho.
-  { valor: "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL", rotulo: "Abatimento do adiantamento salarial (lido da folha do vale da mesma competência)" },
+  { valor: "ABATIMENTO_DO_ADIANTAMENTO_SALARIAL", rotulo: "Abatimento do adiantamento salarial da competência" },
 ];
 
 const OPCOES_DE_TIPO_DE_RUBRICA = [
@@ -52,14 +52,14 @@ const OPCOES_DE_TIPO_DE_RUBRICA = [
  */
 export const OPCOES_DE_TIPO_DE_FOLHA = [
   { valor: "MENSAL", rotulo: "Mensal" },
-  { valor: "MENSAL_COMPLEMENTAR", rotulo: "Mensal complementar (paga a diferença de uma competência já fechada)" },
+  { valor: "MENSAL_COMPLEMENTAR", rotulo: "Mensal complementar (diferença de competência já fechada)" },
   { valor: "ADIANTAMENTO_DECIMO_TERCEIRO", rotulo: "Adiantamento do 13º (1ª parcela)" },
   { valor: "DECIMO_TERCEIRO", rotulo: "13º salário (2ª parcela, com abatimento da 1ª)" },
   // ⚠️ V13 — O MESMO ARRAY SEM COMPILADOR. Sem esta linha o tipo existe no domínio, no banco e no
   // motor, e NÃO EXISTE para quem opera: a barra de abrir folha não o oferece, e a lista de
   // folhas mostraria o nome cru do enum. Foi assim que a V11 registrou `ROTULO-CRU-DO-TIPO-DE-FOLHA`
   // duas vezes.
-  { valor: "ADIANTAMENTO_SALARIAL", rotulo: "Adiantamento salarial (o vale do mês, abatido na mensal da mesma competência)" },
+  { valor: "ADIANTAMENTO_SALARIAL", rotulo: "Adiantamento salarial (abatido na folha mensal da competência)" },
 ];
 
 /**
@@ -70,8 +70,8 @@ export const OPCOES_DE_TIPO_DE_FOLHA = [
  * (`REGRA-DO-ADIANTAMENTO-SALARIAL-NAO-SUPORTADA`), não um encaixe na mais parecida.
  */
 export const OPCOES_DE_BASE_DO_ADIANTAMENTO_SALARIAL = [
-  { valor: "REMUNERACAO_DO_MES_ANTERIOR", rotulo: "A remuneração do mês anterior (o que a folha fechada dele apurou)" },
-  { valor: "REMUNERACAO_PROJETADA_DO_MES", rotulo: "A remuneração projetada do próprio mês (motor mensal, tabelas vigentes)" },
+  { valor: "REMUNERACAO_DO_MES_ANTERIOR", rotulo: "Remuneração do mês anterior (apurada na folha fechada)" },
+  { valor: "REMUNERACAO_PROJETADA_DO_MES", rotulo: "Remuneração projetada do próprio mês (tabelas vigentes)" },
 ];
 
 export const OPCOES_DE_ESFERA_DO_ATO = [
@@ -111,26 +111,26 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
   // complementar (só quem tem diferença) e nas duas de 13º (só quem alcança avo). O texto por tipo
   // sai de `NATUREZA_DO_TIPO_DE_FOLHA.oQueOCalculoProduz` e chega à barra pela disponibilidade.
   descricao:
-    "A folha de uma competência, por TIPO. Calcular gera um cálculo NUMERADO, com memória e sha256 em cada " +
-    "contracheque; recalcular é o número seguinte; cancelar e fechar são fatos. Fechada, não se recalcula. " +
-    "QUEM vira contracheque depende do tipo, e a tela de cada folha diz o que o cálculo dela produz.",
+    "Folha de pagamento por competência e tipo. Cada cálculo é numerado e guarda a memória de cálculo de cada " +
+    "contracheque; um novo cálculo substitui o anterior, que permanece no histórico. Depois de fechada, a folha não " +
+    "pode ser recalculada.",
   campos: [
     { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-05" },
     {
       nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1,
       opcoes: [...OPCOES_DE_TIPO_DE_FOLHA],
       ajuda:
-        "As duas folhas de 13º medem por AVO do exercício, não por dia do mês, e exigem o parâmetro do " +
-        "exercício cadastrado. Só existe uma de cada por ano; a de 13º abate automaticamente o adiantamento. " +
+        "As folhas de 13º são calculadas por avos do exercício e exigem o parâmetro do 13º cadastrado. Há uma de " +
+        "cada tipo por ano, e a 2ª parcela abate automaticamente o adiantamento. " +
         // ⚠️ "JÁ PAGO" ERA FALSO, E ERA A PRIMEIRA COISA QUE O OPERADOR LIA (V11 V9.4b). O que a
         // complementar compara é o APURADO em folha FECHADA — `fechamento !== null`, e só isso.
         // Certificação, empenho, liquidação e pagamento não são consultados em lugar nenhum de
         // `calcularFolhaComplementarNaTx`, e o pagamento nem é ato deste módulo. Afirmar "pago"
         // aqui é a mesma doença da memória que dizia "1ª parcela já PAGA" sobre um cálculo que só
         // verificara o fechamento.
-        "A MENSAL COMPLEMENTAR recalcula uma competência cuja mensal já foi fechada e apura só a DIFERENÇA, " +
-        "rubrica a rubrica: ela não reabre nem corrige a folha original, e recusa quando o correto é menor " +
-        "que o já APURADO em folha fechada. Apurar não é empenhar, liquidar nem pagar.",
+        "A mensal complementar apura apenas a diferença, por rubrica, de uma competência cuja folha mensal já foi " +
+        "fechada, sem alterar a folha original; não é aceita quando o valor correto é menor que o já apurado. " +
+        "Apurar a folha não equivale a empenhar, liquidar ou pagar.",
     },
   ],
   colunas: [
@@ -138,7 +138,7 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
     { nome: "tipo", cabecalho: "Tipo", tipo: "texto" },
     { nome: "calculos", cabecalho: "Cálculos", tipo: "inteiro" },
     { nome: "contracheques", cabecalho: "Contracheques", tipo: "inteiro" },
-    { nome: "liquido", cabecalho: "Líquido (último cálculo vivo)", tipo: "dinheiro", somavel: true },
+    { nome: "liquido", cabecalho: "Líquido (cálculo vigente)", tipo: "dinheiro", somavel: true },
     { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
   ],
   filtros: [
@@ -155,18 +155,18 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
     {
       nome: "calcular", rotulo: "Calcular a folha", acaoDoCenso: "CALCULAR_FOLHA",
       aviso:
-        "Calcula com as tabelas vigentes. Sem tabela, sem regime ou sem vencimento, recusa nomeando. Cada cálculo é " +
-        "numerado; o anterior continua no histórico. A ABRANGÊNCIA é declarada: ou a folha inteira, ou as matrículas " +
-        "que você escrever — e recortar quem entra exige a ação SELECIONAR_VINCULOS_DA_FOLHA, que é separada de calcular. " +
-        "O que o cálculo de fato alcançou fica gravado e visível na seção \"Abrangência dos cálculos\".",
+        "Calcula com as tabelas vigentes na competência. Faltando tabela, regime previdenciário ou vencimento, o " +
+        "cálculo não é realizado e a pendência é informada. Cada cálculo recebe um número e o anterior permanece no " +
+        "histórico. Informe a abrangência: a folha inteira ou somente as matrículas relacionadas (esta opção exige " +
+        "permissão específica). As matrículas efetivamente calculadas ficam registradas na seção \"Abrangência dos cálculos\".",
       campos: [
         {
           nome: "modoDeSelecao",
-          rotulo: "Quem entra neste cálculo (declare — o sistema não deduz)",
+          rotulo: "Abrangência do cálculo",
           tipo: "selecao",
           opcoes: [
             { valor: "TODOS_OS_ELEGIVEIS", rotulo: "Todos os elegíveis da competência" },
-            { valor: "EXPLICITA", rotulo: "Só as matrículas declaradas abaixo" },
+            { valor: "EXPLICITA", rotulo: "Somente as matrículas informadas abaixo" },
           ],
           largura: 2,
         },
@@ -176,53 +176,53 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
           // quem revisa lê "os selecionados" sem ver que são "os da página 1". Texto num campo só
           // é imune por construção: trocar de página não altera uma linha dele.
           nome: "matriculasSelecionadas",
-          rotulo: "Matrículas (uma por linha, ou separadas por vírgula) — só quando o modo for EXPLÍCITO",
+          rotulo: "Matrículas a calcular (uma por linha ou separadas por vírgula)",
           tipo: "textoLongo",
           largura: 4,
         },
-        { nome: "motivo", rotulo: "Motivo (opcional — ex.: conferência, correção de lançamento)", tipo: "texto", largura: 4 },
+        { nome: "motivo", rotulo: "Motivo (opcional; ex.: conferência, correção de lançamento)", tipo: "texto", largura: 4 },
       ],
     },
     {
       nome: "cancelar-calculo", rotulo: "Cancelar o último cálculo", acaoDoCenso: "CANCELAR_CALCULO_DA_FOLHA",
-      aviso: "Cancela o último cálculo VIVO desta folha, como fato com motivo. O cálculo que fechou a folha não se cancela.",
+      aviso: "Cancela o cálculo vigente desta folha, com registro do motivo. O cálculo utilizado no fechamento não pode ser cancelado.",
       campos: [{ nome: "motivo", rotulo: "Motivo (mínimo 5 caracteres)", tipo: "texto", obrigatorio: true, largura: 4 }],
     },
     {
       nome: "apropriar", rotulo: "Apropriar (gerar os empenhos)", acaoDoCenso: "APROPRIAR_FOLHA",
-      aviso: "Transforma a folha FECHADA em despesa: os proventos de cada contracheque, agrupados pelos grupos de empenho, viram empenhos pelo caminho de sempre (saldo da ficha, exercício aberto, fila do art. 141). Só o bruto é empenhado — as retenções viajam no pagamento. Reexecutar continua de onde parou: a numeração é determinística e não duplica.",
+      aviso: "Gera os empenhos da folha fechada: os proventos de cada contracheque são agrupados conforme os grupos de empenho, com verificação do saldo da ficha, do exercício aberto e da ordem cronológica de pagamentos. Empenha-se o valor bruto; as retenções são tratadas no pagamento. Se interrompida, a operação pode ser repetida sem duplicar empenhos.",
       campos: [{ nome: "dataDoEmpenho", rotulo: "Data dos empenhos (dentro do exercício aberto)", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "certificar", rotulo: "Certificar (atestar) a folha", acaoDoCenso: "CERTIFICAR_FOLHA",
       aviso:
-        "O atesto do art. 63 da Lei 4.320: quem o ente DESIGNOU confere a folha fechada e responde por ela. Exige designação " +
-        "vigente no dia do ato — o crachá sozinho não basta. Quem calculou ou fechou esta folha não a certifica. Grava o " +
-        "manifesto do que foi conferido (entidade, competência, cálculo, vínculos e alocações) com o seu sha256.",
-      campos: [{ nome: "data", rotulo: "Data do ato (a designação precisa estar vigente nela)", tipo: "data", obrigatorio: true, largura: 1 }],
+        "Atesto previsto no art. 63 da Lei 4.320/1964: o responsável designado pelo ente confere a folha fechada e responde " +
+        "por ela. Exige designação vigente na data do ato, além da permissão de acesso. Quem calculou ou fechou a folha não " +
+        "pode certificá-la. O conteúdo conferido (entidade, competência, cálculo, vínculos e alocações) fica registrado com código de integridade.",
+      campos: [{ nome: "data", rotulo: "Data do ato (a designação deve estar vigente nesta data)", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "devolver", rotulo: "Devolver para correção", acaoDoCenso: "CERTIFICAR_FOLHA",
       aviso:
-        "Recusar é o outro lado de atestar, e exige a mesma designação. A devolução é um FATO com motivo; ela NÃO reabre o " +
-        "cálculo fechado — corrigir é retificação ou folha complementar. Folha já liquidada não se devolve: desfazer " +
-        "obrigação liquidada é anulação pelo caminho da despesa.",
+        "Registra a devolução da folha com o motivo e exige a mesma designação da certificação. A devolução não reabre o " +
+        "cálculo fechado: a correção é feita por retificação ou folha complementar. Folha já liquidada não pode ser " +
+        "devolvida; nesse caso, a correção é feita por anulação da despesa.",
       campos: [
         { nome: "data", rotulo: "Data do ato", tipo: "data", obrigatorio: true, largura: 1 },
-        { nome: "motivo", rotulo: "O que RH precisa corrigir (mínimo 3 caracteres)", tipo: "texto", obrigatorio: true, largura: 3 },
+        { nome: "motivo", rotulo: "O que o RH precisa corrigir (mínimo 3 caracteres)", tipo: "texto", obrigatorio: true, largura: 3 },
       ],
     },
     {
       nome: "liquidar", rotulo: "Liquidar a folha certificada", acaoDoCenso: "LIQUIDAR_FOLHA",
       aviso:
-        "Reconhece a obrigação de cada empenho desta folha pelo caminho de sempre da despesa, com o certificador no " +
-        "responsável pelo atesto. Exige a folha CERTIFICADA e APROPRIADA, e quem certificou não liquida. Nenhuma nota " +
-        "fiscal é inventada: a folha não tem nota. Reexecutar continua de onde parou e não duplica.",
+        "Registra a liquidação de cada empenho da folha, tendo o certificador como responsável pelo atesto. Exige a " +
+        "folha certificada e apropriada; quem certificou não pode liquidar. A liquidação da folha dispensa nota fiscal. " +
+        "Se interrompida, a operação pode ser repetida sem duplicar liquidações.",
       campos: [{ nome: "data", rotulo: "Data das liquidações", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "fechar", rotulo: "Fechar a folha", acaoDoCenso: "FECHAR_FOLHA",
-      aviso: "Congela o último cálculo vivo com o seu sha256. Depois disto a folha não se recalcula — é o que vai à contabilidade.",
+      aviso: "Fecha o cálculo vigente e registra seu código de integridade. Depois do fechamento, a folha não pode ser recalculada e segue para a contabilidade.",
       irreversivel: true,
       campos: [],
     },
@@ -230,39 +230,39 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
     {
       nome: "apurar-encargos", rotulo: "Apurar os encargos do empregador", acaoDoCenso: "APURAR_ENCARGOS_DA_FOLHA",
       aviso:
-        "Calcula, sobre o cálculo FECHADO, o que o ENTE deve por componente (previdência patronal, RAT, outras entidades…), " +
-        "com as versões APROVADAS vigentes na competência. Não muda contracheque nem líquido. Componente sem parâmetro " +
-        "aprovado fica AUSENTE — nunca zero — e a apuração fica incompleta. Apurar de novo, depois de corrigir um " +
-        "parâmetro, é uma nova versão com comparativo.",
-      campos: [{ nome: "motivo", rotulo: "Motivo (opcional — ex.: portaria corrigida)", tipo: "texto", largura: 4 }],
+        "Calcula, sobre a folha fechada, os encargos devidos pelo ente por componente (previdência patronal, RAT, outras " +
+        "entidades), conforme as versões aprovadas vigentes na competência. Não altera contracheques nem o líquido. " +
+        "Componente sem parâmetro aprovado fica sem valor e a apuração é registrada como incompleta. Uma nova apuração, " +
+        "após a correção de um parâmetro, gera nova versão com comparativo.",
+      campos: [{ nome: "motivo", rotulo: "Motivo (opcional; ex.: portaria corrigida)", tipo: "texto", largura: 4 }],
     },
     {
       nome: "certificar-encargos", rotulo: "Certificar (atestar) os encargos", acaoDoCenso: "CERTIFICAR_ENCARGOS_DA_FOLHA",
       aviso:
-        "O atesto dos ENCARGOS é outro objeto: o da folha salarial não alcança encargos apurados depois dele. Exige designação " +
-        "vigente com a atribuição de certificar os encargos, no dia do ato e hoje. Quem apurou não certifica.",
+        "O atesto dos encargos é distinto do atesto da folha, que não alcança encargos apurados depois dele. Exige " +
+        "designação para certificar encargos vigente na data do ato e na data atual. Quem apurou não pode certificar.",
       campos: [{ nome: "data", rotulo: "Data do ato", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "apropriar-encargos", rotulo: "Empenhar os encargos", acaoDoCenso: "APROPRIAR_FOLHA",
       aviso:
-        "Empenha, por grupo de empenho dos encargos, o que a apuração vigente pede MENOS o que já foi empenhado para esta " +
-        "folha. Nunca empenha a contribuição retida do servidor. Reexecutar continua de onde parou; redução exige anulação.",
+        "Empenha, por grupo de empenho dos encargos, a diferença entre a apuração vigente e o valor já empenhado para esta " +
+        "folha. A contribuição retida do servidor não é empenhada. A operação pode ser repetida sem duplicar; reduções exigem anulação.",
       campos: [{ nome: "dataDoEmpenho", rotulo: "Data dos empenhos", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "liquidar-encargos", rotulo: "Liquidar os encargos certificados", acaoDoCenso: "LIQUIDAR_FOLHA",
       aviso:
-        "Reconhece a obrigação dos empenhos dos encargos com as contas do grupo (VPD de encargos e encargos a recolher). " +
-        "Liquidar não é recolher: a guia e o pagamento são atos próprios. Quem certificou não liquida.",
+        "Registra a liquidação dos empenhos dos encargos nas contas do grupo (VPD de encargos e encargos a recolher). " +
+        "A liquidação não equivale ao recolhimento: a guia e o pagamento são registrados à parte. Quem certificou não pode liquidar.",
       campos: [{ nome: "data", rotulo: "Data das liquidações", tipo: "data", obrigatorio: true, largura: 1 }],
     },
     {
       nome: "ajustar-encargos", rotulo: "Ajustar os encargos para baixo", acaoDoCenso: "APROPRIAR_FOLHA", irreversivel: true,
       aviso:
-        "Quando a apuração vigente (certificada) pede MENOS do que a despesa já reconhece: anula pela despesa a parte liquidada e " +
-        "não paga, depois a parte do empenho não liquidada; o que já foi PAGO não se anula e fica registrado para restituição. " +
-        "A apuração anterior e o contracheque não mudam. Reexecutar continua de onde parou, sem anular duas vezes.",
+        "Aplica-se quando a apuração vigente certificada é menor que a despesa já reconhecida: anula primeiro a parte " +
+        "liquidada e não paga e, em seguida, a parte empenhada e não liquidada. Valores já pagos não são anulados e ficam " +
+        "registrados para restituição. A apuração anterior e os contracheques não são alterados. A operação pode ser repetida sem anulação em duplicidade.",
       campos: [
         { nome: "data", rotulo: "Data das anulações", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo (o ato que corrigiu o parâmetro)", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -279,14 +279,14 @@ export const RUBRICAS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Rubrica",
   rota: "/folha/rubricas",
   descricao:
-    "Proventos e descontos da folha: de onde o valor vem (natureza), se compõe a base de contribuição e de IRRF, e se é " +
-    "proporcional aos dias. Vencimento, gratificações, contribuição, IRRF e salário-família existem UMA vez cada.",
+    "Proventos e descontos da folha: origem do valor, incidência na base de contribuição e de IRRF e proporcionalidade " +
+    "aos dias trabalhados. Vencimento, gratificações, contribuição, IRRF e salário-família são cadastrados uma única vez cada.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "VENC" },
     { nome: "descricao", rotulo: "Descrição (como aparece no contracheque)", tipo: "texto", obrigatorio: true, largura: 3 },
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_TIPO_DE_RUBRICA },
     { nome: "natureza", rotulo: "Natureza (de onde vem o valor)", tipo: "selecao", obrigatorio: true, largura: 3, opcoes: OPCOES_DE_NATUREZA },
-    { nome: "percentual", rotulo: "Percentual (só 'percentual do vencimento'; 20 = 20%)", tipo: "texto", largura: 1 },
+    { nome: "percentual", rotulo: "Percentual (para percentual do vencimento; 20 = 20%)", tipo: "texto", largura: 1 },
     { nome: "ordem", rotulo: "Ordem no contracheque", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1 },
     { nome: "incideContribuicao", rotulo: "Compõe a base da contribuição", tipo: "booleano", largura: 1 },
     { nome: "incideIrrf", rotulo: "Compõe a base do IRRF", tipo: "booleano", largura: 1 },
@@ -316,17 +316,17 @@ export const LANCAMENTOS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Lançamento da folha",
   rota: "/folha/lancamentos",
   descricao:
-    "Um valor informado para uma rubrica de valor informado de uma matrícula: FIXO vale por competências consecutivas " +
-    "(vigência), VARIÁVEL vale numa competência só. Nada é reescrito: encerrar um fixo é dizer a competência final.",
+    "Valores informados por matrícula para rubricas de valor informado. O lançamento fixo vale para competências " +
+    "consecutivas; o variável, para uma única competência. Para encerrar um lançamento fixo, informe a competência final.",
   campos: [
     { nome: "vinculoId", rotulo: "Matrícula", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
-    { nome: "rubricaId", rotulo: "Rubrica (só as de valor informado)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "rubricaId", rotulo: "Rubrica (de valor informado)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
       { valor: "VARIAVEL", rotulo: "Variável (uma competência)" },
       { valor: "FIXO", rotulo: "Fixo (por vigência)" },
     ] },
     { nome: "competenciaInicio", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-05" },
-    { nome: "competenciaFim", rotulo: "Competência final (só fixo; vazio = aberto)", tipo: "texto", largura: 1 },
+    { nome: "competenciaFim", rotulo: "Competência final (lançamento fixo; em branco, sem prazo)", tipo: "texto", largura: 1 },
     { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
     { nome: "observacao", rotulo: "Observação", tipo: "texto", largura: 2 },
     { nome: "atoLegal", rotulo: "Ato legal (opcional)", tipo: "texto", largura: 2 },
@@ -354,13 +354,13 @@ export const TABELAS_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Tabela do ente",
   rota: "/folha/tabelas",
   descricao:
-    "Contribuição previdenciária por regime (faixas e teto), IRRF (faixas, dedução por dependente, desconto simplificado, " +
-    "parcela isenta de 65 anos, redutor) e salário-família — cada uma vigente por competência, com a fundamentação legal. " +
-    "Nenhum valor mora no código: sem tabela vigente, a folha recusa calcular.",
+    "Tabelas de contribuição previdenciária por regime (faixas e teto), IRRF (faixas, dedução por dependente, desconto " +
+    "simplificado, parcela isenta para maiores de 65 anos e redutor) e salário-família, com vigência por competência e " +
+    "fundamentação legal. Sem tabela vigente, a folha não é calculada.",
   campos: [
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: OPCOES_DE_TIPO_DE_TABELA },
     { nome: "competenciaInicio", rotulo: "Vigente desde (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-01" },
-    { nome: "competenciaFim", rotulo: "Vigente até (vazio = aberta)", tipo: "texto", largura: 1 },
+    { nome: "competenciaFim", rotulo: "Vigente até (em branco, sem prazo)", tipo: "texto", largura: 1 },
     { nome: "fundamentacaoLegal", rotulo: "Fundamentação legal (portaria, lei, decreto)", tipo: "texto", obrigatorio: true, largura: 4 },
   ],
   colunas: [
@@ -382,10 +382,10 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Grupo de empenho",
   rota: "/folha/grupos-de-empenho",
   descricao:
-    "Como a folha vira despesa: quais rubricas de PROVENTO cada grupo empenha, em qual ficha, com qual categoria da ordem " +
-    "cronológica, e se o empenho é por servidor (credor = o CPF de cada um) ou um só para o grupo (credor declarado). " +
-    "Uma rubrica pertence a um grupo só — em dois, a mesma verba viraria despesa duas vezes. O grupo também declara as " +
-    "duas contas patrimoniais da liquidação: a VPD de pessoal que ela debita e a obrigação de pessoal que ela credita.",
+    "Define como a folha é empenhada: quais rubricas de provento cada grupo reúne, em qual ficha, com qual categoria da " +
+    "ordem cronológica e se o empenho é individual por servidor ou único para o grupo. Cada rubrica pertence a um único " +
+    "grupo, o que evita despesa em duplicidade. O grupo também indica as contas da liquidação: a VPD de pessoal e a " +
+    "obrigação de pessoal a pagar.",
   campos: [
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "FOLHA-VENC" },
     { nome: "descricao", rotulo: "Descrição (vai no histórico do empenho)", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -398,8 +398,8 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
       { valor: "FORNECIMENTO_BENS", rotulo: "Fornecimento de bens" }, { valor: "LOCACAO", rotulo: "Locação" },
       { valor: "PRESTACAO_SERVICOS", rotulo: "Prestação de serviços" }, { valor: "REALIZACAO_OBRAS", rotulo: "Realização de obras" },
     ] },
-    { nome: "porServidor", rotulo: "Um empenho por servidor (credor = o CPF de cada um)", tipo: "booleano", largura: 2 },
-    { nome: "credorId", rotulo: "Credor do empenho único (só quando NÃO é por servidor)", tipo: "selecao", largura: 3, opcoes: [] },
+    { nome: "porServidor", rotulo: "Um empenho por servidor (cada servidor é o credor)", tipo: "booleano", largura: 2 },
+    { nome: "credorId", rotulo: "Credor do empenho único (quando não for por servidor)", tipo: "selecao", largura: 3, opcoes: [] },
     // ⚠️ AS DUAS CONTAS DA LIQUIDAÇÃO. O rol elemento→conta do plano cobre material, serviço e
     // amortização — não a folha —, e a VPD dele é de serviços de terceiros. Quem sabe qual conta
     // é qual é o contador do ente. O recorte (3.1 e 2.1.1, analíticas) é do descritor.
@@ -418,9 +418,8 @@ export const GRUPOS_DE_EMPENHO_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
     {
       nome: "definir-contas", rotulo: "Definir as contas da liquidação", acaoDoCenso: "CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA",
       aviso:
-        "A VPD que a liquidação debita e a obrigação de pessoal que ela credita. Sem as duas, a folha certificada não " +
-        "liquida — e a recusa nomeia este grupo. As liquidações JÁ gravadas não mudam: elas têm o seu lançamento com as " +
-        "contas que valiam no ato; o que se define aqui vale para as próximas.",
+        "Indica a VPD debitada e a obrigação de pessoal creditada na liquidação. Sem essas contas, a folha certificada " +
+        "não pode ser liquidada. Liquidações já registradas não são alteradas; a definição vale para as próximas.",
       campos: [
         { nome: "contaVariacaoId", rotulo: "VPD que a liquidação debita (3.1 — pessoal)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "contaObrigacaoId", rotulo: "Obrigação que a liquidação credita (2.1.1 — pessoal a pagar)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
@@ -447,16 +446,15 @@ export const DESIGNACOES_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Designação",
   rota: "/folha/designacoes",
   descricao:
-    "Quem o ente designou para CERTIFICAR a folha, por qual ato administrativo e de quando até quando. Nenhuma norma " +
-    "nacional nomeia um cargo para isso: a atribuição é do município, e o sistema não a escolhe. Sem designação vigente " +
-    "no dia, o ato de certificar recusa dizendo o que falta — consultar, calcular e fechar continuam liberados.",
+    "Responsáveis designados pelo ente para certificar a folha, com o ato administrativo e o período de vigência. Sem " +
+    "designação vigente na data, a certificação não é realizada; consulta, cálculo e fechamento continuam disponíveis.",
   campos: [
     { nome: "atribuicao", rotulo: "Atribuição", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [{ valor: "CERTIFICAR_FOLHA", rotulo: "Certificar (atestar) a folha" }, { valor: "CERTIFICAR_ENCARGOS_DA_FOLHA", rotulo: "Certificar (atestar) os encargos do empregador" }] },
     { nome: "pessoaId", rotulo: "Responsável (pessoa do cadastro)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
-    { nome: "usuarioIdentificador", rotulo: "Conta que ele usa para entrar (tem de ser a MESMA pessoa)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "usuarioIdentificador", rotulo: "Usuário de acesso do responsável (a mesma pessoa)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "atoDesignacao", rotulo: "Ato que designou (portaria, decreto, delegação)", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "Portaria 45/2026" },
     { nome: "vigenciaInicio", rotulo: "Vigência — início", tipo: "data", obrigatorio: true, largura: 1 },
-    { nome: "vigenciaFim", rotulo: "Vigência — fim (vazio = sem prazo)", tipo: "data", largura: 1 },
+    { nome: "vigenciaFim", rotulo: "Vigência — fim (em branco, sem prazo)", tipo: "data", largura: 1 },
     { nome: "substitutoDeId", rotulo: "Substitui a designação de (opcional)", tipo: "selecao", largura: 2, opcoes: [] },
   ],
   colunas: [
@@ -477,8 +475,8 @@ export const DESIGNACOES_DA_FOLHA: DefinicaoDeRecurso = definirRecurso({
     {
       nome: "revogar", rotulo: "Revogar a designação", acaoDoCenso: "DESIGNAR_NA_FOLHA",
       aviso:
-        "A revogação é um FATO com data de efeito: a designação continua no histórico, e os atestos praticados sob ela " +
-        "continuam com lastro. A partir do dia do efeito, ela deixa de autorizar novos atestos.",
+        "A revogação vale a partir da data de efeito. A designação permanece no histórico e os atestos já realizados " +
+        "continuam válidos; a partir dessa data, ela não autoriza novos atestos.",
       irreversivel: true,
       campos: [
         { nome: "dataEfeito", rotulo: "A partir de que dia deixa de valer", tipo: "data", obrigatorio: true, largura: 1 },
@@ -508,11 +506,10 @@ export const PARAMETROS_DO_DECIMO_TERCEIRO: DefinicaoDeRecurso = definirRecurso(
   rotuloSingular: "Parâmetro do 13º",
   rota: "/folha/parametros-do-13",
   descricao:
-    "Por exercício, o que o ENTE declara para o 13º: quantos dias fazem um mês contar um avo, quantos avos tem o ano, " +
-    "o percentual da 1ª parcela, se o 13º sofre contribuição e imposto, quais rubricas compõem a base — e o ato que " +
-    "fundamenta tudo isso, com número, ano e dispositivo. Sem parâmetro, a folha de 13º recusa calcular e diz o exercício. " +
-    "Declara também QUAL ESTADO o adiantamento precisa ter alcançado para ser abatido na 2ª parcela — sem essa " +
-    "declaração o 13º ainda calcula, mas como simulação, e a apropriação da folha fica bloqueada.",
+    "Parâmetros do 13º por exercício: dias mínimos para contar um avo, avos no ano, percentual da 1ª parcela, " +
+    "incidência de contribuição e imposto, rubricas que compõem a base e o ato que os fundamenta. Informe também a " +
+    "situação que o adiantamento deve ter alcançado para ser abatido na 2ª parcela; sem essa informação, o abatimento " +
+    "é apenas simulado e a apropriação da folha fica bloqueada. Sem parâmetro, a folha de 13º não é calculada.",
   campos: [
     { nome: "exercicio", rotulo: "Exercício (ano do 13º)", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1900, maximo: 2200 },
     { nome: "diasMinimosDoAvo", rotulo: "Dias mínimos no mês para contar um avo", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 30 },
@@ -572,17 +569,16 @@ export const PARAMETROS_DO_ADIANTAMENTO_SALARIAL: DefinicaoDeRecurso = definirRe
   rotuloSingular: "Parâmetro do adiantamento salarial",
   rota: "/folha/parametros-do-adiantamento-salarial",
   descricao:
-    "Por competência, o que o ENTE declara para o adiantamento salarial (o vale do mês): o percentual, sobre que base " +
-    "ele incide (a remuneração do mês anterior, ou a projetada do próprio mês), qual rubrica paga e qual abate na folha " +
-    "mensal, QUAL ESTADO o vale precisa ter alcançado para ser abatido — fechado, certificado ou pago —, e o ato que " +
-    "fundamenta tudo isso. Sem parâmetro, a folha de adiantamento salarial recusa calcular e diz a competência. " +
-    "Corrigir é cadastrar a versão seguinte: as folhas já calculadas citam na memória a versão que as produziu, e é " +
-    "ESSA versão que a mensal lê para abater — cadastrar a seguinte não reescreve nenhum cálculo fechado.",
+    "Parâmetros do adiantamento salarial por competência: percentual, base de incidência (remuneração do mês anterior " +
+    "ou projetada do próprio mês), rubricas de pagamento e de abatimento na folha mensal, situação que o adiantamento " +
+    "deve ter alcançado para ser abatido (fechado, certificado ou pago) e o ato que os fundamenta. Sem parâmetro, a " +
+    "folha de adiantamento salarial não é calculada. Para corrigir, cadastre nova versão; os cálculos já realizados " +
+    "permanecem vinculados à versão utilizada.",
   campos: [
     { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "percentualDoAdiantamento", rotulo: "Percentual do adiantamento", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "baseDoAdiantamento", rotulo: "O percentual incide sobre", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
-    { nome: "estadoMinimoParaAbater", rotulo: "Para ser abatido na mensal, o vale precisa estar", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+    { nome: "estadoMinimoParaAbater", rotulo: "Situação exigida para o abatimento na folha mensal", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "atoTipo", rotulo: "Tipo do ato", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "atoNumero", rotulo: "Número do ato", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "atoAno", rotulo: "Ano do ato", tipo: "inteiro", obrigatorio: true, largura: 1 },

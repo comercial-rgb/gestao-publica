@@ -28,20 +28,20 @@ export const TERMOS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Termo patrimonial",
   rota: "/patrimonio/termos",
   descricao:
-    "O termo de responsabilidade (individual, setorial ou por responsável) e o termo de baixa. " +
-    "Emitir registra o movimento de cada bem na mesma transação; o papel sai em PDF pelo detalhe.",
+    "Termos de responsabilidade (individual, setorial ou por responsável) e termos de baixa. A emissão " +
+    "registra a movimentação de cada bem, e o documento é gerado em PDF no detalhe.",
   campos: [
     { nome: "numero", rotulo: "Número do termo", tipo: "texto", obrigatorio: true, largura: 1, ajuda: "Único. Ex.: TR-2026-0001." },
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: OPCOES_DE_TIPO_DE_TERMO },
     { nome: "data", rotulo: "Data do termo", tipo: "data", obrigatorio: true, largura: 1 },
     {
       nome: "responsavelId", rotulo: "Responsável", tipo: "selecao", largura: 2, opcoes: [],
-      ajuda: "Obrigatório no termo de responsabilidade: é em quem o bem recai.",
+      ajuda: "Obrigatório no termo de responsabilidade: pessoa responsável pelos bens.",
     },
-    { nome: "setorId", rotulo: "Setor", tipo: "selecao", largura: 2, opcoes: [], ajuda: "Para o termo setorial. Em branco: termo do ente." },
+    { nome: "setorId", rotulo: "Setor", tipo: "selecao", largura: 2, opcoes: [], ajuda: "Para termo setorial. Em branco, o termo é do ente." },
     {
       nome: "tombamentos", rotulo: "Tombamentos dos bens", tipo: "texto", obrigatorio: true, largura: 4,
-      ajuda: "Separados por vírgula, ponto e vírgula ou espaço. Tombamento inexistente é recusado nomeando.",
+      ajuda: "Separe por vírgula, ponto e vírgula ou espaço. Tombamentos inexistentes são informados na recusa.",
     },
   ],
   colunas: [
@@ -61,7 +61,7 @@ export const TERMOS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados", "historico", "anexos", "relacionados"],
   donoDoAnexo: "termoPatrimonialId",
   relacionados: [
-    { rotulo: "PDF do termo emitido (segunda via)", href: "/patrimonio/termos/{id}/pdf", explicacao: "O documento como foi emitido: os bens, o valor contábil e a localização de cada um NA EMISSÃO, congelados com o termo. Reimprimir não muda nada." },
-    { rotulo: "PDF da posição patrimonial atual", href: "/patrimonio/termos/{id}/pdf?via=atual", explicacao: "Outro documento, com data própria: os mesmos bens como estão hoje. Não é o termo nem uma segunda via dele." },
+    { rotulo: "PDF do termo emitido (segunda via)", href: "/patrimonio/termos/{id}/pdf", explicacao: "Documento conforme emitido, com os bens, o valor contábil e a localização de cada um na data da emissão. A reimpressão reproduz o mesmo conteúdo." },
+    { rotulo: "PDF da posição patrimonial atual", href: "/patrimonio/termos/{id}/pdf?via=atual", explicacao: "Documento distinto do termo, com a situação atual dos mesmos bens." },
   ],
 });

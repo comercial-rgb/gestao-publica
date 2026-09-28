@@ -134,18 +134,18 @@ export async function verSolicitacaoNaMesa(sessao: Identidade, id: string): Prom
   const respostas = s.respostas as Readonly<Record<string, string>>;
   const atual = s.titular.versoes[0];
   const dados: DadoDoDetalhe[] = [
-    { rotulo: "Serviço", valor: `${s.versao.servico.titulo} — versão ${s.versao.numero}`, nota: "A versão do formulário em que o pedido foi feito; publicar outra não a altera." },
+    { rotulo: "Serviço", valor: `${s.versao.servico.titulo} — versão ${s.versao.numero}`, nota: "Versão do formulário utilizada no pedido." },
     { rotulo: "Titular", valor: nomeDoTitular(s) },
     ...(s.representacao === null
       ? [{ rotulo: "Protocolada por", valor: `${s.criadoPor} (a própria pessoa)` }]
       : [{
           rotulo: "Protocolada por representação",
           valor: `${s.representacao.representanteUsuario.nome} (${s.representacao.representanteUsuario.identificador})`,
-          nota: `Fundamento: ${s.representacao.fundamento}. ${representacaoVigenteEm(s.representacao, new Date()) ? "Vigente hoje." : "NÃO está vigente hoje — o representante não acompanha mais este pedido."}`,
+          nota: `Fundamento: ${s.representacao.fundamento}. ${representacaoVigenteEm(s.representacao, new Date()) ? "Vigente hoje." : "Não está vigente: o representante não acompanha mais este pedido."}`,
         }]),
-    { rotulo: "Situação no processo", valor: e.situacaoInterna, nota: `O requerente lê: "${ROTULO_PARA_REQUERENTE[e.situacaoRequerente]}".` },
+    { rotulo: "Situação no processo", valor: e.situacaoInterna, nota: `Situação exibida ao requerente: "${ROTULO_PARA_REQUERENTE[e.situacaoRequerente]}".` },
     { rotulo: "Onde está", valor: setor === null ? e.onde : `${setor.codigo} — ${setor.nome}` },
-    { rotulo: "Processo digital", valor: `${e.estado.protocolo}`, nota: "Tramitar, receber e pedir parecer pelo processo digital (link abaixo dos dados)." },
+    { rotulo: "Processo digital", valor: `${e.estado.protocolo}`, nota: "Tramitação, recebimento e pedido de parecer são feitos no processo digital (link abaixo)." },
     ...campos.filter((c) => (respostas[c.nome] ?? "") !== "").map((c) => ({ rotulo: c.rotulo, valor: respostas[c.nome] ?? "", tipo: c.tipo === "textoLongo" ? ("longo" as const) : ("texto" as const) })),
   ];
   if (s.proposta !== null && atual !== undefined) {
@@ -155,7 +155,7 @@ export async function verSolicitacaoNaMesa(sessao: Identidade, id: string): Prom
       rotulo: "Proposta de alteração do cadastro",
       valor: Object.entries(proposta).map(([k, v]) => `${ROTULO_DO_CAMPO_CADASTRAL[k] ?? k}: ${(atual as Record<string, string | null>)[k] ?? "(vazio)"} → ${v}`).join("\n"),
       tipo: "longo",
-      nota: mudou ? "ATENÇÃO: o cadastro foi alterado depois do pedido. Deferir será recusado; emita exigência para o requerente confirmar." : "Nada muda no cadastro até a decisão de deferir.",
+      nota: mudou ? "Atenção: o cadastro foi alterado depois do pedido, e o deferimento não será aceito. Emita exigência para o requerente confirmar os dados." : "O cadastro só é alterado com o deferimento.",
     });
   }
   if (s.decisao !== null) {
@@ -210,7 +210,7 @@ export async function disponibilidadeDaSolicitacao(sessao: Identidade, id: strin
   const [lotado, titular] = await Promise.all([podeAgirNoSetor(cliente(), sessao.identificador, e.onde, "DECIDIR_SOLICITACAO_DE_SERVICO", s.processo.sigiloso), ehTitularOuRepresentante(sessao.identificador, s.titularId)]);
   const comAtor = (base: Elegibilidade, ato: string): Elegibilidade => {
     if (base.situacao !== "ELEGIVEL") return base;
-    if (!lotado) return preCondicao("SEM-LOTACAO-NO-SETOR", `O processo desta solicitação está em outro setor e você não está lotado nele (nem tem o ato concedido no ente para processo não sigiloso).`, `Quem ${ato} é quem trabalha no setor em que o processo está; peça a lotação ou encaminhe pelo processo digital.`);
+    if (!lotado) return preCondicao("SEM-LOTACAO-NO-SETOR", `O processo desta solicitação está em outro setor, no qual você não está lotado.`, `Esta ação cabe a quem trabalha no setor em que o processo está. Solicite a lotação ou encaminhe pelo processo digital.`);
     return base;
   };
   const decidir = comAtor(elegibilidadeParaDecidir(e.estado), "decide");
@@ -237,7 +237,7 @@ export async function acaoDaSolicitacao(acao: string, id: string, c: Campos): Pr
     const r = await comEscritaAutenticada("DECIDIR_SOLICITACAO_DE_SERVICO", (criadoPor) =>
       decidirSolicitacao(cliente(), { solicitacaoId: id, resultado: t(c, "resultado") as "DEFERIDA" | "INDEFERIDA", mensagemAoRequerente: t(c, "mensagemAoRequerente"), fundamentoInterno: t(c, "fundamentoInterno"), criadoPor })
     );
-    return `Solicitação ${t(c, "resultado") === "DEFERIDA" ? "DEFERIDA" : "INDEFERIDA"} e processo encerrado.${r.versaoDoCadastro === null ? "" : " O cadastro da pessoa ganhou a versão nova proposta."} O requerente foi avisado.`;
+    return `Solicitação ${t(c, "resultado") === "DEFERIDA" ? "deferida" : "indeferida"} e processo encerrado.${r.versaoDoCadastro === null ? "" : " O cadastro da pessoa foi atualizado conforme a proposta."} O requerente foi avisado.`;
   }
   throw new Error(`Ação desconhecida: ${acao}. Nada foi gravado.`);
 }

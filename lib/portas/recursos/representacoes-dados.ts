@@ -35,7 +35,7 @@ const situacao = (r: Lida): string => {
   if (r.revogacao !== null && r.revogacao.dataEfeito <= new Date()) return `revogada desde ${diaCivilBr(r.revogacao.dataEfeito)}`;
   return r.vigenciaInicio > new Date() ? "ainda não começou" : "vencida";
 };
-const vigencia = (r: Lida): string => `${diaCivilBr(r.vigenciaInicio)} a ${r.vigenciaFim === null ? "sem termo" : diaCivilBr(r.vigenciaFim)}`;
+const vigencia = (r: Lida): string => `${diaCivilBr(r.vigenciaInicio)} a ${r.vigenciaFim === null ? "sem prazo" : diaCivilBr(r.vigenciaFim)}`;
 const representada = (r: Lida): string => `${r.representada.versoes[0]?.nome ?? ""} (${formatarDocumento(r.representada.documento)})`;
 
 export async function listarRepresentacoes(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
@@ -71,7 +71,7 @@ export async function verRepresentacao(id: string): Promise<DetalheLido | null> 
       { rotulo: "Representada", valor: representada(r) },
       { rotulo: "Conta do representante", valor: `${r.representanteUsuario.nome} (${r.representanteUsuario.identificador})` },
       { rotulo: "Fundamento", valor: r.fundamento, tipo: "longo" },
-      { rotulo: "Vigência", valor: vigencia(r), nota: "A situação é derivada a cada leitura pelo dia civil do ente." },
+      { rotulo: "Vigência", valor: vigencia(r) },
       { rotulo: "Solicitações protocoladas sob esta representação", valor: String(r._count.solicitacoes) },
     ],
     historico,
@@ -105,5 +105,5 @@ export async function acaoDaRepresentacao(acao: string, id: string, c: Campos): 
     if (atual !== null && versaoDoEstado([atual.revogacao?.id ?? null]) !== versaoDoFormulario) throw new RegistroMudouError("Esta representação");
   }
   await comEscritaAutenticada("REGISTRAR_REPRESENTACAO", (criadoPor) => revogarRepresentacao(cliente(), { representacaoId: id, dataEfeito: meioDiaCivil(t(c, "dataEfeito")), motivo: t(c, "motivo"), criadoPor }));
-  return `Representação revogada com efeito em ${t(c, "dataEfeito").split("-").reverse().join("/")}. A partir desse dia a conta não age nem acompanha em nome da representada.`;
+  return `Representação revogada com efeito em ${t(c, "dataEfeito").split("-").reverse().join("/")}. A partir dessa data, o representante não pode agir nem acompanhar pedidos em nome da representada.`;
 }

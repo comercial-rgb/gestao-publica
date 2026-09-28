@@ -40,11 +40,11 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Plano plurianual",
   rota: "/planejamento/ppa",
   descricao:
-    "O quadriênio e a lei que o instituiu (CF art. 165 §1º). O programa entra no plano com a estratégia e o " +
-    "valor previsto; a receita do quadriênio e a série histórica que a instrui são linhas por ano.",
+    "Plano plurianual do quadriênio e a lei que o instituiu (CF, art. 165, § 1º), com os programas, a estratégia e o " +
+    "valor previsto de cada um, a receita prevista e a série histórica por exercício.",
   campos: [
     { nome: "anoInicio", rotulo: "Primeiro exercício", ...ANO, obrigatorio: true, largura: 1, placeholder: "2026" },
-    { nome: "anoFim", rotulo: "Último exercício", ...ANO, obrigatorio: true, largura: 1, placeholder: "2029", ajuda: "Quatro exercícios, as duas pontas inclusas: 2026 a 2029." },
+    { nome: "anoFim", rotulo: "Último exercício", ...ANO, obrigatorio: true, largura: 1, placeholder: "2029", ajuda: "Quatro exercícios, incluindo o primeiro e o último. Ex.: 2026 a 2029." },
     { nome: "leiRef", rotulo: "Lei que instituiu o plano", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "Lei Municipal 1.234/2025" },
     { nome: "dataPublicacao", rotulo: "Data de publicação", tipo: "data", obrigatorio: true, largura: 1 },
   ],
@@ -59,13 +59,13 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "programa-no-plano", rotulo: "Incluir programa no plano", acaoDoCenso: "CADASTRAR_PROGRAMA_PPA",
-      aviso: "O objetivo é do programa (cadastro do planejamento) e não se repete aqui; o que varia por plano é a estratégia e o valor previsto do quadriênio.",
+      aviso: "O objetivo vem do cadastro do programa. Neste plano, informe a estratégia e o valor previsto para o quadriênio.",
       campos: [
         { nome: "programaId", rotulo: "Programa", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "areaTematicaId", rotulo: "Área temática", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [] },
         { nome: "publicoAlvoId", rotulo: "Público-alvo", tipo: "selecao", largura: 1, opcoes: [] },
-        { nome: "estrategia", rotulo: "Estratégia neste plano", tipo: "textoLongo", largura: 3, ajuda: "COMO o programa será executado no quadriênio." },
-        { nome: "valorPrevisto", rotulo: "Valor previsto do quadriênio (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1, ajuda: "Teto por programa; não é a soma das ações." },
+        { nome: "estrategia", rotulo: "Estratégia neste plano", tipo: "textoLongo", largura: 3, ajuda: "Como o programa será executado no quadriênio." },
+        { nome: "valorPrevisto", rotulo: "Valor previsto do quadriênio (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1, ajuda: "Limite do programa, independente da soma das ações." },
       ],
     },
     {
@@ -79,7 +79,7 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "receita-anterior", rotulo: "Registrar receita de exercício anterior", acaoDoCenso: "CADASTRAR_RECEITA_PPA",
-      aviso: "A série histórica que justifica a projeção: o exercício tem de ser ANTERIOR ao plano.",
+      aviso: "Receita realizada em exercício anterior ao plano, que fundamenta a projeção.",
       campos: [
         { nome: "naturezaReceitaId", rotulo: "Natureza da receita", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "ano", rotulo: "Exercício realizado", ...ANO, obrigatorio: true, largura: 1 },
@@ -91,7 +91,7 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados", "historico", "relacionados"],
   relacionados: [
     { rotulo: "Programas deste plano", href: "/planejamento/ppa/programas?plano={id}", explicacao: "Cada programa no plano, com os indicadores e as ações que o detalham." },
-    { rotulo: "Estrutura temática do PPA", href: "/planejamento/ppa/estrutura", explicacao: "Eixos, áreas temáticas, públicos-alvo e macroações — o rol do ente, não da lei." },
+    { rotulo: "Estrutura temática do PPA", href: "/planejamento/ppa/estrutura", explicacao: "Eixos, áreas temáticas, públicos-alvo e macroações definidos pelo ente." },
   ],
 });
 
@@ -101,8 +101,8 @@ export const PROGRAMAS_DO_PPA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Programa do plano",
   rota: "/planejamento/ppa/programas",
   descricao:
-    "O programa dentro de um plano: a estratégia, o valor previsto, os indicadores (TR PPA 9) e as ações com " +
-    "produto, meta física e meta financeira (TR PPA 11-14). O programa entra no plano pelo detalhe do PPA.",
+    "Programas de cada plano plurianual: estratégia, valor previsto, indicadores e ações com produto, meta física e " +
+    "meta financeira. O programa é incluído no plano pelo detalhe do PPA.",
   campos: [],
   colunas: [
     { nome: "programa", cabecalho: "Programa", tipo: "link" },
@@ -113,8 +113,8 @@ export const PROGRAMAS_DO_PPA: DefinicaoDeRecurso = definirRecurso({
     { nome: "acoes", cabecalho: "Ações", tipo: "inteiro" },
   ],
   filtros: [
-    { nome: "plano", rotulo: "Plano", tipo: "texto", largura: 1, placeholder: "ano de início ou id" },
-    { nome: "q", rotulo: "Programa", tipo: "texto", largura: 2, placeholder: "código ou descrição" },
+    { nome: "plano", rotulo: "Plano", tipo: "texto", largura: 1, placeholder: "Ano de início" },
+    { nome: "q", rotulo: "Programa", tipo: "texto", largura: 2, placeholder: "Código ou descrição" },
   ],
   acoes: [
     {
@@ -122,13 +122,13 @@ export const PROGRAMAS_DO_PPA: DefinicaoDeRecurso = definirRecurso({
       campos: [
         { nome: "descricao", rotulo: "Indicador", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "Taxa de mortalidade infantil" },
         { nome: "unidadeMedida", rotulo: "Unidade de medida", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "por mil nascidos vivos" },
-        { nome: "situacaoInicial", rotulo: "Situação inicial", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "12,3456", ajuda: "Até seis casas; pode ser negativo." },
+        { nome: "situacaoInicial", rotulo: "Situação inicial", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "12,3456", ajuda: "Até seis casas decimais; pode ser negativo." },
         { nome: "situacaoModificada", rotulo: "Situação ao fim do plano", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "9,5" },
       ],
     },
     {
       nome: "acao-do-plano", rotulo: "Incluir ação no programa", acaoDoCenso: "CADASTRAR_PROGRAMA_PPA",
-      aviso: "A ação é a do cadastro do planejamento, reusada; a classificação aprovada (unidade executora, função, subfunção) é informação do plano e não define escopo de autorização.",
+      aviso: "A ação vem do cadastro do planejamento. A classificação aprovada (unidade executora, função e subfunção) é informativa e não altera permissões de acesso.",
       campos: [
         { nome: "acaoId", rotulo: "Ação", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "macroacaoId", rotulo: "Macroação", tipo: "selecao", largura: 1, opcoes: [] },
@@ -138,7 +138,7 @@ export const PROGRAMAS_DO_PPA: DefinicaoDeRecurso = definirRecurso({
         { nome: "produto", rotulo: "Produto", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "Escola construída" },
         { nome: "unidadeMedida", rotulo: "Unidade de medida", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "unidade" },
         { nome: "regiaoAtendida", rotulo: "Região atendida", tipo: "texto", largura: 1, placeholder: "todo o município" },
-        { nome: "metaFisica", rotulo: "Meta física", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "3,5", ajuda: "Até seis casas: 3,5 km é meta legítima." },
+        { nome: "metaFisica", rotulo: "Meta física", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "3,5", ajuda: "Até seis casas decimais. Ex.: 3,5 km." },
         { nome: "metaFinanceira", rotulo: "Meta financeira (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
       ],
     },
@@ -153,13 +153,12 @@ export const ESTRUTURA_DO_PPA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Item da estrutura",
   rota: "/planejamento/ppa/estrutura",
   descricao:
-    "Eixos estruturantes, áreas temáticas, públicos-alvo e macroações (TR PPA 2-5). São rol do ENTE, não da " +
-    "lei: cada município define os seus no plano que aprova — por isso cadastro, e não enumeração fixa.",
+    "Eixos estruturantes, áreas temáticas, públicos-alvo e macroações definidos pelo município no plano que aprova.",
   campos: [
     { nome: "tipo", rotulo: "O que cadastrar", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [...OPCOES_DE_TIPO_DE_ESTRUTURA] },
     { nome: "codigo", rotulo: "Código", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "01" },
     { nome: "descricao", rotulo: "Descrição", tipo: "texto", obrigatorio: true, largura: 2 },
-    { nome: "eixoId", rotulo: "Eixo (só para área temática)", tipo: "selecao", largura: 2, opcoes: [], ajuda: "A área temática desdobra um eixo; os demais itens não têm pai." },
+    { nome: "eixoId", rotulo: "Eixo (para área temática)", tipo: "selecao", largura: 2, opcoes: [], ajuda: "A área temática é vinculada a um eixo; os demais itens não têm vínculo." },
   ],
   colunas: [
     { nome: "tipo", cabecalho: "Tipo", tipo: "texto", ordenavel: true },
@@ -185,15 +184,15 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "LDO",
   rota: "/planejamento/ldo",
   descricao:
-    "A LDO de cada exercício e o seu trâmite (envio ao Legislativo, devolução, sanção), com as prioridades e os " +
-    "anexos da LRF: metas anuais, riscos fiscais, renúncia de receita, alienação de bens, projeção do RPPS, dívida " +
-    "consolidada e margem de expansão. Os anexos saem em PDF pelo detalhe.",
+    "Lei de diretrizes orçamentárias de cada exercício e sua tramitação (envio ao Legislativo, devolução e sanção), " +
+    "com as prioridades e os anexos da LRF: metas anuais, riscos fiscais, renúncia de receita, alienação de bens, " +
+    "projeção do RPPS, dívida consolidada e margem de expansão. Os anexos são emitidos em PDF no detalhe.",
   campos: [
     { nome: "exercicio", rotulo: "Exercício", ...ANO, obrigatorio: true, largura: 1, placeholder: "2026" },
     { nome: "inicioVigencia", rotulo: "Início da vigência", tipo: "data", obrigatorio: true, largura: 1 },
     { nome: "fimVigencia", rotulo: "Fim da vigência", tipo: "data", obrigatorio: true, largura: 1 },
     { nome: "numeroProtocolo", rotulo: "Protocolo no Legislativo", tipo: "texto", largura: 1 },
-    { nome: "dataEnvioLegislativo", rotulo: "Envio ao Legislativo", tipo: "data", largura: 1, ajuda: "Em branco enquanto a LDO está sendo montada." },
+    { nome: "dataEnvioLegislativo", rotulo: "Envio ao Legislativo", tipo: "data", largura: 1, ajuda: "Deixe em branco enquanto a LDO estiver em elaboração." },
     { nome: "dataDevolucaoExecutivo", rotulo: "Devolução ao Executivo", tipo: "data", largura: 1 },
     { nome: "dataSancao", rotulo: "Sanção", tipo: "data", largura: 1 },
   ],
@@ -210,15 +209,15 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
       nome: "prioridade", rotulo: "Registrar prioridade", acaoDoCenso: "CADASTRAR_PRIORIDADE_LDO",
       campos: [
         { nome: "acaoId", rotulo: "Ação (se já existir na classificação)", tipo: "selecao", largura: 2, opcoes: [] },
-        { nome: "descricaoAcao", rotulo: "Descrição da prioridade (as palavras da lei)", tipo: "texto", obrigatorio: true, largura: 2 },
+        { nome: "descricaoAcao", rotulo: "Descrição da prioridade (conforme a lei)", tipo: "texto", obrigatorio: true, largura: 2 },
         { nome: "produto", rotulo: "Produto", tipo: "texto", obrigatorio: true, largura: 1 },
         { nome: "unidadeMedida", rotulo: "Unidade de medida", tipo: "texto", obrigatorio: true, largura: 1 },
-        { nome: "meta", rotulo: "Meta física", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "12", ajuda: "Até seis casas." },
+        { nome: "meta", rotulo: "Meta física", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "12", ajuda: "Até seis casas decimais." },
       ],
     },
     {
       nome: "meta-anual", rotulo: "Registrar meta anual (Anexo de Metas Fiscais)", acaoDoCenso: "CADASTRAR_METAS_FISCAIS_LDO",
-      aviso: "O resultado primário NÃO se informa: ele é receita primária menos despesa primária, derivado das parcelas gravadas.",
+      aviso: "O resultado primário é calculado automaticamente: receita primária menos despesa primária.",
       campos: [
         { nome: "ano", rotulo: "Exercício projetado", ...ANO, obrigatorio: true, largura: 1 },
         { nome: "receitaTotal", rotulo: "Receita total (R$)", ...DINHEIRO },
@@ -235,7 +234,7 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "risco-fiscal", rotulo: "Registrar risco fiscal (Anexo de Riscos Fiscais)", acaoDoCenso: "CADASTRAR_RISCOS_FISCAIS_LDO",
-      aviso: "A LRF exige o risco COM a providência: passivo sem medida de contenção é metade do anexo.",
+      aviso: "A LRF exige que cada risco seja acompanhado da providência a ser adotada.",
       campos: [
         { nome: "codigoPassivo", rotulo: "Código do passivo contingente", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_PASSIVO },
         { nome: "descricaoPassivo", rotulo: "Passivo", tipo: "texto", obrigatorio: true, largura: 2 },
@@ -250,7 +249,7 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
         { nome: "descricao", rotulo: "Renúncia", tipo: "texto", obrigatorio: true, largura: 3 },
         { nome: "valor", rotulo: "Valor renunciado (R$)", ...DINHEIRO },
         { nome: "descricaoCompensacao", rotulo: "Compensação", tipo: "texto", obrigatorio: true, largura: 3 },
-        { nome: "valorCompensacao", rotulo: "Valor da compensação (R$)", ...DINHEIRO, ajuda: "Pode ser 0,00 — compensada pelo crescimento da base." },
+        { nome: "valorCompensacao", rotulo: "Valor da compensação (R$)", ...DINHEIRO, ajuda: "Pode ser 0,00 quando compensada pelo crescimento da base." },
       ],
     },
     {
@@ -263,7 +262,7 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "aplicacao-da-alienacao", rotulo: "Declarar aplicação do produto da alienação", acaoDoCenso: "CADASTRAR_ALIENACAO_LDO",
-      aviso: "LRF art. 44: receita de capital de alienação não se aplica em despesa corrente — a declaração é auditável.",
+      aviso: "LRF, art. 44: a receita de capital de alienação de bens não pode financiar despesa corrente.",
       campos: [
         { nome: "alienacaoId", rotulo: "Alienação prevista", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "tipoAplicacao", rotulo: "Tipo de aplicação", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: OPCOES_DE_APLICACAO },
@@ -279,12 +278,12 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
         { nome: "dividaConsolidada", rotulo: "Dívida consolidada (R$)", ...DINHEIRO },
         { nome: "deducoes", rotulo: "Deduções (R$)", ...DINHEIRO },
         { nome: "receitaCorrenteLiquida", rotulo: "Receita corrente líquida (R$)", ...DINHEIRO },
-        { nome: "percentualRcl", rotulo: "Relação com a RCL", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "0,850000", ajuda: "Índice com seis casas: o limite do Senado é 1,2 da RCL." },
+        { nome: "percentualRcl", rotulo: "Relação com a RCL", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "0,850000", ajuda: "Índice com seis casas decimais. O limite fixado pelo Senado é de 1,2 vez a RCL." },
       ],
     },
     {
       nome: "projecao-rpps", rotulo: "Projetar o RPPS", acaoDoCenso: "CADASTRAR_METAS_FISCAIS_LDO",
-      aviso: "O resultado e o saldo podem ser negativos — um RPPS deficitário é o que a projeção existe para revelar.",
+      aviso: "O resultado e o saldo podem ser negativos, indicando déficit do RPPS.",
       campos: [
         { nome: "ano", rotulo: "Exercício", ...ANO, obrigatorio: true, largura: 1 },
         { nome: "receitasPrevidenciarias", rotulo: "Receitas previdenciárias (R$)", ...DINHEIRO },
@@ -306,13 +305,13 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
   permissoes: { criar: "CADASTRAR_LDO" },
   abas: ["dados", "historico", "relacionados"],
   relacionados: [
-    { rotulo: "Anexo de Metas Anuais (PDF)", href: "/planejamento/ldo/{id}/anexos/metas-anuais", explicacao: "LRF art. 4º §1º. O resultado primário é derivado das parcelas." },
-    { rotulo: "Anexo de Riscos Fiscais (PDF)", href: "/planejamento/ldo/{id}/anexos/riscos-fiscais", explicacao: "LRF art. 4º §3º. Passivos contingentes e providências." },
-    { rotulo: "Renúncia de receita (PDF)", href: "/planejamento/ldo/{id}/anexos/renuncia-receita", explicacao: "LRF art. 4º §2º, V." },
-    { rotulo: "Alienação de bens e aplicação do produto (PDF)", href: "/planejamento/ldo/{id}/anexos/alienacao-bens", explicacao: "LRF art. 4º §2º, III e art. 44." },
-    { rotulo: "Projeção atuarial do RPPS (PDF)", href: "/planejamento/ldo/{id}/anexos/projecao-rpps", explicacao: "LRF art. 4º §2º, IV, a." },
+    { rotulo: "Anexo de Metas Anuais (PDF)", href: "/planejamento/ldo/{id}/anexos/metas-anuais", explicacao: "LRF, art. 4º, § 1º. O resultado primário é calculado a partir das receitas e despesas primárias." },
+    { rotulo: "Anexo de Riscos Fiscais (PDF)", href: "/planejamento/ldo/{id}/anexos/riscos-fiscais", explicacao: "LRF, art. 4º, § 3º. Passivos contingentes e providências." },
+    { rotulo: "Renúncia de receita (PDF)", href: "/planejamento/ldo/{id}/anexos/renuncia-receita", explicacao: "LRF, art. 4º, § 2º, V." },
+    { rotulo: "Alienação de bens e aplicação do produto (PDF)", href: "/planejamento/ldo/{id}/anexos/alienacao-bens", explicacao: "LRF, art. 4º, § 2º, III, e art. 44." },
+    { rotulo: "Projeção atuarial do RPPS (PDF)", href: "/planejamento/ldo/{id}/anexos/projecao-rpps", explicacao: "LRF, art. 4º, § 2º, IV, a." },
     { rotulo: "Dívida consolidada (PDF)", href: "/planejamento/ldo/{id}/anexos/divida-consolidada", explicacao: "Estoque projetado e relação com a RCL." },
-    { rotulo: "Margem de expansão (PDF)", href: "/planejamento/ldo/{id}/anexos/margem-expansao", explicacao: "LRF art. 4º §2º, V — despesas obrigatórias de caráter continuado." },
+    { rotulo: "Margem de expansão (PDF)", href: "/planejamento/ldo/{id}/anexos/margem-expansao", explicacao: "LRF, art. 4º, § 2º, V: despesas obrigatórias de caráter continuado." },
     { rotulo: "Prioridades e metas (PDF)", href: "/planejamento/ldo/{id}/anexos/prioridades", explicacao: "As prioridades que entram no próximo orçamento." },
   ],
 });

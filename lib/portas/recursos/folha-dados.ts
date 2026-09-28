@@ -70,7 +70,7 @@ const ROTULO_DA_CERTIFICACAO: Readonly<Record<SituacaoDaCertificacao, string>> =
   PENDENTE: "PENDENTE DE ATESTO",
   CERTIFICADA: "CERTIFICADA",
   DEVOLVIDA: "DEVOLVIDA PARA CORREÇÃO",
-  SUPERADA: "SUPERADA (o atesto é de outro cálculo)",
+  SUPERADA: "SUPERADA (atesto de cálculo anterior)",
 };
 
 /**
@@ -192,47 +192,45 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   const dados: DadoDoDetalhe[] = [
     { rotulo: "Competência", valor: f.competencia },
     { rotulo: "Tipo", valor: f.tipo },
-    { rotulo: "Situação (derivada)", valor: ROTULO_DA_SITUACAO[d.situacao], nota: "Sem cálculo / calculada (há cálculo vivo) / fechada (um cálculo congelado). Nunca coluna." },
+    { rotulo: "Situação", valor: ROTULO_DA_SITUACAO[d.situacao] },
     ...(simulacaoDoAbatimento === null
       ? []
       : [{
           rotulo: "Natureza da apuração",
-          valor: `SIMULAÇÃO — não é apuração aprovada (${simulacaoDoAbatimento.totalAbatido} de abatimento)`,
+          valor: `Simulação, sem apuração aprovada (${simulacaoDoAbatimento.totalAbatido} de abatimento)`,
           nota:
-            "O parâmetro do 13º deste exercício não declara qual estado o adiantamento precisa ter alcançado " +
-            "para ser abatido, então o abatimento saiu pelo FECHAMENTO da folha de adiantamento — critério " +
-            "de engenharia, não norma do ente. ⚠️ O FECHAMENTO desta folha está bloqueado — e a apropriação " +
-            "também —, até o ente declarar o critério, com o ato que o fundamenta, em Folha > Parâmetros do 13º, " +
-            "e a folha ser RECALCULADA. Enquanto ela não fecha, recalcular é possível: é por isso que a recusa " +
-            "está no fechar, e não só adiante. Não há confirmação que substitua o ato.",
+            "O parâmetro do 13º deste exercício não informa a situação que o adiantamento deve ter alcançado para " +
+            "ser abatido; por isso, o abatimento considerou o fechamento da folha de adiantamento, sem respaldo em ato " +
+            "do ente. O fechamento e a apropriação desta folha ficam bloqueados até que o critério seja informado, com " +
+            "o ato que o fundamenta, em Folha > Parâmetros do 13º, e a folha seja recalculada.",
         }]),
     ...(d.vivo === null ? [] : [
-      { rotulo: d.situacao === "FECHADA" ? "Cálculo fechado" : "Último cálculo vivo", valor: `nº ${d.vivo.numero} · ${d.vivo.contracheques} contracheque(s) · motor ${d.vivo.versaoDoMotor}` },
+      { rotulo: d.situacao === "FECHADA" ? "Cálculo fechado" : "Cálculo vigente", valor: `nº ${d.vivo.numero} · ${d.vivo.contracheques} contracheque(s)` },
       { rotulo: "Proventos", valor: toMoney(d.vivo.totalProventos).toFixed(2), tipo: "dinheiro" as const },
       { rotulo: "Descontos", valor: toMoney(d.vivo.totalDescontos).toFixed(2), tipo: "dinheiro" as const },
       { rotulo: "Líquido", valor: toMoney(d.vivo.totalLiquido).toFixed(2), tipo: "dinheiro" as const },
-      { rotulo: "sha256 do cálculo", valor: d.vivo.sha256, nota: "Impressão digital do conjunto (lista ordenada dos sha256 dos contracheques)." },
+      { rotulo: "Código de integridade do cálculo", valor: d.vivo.sha256, nota: "Gerado a partir dos contracheques; permite verificar que o cálculo não foi alterado." },
     ]),
     ...(f.fechamento === null ? [] : [{ rotulo: "Fechada em", valor: `${diaCivilBr(f.fechamento.criadoEm)} por ${f.fechamento.criadoPor}` }]),
     ...(apropriada === null
-      ? f.fechamento === null ? [] : [{ rotulo: "Apropriação contábil", valor: "não apropriada", nota: "Apropriar gera os empenhos desta folha pelos grupos de empenho cadastrados." }]
-      : [{ rotulo: "Apropriação contábil", valor: `${apropriada.empenhos.length} empenho(s), ${apropriada.total.toFixed(2)} — empenhos de ${diaCivilBr(apropriada.dataDoEmpenho)}, por ${apropriada.criadoPor}`, nota: "Só o BRUTO é empenhado; as retenções viajam no pagamento." }]),
+      ? f.fechamento === null ? [] : [{ rotulo: "Apropriação contábil", valor: "não apropriada", nota: "A apropriação gera os empenhos desta folha conforme os grupos de empenho cadastrados." }]
+      : [{ rotulo: "Apropriação contábil", valor: `${apropriada.empenhos.length} empenho(s), ${apropriada.total.toFixed(2)} — empenhos de ${diaCivilBr(apropriada.dataDoEmpenho)}, por ${apropriada.criadoPor}`, nota: "Empenha-se o valor bruto; as retenções são tratadas no pagamento." }]),
     ...(certificada === null
       ? []
       : [{
-          rotulo: "Certificação (derivada)",
+          rotulo: "Certificação",
           valor: ROTULO_DA_CERTIFICACAO[certificada.situacao],
-          nota: "O atesto de quem o ente designou, preso ao CÁLCULO conferido. Pendente / certificada / devolvida para correção / superada por outro cálculo.",
+          nota: "Atesto do responsável designado sobre o cálculo conferido: pendente, certificada, devolvida para correção ou superada por novo cálculo.",
         }]),
     ...(liquidada === null
       ? []
       : [{
-          rotulo: "Liquidação (derivada)",
+          rotulo: "Liquidação",
           valor:
             liquidada.pendentes === 0
               ? `${liquidada.liquidadas} de ${liquidada.liquidadas} empenho(s), ${liquidada.total.toFixed(2)}`
               : `${liquidada.liquidadas} de ${liquidada.liquidadas + liquidada.pendentes} empenho(s) — ${liquidada.pendentes} pendente(s)`,
-          nota: "Empenhar, liquidar e pagar são três fatos. Liquidada não é paga: o dinheiro sai no pagamento.",
+          nota: "Empenho, liquidação e pagamento são etapas distintas: folha liquidada não é paga até o registro do pagamento.",
         }]),
     { rotulo: "Aberta em", valor: diaCivilBr(f.criadoEm), tipo: "data" as const },
     { rotulo: "Aberta por", valor: f.criadoPor },
@@ -240,17 +238,17 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   const historico: LinhaDoHistorico[] = [
     { id: `abertura-${f.id}`, oQue: "Folha aberta", quando: diaCivilBr(f.criadoEm), registradoEm: diaCivilBr(f.criadoEm), por: f.criadoPor },
     ...f.calculos.flatMap((c) => [
-      { id: c.id, oQue: `Cálculo nº ${c.numero} · ${c.contracheques} contracheque(s)`, quando: diaCivilBr(c.criadoEm), registradoEm: diaCivilBr(c.criadoEm), por: c.criadoPor, motivo: [c.motivo, `sha256 ${c.sha256.slice(0, 12)}…`].filter((x) => x !== null).join(" · "), valor: toMoney(c.totalLiquido).toFixed(2), ...(c.cancelamento !== null ? { estornado: true } : {}) },
+      { id: c.id, oQue: `Cálculo nº ${c.numero} · ${c.contracheques} contracheque(s)`, quando: diaCivilBr(c.criadoEm), registradoEm: diaCivilBr(c.criadoEm), por: c.criadoPor, motivo: [c.motivo, `código de integridade ${c.sha256.slice(0, 12)}…`].filter((x) => x !== null).join(" · "), valor: toMoney(c.totalLiquido).toFixed(2), ...(c.cancelamento !== null ? { estornado: true } : {}) },
       ...(c.cancelamento === null ? [] : [{ id: c.cancelamento.id, oQue: `Cancelamento do cálculo nº ${c.numero}`, quando: diaCivilBr(c.cancelamento.criadoEm), registradoEm: diaCivilBr(c.cancelamento.criadoEm), por: c.cancelamento.criadoPor, motivo: c.cancelamento.motivo }]),
     ]),
     ...(certificada?.fatos ?? []).map((c) => ({
       id: c.id,
       oQue: c.tipo === "CERTIFICACAO" ? `Certificação por ${c.responsavel} (${c.ato})` : `Devolvida para correção por ${c.responsavel} (${c.ato})`,
       quando: diaCivilBr(c.criadoEm), registradoEm: diaCivilBr(c.criadoEm), por: c.criadoPor,
-      motivo: [c.motivo, `${c.vinculos} vínculo(s) · sha256 ${c.sha256.slice(0, 12)}…`].filter((x) => x !== null).join(" · "),
+      motivo: [c.motivo, `${c.vinculos} vínculo(s) · código de integridade ${c.sha256.slice(0, 12)}…`].filter((x) => x !== null).join(" · "),
       valor: c.totalLiquido.toFixed(2),
     })),
-    ...(f.fechamento === null ? [] : [{ id: f.fechamento.id, oQue: `Fechamento sobre o cálculo nº ${f.fechamento.calculo.numero}`, quando: diaCivilBr(f.fechamento.criadoEm), registradoEm: diaCivilBr(f.fechamento.criadoEm), por: f.fechamento.criadoPor, motivo: `sha256 ${f.fechamento.sha256.slice(0, 12)}…` }]),
+    ...(f.fechamento === null ? [] : [{ id: f.fechamento.id, oQue: `Fechamento sobre o cálculo nº ${f.fechamento.calculo.numero}`, quando: diaCivilBr(f.fechamento.criadoEm), registradoEm: diaCivilBr(f.fechamento.criadoEm), por: f.fechamento.criadoPor, motivo: `código de integridade ${f.fechamento.sha256.slice(0, 12)}…` }]),
   ];
   return {
     titulo: `Folha ${f.tipo.toLowerCase()} de ${f.competencia}`,
@@ -259,7 +257,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
       { texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" },
       // ⚠️ O SELO VEM DEPOIS DA SITUAÇÃO, E NÃO NO LUGAR DELA. "Fechada" continua sendo verdade;
       // o que o segundo selo acrescenta é que aquilo fechou sobre um critério que ninguém declarou.
-      ...(simulacaoDoAbatimento === null ? [] : [{ texto: "SIMULAÇÃO — não é apuração aprovada", tom: "alerta" as const }]),
+      ...(simulacaoDoAbatimento === null ? [] : [{ texto: "Simulação: apuração não aprovada", tom: "alerta" as const }]),
     ],
     dados, historico,
     competencia: f.competencia, situacao: d.situacao, calculoVivoId: d.vivo?.id ?? null,
@@ -466,15 +464,15 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
       );
       const recorte =
         selecao === undefined
-          ? "Abrangência: TODOS os elegíveis da competência."
-          : `Abrangência: recorte EXPLÍCITO de ${selecao.vinculoIds.length} vínculo(s) declarado(s).`;
-      return `Cálculo nº ${r.numero} gravado: ${r.contracheques} contracheque(s), líquido ${r.totalLiquido.toFixed(2)}. ${recorte} Cada contracheque traz a memória e o sha256; a abrangência efetiva fica na seção "Abrangência dos cálculos".`;
+          ? "Abrangência: todos os elegíveis da competência."
+          : `Abrangência: ${selecao.vinculoIds.length} matrícula(s) informada(s).`;
+      return `Cálculo nº ${r.numero} registrado: ${r.contracheques} contracheque(s), líquido ${r.totalLiquido.toFixed(2)}. ${recorte} A memória de cálculo fica em cada contracheque, e as matrículas calculadas, na seção "Abrangência dos cálculos".`;
     }
     case "cancelar-calculo": {
       const vivo = await prisma.calculoDaFolha.findFirst({ where: { folhaId, cancelamento: null }, orderBy: { numero: "desc" }, select: { id: true, numero: true } });
-      if (vivo === null) throw new Error("Esta folha não tem cálculo vivo para cancelar. Nada foi gravado.");
+      if (vivo === null) throw new Error("Esta folha não tem cálculo vigente para cancelar. Nada foi gravado.");
       await comEscritaAutenticada("CANCELAR_CALCULO_DA_FOLHA", (criadoPor) => cancelarCalculoDaFolha(prisma, { calculoId: vivo.id, motivo: t(c, "motivo"), criadoPor }));
-      return `Cálculo nº ${vivo.numero} cancelado como fato; ele continua no histórico.`;
+      return `Cálculo nº ${vivo.numero} cancelado; o registro permanece no histórico.`;
     }
     case "apropriar": {
       const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarFolha(prisma, { folhaId, dataDoEmpenho: new Date(`${t(c, "dataDoEmpenho")}T12:00:00`), criadoPor }));
@@ -485,27 +483,27 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
     }
     case "certificar": {
       const r = await comEscritaAutenticada("CERTIFICAR_FOLHA", (criadoPor) => certificarFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
-      return `Folha de ${r.competencia} CERTIFICADA. Manifesto do que foi conferido gravado com sha256 ${r.sha256.slice(0, 12)}…. Próximo passo: liquidar — e quem certificou não liquida.`;
+      return `Folha de ${r.competencia} certificada. O conteúdo conferido foi registrado com o código de integridade ${r.sha256.slice(0, 12)}…. Próximo passo: liquidação, a ser feita por pessoa diferente de quem certificou.`;
     }
     case "devolver": {
       const r = await comEscritaAutenticada("CERTIFICAR_FOLHA", (criadoPor) => devolverFolhaParaCorrecao(prisma, { folhaId, data: diaDoCampo(c, "data"), motivo: t(c, "motivo"), criadoPor }));
-      return `Folha de ${r.competencia} DEVOLVIDA para correção, com o motivo no histórico. O cálculo fechado NÃO foi reaberto: corrigir é retificação ou folha complementar.`;
+      return `Folha de ${r.competencia} devolvida para correção, com o motivo registrado no histórico. O cálculo fechado não foi reaberto: a correção é feita por retificação ou folha complementar.`;
     }
     case "liquidar": {
       const r = await comEscritaAutenticada("LIQUIDAR_FOLHA", (criadoPor) => liquidarFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
       const resumo = `${r.liquidadas} liquidação(ões) nova(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}`;
       return r.pendentes > 0
-        ? `${resumo}. ATENÇÃO: ${r.pendentes} empenho(s) desta folha continuam SEM liquidação — ela não está liquidada por inteiro.`
-        : `${resumo}. Todos os empenhos desta folha estão liquidados. Liquidada não é paga: o dinheiro sai no pagamento.`;
+        ? `${resumo}. Atenção: ${r.pendentes} empenho(s) desta folha ainda não foram liquidados.`
+        : `${resumo}. Todos os empenhos desta folha estão liquidados. Liquidada não é paga: o pagamento é registrado à parte.`;
     }
     case "apurar-encargos": {
       const r = await comEscritaAutenticada("APURAR_ENCARGOS_DA_FOLHA", (criadoPor) => apurarEncargosDaFolha(prisma, { folhaId, ...(opcional(c, "motivo") !== undefined ? { motivo: t(c, "motivo") } : {}), criadoPor }));
-      const partes = r.porComponente.map((p) => `${p.codigo} ${p.total}${p.ausentes > 0 ? ` (${p.ausentes} SEM PARÂMETRO)` : ""}`).join(" · ");
-      return `Apuração nº ${r.numero} dos encargos de ${r.competencia}${r.complementar ? " — COMPLEMENTAR (a folha já tinha atesto salarial, que não alcança estes encargos)" : ""}: total ${r.total.toFixed(2)}${r.completa ? "" : " — INCOMPLETA: há componente sem parâmetro aprovado, e ela não se certifica nem se empenha"}. ${partes}. O contracheque não mudou.`;
+      const partes = r.porComponente.map((p) => `${p.codigo} ${p.total}${p.ausentes > 0 ? ` (${p.ausentes} sem parâmetro)` : ""}`).join(" · ");
+      return `Apuração nº ${r.numero} dos encargos de ${r.competencia}${r.complementar ? " — complementar (o atesto da folha não alcança estes encargos)" : ""}: total ${r.total.toFixed(2)}${r.completa ? "" : " — incompleta: há componente sem parâmetro aprovado, e a apuração não pode ser certificada nem empenhada"}. ${partes}. Os contracheques não foram alterados.`;
     }
     case "certificar-encargos": {
       const r = await comEscritaAutenticada("CERTIFICAR_ENCARGOS_DA_FOLHA", (criadoPor) => certificarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
-      return `Encargos de ${r.competencia} (apuração nº ${r.numero}) CERTIFICADOS por ${r.responsavel}, presos ao sha256 ${r.sha256.slice(0, 12)}…. Quem certificou não liquida.`;
+      return `Encargos de ${r.competencia} (apuração nº ${r.numero}) certificados por ${r.responsavel}, com o código de integridade ${r.sha256.slice(0, 12)}…. A liquidação deve ser feita por pessoa diferente de quem certificou.`;
     }
     case "apropriar-encargos": {
       const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: diaDoCampo(c, "dataDoEmpenho"), criadoPor }));
@@ -514,17 +512,17 @@ export async function acaoDaFolha(acao: string, folhaId: string, c: Campos): Pro
     }
     case "liquidar-encargos": {
       const r = await comEscritaAutenticada("LIQUIDAR_FOLHA", (criadoPor) => liquidarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), criadoPor }));
-      return `${r.liquidadas} liquidação(ões) de encargos nova(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}${r.pendentes > 0 ? ` — ATENÇÃO: ${r.pendentes} continuam pendentes` : ""}. Liquidar não é recolher: a guia e o pagamento são atos próprios.`;
+      return `${r.liquidadas} liquidação(ões) de encargos nova(s)${r.jaExistiam > 0 ? ` (${r.jaExistiam} já existiam)` : ""}, total ${r.total.toFixed(2)}${r.pendentes > 0 ? ` — atenção: ${r.pendentes} continuam pendentes` : ""}. Liquidar não é recolher: a guia e o pagamento são registrados à parte.`;
     }
     case "ajustar-encargos": {
       const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => ajustarEncargosDaFolha(prisma, { folhaId, data: diaDoCampo(c, "data"), motivo: (c["motivo"] ?? "").trim(), criadoPor }));
-      if (r.porGrupo.length === 0) return `Nada a reduzir além do que já estava gravado: ${r.reconhecidos} ato(s) de ajuste reconhecido(s) e registrado(s) no rastro.`;
-      const partes = r.porGrupo.map((g) => `${g.codigo}: apurado ${g.apurado}, empenhado antes ${g.empenhadoAntes}, anulado da liquidação ${g.anuladoDeLiquidacao}, anulado do empenho ${g.anuladoDeEmpenho}${g.restituicaoRegistrada !== "0.00" ? `, JÁ PAGO acima do devido ${g.restituicaoRegistrada} (restituição a providenciar)` : ""}`).join(" · ");
+      if (r.porGrupo.length === 0) return `Nada a reduzir além do que já estava gravado: ${r.reconhecidos} ato(s) de ajuste reconhecido(s) e registrado(s) no histórico.`;
+      const partes = r.porGrupo.map((g) => `${g.codigo}: apurado ${g.apurado}, empenhado antes ${g.empenhadoAntes}, anulado da liquidação ${g.anuladoDeLiquidacao}, anulado do empenho ${g.anuladoDeEmpenho}${g.restituicaoRegistrada !== "0.00" ? `, já pago acima do devido ${g.restituicaoRegistrada} (restituição a providenciar)` : ""}`).join(" · ");
       return `Ajuste para baixo da apuração nº ${r.apuracao}: ${r.atos} ato(s) novo(s)${r.reconhecidos > 0 ? `, ${r.reconhecidos} reconhecido(s)` : ""}. ${partes}.`;
     }
     case "fechar": {
       const r = await comEscritaAutenticada("FECHAR_FOLHA", (criadoPor) => fecharFolha(prisma, { folhaId, criadoPor }));
-      return `Folha fechada sobre o cálculo nº ${r.numero}. Ela não se recalcula mais.`;
+      return `Folha fechada com o cálculo nº ${r.numero}. A partir de agora, ela não pode ser recalculada.`;
     }
     default:
       throw new Error(`Ação desconhecida: ${acao}`);
@@ -615,7 +613,7 @@ export async function verRubrica(id: string): Promise<DetalheLido | null> {
       ...(r.percentual === null ? [] : [{ rotulo: "Percentual", valor: `${new Decimal(r.percentual).times(100).toFixed(2).replace(".", ",")}% do vencimento-base` }]),
       { rotulo: "Compõe a base da contribuição", valor: r.incideContribuicao ? "sim" : "não" },
       { rotulo: "Compõe a base do IRRF", valor: r.incideIrrf ? "sim" : "não" },
-      { rotulo: "Proporcional aos dias", valor: r.proporcionalAosDias ? "sim (mês fiscal de 30 dias)" : "não" },
+      { rotulo: "Proporcional aos dias", valor: r.proporcionalAosDias ? "sim (mês de 30 dias)" : "não" },
       { rotulo: "Ordem no contracheque", valor: String(r.ordem), tipo: "inteiro" },
       { rotulo: "Fundamentação legal", valor: r.fundamentacaoLegal },
       { rotulo: "Uso", valor: `${r._count.lancamentos} lançamento(s) · ${r._count.linhas} linha(s) de contracheque` },
@@ -789,9 +787,9 @@ export async function verTabela(id: string): Promise<DetalheLido | null> {
       dados: [
         { rotulo: "Vigência", valor: `${irrf.competenciaInicio} → ${irrf.competenciaFim ?? "aberta"}` },
         { rotulo: "Dedução por dependente", valor: toMoney(irrf.deducaoPorDependente).toFixed(2), tipo: "dinheiro" },
-        { rotulo: "Desconto simplificado", valor: irrf.descontoSimplificado === null ? "não há (cenário indisponível)" : toMoney(irrf.descontoSimplificado).toFixed(2) },
+        { rotulo: "Desconto simplificado", valor: irrf.descontoSimplificado === null ? "não se aplica" : toMoney(irrf.descontoSimplificado).toFixed(2) },
         { rotulo: "Parcela isenta (65 anos ou mais)", valor: irrf.isencaoMaior65 === null ? "não há" : toMoney(irrf.isencaoMaior65).toFixed(2) },
-        { rotulo: "Redutor", valor: irrf.redutorBase === null ? "não há (cenário indisponível)" : `max(0, ${toMoney(irrf.redutorBase).toFixed(2)} − ${new Decimal(irrf.redutorFator ?? 0).toFixed(8)} × renda), zerado acima de ${toMoney(irrf.redutorRendaMaxima ?? 0).toFixed(2)}` },
+        { rotulo: "Redutor", valor: irrf.redutorBase === null ? "não se aplica" : `max(0, ${toMoney(irrf.redutorBase).toFixed(2)} − ${new Decimal(irrf.redutorFator ?? 0).toFixed(8)} × renda), zerado acima de ${toMoney(irrf.redutorRendaMaxima ?? 0).toFixed(2)}` },
         ...irrf.faixas.map((f) => ({ rotulo: `Faixa ${f.ordem}`, valor: `${f.ate === null ? "acima da anterior, sem limite" : `até ${toMoney(f.ate).toFixed(2)}`} · ${pct(f.aliquota)} · parcela a deduzir ${toMoney(f.parcelaADeduzir).toFixed(2)}` })),
         { rotulo: "Fundamentação legal", valor: irrf.fundamentacaoLegal },
         { rotulo: "Cadastrada em", valor: `${diaCivilBr(irrf.criadoEm)} por ${irrf.criadoPor}` },
@@ -807,7 +805,7 @@ export async function verTabela(id: string): Promise<DetalheLido | null> {
         { rotulo: "Vigência", valor: `${sf.competenciaInicio} → ${sf.competenciaFim ?? "aberta"}` },
         { rotulo: "Renda máxima do servidor", valor: toMoney(sf.rendaMaxima).toFixed(2), tipo: "dinheiro" },
         { rotulo: "Valor por dependente", valor: toMoney(sf.valorPorDependente).toFixed(2), tipo: "dinheiro" },
-        { rotulo: "Idade limite", valor: `${sf.idadeLimite} anos (inválido: sem limite)` },
+        { rotulo: "Idade limite", valor: `${sf.idadeLimite} anos` },
         { rotulo: "Fundamentação legal", valor: sf.fundamentacaoLegal },
         { rotulo: "Cadastrada em", valor: `${diaCivilBr(sf.criadoEm)} por ${sf.criadoPor}` },
       ],
@@ -906,10 +904,10 @@ export async function verGrupoDeEmpenho(id: string): Promise<DetalheLido | null>
     dados: [
       { rotulo: "Ficha orçamentária", valor: `${g.ficha.numero} — ${g.ficha.naturezaDespesa.codigoCompleto} ${g.ficha.naturezaDespesa.descricao} · fonte ${g.ficha.fonte.codigo}` },
       { rotulo: "Saldo disponível da ficha", valor: toMoney(g.ficha.saldoDisponivel).toFixed(2), tipo: "dinheiro" },
-      { rotulo: "Série do número do empenho", valor: g.serie, nota: "O número do empenho é série/competência/matrícula — determinístico, e é o que impede a apropriação repetida de duplicar a despesa." },
+      { rotulo: "Série do número do empenho", valor: g.serie, nota: "O número do empenho é composto por série, competência e matrícula, o que impede empenho em duplicidade." },
       { rotulo: "Tipo de empenho", valor: g.tipoEmpenho },
       { rotulo: "Categoria (art. 141)", valor: g.categoriaOrdemCronologica.replace(/_/g, " ").toLowerCase() },
-      { rotulo: "Credor", valor: g.porServidor ? "o CPF de cada servidor" : `${g.credor?.versoes[0]?.nome ?? "—"} (${g.credor?.documento ?? "—"})` },
+      { rotulo: "Credor", valor: g.porServidor ? "cada servidor" : `${g.credor?.versoes[0]?.nome ?? "—"} (${g.credor?.documento ?? "—"})` },
       { rotulo: "Rubricas que este grupo empenha", valor: g.rubricas.map((r) => `${r.rubrica.codigo} — ${r.rubrica.descricao}`).join(" · ") || "—", tipo: "longo" },
       { rotulo: "Empenhos já gerados por ele", valor: String(g.empenhos.length), tipo: "inteiro" },
       { rotulo: "Cadastrado em", valor: diaCivilBr(g.criadoEm), tipo: "data" },
@@ -958,7 +956,7 @@ export async function acaoDoGrupoDeEmpenho(acao: string, grupoId: string, c: Cam
   await comEscritaAutenticada("CADASTRAR_GRUPO_DE_EMPENHO_DA_FOLHA", (criadoPor) =>
     definirContasDaLiquidacaoDoGrupo(cliente(), { grupoId, contaVariacaoId: t(c, "contaVariacaoId"), contaObrigacaoId: t(c, "contaObrigacaoId"), criadoPor })
   );
-  return "Contas da liquidação definidas para este grupo. As liquidações já gravadas não mudam — elas têm o lançamento com as contas que valiam no ato.";
+  return "Contas da liquidação definidas para este grupo. As liquidações já gravadas não mudam: mantêm as contas vigentes na data em que foram registradas.";
 }
 
 /** A ilha manda o cabeçalho e as rubricas marcadas (`rubricas.N.id`). */
@@ -1035,13 +1033,13 @@ export async function verDesignacao(id: string): Promise<DetalheLido | null> {
   const vigente = designacaoVigenteEm({ vigenciaInicio: d.vigenciaInicio, vigenciaFim: d.vigenciaFim, revogacao: d.revogacao }, new Date());
   const dados: DadoDoDetalhe[] = [
     { rotulo: "Atribuição", valor: d.atribuicao === "CERTIFICAR_ENCARGOS_DA_FOLHA" ? "Certificar (atestar) os encargos do empregador" : "Certificar (atestar) a folha" },
-    { rotulo: "Responsável", valor: nomeDaPessoa(d.pessoa), nota: "A pessoa do cadastro único — é o nome que vai no atesto e no responsável pelo atesto da liquidação." },
+    { rotulo: "Responsável", valor: nomeDaPessoa(d.pessoa), nota: "Nome que constará no atesto e como responsável pelo atesto da liquidação." },
     { rotulo: "Documento", valor: formatarDocumento(d.pessoa.documento) },
-    { rotulo: "Conta de acesso", valor: `${d.usuario.identificador}${d.usuario.ativo ? "" : " (DESATIVADA)"}`, nota: "O vínculo usuário↔pessoa é explícito e foi conferido no cadastro: o atesto não fica assinado por um nome e praticado por outro." },
-    { rotulo: "Ato que designou", valor: d.atoDesignacao, nota: "Ato administrativo do ente. O sistema não inventa fundamento." },
+    { rotulo: "Conta de acesso", valor: `${d.usuario.identificador}${d.usuario.ativo ? "" : " (DESATIVADA)"}`, nota: "Usuário vinculado ao responsável, conferido no cadastro, para que o atesto seja praticado pela própria pessoa designada." },
+    { rotulo: "Ato que designou", valor: d.atoDesignacao, nota: "Ato administrativo do ente." },
     { rotulo: "Vigência", valor: vigenciaEmTexto(d) },
-    { rotulo: "Vigente hoje (derivada)", valor: vigente ? "sim" : "não", nota: "Início ≤ dia ≤ fim, e sem revogação com efeito até o dia. Pelo dia civil do ente, nunca UTC." },
-    ...(d.substitutoDe === null ? [] : [{ rotulo: "Substitui", valor: `${nomeDaPessoa(d.substitutoDe.pessoa)} (${d.substitutoDe.atoDesignacao})`, nota: "O substituto certifica com o PRÓPRIO nome e o PRÓPRIO ato — não 'em nome de'." }]),
+    { rotulo: "Vigente hoje", valor: vigente ? "sim" : "não", nota: "Considera o período de vigência e eventual revogação." },
+    ...(d.substitutoDe === null ? [] : [{ rotulo: "Substitui", valor: `${nomeDaPessoa(d.substitutoDe.pessoa)} (${d.substitutoDe.atoDesignacao})`, nota: "O substituto certifica em nome próprio, com base no próprio ato de designação." }]),
     { rotulo: "Cadastrada em", valor: diaCivilBr(d.criadoEm), tipo: "data" as const },
     { rotulo: "Cadastrada por", valor: d.criadoPor },
   ];
@@ -1108,7 +1106,7 @@ export async function acaoDaDesignacao(acao: string, designacaoId: string, c: Ca
   await comEscritaAutenticada("DESIGNAR_NA_FOLHA", (criadoPor) =>
     revogarDesignacaoNaFolha(cliente(), { designacaoId, dataEfeito: diaDoCampo(c, "dataEfeito"), motivo: t(c, "motivo"), criadoPor })
   );
-  return `Designação revogada a partir de ${diaCivilBr(diaDoCampo(c, "dataEfeito"))}. Ela continua no histórico, e os atestos praticados sob ela continuam com lastro.`;
+  return `Designação revogada a partir de ${diaCivilBr(diaDoCampo(c, "dataEfeito"))}. Ela permanece no histórico, e os atestos já praticados continuam válidos.`;
 }
 
 
@@ -1126,9 +1124,9 @@ export async function acaoDaDesignacao(acao: string, designacaoId: string, c: Ca
  * sistema; a tela fala do fato. E nenhum deles diz qual é o certo — quem declara é o ente.
  */
 const ROTULO_DO_CRITERIO_DO_ABATIMENTO: Readonly<Record<string, string>> = {
-  FECHADO: "Fechado — o cálculo do adiantamento foi congelado",
-  CERTIFICADO: "Certificado — o cálculo foi atestado por quem o ente designou",
-  PAGO: "Pago — o adiantamento do servidor saiu do caixa",
+  FECHADO: "Fechado — a folha do adiantamento foi fechada",
+  CERTIFICADO: "Certificado — a folha do adiantamento foi atestada pelo responsável designado",
+  PAGO: "Pago — o adiantamento foi pago ao servidor",
 };
 
 export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
@@ -1172,7 +1170,7 @@ export async function listarParametrosDoDecimoTerceiro(c: ConsultaDoMolde): Prom
        */
       criterioDoAbatimento:
         p.estadoMinimoDoAdiantamentoParaAbater === null
-          ? "NÃO DECLARADO — abatimento é simulação"
+          ? "Não informado — o abatimento é apenas simulado"
           : ROTULO_DO_CRITERIO_DO_ABATIMENTO[p.estadoMinimoDoAdiantamentoParaAbater] ?? p.estadoMinimoDoAdiantamentoParaAbater,
       ato: `${OPCOES_DE_TIPO_DE_ATO.find((o) => o.valor === p.atoTipo)?.rotulo ?? p.atoTipo} ${p.atoNumero}/${p.atoAno}, ${p.atoDispositivo}`,
       situacao: maiorVersaoDo.get(p.exercicio) === p.versao ? "VIGENTE" : "SUPERADA",
@@ -1280,9 +1278,9 @@ export async function criarParametroDoDecimoTerceiro(c: Campos, rubricasDaBase: 
  * "fechou" de "pagou", que é a distinção que a V13 existe para não deixar confundir.
  */
 const ROTULO_DO_ESTADO_PARA_ABATER: Readonly<Record<string, string>> = {
-  FECHADO: "Fechado — o cálculo do vale foi congelado (não significa que o dinheiro saiu)",
-  CERTIFICADO: "Certificado — o cálculo do vale foi atestado por quem o ente designou",
-  PAGO: "Pago — o vale deste servidor saiu do caixa",
+  FECHADO: "Fechado — a folha do adiantamento foi fechada (ainda sem pagamento)",
+  CERTIFICADO: "Certificado — a folha do adiantamento foi atestada pelo responsável designado",
+  PAGO: "Pago — o adiantamento foi pago ao servidor",
 };
 
 export async function listarParametrosDoAdiantamentoSalarial(c: ConsultaDoMolde): Promise<PaginaDoMolde> {

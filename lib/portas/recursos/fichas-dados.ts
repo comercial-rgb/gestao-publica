@@ -109,11 +109,11 @@ export async function verFicha(id: string): Promise<DetalheLido | null> {
     { rotulo: "Fonte", valor: `${f.fonte.codigo} — ${f.fonte.descricao}` },
     { rotulo: "Código de acompanhamento", valor: f.co === null ? "" : `${f.co.codigo} — ${f.co.descricao}` },
     { rotulo: "Exercício da fonte", valor: f.exercicioFonte === 1 ? "1 — do exercício" : "2 — de exercícios anteriores" },
-    { rotulo: "Dotação inicial (LOA)", valor: toMoney(f.valorDotado).toFixed(2), tipo: "dinheiro", nota: semDotacao ? "Ficha sem dotação inicial: o crédito dela vem de crédito adicional (Planejamento > Créditos adicionais)." : "Valor fixado na lei orçamentária." },
+    { rotulo: "Dotação inicial (LOA)", valor: toMoney(f.valorDotado).toFixed(2), tipo: "dinheiro", nota: semDotacao ? "Ficha sem dotação inicial: o saldo provém de crédito adicional (Planejamento > Créditos adicionais)." : "Valor fixado na lei orçamentária." },
     { rotulo: "Autorizado", valor: toMoney(f.saldoAutorizado).toFixed(2), tipo: "dinheiro", nota: "Dotação inicial + créditos − anulações." },
     { rotulo: "Reservado", valor: toMoney(f.saldoReservado).toFixed(2), tipo: "dinheiro" },
     { rotulo: "Empenhado", valor: toMoney(f.saldoEmpenhado).toFixed(2), tipo: "dinheiro" },
-    { rotulo: "Disponível", valor: toMoney(f.saldoDisponivel).toFixed(2), tipo: "dinheiro", nota: "Cache da soma dos movimentos — orientação. Quem decide se cabe é o empenho, contra a soma real, na transação." },
+    { rotulo: "Disponível", valor: toMoney(f.saldoDisponivel).toFixed(2), tipo: "dinheiro", nota: "Saldo disponível para empenho. A disponibilidade é conferida novamente na emissão do empenho." },
   ];
   const historico: LinhaDoHistorico[] = f.movimentos.map((m) => ({
     id: m.id,

@@ -62,7 +62,7 @@ export async function registrarGuiaNaTela(folhaId: string, c: Campos, componente
 
 export async function baixarGuiaNaTela(c: Campos): Promise<string> {
   const r = await comEscritaAutenticada("GERIR_GUIA_DE_RECOLHIMENTO", (criadoPor) => baixarGuiaDeRecolhimento(cliente(), { guiaId: t(c, "guiaId"), pagamentoId: t(c, "pagamentoId"), observacao: t(c, "observacao"), criadoPor }));
-  return r.divergencia.isZero() ? "Guia baixada pelo pagamento informado; o total da guia confere com o pagamento." : `Guia baixada. ATENÇÃO: o total da guia difere do pagamento em ${formatarMoeda(r.divergencia.toFixed(2)).texto} — confira os componentes (atualização, juros, multa) com o emissor.`;
+  return r.divergencia.isZero() ? "Guia baixada pelo pagamento informado; o total da guia confere com o pagamento." : `Guia baixada. Atenção: o total da guia difere do pagamento em ${formatarMoeda(r.divergencia.toFixed(2)).texto}; confira os componentes (atualização, juros e multa) com o emissor.`;
 }
 
 export async function cancelarGuiaNaTela(c: Campos): Promise<string> {
@@ -88,14 +88,14 @@ export async function demonstrativoInternoDasObrigacoes(competencia: string, o: 
   const guias: SecaoPdf = { titulo: "Guias registradas (documentos do emissor)", colunas: COLUNAS_GUIAS.map((c) => ({ rotulo: c })), linhas: linhasDasGuias(o).length === 0 ? [["—", "nenhuma guia registrada", "—", "—", "—", "—", "—", "—"]] : linhasDasGuias(o) };
   return {
     ente: await nomeDoEnteParaDocumentos(),
-    titulo: `DEMONSTRATIVO INTERNO — obrigações dos encargos de ${competencia}`,
-    subtitulo: "NÃO É GUIA DE RECOLHIMENTO: não contém código de barras, linha digitável, PIX nem autenticação.",
+    titulo: `Demonstrativo interno — obrigações dos encargos de ${competencia}`,
+    subtitulo: "Este documento não é guia de recolhimento: não contém código de barras, linha digitável, PIX nem autenticação.",
     periodo: `Competência ${competencia}`,
     secoes: [obrigacoes, guias],
     notas: [
-      "Documento interno de conferência. A guia oficial é a emitida pelo arrecadador/destinatário e anexada ao cadastro da guia; anexar não é validação do emissor.",
-      "Liquidado é a obrigação reconhecida; pago vem dos pagamentos da despesa; restituição a providenciar é valor pago acima do devido após ajuste — nada foi anulado sobre ele.",
-      "Vencimento só aparece com o fundamento informado; sem ele, \"não informado\". Retorno bancário e transmissão externa não existem neste ambiente.",
+      "Documento interno de conferência. A guia oficial é emitida pelo órgão arrecadador e anexada ao cadastro da guia; o anexo não substitui a validação do emissor.",
+      "Liquidado: obrigação reconhecida. Pago: pagamentos registrados na despesa. Restituição a providenciar: valor pago acima do devido após ajuste.",
+      "O vencimento é exibido quando há fundamento informado. Retorno bancário e transmissão externa não estão disponíveis neste ambiente.",
     ],
   };
 }

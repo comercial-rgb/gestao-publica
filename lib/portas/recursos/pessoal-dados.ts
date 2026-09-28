@@ -130,10 +130,9 @@ export class ConsultaDePessoalAmplaDemaisError extends Error {
   readonly teto: number;
   constructor(candidatos: number, teto: number) {
     super(
-      `A consulta alcança ${candidatos} servidores, acima do teto de ${teto} que esta tela apura por evento. ` +
-        "Cargo, lotação, regime previdenciário e situação são derivados do histórico funcional — não há como recortar a " +
-        "página no banco sem apurar o conjunto. Estreite por nome, matrícula, data de admissão ou regime jurídico e " +
-        "repita. A lista NÃO foi truncada: truncar devolveria um total que parece certo."
+      `A consulta abrange ${candidatos} servidores, acima do limite de ${teto} desta tela. ` +
+        "Refine a pesquisa por nome, matrícula, data de admissão ou regime jurídico e tente novamente. " +
+        "Nenhum resultado parcial foi exibido."
     );
     this.name = "ConsultaDePessoalAmplaDemaisError";
     this.candidatos = candidatos;
@@ -568,7 +567,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
   });
 
   const dados = [
-    { rotulo: "Pessoa (cadastro único)", valor: `${versao?.nome ?? s.pessoa.documento} · ${formatarDocumento(s.pessoa.documento)}`, nota: "CPF, nome, endereço e contatos vivem no cadastro de pessoas (cadastro de pessoas); aqui só o que é do servidor." },
+    { rotulo: "Pessoa (cadastro único)", valor: `${versao?.nome ?? s.pessoa.documento} · ${formatarDocumento(s.pessoa.documento)}`, nota: "CPF, nome, endereço e contatos são mantidos no cadastro de pessoas." },
     { rotulo: "Nome social", valor: s.nomeSocial ?? "—" },
     { rotulo: "Nascimento", valor: diaCivilBr(s.dataNascimento), tipo: "data" as const },
     { rotulo: "Sexo", valor: s.sexo },
@@ -580,8 +579,8 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
     { rotulo: "Contato (da pessoa)", valor: [versao?.email, versao?.telefone].filter((x) => x !== null && x !== undefined).join(" · ") || "—" },
     ...vinculos.map((x) => ({
       rotulo: `Vínculo ${x.v.matricula}`,
-      valor: `${x.situacao} · ${x.v.tipo} · ${x.v.regimeJuridico} · previdência: ${x.regime ?? "NÃO INFORMADA — a folha recusa calcular esta matrícula"} · desde ${diaCivilBr(x.v.dataAdmissao)} · cargo: ${x.cargo} · lotação: ${x.lotacao} · salário base: ${x.salario?.toFixed(2) ?? "—"}${x.gratificacoes.length > 0 ? ` · gratificações: ${x.gratificacoes.map((g) => `${g.descricao} ${g.valor.toFixed(2)}`).join(", ")}` : ""}`,
-      nota: "Cargo, lotação, salário, regime previdenciário e situação derivados dos eventos até hoje — a folha de cada competência usa os DAQUELA competência.",
+      valor: `${x.situacao} · ${x.v.tipo} · ${x.v.regimeJuridico} · previdência: ${x.regime ?? "não informada (a folha desta matrícula não é calculada)"} · desde ${diaCivilBr(x.v.dataAdmissao)} · cargo: ${x.cargo} · lotação: ${x.lotacao} · salário base: ${x.salario?.toFixed(2) ?? "—"}${x.gratificacoes.length > 0 ? ` · gratificações: ${x.gratificacoes.map((g) => `${g.descricao} ${g.valor.toFixed(2)}`).join(", ")}` : ""}`,
+      nota: "Situação na data de hoje. A folha de cada competência considera os dados vigentes naquela competência.",
     })),
     { rotulo: "Cadastrado em", valor: diaCivilBr(s.criadoEm), tipo: "data" as const },
     { rotulo: "Cadastrado por", valor: s.criadoPor },
@@ -615,7 +614,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
   const ativos = vinculos.filter((x) => x.situacao !== "DESLIGADO").length;
   return {
     titulo: nome,
-    subtitulo: `${formatarDocumento(s.pessoa.documento)} · ${s.vinculos.length} vínculo(s), ${ativos} vivo(s)`,
+    subtitulo: `${formatarDocumento(s.pessoa.documento)} · ${s.vinculos.length} vínculo(s), ${ativos} ativo(s)`,
     selos: [
       s.vinculos.length === 0 ? { texto: "SEM VÍNCULO", tom: "neutro" as const } : ativos === 0 ? { texto: "DESLIGADO", tom: "erro" as const } : vinculos.some((x) => x.situacao === "AFASTADO") ? { texto: "AFASTADO", tom: "alerta" as const } : { texto: "ATIVO", tom: "ok" as const },
       ...(s.vinculos.length > 1 ? [{ texto: `${s.vinculos.length} matrículas — confira a acumulação`, tom: "alerta" as const }] : []),
@@ -669,7 +668,7 @@ export async function opcoesDoServidor(servidorId?: string): Promise<OpcoesDoCad
       const evs = eventos(v.eventos);
       const situacao = situacaoDoVinculo(evs, hoje);
       const regime = regimeVigenteEm(evs, v.regimePrevidenciario, hoje);
-      return { valor: v.id, rotulo: `${v.matricula} · ${v.tipo} · ${ROTULO_DA_SITUACAO[situacao]} · previdência: ${regime ?? "NÃO INFORMADA"}` };
+      return { valor: v.id, rotulo: `${v.matricula} · ${v.tipo} · ${ROTULO_DA_SITUACAO[situacao]} · previdência: ${regime ?? "não informada"}` };
     }),
   };
 }
@@ -716,8 +715,8 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
         })
       );
       return r.alertaAcumulacao.length > 0
-        ? `Vínculo admitido. ATENÇÃO — acumulação: esta pessoa já tem ${r.alertaAcumulacao.map((a) => `${a.matricula} (${a.tipo})`).join(", ")}. Confira o limite constitucional.`
-        : "Vínculo admitido: matrícula, cargo, lotação e salário registrados como evento de admissão.";
+        ? `Vínculo admitido. Atenção à acumulação de cargos: esta pessoa já possui ${r.alertaAcumulacao.map((a) => `${a.matricula} (${a.tipo})`).join(", ")}. Verifique o limite constitucional.`
+        : "Vínculo admitido: matrícula, cargo, lotação e salário registrados na admissão.";
     }
     case "informar-regime": {
       const v = await prisma.vinculo.findUnique({ where: { id: t(c, "vinculoRegimeId") }, select: { id: true, servidorId: true } });
@@ -728,7 +727,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
           regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO", criadoPor,
         })
       );
-      return "Regime previdenciário informado como fato datado. A folha de cada competência passa a aplicar o regime daquela competência.";
+      return "Regime previdenciário registrado a partir da data informada. A folha de cada competência aplica o regime vigente naquela competência.";
     }
     case "movimentar": {
       const vinculoId = await exigirVinculoDoServidor();
@@ -746,7 +745,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
           ...(opcional(c, "regimePrevidenciario") !== undefined ? { regimePrevidenciario: t(c, "regimePrevidenciario") as "RGPS" | "RPPS" | "ISENTO" } : {}), criadoPor,
         })
       );
-      return "Movimentação registrada como evento do vínculo; cargo, lotação e regime previdenciário de hoje já refletem — e o passado não muda.";
+      return "Movimentação registrada no vínculo. A situação atual já reflete a alteração, e os registros anteriores permanecem inalterados.";
     }
     case "alterar-remuneracao": {
       const vinculoId = await exigirVinculoDoServidor();
@@ -759,12 +758,12 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
           ...(opcional(c, "gratificacaoValor") !== undefined ? { gratificacaoValor: decimalDaTela(t(c, "gratificacaoValor")) } : {}), criadoPor,
         })
       );
-      return "Alteração remuneratória registrada como evento; o salário vigente já reflete.";
+      return "Alteração de remuneração registrada; o salário vigente já reflete a alteração.";
     }
     case "desligar": {
       const vinculoId = await exigirVinculoDoServidor();
       await comEscritaAutenticada("DESLIGAR_SERVIDOR", (criadoPor) => desligarServidor(prisma, { vinculoId, data: dia(c, "data"), motivo: t(c, "motivo"), criadoPor }));
-      return "Vínculo desligado — evento terminal; readmitir é outro vínculo.";
+      return "Vínculo desligado. A readmissão exige novo vínculo.";
     }
     case "dependente": {
       await comEscritaAutenticada("GERIR_DEPENDENTE", (criadoPor) =>
@@ -774,7 +773,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
           finalidade: t(c, "finalidade") as "IMPOSTO_RENDA", dataInicio: dia(c, "dataInicio"), criadoPor,
         })
       );
-      return "Dependente cadastrado com a finalidade; a baixa por idade é derivada do limite legal.";
+      return "Dependente cadastrado com a finalidade informada; a baixa por idade ocorre automaticamente no limite legal.";
     }
     case "encerrar-finalidade": {
       const f = await prisma.finalidadeDependente.findUnique({ where: { id: t(c, "finalidadeId") }, select: { dependente: { select: { servidorId: true } } } });
@@ -783,8 +782,8 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
         baixarFinalidadeDependente(prisma, { finalidadeId: t(c, "finalidadeId"), dataBaixa: dia(c, "dataEfeito"), motivoBaixa: t(c, "motivo"), criadoPor })
       );
       return r.competenciasFechadasAtingidas.length === 0
-        ? "Finalidade encerrada. Ela deixa de valer a partir da data de efeito; nenhuma folha fechada é alcançada."
-        : `Finalidade encerrada. ATENÇÃO: o efeito alcança folha(s) JÁ FECHADA(S) — ${r.competenciasFechadasAtingidas.join(", ")} — que NÃO foram recalculadas; a correção delas é retificação.`;
+        ? "Finalidade encerrada a partir da data de efeito; nenhuma folha fechada é alcançada."
+        : `Finalidade encerrada. Atenção: o efeito alcança folha(s) já fechada(s) (${r.competenciasFechadasAtingidas.join(", ")}), que não foram recalculadas; a correção deve ser feita por retificação.`;
     }
     case "portaria": {
       const vinculoId = await exigirVinculoDoServidor();
@@ -797,7 +796,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
       await comEscritaAutenticada("REGISTRAR_ANOTACAO", (criadoPor) =>
         registrarAnotacaoServidor(prisma, { servidorId, data: dia(c, "data"), tipo: t(c, "tipo") as "ELOGIO", titulo: t(c, "titulo"), texto: t(c, "texto"), criadoPor })
       );
-      return "Anotação registrada na ficha (permanente, com autor).";
+      return "Anotação registrada na ficha funcional.";
     }
     case "treinamento": {
       await comEscritaAutenticada("REGISTRAR_TREINAMENTO", (criadoPor) =>
@@ -859,7 +858,7 @@ export async function verCargo(id: string): Promise<DetalheLido | null> {
     selos: [x.dataExtincao !== null ? { texto: "EXTINTO", tom: "erro" } : ocupadas >= x.vagasFixadas ? { texto: "SEM VAGA", tom: "alerta" } : { texto: "COM VAGA", tom: "ok" }],
     dados: [
       { rotulo: "Código", valor: x.codigo }, { rotulo: "Denominação", valor: x.denominacao }, { rotulo: "Tipo", valor: ROTULO_DO_TIPO_DE_CARGO[x.tipo] ?? x.tipo },
-      { rotulo: "Vagas fixadas em lei", valor: String(x.vagasFixadas), tipo: "inteiro" }, { rotulo: "Vagas ocupadas (contadas hoje)", valor: String(ocupadas), tipo: "inteiro", nota: "Vínculos vivos cujo cargo vigente hoje é este — contados a cada leitura." },
+      { rotulo: "Vagas fixadas em lei", valor: String(x.vagasFixadas), tipo: "inteiro" }, { rotulo: "Vagas ocupadas hoje", valor: String(ocupadas), tipo: "inteiro", nota: "Vínculos ativos neste cargo na data de hoje." },
       { rotulo: "Lei de criação", valor: `${x.leiAutorizativa} (${diaCivilBr(x.dataPublicacaoLei)})` },
       { rotulo: "Extinção", valor: x.dataExtincao === null ? "—" : `${x.leiExtincao ?? ""} (${diaCivilBr(x.dataExtincao)})` },
       { rotulo: "Carga horária semanal", valor: x.cargaHorariaSemanal === null ? "—" : `${x.cargaHorariaSemanal} h` },
@@ -957,7 +956,7 @@ export async function verFuncao(id: string): Promise<DetalheLido | null> {
       { rotulo: "Denominação", valor: x.denominacao },
       {
         rotulo: "Exercendo hoje", valor: String(exercendo), tipo: "inteiro",
-        nota: "Vínculos cuja função vigente hoje é esta — derivado dos eventos de designação e dispensa, contado a cada leitura.",
+        nota: "Vínculos designados para esta função na data de hoje.",
       },
       { rotulo: "Lei ou ato de criação", valor: `${x.leiAutorizativa} (${diaCivilBr(x.dataPublicacaoLei)})` },
       { rotulo: "Extinção", valor: x.dataExtincao === null ? "—" : `${x.leiExtincao ?? ""} (${diaCivilBr(x.dataExtincao)})` },
@@ -1027,10 +1026,10 @@ export async function verLotacao(id: string): Promise<DetalheLido | null> {
     selos: [x.dataExtincao !== null ? { texto: "EXTINTA", tom: "erro" } : { texto: "VIGENTE", tom: "ok" }],
     dados: [
       { rotulo: "Código", valor: x.codigo }, { rotulo: "Nome", valor: x.nome },
-      { rotulo: "Superior", valor: x.pai === null ? "— (raiz)" : `${x.pai.codigo} — ${x.pai.nome}` },
+      { rotulo: "Superior", valor: x.pai === null ? "— (primeiro nível)" : `${x.pai.codigo} — ${x.pai.nome}` },
       { rotulo: "Unidade orçamentária", valor: x.unidadeOrc === null ? "—" : `${x.unidadeOrc.codigo} — ${x.unidadeOrc.descricao}` },
       { rotulo: "Subordinadas", valor: x.filhas.length === 0 ? "—" : x.filhas.map((f) => `${f.codigo} — ${f.nome}`).join(" · ") },
-      { rotulo: "Lotados hoje", valor: String(lotadosNaLotacao(vinculos, x.id, hoje)), tipo: "inteiro", nota: "Vínculos vivos cuja lotação vigente hoje é esta — contados a cada leitura." },
+      { rotulo: "Lotados hoje", valor: String(lotadosNaLotacao(vinculos, x.id, hoje)), tipo: "inteiro", nota: "Vínculos ativos nesta lotação na data de hoje." },
       { rotulo: "Cadastrada por", valor: `${x.criadoPor} em ${diaCivilBr(x.criadoEm)}` },
     ],
     historico: eventosDaLotacao.map((e) => ({ id: e.id, oQue: `${ROTULO_DO_EVENTO[e.tipo] ?? e.tipo} · ${e.vinculo.matricula}`, quando: diaCivilBr(e.data), registradoEm: diaCivilBr(e.criadoEm), por: e.criadoPor, motivo: e.motivo })),

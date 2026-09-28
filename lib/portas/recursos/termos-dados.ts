@@ -104,23 +104,23 @@ export async function verTermo(id: string): Promise<DetalheLido | null> {
       { texto: ROTULO_DO_TIPO[x.tipo] ?? x.tipo, tom: "neutro" },
       { texto: `${x.itens.length} bem(ns)`, tom: "neutro" },
       ...(x.anexos.length === 0 && x.documento === null ? [{ texto: "sem termo assinado anexado", tom: "alerta" as const }] : [{ texto: "termo assinado anexado", tom: "ok" as const }]),
-      ...(x.emissaoSha256 === null ? [{ texto: "sem emissão congelada (anterior ao registro da emissão)", tom: "alerta" as const }] : [{ texto: "emissão congelada", tom: "ok" as const }]),
+      ...(x.emissaoSha256 === null ? [{ texto: "sem registro da emissão (termo anterior)", tom: "alerta" as const }] : [{ texto: "emissão registrada", tom: "ok" as const }]),
     ],
     dados: [
       { rotulo: "Número", valor: x.numero },
       { rotulo: "Tipo", valor: ROTULO_DO_TIPO[x.tipo] ?? x.tipo },
       { rotulo: "Responsável", valor: nomeDoResponsavel(x.responsavel) },
       { rotulo: "Setor", valor: x.setor === null ? "— (termo do ente)" : `${x.setor.codigo} — ${x.setor.nome}` },
-      { rotulo: "Data do termo", valor: diaCivilBr(x.data), tipo: "data", nota: "A data do fato: é a data do movimento registrado em cada bem." },
+      { rotulo: "Data do termo", valor: diaCivilBr(x.data), tipo: "data", nota: "Data do movimento registrado em cada bem." },
       { rotulo: "Emitido em", valor: diaCivilBr(x.criadoEm), tipo: "data" },
       { rotulo: "Emitido por", valor: x.criadoPor },
       x.emissaoSha256 === null
-        ? { rotulo: "Emissão congelada", valor: "Não há", nota: "Termo anterior ao registro da emissão: o PDF é composto agora, com valores e localizações de hoje, e diz isso." }
-        : { rotulo: "Emissão congelada", valor: `${x.modeloDaEmissao ?? ""} · sha256 ${x.emissaoSha256.slice(0, 16)}…`, nota: `Gravada em ${x.emitidoEm === null ? "—" : diaCivilBr(x.emitidoEm)} com o termo. A segunda via reproduz exatamente esta emissão; a integridade é conferida a cada leitura.` },
+        ? { rotulo: "Registro da emissão", valor: "Não há", nota: "Termo anterior ao registro da emissão: o PDF é gerado com valores e localizações atuais, com essa indicação." }
+        : { rotulo: "Registro da emissão", valor: `${x.modeloDaEmissao ?? ""} · código de integridade ${x.emissaoSha256.slice(0, 16)}…`, nota: `Registrada em ${x.emitidoEm === null ? "—" : diaCivilBr(x.emitidoEm)}. A segunda via reproduz exatamente esta emissão, com verificação de integridade.` },
       {
         rotulo: "Movimento registrado",
-        valor: x.tipo === "RESPONSABILIDADE" ? "Responsável, em cada bem" : "Situação BAIXADO, em cada bem",
-        nota: "Emitir o termo é o próprio ato: o termo e a derivação do bem dizem a mesma coisa.",
+        valor: x.tipo === "RESPONSABILIDADE" ? "Responsável, em cada bem" : "Situação baixado, em cada bem",
+        nota: "A emissão do termo registra a movimentação de cada bem.",
       },
     ],
     historico: x.itens.map((i) => ({
@@ -131,7 +131,7 @@ export async function verTermo(id: string): Promise<DetalheLido | null> {
       por: i.criadoPor,
       motivo: `${i.bem.classeDeBens.codigo} — ${i.bem.classeDeBens.descricao}`,
       href: `/patrimonio/bens-patrimoniais/${i.bem.id}`,
-      hrefRotulo: "abrir o bem",
+      hrefRotulo: "Abrir o bem",
     })),
   };
 }
@@ -150,12 +150,12 @@ export async function opcoesDosTermos(): Promise<OpcoesDoCadastro> {
 /** Tombamentos → ids. Recusa nomeando os que não existem — antes de qualquer escrita. */
 async function bensPelosTombamentos(texto: string): Promise<readonly string[]> {
   const tombamentos = [...new Set(texto.split(/[\s,;]+/).map((s) => s.trim()).filter((s) => s !== ""))];
-  if (tombamentos.length === 0) throw new Error("Informe ao menos um tombamento — um termo sem bem não entrega nada a ninguém. Nada foi gravado.");
+  if (tombamentos.length === 0) throw new Error("Informe ao menos um tombamento. Nada foi gravado.");
   const bens = await cliente().bemPatrimonial.findMany({ where: { numeroTombamento: { in: tombamentos } }, select: { id: true, numeroTombamento: true } });
   const achados = new Map(bens.map((b) => [b.numeroTombamento, b.id]));
   const faltam = tombamentos.filter((n) => !achados.has(n));
   if (faltam.length > 0) {
-    throw new Error(`TOMBAMENTO INEXISTENTE: ${faltam.join(", ")} não corresponde(m) a bem nenhum do acervo. Confira e tente de novo. Nada foi gravado.`);
+    throw new Error(`Tombamento inexistente: ${faltam.join(", ")} não corresponde(m) a nenhum bem do acervo. Confira e tente novamente. Nada foi gravado.`);
   }
   return tombamentos.map((n) => achados.get(n) as string);
 }

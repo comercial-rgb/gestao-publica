@@ -106,7 +106,7 @@ describe("V11 V4.2 (P) — o demonstrativo público de pessoal", () => {
     expect(d.politica).toBeNull();
     expect(d.linhas).toEqual([]);
     expect(d.cabecalho).toEqual([]);
-    expect(d.pendencia).toContain("não declarou a política de publicação de pessoal");
+    expect(d.pendencia).toContain("ainda não aprovou a política de publicação de pessoal");
     // E o nome não aparece em lugar nenhum da resposta.
     expect(JSON.stringify(d)).not.toContain(NOME_DO_SERVIDOR);
   });

@@ -40,8 +40,8 @@ describe("o demonstrativo interno das obrigações", () => {
     let texto = "";
     for (let i = 1; i <= pdf.numPages; i += 1) texto += ` ${(await (await pdf.getPage(i)).getTextContent()).items.map((it) => ("str" in it ? it.str : "")).join(" ")}`;
     const plano = texto.replace(/\s+/g, " ");
-    expect(plano).toContain("DEMONSTRATIVO INTERNO");
-    expect(plano).toContain("NÃO É GUIA DE RECOLHIMENTO");
+    expect(plano).toContain("Demonstrativo interno");
+    expect(plano).toContain("não é guia de recolhimento");
     expect(plano).toContain("não informado");
     expect(plano).toContain("baixada por pagamento");
     expect(plano).toContain("cancelada");

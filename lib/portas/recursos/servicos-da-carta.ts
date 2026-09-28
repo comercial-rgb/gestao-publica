@@ -19,9 +19,9 @@ export const OPCOES_DE_PUBLICO = [
 
 export const OPCOES_DE_TIPO_DE_SERVICO = [
   { valor: "REQUERIMENTO_ADMINISTRATIVO", rotulo: "Requerimento administrativo" },
-  { valor: "ATUALIZACAO_CADASTRAL", rotulo: "Atualização cadastral (só campos do cadastro de pessoa)" },
-  { valor: "COMPLEMENTO_DE_FORNECEDOR", rotulo: "Complemento documental de fornecedor (só por representação)" },
-  { valor: "MANIFESTACAO_ANONIMA", rotulo: "Manifestação de ouvidoria sem conta (assunto anônimo e sigiloso)" },
+  { valor: "ATUALIZACAO_CADASTRAL", rotulo: "Atualização cadastral (dados do cadastro de pessoas)" },
+  { valor: "COMPLEMENTO_DE_FORNECEDOR", rotulo: "Complemento documental de fornecedor (por representante)" },
+  { valor: "MANIFESTACAO_ANONIMA", rotulo: "Manifestação de ouvidoria sem identificação (anônima e sigilosa)" },
 ] as const;
 
 export const SERVICOS_DA_CARTA: DefinicaoDeRecurso = definirRecurso({
@@ -30,11 +30,12 @@ export const SERVICOS_DA_CARTA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Serviço da carta",
   rota: "/protocolo/servicos",
   descricao:
-    "O que o ente oferece ao público pela internet. Cada serviço aponta para um assunto do protocolo (roteiro, sigilo e " +
-    "termo vêm dele); o conteúdo e o formulário são versionados, e só a versão publicada aparece na carta.",
+    "Serviços oferecidos ao público pela internet. Cada serviço está vinculado a um assunto do protocolo, que define " +
+    "tramitação, sigilo e termo de aceite. O conteúdo e o formulário têm versões, e apenas a versão publicada aparece " +
+    "na carta de serviços.",
   campos: [
     { nome: "titulo", rotulo: "Título do serviço", tipo: "texto", obrigatorio: true, largura: 2 },
-    { nome: "slug", rotulo: "Endereço público (minúsculas e hífen)", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "atualizar-cadastro", ajuda: "Vira /servicos/<endereço>. Não muda entre versões." },
+    { nome: "slug", rotulo: "Endereço público (letras minúsculas e hífen)", tipo: "texto", obrigatorio: true, largura: 2, placeholder: "atualizar-cadastro", ajuda: "O serviço fica disponível em /servicos/<endereço>. O endereço não muda entre versões." },
     { nome: "categoria", rotulo: "Categoria", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "publico", rotulo: "Público", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [...OPCOES_DE_PUBLICO] },
     { nome: "tipo", rotulo: "Tipo de serviço", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [...OPCOES_DE_TIPO_DE_SERVICO] },
@@ -52,7 +53,7 @@ export const SERVICOS_DA_CARTA: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "publicar-versao", rotulo: "Publicar uma versão", acaoDoCenso: "CONFIGURAR_CARTA_DE_SERVICOS", irreversivel: true,
-      aviso: "Publicada, a versão não muda e passa a ser a da carta. As etapas mostradas ao público são copiadas agora do roteiro do assunto. Pedidos já feitos continuam na versão deles.",
+      aviso: "Depois de publicada, a versão não pode ser alterada e passa a ser exibida na carta de serviços, com as etapas do assunto na data da publicação. Pedidos anteriores permanecem na versão em que foram feitos.",
       campos: [{ nome: "versaoId", rotulo: "Versão em rascunho", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] }],
     },
   ],

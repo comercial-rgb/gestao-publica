@@ -43,6 +43,10 @@ import type {
   LinhaDoMolde,
 } from "../../molde/tipos.js";
 import { cliente, PortaSemBancoError } from "../cliente";
+import { TIPOS_DE_OBRA_OPCOES } from "./definicoes.js";
+
+/** O tipo de obra como o formulário o oferece ("07 — Obras de arte (pontes, viadutos)"). */
+const rotuloDoTipoDeObra = (tipo: string): string => TIPOS_DE_OBRA_OPCOES.find((o) => o.valor === tipo)?.rotulo ?? tipo;
 
 export { PortaSemBancoError };
 
@@ -203,13 +207,13 @@ export async function verConvenio(id: string): Promise<DetalheLido | null> {
     dados: [
       { rotulo: "Objeto", valor: v.objeto, tipo: "longo" },
       { rotulo: "Outra parte", valor: `${v.partidaNome} · ${v.partidaDocumento}` },
-      { rotulo: "Lei autorizativa", valor: v.leiAutorizativa, nota: "LRF art. 25" },
+      { rotulo: "Lei autorizativa", valor: v.leiAutorizativa, nota: "LRF, art. 25" },
       { rotulo: "Valor do repasse", valor: repasse.toFixed(2), tipo: "dinheiro" },
       { rotulo: "Contrapartida", valor: v.valorContrapartida.toFixed(2), tipo: "dinheiro" },
       { rotulo: "Saldo a liberar", valor: saldoALiberar(repasse, movimentos).toFixed(2), tipo: "dinheiro",
-        nota: "Derivado dos movimentos — nunca uma coluna." },
+        nota: "Calculado a partir das liberações registradas." },
       { rotulo: "Pendente de prestação", valor: pendenteDePrestacao(movimentos).toFixed(2), tipo: "dinheiro",
-        nota: "Conta independente do saldo a liberar." },
+        nota: "Controlado separadamente do saldo a liberar." },
       { rotulo: "Glosado (líquido)", valor: glosadoLiquido(movimentos).toFixed(2), tipo: "dinheiro" },
       { rotulo: "Vigência", valor: `${diaCivilBr(v.vigenciaInicio)} a ${diaCivilBr(v.vigenciaFim)}`, tipo: "data" },
       { rotulo: "Prazo de prestação", valor: `${v.diasParaPrestacaoDeContas} dias após a vigência` },
@@ -360,15 +364,15 @@ export async function verPrecatorio(id: string): Promise<DetalheLido | null> {
       { rotulo: "Tribunal", valor: p.tribunal },
       { rotulo: "Ofício requisitório", valor: p.oficioRequisitorio ?? "" },
       { rotulo: "Natureza", valor: ROTULO_DA_NATUREZA[p.natureza as NaturezaDoPrecatorio],
-        nota: "CF art. 100, §1º — alimentar paga-se antes de comum." },
+        nota: "CF, art. 100, § 1º: o crédito alimentar é pago antes do comum." },
       { rotulo: "Preferência (§2º)", valor: ROTULO_DA_PREFERENCIA[p.preferencia as PreferenciaDoPrecatorio],
-        nota: "Só ordena dentro dos alimentares." },
+        nota: "Aplica-se apenas entre créditos alimentares." },
       { rotulo: "Apresentação", valor: diaCivilBr(p.dataApresentacao), tipo: "data",
-        nota: "É ela que ordena a fila — nunca a data do cadastro." },
+        nota: "Define a posição na ordem de pagamento." },
       { rotulo: "Exercício de pagamento", valor: String(p.exercicioDePagamento), tipo: "inteiro" },
       { rotulo: "Valor requisitado", valor: p.valorOriginal.toFixed(2), tipo: "dinheiro" },
       { rotulo: "Saldo devido", valor: saldo.toFixed(2), tipo: "dinheiro",
-        nota: "Σ dos movimentos — nunca uma coluna." },
+        nota: "Calculado a partir dos movimentos registrados." },
       { rotulo: "Conta de passivo", valor: `${p.contaContabil.codigo} — ${p.contaContabil.nome}` },
     ],
     historico: p.movimentos.map((m) => ({
@@ -490,7 +494,7 @@ export async function verConsorcio(id: string, exercicio: number): Promise<Detal
       { rotulo: "Protocolo de intenções", valor: v.protocoloDeIntencoes, tipo: "longo" },
       { rotulo: "Lei ratificadora", valor: v.leiRatificadora, nota: "Lei 11.107, art. 5º" },
       { rotulo: `Teto do rateio de ${exercicio}`, valor: tetoDoExercicio(doExercicio).toFixed(2), tipo: "dinheiro",
-        nota: "Soma do contrato original com os aditivos — nunca 'o último vale'." },
+        nota: "Soma do contrato de rateio original com os aditivos." },
       { rotulo: "Repassado no exercício", valor: repassadoLiquido(movimentosDoExercicio).toFixed(2), tipo: "dinheiro" },
       { rotulo: "A repassar", valor: saldoDoRateio(doExercicio, movimentosDoExercicio).toFixed(2), tipo: "dinheiro" },
       { rotulo: "Fonte de recurso", valor: `${v.fonteRecurso.codigo} — ${v.fonteRecurso.descricao}` },
@@ -671,12 +675,12 @@ export async function verAuditoria(id: string): Promise<DetalheLido | null> {
         valor: a.relatorios.length === 0 ? "" : `versão ${a.relatorios[0]!.versao}`,
         nota: a.relatorios.length === 0
           ? "Ainda não emitido."
-          : `SHA-256 ${a.relatorios[0]!.hashConteudo.slice(0, 16)}…` },
+          : `Código de integridade ${a.relatorios[0]!.hashConteudo.slice(0, 16)}…` },
       ...a.itens.map((i) => {
         const v = vigentes.get(i.id);
         return {
           rotulo: `Item ${i.ordem}`,
-          valor: `${i.pergunta} — ${v === undefined ? "SEM RESPOSTA" : v.resposta}`,
+          valor: `${i.pergunta} — ${v === undefined ? "sem resposta" : v.resposta}`,
           tipo: "longo" as const,
           nota: `${i.baseLegal}${v?.observacao === undefined || v.observacao === null ? "" : ` · ${v.observacao}`}`,
         };
@@ -797,13 +801,13 @@ export async function verProvisao(id: string): Promise<DetalheLido | null> {
     dados: [
       { rotulo: "Descrição", valor: p.descricao, tipo: "longo" },
       { rotulo: "Constituído", valor: somaDosTipos(p.movimentos, ["CONSTITUICAO"]), tipo: "dinheiro",
-        nota: "Variação patrimonial DIMINUTIVA — não é despesa orçamentária e não consome dotação." },
+        nota: "Variação patrimonial diminutiva; não é despesa orçamentária e não consome dotação." },
       { rotulo: "Atualizações", valor: somaDosTipos(p.movimentos, ["ATUALIZACAO"]), tipo: "dinheiro",
-        nota: "Por competência, e idempotente: a mesma competência duas vezes é recusada." },
+        nota: "Registradas uma vez por competência." },
       { rotulo: "Revertido", valor: somaDosTipos(p.movimentos, ["REVERSAO"]), tipo: "dinheiro",
-        nota: "O risco não se concretizou. Reverter acima do saldo é recusado no servidor." },
+        nota: "Valores de riscos que não se concretizaram, limitados ao saldo da provisão." },
       { rotulo: "Saldo provisionado", valor: saldo.toFixed(2), tipo: "dinheiro",
-        nota: "Derivado dos movimentos. Tem de bater com o saldo da conta de passivo." },
+        nota: "Calculado a partir dos movimentos; corresponde ao saldo da conta de passivo." },
       { rotulo: "Conta do passivo", valor: `${p.contaContabil.codigo} — ${p.contaContabil.nome}` },
     ],
     historico: p.movimentos.map((m) => ({
@@ -871,7 +875,6 @@ import {
 } from "../../../modules/m10-patrimonial/divida-ativa.js";
 import {
   cadastrarObra,
-  TIP_OBRA_SERVICO,
   type TipoObraServicoRepo,
 } from "../../../modules/m11-licitacoes/obras.js";
 import {
@@ -1254,15 +1257,15 @@ export async function verDividaFundada(id: string): Promise<DetalheLido | null> 
     dados: [
       { rotulo: "Objeto", valor: d.objeto, tipo: "longo" },
       { rotulo: "Credor", valor: `${d.credorNome} · ${d.credorDocumento}` },
-      { rotulo: "Lei autorizativa", valor: d.leiAutorizativa, nota: "LRF art. 32" },
+      { rotulo: "Lei autorizativa", valor: d.leiAutorizativa, nota: "LRF, art. 32" },
       { rotulo: "Ingressado", valor: somaDosTipos(d.movimentos, ["INGRESSO_OPERACAO_CREDITO"]), tipo: "dinheiro",
-        nota: "Lançado pela receita — o ingresso é receita de operação de crédito, e é fato permutativo." },
+        nota: "Registrado na receita, como receita de operação de crédito." },
       { rotulo: "Atualização monetária", valor: somaDosTipos(d.movimentos, ["ATUALIZACAO_MONETARIA"]), tipo: "dinheiro",
-        nota: "O único movimento que nasce aqui — e o único que reduz o patrimônio." },
+        nota: "Registrada nesta tela, como variação patrimonial diminutiva." },
       { rotulo: "Amortizado", valor: somaDosTipos(d.movimentos, ["AMORTIZACAO"]), tipo: "dinheiro",
-        nota: "Lançado pela despesa dentro do pagamento — pagar principal é permutativo, não é VPD." },
+        nota: "Registrado na despesa, no pagamento do principal." },
       { rotulo: "Saldo devedor", valor: saldo.toFixed(2), tipo: "dinheiro",
-        nota: "Derivado dos movimentos. Tem de bater com o saldo da conta contábil do passivo." },
+        nota: "Calculado a partir dos movimentos; corresponde ao saldo da conta contábil do passivo." },
       { rotulo: "Conta do passivo", valor: `${d.contaContabil.codigo} — ${d.contaContabil.nome}` },
     ],
     historico: d.movimentos.map((m) => ({
@@ -1375,17 +1378,17 @@ export async function verDividaAtiva(id: string): Promise<DetalheLido | null> {
     dados: [
       { rotulo: "Devedor", valor: `${d.devedorNome} · ${d.devedorDocumento}` },
       { rotulo: "Origem", valor: ROTULO_ORIGEM_ATIVA[d.origem] ?? d.origem,
-        nota: "Art. 39, § 2º da Lei 4.320/64 — o rol tem DUAS origens, e só duas." },
+        nota: "Art. 39, § 2º, da Lei 4.320/1964." },
       { rotulo: "Inscrito", valor: somaDosTipos(d.movimentos, ["INSCRICAO"]), tipo: "dinheiro",
-        nota: "A inscrição reconhece um crédito que o ente não tinha: o patrimônio cresce (VPA)." },
+        nota: "A inscrição reconhece o crédito no ativo, como variação patrimonial aumentativa." },
       { rotulo: "Atualizações", valor: somaDosTipos(d.movimentos, ["ATUALIZACAO"]), tipo: "dinheiro",
-        nota: "Juros, multa e correção — também VPA, e idempotentes por competência." },
+        nota: "Juros, multa e correção, registrados uma vez por competência como variação patrimonial aumentativa." },
       { rotulo: "Recebido", valor: somaDosTipos(d.movimentos, ["RECEBIMENTO"]), tipo: "dinheiro",
-        nota: "Entra pela arrecadação. Aqui é permutativo: um ativo vira outro, SEM nova VPA." },
+        nota: "Registrado pela arrecadação da receita." },
       { rotulo: "Cancelado", valor: somaDosTipos(d.movimentos, ["CANCELAMENTO"]), tipo: "dinheiro",
-        nota: "Prescrição, remissão ou decisão judicial — o crédito morre e a perda é VPD." },
+        nota: "Prescrição, remissão ou decisão judicial; a perda é registrada como variação patrimonial diminutiva." },
       { rotulo: "Saldo a receber", valor: saldo.toFixed(2), tipo: "dinheiro",
-        nota: "Derivado dos movimentos, e conferido contra o razão pelo teste de integração." },
+        nota: "Calculado a partir dos movimentos registrados." },
       { rotulo: "Conta do ativo", valor: `${d.contaContabil.codigo} — ${d.contaContabil.nome}` },
     ],
     historico: d.movimentos.map((m) => ({
@@ -1437,7 +1440,7 @@ export async function listarObras(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
         id: o.id,
         identificador: o.identificador,
         descricao: o.descricao,
-        tipo: `${TIP_OBRA_SERVICO[o.tipoObraServico as TipoObraServicoRepo]} — ${o.tipoObraServico}`,
+        tipo: rotuloDoTipoDeObra(o.tipoObraServico),
         medicoes: String(o.medicoes.length),
         medido: medido.toFixed(2),
         aprovado: aprovado.toFixed(2),
@@ -1494,19 +1497,19 @@ export async function verObra(id: string): Promise<DetalheLido | null> {
     ],
     dados: [
       { rotulo: "Descrição", valor: o.descricao, tipo: "longo" },
-      { rotulo: "Tipo", valor: `${TIP_OBRA_SERVICO[o.tipoObraServico as TipoObraServicoRepo]} — ${o.tipoObraServico}`,
-        nota: "Rol FECHADO da IN/INSS/DC 100/2003 — é norma, não catálogo do ente." },
+      { rotulo: "Tipo", valor: rotuloDoTipoDeObra(o.tipoObraServico),
+        nota: "Tipos definidos na IN/INSS/DC 100/2003." },
       {
         rotulo: "CEI",
         valor: o.cei ?? "não informado",
         ...(o.cei === null
-          ? { nota: "A obra existe antes da matrícula; um CEI inventado seria pior que o vazio." }
+          ? { nota: "Informe após a emissão da matrícula pela Receita Federal." }
           : {}),
       },
       { rotulo: "Órgão responsável", valor: o.orgao === null ? "não informado" : `${o.orgao.codigo} — ${o.orgao.nome}` },
       { rotulo: "Total medido", valor: medido.toFixed(2), tipo: "dinheiro" },
       { rotulo: "Total aprovado", valor: aprovado.toFixed(2), tipo: "dinheiro",
-        nota: "Só o APROVADO autoriza liquidar — e não se liquida acima do medido." },
+        nota: "Somente o valor aprovado autoriza a liquidação, limitada ao valor medido." },
     ],
     historico: o.medicoes.map((m) => ({
       id: m.id,

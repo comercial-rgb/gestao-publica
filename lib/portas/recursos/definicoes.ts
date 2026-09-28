@@ -36,13 +36,13 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Convênio",
   rota: "/transferencias/convenios",
   descricao:
-    "Transferências voluntárias em que o ente é concedente ou convenente (LRF art. 25). " +
-    "O saldo a liberar, o pendente de prestação de contas e o glosado são três contas " +
-    "distintas, todas derivadas dos movimentos.",
+    "Transferências voluntárias em que o ente é concedente ou convenente (LRF, art. 25). " +
+    "O saldo a liberar, o valor pendente de prestação de contas e o valor glosado são " +
+    "controlados separadamente, conforme os movimentos registrados.",
   campos: [
     { nome: "identificador", rotulo: "Número do convênio", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "CV-2026-001" },
     { nome: "papelDoEnte", rotulo: "Papel do ente", tipo: "selecao", obrigatorio: true, largura: 1,
-      ajuda: "Concedente transfere e recebe a prestação de contas; convenente recebe e a deve.",
+      ajuda: "O concedente transfere os recursos e recebe a prestação de contas; o convenente recebe os recursos e presta contas.",
       opcoes: [
         { valor: "CONCEDENTE", rotulo: "Concedente (o ente transfere)" },
         { valor: "CONVENENTE", rotulo: "Convenente (o ente recebe)" },
@@ -51,7 +51,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
     { nome: "partidaNome", rotulo: "Outra parte", tipo: "texto", obrigatorio: true, largura: 2 },
     { nome: "partidaDocumento", rotulo: "CPF/CNPJ da outra parte", tipo: "cpfCnpj", obrigatorio: true, largura: 2 },
     { nome: "leiAutorizativa", rotulo: "Lei autorizativa", tipo: "texto", obrigatorio: true, largura: 2,
-      ajuda: "LRF art. 25: transferência voluntária exige autorização na lei orçamentária." },
+      ajuda: "LRF, art. 25: a transferência voluntária exige autorização na lei orçamentária." },
     { nome: "valorRepasse", rotulo: "Valor do repasse (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
     { nome: "valorContrapartida", rotulo: "Contrapartida (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
     { nome: "diaVigenciaInicio", rotulo: "Início da vigência", tipo: "data", obrigatorio: true, largura: 1 },
@@ -81,7 +81,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [
     { nome: "liberar-parcela", rotulo: "Liberar parcela", acaoDoCenso: "LIBERAR_PARCELA_DE_CONVENIO",
-      aviso: "A liberação consome o saldo do termo e, como concedente, exige empenho.",
+      aviso: "A liberação reduz o saldo do termo e, quando o ente é concedente, exige empenho.",
       campos: [
         { nome: "parcela", rotulo: "Parcela nº", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1 },
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
@@ -91,7 +91,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 2 },
       ] },
     { nome: "aprovar-prestacao", rotulo: "Aprovar prestação de contas", acaoDoCenso: "APROVAR_PRESTACAO_DE_CONTAS",
-      aviso: "Aprovar dá quitação do valor prestado — e é ato separado de liberar, por segregação.",
+      aviso: "A aprovação dá quitação ao valor prestado e é registrada separadamente da liberação, por segregação de funções.",
       campos: [
         { nome: "valor", rotulo: "Valor prestado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -99,7 +99,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
       ] },
     { nome: "glosar", rotulo: "Glosar", acaoDoCenso: "GLOSAR_CONVENIO",
-      aviso: "A glosa declara que um valor é devido de volta — ela não devolve dinheiro por si.",
+      aviso: "A glosa registra o valor a ser devolvido; a devolução em si é registrada à parte.",
       campos: [
         { nome: "valor", rotulo: "Valor glosado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -124,8 +124,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Empenhos deste convênio",
       href: "/relatorios/gerenciais?convenio={id}",
       explicacao:
-        "Quem soma empenho é a despesa. Uma segunda contagem nesta tela seria a segunda verdade " +
-        "sobre a mesma execução.",
+        "Empenhos do convênio, consultados diretamente na execução da despesa.",
     },
   ],
 });
@@ -136,8 +135,8 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Precatório",
   rota: "/divida/precatorios",
   descricao:
-    "Requisitórios judiciais, com a ordem do art. 100 da Constituição: alimentar antes de " +
-    "comum, a preferência do §2º dentro dos alimentares, depois a data de apresentação.",
+    "Requisitórios judiciais na ordem do art. 100 da Constituição: créditos alimentares antes dos " +
+    "comuns, a preferência do § 2º entre os alimentares e, em seguida, a data de apresentação.",
   campos: [
     { nome: "numeroProcesso", rotulo: "Processo judicial", tipo: "texto", obrigatorio: true, largura: 2 },
     { nome: "tribunal", rotulo: "Tribunal", tipo: "texto", obrigatorio: true, largura: 1 },
@@ -145,13 +144,13 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
     { nome: "beneficiarioNome", rotulo: "Beneficiário", tipo: "texto", obrigatorio: true, largura: 2 },
     { nome: "beneficiarioDocumento", rotulo: "CPF/CNPJ", tipo: "cpfCnpj", obrigatorio: true, largura: 2 },
     { nome: "natureza", rotulo: "Natureza", tipo: "selecao", obrigatorio: true, largura: 1,
-      ajuda: "CF art. 100, §1º: alimentar paga-se antes de comum.",
+      ajuda: "CF, art. 100, § 1º: o crédito alimentar é pago antes do comum.",
       opcoes: [
         { valor: "ALIMENTAR", rotulo: "Alimentar" },
         { valor: "COMUM", rotulo: "Comum" },
       ] },
     { nome: "preferencia", rotulo: "Preferência (§2º)", tipo: "selecao", largura: 1,
-      ajuda: "Só ordena DENTRO dos alimentares. Um comum com preferência não passa à frente de um alimentar.",
+      ajuda: "A preferência vale apenas entre créditos alimentares.",
       opcoes: [
         { valor: "NENHUMA", rotulo: "Nenhuma" },
         { valor: "IDOSO", rotulo: "Idoso" },
@@ -159,7 +158,7 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
         { valor: "DEFICIENCIA", rotulo: "Pessoa com deficiência" },
       ] },
     { nome: "diaApresentacao", rotulo: "Data de apresentação", tipo: "data", obrigatorio: true, largura: 1,
-      ajuda: "É ela que ordena a fila — nunca a data em que alguém cadastrou." },
+      ajuda: "Define a posição na ordem de pagamento, independentemente da data de cadastro." },
     { nome: "exercicioDePagamento", rotulo: "Exercício de pagamento", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 2000, maximo: 2100 },
     { nome: "valorOriginal", rotulo: "Valor requisitado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 2 },
     { nome: "contaContabilId", rotulo: "Conta de passivo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
@@ -185,14 +184,14 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [
     { nome: "inscrever", rotulo: "Inscrever o passivo", acaoDoCenso: "INSCREVER_PRECATORIO",
-      aviso: "A inscrição reconhece o passivo pelo valor requisitado — e acontece uma vez só.",
+      aviso: "A inscrição reconhece o passivo pelo valor requisitado e é feita uma única vez.",
       campos: [
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 2 },
       ] },
     { nome: "atualizar", rotulo: "Atualizar (juros e correção)", acaoDoCenso: "ATUALIZAR_PRECATORIO",
-      aviso: "A competência torna a correção idempotente: o mesmo mês não se corrige duas vezes.",
+      aviso: "A atualização é registrada uma vez por competência.",
       campos: [
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-02" },
@@ -201,7 +200,7 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
       ] },
     { nome: "cancelar", rotulo: "Cancelar por decisão judicial", acaoDoCenso: "CANCELAR_PRECATORIO",
       irreversivel: true,
-      aviso: "O cancelamento extingue o passivo SEM saída de caixa. Corrigi-lo depois é outro fato.",
+      aviso: "O cancelamento extingue o passivo sem saída de caixa. Eventual correção exige novo registro.",
       campos: [
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -217,7 +216,7 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
     {
       rotulo: "Empenhos deste precatório",
       href: "/relatorios/gerenciais?precatorio={id}",
-      explicacao: "A execução da despesa é registrada na própria despesa — esta tela não a reconta.",
+      explicacao: "Empenhos do precatório, consultados diretamente na execução da despesa.",
     },
   ],
 });
@@ -228,8 +227,8 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Consórcio",
   rota: "/transferencias/consorcios",
   descricao:
-    "Associações públicas da Lei 11.107/2005. O repasse só acontece dentro do contrato de " +
-    "rateio do exercício (art. 8º), e o teto é a soma do contrato original com os aditivos.",
+    "Consórcios públicos da Lei 11.107/2005. O repasse depende do contrato de rateio do " +
+    "exercício (art. 8º), limitado ao valor do contrato original somado aos aditivos.",
   campos: [
     { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "CIS-2026-001" },
     { nome: "denominacao", rotulo: "Denominação", tipo: "texto", obrigatorio: true, largura: 2 },
@@ -237,7 +236,7 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
     { nome: "areaDeAtuacao", rotulo: "Área de atuação", tipo: "texto", obrigatorio: true, largura: 1 },
     { nome: "protocoloDeIntencoes", rotulo: "Protocolo de intenções", tipo: "texto", obrigatorio: true, largura: 2 },
     { nome: "leiRatificadora", rotulo: "Lei ratificadora", tipo: "texto", obrigatorio: true, largura: 1,
-      ajuda: "Art. 5º: sem a lei que ratifica o protocolo, o consórcio não existe para o ente." },
+      ajuda: "Art. 5º: a participação do ente depende da lei que ratifica o protocolo de intenções." },
     { nome: "fonteRecursoId", rotulo: "Fonte de recurso", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [] },
     { nome: "contaContabilId", rotulo: "Conta de controle", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
   ],
@@ -255,7 +254,7 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [
     { nome: "registrar-rateio", rotulo: "Registrar contrato de rateio", acaoDoCenso: "REGISTRAR_CONTRATO_DE_RATEIO",
-      aviso: "O rateio é ANUAL. Um aditivo SOMA ao original — não o substitui.",
+      aviso: "O contrato de rateio é anual. O aditivo é somado ao contrato original, sem substituí-lo.",
       campos: [
         { nome: "exercicio", rotulo: "Exercício", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 2000, maximo: 2100 },
         { nome: "valorDoEnte", rotulo: "Cota do ente (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
@@ -263,7 +262,7 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "aditivoDeId", rotulo: "Aditivo ao contrato", tipo: "selecao", largura: 1, opcoes: [] },
       ] },
     { nome: "repassar", rotulo: "Repassar ao consórcio", acaoDoCenso: "REPASSAR_AO_CONSORCIO",
-      aviso: "O exercício do repasse é declarado, e não derivado da data: um repasse de janeiro pode ser da cota do ano anterior.",
+      aviso: "Informe o exercício da cota: um repasse feito em janeiro pode se referir ao ano anterior.",
       campos: [
         { nome: "exercicio", rotulo: "Exercício da cota", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 2000, maximo: 2100 },
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
@@ -281,7 +280,7 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
     {
       rotulo: "Empenhos deste consórcio",
       href: "/relatorios/gerenciais?consorcio={id}",
-      explicacao: "A execução da despesa é registrada na própria despesa — esta tela não a reconta.",
+      explicacao: "Empenhos do consórcio, consultados diretamente na execução da despesa.",
     },
   ],
 });
@@ -292,8 +291,8 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Auditoria",
   rota: "/controle-interno/auditorias",
   descricao:
-    "O controle interno do art. 74 da Constituição: roteiro com base legal, achados com " +
-    "providência e prazo, e o relatório circunstanciado que se assina.",
+    "Auditorias do controle interno (art. 74 da Constituição): roteiro com base legal, achados " +
+    "com providência e prazo e relatório circunstanciado para assinatura.",
   campos: [
     { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "AI-2026-001" },
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1,
@@ -330,7 +329,7 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [
     { nome: "registrar-irregularidade", rotulo: "Registrar irregularidade", acaoDoCenso: "REGISTRAR_IRREGULARIDADE",
-      aviso: "Achado sem providência e prazo é observação — e observação não se cobra.",
+      aviso: "Informe a providência e o prazo; sem eles, o achado é registrado apenas como observação.",
       campos: [
         { nome: "descricao", rotulo: "Descrição do achado", tipo: "textoLongo", obrigatorio: true, largura: 4 },
         { nome: "gravidade", rotulo: "Gravidade", tipo: "selecao", obrigatorio: true, largura: 1,
@@ -344,7 +343,7 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
       ] },
     { nome: "encerrar", rotulo: "Encerrar a auditoria", acaoDoCenso: "ENCERRAR_AUDITORIA_INTERNA",
       irreversivel: true,
-      aviso: "Encerrada, ela só volta a receber lançamento por REABERTURA — que é um fato e exige motivo. O checklist tem de estar inteiro respondido.",
+      aviso: "Depois de encerrada, a auditoria só recebe novos registros se for reaberta, com motivo. Todo o roteiro deve estar respondido.",
       campos: [
         { nome: "diaEncerramento", rotulo: "Data do encerramento", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -359,8 +358,7 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Registro de operações do período",
       href: "/administracao/auditoria",
       explicacao:
-        "O log da borda registra QUEM fez O QUÊ e QUANDO — mas não a qual registro. " +
-        "O eixo de registro deste rol ainda não foi definido.",
+        "Operações registradas no sistema, com usuário, ação e data.",
     },
   ],
 });
@@ -384,7 +382,7 @@ export const AUDITORIAS: DefinicaoDeRecurso = definirRecurso({
 // ══════════════════════════════════════════════════════════════════════════════
 
 /** As dez do rol FECHADO da IN/INSS/DC 100/2003 — o mesmo rol que o Zod do M11 cobra. */
-const TIPOS_DE_OBRA_OPCOES = [
+export const TIPOS_DE_OBRA_OPCOES = [
   { valor: "SERVICOS_DIVERSOS_SUJEITOS_A_RETENCAO", rotulo: "01 — Serviços diversos sujeitos a retenção" },
   { valor: "TRANSPORTE_DE_PASSAGEIROS_POR_PF", rotulo: "02 — Transporte de passageiros por pessoa física" },
   { valor: "LIMPEZA_HOSPITALAR", rotulo: "03 — Limpeza hospitalar" },
@@ -403,9 +401,9 @@ export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Dívida",
   rota: "/divida/fundada",
   descricao:
-    "A dívida consolidada do ente (LRF art. 29, I). O ingresso é receita de operação de " +
-    "crédito e a amortização é despesa do grupo 6 — os dois são lançados por quem é dono " +
-    "do fato. Só a atualização monetária nasce aqui, e é a única que diminui o patrimônio.",
+    "Dívida consolidada do ente (LRF, art. 29, I). O ingresso é registrado como receita de operação " +
+    "de crédito, e a amortização, como despesa do grupo 6. Nesta tela é registrada a atualização " +
+    "monetária, que reduz o patrimônio.",
   campos: [
     { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "DF-2026-001" },
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1,
@@ -416,7 +414,7 @@ export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
     { nome: "credorNome", rotulo: "Credor", tipo: "texto", obrigatorio: true, largura: 2 },
     { nome: "credorDocumento", rotulo: "CNPJ do credor", tipo: "cpfCnpj", obrigatorio: true, largura: 1 },
     { nome: "leiAutorizativa", rotulo: "Lei autorizativa", tipo: "texto", obrigatorio: true, largura: 2,
-      ajuda: "Art. 32 da LRF: sem autorização legislativa, a operação de crédito não se contrata." },
+      ajuda: "LRF, art. 32: a operação de crédito exige autorização legislativa." },
     { nome: "objeto", rotulo: "Objeto", tipo: "textoLongo", obrigatorio: true, largura: 4 },
     { nome: "contaContabilId", rotulo: "Conta do passivo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
   ],
@@ -440,9 +438,8 @@ export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
     { nome: "atualizacao-monetaria", rotulo: "Registrar atualização monetária",
       acaoDoCenso: "REGISTRAR_ATUALIZACAO_MONETARIA",
       aviso:
-        "A correção é a ÚNICA movimentação que nasce aqui, e ela é DESPESA: o ente fica " +
-        "mais pobre. Ingresso e amortização são lançados pela receita e pela despesa. " +
-        "A competência dá a idempotência — a mesma duas vezes é recusada.",
+        "A atualização monetária é registrada como variação patrimonial diminutiva. Ingresso e " +
+        "amortização são registrados na receita e na despesa. A atualização é feita uma vez por competência.",
       campos: [
         { nome: "valor", rotulo: "Valor da correção (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-02" },
@@ -460,14 +457,12 @@ export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Empenhos de amortização (grupo 6)",
       href: "/relatorios/gerenciais?divida={id}",
       explicacao:
-        "A amortização é despesa orçamentária e vive na despesa — esta tela não a reconta. " +
-        "O saldo aqui e o saldo da conta contábil são duas leituras independentes do " +
-        "mesmo passivo, e é o teste de integração que as confronta.",
+        "Empenhos de amortização da dívida, consultados na execução da despesa.",
     },
     {
       rotulo: "RGF Anexo 2 — dívida consolidada",
       href: "/relatorios/rgf/anexo2",
-      explicacao: "O demonstrativo lê o mesmo saldo por tipo que esta lista mostra.",
+      explicacao: "Demonstrativo com o saldo da dívida por tipo, o mesmo apresentado nesta lista.",
     },
   ],
 });
@@ -478,14 +473,14 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Dívida ativa",
   rota: "/divida/ativa",
   descricao:
-    "O crédito do ente contra o contribuinte (art. 39 da Lei 4.320/64). A inscrição " +
-    "reconhece um ativo; o recebimento é permutativo e entra pela receita, nunca aqui.",
+    "Créditos do ente inscritos em dívida ativa (art. 39 da Lei 4.320/1964). A inscrição reconhece " +
+    "um ativo; o recebimento é registrado na arrecadação da receita.",
   campos: [
     { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "DA-2026-000123" },
     { nome: "devedorNome", rotulo: "Devedor", tipo: "texto", obrigatorio: true, largura: 2 },
     { nome: "devedorDocumento", rotulo: "CPF/CNPJ do devedor", tipo: "cpfCnpj", obrigatorio: true, largura: 1 },
     { nome: "origem", rotulo: "Origem", tipo: "selecao", obrigatorio: true, largura: 2,
-      ajuda: "O art. 39, § 2º dá DUAS origens, e só duas. O rol é da lei, não do ente.",
+      ajuda: "Origens previstas no art. 39, § 2º, da Lei 4.320/1964.",
       opcoes: [
         { valor: "TRIBUTARIA", rotulo: "Tributária — tributos e seus acréscimos" },
         { valor: "NAO_TRIBUTARIA", rotulo: "Não tributária — multas, aluguéis, ressarcimentos, alcances" },
@@ -511,17 +506,16 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     { nome: "inscrever", rotulo: "Inscrever em dívida ativa", acaoDoCenso: "INSCREVER_DIVIDA_ATIVA",
       aviso:
-        "A inscrição RECONHECE um crédito que o ente ainda não tinha no ativo — o " +
-        "patrimônio cresce. Se o crédito já foi reconhecido antes (fato gerador), a " +
-        "inscrição é RECLASSIFICAÇÃO e não cria riqueza nova; essa variante ainda não " +
-        "tem tela e só existe pelo caso de uso.",
+        "A inscrição reconhece no ativo um crédito ainda não registrado, com aumento do " +
+        "patrimônio. Créditos já reconhecidos pelo fato gerador são tratados como " +
+        "reclassificação, que não é registrada nesta tela.",
       campos: [
         { nome: "valor", rotulo: "Valor inscrito (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data da inscrição", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
       ] },
     { nome: "atualizar", rotulo: "Atualizar (juros, multa, correção)", acaoDoCenso: "ATUALIZAR_DIVIDA_ATIVA",
-      aviso: "A competência dá a idempotência: a mesma duas vezes é recusada, e o estorno a libera.",
+      aviso: "A atualização é registrada uma vez por competência; após estorno, pode ser registrada novamente.",
       campos: [
         { nome: "valor", rotulo: "Valor do acréscimo (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-02" },
@@ -531,8 +525,8 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
     { nome: "cancelar", rotulo: "Cancelar (prescrição, remissão, decisão)", acaoDoCenso: "CANCELAR_DIVIDA_ATIVA",
       irreversivel: true,
       aviso:
-        "O cancelamento MATA o crédito e a perda é despesa. Ele não é o recebimento: " +
-        "quem recebe é a receita, pela guia de arrecadação, e ali o fato é permutativo.",
+        "O cancelamento extingue o crédito e registra a perda como variação patrimonial " +
+        "diminutiva. O recebimento é registrado na arrecadação da receita, pela guia.",
       campos: [
         { nome: "valor", rotulo: "Valor cancelado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -549,8 +543,7 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Arrecadações que quitaram dívida ativa",
       href: "/receita/arrecadacoes",
       explicacao:
-        "O recebimento é RECEITA ORÇAMENTÁRIA e mora na receita — reconhecê-lo aqui contaria " +
-        "a mesma receita duas vezes, porque a VPA já foi reconhecida na inscrição.",
+        "Recebimentos de dívida ativa, registrados como receita orçamentária na arrecadação.",
     },
   ],
 });
@@ -561,17 +554,17 @@ export const OBRAS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Obra",
   rota: "/licitacoes/obras",
   descricao:
-    "O cadastro de obras da IN/INSS/DC 100/2003 e as medições que autorizam a liquidação. " +
-    "Quem mede não aprova, o período de uma medição não se sobrepõe ao de outra, e sem " +
-    "medição aprovada a liquidação da obra é recusada inteira.",
+    "Cadastro de obras (IN/INSS/DC 100/2003) e medições que autorizam a liquidação. A medição é " +
+    "aprovada por pessoa diferente de quem a registrou, os períodos não podem se sobrepor, e a " +
+    "liquidação da obra exige medição aprovada.",
   campos: [
     { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "OB-2026-001" },
     { nome: "descricao", rotulo: "Descrição", tipo: "textoLongo", obrigatorio: true, largura: 3 },
     { nome: "tipoObraServico", rotulo: "Tipo (IN/INSS/DC 100/2003)", tipo: "selecao", obrigatorio: true, largura: 2,
-      ajuda: "O rol é FECHADO — é norma, não catálogo do ente.",
+      ajuda: "Tipos definidos na IN/INSS/DC 100/2003.",
       opcoes: [...TIPOS_DE_OBRA_OPCOES] },
     { nome: "cei", rotulo: "CEI (12 dígitos)", tipo: "texto", largura: 1,
-      ajuda: "Pode ficar vazio: a obra existe antes da matrícula, e o CEI leva dias para sair na Receita. Um CEI inventado num arquivo da Receita é pior que um campo vazio." },
+      ajuda: "Pode ficar em branco até a emissão da matrícula pela Receita Federal." },
     { nome: "orgaoId", rotulo: "Órgão responsável", tipo: "selecao", largura: 2, opcoes: [] },
   ],
   colunas: [
@@ -590,9 +583,8 @@ export const OBRAS: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     { nome: "medir", rotulo: "Registrar medição", acaoDoCenso: "REGISTRAR_MEDICAO_DE_OBRA",
       aviso:
-        "O período não pode se sobrepor ao de outra medição do mesmo contrato, e a borda é " +
-        "INCLUSIVA: acabar em X e começar em X já se sobrepõe. O acumulado não passa do " +
-        "valor do contrato.",
+        "O período não pode se sobrepor ao de outra medição do mesmo contrato, inclusive nas " +
+        "datas de início e fim. O valor acumulado não pode superar o valor do contrato.",
       campos: [
         { nome: "contratoId", rotulo: "Contrato", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "numero", rotulo: "Número da medição", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 999 },
@@ -609,8 +601,8 @@ export const OBRAS: DefinicaoDeRecurso = definirRecurso({
       ] },
     { nome: "aprovar", rotulo: "Aprovar medição", acaoDoCenso: "APROVAR_MEDICAO_DE_OBRA",
       aviso:
-        "QUEM MEDIU NÃO APROVA — a segregação é conferida no servidor, e aprovar duas " +
-        "vezes é recusado porque a segunda apagaria quem aprovou primeiro.",
+        "A aprovação deve ser feita por pessoa diferente de quem registrou a medição, " +
+        "uma única vez.",
       campos: [
         { nome: "medicaoId", rotulo: "Medição", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "diaAprovacao", rotulo: "Data da aprovação", tipo: "data", obrigatorio: true, largura: 1 },
@@ -625,8 +617,7 @@ export const OBRAS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Empenhos de investimento desta obra",
       href: "/relatorios/gerenciais?obra={id}",
       explicacao:
-        "O elemento 51 EXIGE obra — empenhar investimento sem apontá-la é recusado " +
-        "nomeando. A execução continua sendo da despesa.",
+        "Empenhos no elemento 51 (obras e instalações), que exigem a indicação da obra.",
     },
   ],
 });
@@ -638,13 +629,13 @@ export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Provisão",
   rota: "/patrimonio/provisoes",
   descricao:
-    "O que o ente reconhece que vai dever antes de dever — provisão matemática " +
-    "previdenciária, riscos cíveis e trabalhistas (NBC TSP 03). Constituir é VPD: o " +
-    "patrimônio diminui hoje por uma obrigação que vence depois.",
+    "Provisões para obrigações futuras do ente: provisão matemática previdenciária e riscos " +
+    "cíveis e trabalhistas (NBC TSP 03). A constituição é registrada como variação patrimonial " +
+    "diminutiva.",
   campos: [
     { nome: "identificador", rotulo: "Identificador", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "PROV-2026-001" },
     { nome: "descricao", rotulo: "Descrição", tipo: "textoLongo", obrigatorio: true, largura: 3,
-      ajuda: "O que esta provisão cobre — o cálculo atuarial, a ação judicial, o risco reconhecido." },
+      ajuda: "Objeto da provisão: cálculo atuarial, ação judicial ou risco reconhecido." },
     { nome: "contaContabilId", rotulo: "Conta do passivo", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
   ],
   colunas: [
@@ -658,8 +649,8 @@ export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     { nome: "constituir", rotulo: "Constituir provisão", acaoDoCenso: "CONSTITUIR_PROVISAO",
       aviso:
-        "Constituir é VARIAÇÃO PATRIMONIAL DIMINUTIVA: o ente fica mais pobre hoje por uma " +
-        "obrigação que vence depois. Não é despesa orçamentária e não consome dotação.",
+        "A constituição é registrada como variação patrimonial diminutiva, por obrigação " +
+        "com vencimento futuro. Não é despesa orçamentária e não consome dotação.",
       campos: [
         { nome: "valor", rotulo: "Valor (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -667,8 +658,7 @@ export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
       ] },
     { nome: "atualizar", rotulo: "Atualizar provisão", acaoDoCenso: "ATUALIZAR_PROVISAO",
       aviso:
-        "A atualização é por COMPETÊNCIA, e é ela que dá a idempotência: a mesma " +
-        "competência duas vezes é recusada, e não somada.",
+        "A atualização é registrada uma vez por competência.",
       campos: [
         { nome: "valor", rotulo: "Valor da atualização (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "competencia", rotulo: "Competência (AAAA-MM)", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "2026-03" },
@@ -677,8 +667,8 @@ export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
       ] },
     { nome: "reverter", rotulo: "Reverter provisão", acaoDoCenso: "REVERTER_PROVISAO",
       aviso:
-        "Reverter é o contrário de constituir: o risco não se concretizou. O servidor " +
-        "RECUSA reverter mais do que o saldo — a provisão não fica negativa.",
+        "A reversão registra que o risco não se concretizou. O valor revertido não pode " +
+        "superar o saldo da provisão.",
       campos: [
         { nome: "valor", rotulo: "Valor revertido (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "diaMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
@@ -697,8 +687,7 @@ export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
       rotulo: "RGF Anexo 2 — dívida consolidada",
       href: "/relatorios/rgf/anexo2",
       explicacao:
-        "A provisão matemática previdenciária entra na dívida consolidada do RPPS. " +
-        "Quem soma são os relatórios — esta tela não reconta.",
+        "A provisão matemática previdenciária integra a dívida consolidada do RPPS.",
     },
   ],
 });

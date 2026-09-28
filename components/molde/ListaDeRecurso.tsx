@@ -271,7 +271,7 @@ export function ListaDeRecurso({
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-[color:var(--color-border)] pt-4">
                 <div className="text-xs text-[color:var(--color-ink-2)]">
                   {selecionados.length === 0 ? (
-                    <>Marque linhas e clique em somar — o total é calculado no servidor.</>
+                    <>Selecione as linhas e clique em Somar selecionadas para ver o total.</>
                   ) : (
                     <span data-soma-selecao>
                       {selecionados.length} selecionada(s):{" "}
@@ -310,8 +310,8 @@ export function ListaDeRecurso({
       )}
 
       <p className="text-[11px] text-[color:var(--color-ink-3)]">
-        Filtros, ordenação, página e seleção ficam no endereço desta tela — o link reproduz
-        exatamente o que está à vista. <Link href={hrefCom(d.rota, semFiltro, {})} className="underline underline-offset-2">Ver sem filtro</Link>.
+        O endereço desta página guarda os filtros, a ordenação e a seleção atuais e pode ser
+        compartilhado. <Link href={hrefCom(d.rota, semFiltro, {})} className="underline underline-offset-2">Ver sem filtro</Link>.
       </p>
     </div>
   );

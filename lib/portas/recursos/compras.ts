@@ -27,9 +27,9 @@ export const SOLICITACOES_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Solicitação de compra",
   rota: "/licitacoes/solicitacoes",
   descricao:
-    "A requisição ao Compras: o setor pede os itens com justificativa e solicitante. Autorizar e anular são fatos " +
-    "com data, motivo e autor; a situação é o último deles. Da solicitação autorizada nascem a pesquisa de preços e " +
-    "a ordem de compra.",
+    "Solicitações de compra dos setores, com itens, justificativa e solicitante. A autorização e a anulação são " +
+    "registradas com data, motivo e responsável. A partir da solicitação autorizada são feitas a pesquisa de preços " +
+    "e a ordem de compra.",
   campos: [
     { nome: "numero", rotulo: "Número", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "SC-2026-001" },
     { nome: "setorId", rotulo: "Setor solicitante", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
@@ -53,7 +53,7 @@ export const SOLICITACOES_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "autorizar", rotulo: "Autorizar a solicitação", acaoDoCenso: "MOVIMENTAR_SOLICITACAO_DE_COMPRA",
-      aviso: "Autorizar é um fato com data e motivo; autorizar duas vezes é recusado.",
+      aviso: "A autorização é registrada com data e motivo e só pode ser feita uma vez.",
       campos: [
         { nome: "data", rotulo: "Data", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -61,7 +61,7 @@ export const SOLICITACOES_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "anular", rotulo: "Anular a solicitação", acaoDoCenso: "MOVIMENTAR_SOLICITACAO_DE_COMPRA",
-      aviso: "Só a solicitação autorizada se anula; a pendente se deixa pendente.",
+      aviso: "Somente solicitações autorizadas podem ser anuladas.",
       campos: [
         { nome: "data", rotulo: "Data", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
@@ -78,8 +78,8 @@ export const PESQUISAS_DE_PRECOS: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Pesquisa de preços",
   rota: "/licitacoes/pesquisas-de-precos",
   descricao:
-    "A planilha de preços que estima o valor de uma aquisição: itens com quantidade e as cotações por fornecedor. " +
-    "Média, mínimo e máximo são derivados das cotações a cada leitura — nunca colunas.",
+    "Planilha de preços para estimar o valor de uma aquisição, com itens, quantidades e cotações por fornecedor. " +
+    "Média, mínimo e máximo são calculados a partir das cotações.",
   campos: [
     { nome: "numero", rotulo: "Número", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "PP-2026-001" },
     { nome: "objeto", rotulo: "Objeto", tipo: "texto", obrigatorio: true, largura: 2 },
@@ -104,8 +104,8 @@ export const ORDENS_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
   rotuloSingular: "Ordem de compra",
   rota: "/licitacoes/ordens-de-compra",
   descricao:
-    "A ordem de compra ou serviço — ordinária, global ou estimativa — ao fornecedor, por processo licitatório ou " +
-    "dispensa, com os itens e o recurso orçamentário. O recebimento é por item; o saldo a receber é derivado.",
+    "Ordens de compra ou de serviço (ordinária, global ou estimativa) ao fornecedor, por processo licitatório ou " +
+    "dispensa, com os itens e o recurso orçamentário. O recebimento é registrado por item, com o saldo a receber.",
   campos: [
     { nome: "numero", rotulo: "Número", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "OC-2026-001" },
     { nome: "tipo", rotulo: "Tipo", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [
@@ -148,7 +148,7 @@ export const ORDENS_DE_COMPRA: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "estornar", rotulo: "Estornar a ordem", acaoDoCenso: "ESTORNAR_ORDEM_DE_COMPRA",
-      aviso: "Ordem com recebimento não se estorna (estorne os recebimentos antes); ordem empenhada só se estorna pelo estorno do empenho. O estorno é um fato: a ordem continua no histórico como ESTORNADA e as parcelas de solicitação voltam a pendente.",
+      aviso: "Ordem com recebimento só pode ser estornada após o estorno dos recebimentos; ordem empenhada, somente pelo estorno do empenho. A ordem estornada permanece no histórico, e os itens das solicitações voltam a ficar pendentes.",
       irreversivel: true,
       campos: [{ nome: "motivo", rotulo: "Motivo (mínimo 5 caracteres)", tipo: "texto", obrigatorio: true, largura: 4 }],
     },
