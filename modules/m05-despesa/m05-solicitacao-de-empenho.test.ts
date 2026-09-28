@@ -122,7 +122,7 @@ async function solicitar(p: { ficha?: string; valor?: string; por?: string; conv
   return r.solicitacaoId;
 }
 
-async function emitir(p: { solicitacaoId?: string; valor?: string; credor?: string; ficha?: string; numero?: string; convenioId?: string; campanhaId?: string }) {
+async function emitir(p: { solicitacaoId?: string; valor?: string; credor?: string; ficha?: string; numero?: string; convenioId?: string; campanhaId?: string; data?: Date }) {
   seq += 1;
   return empenhar(
     {
@@ -130,7 +130,7 @@ async function emitir(p: { solicitacaoId?: string; valor?: string; credor?: stri
       numero: p.numero ?? `2026NE${String(seq).padStart(4, "0")}`,
       tipo: "ORDINARIO",
       valor: p.valor ?? "1000.00",
-      data: DATA,
+      data: p.data ?? DATA,
       credorCpfCnpj: p.credor ?? CREDOR,
       historico: "Empenho emitido da solicitação",
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
@@ -489,5 +489,51 @@ describe("a campanha publicitária no empenho", () => {
   it("t19 NEGATIVO: quem não tem CADASTRAR_CONTRATO não cadastra campanha — recusado pelo motivo", async () => {
     await expect(campanha("CP-020/2026", ORDENADOR_A)).rejects.toThrow(/ACESSO NEGADO.*CADASTRAR_CONTRATO/);
     expect(await prisma.campanhaPublicitaria.count()).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V22 — A VIGÊNCIA DO CONVÊNIO NO EMPENHO (Portaria Conjunta MGI/MF/CGU 33/2023, art. 44, I e IX)
+// ═══════════════════════════════════════════════════════════════════════════
+describe("a vigência do convênio no empenho", () => {
+  // Vigência de 1º/03/2026 a 30/06/2026, gravada como o M28 grava: início do dia e fim do dia civil
+  // do ente (Brasília, UTC−3).
+  async function convenioComVigencia(identificador: string, papel: "CONVENENTE" | "CONCEDENTE"): Promise<string> {
+    const c = await prisma.convenio.create({
+      data: {
+        identificador, objeto: "Aquisição de equipamentos", papelDoEnte: papel, partidaNome: "Ministério da Saúde",
+        partidaDocumento: "00394544000185", leiAutorizativa: "Lei 1.234/2026", valorRepasse: "50000.00", valorContrapartida: "5000.00",
+        vigenciaInicio: new Date("2026-03-01T03:00:00Z"), vigenciaFim: new Date("2026-07-01T02:59:59Z"),
+        fonteRecursoId: "sol-fnt", contaContabilId: "s-conv", criadoPor: "TESTE",
+      },
+      select: { id: true },
+    });
+    return c.id;
+  }
+  // Meio-dia civil de Brasília de cada dia de borda.
+  const dia = (d: string): Date => new Date(`${d}T15:00:00Z`);
+
+  it("t20 N=2 bordas: o primeiro e o último dia da vigência são aceitos", async () => {
+    const c = await convenioComVigencia("CV-VIG-1/2026", "CONVENENTE");
+    await emitir({ convenioId: c, data: dia("2026-03-01") });
+    await emitir({ convenioId: c, data: dia("2026-06-30") });
+    expect(await prisma.empenho.count({ where: { convenioId: c } })).toBe(2);
+  });
+
+  it("t21 NEGATIVO: a véspera do início e o dia seguinte ao fim são recusados, com o motivo e a norma — nada gravado", async () => {
+    const c = await convenioComVigencia("CV-VIG-2/2026", "CONVENENTE");
+    await expect(emitir({ convenioId: c, data: dia("2026-02-28") })).rejects.toThrow(
+      /O empenho de 28\/02\/2026 está fora da vigência do convênio CV-VIG-2\/2026 \(01\/03\/2026 a 30\/06\/2026\).*art\. 44/
+    );
+    await expect(emitir({ convenioId: c, data: dia("2026-07-01") })).rejects.toThrow(
+      /O empenho de 01\/07\/2026 está fora da vigência do convênio CV-VIG-2\/2026/
+    );
+    expect(await prisma.empenho.count({ where: { convenioId: c } })).toBe(0);
+  });
+
+  it("t22 com o ente CONCEDENTE a vedação não se aplica — o empenho do repasse fora da vigência passa", async () => {
+    const c = await convenioComVigencia("CV-VIG-3/2026", "CONCEDENTE");
+    await emitir({ convenioId: c, data: dia("2026-07-01") });
+    expect(await prisma.empenho.count({ where: { convenioId: c } })).toBe(1);
   });
 });

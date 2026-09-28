@@ -384,10 +384,13 @@ mutação das três cópias (`m05-solicitacao-de-empenho.test.ts` t12).
 
 ### Pendências nomeadas (V22)
 
-- `VIGENCIA-DO-CONVENIO-NO-EMPENHO` — o M28 grava a vigência mas não a cobra em ato de execução nenhum
-  (nem na liberação de parcela). O empenho não inventa a regra; ela precisa de fonte e de decisão.
-- `CAMPANHA-PUBLICITARIA-SEM-MODELO` — não há modelo de campanha publicitária no repositório; o vínculo do
-  empenho a campanha não foi construído (e não se inventa modelo para isso).
+- ~~`VIGENCIA-DO-CONVENIO-NO-EMPENHO`~~ — RESOLVIDA (V22, rodada 4): com o ente CONVENENTE, o empenho fora da
+  vigência do convênio é recusado (Portaria Conjunta MGI/MF/CGU 33/2023, art. 44, I e IX), por dia civil.
+  Continua sem conferência a liberação de parcela, e o pagamento depois da vigência (o inciso IX o admite
+  quando o fato gerador ocorreu na vigência — é regra do pagamento, não do empenho).
+- ~~`CAMPANHA-PUBLICITARIA-SEM-MODELO`~~ — RESOLVIDA (V22, rodada 4): o termo de referência do pedido pede o
+  vínculo; modelo `CampanhaPublicitaria` (cadastro sob CADASTRAR_CONTRATO), `Empenho.campanhaPublicitariaId`
+  como dimensão copiada pela anulação, tela /despesa/campanhas-publicitarias.
 - `PROGRAMA-DO-EMPENHO` — o programa já é dimensão do empenho **pela ficha** (`FichaOrcamentaria.programaId`);
   não há coluna própria. Se o termo pedir "programa" no sentido de programa federal/transferência (PNAE,
   PDDE…), não há modelo — pendência.

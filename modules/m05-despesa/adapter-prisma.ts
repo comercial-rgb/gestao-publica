@@ -53,7 +53,7 @@ import {
   baixarPrecatorioNoPagamento,
   exigirOrdemDoArt100,
 } from "../m29-precatorios/servico.js";
-import { anoCivil } from "../../packages/datas/index.js";
+import { anoCivil, diaCivil } from "../../packages/datas/index.js";
 // M10 — a dívida. A amortização nasce DENTRO do pagamento e morre com ele.
 import {
   amortizarNoPagamento,
@@ -579,18 +579,43 @@ export async function empenhadoLiquidoDoConvenio(tx: Tx, convenioId: string): Pr
 
 /**
  * M28 (V22) — O VÍNCULO COM O CONVÊNIO: VOLUNTÁRIO, como o da obra (ver o schema), e por isso SEM
- * gatilho por elemento. O que se confere é que o convênio EXISTE.
+ * gatilho por elemento. Confere-se que o convênio EXISTE e, quando o ente é o CONVENENTE (quem
+ * executa o recurso recebido), que o empenho cai DENTRO DA VIGÊNCIA do instrumento.
  *
- * ⚠️ VIGÊNCIA NÃO É CONFERIDA AQUI, e é decisão: o M28 grava a vigência mas não a cobra em ato de
- * execução nenhum (a liberação de parcela aceita qualquer data). Inventar aqui a regra "empenho só
- * dentro da vigência" seria a segunda régua sobre o mesmo convênio, sem fonte que a declare — fica
- * nomeada como pendência no MODULO.md do M05.
+ * ⚠️ A FONTE DA REGRA DA VIGÊNCIA: Portaria Conjunta MGI/MF/CGU nº 33/2023 (normas complementares
+ * ao Decreto 11.531/2023), art. 44 — "sendo vedado: I - realizar despesa em data anterior à
+ * vigência do instrumento; (...) IX - efetuar pagamento em data posterior à vigência do
+ * instrumento, salvo se o fato gerador da despesa tenha ocorrido durante a vigência". O empenho
+ * antes do início é a despesa do inciso I; o empenho depois do fim cria um fato gerador fora da
+ * vigência, cujo pagamento o inciso IX veda. Comparação por DIA CIVIL do ente (a vigência é gravada
+ * como instante: início do dia e `fimDoDiaCivil`).
+ *
+ * ⚠️ SÓ NO PAPEL DE CONVENENTE. Quando o ente é o CONCEDENTE, o empenho é o do repasse, e o
+ * repasse do concedente não é "despesa do instrumento" no sentido do art. 44 — a vedação é do
+ * executor.
  */
 async function exigirVinculoDeConvenio(tx: Tx, p: EmpenharParams): Promise<void> {
   if (p.convenioId === undefined) return;
-  const c = await tx.convenio.findUnique({ where: { id: p.convenioId }, select: { id: true } });
+  const c = await tx.convenio.findUnique({
+    where: { id: p.convenioId },
+    select: { id: true, identificador: true, papelDoEnte: true, vigenciaInicio: true, vigenciaFim: true },
+  });
   if (c === null) {
     throw new Error(`Convênio ${p.convenioId} não existe. Nada foi gravado.`);
+  }
+  if (c.papelDoEnte !== "CONVENENTE") return;
+  const dia = diaCivil(p.data);
+  const inicio = diaCivil(c.vigenciaInicio);
+  const fim = diaCivil(c.vigenciaFim);
+  if (dia < inicio || dia > fim) {
+    const [a, m, d] = dia.split("-");
+    const br = (x: string): string => x.split("-").reverse().join("/");
+    throw new Error(
+      `O empenho de ${d}/${m}/${a} está fora da vigência do convênio ${c.identificador} ` +
+        `(${br(inicio)} a ${br(fim)}). A despesa do convênio só pode ser realizada durante a ` +
+        `vigência do instrumento (Portaria Conjunta MGI/MF/CGU nº 33/2023, art. 44, incisos I e IX). ` +
+        `Nada foi gravado.`
+    );
   }
 }
 
