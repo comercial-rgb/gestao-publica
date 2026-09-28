@@ -1,0 +1,94 @@
+"use client";
+
+import { useActionState } from "react";
+import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import {
+  CLASSE_CAMPO as CAMPO,
+  CLASSE_PAINEL_FORMULARIO,
+  CLASSE_ROTULO as ROTULO,
+} from "../../../../components/ui/Formulario";
+import { encerrarExercicioAction, type EstadoDoEncerramento } from "./actions";
+
+/**
+ * ENCERRAR O EXERCÍCIO E INSCREVER OS RESTOS A PAGAR.
+ *
+ * ⚠️ É O ATO MENOS REVERSÍVEL DO SISTEMA, e o formulário é desenhado para isso: fechado por
+ * padrão, com a consequência escrita antes do campo, e a confirmação é DIGITAR O ANO. Um botão
+ * simples aqui seria um clique acidental que trava a competência inteira — depois do
+ * encerramento, empenho, liquidação e pagamento com data naquele exercício passam a ser recusados.
+ *
+ * ⚠️ E A CONFIRMAÇÃO É CONFERIDA NO SERVIDOR, não só aqui: campo de formulário não confere nada.
+ */
+export function FormEncerramentoDoExercicio({
+  exercicio,
+}: {
+  readonly exercicio: number;
+}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDoEncerramento, FormData>(
+    encerrarExercicioAction,
+    {}
+  );
+
+  return (
+    <details className={CLASSE_PAINEL_FORMULARIO} data-encerramento={String(exercicio)}>
+      <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">
+        Encerrar o exercício {exercicio} e inscrever os restos a pagar
+      </summary>
+      <form action={action} className="mt-3 space-y-3" data-acao="encerrar-exercicio">
+        <ChaveDeComando />
+        <input name="ano" type="hidden" value={exercicio} />
+        <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
+          <strong className="text-[color:var(--color-ink)]">
+            O que este ato faz, e o que ele impede depois.
+          </strong>{" "}
+          Varre as fichas de todas as unidades, inscreve como restos a pagar o que está{" "}
+          <strong>liquidado e não pago</strong> (processados) e o que está{" "}
+          <strong>empenhado e não liquidado</strong> (não processados), e grava o encerramento —
+          tudo na mesma operação. A dotação não é tocada: inscrever resto não é gastar de novo, é
+          reconhecer o que ficou pendente.{" "}
+          <strong>
+            Depois dele, fatos com data em {exercicio} passam a ser recusados pelo controle de
+            período.
+          </strong>{" "}
+          Não há desfazimento por tela.
+        </div>
+        <label className="block text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Para confirmar, digite o ano do exercício</span>
+          <input
+            className={`${CAMPO} w-32`}
+            inputMode="numeric"
+            name="confirmacao"
+            placeholder={String(exercicio)}
+            required
+          />
+        </label>
+
+        {estado.erro !== undefined ? (
+          <p
+            className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
+            data-resultado-da-acao="encerrar-exercicio"
+            role="alert"
+          >
+            {estado.erro}
+          </p>
+        ) : null}
+        {estado.sucesso !== undefined ? (
+          <p
+            className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
+            data-resultado-da-acao="encerrar-exercicio"
+          >
+            {estado.sucesso}
+          </p>
+        ) : null}
+
+        <button
+          className="inline-flex h-10 items-center rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] px-4 text-sm font-semibold text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] disabled:opacity-40"
+          disabled={pendente}
+          type="submit"
+        >
+          {pendente ? "Encerrando…" : `Encerrar ${exercicio} e inscrever os restos`}
+        </button>
+      </form>
+    </details>
+  );
+}

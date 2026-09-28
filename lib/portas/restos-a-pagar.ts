@@ -20,6 +20,7 @@ import {
   type EventoDeRestos,
 } from "../../modules/m08-restos-a-pagar/servico-roteiro";
 import { comEscritaAutenticada } from "./sessao";
+import { encerrarExercicioComRestos } from "../../modules/m08-restos-a-pagar/encerramento";
 
 export { RoteiroDeRestosAusenteError };
 
@@ -657,4 +658,36 @@ export async function eventosConfigurados(): Promise<readonly string[]> {
     select: { evento: true },
   });
   return linhas.map((l) => String(l.evento));
+}
+
+/**
+ * ENCERRA O EXERCÍCIO E INSCREVE OS RESTOS A PAGAR — o ato do fim do ano (V19).
+ *
+ * ⚠️ ELE EXISTIA NO DOMÍNIO E SÓ SCRIPT O CHAMAVA. `encerrarExercicioComRestos` varre as fichas de
+ * todas as unidades, inscreve os processados e os não processados e grava o encerramento — tudo ou
+ * nada, na mesma transação. Nenhuma porta o expunha, então o cenário *"inscrever conforme
+ * procedimento"* só era demonstrável pelo RESULTADO, pré-fabricado por script. A ordem de
+ * construção é explícita sobre isso: a demonstração funciona pela interface.
+ *
+ * ⚠️ E É O ATO MENOS REVERSÍVEL DO SISTEMA. Depois dele, a competência do exercício está travada:
+ * empenho, liquidação e pagamento com data naquele ano passam a ser recusados pelo guard de
+ * período. A tela cobra confirmação digitada e diz isso com estas palavras — não é zelo excessivo,
+ * é a diferença entre um ato administrativo e um clique.
+ *
+ * ⚠️ NÃO TOCA DOTAÇÃO, e a nota do domínio explica: inscrever resto não é gastar de novo, é
+ * reconhecer o que ficou pendente. A dotação do ano que fecha já foi consumida pelo empenho.
+ */
+export async function encerrarExercicioComRestosAPagar(input: {
+  readonly ano: number;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("ENCERRAR_EXERCICIO", (encerradoPor) =>
+    encerrarExercicioComRestos(cliente(), { ano: input.ano, encerradoPor })
+  );
+  const processados = r.inscricoes.filter((i) => i.tipo === "PROCESSADO").length;
+  const naoProcessados = r.inscricoes.length - processados;
+  return (
+    `Exercício ${String(r.ano)} encerrado. Restos a pagar inscritos: ${String(processados)} ` +
+    `processado(s) e ${String(naoProcessados)} não processado(s). A competência do exercício está ` +
+    `travada — fatos com data nele passam a ser recusados.`
+  );
 }

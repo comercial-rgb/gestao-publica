@@ -11,6 +11,8 @@ import {
 } from "../../../../lib/portas/restos-a-pagar";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FiltroDosRestos } from "./FiltroDosRestos";
+import { FormEncerramentoDoExercicio } from "./FormEncerramento";
+import { EXERCICIO_PADRAO } from "../../../../lib/recorte";
 
 /** RESTOS A PAGAR — posição por inscrição. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -75,6 +77,12 @@ export default async function RestosAPagarPage({
             primeiro encerramento — não ficava sabendo que as ações não estão disponíveis, nem o
             que pedir para habilitá-las. O percurso pegou isso. */}
         <AvisoDasAcoes />
+        {/*
+          ⚠️ O ENCERRAMENTO APARECE JUSTAMENTE NO VAZIO, e é aqui que ele é mais útil: antes do
+          primeiro encerramento não existe inscrição nenhuma, e era exatamente essa a tela em que
+          o operador não tinha como produzir a primeira. O serviço existia e só script o chamava.
+        */}
+        <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
       </div>
     );
   }
@@ -89,6 +97,7 @@ export default async function RestosAPagarPage({
         legenda="Valores em R$ · pago e cancelado são líquidos de estorno · saldo = inscrito − pago − cancelado"
       />
       <AvisoDasAcoes />
+      <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
     </div>
   );
 }
