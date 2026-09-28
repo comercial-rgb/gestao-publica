@@ -21,6 +21,7 @@ import {
 } from "../../modules/m08-restos-a-pagar/servico-roteiro";
 import { comEscritaAutenticada } from "./sessao";
 import { encerrarExercicioComRestos } from "../../modules/m08-restos-a-pagar/encerramento";
+import { apurarResultadoDoExercicio } from "../../modules/m08-restos-a-pagar/apuracao";
 
 export { RoteiroDeRestosAusenteError };
 
@@ -689,5 +690,44 @@ export async function encerrarExercicioComRestosAPagar(input: {
     `Exercício ${String(r.ano)} encerrado. Restos a pagar inscritos: ${String(processados)} ` +
     `processado(s) e ${String(naoProcessados)} não processado(s). A competência do exercício está ` +
     `travada — fatos com data nele passam a ser recusados.`
+  );
+}
+
+/**
+ * APURA O RESULTADO DO EXERCÍCIO — o procedimento contábil da virada (V19).
+ *
+ * ⚠️ É O LANÇAMENTO QUE FECHA O ANO: zera as contas de variação patrimonial (as classes 3 e 4) e
+ * transfere o saldo para o patrimônio líquido, na conta de resultados acumulados que o ente
+ * parametrizou. Positivo é superávit, negativo é déficit — os dois são resultados legítimos.
+ *
+ * ⚠️ ELE SÓ RODA DEPOIS DO ENCERRAMENTO, e a ordem é do domínio, não desta borda: a apuração exige
+ * o exercício encerrado (o FATO do encerramento), porque apurar um ano que ainda recebe fato daria
+ * um resultado que muda depois de publicado.
+ *
+ * ⚠️ E O `exercicioId` NÃO ATRAVESSA A TELA. Quem opera conhece o ANO; o identificador é do banco.
+ * A porta resolve — e recusa nomeando quando o ano não existe como exercício cadastrado.
+ */
+export async function apurarResultadoDoExercicioPorAno(input: {
+  readonly ano: number;
+}): Promise<string> {
+  const exercicio = await cliente().exercicio.findUnique({
+    where: { ano: input.ano },
+    select: { id: true, encerramento: { select: { id: true } } },
+  });
+  if (exercicio === null) {
+    throw new Error(
+      `O exercício ${String(input.ano)} não está cadastrado. Apurar o resultado de um ano que o ` +
+        `sistema não conhece não tem sentido. Nada foi gravado.`
+    );
+  }
+
+  const r = await comEscritaAutenticada("APURAR_RESULTADO", (criadoPor) =>
+    apurarResultadoDoExercicio(cliente(), { exercicioId: exercicio.id, criadoPor })
+  );
+  const sinal = r.resultadoApurado.isNegative() ? "déficit" : "superávit";
+  return (
+    `Resultado do exercício ${String(input.ano)} apurado: ${sinal} de ` +
+    `${r.resultadoApurado.abs().toFixed(2)}, com ${String(r.contasZeradas)} conta(s) de variação ` +
+    `patrimonial zerada(s) e o saldo transferido ao patrimônio líquido.`
   );
 }

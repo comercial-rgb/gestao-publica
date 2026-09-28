@@ -104,7 +104,8 @@
     "smoke:eliminacoes-intra": "tsx scripts/trinco-de-maquina.ts 'percurso das eliminacoes intragovernamentais' -- npx tsx scripts/smoke-eliminacoes-intra.ts",
     "smoke:alteracoes-planejamento": "tsx scripts/trinco-de-maquina.ts 'percurso das alteracoes do planejamento' -- npx tsx scripts/smoke-alteracoes-do-planejamento.ts",
     "smoke:programacao": "tsx scripts/trinco-de-maquina.ts 'percurso da programacao financeira' -- npx tsx scripts/smoke-programacao-financeira.ts",
-    "smoke:encerramento": "tsx scripts/trinco-de-maquina.ts 'percurso do encerramento do exercicio' -- npx tsx scripts/smoke-encerramento-do-exercicio.ts"
+    "smoke:encerramento": "tsx scripts/trinco-de-maquina.ts 'percurso do encerramento do exercicio' -- npx tsx scripts/smoke-encerramento-do-exercicio.ts",
+    "seed:roteiro-encerramento": "tsx prisma/seed/roteiro-encerramento.ts"
   },
   "keywords": [],
   "author": "",

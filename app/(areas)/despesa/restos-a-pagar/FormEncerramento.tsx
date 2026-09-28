@@ -7,7 +7,7 @@ import {
   CLASSE_PAINEL_FORMULARIO,
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
-import { encerrarExercicioAction, type EstadoDoEncerramento } from "./actions";
+import { apurarResultadoAction, encerrarExercicioAction, type EstadoDoEncerramento } from "./actions";
 
 /**
  * ENCERRAR O EXERCÍCIO E INSCREVER OS RESTOS A PAGAR.
@@ -87,6 +87,81 @@ export function FormEncerramentoDoExercicio({
           type="submit"
         >
           {pendente ? "Encerrando…" : `Encerrar ${exercicio} e inscrever os restos`}
+        </button>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * APURAR O RESULTADO DO EXERCÍCIO — o segundo ato da virada.
+ *
+ * ⚠️ ELE VEM DEPOIS DO ENCERRAMENTO, e o domínio impõe isso: apurar um ano que ainda recebe fato
+ * daria um resultado que muda depois de publicado. A tela não esconde a ordem — ela a diz.
+ */
+export function FormApuracaoDoResultado({
+  exercicio,
+}: {
+  readonly exercicio: number;
+}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDoEncerramento, FormData>(
+    apurarResultadoAction,
+    {}
+  );
+
+  return (
+    <details className={CLASSE_PAINEL_FORMULARIO} data-apuracao={String(exercicio)}>
+      <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">
+        Apurar o resultado do exercício {exercicio}
+      </summary>
+      <form action={action} className="mt-3 space-y-3" data-acao="apurar-resultado">
+        <ChaveDeComando />
+        <input name="ano" type="hidden" value={exercicio} />
+        <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
+          <strong className="text-[color:var(--color-ink)]">O que este ato faz.</strong> Zera as
+          contas de <strong>variação patrimonial</strong> do exercício e transfere o saldo para o{" "}
+          <strong>patrimônio líquido</strong>, na conta de resultados acumulados que o ente
+          parametrizou. Superávit e déficit são os dois resultados possíveis, e nenhum deles é erro.{" "}
+          <strong>
+            Ele só roda depois de o exercício estar encerrado
+          </strong>{" "}
+          — apurar um ano que ainda recebe fato daria um resultado que muda depois de publicado.
+        </div>
+        <label className="block text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Para confirmar, digite o ano do exercício</span>
+          <input
+            className={`${CAMPO} w-32`}
+            inputMode="numeric"
+            name="confirmacao"
+            placeholder={String(exercicio)}
+            required
+          />
+        </label>
+
+        {estado.erro !== undefined ? (
+          <p
+            className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
+            data-resultado-da-acao="apurar-resultado"
+            role="alert"
+          >
+            {estado.erro}
+          </p>
+        ) : null}
+        {estado.sucesso !== undefined ? (
+          <p
+            className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
+            data-resultado-da-acao="apurar-resultado"
+          >
+            {estado.sucesso}
+          </p>
+        ) : null}
+
+        <button
+          className="inline-flex h-10 items-center rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-4 text-sm font-semibold text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] disabled:opacity-40"
+          disabled={pendente}
+          type="submit"
+        >
+          {pendente ? "Apurando…" : `Apurar o resultado de ${exercicio}`}
         </button>
       </form>
     </details>

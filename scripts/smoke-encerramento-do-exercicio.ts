@@ -163,6 +163,28 @@ async function main(): Promise<void> {
       `${r3.tipo}: ${r3.texto.slice(0, 200)}`
     );
 
+    // ══ 6b. A APURAÇÃO DO RESULTADO — o procedimento contábil da virada ══
+    //
+    // ⚠️ ELA VEM DEPOIS DO ENCERRAMENTO, e é o domínio que impõe a ordem. Aqui ela roda no lugar
+    // certo da sequência, e o valor apurado é lido da mensagem para o registro do percurso.
+    const rApuraErrada = await preencherEEnviar(page, "apurar-resultado", [
+      { sel: 'input[name="confirmacao"]', valor: "1999" },
+    ]);
+    conferir(
+      "6b.1 ⚠️ a apuração também exige confirmação, e a errada é recusada no servidor",
+      rApuraErrada.tipo === "erro" && /confirmação não corresponde/i.test(rApuraErrada.texto),
+      `${rApuraErrada.tipo}: ${rApuraErrada.texto.slice(0, 180)}`
+    );
+    const rApura = await preencherEEnviar(page, "apurar-resultado", [
+      { sel: 'input[name="confirmacao"]', valor: String(ANO) },
+    ]);
+    nota(`apuração: ${rApura.tipo} — ${rApura.texto.slice(0, 200)}`);
+    conferir(
+      "6b.2 o resultado do exercício é APURADO, com superávit ou déficit e as contas zeradas",
+      rApura.tipo === "ok" && /(superávit|déficit)/i.test(rApura.texto) && /zerada/i.test(rApura.texto),
+      `${rApura.tipo}: ${rApura.texto.slice(0, 250)}`
+    );
+
     // ══ 7. A COMPETÊNCIA TRAVOU — o efeito, e não a promessa ══
     await irPara(n, page, `/despesa/empenhos?exercicio=${String(ANO)}`);
     const fichaId = await page.evaluate(() => {

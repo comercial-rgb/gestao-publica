@@ -11,7 +11,7 @@ import {
 } from "../../../../lib/portas/restos-a-pagar";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FiltroDosRestos } from "./FiltroDosRestos";
-import { FormEncerramentoDoExercicio } from "./FormEncerramento";
+import { FormApuracaoDoResultado, FormEncerramentoDoExercicio } from "./FormEncerramento";
 import { EXERCICIO_PADRAO } from "../../../../lib/recorte";
 
 /** RESTOS A PAGAR — posição por inscrição. Server Component, força-dinâmica. */
@@ -83,6 +83,7 @@ export default async function RestosAPagarPage({
           o operador não tinha como produzir a primeira. O serviço existia e só script o chamava.
         */}
         <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
+        <FormApuracaoDoResultado exercicio={exercicio ?? EXERCICIO_PADRAO} />
       </div>
     );
   }
@@ -98,6 +99,7 @@ export default async function RestosAPagarPage({
       />
       <AvisoDasAcoes />
       <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
+      <FormApuracaoDoResultado exercicio={exercicio ?? EXERCICIO_PADRAO} />
     </div>
   );
 }

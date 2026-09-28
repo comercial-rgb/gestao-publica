@@ -155,6 +155,13 @@ rodar("mapeamento dos Anexos 14 e 15 (derivado do plano oficial)", "npx", [
   "prisma/seed/m12-linhas-demonstrativos.ts",
 ]);
 rodar("roteiro orçamentário", "npx", ["tsx", "prisma/seed/roteiro-orcamentario.ts"]);
+// ⚠️ O ROTEIRO DE ENCERRAMENTO — a conta do PL que recebe o resultado do exercício (V19). Sem ele a
+// apuração do resultado RECUSA, corretamente ("o M08 não inventa conta"), e a virada do exercício
+// fica sem o procedimento contábil. Medido: nenhuma instalação tinha esse parâmetro.
+rodar("roteiro de encerramento (conta de resultados acumulados)", "npx", [
+  "tsx",
+  "prisma/seed/roteiro-encerramento.ts",
+]);
 rodar("tipos de consignação (M07)", "npx", ["tsx", "prisma/seed/m07-tipos-consignacao.ts"]);
 rodar("exercício 2026", "npx", ["tsx", "prisma/seed/m08-exercicio.ts", "2026"]);
 // ⚠️ O BOOTSTRAP RECUSA BANCO POVOADO — na reexecução ele falha nomeando, e isso é o
