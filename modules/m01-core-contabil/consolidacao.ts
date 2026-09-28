@@ -84,7 +84,17 @@ function digitos(codigo: string): string {
 }
 
 /**
- * O código da ÂNCORA de nível 5 desta conta — `1.1.1.1.2.01.00` -> `1.1.1.1.2.00.00`.
+ * O código da ÂNCORA de nível 5 desta conta: zera o item e o subitem, preservando os cinco
+ * primeiros dígitos (`X.X.X.X.D.NN.NN` -> `X.X.X.X.D.00.00`).
+ *
+ * ⚠️ O EXEMPLO É ESTRUTURAL, SEM CÓDIGO CONCRETO, e a razão é uma acusação de instrumento
+ * (`test/contas-contra-o-plano-oficial.test.ts`): a primeira versão deste docblock ilustrava com um
+ * código de caixa intra que NÃO EXISTE no PCASP do TCE-PB, e o instrumento acusa qualquer código
+ * citado que o plano não tenha — inclusive em comentário, e com razão, porque exemplo inventado em
+ * docblock é de onde alguém copia depois. Trocar por uma conta real também não resolve: o par
+ * item -> âncora cita necessariamente uma SINTÉTICA (a âncora é sempre `.00.00`), e o segundo
+ * instrumento do mesmo arquivo acusa conta sintética nova no código. O padrão em letras diz a mesma
+ * coisa e não cita conta nenhuma.
  *
  * `null` quando a conta é mais alta que o 5º nível (o 5º dígito é zero): ela não tem nível de
  * consolidação próprio, e somar uma sintética ao consolidado seria contar o mesmo dinheiro duas
