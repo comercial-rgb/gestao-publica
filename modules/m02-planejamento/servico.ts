@@ -107,21 +107,24 @@ export async function criarFicha(
     ug: unidadeOrc.id,
   });
 
-  return deps.fichas.criar({
-    exercicio: dados.exercicio,
-    numero: dados.numero,
-    orgaoId: orgao.id,
-    unidadeOrcId: unidadeOrc.id,
-    funcaoId: resolucao.funcao!.id,
-    subfuncaoId: resolucao.subfuncao!.id,
-    programaId: resolucao.programa!.id,
-    acaoId: resolucao.acao!.id,
-    naturezaDespesaId: resolucao.naturezaDespesa!.id,
-    fonteId: resolucao.fonte!.id,
-    ...(resolucao.co !== null ? { coId: resolucao.co.id } : {}),
-    exercicioFonte: dados.exercicioFonte,
-    valorDotado: dados.valorDotado,
-  });
+  return deps.fichas.criar(
+    {
+      exercicio: dados.exercicio,
+      numero: dados.numero,
+      orgaoId: orgao.id,
+      unidadeOrcId: unidadeOrc.id,
+      funcaoId: resolucao.funcao!.id,
+      subfuncaoId: resolucao.subfuncao!.id,
+      programaId: resolucao.programa!.id,
+      acaoId: resolucao.acao!.id,
+      naturezaDespesaId: resolucao.naturezaDespesa!.id,
+      fonteId: resolucao.fonte!.id,
+      ...(resolucao.co !== null ? { coId: resolucao.co.id } : {}),
+      exercicioFonte: dados.exercicioFonte,
+      valorDotado: dados.valorDotado,
+    },
+    dados.criadoPor
+  );
 }
 
 /** Cria uma previsão de receita (LOA). */

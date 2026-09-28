@@ -145,7 +145,7 @@ export function criarFichaRepositoryPrisma(
      * Agora a ficha NASCE com a dotação registrada: a dotação da LOA é um FATO do
      * momento em que a ficha passa a existir, não do momento em que alguém a usa.
      */
-    async criar(ficha: FichaParaPersistir): Promise<string> {
+    async criar(ficha: FichaParaPersistir, autor: string): Promise<string> {
       try {
         const id = await prisma.$transaction(async (tx) => {
           // M08 — fail-closed: não se cria ficha em exercício inexistente ou
@@ -186,8 +186,14 @@ export function criarFichaRepositoryPrisma(
             valor: ficha.valorDotado.toFixed(2),
             origemTipo: "LOA",
             origemId: criada.id,
-            // quem dota é a LEI; a ficha não carrega autor.
-            criadoPor: "LOA",
+            // ⚠️ QUEM ASSINA É QUEM ABRIU A FICHA — não o literal "LOA".
+            //
+            // Até a V17 esta linha era `criadoPor: "LOA"`, com a justificativa "quem dota é a
+            // LEI; a ficha não carrega autor". O funil do razão, porém, exige que a identidade
+            // EXISTA (`exigirUsuarioAtivo`), e `"LOA"` só existe em `test/usuarios-teste.ts`:
+            // criar ficha DOTADA passava na suíte e estourava em banco real. A ficha da TELA
+            // escapava por acidente, porque nasce com 0,00 e a dotação zero não toca o razão.
+            criadoPor: autor,
             // ⚠️ A DOTAÇÃO É UM FATO DE 1º DE JANEIRO do exercício — não do dia da
             // digitação. Pela data de digitação, a MSC de março mostraria a LOA
             // "entrando" em março.

@@ -74,7 +74,23 @@ export interface FichaRepositoryPort {
    * (`uq_ficha_sagres` e `exercicio+numero`) em erro de domínio legível —
    * a integridade é do banco, a mensagem é nossa.
    */
-  criar(ficha: FichaParaPersistir): Promise<string>;
+  /**
+   * @param autor quem criou a ficha — ele ASSINA a perna da dotação inicial no razão.
+   *
+   * ⚠️ O PARÂMETRO ENTROU NA V17, E A AUSÊNCIA ERA UM DEFEITO MEDIDO. O adapter gravava a perna
+   * da dotação com `criadoPor: "LOA"`, um literal, e o funil do razão exige que a identidade
+   * EXISTA (`exigirUsuarioAtivo`). Como `"LOA"` só é semeado por `test/usuarios-teste.ts`, criar
+   * ficha DOTADA passava na suíte e estourava em qualquer banco real com *"USUÁRIO NÃO
+   * CADASTRADO: LOA"*. A ficha da TELA escapava por acidente: ela nasce com 0,00, e a dotação
+   * zero não toca o razão.
+   *
+   * ⚠️ E ELE É PARÂMETRO, NÃO CAMPO DE `FichaParaPersistir`: a mesma interface descreve a
+   * LEITURA (`buscarPorNumero`), e `FichaOrcamentaria` não tem coluna de autor. Pôr o campo lá
+   * obrigaria a inventar um autor na leitura — o oposto do que esta correção faz.
+   *
+   * Quem dota é a lei; quem ASSINA o registro é quem abriu a ficha, e é isso que o funil cobra.
+   */
+  criar(ficha: FichaParaPersistir, autor: string): Promise<string>;
   buscarPorNumero(
     exercicio: number,
     numero: number

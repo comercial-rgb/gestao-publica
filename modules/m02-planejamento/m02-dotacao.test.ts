@@ -279,6 +279,41 @@ describe("M02 — backfill da dotação inicial", () => {
     ).toBe(2);
   });
 
+  it("a ficha DOTADA nasce num banco SEM o usuário 'LOA' — o literal saiu do adapter (V17)", async () => {
+    // ⚠️ ESTE TESTE REMOVE A MULETA ANTES DE MEDIR, e é por isso que ele vale.
+    //
+    // Até a V17 o adapter assinava a dotação inicial com o literal `"LOA"`, e o funil do razão
+    // exige que a identidade EXISTA. Como `test/usuarios-teste.ts` semeia um usuário chamado
+    // "LOA", a suíte ficava verde e `criarFicha` com valor > 0 estourava em QUALQUER banco real
+    // ("USUÁRIO NÃO CADASTRADO: LOA") — medido no banco dos percursos. Apagar o usuário aqui é o
+    // que separa "passa porque o produto está certo" de "passa porque a fixture o socorre".
+    // ⚠️ RENOMEIA em vez de apagar: `VinculoUsuarioPerfil` tem FK RESTRICT, e apagar estouraria
+    // por um motivo que não é o do teste. O que importa é que a identidade "LOA" NÃO EXISTA.
+    await prisma.usuario.updateMany({
+      where: { identificador: "LOA" },
+      data: { identificador: "loa-renomeado-pelo-teste" },
+    });
+    expect(await prisma.usuario.count({ where: { identificador: "LOA" } })).toBe(0);
+
+    const id = await criarFicha({ ...FICHA, numero: 77 }, criarM02Deps(prisma));
+    const movs = await prisma.movimentoDotacao.findMany({
+      where: { fichaId: id, tipo: "DOTACAO_INICIAL" },
+      select: { id: true, criadoPor: true, valor: true },
+    });
+    expect(movs).toHaveLength(1);
+    expect(movs[0]!.criadoPor).toBe(FICHA.criadoPor);
+
+    // E AS DUAS PERNAS no razão existem, assinadas pelo mesmo autor — a dotação sem perna foi o
+    // furo original de 46dfd5d, e uma correção de autor não pode tê-lo reaberto. O lançamento se
+    // acha pela origem: `origemTipo` "LOA" e `origemId` = o id do MOVIMENTO.
+    const lancamento = await prisma.lancamentoContabil.findFirstOrThrow({
+      where: { origemTipo: "LOA", origemId: movs[0]!.id },
+      select: { criadoPor: true, partidas: { select: { id: true } } },
+    });
+    expect(lancamento.partidas).toHaveLength(2);
+    expect(lancamento.criadoPor).toBe(FICHA.criadoPor);
+  });
+
   it("não toca fichas que JÁ têm DOTACAO_INICIAL (mistura antiga + nova)", async () => {
     const deps = criarM02Deps(prisma);
     // uma ficha NOVA (nasce com dotação) e uma ANTIGA (sem).
@@ -296,6 +331,14 @@ describe("M02 — backfill da dotação inicial", () => {
       where: { fichaId: nova, tipo: "DOTACAO_INICIAL" },
     });
     expect(movsNova).toHaveLength(1);
-    expect(movsNova[0]!.criadoPor).toBe("LOA"); // NÃO foi reescrito pelo BACKFILL
+    // ⚠️ A AFIRMAÇÃO É "o backfill NÃO reescreveu", e ela se faz pelo autor: a dotação da ficha
+    // nova continua assinada por QUEM ABRIU A FICHA, não por "BACKFILL".
+    //
+    // Antes da V17 este expect era `toBe("LOA")` — um literal que o adapter gravava e que só
+    // existia como usuário em `test/usuarios-teste.ts`; criar ficha dotada estourava em banco
+    // real. Agora quem assina é o autor de verdade, e a asserção ficou mais forte: ela nomeia os
+    // dois lados (é o autor da ficha, e NÃO é o backfill).
+    expect(movsNova[0]!.criadoPor).toBe(FICHA.criadoPor);
+    expect(movsNova[0]!.criadoPor).not.toBe("BACKFILL");
   });
 });
