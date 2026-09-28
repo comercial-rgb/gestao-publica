@@ -117,7 +117,14 @@ const env = { ...process.env, DATABASE_URL: percursos, SEED_IDENTIDADE: ADMIN };
 function rodar(rotulo: string, comando: string, args: readonly string[], tolerar?: RegExp): void {
   console.log(`\n[percursos] ${rotulo}`);
   try {
-    const saida = execFileSync(comando, [...args], { env, stdio: ["inherit", "pipe", "pipe"], encoding: "utf8" });
+    // No Windows `npx` é `npx.cmd`, e o Node recusa executar `.cmd` sem shell — a falha chegava SEM
+    // texto nenhum. Os argumentos daqui não têm espaço, então o shell não os reparte.
+    const saida = execFileSync(comando, [...args], {
+      env,
+      stdio: ["inherit", "pipe", "pipe"],
+      encoding: "utf8",
+      shell: process.platform === "win32",
+    });
     if (saida.trim() !== "") console.log(saida.trimEnd());
   } catch (e) {
     const err = e as { stdout?: string; stderr?: string; message: string };

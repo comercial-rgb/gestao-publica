@@ -171,12 +171,18 @@ export function conferir() {
   const inicio = Date.now();
   for (const recorte of RECORTES_DO_APP) {
     const parcial = Date.now();
-    const r = spawnSync("npx", ["tsc", "--noEmit", "-p", recorte], {
+    // O `tsc` do projeto pelo MESMO node, e não `npx`: no Windows `npx` é `npx.cmd`, que o Node
+    // recusa executar sem shell — o filho não nascia e a saída era "codigo null" em 3 ms.
+    const r = spawnSync(process.execPath, [join(RAIZ, "node_modules", "typescript", "bin", "tsc"), "--noEmit", "-p", recorte], {
       cwd: RAIZ,
       stdio: ["ignore", "inherit", "inherit"],
       env: { ...process.env, NODE_OPTIONS: `--max-old-space-size=${heap}` },
     });
     const dt = Date.now() - parcial;
+    if (r.error !== undefined) {
+      console.error(`[tipos] o tsc de ${recorte} NAO INICIOU (${r.error.message}). Isto nao e aprovacao nem reprovacao.`);
+      return 1;
+    }
     if (r.signal !== null && r.signal !== undefined) {
       console.error(`[tipos] ⚠️ o tsc de ${recorte} foi MORTO pelo sinal ${r.signal} em ${dt} ms. Isto nao e aprovacao nem reprovacao: e execucao que nao terminou.`);
       return 128;

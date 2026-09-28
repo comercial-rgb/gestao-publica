@@ -47,6 +47,8 @@ const modo = process.env["PERCURSO_MODO"] === "dev" ? ["next", "dev", "-p", port
 const child = spawn("npx", modo, {
   stdio: "inherit",
   env: process.env,
+  // `npx.cmd` no Windows não executa sem shell; os argumentos são fixos e sem espaço.
+  shell: process.platform === "win32",
 });
 child.on("exit", (codigo) => {
   process.exit(codigo ?? 1);
