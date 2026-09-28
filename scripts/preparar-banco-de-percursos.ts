@@ -267,6 +267,24 @@ rodar("roteiros de DEMONSTRAÇÃO do acervo (identificados como tal)", "npx", [
   "prisma/seed/roteiros-demo.ts",
 ]);
 
+/**
+ * ⚠️ O CUSTO POR CENTRO VEM POR ÚLTIMO, E DEPOIS DAS PERMISSÕES — a primeira corrida deste passo
+ * falhou exatamente por estar antes delas: "o usuário admin não tem permissão para
+ * PARAMETRIZAR_RATEIO_DE_CUSTO". As duas ações de C05 chegam ao perfil pela atualização v35, não
+ * pelo bootstrap de um banco que já existia, e o seed usa os SERVIÇOS REAIS — que cobram a
+ * autorização como a tela cobra. Um seed que contornasse a autorização estaria semeando um estado
+ * que o próprio sistema recusaria.
+ *
+ * Ele cria os dois setores de custo (Educação e Saúde), publica o critério 60/40 e apropria
+ * 1.000,00 de uma liquidação que a massa já produziu — a história do cenário F da ordem. É
+ * idempotente pela chave do critério.
+ *
+ * ⚠️ E ELE NÃO MEXE EM NENHUM DEMONSTRATIVO: a apropriação não lança no razão nem toca dotação.
+ * Balanço, RREO e RGF saem deste passo com os mesmos números de antes dele — é o ponto do desenho
+ * de C05, e é por isso que ele pode vir por último sem reordenar nada.
+ */
+rodar("custo por centro (critério 60/40 e 1.000,00 apropriados)", "npx", ["tsx", "prisma/seed/poc-custos.ts"]);
+
 console.log(
   `\n[percursos] pronto: ${alvo.host}:${alvo.porta}/${alvo.database}. ` +
     `Suba o servidor com \`npm run percursos:servir\` e rode os percursos contra http://localhost:3010.`

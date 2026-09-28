@@ -459,6 +459,7 @@ const ROTAS_PROTEGIDAS = [
   "/contabilidade",
   "/contabilidade/plano-de-contas",
   "/contabilidade/lancamentos",
+  "/contabilidade/custos",
   "/relatorios",
   "/relatorios/gerenciais",
   "/relatorios/livros/diario",
@@ -688,6 +689,25 @@ const TELAS: readonly TelaDoRoteiro[] = [
       { rotulo: "linhas de empenho", tipo: "seletor", alvo: "table tbody tr", minimo: 1 },
       // Um link por linha ("Emitir NE") — é o clique do passo da Nota de Empenho.
       { rotulo: "link Nota de Empenho", tipo: "seletor", alvo: 'a[href*="/despesa/empenhos/ne?"]', minimo: 1 },
+    ],
+  },
+  {
+    /**
+     * ⚠️ O CUSTO POR CENTRO (V19/C05). Quatro sondas, e a última é a que importa: a COMPOSIÇÃO não
+     * aparece sozinha — ela abre pelo seletor de centro. Conferir só o acumulado deixaria passar uma
+     * tela que mostra totais e não sabe dizer de onde vieram, que é exatamente o defeito que C05
+     * existe para não ter.
+     *
+     * ⚠️ E O MÍNIMO DE CENTROS É DOIS, não um: com um centro só o rateio passaria por vacuidade (o
+     * percentual seria sempre 100) e a tela não demonstraria distribuição nenhuma.
+     */
+    rota: "/contabilidade/custos",
+    sondas: [
+      { rotulo: "centros com custo apropriado", tipo: "seletor", alvo: "tr[data-centro]", minimo: 2 },
+      { rotulo: "total apropriado no periodo", tipo: "seletor", alvo: "[data-custo-total]", minimo: 1 },
+      { rotulo: "criterio de rateio publicado", tipo: "seletor", alvo: "tr[data-criterio]", minimo: 1 },
+      // O seletor traz "Nenhum" mais um option por centro com custo: 3 = a opcao vazia + dois centros.
+      { rotulo: "seletor da composicao do centro", tipo: "seletor", alvo: '[data-seletor="centro"] option', minimo: 3 },
     ],
   },
   {

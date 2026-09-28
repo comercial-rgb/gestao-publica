@@ -26,6 +26,7 @@
     "seed:sagres-poc": "tsx prisma/seed/sagres-poc.ts",
     "seed:poc-programacao": "tsx prisma/seed/poc-programacao.ts",
     "seed:poc-fila": "tsx prisma/seed/poc-fila.ts",
+    "seed:poc-custos": "tsx prisma/seed/poc-custos.ts",
     "db:papel": "tsx scripts/provisionar-papel-runtime.ts",
     "db:conceder": "tsx scripts/conceder-acoes-ao-perfil.ts",
     "licenciamento:instalar": "tsx scripts/instalar-licenciamento.ts",
