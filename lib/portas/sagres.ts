@@ -8,6 +8,7 @@ import {
   gerarLiquidacao,
   gerarMovimentacaoEntreContas,
   gerarPagamentos,
+  gerarEstornoPagamento,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -18,6 +19,7 @@ import {
   lerFatosLiquidacao,
   lerFatosMovimentacao,
   lerFatosPagamentos,
+  lerFatosEstornoPagamento,
   lerFatosReceitaOrcamentaria,
   lerFatosRetencao,
   lerFatosSaldoMensal,
@@ -32,6 +34,7 @@ import {
   LAYOUT_LIQUIDACAO,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
@@ -193,11 +196,12 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const exercicio = anoCivil(mesRef);
 
   // (1) LER OS FATOS (uma vez) — para validar antes de serializar.
-  const [dotacao, empenhos, liquidacoes, pagamentos, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
+  const [dotacao, empenhos, liquidacoes, pagamentos, estornosDePagamento, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
     lerFatosDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio }),
     lerFatosEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosPagamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
+    lerFatosEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     lerFatosCadastroConta(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora }),
     lerFatosSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -212,6 +216,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     ...validarObrigatorios(LAYOUT_EMPENHOS, empenhos),
     ...validarObrigatorios(LAYOUT_LIQUIDACAO, liquidacoes),
     ...validarObrigatorios(LAYOUT_PAGAMENTOS, pagamentos),
+    ...validarObrigatorios(LAYOUT_ESTORNO_PAGAMENTO, estornosDePagamento),
     ...validarObrigatorios(LAYOUT_RECEITA_ORCAMENTARIA, receitas),
     ...validarObrigatorios(LAYOUT_CADASTRO_CONTA, cadastro),
     ...validarObrigatorios(LAYOUT_SALDO_MENSAL, saldos),
@@ -223,11 +228,12 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   ];
 
   // (3) SERIALIZAR os arquivos + montar o pacote/manifesto.
-  const [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra] = await Promise.all([
+  const [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio, competencia: mesRef }),
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarPagamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
+    gerarEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -235,7 +241,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra];
+  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra];
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -252,6 +258,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     { g: aEmpenhos, l: LAYOUT_EMPENHOS },
     { g: aLiquidacao, l: LAYOUT_LIQUIDACAO },
     { g: aPagamentos, l: LAYOUT_PAGAMENTOS },
+    { g: aEstornoPagamento, l: LAYOUT_ESTORNO_PAGAMENTO },
     { g: aReceita, l: LAYOUT_RECEITA_ORCAMENTARIA },
     { g: aCadastro, l: LAYOUT_CADASTRO_CONTA },
     { g: aSaldo, l: LAYOUT_SALDO_MENSAL },
@@ -298,6 +305,7 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarPagamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
+    gerarEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),

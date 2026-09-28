@@ -20,6 +20,7 @@ import {
   LAYOUT_LIQUIDACAO,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
@@ -28,6 +29,7 @@ import {
   type CadastroContaFato,
   type DespesaExtraFato,
   type DotacaoFato,
+  type EstornoPagamentoFato,
   type EmpenhoFato,
   type LiquidacaoFato,
   type MovimentacaoFato,
@@ -89,8 +91,8 @@ describe("formatadores de campo (unitário)", () => {
 });
 
 describe("registry — auto-validação das posições", () => {
-  it("os 10 layouts da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
-    expect(LAYOUTS_2026V11).toHaveLength(10);
+  it("os 11 layouts (V21: + EstornoPagamento §4.13) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
+    expect(LAYOUTS_2026V11).toHaveLength(11);
     for (const l of LAYOUTS_2026V11) expect(() => validarLayout(l as LayoutArquivo<unknown>)).not.toThrow();
   });
 
@@ -102,6 +104,8 @@ describe("registry — auto-validação das posições", () => {
     expect(larguraRegistro(LAYOUT_SALDO_MENSAL)).toBe(59);
     expect(larguraRegistro(LAYOUT_MOVIMENTACAO)).toBe(84);
     expect(larguraRegistro(LAYOUT_PAGAMENTOS)).toBe(133);
+    // §4.13 — a última posição do leiaute oficial é a 181 (`numero`, 175-181).
+    expect(larguraRegistro(LAYOUT_ESTORNO_PAGAMENTO)).toBe(181);
     expect(larguraRegistro(LAYOUT_RECEITA_ORCAMENTARIA)).toBe(92);
     expect(larguraRegistro(LAYOUT_RETENCAO)).toBe(52);
     expect(larguraRegistro(LAYOUT_DESPESA_EXTRA)).toBe(637);
@@ -224,6 +228,46 @@ describe("golden byte a byte — Liquidacao (§4.10)", () => {
       "000000",
     ].join("");
     expect(serializarRegistro(LAYOUT_LIQUIDACAO, fato)).toBe(esperado);
+  });
+});
+
+// ── GOLDEN: ESTORNOPAGAMENTO (Diário, 181) — V21 ───────────────────────────────────
+describe("golden byte a byte — EstornoPagamento (§4.13)", () => {
+  const fato: EstornoPagamentoFato = {
+    codUnidadeGestora: "999001",
+    anoEmissaoEmpenho: 2026,
+    codUnidadeOrcamentaria: "02001",
+    numEmpenho: "12",
+    numPagamento: "3",
+    data: new Date(Date.UTC(2026, 6, 20)),
+    motivo: "Credor indicado errado na ordem de pagamento",
+    despesaLiquidada: "S",
+    valor: toMoney("1250.50"),
+    numero: "4",
+  };
+
+  it("monta as dez colunas nas posições do leiaute oficial", () => {
+    const esperado = [
+      "999001", //                 codUnidadeGestora      1-6
+      "2026", //                   anoEmissaoEmpenho      7-10
+      "02001", //                  codUnidadeOrcamentaria 11-15
+      "0000012", //                numEmpenho             16-22
+      "0000003", //                numPagamento           23-29
+      "20072026", //               data                   30-37
+      "Credor indicado errado na ordem de pagamento".padEnd(120, " "), // motivo 38-157
+      "S", //                      despesaLiquidada       158
+      "0000000001250,50", //       valor                  159-174
+      "0000004", //                numero                 175-181
+    ].join("");
+    const linha = serializarRegistro(LAYOUT_ESTORNO_PAGAMENTO, fato);
+    expect(linha).toBe(esperado);
+    expect(linha).toHaveLength(181);
+  });
+
+  it("motivo acima de 120 é RECUSADO nomeando o campo — nunca truncado", () => {
+    expect(() => serializarRegistro(LAYOUT_ESTORNO_PAGAMENTO, { ...fato, motivo: "x".repeat(121) })).toThrow(
+      /motivo.*121 caracteres.*120/
+    );
   });
 });
 

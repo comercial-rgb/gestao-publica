@@ -2532,6 +2532,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerFatosMovimentacao: "leitura (Prisma → DTO MovimentacaoEntreContas — não muta)",
   gerarPagamentos: "leitura (gera o TXT SAGRES Pagamentos — não muta)",
   lerFatosPagamentos: "leitura (Prisma → DTO Pagamentos, conta pagadora por código — não muta)",
+  gerarEstornoPagamento: "leitura (gera o TXT SAGRES EstornoPagamento §4.13 — não muta)",
+  lerFatosEstornoPagamento: "leitura (Prisma → DTO EstornoPagamento, a anulação com o pagamento anulado — não muta)",
   gerarReceitaOrcamentaria: "leitura (gera o TXT SAGRES ReceitaOrcamentaria — não muta)",
   lerFatosReceitaOrcamentaria: "leitura (Prisma → DTO ReceitaOrcamentaria, conta arrecadadora é param export — não muta)",
   gerarRetencao: "leitura (gera o TXT SAGRES Retencao §4.14 do M07 — não muta)",

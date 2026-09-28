@@ -533,3 +533,31 @@ export function comporEmpenho(
   const dados = zEmpenharInput.parse(input);
   return { dados, partidas: comporPartidas(dados.valor, roteiro) };
 }
+
+/**
+ * V21 — O MOTIVO DA ANULAÇÃO DE PAGAMENTO nasce EXPORTÁVEL.
+ *
+ * Ele vai à prestação de contas do Tribunal de Contas (SAGRES, EstornoPagamento), num campo de 120
+ * caracteres que proíbe aspas e apóstrofo e em que uma quebra de linha parte o arquivo. O gerador
+ * RECUSA o que não cabe — e descobrir isso no dia da remessa, meses depois, deixaria um fato que não
+ * se exporta. Por isso a regra é conferida AQUI, na anulação, antes de gravar.
+ */
+export const TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO = 120;
+
+export function exigirMotivoDeAnulacaoDePagamento(motivo: string): string {
+  const m = motivo.trim();
+  if (m === "") throw new Error("Informe o motivo da anulação do pagamento. Nada foi gravado.");
+  if (m.length > TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO) {
+    throw new Error(
+      `O motivo tem ${String(m.length)} caracteres; a prestação de contas ao Tribunal de Contas aceita até ` +
+        `${String(TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO)}. Resuma o motivo. Nada foi gravado.`
+    );
+  }
+  if (/[\u0000-\u001f]/.test(m)) {
+    throw new Error("Escreva o motivo numa linha só, sem quebra de linha. Nada foi gravado.");
+  }
+  if (m.includes("'") || m.includes('"')) {
+    throw new Error("O motivo não pode ter aspas nem apóstrofo (o arquivo do Tribunal de Contas não aceita). Nada foi gravado.");
+  }
+  return m;
+}

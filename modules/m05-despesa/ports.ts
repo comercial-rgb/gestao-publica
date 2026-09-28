@@ -358,6 +358,8 @@ export interface AnularPagamentoParams {
   readonly pagamentoOriginalId: string;
   readonly numero: string;
   readonly data: Date;
+  /** V21 — o motivo que a tela exige; gravado em `Pagamento.motivo` (SAGRES §4.13). */
+  readonly motivo: string;
   readonly criadoPor: string;
 }
 

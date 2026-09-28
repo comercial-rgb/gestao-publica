@@ -393,6 +393,48 @@ export const LAYOUT_PAGAMENTOS: LayoutArquivo<PagamentoFato> = {
   campos: camposPagamentos,
 };
 
+// ═══ 4.13 ESTORNOPAGAMENTO (Diário) — V21 ═════════════════════════════════════════
+// Origem: o Pagamento de ANULAÇÃO (inteira: `estornoDeId`; parcial: `anulacaoParcialDeId`) + o
+// pagamento anulado (a parcela) + a cadeia até a ficha. `motivo` ← Pagamento.motivo (V21), gravado
+// pela anulação — que já o exigia na tela e o descartava no serviço. Anulação sem motivo (as gravadas
+// antes da V21) é RECUSADA nomeando: o campo é obrigatório e inventar um texto seria pior.
+// `despesaLiquidada` = "S": neste modelo todo pagamento nasce de uma liquidação.
+
+export interface EstornoPagamentoFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  /** O número da PARCELA estornada — o pagamento anulado. */
+  readonly numPagamento: string;
+  readonly data: Date;
+  readonly motivo: string;
+  readonly despesaLiquidada: string;
+  readonly valor: Money;
+  /** O número do estorno — o da própria linha de anulação. */
+  readonly numero: string;
+}
+
+const camposEstornoPagamento: readonly CampoLayout<EstornoPagamentoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "anulado.liquidacao.empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "anulado.liquidacao.empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numPagamento", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "pagamento anulado.numero (parcela)", extrair: (f) => f.numPagamento },
+  { nome: "data", posInicial: 30, posFinal: 37, tipo: "DATA", obrigatorio: true, origem: "anulação.data", extrair: (f) => f.data },
+  { nome: "motivo", posInicial: 38, posFinal: 157, tipo: "ALFA", obrigatorio: true, origem: "Pagamento.motivo (V21)", extrair: (f) => f.motivo },
+  { nome: "despesaLiquidada", posInicial: 158, posFinal: 158, tipo: "ALFA", obrigatorio: true, origem: "\"S\" (todo pagamento nasce de liquidação)", extrair: (f) => f.despesaLiquidada },
+  { nome: "valor", posInicial: 159, posFinal: 174, tipo: "VALOR", obrigatorio: true, origem: "anulação.valor", extrair: (f) => f.valor },
+  { nome: "numero", posInicial: 175, posFinal: 181, tipo: "NUMERICO", obrigatorio: true, origem: "anulação.numero", extrair: (f) => f.numero },
+];
+
+export const LAYOUT_ESTORNO_PAGAMENTO: LayoutArquivo<EstornoPagamentoFato> = {
+  entidade: "EstornoPagamento",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornoPagamento,
+};
+
 // ═══ 4.16 RECEITAORCAMENTARIA (Diária) ═════════════════════════════════════════
 // Origem: ReceitaArrecadada (m04) + naturezaReceita + fonte + co. A CONTA ARRECADADORA é PARÂMETRO
 // DE EXPORTAÇÃO (a designação da UG), não vínculo por-guia: o modelo NÃO amarra receita a conta —
@@ -620,6 +662,7 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_SALDO_MENSAL,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_DESPESA_EXTRA,

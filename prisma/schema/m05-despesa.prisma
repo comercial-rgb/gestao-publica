@@ -464,6 +464,12 @@ model Pagamento {
   ordemDePagamentoId String?           @unique
   ordemDePagamento   OrdemDePagamento? @relation(fields: [ordemDePagamentoId], references: [id])
 
+  /// V21 — POR QUE o pagamento foi anulado (inteiro ou em parte). Só existe nas linhas de ANULAÇÃO;
+  /// nulo no pagamento genuíno e nas anulações gravadas antes da V21 (sem backfill: inventar um
+  /// motivo retroativo seria pior que não ter nenhum). A tela sempre exigiu o texto e o serviço o
+  /// DESCARTAVA antes do banco — e o SAGRES (§4.13, EstornoPagamento) o exige, até 120 caracteres.
+  motivo String?
+
   estornoDeId String?
   estornoDe   Pagamento?  @relation("EstornoPagamento", fields: [estornoDeId], references: [id])
   estornos    Pagamento[] @relation("EstornoPagamento")

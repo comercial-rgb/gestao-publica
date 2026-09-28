@@ -4,6 +4,7 @@ import { toMoney, zMoney } from "../../packages/contracts/index.js";
 import { gerarAnulacaoParcial, gerarEstorno } from "../../packages/ledger/index.js";
 import type { PartidaParaPersistir } from "../m01-core-contabil/ports.js";
 import type { M05Deps } from "./ports.js";
+import { exigirMotivoDeAnulacaoDePagamento } from "./dominio.js";
 
 /**
  * TR 5.35 — ANULAÇÃO PARCIAL de empenho, liquidação e pagamento.
@@ -207,6 +208,8 @@ export async function anularPagamentoParcial(
   deps: M05Deps
 ): Promise<{ readonly anulacaoId: string; readonly lancamentoId: string }> {
   const d = zAnularParcialInput.parse(input);
+  // V21 — o motivo da anulação de PAGAMENTO vai ao Tribunal de Contas; conferido antes de tudo.
+  const motivo = exigirMotivoDeAnulacaoDePagamento(d.motivo);
 
   // A UG vem do PAGAMENTO reduzido -> liquidação -> empenho -> ficha.
   await deps.autz.exigir(d.criadoPor, ACAO_DO_SERVICO.anularPagamentoParcial, {
@@ -250,7 +253,7 @@ export async function anularPagamentoParcial(
       numero: d.numero,
       valor: d.valor,
       data: d.data,
-      motivo: d.motivo,
+      motivo,
       criadoPor: d.criadoPor,
     },
     {

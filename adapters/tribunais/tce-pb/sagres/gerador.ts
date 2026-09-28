@@ -12,6 +12,7 @@ import {
   LAYOUT_LIQUIDACAO,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
@@ -25,6 +26,7 @@ import {
   type LiquidacaoFato,
   type MovimentacaoFato,
   type PagamentoFato,
+  type EstornoPagamentoFato,
   type ReceitaOrcamentariaFato,
   type RetencaoFato,
   type SaldoMensalFato,
@@ -379,6 +381,60 @@ export async function gerarPagamentos(
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosPagamentos(prisma, params);
   return empacotar(LAYOUT_PAGAMENTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Pagamentos", competencia: params.dia }), fatos);
+}
+
+// ── ESTORNOPAGAMENTO (Diário, V21) — a linha de anulação + o pagamento anulado + a cadeia. ────
+export async function lerFatosEstornoPagamento(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoPagamentoFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const anulacoes = await prisma.pagamento.findMany({
+    where: {
+      data: { gte, lt },
+      OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }],
+    },
+    include: {
+      estornoDe: { select: { numero: true } },
+      anulacaoParcialDe: { select: { numero: true } },
+      liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } },
+    },
+    orderBy: [{ numero: "asc" }],
+  });
+  return anulacoes.map((a) => {
+    const anulado = a.estornoDe ?? a.anulacaoParcialDe;
+    if (anulado === null) {
+      throw new Error(`SAGRES/EstornoPagamento — a anulação ${a.numero} não aponta o pagamento anulado.`);
+    }
+    if (a.motivo === null || a.motivo.trim() === "") {
+      throw new Error(
+        `SAGRES/EstornoPagamento — a anulação ${a.numero} (do pagamento ${anulado.numero}) foi gravada ` +
+          `sem motivo, antes de o sistema guardá-lo. O campo é obrigatório no leiaute e não se inventa ` +
+          `texto para ele. Nada foi gerado.`
+      );
+    }
+    const ficha = a.liquidacao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: a.liquidacao.empenho.numero,
+      numPagamento: anulado.numero,
+      data: a.data,
+      motivo: a.motivo,
+      despesaLiquidada: "S",
+      valor: money(a.valor),
+      numero: a.numero,
+    };
+  });
+}
+
+export async function gerarEstornoPagamento(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosEstornoPagamento(prisma, params);
+  return empacotar(LAYOUT_ESTORNO_PAGAMENTO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoPagamento", competencia: params.dia }), fatos);
 }
 
 // ── RECEITAORCAMENTARIA (Diária) — Origem: ReceitaArrecadada + natureza/fonte/co. ───────────────
