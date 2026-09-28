@@ -11,6 +11,7 @@ import {
 import { anexarArquivo, baixarAnexo } from "../../modules/m22-documentos/anexos";
 import { alcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao";
 import {
+  listarAnexosDaLeiOrcamentaria,
   listarAnexosDaPessoa,
   listarAnexosDasLiquidacoes,
   listarAnexosDoComunicado,
@@ -116,6 +117,12 @@ export async function lerAnexosDoTermo(termoPatrimonialId: string): Promise<read
   return listarAnexosDoTermo(cliente(), termoPatrimonialId, sessao.identificador);
 }
 
+/** V22 — os anexos da Lei Orçamentária Anual: quem lê o planejamento no ente. */
+export async function lerAnexosDaLeiOrcamentaria(leiOrcamentariaAnualId: string): Promise<readonly AnexoNaLista[]> {
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return listarAnexosDaLeiOrcamentaria(cliente(), leiOrcamentariaAnualId, sessao.identificador);
+}
+
 export async function lerAnexosDoComunicado(
   comunicadoId: string
 ): Promise<readonly AnexoNaLista[]> {
@@ -148,6 +155,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       termoPatrimonialId: true,
       documentoFiscalId: true,
       guiaDeRecolhimentoId: true,
+      leiOrcamentariaAnualId: true,
       ocorrenciaDeFiscalizacaoId: true,
       ocorrenciaDeFiscalizacao: { select: { contratoId: true } },
       medicaoDaOrdem: { select: { ordem: { select: { contratoId: true } } } },
@@ -163,6 +171,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   if (a.termoPatrimonialId !== null) return { acao: "CONSULTAR_PATRIMONIO", nivel: "ente" };
   if (a.documentoFiscalId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   if (a.guiaDeRecolhimentoId !== null) return { acao: "CONSULTAR_FOLHA", nivel: "ente" };
+  // V22 — o projeto, a lei e os anexos da LOA: documento público do planejamento, lido no ente.
+  if (a.leiOrcamentariaAnualId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
   // V7 M2.1 — evidência de fiscalização é documento INTERNO do contrato: nunca vai à projeção pública.
   // ⚠️ V7 M2 U0.1 — e também não vai a quem só lê licitações: a evidência é da visão de FISCALIZAÇÃO (designado
   // vigente no contrato ou administrador da fiscalização). Antes, `CONSULTAR_LICITACOES` baixava qualquer uma.
@@ -242,6 +252,8 @@ export interface AnexarNaTela {
   readonly documentoFiscalId?: string | undefined;
   /** V22 — o comprovante do banco (ou outro documento) da liquidação; escopo = a UG do fato. */
   readonly liquidacaoId?: string | undefined;
+  /** V22 — o projeto, a lei e os anexos da Lei Orçamentária Anual. */
+  readonly leiOrcamentariaAnualId?: string | undefined;
 }
 
 export async function anexarNaTela(

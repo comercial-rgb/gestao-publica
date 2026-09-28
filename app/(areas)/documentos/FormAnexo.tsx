@@ -37,6 +37,8 @@ export interface DonoDoAnexo {
   readonly documentoFiscalId?: string | undefined;
   /** V22 — o comprovante bancário da liquidação. */
   readonly liquidacaoId?: string | undefined;
+  /** V22 — o projeto, a lei e os anexos da Lei Orçamentária Anual. */
+  readonly leiOrcamentariaAnualId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -90,6 +92,9 @@ export function FormAnexo({
       ) : null}
       {dono.documentoFiscalId !== undefined ? (
         <input type="hidden" name="documentoFiscalId" value={dono.documentoFiscalId} />
+      ) : null}
+      {dono.leiOrcamentariaAnualId !== undefined ? (
+        <input type="hidden" name="leiOrcamentariaAnualId" value={dono.leiOrcamentariaAnualId} />
       ) : null}
       {dono.liquidacaoId !== undefined ? (
         <input type="hidden" name="liquidacaoId" value={dono.liquidacaoId} />

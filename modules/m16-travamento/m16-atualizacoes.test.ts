@@ -13,6 +13,7 @@ import {
   derivarPlanejamentoPlurianual,
   derivarPublicarRoteiro,
   derivarSolicitacaoDeEmpenho,
+  derivarLeiOrcamentariaAnual,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -188,6 +189,17 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     // quem só empenha NÃO recebe o consentimento — o motivo da derivação desigual
     expect(d.some((x) => x.startsWith("exe ") && x.includes("AUTORIZAR"))).toBe(false);
     expect(d.some((x) => x.startsWith("ja "))).toBe(false);
+  });
+
+  it("v40: quem cadastra a LDO recebe CADASTRAR_LOA no mesmo escopo; quem já tem não recebe; quem só cria ficha não recebe (V22)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "plan", nome: "PLANEJAMENTO", permissoes: [{ acao: "CADASTRAR_LDO", unidadeOrcId: null }] },
+      { id: "plan-2", nome: "PLANEJAMENTO-2", permissoes: [{ acao: "CADASTRAR_LDO", unidadeOrcId: null }, { acao: "CADASTRAR_PPA", unidadeOrcId: null }] },
+      { id: "ja", nome: "JA-TEM", permissoes: [{ acao: "CADASTRAR_LDO", unidadeOrcId: null }, { acao: "CADASTRAR_LOA", unidadeOrcId: null }] },
+      { id: "ficha", nome: "FICHAS", permissoes: [{ acao: "CRIAR_FICHA", unidadeOrcId: null }] },
+    ];
+    const d = derivarLeiOrcamentariaAnual(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect([...d].sort()).toEqual(["plan CADASTRAR_LOA G", "plan-2 CADASTRAR_LOA G"]);
   });
 
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
@@ -370,6 +382,9 @@ describe("instalação limpa e atualização — no banco", () => {
       // chegaram a ACOES_DO_ENTE (o admin tem EMPENHAR e AUTORIZAR_ORDEM_PAGAMENTO globais, e ja nasce
       // com as duas derivadas). Fora de TODAS_AS_ACOES, esta previa viria 2.
       { versao: 39, previa: 0, aplicada: false },
+      // V22 — prévia 0 na instalação limpa: CADASTRAR_LOA chegou a ACOES_DO_ENTE pelo bootstrap (o admin
+      // tem CADASTRAR_LDO global e já nasce com CADASTRAR_LOA). Fora de TODAS_AS_ACOES, viria 1.
+      { versao: 40, previa: 0, aplicada: false },
     ]);
   });
 

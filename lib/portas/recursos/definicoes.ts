@@ -11,6 +11,7 @@ import { RECURSOS_DO_PESSOAL } from "./pessoal.js";
 import { RECURSOS_DA_FOLHA } from "./folha.js";
 import { EMENTARIO_DA_RECEITA } from "./ementario-receita.js";
 import { CAMPANHAS_PUBLICITARIAS } from "./campanhas-publicitarias.js";
+import { LEIS_ORCAMENTARIAS } from "./leis-orcamentarias.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -743,4 +744,6 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   EMENTARIO_DA_RECEITA,
   // V22 — M05 as campanhas publicitárias (o vínculo da nota de empenho). Pela mesma lista.
   CAMPANHAS_PUBLICITARIAS,
+  // V22 — M02b a Lei Orçamentária Anual (projeto, lei que a aprovou e anexos). Pela mesma lista.
+  LEIS_ORCAMENTARIAS,
 ];

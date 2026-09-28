@@ -54,6 +54,8 @@ export const zAnexar = z
     ocorrenciaDeFiscalizacaoId: z.string().min(1).optional(),
     // ── V7 M2 U7: a evidência da medição da ordem de serviço ──
     medicaoDaOrdemId: z.string().min(1).optional(),
+    // ── V22: o projeto, a lei e os anexos da Lei Orçamentária Anual ──
+    leiOrcamentariaAnualId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -72,12 +74,13 @@ export const zAnexar = z
         d.guiaDeRecolhimentoId,
         d.ocorrenciaDeFiscalizacaoId,
         d.medicaoDaOrdemId,
+        d.leiOrcamentariaAnualId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização ou medição da ordem de serviço. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço ou lei orçamentária. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -115,6 +118,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       ordemDePagamentoId: d.ordemDePagamentoId ?? null, termoPatrimonialId: d.termoPatrimonialId ?? null, documentoFiscalId: d.documentoFiscalId ?? null, guiaDeRecolhimentoId: d.guiaDeRecolhimentoId ?? null,
       ocorrenciaDeFiscalizacaoId: d.ocorrenciaDeFiscalizacaoId ?? null,
       medicaoDaOrdemId: d.medicaoDaOrdemId ?? null,
+      leiOrcamentariaAnualId: d.leiOrcamentariaAnualId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -176,6 +180,7 @@ export async function anexarArquivo(
         ordemDePagamentoId: d.ordemDePagamentoId ?? null,
         termoPatrimonialId: d.termoPatrimonialId ?? null,
         documentoFiscalId: d.documentoFiscalId ?? null,
+        leiOrcamentariaAnualId: d.leiOrcamentariaAnualId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -227,9 +232,16 @@ async function escopoDoDono(
     readonly ordemDePagamentoId?: string | undefined;
     readonly termoPatrimonialId?: string | undefined;
     readonly documentoFiscalId?: string | undefined;
+    readonly leiOrcamentariaAnualId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  // V22: a LOA é ato do ENTE (não há escopo de unidade no planejamento); a lei tem de existir.
+  if (d.leiOrcamentariaAnualId !== undefined) {
+    const lei = await tx.leiOrcamentariaAnual.findUnique({ where: { id: d.leiOrcamentariaAnualId }, select: { id: true } });
+    if (lei === null) throw new Error(`Lei orçamentária ${d.leiOrcamentariaAnualId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
   if (d.documentoFiscalId !== undefined) {
     const doc = await tx.documentoFiscalRecebido.findUnique({
       where: { id: d.documentoFiscalId },

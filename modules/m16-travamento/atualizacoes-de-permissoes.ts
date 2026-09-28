@@ -1255,6 +1255,28 @@ export function derivarSolicitacaoDeEmpenho(
   return saida;
 }
 
+/**
+ * V22 — A LEI ORÇAMENTÁRIA ANUAL (projeto, aprovação e anexos) chegou com CADASTRAR_LOA.
+ *
+ * Vai a quem já CADASTRA A LDO, no MESMO escopo: é o setor que digita as peças do planejamento que
+ * o Executivo envia ao Legislativo. A LDO orienta a LOA; quem registra uma registra a outra.
+ * Idempotente por construção: só deriva o que o perfil ainda não tem naquele escopo.
+ */
+export function derivarLeiOrcamentariaAnual(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    for (const origem of perfil.permissoes.filter((p) => p.acao === "CADASTRAR_LDO")) {
+      if (perfil.permissoes.some((p) => p.acao === "CADASTRAR_LOA" && p.unidadeOrcId === origem.unidadeOrcId)) continue;
+      if (saida.some((c) => c.perfilId === perfil.id && c.unidadeOrcId === origem.unidadeOrcId)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CADASTRAR_LOA", unidadeOrcId: origem.unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -1729,6 +1751,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "um passo antes na cadeia). Derivar a autorizacao de EMPENHAR entregaria o consentimento a quem " +
       "executa. E quem solicita nao decide a propria solicitacao — regra do caso de uso.",
     derivar: derivarSolicitacaoDeEmpenho,
+  },
+  {
+    versao: 40,
+    nome: "lei-orcamentaria-anual",
+    descricao:
+      "A Lei Orcamentaria Anual passou a ser cadastrada (V22): o projeto de lei enviado ao Legislativo, " +
+      "a lei que o aprovou (numero, sancao, publicacao) e os anexos. Vem com a acao CADASTRAR_LOA, " +
+      "concedida a quem ja cadastra a LDO, no mesmo escopo: e o setor que digita as pecas do " +
+      "planejamento.",
+    derivar: derivarLeiOrcamentariaAnual,
   },
 ];
 

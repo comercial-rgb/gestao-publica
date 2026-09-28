@@ -210,6 +210,9 @@ export type AcaoDoSistema =
   | "CADASTRAR_RISCOS_FISCAIS_LDO"
   | "CADASTRAR_RENUNCIA_RECEITA_LDO"
   | "CADASTRAR_ALIENACAO_LDO"
+  // ── V22 — a LEI ORÇAMENTÁRIA ANUAL: o projeto de lei e a lei que o aprovou (TR LOA 1). UMA ação para
+  // os dois atos, como CADASTRAR_LDO cobre a LDO e a sanção dela: é o mesmo setor que digita a peça. ──
+  | "CADASTRAR_LOA"
 
   // ── M02b V18/C13 — o ATO que ALTERA a peça já aprovada (TR 5.9.1.30 · 5.9.2.18) ──
   // UMA ação, DOIS serviços (registrar o ato, acrescentar item), AS DUAS peças. E ela NÃO
@@ -1165,6 +1168,9 @@ export type NomeDeServico =
   | "criarRenunciaReceitaLdo"
   | "criarAlienacaoBemLdo"
   | "criarAplicacaoAlienacaoLdo"
+  // V22 — a Lei Orçamentária Anual (projeto e aprovação)
+  | "cadastrarLeiOrcamentariaAnual"
+  | "registrarAprovacaoDaLeiOrcamentaria"
   // V18/C13 — a alteracao da peca aprovada (dois servicos, uma acao)
   | "registrarAtoDeAlteracaoDoPlanejamento"
   | "acrescentarItemAoAtoDeAlteracao"
@@ -1852,6 +1858,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // A alienação prevista e a aplicação do produto (art. 44) são o mesmo demonstrativo.
   criarAlienacaoBemLdo: "CADASTRAR_ALIENACAO_LDO",
   criarAplicacaoAlienacaoLdo: "CADASTRAR_ALIENACAO_LDO",
+  // V22 — a LOA: o projeto enviado e a lei que o aprovou, sob a mesma ação.
+  cadastrarLeiOrcamentariaAnual: "CADASTRAR_LOA",
+  registrarAprovacaoDaLeiOrcamentaria: "CADASTRAR_LOA",
   // ── M02b V18/C13 — a ALTERAÇÃO da peça: o ato e os itens dele, sob a MESMA ação ──
   // Acrescentar item a um ato já registrado é o mesmo poder de registrá-lo (a mesma lei
   // mexendo em mais uma linha, TR 5.9.3.16): conceder um sem o outro não significaria nada.
@@ -3025,6 +3034,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarAnexosDoProcesso: "leitura (os anexos que ESTE usuário pode ver — pergunta ao processo dono)",
   listarAnexosDaPessoa: "leitura (os anexos de um cadastro do ente; exige usuário ativo)",
   listarAnexosDoTermo: "leitura (os anexos de um termo patrimonial — o termo assinado; do ente, exige usuário ativo — V4 §5)",
+  listarAnexosDaLeiOrcamentaria: "leitura (os anexos da LOA — projeto, lei e anexos da lei; a área é da porta, CONSULTAR_PLANEJAMENTO no ente — V22)",
   listarAnexosDoComunicado: "leitura (os anexos de um comunicado — pergunta ao M23 quem participa)",
   loteDeAnexosDoProcesso: "leitura (monta o zip com o que baixarAnexo entregaria um a um)",
   loteDeAnexosDaPessoa: "leitura (idem, para o cadastro de pessoas)",

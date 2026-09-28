@@ -143,6 +143,18 @@ export async function listarAnexosDoTermo(prisma: PrismaClient, termoPatrimonial
   return anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null }));
 }
 
+/** V22: os anexos da Lei Orçamentária Anual (o projeto, a lei, os anexos da lei). A área é da porta. */
+export async function listarAnexosDaLeiOrcamentaria(prisma: PrismaClient, leiOrcamentariaAnualId: string, usuarioIdent: string): Promise<readonly AnexoNaLista[]> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  if (u === null || !u.ativo) return [];
+  const anexos = await prisma.anexo.findMany({
+    where: { leiOrcamentariaAnualId },
+    select: { id: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  return anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null }));
+}
+
 /**
  * V22: os anexos de um conjunto de liquidações (o comprovante do banco, a nota) — por liquidação.
  *

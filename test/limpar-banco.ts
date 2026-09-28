@@ -453,6 +453,9 @@ export const TABELAS = [
   "Empenho",
   // V22 — a campanha publicitária (M05), vínculo da nota de empenho.
   "CampanhaPublicitaria",
+  // V22 — a Lei Orçamentária Anual (projeto e aprovação).
+  "LeiOrcamentariaAnual",
+  "AprovacaoDaLeiOrcamentaria",
   "ReservaDotacao",
   // M04 — receita
   "ReceitaArrecadada",

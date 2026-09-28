@@ -70,6 +70,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CADASTRAR_PROGRAMA_PPA: "planejamento",
   CADASTRAR_RECEITA_PPA: "planejamento",
   CADASTRAR_LDO: "planejamento",
+  CADASTRAR_LOA: "planejamento",
   CADASTRAR_PRIORIDADE_LDO: "planejamento",
   CADASTRAR_METAS_FISCAIS_LDO: "planejamento",
   CADASTRAR_RISCOS_FISCAIS_LDO: "planejamento",

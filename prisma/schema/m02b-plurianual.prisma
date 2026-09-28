@@ -835,3 +835,58 @@ model AlteracaoDeValorPlanejado {
   @@index([acaoPpaId])
   @@index([metaAnualLdoId])
 }
+
+// ============================================================================
+// LOA — A LEI ORÇAMENTÁRIA ANUAL (V22, TR LOA 1): o projeto de lei, a lei que o
+// aprovou e os anexos.
+//
+// ⚠️ O ORÇAMENTO EM SI NÃO MORA AQUI. As dotações são as fichas (M02) e a receita
+// prevista é a da execução; a tela /planejamento/loa as consolida. Este cadastro é o
+// ATO: que projeto o Executivo enviou, que lei o Legislativo aprovou, quando foi
+// sancionada e publicada, e os documentos (o projeto, a lei, os anexos da lei).
+//
+// ⚠️ A APROVAÇÃO É UM REGISTRO À PARTE, e não colunas anuláveis a preencher depois.
+// O projeto nasce antes da lei; completar a lei por UPDATE daria ao runtime escrita
+// mutável num ato normativo. O registro da aprovação é append-only e único por LOA:
+// "foi aprovada?" é a existência dele — derivação, nunca flag.
+// ============================================================================
+
+/// A LOA de um exercício — o projeto de lei enviado ao Legislativo.
+model LeiOrcamentariaAnual {
+  id String @id @default(cuid())
+
+  /// O exercício que o orçamento executa. Uma LOA por exercício.
+  exercicio Int @unique
+
+  /// O projeto de lei, como o Executivo o protocolou no Legislativo.
+  numeroDoProjeto String
+  /// Data civil do envio ao Legislativo (meia-noite de Brasília, em UTC).
+  dataDoEnvio     DateTime
+  ementa          String
+
+  aprovacao AprovacaoDaLeiOrcamentaria?
+  anexos    Anexo[] @relation("AnexoDaLeiOrcamentaria")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A lei que aprovou o projeto — uma por LOA, append-only.
+model AprovacaoDaLeiOrcamentaria {
+  id String @id @default(cuid())
+
+  leiId String               @unique
+  lei   LeiOrcamentariaAnual @relation(fields: [leiId], references: [id])
+
+  /// O número da lei ("1.234/2025").
+  numeroDaLei         String
+  /// Datas civis do ente (meia-noite de Brasília, em UTC). Publicação não antes da sanção, e
+  /// sanção não antes do envio do projeto — conferido no caso de uso.
+  dataDaSancao        DateTime
+  dataDaPublicacao    DateTime
+  /// Onde a lei foi publicada (diário oficial do município, por exemplo).
+  veiculoDePublicacao String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

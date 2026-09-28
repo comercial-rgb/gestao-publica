@@ -40,7 +40,12 @@ function revalidarDono(dono: {
   readonly termoPatrimonialId?: string | undefined;
   readonly documentoFiscalId?: string | undefined;
   readonly liquidacaoId?: string | undefined;
+  readonly leiOrcamentariaAnualId?: string | undefined;
 }): void {
+  if (dono.leiOrcamentariaAnualId !== undefined) {
+    revalidatePath(`/planejamento/leis-orcamentarias/${dono.leiOrcamentariaAnualId}`);
+    return;
+  }
   if (dono.liquidacaoId !== undefined) {
     revalidatePath("/despesa/liquidacoes");
     return;
@@ -89,6 +94,7 @@ export async function anexarArquivoAction(
     const termoPatrimonialId = texto(formData, "termoPatrimonialId");
     const documentoFiscalId = texto(formData, "documentoFiscalId");
     const liquidacaoId = texto(formData, "liquidacaoId");
+    const leiOrcamentariaAnualId = texto(formData, "leiOrcamentariaAnualId");
 
     const dono = {
       ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
@@ -98,6 +104,7 @@ export async function anexarArquivoAction(
       ...(movimentoProcessoId !== "" ? { movimentoProcessoId } : {}),
       ...(documentoFiscalId !== "" ? { documentoFiscalId } : {}),
       ...(liquidacaoId !== "" ? { liquidacaoId } : {}),
+      ...(leiOrcamentariaAnualId !== "" ? { leiOrcamentariaAnualId } : {}),
     };
 
     try {

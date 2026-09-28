@@ -595,6 +595,9 @@ enum AcaoDoSistema {
   CADASTRAR_RISCOS_FISCAIS_LDO
   CADASTRAR_RENUNCIA_RECEITA_LDO
   CADASTRAR_ALIENACAO_LDO
+  // ── V22 — a LEI ORÇAMENTÁRIA ANUAL: o projeto de lei, a lei que o aprovou e os anexos (TR LOA 1).
+  // Uma ação para o projeto e para a aprovação, como CADASTRAR_LDO cobre a LDO e a data de sanção dela.
+  CADASTRAR_LOA
 
   // ── M02b V18/C13 — o ATO que ALTERA a peça já aprovada (TR 5.9.1.30 · 5.9.2.18).
   // UMA ação para as DUAS peças e para os dois serviços (registrar o ato, acrescentar item),

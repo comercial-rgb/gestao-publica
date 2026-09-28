@@ -160,6 +160,10 @@ model Anexo {
   medicaoDaOrdemId String?
   medicaoDaOrdem   MedicaoDaOrdemDeServico? @relation("EvidenciaDaMedicaoDaOrdem", fields: [medicaoDaOrdemId], references: [id])
 
+  /// V22 — o projeto, a lei e os anexos da Lei Orçamentária Anual. Leitura: CONSULTAR_PLANEJAMENTO no ente.
+  leiOrcamentariaAnualId String?
+  leiOrcamentariaAnual   LeiOrcamentariaAnual? @relation("AnexoDaLeiOrcamentaria", fields: [leiOrcamentariaAnualId], references: [id])
+
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
 
@@ -186,6 +190,7 @@ model Anexo {
   @@index([auditoriaId])
   @@index([documentoFiscalId])
   @@index([guiaDeRecolhimentoId])
+  @@index([leiOrcamentariaAnualId])
   @@index([ocorrenciaDeFiscalizacaoId])
   @@index([medicaoDaOrdemId])
   @@index([sha256])
