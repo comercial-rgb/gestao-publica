@@ -3,11 +3,17 @@
 import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import {
+  CLASSE_AREA_TEXTO as AREA,
   CLASSE_CAMPO as CAMPO,
   CLASSE_PAINEL_FORMULARIO,
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
-import { apurarResultadoAction, encerrarExercicioAction, type EstadoDoEncerramento } from "./actions";
+import {
+  apurarResultadoAction,
+  encerrarExercicioAction,
+  estornarApuracaoAction,
+  type EstadoDoEncerramento,
+} from "./actions";
 
 /**
  * ENCERRAR O EXERCÍCIO E INSCREVER OS RESTOS A PAGAR.
@@ -162,6 +168,86 @@ export function FormApuracaoDoResultado({
           type="submit"
         >
           {pendente ? "Apurando…" : `Apurar o resultado de ${exercicio}`}
+        </button>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * ESTORNAR uma apuração do resultado já gravada (V21).
+ *
+ * ⚠️ UM FORMULÁRIO NÃO PODE DESAPARECER COM O PRÓPRIO SUCESSO — a lição da virada dos controles. A
+ * página o monta enquanto existir QUALQUER apuração (vigente ou estornada); quando não sobra vigente,
+ * ele diz isso em vez de sumir, e a confirmação do estorno que acabou de acontecer continua na tela.
+ */
+export function FormEstornarApuracao({
+  apuracoes,
+}: {
+  readonly apuracoes: readonly { readonly operacaoId: string; readonly rotulo: string }[];
+}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDoEncerramento, FormData>(
+    estornarApuracaoAction,
+    {}
+  );
+  return (
+    <details className={CLASSE_PAINEL_FORMULARIO} data-forma="estornar-apuracao">
+      <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">
+        Estornar uma apuração do resultado já gravada
+      </summary>
+      <form action={action} className="mt-3 space-y-3" data-acao="estornar-apuracao">
+        <ChaveDeComando />
+        <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
+          <strong className="text-[color:var(--color-ink)]">O que o estorno faz.</strong> Grava
+          lançamentos que invertem a apuração; o <strong>original permanece no razão</strong>. As
+          contas de variação patrimonial voltam a ter saldo, e o resultado pode ser apurado de novo.
+        </div>
+        <label className="block text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Apuração a estornar</span>
+          <select className={CAMPO} defaultValue="" disabled={apuracoes.length === 0} name="operacaoId" required>
+            <option disabled value="">
+              {apuracoes.length === 0 ? "Nenhuma apuração vigente para estornar" : "Escolha a apuração"}
+            </option>
+            {apuracoes.map((a) => (
+              <option key={a.operacaoId} value={a.operacaoId}>
+                {a.rotulo}
+              </option>
+            ))}
+          </select>
+        </label>
+        {apuracoes.length === 0 ? (
+          <p className="text-xs text-[color:var(--color-ink-3)]" data-sem-apuracao-vigente>
+            Toda apuração já gravada foi estornada. O resultado pode ser apurado de novo no formulário
+            acima.
+          </p>
+        ) : null}
+        <label className="block text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Motivo do estorno</span>
+          <textarea className={AREA} minLength={10} name="motivo" required />
+        </label>
+        {estado.erro !== undefined ? (
+          <p
+            className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
+            data-resultado-da-acao="estornar-apuracao"
+            role="alert"
+          >
+            {estado.erro}
+          </p>
+        ) : null}
+        {estado.sucesso !== undefined ? (
+          <p
+            className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
+            data-resultado-da-acao="estornar-apuracao"
+          >
+            {estado.sucesso}
+          </p>
+        ) : null}
+        <button
+          className="inline-flex h-10 items-center rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-4 text-sm font-semibold text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] disabled:opacity-40"
+          disabled={pendente || apuracoes.length === 0}
+          type="submit"
+        >
+          {pendente ? "Estornando…" : "Confirmar o estorno"}
         </button>
       </form>
     </details>

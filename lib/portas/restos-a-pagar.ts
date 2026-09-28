@@ -21,7 +21,12 @@ import {
 } from "../../modules/m08-restos-a-pagar/servico-roteiro";
 import { comEscritaAutenticada } from "./sessao";
 import { encerrarExercicioComRestos } from "../../modules/m08-restos-a-pagar/encerramento";
-import { apurarResultadoDoExercicio } from "../../modules/m08-restos-a-pagar/apuracao";
+import {
+  apurarResultadoDoExercicio,
+  estornarApuracao,
+  ORIGEM_APURACAO,
+} from "../../modules/m08-restos-a-pagar/apuracao";
+import { anoCivil } from "../../packages/datas/index";
 
 export { RoteiroDeRestosAusenteError };
 
@@ -730,4 +735,74 @@ export async function apurarResultadoDoExercicioPorAno(input: {
     `${r.resultadoApurado.abs().toFixed(2)}, com ${String(r.contasZeradas)} conta(s) de variação ` +
     `patrimonial zerada(s) e o saldo transferido ao patrimônio líquido.`
   );
+}
+
+/**
+ * AS APURAÇÕES JÁ FEITAS — o que o formulário de estorno precisa para existir (V21).
+ *
+ * ⚠️ O "id da operação" que `estornarApuracao` pede é o `origemId` dos lançamentos da apuração —
+ * um identificador que até aqui só existia dentro da transação de quem apurou. Sem esta leitura o
+ * estorno estava censado e INALCANÇÁVEL (pendência `ESTORNO-DA-APURACAO-SEM-BORDA`). Mesmo desenho
+ * de `lerEncerramentosDeControles` (V20): o fato é o lançamento; "estornada" é existir estorno.
+ */
+export interface ApuracaoFeitaParaTela {
+  readonly operacaoId: string;
+  /** O ano civil da data do lançamento (31/12 do exercício apurado). */
+  readonly ano: number;
+  readonly data: Date;
+  readonly historico: string;
+  readonly criadoPor: string;
+  readonly estornada: boolean;
+}
+
+export async function lerApuracoesFeitas(): Promise<readonly ApuracaoFeitaParaTela[]> {
+  const lancamentos = await cliente().lancamentoContabil.findMany({
+    where: { origemTipo: ORIGEM_APURACAO, estornoDeId: null },
+    orderBy: { dataTransacao: "desc" },
+    select: {
+      origemId: true,
+      dataTransacao: true,
+      historico: true,
+      criadoPor: true,
+      estornos: { select: { id: true } },
+    },
+  });
+  // Uma apuração pode ter mais de um lançamento (um por subsistema); a operação é uma só.
+  const porOperacao = new Map<string, ApuracaoFeitaParaTela>();
+  for (const l of lancamentos) {
+    if (l.origemId === null) continue;
+    const ja = porOperacao.get(l.origemId);
+    const estornada = l.estornos.length > 0;
+    if (ja === undefined) {
+      porOperacao.set(l.origemId, {
+        operacaoId: l.origemId,
+        ano: anoCivil(l.dataTransacao),
+        data: l.dataTransacao,
+        historico: l.historico,
+        criadoPor: l.criadoPor,
+        estornada,
+      });
+    } else if (estornada && !ja.estornada) {
+      porOperacao.set(l.origemId, { ...ja, estornada: true });
+    }
+  }
+  return [...porOperacao.values()];
+}
+
+export async function estornarApuracaoDoExercicio(p: {
+  readonly operacaoId: string;
+  readonly motivo: string;
+}): Promise<string> {
+  return comEscritaAutenticada("ESTORNAR_APURACAO", async (criadoPor) => {
+    const r = await estornarApuracao(cliente(), {
+      operacaoId: p.operacaoId,
+      motivo: p.motivo,
+      criadoPor,
+    });
+    return (
+      `Apuração estornada: ${String(r.lancamentos.length)} lançamento(s) de estorno gravado(s). O ` +
+      `original permanece no razão — as contas de variação patrimonial voltaram a ter saldo, e o ` +
+      `resultado pode ser apurado de novo.`
+    );
+  });
 }

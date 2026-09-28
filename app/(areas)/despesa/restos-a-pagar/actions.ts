@@ -5,6 +5,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import {
   apurarResultadoDoExercicioPorAno,
+  estornarApuracaoDoExercicio,
   encerrarExercicioComRestosAPagar,
 } from "../../../../lib/portas/restos-a-pagar";
 
@@ -52,8 +53,7 @@ export async function encerrarExercicioAction(
  * APURAR O RESULTADO DO EXERCÍCIO — o lançamento que fecha o ano.
  *
  * ⚠️ MESMA CONFIRMAÇÃO DIGITADA DO ENCERRAMENTO, e pela mesma razão: é lançamento no patrimônio
- * líquido. A diferença é que este tem estorno no domínio (`estornarApuracao`) — que ainda não tem
- * borda, e fica dito em vez de suposto.
+ * líquido. A diferença é que este tem estorno — `estornarApuracaoAction`, logo abaixo (V21).
  */
 export async function apurarResultadoAction(
   _prev: EstadoDoEncerramento,
@@ -76,6 +76,25 @@ export async function apurarResultadoAction(
       return { sucesso: msg };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível apurar o resultado do exercício.") };
+    }
+  });
+}
+
+/** ESTORNAR a apuração (V21). O motivo é conferido pelo domínio (mínimo de uma frase). */
+export async function estornarApuracaoAction(
+  _prev: EstadoDoEncerramento,
+  formData: FormData
+): Promise<EstadoDoEncerramento> {
+  return comComandoDoFormulario(formData, async () => {
+    const operacaoId = String(formData.get("operacaoId") ?? "").trim();
+    const motivo = String(formData.get("motivo") ?? "").trim();
+    if (operacaoId === "") return { erro: "Escolha a apuração a estornar." };
+    try {
+      const msg = await estornarApuracaoDoExercicio({ operacaoId, motivo });
+      revalidatePath("/despesa/restos-a-pagar");
+      return { sucesso: msg };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível estornar a apuração.") };
     }
   });
 }

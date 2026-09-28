@@ -5,13 +5,16 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
+  lerApuracoesFeitas,
   listarRestosAPagar,
   PortaSemBancoError,
+  type ApuracaoFeitaParaTela,
   type RestoAPagarNaLista,
 } from "../../../../lib/portas/restos-a-pagar";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FiltroDosRestos } from "./FiltroDosRestos";
-import { FormApuracaoDoResultado, FormEncerramentoDoExercicio } from "./FormEncerramento";
+import { FormApuracaoDoResultado, FormEncerramentoDoExercicio, FormEstornarApuracao } from "./FormEncerramento";
+import { dataBr } from "../../../../lib/recorte";
 import { EXERCICIO_PADRAO } from "../../../../lib/recorte";
 
 /** RESTOS A PAGAR — posição por inscrição. Server Component, força-dinâmica. */
@@ -50,8 +53,12 @@ export default async function RestosAPagarPage({
   );
 
   let linhas: readonly RestoAPagarNaLista[];
+  let apuracoes: readonly ApuracaoFeitaParaTela[];
   try {
-    linhas = await listarRestosAPagar({ exercicioOrigem: exercicio, tipo });
+    [linhas, apuracoes] = await Promise.all([
+      listarRestosAPagar({ exercicioOrigem: exercicio, tipo }),
+      lerApuracoesFeitas(),
+    ]);
   } catch (erro) {
     return (
       <div>
@@ -84,6 +91,7 @@ export default async function RestosAPagarPage({
         */}
         <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
         <FormApuracaoDoResultado exercicio={exercicio ?? EXERCICIO_PADRAO} />
+        <PainelDoEstorno apuracoes={apuracoes} />
       </div>
     );
   }
@@ -100,6 +108,7 @@ export default async function RestosAPagarPage({
       <AvisoDasAcoes />
       <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
       <FormApuracaoDoResultado exercicio={exercicio ?? EXERCICIO_PADRAO} />
+      <PainelDoEstorno apuracoes={apuracoes} />
     </div>
   );
 }
@@ -142,3 +151,22 @@ const COLUNAS: readonly ColunaTabela<RestoAPagarNaLista>[] = [
   { chave: "canceladoLiquido", cabecalho: "Cancelado", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.canceladoLiquido} /> },
   { chave: "saldo", cabecalho: "Saldo", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.saldo} /> },
 ];
+
+/** O painel do estorno existe enquanto houver QUALQUER apuração — ver `FormEstornarApuracao`. */
+function PainelDoEstorno({
+  apuracoes,
+}: {
+  readonly apuracoes: readonly ApuracaoFeitaParaTela[];
+}): React.ReactElement | null {
+  if (apuracoes.length === 0) return null;
+  return (
+    <FormEstornarApuracao
+      apuracoes={apuracoes
+        .filter((a) => !a.estornada)
+        .map((a) => ({
+          operacaoId: a.operacaoId,
+          rotulo: `Resultado de ${String(a.ano)} — apurado em ${dataBr(a.data)} por ${a.criadoPor}`,
+        }))}
+    />
+  );
+}
