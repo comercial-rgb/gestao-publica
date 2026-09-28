@@ -393,6 +393,74 @@ export const LAYOUT_PAGAMENTOS: LayoutArquivo<PagamentoFato> = {
   campos: camposPagamentos,
 };
 
+// ═══ 4.1 UNIDADEORCAMENTARIA (Mensal) — V21 ═══════════════════════════════════════
+// Origem: UnidadeOrcamentaria (código, descrição) + a DeclaracaoDaUnidadeOrcamentaria VIGENTE no fim
+// do mês (natureza jurídica, secretário, ato de nomeação — versionada, M02 V21). Os códigos do leiaute
+// (§5.14 e §5.26) saem por DE-PARA EXAUSTIVO dos enums do domínio: um valor novo no enum não compila
+// até alguém dizer o código dele. Unidade sem declaração até o corte: o arquivo é RECUSADO nomeando-a.
+
+export interface UnidadeOrcamentariaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly nomeSecretario: string;
+  readonly cpfSecretario: string;
+  readonly atoAdministrativo: string;
+  readonly tipoNaturezaJuridica: string;
+}
+
+const camposUnidadeOrcamentaria: readonly CampoLayout<UnidadeOrcamentariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "unidadeOrc.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 12, posFinal: 61, tipo: "ALFA", obrigatorio: true, origem: "unidadeOrc.descricao", extrair: (f) => f.descricao },
+  { nome: "nomeSecretario", posInicial: 62, posFinal: 121, tipo: "ALFA", obrigatorio: true, origem: "declaração vigente.nomeSecretario", extrair: (f) => f.nomeSecretario },
+  { nome: "cpfSecretario", posInicial: 122, posFinal: 132, tipo: "DOCUMENTO", obrigatorio: true, origem: "declaração vigente.cpfSecretario", extrair: (f) => f.cpfSecretario },
+  { nome: "atoAdministrativo", posInicial: 133, posFinal: 133, tipo: "NUMERICO", obrigatorio: true, origem: "§5.14 ← declaração.atoDeNomeacao", extrair: (f) => f.atoAdministrativo },
+  { nome: "tipoNaturezaJuridica", posInicial: 134, posFinal: 134, tipo: "NUMERICO", obrigatorio: true, origem: "§5.26 ← declaração.naturezaJuridica", extrair: (f) => f.tipoNaturezaJuridica },
+  { nome: "reservado", posInicial: 135, posFinal: 140, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+
+export const LAYOUT_UNIDADE_ORCAMENTARIA: LayoutArquivo<UnidadeOrcamentariaFato> = {
+  entidade: "UnidadeOrcamentaria",
+  periodicidade: "MENSAL",
+  versao: VERSAO,
+  campos: camposUnidadeOrcamentaria,
+};
+
+/** §5.14 TipoAtoJuridico — de-para EXAUSTIVO do enum do domínio. */
+export const DEPARA_ATO_JURIDICO_SAGRES: Readonly<Record<"LEI" | "DECRETO" | "PORTARIA" | "OUTROS", string>> = {
+  LEI: "1",
+  DECRETO: "2",
+  PORTARIA: "3",
+  OUTROS: "4",
+};
+
+/** §5.26 TipoNaturezaJuridica — de-para EXAUSTIVO do enum do domínio. */
+export const DEPARA_NATUREZA_JURIDICA_SAGRES: Readonly<
+  Record<
+    | "CAMARA_MUNICIPAL"
+    | "PREFEITURA_OU_SECRETARIA"
+    | "AUTARQUIA"
+    | "FUNDACAO"
+    | "SOCIEDADE_DE_ECONOMIA_MISTA"
+    | "FUNDO"
+    | "EMPRESA_PUBLICA"
+    | "AUTARQUIA_PREVIDENCIARIA"
+    | "FUNDO_PREVIDENCIARIO",
+    string
+  >
+> = {
+  CAMARA_MUNICIPAL: "1",
+  PREFEITURA_OU_SECRETARIA: "2",
+  AUTARQUIA: "3",
+  FUNDACAO: "4",
+  SOCIEDADE_DE_ECONOMIA_MISTA: "5",
+  FUNDO: "6",
+  EMPRESA_PUBLICA: "7",
+  AUTARQUIA_PREVIDENCIARIA: "8",
+  FUNDO_PREVIDENCIARIO: "9",
+};
+
 // ═══ 4.13 ESTORNOPAGAMENTO (Diário) — V21 ═════════════════════════════════════════
 // Origem: o Pagamento de ANULAÇÃO (inteira: `estornoDeId`; parcial: `anulacaoParcialDeId`) + o
 // pagamento anulado (a parcela) + a cadeia até a ficha. `motivo` ← Pagamento.motivo (V21), gravado
@@ -715,6 +783,7 @@ export const LAYOUT_DESPESA_EXTRA: LayoutArquivo<DespesaExtraFato> = {
 
 /** Todos os layouts desta versão, para a auto-validação em lote e a matriz. */
 export const LAYOUTS_2026V11 = [
+  LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
   LAYOUT_EMPENHOS,
   LAYOUT_LIQUIDACAO,

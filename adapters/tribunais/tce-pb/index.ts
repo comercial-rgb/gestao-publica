@@ -16,6 +16,7 @@ import {
   gerarPagamentos,
   gerarEstornoPagamento,
   gerarConciliacaoBancariaOuRecusa,
+  gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -158,7 +159,12 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
       ]);
       // V21 — a conciliação (§4.27) entra quando a conta fecha; a recusa é da prévia, não do pacote.
       const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora, cnpjGerenciadora, competencia: mesRef });
-      const arquivos = "arquivo" in conciliacao ? [...gerados, conciliacao.arquivo] : gerados;
+      const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora, competencia: mesRef });
+      const arquivos = [
+        ...gerados,
+        ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []),
+        ...("arquivo" in unidades ? [unidades.arquivo] : []),
+      ];
 
       const mm = String(dia.getUTCMonth() + 1).padStart(2, "0");
       const dd = String(dia.getUTCDate()).padStart(2, "0");

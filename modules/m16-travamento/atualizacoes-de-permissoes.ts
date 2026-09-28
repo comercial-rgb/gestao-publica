@@ -718,6 +718,29 @@ export function derivarAlteracaoDoPlanejamento(
 }
 
 /**
+ * V21 — os DADOS DA UNIDADE para a prestação de contas (SAGRES §4.1). Só a quem administra
+ * permissões no global, o mesmo caminho das ações novas da V19, V20 e da realocação.
+ */
+export function derivarDadosDaUnidade(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    const jaTem = perfil.permissoes.some(
+      (p) => p.unidadeOrcId === null && p.acao === "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA"
+    );
+    if (jaTem) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA", unidadeOrcId: null });
+  }
+  return saida;
+}
+
+/**
  * V21 — a REALOCAÇÃO de dotação por lei específica (CF art. 167, VI): registrar e anular.
  *
  * ⚠️ NÃO DERIVA DE EXECUTAR_CREDITO. Quem abre crédito adicional não passa, por isso, a poder mover
@@ -1640,6 +1663,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "derivam de EXECUTAR_CREDITO — quem abre credito nao passa, por isso, a mover dotacao entre " +
       "orgaos. Vai so a quem administra permissoes no global, que as distribui nomeando a pessoa.",
     derivar: derivarRealocacaoDeDotacao,
+  },
+  {
+    versao: 38,
+    nome: "dados-da-unidade-orcamentaria",
+    descricao:
+      "A natureza juridica da unidade orcamentaria, o secretario responsavel (nome e CPF) e o ato que " +
+      "o nomeou passaram a ser declarados pela tela (V21), numa declaracao VERSIONADA — o arquivo de um " +
+      "mes passado sai com quem estava no cargo naquele mes. E o que o Tribunal de Contas pede da " +
+      "unidade no SAGRES e o modelo nao tinha. Vem com a acao DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA, so " +
+      "para quem administra permissoes no global, que a distribui nomeando a pessoa.",
+    derivar: derivarDadosDaUnidade,
   },
 ];
 

@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../../../prisma/generated/client/client.js
 import { Decimal, toMoney } from "../../../../packages/contracts/index.js";
 import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
+import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
 import {
   conciliacaoBancaria,
   ConciliacaoNaoFechaError,
@@ -18,6 +19,9 @@ import {
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
   LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_UNIDADE_ORCAMENTARIA,
+  DEPARA_ATO_JURIDICO_SAGRES,
+  DEPARA_NATUREZA_JURIDICA_SAGRES,
   LAYOUT_CONCILIACAO_BANCARIA,
   tipoConciliacaoDe,
   LAYOUT_RECEITA_ORCAMENTARIA,
@@ -34,6 +38,7 @@ import {
   type MovimentacaoFato,
   type PagamentoFato,
   type EstornoPagamentoFato,
+  type UnidadeOrcamentariaFato,
   type ConciliacaoBancariaFato,
   type ReceitaOrcamentariaFato,
   type RetencaoFato,
@@ -459,6 +464,86 @@ export async function gerarPagamentos(
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosPagamentos(prisma, params);
   return empacotar(LAYOUT_PAGAMENTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Pagamentos", competencia: params.dia }), fatos);
+}
+
+// ── UNIDADEORCAMENTARIA (Mensal, V21) — a unidade + a declaração vigente no fim do mês. ─────────
+/** Recusa conhecida do §4.1: vira violação da prévia, e o arquivo fica fora do pacote. */
+export class UnidadeSemDadosParaPrestacaoError extends Error {}
+
+export async function lerFatosUnidadeOrcamentaria(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<UnidadeOrcamentariaFato[]> {
+  const fimDoMes = new Date(Date.UTC(params.competencia.getUTCFullYear(), params.competencia.getUTCMonth() + 1, 1, 0, 0, 0));
+  const corte = new Date(fimDoMes.getTime() - 1);
+  const unidades = await prisma.unidadeOrcamentaria.findMany({
+    orderBy: { codigo: "asc" },
+    select: {
+      codigo: true,
+      descricao: true,
+      declaracoes: {
+        select: { naturezaJuridica: true, nomeSecretario: true, cpfSecretario: true, atoDeNomeacao: true, vigenteDesde: true, criadoEm: true },
+      },
+    },
+  });
+  const semDeclaracao: string[] = [];
+  const descricaoLonga: string[] = [];
+  const fatos: UnidadeOrcamentariaFato[] = [];
+  for (const u of unidades) {
+    const v = vigenteNoCorte(u.declaracoes, corte);
+    if (v === null) {
+      semDeclaracao.push(u.codigo + " " + u.descricao);
+      continue;
+    }
+    if (u.descricao.trim().length > 50) {
+      descricaoLonga.push(u.codigo + " (" + String(u.descricao.trim().length) + " caracteres)");
+      continue;
+    }
+    fatos.push({
+      codUnidadeGestora: params.codUnidadeGestora,
+      codigo: u.codigo,
+      descricao: u.descricao,
+      nomeSecretario: v.nomeSecretario,
+      cpfSecretario: v.cpfSecretario,
+      atoAdministrativo: DEPARA_ATO_JURIDICO_SAGRES[v.atoDeNomeacao],
+      tipoNaturezaJuridica: DEPARA_NATUREZA_JURIDICA_SAGRES[v.naturezaJuridica],
+    });
+  }
+  if (semDeclaracao.length > 0 || descricaoLonga.length > 0) {
+    throw new UnidadeSemDadosParaPrestacaoError(
+      (semDeclaracao.length > 0
+        ? "Unidade(s) sem natureza jurídica e secretário declarados até o fim do mês: " +
+          semDeclaracao.join("; ") +
+          ". Declare em Planejamento › Unidades orçamentárias. "
+        : "") +
+        (descricaoLonga.length > 0
+          ? "Unidade(s) com descrição acima dos 50 caracteres que o arquivo aceita: " + descricaoLonga.join("; ") + "."
+          : "")
+    );
+  }
+  return fatos;
+}
+
+export async function gerarUnidadeOrcamentariaOuRecusa(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<{ readonly arquivo: ArquivoGerado; readonly fatos: UnidadeOrcamentariaFato[] } | { readonly recusa: string }> {
+  try {
+    const fatos = await lerFatosUnidadeOrcamentaria(prisma, params);
+    const arquivo = empacotar(LAYOUT_UNIDADE_ORCAMENTARIA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "UnidadeOrcamentaria", competencia: params.competencia }), fatos);
+    return { arquivo, fatos };
+  } catch (e) {
+    if (e instanceof UnidadeSemDadosParaPrestacaoError) return { recusa: e.message.trim() };
+    throw e;
+  }
+}
+
+export async function gerarUnidadeOrcamentaria(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosUnidadeOrcamentaria(prisma, params);
+  return empacotar(LAYOUT_UNIDADE_ORCAMENTARIA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "UnidadeOrcamentaria", competencia: params.competencia }), fatos);
 }
 
 // ── ESTORNOPAGAMENTO (Diário, V21) — a linha de anulação + o pagamento anulado + a cadeia. ────

@@ -32,6 +32,7 @@ import {
   gerarPagamentos,
   gerarEstornoPagamento,
   gerarConciliacaoBancariaOuRecusa,
+  gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -180,6 +181,9 @@ async function gerarSagresMensal(prisma: PrismaClient, mes: string): Promise<num
   const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: POC_SAGRES.cnpjGerenciadora, competencia: fimDoMes });
   if ("arquivo" in conciliacao) arquivos.push(conciliacao.arquivo);
   else console.log(`  · ${mes} — ConciliacaoBancaria fora do pacote: ${conciliacao.recusa.slice(0, 160)}`);
+  const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: ug, competencia: fimDoMes });
+  if ("arquivo" in unidades) arquivos.push(unidades.arquivo);
+  else console.log(`  · ${mes} — UnidadeOrcamentaria fora do pacote: ${unidades.recusa.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "mensal", mes), mes, "MENSAL", arquivos);
 }
 

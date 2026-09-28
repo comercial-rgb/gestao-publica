@@ -439,6 +439,8 @@ export const TABELAS = [
   "ItemDeRealocacao",
   "AnulacaoDeRealocacao",
   "AtoDeRealocacao",
+  // M02 V21 — a declaração da unidade para a prestação de contas.
+  "DeclaracaoDaUnidadeOrcamentaria",
   "DecretoCredito",
   "LeiCredito",
   "DisponibilidadeRecursoNovo",

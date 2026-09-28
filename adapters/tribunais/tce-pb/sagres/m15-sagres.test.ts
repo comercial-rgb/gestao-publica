@@ -21,6 +21,9 @@ import {
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
   LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_UNIDADE_ORCAMENTARIA,
+  DEPARA_ATO_JURIDICO_SAGRES,
+  DEPARA_NATUREZA_JURIDICA_SAGRES,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
@@ -30,6 +33,7 @@ import {
   type DespesaExtraFato,
   type DotacaoFato,
   type EstornoPagamentoFato,
+  type UnidadeOrcamentariaFato,
   type EmpenhoFato,
   type LiquidacaoFato,
   type MovimentacaoFato,
@@ -91,8 +95,8 @@ describe("formatadores de campo (unitário)", () => {
 });
 
 describe("registry — auto-validação das posições", () => {
-  it("os 12 layouts (V21: + EstornoPagamento §4.13 e ConciliacaoBancaria §4.27) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
-    expect(LAYOUTS_2026V11).toHaveLength(12);
+  it("os 13 layouts (V21: + EstornoPagamento §4.13, ConciliacaoBancaria §4.27 e UnidadeOrcamentaria §4.1) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
+    expect(LAYOUTS_2026V11).toHaveLength(13);
     for (const l of LAYOUTS_2026V11) expect(() => validarLayout(l as LayoutArquivo<unknown>)).not.toThrow();
   });
 
@@ -228,6 +232,52 @@ describe("golden byte a byte — Liquidacao (§4.10)", () => {
       "000000",
     ].join("");
     expect(serializarRegistro(LAYOUT_LIQUIDACAO, fato)).toBe(esperado);
+  });
+});
+
+// ── GOLDEN: UNIDADEORCAMENTARIA (Mensal, 140) — V21 ────────────────────────────────
+describe("golden byte a byte — UnidadeOrcamentaria (§4.1)", () => {
+  it("monta as oito colunas nas posições do leiaute oficial", () => {
+    const fato: UnidadeOrcamentariaFato = {
+      codUnidadeGestora: "999001",
+      codigo: "02001",
+      descricao: "Secretaria de Educacao",
+      nomeSecretario: "Maria das Dores Silva",
+      cpfSecretario: "52998224725",
+      atoAdministrativo: "3",
+      tipoNaturezaJuridica: "2",
+    };
+    const esperado = [
+      "999001", //                                   codUnidadeGestora    1-6
+      "02001", //                                    codigo               7-11
+      "Secretaria de Educacao".padEnd(50, " "), //   descricao            12-61
+      "Maria das Dores Silva".padEnd(60, " "), //    nomeSecretario       62-121
+      "52998224725", //                              cpfSecretario        122-132
+      "3", //                                        atoAdministrativo    133
+      "2", //                                        tipoNaturezaJuridica 134
+      "000000", //                                   reservado            135-140
+    ].join("");
+    const linha = serializarRegistro(LAYOUT_UNIDADE_ORCAMENTARIA, fato);
+    expect(linha).toBe(esperado);
+    expect(linha).toHaveLength(140);
+  });
+
+  it("os de-para batem com as tabelas §5.14 e §5.26 transcritas à mão do leiaute", () => {
+    // §5.14 TipoAtoJuridico: 1 Lei · 2 Decreto · 3 Portaria · 4 Outros
+    expect(DEPARA_ATO_JURIDICO_SAGRES).toEqual({ LEI: "1", DECRETO: "2", PORTARIA: "3", OUTROS: "4" });
+    // §5.26 TipoNaturezaJuridica: 1 Câmara · 2 Prefeitura/Secretarias · 3 Autarquia · 4 Fundação ·
+    // 5 Soc. Economia Mista · 6 Fundos · 7 Empresas Públicas · 8 Autarquia Previdenciária · 9 Fundo Previdenciário
+    expect(DEPARA_NATUREZA_JURIDICA_SAGRES).toEqual({
+      CAMARA_MUNICIPAL: "1",
+      PREFEITURA_OU_SECRETARIA: "2",
+      AUTARQUIA: "3",
+      FUNDACAO: "4",
+      SOCIEDADE_DE_ECONOMIA_MISTA: "5",
+      FUNDO: "6",
+      EMPRESA_PUBLICA: "7",
+      AUTARQUIA_PREVIDENCIARIA: "8",
+      FUNDO_PREVIDENCIARIO: "9",
+    });
   });
 });
 

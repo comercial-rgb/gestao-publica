@@ -193,6 +193,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações — o rol do ente." },
   // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
   { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "A lei ou o decreto que alterou a peça aprovada, o valor original preservado e o vigente — com a situação em qualquer data." },
+  { href: "/planejamento/unidades-orcamentarias", numero: "Unidades", rotulo: "Unidades orçamentárias", descricao: "A natureza jurídica, o secretário responsável e o ato de nomeação de cada unidade — o que a prestação de contas pede, com histórico." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "A dotação pela chave completa; criar ficha nova (sem crédito — a dotação vem de crédito adicional)." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha pela chave completa: inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF art. 8º e 13)." },

@@ -85,6 +85,8 @@ model UnidadeOrcamentaria {
   cnpjManad String? @db.VarChar(14)
 
   fichas FichaOrcamentaria[]
+  /// back-relation V21 — as declarações versionadas da unidade para a prestação de contas.
+  declaracoes DeclaracaoDaUnidadeOrcamentaria[]
   /// back-relation M02b (PPA) — a unidade EXECUTORA declarada na ação do plano. Campo VIRTUAL:
   /// classificação aprovada, não escopo de autorização (o plano é ato do ente).
   acoesPpa AcaoPpa[]
@@ -415,4 +417,59 @@ model ReceitaPrevista {
 
   @@unique([exercicio, naturezaReceitaId, exercicioFonte, fonteId, tipoReceita], name: "uq_receita_prevista")
   @@index([exercicio])
+}
+
+// ============================================================================
+// V21 — O QUE A PRESTAÇÃO DE CONTAS PEDE DA UNIDADE ORÇAMENTÁRIA (SAGRES §4.1):
+// a natureza jurídica, o secretário responsável e o ato que o nomeou.
+//
+// ⚠️ VERSIONADA, E NÃO COLUNA DA UNIDADE. O secretário muda; o arquivo de um mês passado tem de
+// sair com quem estava no cargo NAQUELE mês. Colunas na unidade exigiriam UPDATE (a unidade é
+// insert-only para o papel de runtime) e apagariam a resposta para "quem era o secretário em
+// março?". Cada declaração é um FATO com a data desde quando vale; a vigente num corte é a de maior
+// `vigenteDesde` até ele (empate: a mais recente gravada).
+//
+// ⚠️ OS ENUMS SÃO DO DOMÍNIO; o código do leiaute (§5.14 e §5.26) sai por de-para exaustivo no
+// adaptador do SAGRES — o mesmo tratamento do tipo de retenção.
+// ============================================================================
+
+/// SAGRES §5.26 TipoNaturezaJuridica.
+enum NaturezaJuridicaDaUnidade {
+  CAMARA_MUNICIPAL
+  PREFEITURA_OU_SECRETARIA
+  AUTARQUIA
+  FUNDACAO
+  SOCIEDADE_DE_ECONOMIA_MISTA
+  FUNDO
+  EMPRESA_PUBLICA
+  AUTARQUIA_PREVIDENCIARIA
+  FUNDO_PREVIDENCIARIO
+}
+
+/// SAGRES §5.14 TipoAtoJuridico — o ato que nomeou o secretário.
+enum AtoDeNomeacao {
+  LEI
+  DECRETO
+  PORTARIA
+  OUTROS
+}
+
+model DeclaracaoDaUnidadeOrcamentaria {
+  id            String              @id @default(cuid())
+  unidadeOrcId  String
+  unidadeOrc    UnidadeOrcamentaria @relation(fields: [unidadeOrcId], references: [id])
+
+  naturezaJuridica NaturezaJuridicaDaUnidade
+  /// Até 60 caracteres (o campo do leiaute).
+  nomeSecretario   String @db.VarChar(60)
+  /// 11 dígitos, sem máscara, dígito verificador conferido na entrada.
+  cpfSecretario    String @db.VarChar(11)
+  atoDeNomeacao    AtoDeNomeacao
+  /// A data civil desde quando esta declaração vale (a posse, em geral).
+  vigenteDesde     DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([unidadeOrcId, vigenteDesde])
 }

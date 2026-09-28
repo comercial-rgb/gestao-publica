@@ -340,6 +340,8 @@ describe("instalação limpa e atualização — no banco", () => {
       // ⚠️ V21 — PREVIA 0 NA INSTALACAO LIMPA prova que as duas acoes da realocacao chegaram a
       // ACOES_DO_ENTE pelo bootstrap. Fora de TODAS_AS_ACOES, esta previa viria 2.
       { versao: 37, previa: 0, aplicada: false },
+      // V21 — prévia 0 na instalação limpa: DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA chegou pelo bootstrap.
+      { versao: 38, previa: 0, aplicada: false },
     ]);
   });
 

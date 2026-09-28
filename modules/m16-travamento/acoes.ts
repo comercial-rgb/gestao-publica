@@ -66,6 +66,10 @@ export type AcaoDoSistema =
   // (não traz recurso novo nem consome o limite da LOA), e quem pode abrir crédito não passa, por
   // isso, a poder mover dotação entre órgãos. Registrar e anular separadas, como no crédito.
   | "REGISTRAR_REALOCACAO_DE_DOTACAO"
+  // ── M02 V21 — os dados da unidade que a prestação de contas pede (SAGRES §4.1) ──
+  // ⚠️ Ação PRÓPRIA: dizer quem é o secretário responsável e a natureza jurídica da unidade é
+  // cadastro do ente, e não um ato de execução de quem empenha nela.
+  | "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA"
   | "ANULAR_REALOCACAO_DE_DOTACAO"
   | "ENCERRAR_DECRETO"
   | "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO"
@@ -795,6 +799,7 @@ export type NomeDeServico =
   | "executarCredito"
   | "anularCredito"
   | "registrarRealocacao"
+  | "declararDadosDaUnidade"
   | "anularRealocacao"
   | "encerrarDecreto"
   | "declararDisponibilidade"
@@ -1311,6 +1316,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   executarCredito: "EXECUTAR_CREDITO",
   anularCredito: "ANULAR_CREDITO",
   registrarRealocacao: "REGISTRAR_REALOCACAO_DE_DOTACAO",
+  declararDadosDaUnidade: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA",
   anularRealocacao: "ANULAR_REALOCACAO_DE_DOTACAO",
   encerrarDecreto: "ENCERRAR_DECRETO",
   declararDisponibilidade: "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO",
@@ -2785,6 +2791,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   estornarMovimentoDotacao: "composável interno",
   // M03 V21 — a LEITURA dos atos de realocação do exercício, com as pernas. Não muta.
   listarRealocacoes: "leitura",
+  // M02 V21 — as unidades com a declaração vigente, para a tela. Não muta.
+  unidadesComDeclaracao: "leitura",
+  gerarUnidadeOrcamentaria: "leitura (gera o TXT SAGRES UnidadeOrcamentaria §4.1 — não muta)",
+  gerarUnidadeOrcamentariaOuRecusa: "leitura (o arquivo §4.1 ou a recusa nomeada — não muta)",
+  lerFatosUnidadeOrcamentaria: "leitura (a unidade com a declaração vigente no fim do mês → DTO §4.1 — não muta)",
   amortizarNoPagamento: "composável interno (perna do pagar)",
   estornarAmortizacaoDoPagamento: "composável interno",
   aoAnularLiquidacaoTotal: "composável interno (cascata do M05)",

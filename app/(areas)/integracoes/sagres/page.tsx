@@ -177,11 +177,12 @@ function AvisoSemMovimento({
 }
 
 /** O tipo da violação em português — o enum não vai para a tela. */
-const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA", string> = {
+const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES", string> = {
   OBRIGATORIEDADE: "Campo obrigatório vazio",
   DOMINIO: "Código fora da tabela",
   INTEGRIDADE_REFERENCIAL: "Referência inexistente",
   CONCILIACAO_NAO_FECHA: "Conciliação não fecha",
+  DADOS_DA_UNIDADE_AUSENTES: "Dados da unidade ausentes",
 };
 
 export default async function SagresPage({
