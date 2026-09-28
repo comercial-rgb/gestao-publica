@@ -460,6 +460,7 @@ const ROTAS_PROTEGIDAS = [
   "/contabilidade/plano-de-contas",
   "/contabilidade/lancamentos",
   "/contabilidade/custos",
+  "/contabilidade/virada-dos-controles",
   "/relatorios",
   "/relatorios/gerenciais",
   "/relatorios/livros/diario",
@@ -689,6 +690,21 @@ const TELAS: readonly TelaDoRoteiro[] = [
       { rotulo: "linhas de empenho", tipo: "seletor", alvo: "table tbody tr", minimo: 1 },
       // Um link por linha ("Emitir NE") — é o clique do passo da Nota de Empenho.
       { rotulo: "link Nota de Empenho", tipo: "seletor", alvo: 'a[href*="/despesa/empenhos/ne?"]', minimo: 1 },
+    ],
+  },
+  {
+    /**
+     * ⚠️ A VIRADA DAS CONTAS DE CONTROLE (V20). As contas aparecem AINDA SEM DESTINO, e isso e o
+     * estado correto do banco de demonstracao: nenhum seed classifica conta na virada, porque a
+     * decisao ENCERRA/TRANSFERE e do ente. O que se confere aqui e que a tela ALCANCA o razao e
+     * lista as contas com saldo — sem essa lista, o operador teria de achar os codigos entre as
+     * 7.864 contas do plano.
+     */
+    rota: "/contabilidade/virada-dos-controles",
+    sondas: [
+      { rotulo: "contas de controle com saldo", tipo: "seletor", alvo: "tr[data-conta-da-virada]", minimo: 2 },
+      { rotulo: "impedimentos declarados", tipo: "seletor", alvo: "[data-impedimentos]", minimo: 1 },
+      { rotulo: "formulario de classificacao", tipo: "seletor", alvo: 'form[data-acao="classificar-conta-na-virada"]', minimo: 1 },
     ],
   },
   {
