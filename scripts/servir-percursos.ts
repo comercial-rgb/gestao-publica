@@ -33,7 +33,18 @@ process.env["DATABASE_URL"] = comoRuntime ? urlDoRuntime(u.toString(), papelDoAm
 const porta = process.env["PERCURSO_PORTA"] ?? "3010";
 console.log(`[servir-percursos] banco ${u.pathname.slice(1)} · conexão ${comoRuntime ? `papel de runtime (${papelDoAmbiente().usuario})` : "dono"} · porta ${porta} · diretório ${process.cwd()}`);
 
-const child = spawn("npx", ["next", "start", "-p", porta], {
+/**
+ * ⚠️ `PERCURSO_MODO=dev` SERVE COM `next dev` — e a razão é de MÁQUINA, não de gosto.
+ *
+ * `next start` exige artefato de build, e `next build` (heap de 5,3 GB) mais o navegador é o par
+ * que travou esta máquina de 8 GB duas vezes. Pior: um `.next` ANTIGO faz o `next start` servir
+ * código velho, e o percurso reprovaria uma tela que existe — o vermelho seria do artefato.
+ * `next dev` compila sob demanda, cabe junto com o navegador, e serve a ÁRVORE.
+ *
+ * Não é o modo do candidato de homologação: esse continua sendo `next start` sobre build próprio.
+ */
+const modo = process.env["PERCURSO_MODO"] === "dev" ? ["next", "dev", "-p", porta] : ["next", "start", "-p", porta];
+const child = spawn("npx", modo, {
   stdio: "inherit",
   env: process.env,
 });
