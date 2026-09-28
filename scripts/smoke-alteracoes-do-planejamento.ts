@@ -293,6 +293,26 @@ async function main(): Promise<void> {
         t !== null && t.ajuste === "150.000,00" && t.vigente === "1.550.000,00",
         JSON.stringify(t)
       );
+      // ⚠️ O HISTÓRICO DA LINHA: é o que responde "consultar as alterações de uma receita
+      // individualmente", e é o único lugar onde a justificativa daquele ajuste aparece.
+      const detalhe = await page.evaluate(() => {
+        const d = document.querySelector("[data-detalhe]");
+        if (d === null) return null;
+        (d as HTMLDetailsElement).open = true;
+        return (d.textContent ?? "").replace(/\s+/g, " ").trim();
+      });
+      nota(`histórico da linha: ${String(detalhe)}`);
+      conferir(
+        "4.5 abrindo a linha, o ajuste aparece um a um COM a justificativa que foi digitada",
+        detalhe !== null && /reestimativa da arrecadacao/i.test(detalhe),
+        String(detalhe)
+      );
+      conferir(
+        "4.6 a linha sem justificativa própria DIZ que vale o fundamento do ato",
+        /vale o fundamento do ato/i.test(await texto(page)),
+        "a segunda linha não explicou a ausência de justificativa própria"
+      );
+
       conferir(
         "4.4 a tela DIZ que não há total em dinheiro por ato, e por quê",
         /Não há total em dinheiro por ato/i.test(await texto(page)),

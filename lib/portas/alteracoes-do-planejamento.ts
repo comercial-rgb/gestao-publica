@@ -41,6 +41,16 @@ export interface AtoParaTela {
   readonly criadoPor: string;
 }
 
+/** Um ajuste da linha, com o ato que o trouxe — o histórico DA LINHA, não o da peça. */
+export interface AjusteParaTela {
+  readonly ato: string;
+  readonly data: Date;
+  readonly valorAjuste: string;
+  readonly justificativa: string | null;
+  readonly fundamento: string;
+  readonly criadoPor: string;
+}
+
 export interface LinhaParaTela {
   readonly chave: string;
   readonly rotulo: string;
@@ -49,6 +59,13 @@ export interface LinhaParaTela {
   readonly ajuste: string;
   readonly atual: string;
   readonly atos: number;
+  /**
+   * ⚠️ OS AJUSTES DA LINHA, UM A UM. Sem eles a tela mostrava só a SOMA, e duas coisas ficavam
+   * invisíveis: "consultar as alterações de uma receita individualmente" — que é requisito — e a
+   * JUSTIFICATIVA de cada linha, que o formulário captura e nenhuma tela exibia. Campo gravado
+   * que ninguém lê é campo que o operador aprende a deixar em branco.
+   */
+  readonly ajustes: readonly AjusteParaTela[];
 }
 
 export interface TotalParaTela {
@@ -128,6 +145,14 @@ export async function lerComparativoDaPeca(p: {
       ajuste: l.ajuste.toFixed(2),
       atual: l.atual.toFixed(2),
       atos: l.ajustes.length,
+      ajustes: l.ajustes.map((x) => ({
+        ato: `${x.numeroDoAto}/${String(x.anoDoAto)}`,
+        data: x.data,
+        valorAjuste: x.valorAjuste.toFixed(2),
+        justificativa: x.justificativa,
+        fundamento: x.fundamento,
+        criadoPor: x.criadoPor,
+      })),
     })),
     totais: c.totais.map((t) => ({
       grandeza: t.grandeza,

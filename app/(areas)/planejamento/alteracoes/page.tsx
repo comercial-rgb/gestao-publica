@@ -223,7 +223,34 @@ export default async function Page({
                       <td className={`${CELULA} text-right font-semibold`} data-vigente={l.chave}>
                         <ValorMonetario valor={l.atual} />
                       </td>
-                      <td className={`${CELULA} text-right tabular-nums`}>{l.atos}</td>
+                      <td className={`${CELULA} text-right tabular-nums`}>
+                        {/*
+                          ⚠️ O HISTÓRICO DA LINHA, e não só a contagem: é ele que responde
+                          "consultar as alterações de uma receita individualmente", e é o único
+                          lugar em que a JUSTIFICATIVA daquele ajuste aparece. Em divulgação
+                          progressiva para a tabela não virar um paredão.
+                        */}
+                        <details data-detalhe={l.chave}>
+                          <summary className="cursor-pointer tabular-nums">{l.atos}</summary>
+                          <ul className="mt-2 space-y-1 text-left text-xs text-[color:var(--color-ink-2)]">
+                            {l.ajustes.map((a, i) => (
+                              <li data-ajuste-item={`${l.chave}-${String(i)}`} key={`${a.ato}-${String(i)}`}>
+                                <span className="tabular-nums">{a.ato}</span> ·{" "}
+                                <span className="tabular-nums">{diaCivilBr(a.data)}</span> ·{" "}
+                                <ValorMonetario valor={a.valorAjuste} />
+                                {a.justificativa === null ? (
+                                  <span className="text-[color:var(--color-ink-3)]">
+                                    {" "}
+                                    · sem justificativa própria: vale o fundamento do ato
+                                  </span>
+                                ) : (
+                                  <span> · {a.justificativa}</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
