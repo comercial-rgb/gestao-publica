@@ -306,7 +306,7 @@ async function guardsDoContrato(
     if (processoDaReserva !== null) {
       throw new Error(
         `RESERVA VINCULADA A LICITAÇÃO: a reserva ${p.reservaId} está vinculada ao ` +
-          `processo ${processoDaReserva}, e a TR 4.42 só a libera "quando houver ` +
+          `processo ${processoDaReserva}, e a regra só a libera "quando houver ` +
           `vinculação com uma licitação e esta informada na emissão da nota de ` +
           `empenho". O empenho ${p.numero} não informou contrato nenhum — informe ` +
           `o contrato daquele processo.`
@@ -634,7 +634,7 @@ async function exigirVinculoDeDivida(tx: Tx, p: EmpenharParams): Promise<void> {
 
   if (ehAmortizacao && p.dividaId === undefined) {
     throw new Error(
-      `EMPENHO DE AMORTIZAÇÃO SEM DÍVIDA (TR 4.48): o empenho ${p.numero} é do grupo ` +
+      `EMPENHO DE AMORTIZAÇÃO SEM DÍVIDA: o empenho ${p.numero} é do grupo ` +
         `6 (${descricaoDoGrupo(grupo)}), natureza ` +
         `${ficha.naturezaDespesa.codigoCompleto} — ele PAGA uma dívida, e não diz ` +
         `qual. Sem o vínculo, o demonstrativo da dívida consolidada nunca fecha com a ` +
@@ -689,7 +689,7 @@ async function exigirClasseDeBens(tx: Tx, p: EmpenharParams): Promise<void> {
 
   if (p.classeDeBensId === undefined) {
     throw new Error(
-      `EMPENHO DE CAPITAL SEM CLASSE DE BENS (TR 4.49/5.15): o empenho ${p.numero} ` +
+      `EMPENHO DE CAPITAL SEM CLASSE DE BENS: o empenho ${p.numero} ` +
         `é do grupo ${grupo} (${descricaoDoGrupo(grupo)}), natureza ` +
         `${ficha.naturezaDespesa.codigoCompleto}, e executa um contrato — mas não ` +
         `diz QUE CLASSE DE BEM vai adquirir. Sem isso, o bem entra no patrimônio ` +
@@ -749,7 +749,7 @@ async function exigirVinculoDeObra(tx: Tx, p: EmpenharParams): Promise<void> {
 
   if (ELEMENTOS_DE_OBRA[elemento] === true && p.obraId === undefined) {
     throw new Error(
-      `EMPENHO DE OBRA SEM OBRA (TR 4.50): o empenho ${p.numero} é do elemento ` +
+      `EMPENHO DE OBRA SEM OBRA: o empenho ${p.numero} é do elemento ` +
         `${elemento} ("Obras e Instalações"), natureza ` +
         `${ficha.naturezaDespesa.codigoCompleto} — ele CONSTRÓI alguma coisa, e não diz ` +
         `o quê. Sem o vínculo, a obra não aparece no registro L800 do MANAD (obras e ` +

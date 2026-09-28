@@ -437,7 +437,7 @@ export async function registrarEntradaAlmoxarifadoNaTx(
   });
   if (liq === null) {
     throw new Error(
-      `Liquidação ${d.liquidacaoId} não existe — e a TR 5.85 exige que a entrada no ` +
+      `Liquidação ${d.liquidacaoId} não existe — e a regra exige que a entrada no ` +
         `almoxarifado nasça do material RECEBIDO E ATESTADO.`
     );
   }

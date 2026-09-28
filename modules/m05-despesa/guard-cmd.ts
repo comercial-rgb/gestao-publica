@@ -117,7 +117,7 @@ export async function exigirCotaCmd(
   // ausência. Deixar passar seria abrir um buraco exatamente onde o contingenciamento aperta.
   if (cota === null) {
     throw new Error(
-      `LIMITAÇÃO DE EMPENHO (TR 4.43): a fonte ${ficha.fonteId} NÃO tem cota de CMD para o mês ` +
+      `LIMITAÇÃO DE EMPENHO: a fonte ${ficha.fonteId} NÃO tem cota de CMD para o mês ` +
         `${mes}/${ficha.exercicio}, e a limitação está ATIVA. Com o regime ligado, empenhar numa ` +
         `fonte sem cota é proibido — programe a cota (valor 0 se for para bloquear de propósito) ` +
         `ou desative a limitação. Nada foi gravado.`
@@ -160,15 +160,15 @@ export async function exigirCotaCmd(
   const disponivel = toMoney(teto.minus(consumido));
   if (p.valor.greaterThan(disponivel)) {
     throw new Error(
-      `LIMITAÇÃO DE EMPENHO ESTOURADA (TR 4.43) na fonte ${ficha.fonteId}, mês ` +
+      `LIMITAÇÃO DE EMPENHO ESTOURADA na fonte ${ficha.fonteId}, mês ` +
         `${mes}/${ficha.exercicio}:\n` +
         `  cota programada .......... ${toMoney(cota.valor.toFixed(2)).toFixed(2)}\n` +
-        `  liberado (TR 4.44) ....... ${liberado.toFixed(2)}\n` +
+        `  liberado ....... ${liberado.toFixed(2)}\n` +
         `  teto do mês .............. ${teto.toFixed(2)}\n` +
         `  já empenhado (líquido) ... ${consumido.toFixed(2)}\n` +
         `  disponível ............... ${disponivel.toFixed(2)}\n` +
         `  pedido ................... ${p.valor.toFixed(2)}\n` +
-        `A cota do CMD NÃO ROLA para o mês seguinte — realocar exige LIBERAÇÃO (TR 4.44) ou uma ` +
+        `A cota do CMD NÃO ROLA para o mês seguinte — realocar exige LIBERAÇÃO ou uma ` +
         `VERSÃO NOVA do cronograma. Nada foi gravado.`
     );
   }

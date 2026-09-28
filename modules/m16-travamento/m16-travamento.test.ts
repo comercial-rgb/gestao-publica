@@ -151,7 +151,7 @@ describe("M16 — travamento de competência (TR 4.52/4.53/4.54)", () => {
 
     // ⚠️ O FATO DE 15/01 CAI NA JANELA. A mensagem nomeia a janela, o escopo e quem travou.
     await expect(arrecadar("2026-01-15T12:00:00Z", ALICE, "G-1")).rejects.toThrow(
-      /COMPETÊNCIA TRAVADA \(TR 4\.52\/4\.53\/4\.54\)/
+      /COMPETÊNCIA TRAVADA/
     );
     await expect(arrecadar("2026-01-15T12:00:00Z", ALICE, "G-1")).rejects.toThrow(
       /janela TRAVADA de 01\/01\/2026 a 31\/01\/2026/

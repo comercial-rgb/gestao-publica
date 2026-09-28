@@ -1334,7 +1334,7 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
     versao: 26,
     nome: "agenda-do-guiche",
     descricao:
-      "O atendimento presencial ganhou agenda (TR 5.39.92). Quem ja CONFIGURA a carta de servicos " +
+      "O atendimento presencial ganhou agenda. Quem ja CONFIGURA a carta de servicos " +
       "passa a poder ORGANIZAR o guiche (unidade, guiche, oferta de horarios, feriado) no mesmo " +
       "escopo; quem ja protocola em nome de quem chega (SOLICITAR_SERVICO) passa a poder MARCAR e " +
       "remarcar. CONFIRMAR e REGISTRAR o atendimento NAO sao derivadas: sao atos de quem esta no " +
@@ -1393,7 +1393,7 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
     versao: 30,
     nome: "parametro-do-adiantamento-salarial",
     descricao:
-      "O adiantamento salarial — o vale do mes — chegou como tipo de folha proprio (V13, TR 5.12.50), e com ele a " +
+      "O adiantamento salarial — o vale do mes — chegou como tipo de folha proprio (V13), e com ele a " +
       "acao CONFIGURAR_PARAMETRO_DO_ADIANTAMENTO_SALARIAL: por competencia, o percentual, a base (a remuneracao do " +
       "mes anterior ou a projetada do proprio mes), as duas rubricas, QUAL ESTADO o vale precisa ter alcancado para " +
       "ser abatido na folha mensal, e o ato do ente que fundamenta tudo isso. " +
@@ -1446,7 +1446,7 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
     versao: 33,
     nome: "rol-de-fontes-da-conta-bancaria",
     descricao:
-      "O ROL DE FONTES de cada conta bancaria ganhou cadastro (TR 5.10.2.6), e com ele a acao " +
+      "O ROL DE FONTES de cada conta bancaria ganhou cadastro, e com ele a acao " +
       "GERIR_ROL_DE_FONTES_DA_CONTA. O vinculo existia desde 2026-09-10 (a ADR da conta " +
       "multifonte) e nunca teve tela: a pendencia ROL-DE-FONTES-UI estava no catalogo. Enquanto " +
       "cada conta tinha uma fonte so, a ausencia nao impedia nada; a guia REPARTIDA entre fontes " +

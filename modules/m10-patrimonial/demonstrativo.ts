@@ -100,7 +100,7 @@ export interface LinhaDoAlmoxarifado {
 }
 
 export interface DemonstrativoPatrimonial {
-  readonly relatorio: "DEMONSTRATIVO PATRIMONIAL POR CLASSE (TR 5.86)";
+  readonly relatorio: "DEMONSTRATIVO PATRIMONIAL POR CLASSE";
   readonly periodo: { readonly inicio: Date; readonly fim: Date };
   readonly classes: readonly LinhaDaClasse[];
   /** TR 5.85 — o almoxarifado, com as mesmas colunas. */
@@ -368,7 +368,7 @@ export async function demonstrativoPatrimonialPorClasse(
   }
 
   return {
-    relatorio: "DEMONSTRATIVO PATRIMONIAL POR CLASSE (TR 5.86)",
+    relatorio: "DEMONSTRATIVO PATRIMONIAL POR CLASSE",
     periodo: { inicio, fim },
     classes: linhas,
     almoxarifado: linhasAlmox,

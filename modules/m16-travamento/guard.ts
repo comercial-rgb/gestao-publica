@@ -114,7 +114,7 @@ export async function exigirCompetenciaDestravada(
       : `do USUÁRIO "${travado.usuarioAlvo}"`;
 
   throw new Error(
-    `COMPETÊNCIA TRAVADA (TR 4.52/4.53/4.54): o lançamento ${l.numeroControle} tem data ` +
+    `COMPETÊNCIA TRAVADA: o lançamento ${l.numeroControle} tem data ` +
       `de fato ${descreverJanela(l.dataTransacao, l.dataTransacao).split(" a ")[0]}, que ` +
       `cai na janela TRAVADA de ${descreverJanela(travado.janelaInicio, travado.janelaFim)}.\n` +
       `  escopo da trava: ${alvo}\n` +

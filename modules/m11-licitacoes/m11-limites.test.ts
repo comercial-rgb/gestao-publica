@@ -377,7 +377,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
   });
 
   // t6
-  it("t6: TR 4.49/5.15 — empenho de capital com contrato exige a classe, e o bem tem de ser ELA", async () => {
+  it("t6: empenho de capital com contrato exige a classe, e o bem tem de ser ELA", async () => {
     const p = await pregao();
     const { contratoId } = await contrato(p, "CT-1/2026", "100000.00");
 
@@ -397,7 +397,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
     }
     const msg = String(erro);
     console.log("\n>>> SEM CLASSE DE BENS (esperado):\n" + msg + "\n");
-    expect(msg).toMatch(/EMPENHO DE CAPITAL SEM CLASSE DE BENS \(TR 4\.49\/5\.15\)/);
+    expect(msg).toMatch(/EMPENHO DE CAPITAL SEM CLASSE DE BENS/);
     expect(msg).toMatch(/grupo 4/);
     expect(await prisma.empenho.count()).toBe(0);
 

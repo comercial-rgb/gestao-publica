@@ -236,7 +236,7 @@ export function validarBalanceamento(
   for (const [fonteId, t] of totais.porFonte) {
     if (!t.suplementado.equals(t.anulado)) {
       throw new Error(
-        `TR 5.111 — crédito por anulação não fecha na fonte ${fonteId}: ` +
+        `CRÉDITO POR ANULAÇÃO NÃO FECHA na fonte ${fonteId}: ` +
           `suplementado ${t.suplementado.toFixed(2)}, anulado ` +
           `${t.anulado.toFixed(2)}. Cada fonte tem de fechar sozinha; anular uma ` +
           `fonte para suplementar outra fura a vinculação do recurso.`

@@ -489,7 +489,7 @@ export async function vincular(
           `FONTES DIFERENTES: a conta ${linha.contaBancaria.codigo} é da fonte ` +
             `${linha.contaBancaria.fonteId}, e ${interno.descricao} é da fonte ` +
             `${interno.fonteId}. Recurso de uma fonte não entra na conta de outra ` +
-            `(TR 5.23).`
+            `(fonte fora do rol da conta).`
         );
       }
     }

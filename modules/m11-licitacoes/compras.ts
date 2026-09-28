@@ -278,7 +278,7 @@ async function exigirElementoRelacionado(
     `ELEMENTO NÃO RELACIONADO: o material ${material?.codigo} ` +
       `(${material?.descricaoSucinta}) está cadastrado para os elementos ` +
       `${relacoes.map((r) => r.naturezaDespesa.codigoCompleto).join(", ")}, e a compra ` +
-      `veio pelo ${natureza?.codigoCompleto}. A TR 5.17.9 manda IMPEDIR — comprar no ` +
+      `veio pelo ${natureza?.codigoCompleto}. A regra manda IMPEDIR — comprar no ` +
       `elemento errado desclassifica a despesa no balanço e na prestação de contas.`
   );
 }

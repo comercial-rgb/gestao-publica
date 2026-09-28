@@ -69,7 +69,7 @@ export async function exigirUsuarioAtivo(
       `USUÁRIO NÃO CADASTRADO: "${identificador}" (${ondeUsado}). Todo fato deste sistema ` +
         `carrega a identidade de quem o criou, e essa identidade tem de EXISTIR — uma ` +
         `string livre no \`criadoPor\` era um nome que ninguém podia cobrar. Cadastre o ` +
-        `usuário (TR 4.55). Nada foi gravado.`
+        `usuário. Nada foi gravado.`
     );
   }
   if (!u.ativo) {
@@ -114,7 +114,7 @@ export async function autorizar(
     throw new Error(
       `ACESSO NEGADO — SEM PERFIL: o usuário "${identificador}" existe e está ativo, mas ` +
         `não tem PERFIL nenhum. Ele não pode NADA — e isso é o padrão: no SIAFIC nega-se ` +
-        `por omissão, nunca se autoriza por esquecimento (TR 4.56). Vincule-o a um perfil. ` +
+        `por omissão, nunca se autoriza por esquecimento. Vincule-o a um perfil. ` +
         `\n  o que faltou: O VÍNCULO — ele não tem crachá nenhum.` +
         `\n  (ação pedida: ${acao}). Nada foi gravado.`
     );
@@ -173,16 +173,16 @@ export async function autorizar(
   const oQueFaltou =
     ondeEleTem.length === 0
       ? `A AÇÃO — nenhum dos perfis dele concede ${acao}, em unidade nenhuma. Não é ` +
-        `escopo: é a ação. Conceda ${acao} ao perfil (TR 4.56).`
+        `escopo: é a ação. Conceda ${acao} ao perfil.`
       : `O ESCOPO — ele TEM a ação ${acao}, mas só em: ${[...new Set(ondeEleTem)].join(", ")}. ` +
-        `Não é a ação: é ONDE. A segregação por unidade gestora (TR 6.5) é o ponto — uma ` +
+        `Não é a ação: é ONDE. A segregação por unidade gestora é o ponto — uma ` +
         `permissão de UMA unidade não vale nas outras, nem no ato do ente.`;
 
   throw new Error(
     `ACESSO NEGADO: o usuário "${identificador}" não tem permissão para ${acao} ${escopo}.\n` +
       `  perfis do usuário: ${perfis}\n` +
       `  o que faltou: ${oQueFaltou}\n` +
-      `  (TR 4.56 · segregação de funções 6.4/6.5). Nada foi gravado.`
+      `  (segregação de funções). Nada foi gravado.`
   );
 }
 

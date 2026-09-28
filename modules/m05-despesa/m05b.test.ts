@@ -288,7 +288,7 @@ describe("M05 bloco 2 — pagamento e TR 5.23", () => {
         R_PAGAMENTO,
         deps
       )
-    ).rejects.toThrow(/FONTE FORA DO ROL \(TR 5\.23\)/);
+    ).rejects.toThrow(/FONTE FORA DO ROL/);
 
     expect(await prisma.pagamento.count()).toBe(0);
   });

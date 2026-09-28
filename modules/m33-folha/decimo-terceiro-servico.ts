@@ -33,7 +33,7 @@ export class RubricaNaoAdmitidaNaBaseError extends Error {
     super(
       `RUBRICA-NAO-ADMITIDA-NA-BASE: a rubrica ${codigo} é de natureza ${natureza} e não pode compor ` +
         `a base do 13º. Compor o 13º com valor informado ou com fórmula exigiria a MÉDIA das ` +
-        `variáveis do ano (TR 5.12.82), que este sistema não calcula — e somar o lançamento de um ` +
+        `variáveis do ano, que este sistema não calcula — e somar o lançamento de um ` +
         `mês só seria pior que recusar: pagaria 13º sobre a hora extra de dezembro como se fosse a ` +
         `do ano inteiro. Use vencimento-base, gratificações do vínculo ou percentual do vencimento. ` +
         `Nada foi gravado.`

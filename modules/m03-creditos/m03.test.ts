@@ -219,7 +219,7 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
     expect((await saldosCorrentesDaFicha(FICHA_B, deps05)).autorizado.toFixed(2)).toBe("5000.00");
   });
 
-  it("TR 5.111: REJEITA fonte divergente — fecha no total mas não por fonte", async () => {
+  it("REJEITA fonte divergente — fecha no total mas não por fonte", async () => {
     const { decretoId } = await leiEDecreto(deps);
 
     // anula 500 da fonte 540 (ficha C) para suplementar 500 na fonte 500 (ficha B).
@@ -236,7 +236,7 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
         },
         deps
       )
-    ).rejects.toThrow(/TR 5\.111.*não fecha na fonte/s);
+    ).rejects.toThrow(/NÃO FECHA na fonte/s);
 
     expect(await prisma.itemCredito.count()).toBe(0);
   });
@@ -291,7 +291,7 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
     expect(await prisma.itemCredito.count()).toBe(0);
   });
 
-  it("TR 4.30: REJEITA suplementação além do TETO da lei", async () => {
+  it("REJEITA suplementação além do TETO da lei", async () => {
     const { decretoId } = await leiEDecreto(deps, "ANULACAO", "400.00"); // teto 400
     await expect(
       executarCredito(
@@ -305,7 +305,7 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
         },
         deps
       )
-    ).rejects.toThrow(/TR 4\.30.*excede o saldo da lei.*restante 400\.00/s);
+    ).rejects.toThrow(/excede o saldo da lei.*restante 400\.00/s);
   });
 });
 
@@ -595,13 +595,13 @@ describe("M03 — balanceamento (puro)", () => {
     ).toThrow(/NÃO FECHA/);
   });
 
-  it("REJEITA quando fecha no total mas NÃO por fonte (TR 5.111)", () => {
+  it("REJEITA quando fecha no total mas NÃO por fonte", () => {
     expect(() =>
       validarBalanceamento("ANULACAO", [
         { fichaId: "c", tipo: "ANULACAO", valor: toMoney("500.00"), fonteId: f540 },
         { fichaId: "b", tipo: "SUPLEMENTACAO", valor: toMoney("500.00"), fonteId: f500 },
       ])
-    ).toThrow(/TR 5\.111/);
+    ).toThrow(/NÃO FECHA/);
   });
 
   it("REJEITA crédito por anulação sem perna de anulação", () => {

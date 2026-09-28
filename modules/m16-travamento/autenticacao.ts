@@ -213,7 +213,7 @@ export async function autenticar(
         `nos últimos ${minutos} minutos, e o cadeado fechou (limite: ${FALHAS_ATE_O_CADEADO}). ` +
         `Aguarde ${minutos} minutos SEM TENTAR — cada nova tentativa reinicia a janela. ` +
         `O cadeado não é uma flag: ele é DERIVADO das tentativas registradas, e elas ficam no ` +
-        `log para o controle interno ler (TR 6.1-6.3).`
+        `log para o controle interno ler.`
     );
   }
 

@@ -306,7 +306,7 @@ async function registrarMovimentoPatrimonial(
       throw new Error(
         `O bem ${bem.numeroTombamento} NÃO é da classe ${classe.codigo}. ` +
           `Amarrar um movimento da classe A a um bem da classe B faria o ` +
-          `levantamento por classe (TR 5.15) e o valor do bem (TR 3.1) contarem ` +
+          `levantamento por classe e o valor do bem contarem ` +
           `histórias diferentes.`
       );
     }
@@ -442,7 +442,7 @@ export async function adquirirBem(
       liq.empenho.classeDeBensId !== dados.classeDeBensId
     ) {
       throw new Error(
-        `CLASSE DE BENS DIVERGENTE DO EMPENHO (TR 4.49/5.15): o empenho ` +
+        `CLASSE DE BENS DIVERGENTE DO EMPENHO: o empenho ` +
           `${liq.empenho.numero} foi emitido para adquirir a classe ` +
           `${liq.empenho.classeDeBens?.codigo ?? liq.empenho.classeDeBensId}, mas a ` +
           `incorporação está sendo feita na classe ${dados.classeDeBensId}. O que ` +

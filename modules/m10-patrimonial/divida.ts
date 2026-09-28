@@ -285,7 +285,7 @@ export async function ingressoNaTx(
     });
     if (receita === null) {
       throw new Error(
-        `Receita arrecadada ${d.receitaArrecadadaId} não existe — e a TR 4.64 exige ` +
+        `Receita arrecadada ${d.receitaArrecadadaId} não existe — e a regra exige ` +
           `que a operação de crédito nasça de uma receita.`
       );
     }

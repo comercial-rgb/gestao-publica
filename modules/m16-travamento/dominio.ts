@@ -217,7 +217,7 @@ const zJanela = z
       (d.diaInicio !== undefined && d.diaFim !== undefined),
     {
       message:
-        'Informe OU uma `competencia` ("YYYY-MM", o travamento mensal do TR 4.52) OU o par ' +
+        'Informe OU uma `competencia` ("YYYY-MM", o travamento mensal) OU o par ' +
         "`diaInicio`/`diaFim` (o travamento por data). Os dois juntos seriam duas " +
         "janelas para o mesmo evento, e o sistema teria de escolher uma — coisa que ele " +
         "não vai fazer.",

@@ -565,7 +565,7 @@ describe("M09 — movimentação bancária (TR 5.62)", () => {
         data: EM("2026-03-03"), historico: "vinculado na conta errada",
         contaContrapartidaId: "mb-rec", criadoPor: POR,
       })
-    ).rejects.toThrow(/FONTE FORA DO ROL \(TR 5\.23\).*500/s);
+    ).rejects.toThrow(/FONTE FORA DO ROL.*500/s);
 
     expect(await prisma.movimentoBancario.count()).toBe(2);
   });

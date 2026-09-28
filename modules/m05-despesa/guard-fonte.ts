@@ -75,7 +75,7 @@ export function exigirFonteNoRol(
   }
   if (!permitidas.some((f) => f.id === fonteId)) {
     throw new Error(
-      `FONTE FORA DO ROL (TR 5.23): a conta bancária ${codigoDaConta} não comporta a ` +
+      `FONTE FORA DO ROL: a conta bancária ${codigoDaConta} não comporta a ` +
         `fonte informada. As fontes permitidas nesta conta são: ` +
         `${permitidas.map((f) => f.codigo).join(", ")}. Usar recurso de outra fonte aqui ` +
         `é dinheiro carimbado no lugar errado. Nada foi gravado.`

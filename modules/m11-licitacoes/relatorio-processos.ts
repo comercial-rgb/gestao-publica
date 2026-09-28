@@ -68,7 +68,7 @@ export interface ProcessoDoRelatorio {
 }
 
 export interface RelatorioProcessos {
-  readonly relatorio: "TR 5.103 — PROCESSOS LICITATÓRIOS";
+  readonly relatorio: "PROCESSOS LICITATÓRIOS";
   readonly corte: Date;
   readonly processos: readonly ProcessoDoRelatorio[];
 }
@@ -217,7 +217,7 @@ export async function relatorioProcessosLicitatorios(
   }
 
   return {
-    relatorio: "TR 5.103 — PROCESSOS LICITATÓRIOS",
+    relatorio: "PROCESSOS LICITATÓRIOS",
     corte,
     processos: saida,
   };

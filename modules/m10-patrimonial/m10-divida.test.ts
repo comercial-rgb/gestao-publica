@@ -343,7 +343,7 @@ describe("M10 — dívida consolidada", () => {
   });
 
   // t2
-  it("t2: TR 4.48 — grupo 6 exige dívida; dívida fora do grupo 6 é vínculo sem sentido", async () => {
+  it("t2: grupo 6 exige dívida; dívida fora do grupo 6 é vínculo sem sentido", async () => {
     const dividaId = await dividaDeTeste();
 
     // (1) grupo 6 SEM dívida
@@ -364,7 +364,7 @@ describe("M10 — dívida consolidada", () => {
     }
     const msg = String(erro);
     console.log("\n>>> TR 4.48 SEM DÍVIDA (esperado):\n" + msg + "\n");
-    expect(msg).toMatch(/EMPENHO DE AMORTIZAÇÃO SEM DÍVIDA \(TR 4\.48\)/);
+    expect(msg).toMatch(/EMPENHO DE AMORTIZAÇÃO SEM DÍVIDA/);
     expect(msg).toMatch(/grupo 6/);
 
     // (2) dívida num empenho de CUSTEIO (grupo 3)

@@ -122,7 +122,7 @@ describe("M11 — obras (TR 4.50)", () => {
     // ── (1) elemento 51 SEM obra -> REJEITA, e a mensagem ENSINA ──
     await expect(
       empenhar(empenhoDe(FICHA_OBRA, "NE-1"), R_EMPENHO, deps)
-    ).rejects.toThrow(/EMPENHO DE OBRA SEM OBRA \(TR 4\.50\)/);
+    ).rejects.toThrow(/EMPENHO DE OBRA SEM OBRA/);
     await expect(
       empenhar(empenhoDe(FICHA_OBRA, "NE-1"), R_EMPENHO, deps)
     ).rejects.toThrow(/elemento 51 \("Obras e Instalações"\), natureza 449051/);

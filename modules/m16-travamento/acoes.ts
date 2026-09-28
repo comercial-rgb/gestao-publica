@@ -2166,7 +2166,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "só é o que impede seis lugares de esquecerem do `orderBy` da sequência.",
   // ── M21 V11 V8.1 — os ATOS PÚBLICOS do agendamento (TR 5.39, portal de autoatendimento) ──
   agendarPeloPortal:
-    "ATO PÚBLICO SEM CONTA (agendamento de atendimento presencial pelo cidadão, TR 5.39.92): não " +
+    "ATO PÚBLICO SEM CONTA (agendamento de atendimento presencial pelo cidadão): não " +
     "há usuário a autorizar — existiria um crachá que ninguém tem. As defesas são outras e estão " +
     "no corpo: o serviço tem de estar habilitado NAQUELE guichê E marcado como agendável pelo " +
     "portal (`false` por padrão); a capacidade é a MESMA, sob o MESMO trinco do lugar; quota por " +
@@ -2276,7 +2276,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "LEITURA: o retrato do estado dos encargos (apuração vigente, atesto, empenhos, liquidações) que os predicados de " +
     "`encargos.ts` leem. A tela projeta a barra; quem decide é o caso de uso.",
   registrarManifestacaoAnonima:
-    "ATO PÚBLICO SEM CONTA (ouvidoria anônima, TR 5.39.6): não há usuário a autorizar. As defesas são outras e estão no " +
+    "ATO PÚBLICO SEM CONTA (ouvidoria anônima): não há usuário a autorizar. As defesas são outras e estão no " +
     "corpo: serviço publicado da natureza MANIFESTACAO_ANONIMA, formulário da versão, quota por chave de origem, processo " +
     "SIGILOSO sem requerente e segredo guardado só por hash.",
   opinarSobreServico:
@@ -2440,23 +2440,23 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // que a saída física e o lançamento contábil sejam ATÔMICOS. Dar-lhe ação própria faria o
   // ente conceder duas vezes o mesmo poder — quem cobra a ação é `registrarSaidaConsumo` (o
   // serviço público) ou `registrarSaidaFisica` (o do eixo físico), cada um a sua.
-  estatisticasDaPesquisa: "leitura derivada (médio/mínimo/máximo das cotações, TR 5.17.48)",
-  saldoDaOrdemDeCompra: "leitura derivada (quantidade − Σ recebido, TR 5.17.105)",
+  estatisticasDaPesquisa: "leitura derivada (médio/mínimo/máximo das cotações)",
+  saldoDaOrdemDeCompra: "leitura derivada (quantidade − Σ recebido)",
   empenhadoLiquidoPorOrdem: "leitura derivada (Σ empenhos vivos da ordem, anulação copiando a FK)",
-  situacaoDaSolicitacao: "leitura derivada dos movimentos (TR 5.17.52)",
+  situacaoDaSolicitacao: "leitura derivada dos movimentos",
   situacaoDoDocumentoFiscal: "leitura derivada dos movimentos (conferência/cancelamento/substituição)",
   saldoDoDocumentoFiscal: "leitura derivada (total − Σ liquidações vivas)",
   saldoDaConta: "leitura derivada (Σ das partidas com o sinal da natureza)",
   estadoDoBem: "leitura derivada (último movimento de cada eixo até uma data civil)",
-  bensSobResponsabilidade: "leitura derivada (TR 5.19.10)",
-  inconsistenciasDoInventarioDeBens: "leitura derivada (TR 5.19.21)",
+  bensSobResponsabilidade: "leitura derivada",
+  inconsistenciasDoInventarioDeBens: "leitura derivada",
   avaliarBemPorFormula: "leitura: CALCULA e não escreve — lançar é registrarReavaliacao",
   listarUnidadesDeMedida: "leitura (o rol que alimenta o formulário de material)",
-  materiaisAbaixoDoMinimo: "leitura derivada (posição contra o mínimo, TR 5.18.3)",
-  requisicoesPendentes: "leitura derivada (Σ solicitado − Σ atendido, TR 5.18.8/5.18.9)",
-  validadeDoEstoqueDoDeposito: "leitura derivada (vencidos e a vencer, TR 5.18.14/5.18.20)",
+  materiaisAbaixoDoMinimo: "leitura derivada (posição contra o mínimo)",
+  requisicoesPendentes: "leitura derivada (Σ solicitado − Σ atendido)",
+  validadeDoEstoqueDoDeposito: "leitura derivada (vencidos e a vencer)",
   posicaoDoMaterial: "leitura derivada (a posição é Σ dos movimentos até uma data civil)",
-  fichaDeControleDeEstoque: "leitura derivada (TR 5.18.16 — movimentos do período + saldo anterior)",
+  fichaDeControleDeEstoque: "leitura derivada (movimentos do período + saldo anterior)",
   bloqueiosVigentes: "leitura derivada (os bloqueios e o inventário aberto que alcançam um par)",
   registrarSaidaConsumoNaTx:
     "composável interno: recebe a tx do chamador para unir os dois eixos numa transação só " +
@@ -2608,10 +2608,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   obrigacoesDoExercicioPorFonte: "leitura (liquidado − pago do exercício corrente por fonte — a coluna (c) do RGF Anexo 5)",
   naturezaDoEmpenho: "leitura (o elemento da natureza da ficha do empenho — é ele que escolhe o roteiro da liquidação, M01)",
   listarFichas: "leitura (as fichas de um exercício/unidade — o select do form de empenho)",
-  listarContasBancarias: "leitura (as contas bancárias e a fonte de cada uma — o select do pagamento, TR 5.23)",
+  listarContasBancarias: "leitura (as contas bancárias e a fonte de cada uma — o select do pagamento)",
   listarEmpenhos: "leitura (a execução de um exercício/unidade com os saldos da TR 5.17 — a tela de empenhos)",
   listarLiquidacoes: "leitura (as liquidações com o empenho de origem — a tela de liquidações)",
-  listarPagamentos: "leitura (os pagamentos executados de um exercício/unidade — a tela de anulação, TR 5.35)",
+  listarPagamentos: "leitura (os pagamentos executados de um exercício/unidade — a tela de anulação)",
   listarOrdensDePagamento:
     "leitura (as ordens de pagamento de um exercício/unidade, com as quatro etapas de T07 — a tela)",
   liquidacoesParaOrdem:
@@ -2759,7 +2759,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   estornarRecebimentoNaTx: "composável interno",
   arrecadarIngressoOperacaoCredito: "composável interno (adapter M04↔M10)",
   arrecadarRecebimentoDividaAtiva: "composável interno (adapter M04↔M10)",
-  arrecadarComVinculo: "composável interno (a composta arrecadação + vínculo, TR 5.87)",
+  arrecadarComVinculo: "composável interno (a composta arrecadação + vínculo)",
   vincularReconhecimentoNaTx: "composável interno (perna da arrecadação vinculada)",
   resolverContas: "composável interno",
   recalcularCache: "composável interno",

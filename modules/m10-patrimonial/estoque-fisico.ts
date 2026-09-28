@@ -253,7 +253,7 @@ async function exigirNaoBloqueado(
   if (vigentes.length > 0) {
     throw new Error(
       `MOVIMENTAÇÃO BLOQUEADA em ${dia}: ${vigentes.map((b) => b.motivo).join("; ")}. ` +
-        `A TR 5.18.12 manda bloquear a movimentação enquanto o inventário corre, e ` +
+        `A regra manda bloquear a movimentação enquanto o inventário corre, e ` +
         `liberá-la só após a conclusão.`
     );
   }
@@ -561,7 +561,7 @@ async function exigirMaterial(
   });
   if (mat === null || !mat.ativo) {
     throw new Error(
-      `Material ${id} não existe ou está desabilitado — a TR 5.17.8 manda manter o ` +
+      `Material ${id} não existe ou está desabilitado — a regra manda manter o ` +
         `histórico do material obsoleto, e impedir o uso NOVO dele.`
     );
   }
@@ -599,7 +599,7 @@ async function fatorDaUnidade(
   if (rel === null) {
     throw new Error(
       `A unidade ${unidadeDeMedidaId} não está relacionada ao material ${materialId}. ` +
-        `A TR 5.17.2 manda relacionar as unidades no cadastro, e mover numa unidade ` +
+        `A regra manda relacionar as unidades no cadastro, e mover numa unidade ` +
         `não relacionada seria inventar o fator de conversão.`
     );
   }
@@ -992,7 +992,7 @@ export async function registrarSaidaFisica(
     if (mat.controlaLote && d.loteId === undefined) {
       throw new Error(
         `O material ${mat.codigo} controla LOTE, e a saída não informou de qual. Sem isso ` +
-          `a posição por lote não baixa, e o controle de validade (TR 5.18.14 e 5.18.20) ` +
+          `a posição por lote não baixa, e o controle de validade ` +
           `passa a apontar lote que já saiu da prateleira.`
       );
     }
@@ -1114,7 +1114,7 @@ async function exigirCotaDisponivel(
     throw new Error(
       `COTA MENSAL ESTOURADA em ${p.competencia}: o setor já consumiu ` +
         `${ja.toFixed(4)} e pede mais ${p.quantidade.toFixed(4)}, contra um limite de ` +
-        `${limite.toFixed(4)}. A TR 5.18.4 manda delimitar a quantidade que cada ` +
+        `${limite.toFixed(4)}. A regra manda delimitar a quantidade que cada ` +
         `departamento pode requisitar por mês.`
     );
   }
@@ -1146,7 +1146,7 @@ async function exigirSaldoDoItem(
   if (quantidade.greaterThan(saldo)) {
     throw new Error(
       `ATENDIMENTO MAIOR QUE O PEDIDO: o item tem saldo de ${saldo.toFixed(4)} e a ` +
-        `saída é de ${quantidade.toFixed(4)}. A TR 5.18.9 pede atendimento parcial com ` +
+        `saída é de ${quantidade.toFixed(4)}. A regra pede atendimento parcial com ` +
         `controle do saldo NÃO ATENDIDO — e ele não pode ficar negativo.`
     );
   }
@@ -1701,7 +1701,7 @@ export async function bloquearEstoque(
   if (d.materialId === undefined && d.depositoId === undefined) {
     throw new Error(
       `Um bloqueio sem material E sem depósito travaria o almoxarifado inteiro do ente ` +
-        `sem dizer o quê. A TR 5.18.13 nomeia três alcances, e todos têm ao menos um lado.`
+        `sem dizer o quê. A regra nomeia três alcances, e todos têm ao menos um lado.`
     );
   }
   if (d.fim !== undefined && d.fim < d.inicio) {

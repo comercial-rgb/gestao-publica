@@ -85,7 +85,14 @@ describe("V6 P1.2 · arrecadação × conta bancária × conciliação", () => {
   });
 
   it("t1: a guia que declara a conta exige fonte igual e a contábil da conta como perna de disponibilidade — nada é gravado na recusa", async () => {
-    await expect(guia({ numero: "G1", fonte: "500", valor: "100.00", conta: "CC-B", caixa: CAIXA_B })).rejects.toThrow(/fonte 540.*fonte 500/);
+    // ⚠️ ESTA ASERÇÃO ESTAVA VERMELHA DESDE A V16, e a causa é boa de registrar: ela afirmava a
+    // mensagem de ANTES da conta multifonte ("a conta é da fonte 540, e a guia é da fonte 500").
+    // Quando a arrecadação passou a consultar o ROL da conta (`exigirFonteNoRol`), a recusa passou a
+    // dizer quais fontes a conta COMPORTA — e ninguém rodou este arquivo desde então. Agora ela
+    // afirma o motivo que de fato sobe, que é o que um teste de negação tem de fazer.
+    await expect(
+      guia({ numero: "G1", fonte: "500", valor: "100.00", conta: "CC-B", caixa: CAIXA_B })
+    ).rejects.toThrow(/FONTE FORA DO ROL.*permitidas nesta conta são: 540.*Nada foi gravado/s);
     await expect(guia({ numero: "G2", fonte: "500", valor: "100.00", conta: "CC-A", caixa: CAIXA_LEGADO })).rejects.toThrow(/ESCRITURAÇÃO INCOERENTE.*roteiro debita 1\.1\.1\.1\.1\.00\.00/);
     await expect(guia({ numero: "G3", fonte: "500", valor: "100.00", conta: "CC-SEM", caixa: CAIXA_A })).rejects.toThrow(/não tem conta contábil mapeada/);
     await expect(guia({ numero: "G4", fonte: "500", valor: "100.00", conta: "CC-X", caixa: CAIXA_A })).rejects.toThrow(/não cadastrada/);

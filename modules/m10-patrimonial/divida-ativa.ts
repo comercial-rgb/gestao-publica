@@ -380,7 +380,7 @@ export async function inscreverDividaAtiva(
   if (reclassifica !== (d.contaCreditoAReceberId !== undefined)) {
     throw new Error(
       `INSCRIÇÃO MALFORMADA: 'reconhecimentoId' e 'contaCreditoAReceberId' andam JUNTOS — a ` +
-        `reclassificação (TR 5.87) baixa um crédito reconhecido e precisa saber de qual conta. ` +
+        `reclassificação baixa um crédito reconhecido e precisa saber de qual conta. ` +
         `Informe os dois (reclassificação), ou nenhum (inscrição comum, D dívida ativa × C VPA).`
     );
   }
@@ -481,7 +481,7 @@ async function lancarReclassificacao(
     id,
     numeroControle: `DA-RECLASS-${p.identificador}`,
     dataTransacao: p.data,
-    historico: `Inscrição em dívida ativa (reclassificação TR 5.87) de ${p.identificador}`,
+    historico: `Inscrição em dívida ativa (reclassificação) de ${p.identificador}`,
     origemTipo: "DIVIDA_ATIVA",
     origemId: p.dividaAtivaId,
     criadoPor: p.criadoPor,
@@ -622,7 +622,7 @@ export async function receberNaTx(
     });
     if (receita === null) {
       throw new Error(
-        `Receita arrecadada ${d.receitaArrecadadaId} não existe — e a TR 4.63 exige ` +
+        `Receita arrecadada ${d.receitaArrecadadaId} não existe — e a regra exige ` +
           `que o recebimento de dívida ativa nasça de uma receita.`
       );
     }

@@ -493,7 +493,7 @@ export function criarCreditoRepositoryPrisma(
 
         if (suplementado.greaterThan(restante)) {
           throw new Error(
-            `TR 4.30 — suplementação (${suplementado.toFixed(2)}) excede o saldo ` +
+            `SUPLEMENTAÇÃO ACIMA DO TETO DA LEI: (${suplementado.toFixed(2)}) excede o saldo ` +
               `da lei: autorizado ${teto.toFixed(2)}, já consumido ` +
               `${jaConsumido.toFixed(2)}, restante ${restante.toFixed(2)}.`
           );
