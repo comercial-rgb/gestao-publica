@@ -988,6 +988,11 @@ export type NomeDeServico =
   | "registrarContabilistaDoManad"
   | "registrarEmpresaGeradoraDoManad"
   | "declararCentralizacaoDaEscrituracao"
+  // ── V22 — a classificação do cadastro orçamentário para o MANAD (L400, L650, L700, L200) ──
+  | "classificarUnidadeParaOManad"
+  | "classificarAcaoParaOManad"
+  | "classificarNaturezaDespesaParaOManad"
+  | "classificarNaturezaReceitaParaOManad"
   | "declararTitularDaContaBancaria"
   | "atribuirEntidadeAArrecadacao"
   // ── V6 (P2) — M32 pessoal ──
@@ -1559,6 +1564,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarContabilistaDoManad: "CADASTRAR_ENTIDADE_CONTABIL",
   registrarEmpresaGeradoraDoManad: "CADASTRAR_ENTIDADE_CONTABIL",
   declararCentralizacaoDaEscrituracao: "CADASTRAR_ENTIDADE_CONTABIL",
+  // V22 — e a CLASSIFICAÇÃO do cadastro para o mesmo arquivo, sob a mesma autoridade: dizer que
+  // tipo de unidade é esta, se a ação é do RPPS e em que nível da hierarquia a natureza está é
+  // responder ao leiaute da Receita pelo ente. Zero ações novas.
+  classificarUnidadeParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
+  classificarAcaoParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
+  classificarNaturezaDespesaParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
+  classificarNaturezaReceitaParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
   // Declarar de QUEM é a conta é decisão de titularidade, e não cadastro de conta: quem
   // parametriza uma conta bancária não decide, por isso, a quem o dinheiro dela pertence.
   declararTitularDaContaBancaria: "DECLARAR_TITULAR_DA_CONTA_BANCARIA",

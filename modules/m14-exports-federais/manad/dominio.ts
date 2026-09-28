@@ -109,13 +109,44 @@ function exigirSemPipe(valor: string, onde: Onde): void {
   );
 }
 
+/**
+ * ⚠️ A EXCEÇÃO À "CORRIJA O CADASTRO" (V22): O HISTÓRICO DE UM FATO NÃO SE CORRIGE.
+ *
+ * O Latin-1 fail-closed acima manda corrigir o cadastro — e para nome de credor, descrição de
+ * unidade ou de ação isso vale: o cadastro se corrige. Mas os campos de HISTÓRICO (HIST_EMP,
+ * HIST_LIQUID, HIST_PGTO, HIST_LCTO) vêm de fatos append-only: o histórico de um empenho emitido
+ * não se reescreve (razão append-only). Um travessão digitado ali em março deixaria o MANAD do
+ * exercício impossível de gerar para sempre — a recusa não teria correção possível.
+ *
+ * Então, SÓ NESSES CAMPOS e SÓ ESTE ROL FECHADO de pontuação tipográfica, cada um pelo seu
+ * equivalente Latin-1 de mesmo sentido. Nenhuma letra entra aqui ("ç" e "ã" cabem e passam
+ * intactos), e qualquer outro caractere fora do Latin-1 (emoji, "≠") continua derrubando a
+ * geração com o nome do campo.
+ */
+export const PONTUACAO_TIPOGRAFICA_DO_HISTORICO: Readonly<Record<string, string>> = {
+  "—": "-", // travessão
+  "–": "-", // meia-risca
+  "‘": "'", // aspa simples de abertura
+  "’": "'", // aspa simples de fechamento / apóstrofo tipográfico
+  "“": '"', // aspa dupla de abertura
+  "”": '"', // aspa dupla de fechamento
+  "…": "...", // reticências
+};
+
+const CAMPOS_DE_HISTORICO: ReadonlySet<string> = new Set(["HIST_EMP", "HIST_LIQUID", "HIST_PGTO", "HIST_LCTO"]);
+
+function normalizarPontuacaoDoHistorico(v: string, onde: Onde): string {
+  if (!CAMPOS_DE_HISTORICO.has(onde.campo)) return v;
+  return [...v].map((c) => PONTUACAO_TIPOGRAFICA_DO_HISTORICO[c] ?? c).join("");
+}
+
 /** Campo alfanumérico (tipo C). Latin-1, sem pipe, e o teto de 255 (salvo PSLM). */
 export function alfa(
   valor: string | null | undefined,
   onde: Onde
 ): string {
   if (valor === null || valor === undefined) return "";
-  const v = valor.trim();
+  const v = normalizarPontuacaoDoHistorico(valor.trim(), onde);
   if (v === "") return "";
 
   exigirSemPipe(v, onde);

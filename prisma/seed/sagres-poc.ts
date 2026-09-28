@@ -248,7 +248,9 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   const fonte = await prisma.fonteRecurso.upsert({ where: { codigo: "500" }, update: {}, create: { codigo: "500", descricao: "Recursos Ordinarios", codigoTce: "500" } });
 
   // (2b) DOMÍNIO DA RECEITA (F3) — natureza STN (8 díg.) + CO (4 díg.), para a arrecadação pelo funil.
-  const natReceita = await prisma.naturezaReceita.upsert({ where: { codigo: "11130211" }, update: {}, create: { codigo: "11130211", descricao: "IPTU - Principal" } });
+  // V22 — a descrição é a da tabela oficial da STN de 2026 (Portaria STN/MF 1.458/2025, grupo
+  // 1113.02): IRPJ, e NÃO IPTU (o IPTU é 11180111). O código continua sendo o da POC.
+  const natReceita = await prisma.naturezaReceita.upsert({ where: { codigo: "11130211" }, update: {}, create: { codigo: "11130211", descricao: "Imposto sobre a Renda de Pessoa Jurídica - IRPJ - Líquida de Incentivos - Principal" } });
   const co0001 = await prisma.codigoAcompanhamento.upsert({ where: { codigo: "0001" }, update: {}, create: { codigo: "0001", descricao: "Acompanhamento POC" } });
   void natReceita;
   void co0001;

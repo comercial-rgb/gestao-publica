@@ -67,9 +67,11 @@ export default async function Pagina(): Promise<React.ReactElement> {
             <h2 className="text-lg font-semibold text-[color:var(--color-ink)]">Forma de escrituração</h2>
             {dados.centralizacao === null ? (
               <Alerta status="alerta" titulo="Forma de escrituração não informada">
-                O arquivo da Receita informa se a escrituração do ente é centralizada. Essa
-                informação faz parte da identificação do ente e é registrada na implantação do
-                sistema, junto com o CNPJ e a UF. Solicite o registro à equipe de implantação.
+                O arquivo da Receita informa se a escrituração do ente é centralizada. Informe-a em{" "}
+                <Link href="/contabilidade/exportacoes-federais/classificacao" className="font-medium text-[color:var(--color-primary)] hover:underline">
+                  Classificação para o arquivo da Receita
+                </Link>
+                .
               </Alerta>
             ) : (
               <Card>
@@ -77,8 +79,11 @@ export default async function Pagina(): Promise<React.ReactElement> {
                   {dados.centralizacao.descricao}
                 </p>
                 <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-                  Informação da identificação do ente, registrada na implantação do sistema. Para
-                  alterá-la, solicite à equipe de implantação.
+                  Para alterá-la, use a{" "}
+                  <Link href="/contabilidade/exportacoes-federais/classificacao" className="font-medium text-[color:var(--color-primary)] hover:underline">
+                    Classificação para o arquivo da Receita
+                  </Link>
+                  .
                 </p>
               </Card>
             )}

@@ -214,6 +214,14 @@ export default async function Pagina({
             >
               Responsáveis pelo arquivo: contabilista e empresa geradora
             </Link>
+            {" · "}
+            <Link
+              href="/contabilidade/exportacoes-federais/classificacao"
+              className="font-medium text-[color:var(--color-primary)] hover:underline"
+              data-papel="link-classificacao"
+            >
+              Classificação do cadastro e forma de escrituração
+            </Link>
           </p>
         </div>
 

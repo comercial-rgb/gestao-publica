@@ -87,6 +87,18 @@ async function main(): Promise<void> {
       });
       console.log(`+ órgão ${d.orgaoCodigo} (${orgao.nome}): poder ${d.poder}`);
     }
+    // A natureza 11130211 veio do seed da POC rotulada "IPTU - Principal". Pela tabela oficial da
+    // STN de 2026 (grupo 1113.02) ela é o IRPJ líquido de incentivos; o IPTU é 11180111. A tela do
+    // ementário só cadastra natureza nova, e o runtime não tem UPDATE na descrição — a correção do
+    // cadastro de demonstração passa por aqui, como dono do banco local.
+    const IRPJ = "Imposto sobre a Renda de Pessoa Jurídica - IRPJ - Líquida de Incentivos - Principal";
+    const n = await prisma.naturezaReceita.findUnique({ where: { codigo: "11130211" }, select: { descricao: true } });
+    if (n !== null && n.descricao !== IRPJ) {
+      await prisma.naturezaReceita.update({ where: { codigo: "11130211" }, data: { descricao: IRPJ } });
+      console.log(`+ natureza 11130211: "${n.descricao}" -> "${IRPJ}"`);
+    } else if (n !== null) {
+      console.log("= natureza 11130211: descrição oficial");
+    }
   } finally {
     await prisma.$disconnect();
   }

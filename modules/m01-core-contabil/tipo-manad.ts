@@ -32,8 +32,13 @@ export const TIPO_MANAD: Record<string, string> = {
   "12": "Outras",
 };
 
-/** Os códigos, na ordem do leiaute — o que a tela oferece em vez de dois dígitos de cabeça. */
-export const CODIGOS_TIPO_MANAD: readonly string[] = Object.keys(TIPO_MANAD);
+/**
+ * Os códigos, na ordem do leiaute — o que a tela oferece em vez de dois dígitos de cabeça.
+ *
+ * ⚠️ ORDENADOS, e não `Object.keys` puro: o JavaScript põe as chaves que parecem índice de vetor
+ * ("10", "11", "12") ANTES das outras ("01"..."09"), e a lista saía 10, 11, 12, 01, 02... (V22).
+ */
+export const CODIGOS_TIPO_MANAD: readonly string[] = Object.keys(TIPO_MANAD).sort();
 
 /**
  * FAIL-CLOSED: um tipo fora do rol não classifica nada. A mensagem lista o rol inteiro porque

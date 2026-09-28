@@ -248,6 +248,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
   { href: "/contabilidade/exportacoes-federais", numero: "Arquivos federais", rotulo: "Arquivos para a STN e a Receita", descricao: "Matriz de Saldos Contábeis (SICONFI) e MANAD gerados a partir dos lançamentos, para download e conferência." },
   { href: "/contabilidade/exportacoes-federais/responsaveis", numero: "Responsáveis técnicos", rotulo: "Responsáveis técnicos", descricao: "Contabilista e empresa responsáveis pela escrituração informados nos arquivos da Receita Federal." },
+  { href: "/contabilidade/exportacoes-federais/classificacao", numero: "Classificação MANAD", rotulo: "Classificação para o arquivo da Receita", descricao: "Tipo das unidades, vínculo das ações ao RPPS, hierarquia das naturezas e forma de escrituração exigidos pelo MANAD." },
   { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "Superávit financeiro apurado, utilizado e disponível, por fonte de recurso." },
   // V19/C05 — o custo por centro fica na CONTABILIDADE, e não em relatórios gerenciais: a
   // apropriação referencia a liquidação e NÃO lança no razão, o que é uma decisão contábil que

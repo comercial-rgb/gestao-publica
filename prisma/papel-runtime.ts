@@ -248,6 +248,24 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
     ],
     delete: false,
   },
+
+  // ⚠️ V22 — A CLASSIFICAÇÃO DO CADASTRO PARA O MANAD, e só ela. As colunas existiam desde o
+  // gerador, fail-closed, e nada as escrevia: o arquivo da Receita recusava com o motivo certo e
+  // não havia tela onde resolver. Coluna a coluna, de propósito: `GRANT UPDATE ON
+  // "UnidadeOrcamentaria"` deixaria o runtime trocar o `codigo` de uma unidade que já está em
+  // fichas e empenhos; em `NaturezaDespesa`, o código da rubrica. Escritor único:
+  // `modules/m14-exports-federais/manad/classificacao.ts`, sob CADASTRAR_ENTIDADE_CONTABIL.
+  UnidadeOrcamentaria: { update: ["tipoManad"], delete: false },
+  Acao: { update: ["tipoManad"], delete: false },
+  NaturezaDespesa: { update: ["indTipoContaManad", "nivelContaManad"], delete: false },
+  NaturezaReceita: { update: ["indTipoContaManad", "nivelContaManad"], delete: false },
+
+  // ⚠️ V22 — O INDICADOR DE CENTRALIZAÇÃO DA ESCRITURAÇÃO (MANAD 0000), e NENHUMA outra coluna do
+  // `EnteConfig`: CNPJ, UF e código IBGE são a identidade fiscal do ente e continuam passo de
+  // implantação, rodado como dono. O indicador é declaração da contabilidade — o serviço
+  // `declararCentralizacaoDaEscrituracao` já existia, conferia a ação e devolvia o anterior; faltava
+  // só o banco deixar a tela chamá-lo.
+  EnteConfig: { update: ["indCentralizacao"], delete: false },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */
