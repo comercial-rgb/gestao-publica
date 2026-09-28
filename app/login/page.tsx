@@ -42,7 +42,7 @@ export default async function LoginPage({
       <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
         <div className="grid w-full max-w-3xl overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-card)] md:grid-cols-[1.1fr_1fr]">
           {/* a instituição e o produto */}
-          <section aria-label="Identificação" className="flex min-w-0 flex-col gap-5 border-b border-[color:var(--color-border)] bg-[color:var(--color-canvas)] p-6 md:border-b-0 md:border-r">
+          <section aria-label="Identificação" data-superficie="grafite" className="flex min-w-0 flex-col gap-5 border-b-4 border-[color:var(--color-engine)] bg-[color:var(--color-surface)] p-6 md:border-b-0 md:border-l-4">
             <Marca identidade={tela} tamanho="lg" />
             <div className="space-y-1">
               <p className="text-sm text-[color:var(--color-ink-2)]">{id.produto.descricao}.</p>
@@ -77,6 +77,8 @@ export default async function LoginPage({
                 {id.ente.horarioDeAtendimento !== null ? <div><dt className="inline">Atendimento: </dt><dd className="inline">{id.ente.horarioDeAtendimento}</dd></div> : null}
               </dl>
             ) : null}
+            {/* V22: a assinatura da Engine na entrada — ativo oficial, versão para fundo escuro. */}
+            <img src="/marca/engine-horizontal-fundo-escuro.svg" alt="Engine Sistemas" className="mt-auto h-8 w-auto self-start pt-2" />
           </section>
 
           {/* o acesso */}

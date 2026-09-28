@@ -16,6 +16,7 @@ import {
 } from "../../../../../lib/portas/empenho";
 import { formatarDocumento } from "../../../../../packages/documento";
 import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 
 /**
  * DETALHE DO EMPENHO — origem, liquidações, retenções, pagamentos, anulações,
@@ -105,10 +106,14 @@ const ROTULO_MOVIMENTO_EXTRA: Record<string, string> = {
 
 export default async function DetalheDoEmpenhoPage({
   params,
+  searchParams,
 }: {
   readonly params: Promise<{ readonly id: string }>;
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const { id } = await params;
+  // V22: aberto pelo "Imprimir" do modal, a página chama a impressão assim que monta.
+  const imprimirAoAbrir = (await searchParams)["imprimir"] === "1";
 
   let resultado: Awaited<ReturnType<typeof lerDossieDoEmpenho>>;
   try {
@@ -182,12 +187,15 @@ export default async function DetalheDoEmpenhoPage({
         <Badge status="neutro">
           {ROTULO_CATEGORIA[d.categoriaOrdemCronologica] ?? d.categoriaOrdemCronologica}
         </Badge>
-        <Link
-          href="/despesa/empenhos"
-          className="ml-auto text-xs text-[color:var(--color-primary)] hover:underline"
-        >
-          Voltar à lista de empenhos
-        </Link>
+        <span className="ml-auto flex items-center gap-3" data-chrome>
+          <a href={`/despesa/empenhos/ne?id=${d.id}&exercicio=${d.origem.exercicio}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[color:var(--color-primary)] hover:underline">
+            Nota de Empenho (PDF)
+          </a>
+          <BotaoImprimir aoAbrir={imprimirAoAbrir} />
+          <Link href="/despesa/empenhos" className="text-xs text-[color:var(--color-primary)] hover:underline">
+            Voltar à lista de empenhos
+          </Link>
+        </span>
       </div>
 
       <Origem dossie={d} />

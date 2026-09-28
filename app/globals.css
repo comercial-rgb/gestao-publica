@@ -13,30 +13,31 @@
 */
 @theme {
   /* ── superfícies e tinta (cinzas frios) ── */
-  --color-canvas: #f1f5f9; /* fundo da aplicação (slate-100) */
+  --color-canvas: #f4f3f2; /* fundo da aplicação (cinza claro da marca, levemente quente) */
   --color-surface: #ffffff; /* cartões, tabelas, painéis */
-  --color-surface-2: #f8fafc; /* faixas zebra, cabeçalhos de tabela (slate-50) */
-  --color-border: #e2e8f0; /* divisórias (slate-200) */
-  --color-border-strong: #cbd5e1; /* divisória de ênfase (slate-300) */
+  --color-surface-2: #faf9f8; /* faixas zebra, cabeçalhos de tabela */
+  --color-border: #e6e3e1; /* divisórias */
+  --color-border-strong: #cfcac7; /* divisória de ênfase */
 
-  --color-ink: #0f172a; /* texto principal (slate-900) */
-  --color-ink-2: #475569; /* texto secundário (slate-600) */
-  --color-ink-3: #94a3b8; /* texto terciário / desabilitado (slate-400) */
+  --color-ink: #1a1a1a; /* texto principal (grafite da marca) */
+  --color-ink-2: #4f4a47; /* texto secundário */
+  --color-ink-3: #8a8480; /* texto terciário / desabilitado */
 
-  /* ── azul institucional (ação, navegação ativa) ── */
-  --color-primary: #1e4e8c; /* azul institucional sóbrio */
-  --color-primary-hover: #1a4478;
-  --color-primary-fg: #ffffff; /* texto sobre o azul */
-  --color-primary-soft: #e8eef6; /* fundo de item ativo na sidebar */
+  /* ── cor de ação (V21-A: marca Engine no sistema inteiro, decisão de 2026-09-28) ──
+     A ação usa o laranja FORTE da marca, não o oficial: é o único tom que aceita texto branco
+     (4,76:1) e que se lê como link sobre branco. O laranja oficial fica na barra grafite. */
+  --color-primary: #c24f00;
+  --color-primary-hover: #a64300;
+  --color-primary-fg: #ffffff; /* texto sobre a cor de ação */
+  --color-primary-soft: #fff3e8; /* fundo de item ativo */
 
-  /* ── A MARCA DO FORNECEDOR (Engine Sistemas) — SEPARADA DA DO ENTE, de propósito ──
+  /* ── A MARCA DO FORNECEDOR (Engine Sistemas) ──
 
-     ⚠️ O AZUL ACIMA É DO ENTE. Ele é a cor institucional de quem publica o ato: sóbria,
-     de sistema contábil governamental, e ela NÃO vira laranja porque o fornecedor é
-     laranja. A marca Engine aparece onde o fornecedor assina — a entrada do produto, o
-     rodapé, o favicon — e não repinta a aplicação do município.
+     Até a V21 o azul era do ente e a Engine só assinava a entrada e o rodapé. Em 2026-09-28
+     a decisão passou a ser a marca no sistema inteiro; a instituição continua vindo do
+     cadastro (nome, brasão), nunca de literal no código.
 
-     ⚠️ E O LARANJA DA MARCA NÃO SERVE COM TEXTO BRANCO. Medido (WCAG 2.1, relação de
+     ⚠️ O LARANJA DA MARCA NÃO SERVE COM TEXTO BRANCO. Medido (WCAG 2.1, relação de
      contraste):
 
          branco sobre #FE6902 .......... 2,90:1  → REPROVA até em texto grande (3,0)
@@ -68,6 +69,7 @@
   --color-status-erro-fg: #b91c1c;
 
   /* ── tipografia ── */
+  --font-titulo: var(--font-exo), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", Menlo, Consolas, monospace;
   --text-xs: 0.75rem;
@@ -102,9 +104,9 @@ body {
   --color-ink-3: #374151;
   --color-border: #6b7280;
   --color-border-strong: #111827;
-  --color-primary: #0b3d7a;
-  --color-primary-hover: #082c58;
-  --color-primary-soft: #dbe4f0;
+  --color-primary: #8f3a00;
+  --color-primary-hover: #6e2d00;
+  --color-primary-soft: #ffe0c7;
   --color-status-neutro-fg: #111827;
   --color-status-alerta-bg: #fde68a;
   --color-status-alerta-fg: #451a03;
@@ -119,6 +121,31 @@ body {
   font-size: 0.875rem; /* densidade: 14px base */
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Títulos na fonte da marca (Exo 2); o texto corrido continua em Inter. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-titulo);
+  letter-spacing: -0.01em;
+}
+
+/*
+  A BARRA GRAFITE — só redefine tokens dentro dela; os componentes continuam lendo as mesmas
+  variáveis. Contraste: #FE6902 sobre #1A1A1A 6,0:1; #D6D3D1 sobre #1A1A1A 12:1; #A8A29E sobre
+  #1A1A1A 7,3:1.
+*/
+[data-superficie="grafite"] {
+  --color-surface: #1a1a1a;
+  --color-surface-2: #292929;
+  --color-border: #333333;
+  --color-ink: #fefefe;
+  --color-ink-2: #d6d3d1;
+  --color-ink-3: #a8a29e;
+  --color-primary: #fe6902;
+  --color-primary-fg: #1a1a1a;
+  --color-primary-soft: rgb(254 105 2 / 0.14);
 }
 
 /* Valores monetários e numéricos: dígitos de largura fixa (colunas alinham). */

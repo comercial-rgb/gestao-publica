@@ -29,12 +29,8 @@ export function Marca({
           className={`${lado} shrink-0 rounded-[var(--radius-md)] object-contain`}
         />
       ) : (
-        <div
-          aria-hidden
-          className={`${lado} flex shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] font-bold text-[color:var(--color-primary-fg)]`}
-        >
-          {identidade.produtoSigla}
-        </div>
+        // Sem brasão do ente no cadastro, o símbolo é o da Engine (V22) — ativo oficial, sem recorte.
+        <img src="/marca/engine-simbolo.svg" alt="" aria-hidden className={`${lado} shrink-0 object-contain`} />
       )}
       {somenteSimbolo ? null : (
         <div className="min-w-0">

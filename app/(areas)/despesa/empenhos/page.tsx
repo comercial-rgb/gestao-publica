@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Badge, type StatusBadge } from "../../../../components/ui/Badge";
+import { Badge } from "../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
@@ -11,7 +10,6 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   listarEmpenhosDaExecucao,
   listarFichasParaEmpenho,
-  opcoesDeVinculoDoEmpenho,
   PortaSemBancoError,
   type EmpenhoDaTela,
   type FichaDaTela,
@@ -28,6 +26,12 @@ import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
+import { BotaoExcel } from "../../../../components/ui/BotaoExcel";
+import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
+import { JanelaDeDetalhe } from "../../../../components/ui/JanelaDeDetalhe";
+import { formatarDocumento } from "../../../../packages/documento/index";
+import { ROTULO_STATUS_DO_EMPENHO as ROTULO_STATUS } from "./rotulos";
+import { ResumoDoEmpenho, tomDoStatusDoEmpenho as tomDoStatus } from "./ResumoDoEmpenho";
 
 /**
  * EMPENHOS — a execução da despesa do exercício/unidade, com os saldos da TR 5.17.
@@ -55,10 +59,9 @@ export default async function EmpenhosPage({
   let recorte: RecorteDaPagina;
   let empenhos: readonly EmpenhoDaTela[];
   let fichas: readonly FichaDaTela[];
-  let vinculos: Awaited<ReturnType<typeof opcoesDeVinculoDoEmpenho>>;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
-    [empenhos, fichas, vinculos] = await Promise.all([
+    [empenhos, fichas] = await Promise.all([
       listarEmpenhosDaExecucao({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
@@ -67,8 +70,6 @@ export default async function EmpenhosPage({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
       }),
-      // V4 (§8): os contratos vigentes e as reservas vivas que o empenho pode informar.
-      opcoesDeVinculoDoEmpenho(),
     ]);
   } catch (erro) {
     // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO, e isso não é estética. Cair no genérico
@@ -120,9 +121,6 @@ export default async function EmpenhosPage({
           naturezaDescricao: f.naturezaDescricao,
           saldoDisponivel: f.saldoDisponivel,
         }))}
-        contratos={vinculos.contratos}
-        reservas={vinculos.reservas}
-        ordens={vinculos.ordens}
         ordemPadrao={typeof sp["ordemId"] === "string" ? sp["ordemId"] : ""}
       />
 
@@ -135,10 +133,12 @@ export default async function EmpenhosPage({
         <>
           <div className="flex justify-end gap-2">
             <BotaoCsv csv={csvEmpenhos(empenhos)} nomeArquivo={`empenhos-${recorte.exercicio}.csv`} />
+            <BotaoExcel href={`/despesa/empenhos/xlsx?${queryRecorte(recorte)}`} />
             <BotaoPdf href={`/despesa/empenhos/pdf?${queryRecorte(recorte)}`} />
+            <BotaoImprimir rotulo="Imprimir lista" />
           </div>
           <TabelaDeDados
-            colunas={[...COLUNAS, colunaAcoesEmpenho(recorte)]}
+            colunas={[colunaNumero(recorte), ...COLUNAS, colunaAcoesEmpenho(recorte)]}
             linhas={empenhos}
             keyDe={(l) => l.id}
             legenda={`${empenhos.length} empenho(s) · valores em R$ · saldo a pagar = liquidado − pago.`}
@@ -152,9 +152,9 @@ export default async function EmpenhosPage({
 /** ⚠️ O CSV É A TELA: as mesmas colunas/linhas, formatadas igual (TR 7.48). */
 function csvEmpenhos(empenhos: readonly EmpenhoDaTela[]): string {
   return paraCsv(
-    ["Nº", "Data", "Credor", "Ficha", "Fonte", "Empenhado", "Liquidado", "Pago", "A liquidar", "A pagar", "Anulações", "Status"],
+    ["Nº", "Data", "Credor", "CPF/CNPJ", "Ficha", "Fonte", "Empenhado", "Liquidado", "Pago", "A liquidar", "A pagar", "Anulações", "Status"],
     empenhos.map((e) => [
-      e.numero, dataBr(e.data), e.credorCpfCnpj, String(e.fichaNumero), e.fonteCodigo,
+      e.numero, dataBr(e.data), e.credorNome ?? "", formatarDocumento(e.credorCpfCnpj), String(e.fichaNumero), e.fonteCodigo,
       formatarMoeda(e.empenhadoLiquido).texto, formatarMoeda(e.liquidado).texto, formatarMoeda(e.pago).texto,
       formatarMoeda(e.saldoALiquidar).texto, formatarMoeda(e.saldoAPagar).texto, formatarMoeda(e.anulacoes).texto,
       ROTULO_STATUS[e.status] ?? e.status,
@@ -163,40 +163,7 @@ function csvEmpenhos(empenhos: readonly EmpenhoDaTela[]): string {
 }
 
 /** O status derivado, traduzido em tom — sóbrio, nunca o verde/vermelho do sinal contábil. */
-function tomDoStatus(status: string): StatusBadge {
-  if (status === "ANULADO") return "erro";
-  if (status === "PAGO") return "ok";
-  if (status === "EMPENHADO") return "neutro";
-  return "alerta";
-}
-
-const ROTULO_STATUS: Record<string, string> = {
-  EMPENHADO: "Empenhado",
-  PARCIAL_LIQUIDADO: "Liq. parcial",
-  LIQUIDADO: "Liquidado",
-  PARCIAL_PAGO: "Pago parcial",
-  PAGO: "Pago",
-  ANULADO: "Anulado",
-};
-
 const COLUNAS: readonly ColunaTabela<EmpenhoDaTela>[] = [
-  {
-    chave: "numero",
-    cabecalho: "Nº",
-    alinhamento: "esquerda",
-    largura: "7rem",
-    // O NÚMERO É A PORTA DO DOSSIÊ. A lista responde "o que aconteceu no exercício"; a
-    // pergunta seguinte — "e com ESTE empenho?" — tem tela própria, e o caminho até ela
-    // é o número, que é como o documento se chama na boca de quem confere.
-    celula: (l) => (
-      <Link
-        href={`/despesa/empenhos/${l.id}`}
-        className="font-medium text-[color:var(--color-ink)] underline-offset-2 hover:underline"
-      >
-        {l.numero}
-      </Link>
-    ),
-  },
   {
     chave: "data",
     cabecalho: "Data",
@@ -208,8 +175,14 @@ const COLUNAS: readonly ColunaTabela<EmpenhoDaTela>[] = [
     chave: "credor",
     cabecalho: "Credor",
     alinhamento: "esquerda",
-    largura: "11rem",
-    celula: (l) => l.credorCpfCnpj,
+    largura: "14rem",
+    // V22: o nome do cadastro quando o documento está lá; o documento sempre, formatado.
+    celula: (l) => (
+      <span className="block min-w-0">
+        {l.credorNome !== null ? <span className="block truncate text-[color:var(--color-ink)]" title={l.credorNome}>{l.credorNome}</span> : null}
+        <span className="block text-[11px] text-[color:var(--color-ink-3)]">{formatarDocumento(l.credorCpfCnpj)}</span>
+      </span>
+    ),
   },
   {
     chave: "ficha",
@@ -281,6 +254,30 @@ const COLUNAS: readonly ColunaTabela<EmpenhoDaTela>[] = [
 ];
 
 /** exercicio(+ug) da URL, para os links de emissão refletirem o recorte da tela. */
+/**
+ * O NÚMERO É A PORTA DO EMPENHO. A lista responde "o que aconteceu no exercício"; a pergunta
+ * seguinte — "e com ESTE empenho?" — abre por cima da lista (V22), e dali o dossiê completo, a NE
+ * e a impressão. É pelo número que o documento se chama na boca de quem confere.
+ */
+function colunaNumero(recorte: RecorteDaPagina): ColunaTabela<EmpenhoDaTela> {
+  return {
+    chave: "numero",
+    cabecalho: "Nº",
+    alinhamento: "esquerda",
+    largura: "8rem",
+    celula: (l) => (
+      <JanelaDeDetalhe
+        gatilho={l.numero}
+        rotuloDoGatilho={`Abrir o empenho ${l.numero}`}
+        titulo={`Empenho ${l.numero}`}
+        subtitulo={`${dataBr(l.data)} · ficha ${l.fichaNumero} · fonte ${l.fonteCodigo}`}
+      >
+        <ResumoDoEmpenho e={l} queryRecorte={queryRecorte(recorte)} />
+      </JanelaDeDetalhe>
+    ),
+  };
+}
+
 function queryRecorte(r: RecorteDaPagina): string {
   return `exercicio=${r.exercicio}${r.unidadeCodigo !== undefined ? `&ug=${r.unidadeCodigo}` : ""}`;
 }

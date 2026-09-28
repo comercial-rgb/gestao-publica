@@ -1,5 +1,4 @@
 import { cliente, PortaSemBancoError } from "./cliente";
-import { toMoney } from "../../packages/contracts/index";
 import { comEscritaAutenticada, exigirSessao, type Identidade } from "./sessao";
 import { autorizarLeituraDoRegistroPara, EscopoDeLeituraError } from "./leitura";
 import {
@@ -10,7 +9,6 @@ import {
   type FichaNaLista,
 } from "../../modules/m05-despesa/consultas";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05";
-import { homologadoEm, situacaoDoProcesso, vigenciaFimDoContrato } from "../../modules/m11-licitacoes/contratos";
 import { empenhar } from "../../modules/m05-despesa/servico";
 import { roteiroEmpenho } from "../../modules/m01-core-contabil/roteiros";
 import {
@@ -41,6 +39,8 @@ export interface EmpenhoDaTela {
   readonly numero: string;
   readonly data: Date;
   readonly credorCpfCnpj: string;
+  /** V22: o nome do credor no cadastro de pessoas, quando o documento está lá; `null` quando não está. */
+  readonly credorNome: string | null;
   readonly historico: string;
   readonly fichaNumero: number;
   readonly unidadeCodigo: string;
@@ -89,7 +89,28 @@ export async function listarEmpenhosDaExecucao(p: {
     ...(p.credorCpfCnpj !== undefined ? { credorCpfCnpj: p.credorCpfCnpj } : {}),
     ...(p.fonteCodigo !== undefined ? { fonteCodigo: p.fonteCodigo } : {}),
   });
-  return linhas.map(paraTela);
+  const nomes = await nomesDosCredores(linhas.map((l) => l.credorCpfCnpj));
+  return linhas.map((l) => ({ ...paraTela(l), credorNome: nomes.get(l.credorCpfCnpj) ?? null }));
+}
+
+/**
+ * V22 — O NOME DO CREDOR, lido do cadastro numa consulta só. O empenho guarda o DOCUMENTO como
+ * fato (não é chave do cadastro); o nome é exibição, e um documento sem cadastro fica sem nome —
+ * a tela mostra o documento, nunca um nome inventado.
+ */
+export async function nomesDosCredores(documentos: readonly string[]): Promise<ReadonlyMap<string, string>> {
+  const unicos = [...new Set(documentos)].filter((d) => d !== "");
+  if (unicos.length === 0) return new Map();
+  const pessoas = await cliente().pessoa.findMany({
+    where: { documento: { in: unicos } },
+    select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } },
+  });
+  const m = new Map<string, string>();
+  for (const x of pessoas) {
+    const nome = x.versoes[0]?.nome;
+    if (nome !== undefined) m.set(x.documento, nome);
+  }
+  return m;
 }
 
 /** As opções do filtro gerencial: os credores e as fontes que existem no recorte. */
@@ -199,78 +220,7 @@ export async function registrarEmpenho(input: {
   });
 }
 
-/** Um vínculo oferecido ao formulário de empenho (contrato ou reserva), já rotulado. */
-export interface VinculoDaTela {
-  readonly id: string;
-  readonly rotulo: string;
-}
-
-/**
- * OS VÍNCULOS QUE O EMPENHO PODE INFORMAR (V4 §8): os contratos de processos HOMOLOGADOS e
- * vigentes na data de hoje, e as reservas de dotação VIVAS (não liberadas e com saldo). São
- * opções, não guard: quem recusa contrato vencido, reserva esgotada ou contrato de outro processo
- * é o M05, na transação.
- */
-export async function opcoesDeVinculoDoEmpenho(): Promise<{
-  readonly contratos: readonly VinculoDaTela[];
-  readonly reservas: readonly VinculoDaTela[];
-  readonly ordens: readonly VinculoDaTela[];
-}> {
-  const prisma = cliente();
-  const [contratos, reservas, ordens] = await Promise.all([
-    prisma.contrato.findMany({
-      orderBy: { numeroContrato: "asc" },
-      take: 500,
-      select: { id: true, numeroContrato: true, contratadoNome: true, processo: { select: { id: true, numeroProcesso: true } } },
-    }),
-    prisma.reservaDotacao.findMany({
-      where: { estornoDeId: null, estornos: { none: {} } },
-      orderBy: { criadoEm: "desc" },
-      take: 500,
-      select: { id: true, valor: true, historico: true, ficha: { select: { numero: true, exercicio: true } }, processo: { select: { numeroProcesso: true } }, empenhos: { select: { empenho: { select: { valor: true } } } } },
-    }),
-    prisma.ordemDeCompra.findMany({
-      where: { fichaId: { not: null }, movimentos: { none: { tipo: "ESTORNO" } } },
-      orderBy: { numero: "desc" },
-      take: 300,
-      select: {
-        id: true,
-        numero: true,
-        tipo: true,
-        fornecedor: {
-          select: {
-            documento: true,
-            versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 },
-          },
-        },
-        ficha: { select: { numero: true, exercicio: true } },
-      },
-    }),
-  ]);
-  const hoje = new Date();
-  const contratosVigentes: VinculoDaTela[] = [];
-  for (const c of contratos) {
-    const homologado = situacaoDoProcesso(await homologadoEm(prisma, c.processo.id)) === "HOMOLOGADO";
-    if (!homologado) continue;
-    const fim = await vigenciaFimDoContrato(prisma, c.id);
-    if (fim.getTime() < hoje.getTime()) continue;
-    contratosVigentes.push({ id: c.id, rotulo: `${c.numeroContrato} — ${c.contratadoNome} · processo ${c.processo.numeroProcesso}` });
-  }
-  const reservasVivas: VinculoDaTela[] = [];
-  for (const r of reservas) {
-    const consumido = r.empenhos.reduce((s, e) => s.plus(e.empenho.valor.toFixed(2)), toMoney("0"));
-    const saldo = toMoney(r.valor.toFixed(2)).minus(consumido);
-    if (!saldo.greaterThan(0)) continue;
-    reservasVivas.push({ id: r.id, rotulo: `${r.ficha.exercicio} · ficha ${r.ficha.numero} · saldo ${saldo.toFixed(2)}${r.processo === null ? "" : ` · processo ${r.processo.numeroProcesso}`} · ${r.historico}` });
-  }
-  const ordensComFicha: VinculoDaTela[] = ordens.map((o) => ({
-    id: o.id,
-    rotulo: `${o.numero} · ${o.tipo} · ${o.fornecedor.versoes[0]?.nome ?? o.fornecedor.documento}${o.ficha === null ? "" : ` · ficha ${o.ficha.numero}`}`,
-  }));
-  return { contratos: contratosVigentes, reservas: reservasVivas, ordens: ordensComFicha };
-}
-
-function paraTela(e: EmpenhoNaLista): EmpenhoDaTela {
+function paraTela(e: EmpenhoNaLista): Omit<EmpenhoDaTela, "credorNome"> {
   return {
     id: e.id,
     numero: e.numero,

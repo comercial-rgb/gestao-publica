@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { registrarEmpenho } from "../../../../lib/portas/empenho";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 export interface EstadoEmpenho {
   readonly erro?: string;
@@ -84,7 +85,7 @@ export async function empenharAction(
       });
       revalidatePath("/despesa/empenhos");
       if (ordemDeCompraId !== "") revalidatePath("/licitacoes/ordens-de-compra");
-      return { sucesso: `Empenho ${numero} emitido. Valor: ${valor}.` };
+      return { sucesso: `Empenho ${numero} emitido. Valor: R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível emitir o empenho." };
     }

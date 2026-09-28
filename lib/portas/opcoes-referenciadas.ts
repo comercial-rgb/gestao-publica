@@ -4,6 +4,7 @@ import { formatarDocumento } from "../../packages/documento/index.js";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import type { Prisma } from "../../prisma/generated/client/client.js";
 import { cliente } from "./cliente";
+import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
 import type { Identidade } from "./sessao";
 
@@ -31,6 +32,8 @@ export interface OpcaoReferenciada {
   readonly valor: string;
   readonly rotulo: string;
   readonly detalhe?: string;
+  /** V22: sugestão de preenchimento para a tela (documento, ficha, objeto) — nunca autoriza nada. */
+  readonly dados?: Readonly<Record<string, string>>;
 }
 
 export interface PaginaDeOpcoes {
@@ -80,6 +83,7 @@ const onde = (w: { q: string; valor?: string }, campoTexto: string): Record<stri
   w.valor !== undefined ? { codigo: w.valor } : w.q === "" ? {} : { OR: [{ codigo: { startsWith: w.q } }, { [campoTexto]: contem(w.q) }] };
 
 export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
+  ...CATALOGOS_DA_EXECUCAO,
   /**
    * A UO de uma FICHA NOVA — só as unidades onde a sessão tem CRIAR_FICHA. É o mesmo escopo que o
    * `autz.exigir(..., { ug })` do `criarFicha` confere; aqui ele só evita oferecer o que cairia.

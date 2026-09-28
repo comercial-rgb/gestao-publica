@@ -27,6 +27,8 @@ export interface OpcaoDoSeletor {
   readonly valor: string;
   readonly rotulo: string;
   readonly detalhe?: string;
+  /** V22: sugestão de preenchimento que o catálogo devolve (documento, ficha, objeto). */
+  readonly dados?: Readonly<Record<string, string>>;
 }
 
 export interface CampoReferenciadoProps {
@@ -41,6 +43,19 @@ export interface CampoReferenciadoProps {
   readonly largura?: 1 | 2 | 3 | 4;
   /** Para teste: a base da URL das opções. */
   readonly base?: string;
+  /**
+   * V22: avisa o formulário a cada escolha (e com `null` quando ela sai), para autopreencher outros
+   * campos. Não muda nenhuma das quatro garantias: o valor continua só no hidden, depois de escolher.
+   */
+  readonly aoEscolher?: (opcao: OpcaoDoSeletor | null) => void;
+  /**
+   * V22: um valor já decidido (vindo da URL, ou de outro campo que o preencheu). É CONFERIDO no
+   * servidor pelo mesmo catálogo antes de virar escolha — um id que não existe, ou que o catálogo não
+   * oferece, não vira escolha nenhuma. Para trocar depois de montado, mude a `key` do componente.
+   */
+  readonly valorInicial?: string;
+  /** Com `valorInicial`, também chama `aoEscolher` quando a conferência volta (padrão: não). */
+  readonly avisarInicial?: boolean;
 }
 
 const SPAN: Readonly<Record<1 | 2 | 3 | 4, string>> = { 1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4" };
@@ -57,7 +72,7 @@ interface Resultado {
   readonly pagina: number;
 }
 
-export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, placeholder, contexto, largura, base }: CampoReferenciadoProps): React.ReactElement {
+export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, placeholder, contexto, largura, base, aoEscolher, valorInicial, avisarInicial }: CampoReferenciadoProps): React.ReactElement {
   const id = useId();
   const idLista = `${id}-lista`;
   const idStatus = `${id}-status`;
@@ -160,7 +175,7 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
     return () => form.removeEventListener("change", aoMudar);
   }, [contexto, escolha, lerContexto, url]);
 
-  function escolher(o: OpcaoDoSeletor): void {
+  function escolher(o: OpcaoDoSeletor, avisar = true): void {
     seq.current++; // nenhuma resposta em voo mexe mais nesta escolha
     setEscolha(o);
     setTexto(o.rotulo);
@@ -168,7 +183,32 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
     setAtiva(-1);
     setAviso(null);
     contextoDaEscolha.current = lerContexto().toString();
+    if (avisar) aoEscolher?.(o);
   }
+
+  // V22: o valor inicial é conferido no servidor antes de virar escolha — uma vez, na montagem.
+  const aoEscolherRef = useRef(aoEscolher);
+  aoEscolherRef.current = aoEscolher;
+  useEffect(() => {
+    if (valorInicial === undefined || valorInicial === "") return;
+    const minha = ++seq.current;
+    void fetch(url({ valor: valorInicial }), { cache: "no-store" })
+      .then(async (r) => (r.ok ? ((await r.json()) as { opcoes?: OpcaoDoSeletor[] }) : { opcoes: [] }))
+      .then((corpo) => {
+        if (minha !== seq.current) return;
+        const o = (corpo.opcoes ?? []).find((x) => x.valor === valorInicial);
+        if (o === undefined) {
+          setAviso("O valor indicado não está entre as opções disponíveis; escolha na lista.");
+          return;
+        }
+        setEscolha(o);
+        setTexto(o.rotulo);
+        contextoDaEscolha.current = lerContexto().toString();
+        if (avisarInicial === true) aoEscolherRef.current?.(o);
+      })
+      .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na montagem; trocar o valor é trocar a key
+  }, []);
 
   const opcoes = resultado.opcoes;
 
@@ -213,11 +253,18 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
         placeholder={placeholder ?? "Digite o código ou parte da descrição"}
         onChange={(e) => {
           setTexto(e.target.value);
-          if (escolha !== null && e.target.value !== escolha.rotulo) setEscolha(null);
+          if (escolha !== null && e.target.value !== escolha.rotulo) {
+            setEscolha(null);
+            aoEscolher?.(null);
+          }
           setAberta(true);
           setAtiva(-1);
         }}
-        onFocus={() => setAberta(true)}
+        onFocus={(e) => {
+          // V22: com uma escolha feita, focar seleciona o rótulo — digitar SUBSTITUI, não emenda no fim.
+          if (escolha !== null) e.target.select();
+          setAberta(true);
+        }}
         onBlur={() => setTimeout(() => setAberta(false), 150)}
         onKeyDown={teclado}
         className={CAMPO}

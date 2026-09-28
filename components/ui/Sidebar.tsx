@@ -81,6 +81,7 @@ export function Sidebar({
     <aside
       id={idDoMenu}
       data-chrome
+      data-superficie="grafite"
       data-menu-aberto={menuAberto ? "sim" : "nao"}
       className={`${menuAberto ? "flex" : "hidden"} fixed inset-y-0 left-0 z-40 w-60 shrink-0 flex-col border-r border-[color:var(--color-border)] bg-[color:var(--color-surface)] transition-[width] md:static md:flex ${
         colapsada ? "md:w-14" : "md:w-60"
