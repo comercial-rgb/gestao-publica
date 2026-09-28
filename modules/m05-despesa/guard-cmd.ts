@@ -82,7 +82,10 @@ export async function exigirCotaCmd(
   // ── de qual FONTE e de qual EXERCÍCIO é este empenho? (a ficha carrega os dois) ──
   const ficha = await tx.fichaOrcamentaria.findUnique({
     where: { id: p.fichaId },
-    select: { fonteId: true, exercicio: true },
+    // ⚠️ O CÓDIGO DA FONTE VEM JUNTO, e não só o id: as duas recusas deste guard são LIDAS POR
+    // GENTE, e o percurso da V19 mostrou a mensagem dizendo "na fonte ac-fnt" — o id interno. Quem
+    // opera conhece a fonte 500, não o identificador dela no banco.
+    select: { fonteId: true, exercicio: true, fonte: { select: { codigo: true } } },
   });
   if (ficha === null) {
     throw new Error(`Ficha ${p.fichaId} não encontrada (guard do CMD).`);
@@ -117,7 +120,7 @@ export async function exigirCotaCmd(
   // ausência. Deixar passar seria abrir um buraco exatamente onde o contingenciamento aperta.
   if (cota === null) {
     throw new Error(
-      `LIMITAÇÃO DE EMPENHO: a fonte ${ficha.fonteId} NÃO tem cota de CMD para o mês ` +
+      `LIMITAÇÃO DE EMPENHO: a fonte ${ficha.fonte.codigo} NÃO tem cota de cronograma para o mês ` +
         `${mes}/${ficha.exercicio}, e a limitação está ATIVA. Com o regime ligado, empenhar numa ` +
         `fonte sem cota é proibido — programe a cota (valor 0 se for para bloquear de propósito) ` +
         `ou desative a limitação. Nada foi gravado.`
@@ -160,7 +163,7 @@ export async function exigirCotaCmd(
   const disponivel = toMoney(teto.minus(consumido));
   if (p.valor.greaterThan(disponivel)) {
     throw new Error(
-      `LIMITAÇÃO DE EMPENHO ESTOURADA na fonte ${ficha.fonteId}, mês ` +
+      `LIMITAÇÃO DE EMPENHO ESTOURADA na fonte ${ficha.fonte.codigo}, mês ` +
         `${mes}/${ficha.exercicio}:\n` +
         `  cota programada .......... ${toMoney(cota.valor.toFixed(2)).toFixed(2)}\n` +
         `  liberado ....... ${liberado.toFixed(2)}\n` +
@@ -168,7 +171,7 @@ export async function exigirCotaCmd(
         `  já empenhado (líquido) ... ${consumido.toFixed(2)}\n` +
         `  disponível ............... ${disponivel.toFixed(2)}\n` +
         `  pedido ................... ${p.valor.toFixed(2)}\n` +
-        `A cota do CMD NÃO ROLA para o mês seguinte — realocar exige LIBERAÇÃO ou uma ` +
+        `A cota do mês NÃO ROLA para o mês seguinte — realocar exige LIBERAÇÃO ou uma ` +
         `VERSÃO NOVA do cronograma. Nada foi gravado.`
     );
   }

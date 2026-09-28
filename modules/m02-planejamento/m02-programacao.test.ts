@@ -252,7 +252,10 @@ describe("M02 — programação financeira (TR 4.18/4.19/4.43/4.44)", () => {
     await ligarLimitacaoComCota({ 1: "10000.00" }, FONTE_A);
 
     const semCota = emp("ficha-b1", "NE-B", "100.00", "2026-01-10T12:00:00Z");
-    await expect(semCota).rejects.toThrow(/NÃO tem cota de CMD para o mês 1/);
+    // ⚠️ A RECUSA NOMEIA A FONTE PELO CÓDIGO, e não pelo id: o percurso da V19 leu "na fonte
+    // ac-fnt" na tela, o identificador interno. Aqui a aserção afirma o CÓDIGO, para que uma
+    // regressão volte a aparecer no teste e não na frente de quem opera.
+    await expect(semCota).rejects.toThrow(/fonte 540 NÃO tem cota de cronograma para o mês 1/);
     await expect(
       emp("ficha-b1", "NE-B", "100.00", "2026-01-10T12:00:00Z")
     ).rejects.toThrow(/limitação está ATIVA/);

@@ -102,7 +102,9 @@
     "percursos:fontes-fixture": "tsx scripts/preparar-receita-por-fontes-de-percursos.ts",
     "smoke:receita-por-fontes": "tsx scripts/trinco-de-maquina.ts 'percurso da guia repartida entre fontes' -- npx tsx scripts/smoke-receita-por-fontes.ts",
     "smoke:eliminacoes-intra": "tsx scripts/trinco-de-maquina.ts 'percurso das eliminacoes intragovernamentais' -- npx tsx scripts/smoke-eliminacoes-intra.ts",
-    "smoke:alteracoes-planejamento": "tsx scripts/trinco-de-maquina.ts 'percurso das alteracoes do planejamento' -- npx tsx scripts/smoke-alteracoes-do-planejamento.ts"
+    "smoke:alteracoes-planejamento": "tsx scripts/trinco-de-maquina.ts 'percurso das alteracoes do planejamento' -- npx tsx scripts/smoke-alteracoes-do-planejamento.ts",
+    "smoke:programacao": "tsx scripts/trinco-de-maquina.ts 'percurso da programacao financeira' -- npx tsx scripts/smoke-programacao-financeira.ts",
+    "apresentacao:previsao": "tsx scripts/preparar-programacao-de-apresentacao.ts"
   },
   "keywords": [],
   "author": "",
