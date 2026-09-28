@@ -191,6 +191,8 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "O quadriênio e a lei que o instituiu; programas, indicadores, ações e a receita do plano (CF art. 165 §1º)." },
   { href: "/planejamento/ldo", numero: "LDO", rotulo: "Lei de Diretrizes Orçamentárias", descricao: "O trâmite da LDO, as prioridades e os anexos da LRF (metas e riscos fiscais) em PDF." },
   { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações — o rol do ente." },
+  // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
+  { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "A lei ou o decreto que alterou a peça aprovada, o valor original preservado e o vigente — com a situação em qualquer data." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "A dotação pela chave completa; criar ficha nova (sem crédito — a dotação vem de crédito adicional)." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "A dotação de cada ficha pela chave completa: inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF art. 8º e 13)." },
