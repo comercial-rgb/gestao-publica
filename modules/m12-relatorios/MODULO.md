@@ -843,3 +843,50 @@ Os relatórios analíticos de conferência **4.12–4.16** (analíticos da LOA p
 consumirão os MESMOS leitores (`dotacaoFixadaDetalhada`, `previsaoPorNaturezaFonte`) e o mesmo
 de-para — sem segunda classificação. O motor de consistência é o primeiro cliente; os analíticos, os
 próximos.
+
+---
+
+## O custo por centro (V19/C05)
+
+A apropriação de custo mora aqui, e não no M05, porque o requisito pede que ela **alcance os
+relatórios** — e porque no M05 a dimensão de custo seria uma classificação gerencial que o próprio
+módulo não usa: o empenho, a liquidação e o pagamento não mudam de comportamento por causa dela. O
+custo é uma LEITURA que se acumula, e o fato que a alimenta referencia a liquidação sem alterá-la.
+
+Quatro decisões, cada uma com a alternativa que ela descarta:
+
+| Decisão | A alternativa, e o que ela produziria |
+|---|---|
+| O centro de custo é o `Setor` que já existe | um quarto organograma — e o custo por centro deixaria de casar com o consumo de material (M10), a solicitação de compra (M11) e a despesa de pessoal (M32), que já somam nesse eixo |
+| A apropriação **não lança no razão** | a variação patrimonial diminutiva contada duas vezes, e o resultado do exercício errado sem que nada desbalanceie |
+| O resíduo em centavos tem **dono declarado** (coluna do critério) | o centavo caindo no último da lista — e o relatório passando a depender da ordem em que o banco devolveu as linhas |
+| O critério é **versionado**, e a leitura soma as PARTES GRAVADAS | recalcular o rateio na leitura, e o custo de um mês fechado mudando quando a régua de hoje muda |
+
+O teto da apropriação é o **líquido** da liquidação (`somaLiquidaEstornaveis`, a mesma função do
+relatório de restos e do caixa por fonte) menos o que dela já foi apropriado. Apropriar sobre a linha
+de anulação é recusado: o fato é a liquidação original, cujo líquido já desconta a anulação.
+
+Arquivos: `custos.ts` (a aritmética e as entradas), `custos-servico.ts` (os dois atos),
+`custos-consultas.ts` (o acumulado e a composição). Ações no censo:
+`PARAMETRIZAR_RATEIO_DE_CUSTO` e `APROPRIAR_CUSTO` — **duas**, porque publicar a régua é ato
+normativo do ente e apropriar é ato de execução mensal; fundir daria a quem lança o poder de
+reescrever a régua pela qual ele próprio é medido.
+
+### O que falta, nomeado
+
+- **`FOLHA-SEM-RATEIO-POR-CENTRO`** — o `HistoricoVinculo` já tem `centroDeCustoId`, mas a folha
+  fechada não gera apropriação de custo. Hoje o custo de pessoal por centro não aparece neste
+  relatório.
+- **`BASE-DE-RATEIO-CALCULADA`** — `BaseDeRateioDeCusto` tem um único valor,
+  `PERCENTUAL_DECLARADO`. Base por metro quadrado, por número de servidores ou por atendimento
+  exigiria um medidor por centro e por competência, que não existe.
+- **`CUSTO-POR-PROGRAMA`** — o eixo aqui é o centro (setor). Custo por programa/ação exigiria
+  apropriar também no eixo da classificação funcional-programática, e a decisão de se os dois eixos
+  coexistem num só fato ou em dois não está tomada.
+- **`DEPRECIACAO-SEM-CENTRO`** — a parcela de depreciação do M10 não vira custo de centro, embora o
+  bem tenha localização física em um setor.
+- **`PERCENTUAL-RESIDUAL-LIDO-COM-DUAS-CASAS`** — achado ao construir C05: `parametros.ts` e
+  `gestao-do-bem.ts` do M10 leem `percentualResidual` (`Decimal(9,6)`) com `toMoney(...toFixed(6))`,
+  e `toMoney` arredonda a DUAS casas. Um residual de 0,05 não sofre; um de 0,033333 viraria 0,03.
+  A correção é `toPercentual` (`packages/contracts/percentual.ts`), e ela não foi feita aqui porque
+  mexe na aritmética da depreciação, que tem suíte própria a reconferir.

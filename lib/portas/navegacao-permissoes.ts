@@ -76,6 +76,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   CADASTRAR_RENUNCIA_RECEITA_LDO: "planejamento",
   CADASTRAR_ALIENACAO_LDO: "planejamento",
   ALTERAR_PLANEJAMENTO: "planejamento",
+  PARAMETRIZAR_RATEIO_DE_CUSTO: "contabilidade",
+  APROPRIAR_CUSTO: "contabilidade",
   // M03 — créditos adicionais
   CRIAR_LEI_DE_CREDITO: "planejamento",
   DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO: "planejamento",

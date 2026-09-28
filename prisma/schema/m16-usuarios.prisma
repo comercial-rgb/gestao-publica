@@ -596,6 +596,10 @@ enum AcaoDoSistema {
   // ALTERAR_PPA e ALTERAR_LDO daria dois crachás que a mesma pessoa sempre recebe junto.
   ALTERAR_PLANEJAMENTO
 
+  // ── M12 V19/C05 — o custo por centro: a régua (por ato) e a rotina (o lançamento gerencial) ──
+  PARAMETRIZAR_RATEIO_DE_CUSTO
+  APROPRIAR_CUSTO
+
   // ── M01 V11 V9 — a ENTIDADE CONTÁBIL e a titularidade da receita (TR 5.10.1.3 · 5.38.7).
   // Três ações para quatro serviços: publicar versão é a MESMA autoridade de cadastrar (dizer
   // quem a entidade é), e partir em duas daria ao ente a chance de conceder uma sem a outra,

@@ -328,6 +328,11 @@ describe("instalação limpa e atualização — no banco", () => {
       // acao ESTA em TODAS_AS_ACOES, logo em ACOES_DO_ENTE: se estivesse fora, o bootstrap nao a
       // concederia e esta previa viria 1 — foi esse numero que apontou o furo da v32.
       { versao: 34, previa: 0, aplicada: false },
+      // ⚠️ PREVIA 0 NA INSTALACAO LIMPA, e e ela que prova que as duas acoes do custo por centro
+      // (PARAMETRIZAR_RATEIO_DE_CUSTO, APROPRIAR_CUSTO) chegaram a ACOES_DO_ENTE. Se uma delas
+      // tivesse ficado fora de TODAS_AS_ACOES, o bootstrap nao a concederia e esta previa viria 1
+      // ou 2 — foi exatamente este numero que apontou o furo da v32.
+      { versao: 35, previa: 0, aplicada: false },
     ]);
   });
 

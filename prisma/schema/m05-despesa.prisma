@@ -334,6 +334,10 @@ model Liquidacao {
   /// back-relation M10 — campo VIRTUAL, não gera coluna.
   movimentosPatrimoniais MovimentoPatrimonial[]
 
+  /// V19/C05 — as apropriações de CUSTO deste fato. Campo VIRTUAL: a apropriação
+  /// referencia a liquidação e NÃO lança no razão (não se reconhece a despesa duas vezes).
+  apropriacoesDeCusto ApropriacaoDeCusto[]
+
   criadoEm  DateTime @default(now())
   criadoPor String
 

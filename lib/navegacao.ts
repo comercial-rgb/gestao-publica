@@ -243,6 +243,10 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa
   // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
   { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "O apurado nos fatos, o declarado, o já utilizado em créditos e o que ainda cabe, fonte a fonte." },
+  // V19/C05 — o custo por centro fica na CONTABILIDADE, e não em relatórios gerenciais: a
+  // apropriação referencia a liquidação e NÃO lança no razão, o que é uma decisão contábil que
+  // precisa ficar perto de quem a entende. Quem audita chega por aqui.
+  { href: "/contabilidade/custos", numero: "Custo por centro", rotulo: "Custo por centro", descricao: "Quanto custou cada centro no período, pela competência do custo, e a composição de cada total até a liquidação, o empenho e o credor. A apropriação não lança a despesa de novo: ela diz a que centros o custo já reconhecido pertence." },
 ];
 
 /** Os relatórios GERENCIAIS — consulta livre com export aberto (TR 7.48). */

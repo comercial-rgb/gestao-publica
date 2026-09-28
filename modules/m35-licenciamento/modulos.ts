@@ -183,6 +183,9 @@ export const MODULO_DA_ACAO: Record<AcaoDoSistema, ModuloComercial> = {
   CADASTRAR_ALIENACAO_LDO: "NUCLEO_CONTABIL",
   // V18/C13 — alterar a peça aprovada é planejamento, como cadastrá-la.
   ALTERAR_PLANEJAMENTO: "NUCLEO_CONTABIL",
+  // V19/C05 — custo por centro é contabilidade gerencial do núcleo contábil.
+  PARAMETRIZAR_RATEIO_DE_CUSTO: "NUCLEO_CONTABIL",
+  APROPRIAR_CUSTO: "NUCLEO_CONTABIL",
   CRIAR_LEI_DE_CREDITO: "NUCLEO_CONTABIL",
   DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO: "NUCLEO_CONTABIL",
   CRIAR_DECRETO_DE_CREDITO: "NUCLEO_CONTABIL",

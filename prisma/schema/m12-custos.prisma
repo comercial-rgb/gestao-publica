@@ -1,0 +1,153 @@
+// ============================================================================
+// CUSTOS POR CENTRO — a apropriação de um custo já reconhecido (V19/C05)
+//
+// ⚠️ O CENTRO DE CUSTO É O `Setor`, E NÃO HÁ CADASTRO NOVO AQUI. A decisão é anterior
+// a este arquivo e está registrada em `m21-protocolo.prisma:89` e
+// `m32-pessoal.prisma:678`: o centro de custo de um vínculo é um `Setor`, "em vez de
+// num quarto organograma". Criar um `CentroDeCustoContabil` próprio seria o segundo
+// organograma do ente — e no dia em que os dois divergissem, ninguém saberia qual
+// vale. O `Setor` já pertence a uma `UnidadeOrcamentaria`, o que dá de graça o
+// recorte por unidade que o requisito pede.
+//
+// ═══ ⚠️ E A APROPRIAÇÃO NÃO LANÇA NO RAZÃO ═══
+// A prova de C05 é literal: "composição rastreável SEM LANÇAR NOVAMENTE a mesma
+// despesa". A despesa foi reconhecida na liquidação, com as partidas dela. Lançar a
+// apropriação no razão duplicaria a variação patrimonial diminutiva — o custo
+// apareceria duas vezes no resultado do exercício. O que estas tabelas guardam é uma
+// DIMENSÃO GERENCIAL sobre um fato que já existe: elas referenciam a liquidação, não
+// a repetem.
+//
+// A consequência fica dita: o total apropriado NÃO é conta do PCASP e não aparece em
+// balancete. Ele aparece no relatório de custos, que soma as apropriações — e o teste
+// dirigido afirma que nenhum `LancamentoContabil` nasce daqui.
+//
+// ⚠️ DINHEIRO É `Decimal(18,2)`; PERCENTUAL É `Decimal(9,6)` — a mesma régua do M02b.
+// ============================================================================
+
+/// A BASE do rateio: o que se divide entre os centros.
+///
+/// ⚠️ UM VALOR SÓ, DE PROPÓSITO. `AREA_CONSTRUIDA`, `NUMERO_DE_SERVIDORES` e
+/// `HORAS_TRABALHADAS` são bases legítimas de contabilidade de custos e exigem
+/// cadastros que este repositório não tem. Um enum com valores que nenhum serviço sabe
+/// calcular seria promessa em tabela: o operador escolheria a base e o sistema rateria
+/// por outra coisa. Pendência `BASE-DE-RATEIO-CALCULADA`.
+enum BaseDeRateioDeCusto {
+  /// O ente declara o percentual de cada centro. A soma tem de fechar 100%.
+  PERCENTUAL_DECLARADO
+}
+
+/// O CRITÉRIO DE RATEIO — versionado, como todo parâmetro que decide dinheiro.
+///
+/// ⚠️ VERSÃO, E NÃO EDIÇÃO. Retificar é publicar versão nova; a anterior fica. Um
+/// critério editável reescreveria a história do custo já apropriado: o relatório do
+/// mês passado passaria a somar por um percentual que não valia naquele mês. É o mesmo
+/// padrão do `RoteiroOrcamentario` (M05) e das versões do CMD (M02).
+///
+/// ⚠️ E O `atoRef` É OBRIGATÓRIO: distribuir custo entre secretarias é decisão
+/// administrativa, não preferência de quem digita.
+model CriterioDeRateioDeCusto {
+  id String @id @default(cuid())
+
+  /// O nome pelo qual o ente chama este critério ("rateio da sede", "energia do paço").
+  chave String
+  /// 1, 2, 3… A vigente é a de maior `vigenteDesde` já decorrida.
+  versao Int
+
+  base BaseDeRateioDeCusto @default(PERCENTUAL_DECLARADO)
+
+  atoRef        String
+  vigenteDesde  DateTime
+
+  /// ⚠️ O CENTRO QUE ABSORVE O RESÍDUO, DECLARADO. Ratear 1.000,00 entre três centros
+  /// iguais dá 333,33 três vezes e sobra um centavo. Sem esta coluna, o centavo cairia
+  /// no último da lista por acidente de ordenação — e o relatório de custos passaria a
+  /// depender de como o banco devolveu as linhas.
+  centroDoResiduoId String
+  centroDoResiduo   Setor @relation("ResiduoDoRateio", fields: [centroDoResiduoId], references: [id])
+
+  itens         ItemDoCriterioDeRateio[]
+  apropriacoes  ApropriacaoDeCusto[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  /// Uma versão por chave. Duas linhas "versão 2 do rateio da sede" seriam dois
+  /// critérios vigentes ao mesmo tempo, e o custo do mês dependeria da ordem de leitura.
+  @@unique([chave, versao])
+  @@index([chave, vigenteDesde])
+}
+
+/// UM CENTRO no critério, com o percentual que lhe cabe.
+model ItemDoCriterioDeRateio {
+  id String @id @default(cuid())
+
+  criterioId String
+  criterio   CriterioDeRateioDeCusto @relation(fields: [criterioId], references: [id], onDelete: Cascade)
+
+  centroId String
+  centro   Setor  @relation("ItemDoRateio", fields: [centroId], references: [id], onDelete: Restrict)
+
+  /// O percentual, em `Decimal(9,6)`: 33,333333% é um rateio legítimo entre três centros.
+  percentual Decimal @db.Decimal(9, 6)
+
+  /// Um centro aparece UMA vez em cada versão do critério.
+  @@unique([criterioId, centroId])
+  @@index([centroId])
+}
+
+/// A APROPRIAÇÃO — o fato "este custo foi distribuído assim".
+///
+/// ⚠️ A COMPETÊNCIA É PRÓPRIA, e a ordem de construção diz por quê com estas palavras:
+/// "custo não é necessariamente o mesmo instante do desembolso". O aluguel pago em
+/// janeiro pode ser custo de dezembro; a data do fato de origem é a da liquidação, e a
+/// do custo é esta.
+///
+/// ⚠️ A ORIGEM É A LIQUIDAÇÃO, e não o pagamento: é ela que RECONHECE a despesa (o
+/// regime é de competência). Apropriar sobre o pagamento faria o custo aparecer só
+/// quando o dinheiro saísse — e despesa liquidada e não paga é exatamente o que fica
+/// pendente na virada do exercício.
+model ApropriacaoDeCusto {
+  id String @id @default(cuid())
+
+  liquidacaoId String
+  liquidacao   Liquidacao @relation(fields: [liquidacaoId], references: [id], onDelete: Restrict)
+
+  criterioId String?
+  criterio   CriterioDeRateioDeCusto? @relation(fields: [criterioId], references: [id], onDelete: Restrict)
+
+  /// A competência do CUSTO — ver o docblock.
+  competencia DateTime
+
+  /// O valor apropriado. Pode ser menor que o da liquidação (apropriação parcial), nunca maior.
+  valor Decimal @db.Decimal(18, 2)
+
+  /// Por que este custo foi distribuído assim, em texto.
+  motivo String
+
+  itens ItemDaApropriacaoDeCusto[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([liquidacaoId])
+  @@index([competencia])
+  @@index([criterioId])
+}
+
+/// O QUANTO DE CADA CENTRO — a linha que o relatório soma e que volta ao fato.
+model ItemDaApropriacaoDeCusto {
+  id String @id @default(cuid())
+
+  apropriacaoId String
+  apropriacao   ApropriacaoDeCusto @relation(fields: [apropriacaoId], references: [id], onDelete: Cascade)
+
+  centroId String
+  centro   Setor  @relation("CustoDoCentro", fields: [centroId], references: [id], onDelete: Restrict)
+
+  valor Decimal @db.Decimal(18, 2)
+
+  /// Um centro aparece UMA vez em cada apropriação — duas linhas do mesmo centro
+  /// somariam certo e impediriam a leitura "quanto foi para este centro".
+  @@unique([apropriacaoId, centroId])
+  @@index([centroId])
+}

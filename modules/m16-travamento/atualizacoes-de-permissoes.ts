@@ -717,6 +717,40 @@ export function derivarAlteracaoDoPlanejamento(
   return saida;
 }
 
+/**
+ * V19/C05 — o CUSTO POR CENTRO: a régua do rateio e a apropriação.
+ *
+ * ⚠️ AS DUAS AÇÕES VÃO JUNTAS NESTA ATUALIZAÇÃO, mas elas NÃO são a mesma ação: publicar o critério
+ * é ato normativo (a portaria que diz que 60 % do aluguel é da Educação) e apropriar é ato de
+ * execução, mensal. Ir juntas aqui significa apenas que quem administra permissões no global
+ * recebe as duas para distribuir — e é ele que decide se a mesma pessoa fica com as duas.
+ */
+export const ACOES_DO_CUSTO_POR_CENTRO: readonly AcaoDoSistema[] = [
+  "PARAMETRIZAR_RATEIO_DE_CUSTO",
+  "APROPRIAR_CUSTO",
+];
+
+export function derivarCustoPorCentro(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    const jaTem = new Set(
+      perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao)
+    );
+    for (const acao of ACOES_DO_CUSTO_POR_CENTRO) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 /** V7 M1 U4 — a ouvidoria (triagem e resposta, com lotação) e a moderação das avaliações. */
 export const ACOES_DA_OUVIDORIA_E_AVALIACAO: readonly AcaoDoSistema[] = ["TRIAR_MANIFESTACAO_DE_OUVIDORIA", "MODERAR_AVALIACAO_DE_SERVICO"];
 
@@ -1476,6 +1510,29 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "sobra e meta fiscal alterada sem lei — e quem confronta o apurado contra ela e o RREO " +
       "Anexo 6. Vai so a quem administra permissoes no global, que a distribui nomeando a pessoa.",
     derivar: derivarAlteracaoDoPlanejamento,
+  },
+  {
+    versao: 35,
+    nome: "custo-por-centro",
+    descricao:
+      "A despesa liquidada passou a poder ser APROPRIADA a centros de custo (V19, C05): o ente " +
+      "publica uma versao do criterio de rateio (com ato de referencia, percentuais que somam 100 " +
+      "e um centro declarado para o residuo em centavos) e apropria o custo de uma liquidacao " +
+      "aos centros, por competencia propria. Com isso vem DUAS acoes: " +
+      "PARAMETRIZAR_RATEIO_DE_CUSTO e APROPRIAR_CUSTO. " +
+      "⚠️ ELAS NAO SE FUNDEM NUMA, e essa foi a decisao: publicar a regua e ato NORMATIVO do ente " +
+      "(a portaria que diz que 60 % do aluguel e da Educacao) e apropriar e ato de EXECUCAO, " +
+      "repetido todo mes pelo contador. Fundir daria a quem lanca o poder de reescrever a regua " +
+      "pela qual ele proprio e medido — a mesma segregacao que separa " +
+      "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO de EMPENHAR. " +
+      "⚠️ E O CENTRO DE CUSTO E O SETOR que ja existe: nenhum cadastro novo, nenhuma acao de " +
+      "cadastro nesta atualizacao. " +
+      "⚠️ O ERRO NAO TEM DETECTOR ADIANTE: a apropriacao NAO lanca no razao (a despesa foi " +
+      "reconhecida na liquidacao), entao um rateio publicado com a regua errada nao desbalanceia " +
+      "nada — ele produz um relatorio de custos plausivel e errado, e o unico confronto possivel " +
+      "e o total apropriado contra a despesa liquidada. Vai so a quem administra permissoes no " +
+      "global, que a distribui nomeando a pessoa.",
+    derivar: derivarCustoPorCentro,
   },
 ];
 

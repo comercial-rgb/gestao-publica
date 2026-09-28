@@ -61,6 +61,12 @@ model Setor {
   /// V6.2 — as versões de serviço da carta que entram por este setor. VIRTUAL.
   servicosDeEntrada VersaoDoServico[] @relation("EntradaDoServico")
   etapasDeProcesso EtapaDoProcesso[]
+
+  /// back-relations dos CUSTOS (V19/C05) — o Setor é o centro de custo do ente, e estas
+  /// são as três formas de ele aparecer num rateio. Campos VIRTUAIS, não geram coluna.
+  residuoDeRateios     CriterioDeRateioDeCusto[]  @relation("ResiduoDoRateio")
+  itensDeRateio        ItemDoCriterioDeRateio[]   @relation("ItemDoRateio")
+  custosApropriados    ItemDaApropriacaoDeCusto[] @relation("CustoDoCentro")
   processosAbertos Processo[]         @relation("SetorDeAbertura")
   movimentosOrigem MovimentoDoProcesso[] @relation("SetorOrigem")
   movimentosDestino MovimentoDoProcesso[] @relation("SetorDestino")

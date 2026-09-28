@@ -197,6 +197,15 @@ export type AcaoDoSistema =
   // sempre recebe junto, e um crachá que não segrega ninguém é ruído no painel de permissões.
   | "ALTERAR_PLANEJAMENTO"
 
+  // ── M12 V19/C05 — o CUSTO por centro (a apropriação, e o critério que a distribui) ──
+  // DUAS ações, e a separação é a que o ente faz: publicar o critério de rateio é decisão
+  // administrativa (dizer que a sede se divide 60/40 entre duas secretarias, por ato); apropriar o
+  // custo de uma liquidação é rotina de quem fecha o mês. Juntar as duas daria a quem lança o poder
+  // de mudar a régua — e um relatório de custos com a régua trocada no meio do exercício não se
+  // compara com o do exercício anterior.
+  | "PARAMETRIZAR_RATEIO_DE_CUSTO"
+  | "APROPRIAR_CUSTO"
+
   // ── M10 — patrimônio, EIXO DE GESTÃO (ENT05, TR 5.19) ──
   | "CADASTRAR_LOCALIZACAO_FISICA"
   | "CADASTRAR_COMISSAO_PATRIMONIAL"
@@ -1116,6 +1125,9 @@ export type NomeDeServico =
   // V18/C13 — a alteracao da peca aprovada (dois servicos, uma acao)
   | "registrarAtoDeAlteracaoDoPlanejamento"
   | "acrescentarItemAoAtoDeAlteracao"
+  // V19/C05 — o custo por centro
+  | "publicarCriterioDeRateio"
+  | "apropriarCustoDaLiquidacao"
   | "criarDividaConsolidadaLdo"
   | "criarProjecaoAtuarialRpps"
   | "criarMargemExpansaoLdo"
@@ -1765,6 +1777,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // mexendo em mais uma linha, TR 5.9.3.16): conceder um sem o outro não significaria nada.
   registrarAtoDeAlteracaoDoPlanejamento: "ALTERAR_PLANEJAMENTO",
   acrescentarItemAoAtoDeAlteracao: "ALTERAR_PLANEJAMENTO",
+
+  // ── M12 V19/C05 — o custo por centro ──
+  publicarCriterioDeRateio: "PARAMETRIZAR_RATEIO_DE_CUSTO",
+  apropriarCustoDaLiquidacao: "APROPRIAR_CUSTO",
 
   // ── M21 — protocolo e processo digital (ENT02) ──
   abrirProcesso: "ABRIR_PROCESSO",
@@ -2788,6 +2804,17 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ⚠️ Exigir permissão para AUTENTICAR seria circular: para saber o que o usuário pode, é
   // preciso saber QUEM ele é — e é justamente isto que descobre quem ele é. É o mesmo argumento
   // do `autorizar` logo acima.
+  // ── M12 V19/C05 — as LEITURAS do custo por centro ──
+  // ⚠️ Nenhuma delas muta: o custo é um acúmulo das partes JÁ gravadas pela apropriação. Quem
+  // pode ler custo é decisão de escopo de leitura (a política de 4.1), não uma ação concedível —
+  // seria um rol que ninguém administra. A ESCRITA é que está no censo: PARAMETRIZAR_RATEIO_DE_CUSTO
+  // e APROPRIAR_CUSTO.
+  custoPorCentro: "leitura (soma as partes gravadas por centro na janela de competência — não muta)",
+  composicaoDoCentro: "leitura (a composição que volta ao fato: liquidação, empenho e credor — não muta)",
+  criteriosDeRateio: "leitura (os critérios publicados, com a marca do vigente — não muta)",
+  centrosDeCusto: "leitura (o rol curto de setores ativos que o formulário do critério oferece)",
+  criterioVigenteDeRateio: "leitura (resolve a versão vigente de uma chave numa data — composável interno do apropriar)",
+  //
   autenticar: "autenticação (precede a autorização — autorizá-la seria circular)",
   validarSessao: "autenticação (é ela que troca o token pela identidade, na borda)",
   revogarSessao: "autenticação (o logout — quem tem o token é dono da sessão)",
