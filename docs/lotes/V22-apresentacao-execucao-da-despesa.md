@@ -161,3 +161,64 @@ que equilibra a LOA (`prever-receita-da-loa.ts`), contador e empresa do MANAD.
 - Vigência do convênio no empenho; campanha publicitária sem modelo; dimensões nas anulações
   (dívida na anulação total, obra/ordem no estorno da parcial).
 - A natureza 11130211 está rotulada "IPTU - Principal" mas não é IPTU pelo extrato oficial.
+
+## O pedido da rodada 3, como veio (2026-09-28)
+
+> "siga para proximo e tambem finalize o que falta os 5 pontos"
+
+(O "próximo" era o percurso que clica nas ações de cada tela; os 5 pontos: RGF de pessoal, MANAD,
+remanejamento/transposição/transferência, as lacunas menores e as três decisões do usuário.)
+
+No meio da rodada: "tinha varios arquivos criados soltos na pagina downloads apaguei todos ... tem
+duas pastas gestao publica no desktop e download deixar so uma" — e, perguntado, "unificar todos
+existem somente em um ... manter na area de trabalho o atual e vinculado ao git".
+
+## Checkpoint 3 — 2026-09-28, pasta única e os 5 pontos
+
+Commits: `c2508cf` merge da v21-windows (remanejamento, transposição e transferência; dados da
+unidade orçamentária), `a00323b` dimensões nas anulações, `8b5fead` classificação do MANAD +
+históricos + folha de demonstração, `5596c9b` MANAD gerado (retenção no L150, fornecedor pelo
+cadastro de pessoas), `26dea9e` salários a pagar F e RGF no 2º quadrimestre, e o deste checkpoint.
+
+### Pasta única
+O repositório passou a ser `OneDrive\Área de Trabalho\gestao-publica` (com o `.git`); as pastas
+de Downloads foram removidas depois de conferir que a cópia do OneDrive era idêntica ao commit
+`a17dfbd` e que a outra sessão não tinha nada sem commit. `node_modules`, `.cache-puppeteer` e
+`.next` ficam fora do OneDrive em `C:\Users\winer\.gestao-publica-local`, por junção.
+
+### Medido em PRODUÇÃO (build desta pasta, `next start` na 3011, banco gestao_publica_local)
+- `npm run tipos:conferir`: APROVADO nos dois recortes, também sobre os 309 tipos de rota que o
+  build escreveu (a primeira aprovação usou o `next typegen`, que gera só 2).
+- `next build`: exit 0.
+- `conferir-telas-da-apresentacao.ts`: 44/44 (entraram unidades orçamentárias, realocações e a
+  classificação do MANAD; o RGF anexo 1 agora com números: 5.200,00, 1,83% da RCL).
+- `conferir-acoes-das-telas.ts` (novo): 44/44 telas sem falha, 130 ações verificadas (links,
+  arquivos PDF/planilha/CSV, janelas de detalhe e filtros), 0 falha. Provado que acusa: rota
+  inexistente sai FALHA com código 1. Limite declarado: formulários que gravam não são enviados
+  (o percurso da despesa cobre os de empenho/liquidação), e o filtro de data dos demonstrativos,
+  que troca a URL no navegador sem formulário, não é exercitado.
+- `percurso-execucao-da-despesa.ts`: 33/33.
+- MANAD 2026 gerado no banco de demonstração: 127 linhas, 10 L150, 10 L750 (7 com nome).
+
+### Os 5 pontos
+1. RGF anexo 1: folha de agosto/2026 com 2 servidores (tabelas oficiais de IRRF e RGPS 2026),
+   calculada, fechada, apropriada, certificada e liquidada por três pessoas.
+2. MANAD: tela de classificação (unidade, ação, naturezas) e da forma de escrituração, grants
+   coluna a coluna no censo; pontuação tipográfica só nos históricos; pagamento com retenção em um
+   L150 por perna; fornecedor pelo cadastro de pessoas.
+3. Remanejamento, transposição e transferência: da outra sessão, mesclado.
+4. Lacunas: dimensões das anulações por propriedade (teste contra as colunas do modelo); natureza
+   11130211 rotulada pela tabela oficial (IRPJ); descrições do ementário com hífen.
+5. Decisões: órgão 01 e 99 no Executivo; centralização gravável pela tela; histórico com
+   pontuação tipográfica convertido no arquivo.
+
+### Pendências nomeadas
+- Vigência do convênio no empenho: a regra depende do regulamento da transferência (Portaria
+  424/2016 revogada pela Portaria Conjunta 33/2023, que desde 2024 vale só acima de R$ 1,5 mi); o
+  artigo não foi confirmado na fonte oficial. Não implementada.
+- Campanha publicitária: não há cláusula no catálogo do termo de referência; sem modelo.
+- Redutor do IRRF 2026: o modelo não representa o teto "até R$ 312,89" da faixa até R$ 5.000.
+- Desconto simplificado: o motor desconta a contribuição junto com o simplificado — conferir com
+  quem responde pela folha (Lei 9.250, art. 4º).
+- Encargos patronais da folha de demonstração não semeados (alíquota patronal sem fonte).
+- MANAD L750: 3 documentos antigos da prova de conceito sem cadastro de pessoa saem sem nome.

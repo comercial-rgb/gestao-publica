@@ -24,6 +24,10 @@ import { ROTEIRO } from "./roteiro-da-apresentacao.js";
 
 const BASE = process.argv[2] ?? "http://localhost:3011";
 const SAIDA = process.argv[3] ?? "acoes-das-telas.txt";
+/** Opcional: rotas avulsas separadas por vírgula, no lugar do roteiro (para provar que o conferidor acusa). */
+const AVULSAS = process.argv[4];
+const TELAS: readonly (readonly [string, string])[] =
+  AVULSAS === undefined ? ROTEIRO : AVULSAS.split(",").map((r) => [`avulsa ${r}`, r] as const);
 const SENHA = process.env["SEED_ADMIN_SENHA"] ?? "";
 if (SENHA === "") throw new Error("SEED_ADMIN_SENHA ausente.");
 
@@ -31,7 +35,12 @@ if (SENHA === "") throw new Error("SEED_ADMIN_SENHA ausente.");
 const LIMITE_DE_PAGINAS_POR_TELA = 12;
 const LIMITE_DE_ARQUIVOS_POR_TELA = 12;
 
+// ⚠️ SÓ O TEXTO VISÍVEL (`innerText`), nunca o `textContent` do body: o Next embute nos scripts da
+// página o modelo da tela "This page could not be found", e o `textContent` o lê em TODA página —
+// a primeira corrida deu 44 falhas falsas por isso.
 const ERRO_DE_PAGINA = /Application error|Unhandled Runtime Error|This page could not be found|Internal Server Error|Página não encontrada/;
+/** No HTML baixado (sem renderizar), o erro do Next se reconhece pelo título e pelo cabeçalho dele. */
+const ERRO_NO_HTML = /<title>(404|500)[^<]*<\/title>|class="next-error-h1"/;
 const TIPO_DE_ARQUIVO = /pdf|spreadsheet|excel|csv|zip|xml|octet-stream|text\/plain|json/;
 
 interface Resultado {
@@ -67,7 +76,7 @@ async function seguirLinks(p: Page, rota: string): Promise<{ verificados: number
     if (r.status !== 200) falhas.push(`link ${curto}: HTTP ${r.status}`);
     else if (new URL(r.url).pathname.startsWith("/login")) falhas.push(`link ${curto}: mandou para a entrada`);
     else if (r.tipo.includes("text/html")) {
-      const erro = ERRO_DE_PAGINA.exec(r.html)?.[0];
+      const erro = ERRO_NO_HTML.exec(r.html)?.[0];
       if (erro !== undefined) falhas.push(`link ${curto}: "${erro}"`);
     } else if (!TIPO_DE_ARQUIVO.test(r.tipo)) falhas.push(`link ${curto}: tipo inesperado "${r.tipo}"`);
     else if (r.tamanho === 0) falhas.push(`link ${curto}: arquivo vazio`);
@@ -118,7 +127,7 @@ async function enviarFiltros(p: Page, rota: string): Promise<{ verificados: numb
     const m = await p.evaluate(() => ({
       url: location.pathname + location.search,
       h1: document.querySelector("main h1")?.textContent?.trim() ?? "",
-      texto: document.body.textContent ?? "",
+      texto: document.body.innerText ?? "",
     }));
     const erro = ERRO_DE_PAGINA.exec(m.texto)?.[0];
     if (resp !== null && resp.status() !== 200) falhas.push(`filtro ${i + 1} (${m.url}): HTTP ${resp.status()}`);
@@ -141,14 +150,14 @@ async function main(): Promise<void> {
     await p.click('button[type="submit"]');
     await p.waitForFunction(() => !location.pathname.startsWith("/login"), { timeout: 120000 });
 
-    for (const [nome, rota] of ROTEIRO) {
+    for (const [nome, rota] of TELAS) {
       await p.goto(`${BASE}${rota}`, { waitUntil: "networkidle0", timeout: 180000 });
       // ⚠️ Tela que não abriu não tem ação para conferir, e "zero falhas" nela seria vacuidade:
       // foi assim que a primeira corrida deu 43/43 contra um servidor que devolvia página vazia.
       const aberta = await p.evaluate(() => ({
         url: location.pathname,
         h1: document.querySelector("main h1")?.textContent?.trim() ?? "",
-        erro: document.body.textContent ?? "",
+        erro: document.body.innerText ?? "",
       }));
       const erroAoAbrir = ERRO_DE_PAGINA.exec(aberta.erro)?.[0];
       if (aberta.url.startsWith("/login") || aberta.h1 === "" || erroAoAbrir !== undefined) {
@@ -179,7 +188,7 @@ async function main(): Promise<void> {
   const acoes = resultados.reduce((s, r) => s + r.verificados, 0);
   const falhas = resultados.reduce((s, r) => s + r.falhas.length, 0);
   const telasOk = resultados.filter((r) => r.falhas.length === 0).length;
-  const resumo = `\n${telasOk}/${ROTEIRO.length} telas sem falha; ${acoes} ação(ões) verificada(s); ${falhas} falha(s)`;
+  const resumo = `\n${telasOk}/${TELAS.length} telas sem falha; ${acoes} ação(ões) verificada(s); ${falhas} falha(s)`;
   console.log(resumo);
   writeFileSync(
     SAIDA,
