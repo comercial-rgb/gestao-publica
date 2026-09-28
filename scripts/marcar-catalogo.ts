@@ -244,11 +244,15 @@ const MAPA: Readonly<Record<string, Marca>> = {
   },
   "5.17.97": {
     situacao: "VALIDADO_LOCALMENTE",
-    evidencia: "ENT05 (modelo das tres secoes derrubadas): a ordem registra emissao, vencimento, fornecedor, finalidade e o recurso orcamentario (ficha). V4 §8: os mesmos campos na ilha da ordem e no detalhe (smoke-compras 20/20). ⚠️ A geração do empenho A PARTIR da ordem (com parcelas) não existe: o empenho é emitido na tela de empenhos, sem apontar para a ordem (pendência declarada no M11: vínculo empenho × ordem).",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): a ordem registra emissao, vencimento, fornecedor, finalidade e o recurso orcamentario (ficha). V4 §8: os mesmos campos na ilha da ordem e no detalhe (smoke-compras 20/20). " +
+      "V22 (correção desta evidência, que dizia que o empenho não apontava para a ordem — o vínculo `Empenho.ordemDeCompraId` existe desde 14b2daa, com os guards de `guardsDaOrdem` e modules/m11-licitacoes/m11-empenho-ordem.test.ts): em /despesa/empenhos, escolher a ordem PREENCHE a ficha, o credor (conferido no cadastro de pessoas), o valor, o tipo do empenho e o histórico, e o empenho emitido fica ligado à ordem — scripts/demonstracao/percurso-execucao-da-despesa.ts, passos 3 e 5 (33/33, checkpoint 3 da V22, 02316bb). " +
+      "⚠️ As PARCELAS não: ordem global/estimativa aceita N empenhos até o residual (m11-empenho-ordem.test.ts 'global N=2'), mas não há subempenho nem parcelamento da ordem (5.17.98 continua ausente).",
   },
   "5.17.100": {
     situacao: "PARCIAL",
-    evidencia: "ENT05 (modelo das tres secoes derrubadas): estornarOrdemDeCompra e fail-closed nos dois sentidos (D12): ordem com recebimento nao se estorna; ordem empenhada so pelo estorno do empenho — e o vinculo empenho × ordem ainda nao existe, entao RECUSA. V4 §8: ação Estornar a ordem no detalhe; o percurso vê a recusa da ordem COM recebimento nomeando (smoke-compras). ⚠️ O estorno dos itens de uma ordem já empenhada e o desbloqueio do empenho não existem.",
+    evidencia: "ENT05 (modelo das tres secoes derrubadas): estornarOrdemDeCompra e fail-closed nos dois sentidos (D12): ordem com recebimento nao se estorna; ordem empenhada so pelo estorno do empenho — e o vinculo empenho × ordem ainda nao existe, entao RECUSA. V4 §8: ação Estornar a ordem no detalhe; o percurso vê a recusa da ordem COM recebimento nomeando (smoke-compras). ⚠️ O estorno dos itens de uma ordem já empenhada e o desbloqueio do empenho não existem. " +
+      "V22 (correção desta evidência: o vínculo empenho × ordem EXISTE desde 14b2daa): a anulação do empenho copia a ordem e empenho vivo bloqueia o estorno da ordem (modules/m11-licitacoes/m11-empenho-ordem.test.ts 'ordinária'; modules/m05-despesa/m05-dimensoes-das-anulacoes.test.ts fixa a cópia por propriedade); anular o empenho PELA TELA devolve a ordem à lista das empenháveis (percurso-execucao-da-despesa.ts passo 11, 33/33, 02316bb). " +
+      "⚠️ Continua PARCIAL: o estorno do empenho libera a ordem, mas NÃO estorna a ordem nem os itens dela — isso segue sendo um segundo ato, manual.",
   },
   "5.17.105": {
     situacao: "VALIDADO_LOCALMENTE",
@@ -2550,6 +2554,84 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "esperado: a primeira declaração se anuncia como primeira; a segunda confirma dizendo que substituiu 100.000,00; a tela mostra UMA linha (a vigente, marcada v2); as DUAS versões continuam no banco; quem não tem a ação é recusado pelo SERVIDOR nomeando-a · " +
       "obtido: 29/29 passos, 0 falhas (scripts/smoke-credito-adicional.ts) · " +
       "artefato: .registro-de-execucao/percurso-credito-v73-final-2026-09-19T23-13-34-501Z.log.",
+  },
+
+  // ═══ V22 — A EXECUÇÃO DA DESPESA PELA TELA, A LOA COM OS ANEXOS DA LEI 4.320 E O EMENTÁRIO ═══
+  //
+  // ⚠️ SEIS CLÁUSULAS SOBEM, NENHUMA ALÉM DE `PARCIAL`, E UMA AUSÊNCIA FICA MEDIDA. A V22 entregou
+  // muito mais superfície do que isso (DFC, BF no exercício aberto, BO, MSC/MANAD, responsáveis e
+  // classificação do MANAD, anexos 8/12 do RREO, RGF anexo 1 com folha, solicitação de empenho,
+  // busca de credor, Excel/PDF/impressão) — e NADA disso tem cláusula própria neste termo de
+  // referência (o edital é o de Santa Catarina, com e-Sfinge; varredura por DFC, fluxo de caixa, MSC,
+  // MANAD, SICONFI, balanço, RREO, RGF, solicitação de empenho, credor, CPF/CNPJ). Superfície entregue
+  // não é cláusula atendida. O texto de "solicitação de empenho condicionada à autorização", citado em
+  // `modules/m05-despesa/solicitacao-de-empenho.ts`, veio do pedido da V22 e NÃO está no catálogo.
+  //
+  // Os conferidores de navegador da V22 (`conferir-telas-da-apresentacao.ts` 44/44 e
+  // `conferir-acoes-das-telas.ts` 44/44, 130 ações) são SOMENTE LEITURA: provam que a tela abre e que
+  // os arquivos que ela oferece baixam — não enviam formulário que grava. Por isso nenhuma cláusula
+  // de CADASTRO abaixo se apoia neles como percurso de escrita.
+  "5.10.1.22": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V22: empenhar a ordem de compra emitida pelo sistema de compras, pela tela. Em /despesa/empenhos o campo 'Ordem de compra' busca pelo número (oferece só ordens com saldo) e a escolha PREENCHE a ficha, o credor (conferido no cadastro de pessoas), o valor, o tipo do empenho e o histórico; o empenho emitido fica ligado à ordem. O domínio confere tudo de novo na transação (ordem estornada, ordem sem ficha, ficha diferente, credor diferente do fornecedor, residual da global): modules/m11-licitacoes/m11-empenho-ordem.test.ts (4 casos, N=2 na global e na liquidação). Percurso: scripts/demonstracao/percurso-execucao-da-despesa.ts passos 3 e 5 (33/33, checkpoint 3 da V22, 02316bb). " +
+      "⚠️ PARCIAL: a segunda metade — 'consultar a partir da ordem a ser empenhada a ordem completa, o contrato e a licitação' — não existe no formulário do empenho: ele mostra o rótulo da ordem, sem acesso à ordem completa, ao contrato nem à licitação dali. E o empenho é preenchido e CONFIRMADO por uma pessoa, não gerado em lote.",
+    rota_verificada:
+      "papel: EMPENHAR (administrador) · contexto: build próprio desta pasta, next start na 3011, banco gestao_publica_local, 2026-09-28 · " +
+      "passos: /despesa/empenhos → digitar 'OC' no campo Ordem de compra → escolher a primeira → conferir ficha, credor, valor, tipo e histórico preenchidos → número, data, categoria → Emitir → recarregar · " +
+      "esperado: a ordem é oferecida com saldo; o formulário vem preenchido pela ordem; a emissão é aceita e o empenho aparece na lista depois de recarregar · " +
+      "obtido: 33/33 afirmações, 0 falhas · artefato: capturas-v22/02-empenho-preenchido-pela-ordem.png e 05-lista-de-empenhos.png.",
+  },
+  "5.10.1.25": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V22: estornar o empenho devolve a ordem de compra ao estado de empenhável — a anulação copia `ordemDeCompraId` (o empenhado líquido da ordem é DERIVADO, `empenhadoLiquidoDaOrdem`), e a V22 tornou a cópia uma PROPRIEDADE: todo vínculo do Empenho é dimensão copiada ou vínculo declarado como não copiado (modules/m05-despesa/m05-dimensoes-das-anulacoes.test.ts, 3 casos; o efeito no banco, medido para o convênio, em m05-solicitacao-de-empenho.test.ts t12, N=2 anulação total, parcial e estorno da parcial). m11-empenho-ordem.test.ts 'ordinária': a anulação copia a ordem e empenho vivo bloqueia o estorno da ordem. Percurso: percurso-execucao-da-despesa.ts passo 11 — anular pela tela, com motivo, o empenho que o percurso emitiu: ele fica 'Anulado' na lista (o original continua) e a ordem volta a ser oferecida (33/33, 02316bb). " +
+      "⚠️ PARCIAL: a integridade é por VALOR da ordem, não por item — o empenho não é por item da ordem, e a ordem não é estornada junto com o empenho (o estorno da ordem continua um segundo ato manual; ver 5.17.100).",
+    rota_verificada:
+      "papel: EMPENHAR e ANULAR_EMPENHO (administrador) · contexto: build próprio, next start na 3011, banco gestao_publica_local, 2026-09-28 · " +
+      "passos: /despesa/empenhos → linha do empenho emitido no passo 5 → Anular (número, motivo, data) → recarregar → consultar /opcoes/ordens-para-empenho pelo número da ordem · " +
+      "esperado: o empenho aparece como Anulado e a ordem volta a ser oferecida para empenho · obtido: 33/33 · artefato: saída do percurso no checkpoint 3 da V22.",
+  },
+  "5.10.1.37": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V22: documento digitalizado NA LIQUIDAÇÃO. A janela de detalhe da liquidação (/despesa/liquidacoes) anexa o comprovante (anexo do M22 com dono `liquidacaoId`, SHA-256 na mensagem), e depois de recarregar ele está lá e baixa ÍNTEGRO, byte a byte. Negação com motivo: o almoxarife é recusado pela tela por falta de acesso à despesa, e o download direto responde 404 sem o conteúdo (a leitura do anexo é autorizada pela unidade da ficha do empenho — lib/portas/documentos.ts). Defeito achado e corrigido: a guarda da raiz de armazenamento recusava todo anexo no Windows — modules/m22-documentos/armazenamento-caminho.test.ts (3/3, mutação nos dois sentidos) e m22-documentos.test.ts (21/21). Percurso: percurso-execucao-da-despesa.ts passos 9 e 10 (33/33, 02316bb). " +
+      "⚠️ PARCIAL: no EMPENHO o anexo existe no schema (`Anexo.empenhoId`) e o download foi consertado, mas não há upload pela tela do empenho; em RESTOS A PAGAR não há dono de anexo nenhum.",
+    rota_verificada:
+      "papel: ANEXAR_ARQUIVO e CONSULTAR_DESPESA (administrador); negação com o almoxarife (sem CONSULTAR_DESPESA) · contexto: build próprio, next start na 3011, banco gestao_publica_local, 2026-09-28 · " +
+      "passos: /despesa/liquidacoes → abrir a liquidação → anexar um PDF → recarregar → abrir de novo → baixar o último anexo; em outra sessão, o almoxarife abre a lista e pede o mesmo arquivo · " +
+      "esperado: 'anexado' com a verificação; o anexo persiste e baixa idêntico; o almoxarife é recusado nomeando o acesso e o download dá 404 sem '%PDF' · obtido: 33/33 · artefato: capturas-v22/06-modal-da-liquidacao-com-comprovante.png.",
+  },
+  "5.10.1.8": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V22: no empenho, o histórico é TEXTO LIVRE (campo editável, obrigatório) e a tela SUGERE textos compostos do documento de origem escolhido — solicitação autorizada, ordem de compra, contrato ou reserva —, que preenchem o campo e continuam editáveis (`sugestoesDeHistorico` em app/(areas)/despesa/empenhos/FormEmpenho.tsx, sem travessão porque o histórico vai ao MANAD). Percurso: percurso-execucao-da-despesa.ts passo 3 — o histórico se autopreenche com 'Empenho referente à Ordem de Compra N - objeto' e há ao menos um texto sugerido (33/33, 02316bb). " +
+      "⚠️ PARCIAL: não há CADASTRO de históricos padronizados mantido pelo ente — as sugestões são geradas da origem, e sem origem escolhida não há nenhuma. E a função de sugestão não tem teste de módulo próprio; só o percurso a exercita.",
+    rota_verificada:
+      "papel: EMPENHAR (administrador) · contexto: build próprio, next start na 3011, banco gestao_publica_local, 2026-09-28 · " +
+      "passos: /despesa/empenhos → escolher uma ordem de compra → ler o histórico e os botões de sugestão · " +
+      "esperado: histórico começando por 'Empenho referente à Ordem de Compra', sem '..' e sem travessão; ≥ 1 sugestão · obtido: 33/33 · artefato: capturas-v22/02-empenho-preenchido-pela-ordem.png.",
+  },
+  "5.9.3.31": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V22: a tela /planejamento/loa emite os anexos da Lei 4.320/64 da LOA do exercício — 1 (categorias econômicas e resultado corrente), 2 (natureza, consolidado e por unidade), 6 e 7 (programa de trabalho por projetos, atividades e operações especiais), 8 (vínculo com os recursos pela natureza DECLARADA da fonte) e 9 (órgão e função) —, com PDF (/planejamento/loa/pdf) e Excel por anexo (/planejamento/loa/xlsx). Sem segunda fonte: despesa = `valorDotado` das fichas, receita = `ReceitaPrevista` com o sinal da dedução; `conferirLoa` confere cada quadro contra um total de referência somado por OUTRO caminho e, se diverge, a LOA não sai. Testes: modules/m02b-plurianual/m02b-anexos-loa.test.ts (10 casos, mutação nas duas direções registrada no MODULO do M02b). Navegador: conferir-telas-da-apresentacao.ts (44/44) abre a tela com conteúdo e conferir-acoes-das-telas.ts (44/44, 130 ações) baixa o PDF e as planilhas com tipo e corpo não vazio (checkpoint 3 da V22, 02316bb). " +
+      "⚠️ PARCIAL: NÃO há publicação no portal da transparência — /transparencia/demonstrativos publica receitas, despesas e o RREO anexo 1, não a LOA. E os quadros que dependem de dado não registrado (o anexo 8 quando alguma fonte não tem natureza declarada, fundos especiais, compatibilidade com as metas da LDO, regionalizado) saem como 'não emitidos' com o motivo, nunca inventados.",
+    rota_verificada:
+      "papel: CONSULTAR_PLANEJAMENTO (administrador) · contexto: build próprio, next start na 3011, banco gestao_publica_local, 2026-09-28 · " +
+      "passos: /planejamento/loa → seguir os links de arquivo (PDF da LOA e Excel de cada anexo) · " +
+      "esperado: a tela abre com título e quadros; cada arquivo responde 200 com tipo de arquivo e corpo não vazio · obtido: 44/44 telas e 130 ações sem falha (os dois conferidores) · artefato: saída dos conferidores no checkpoint 3 da V22.",
+  },
+  "5.9.3.9": {
+    situacao: "PARCIAL",
+    evidencia:
+      "V22: o ementário da receita (/receita/naturezas) CADASTRA natureza de receita nova — o código passa pelo parser do M04 (8 dígitos, origem do rol da categoria, tipo 0 a 4; a hierarquia com pontos é aceita), duplicata é recusada nomeando a que já existe, e só quem tem PARAMETRIZAR_ROTEIRO_ORCAMENTARIO cadastra. O domínio da arrecadação aceita natureza SEM previsão na LOA (é excesso de arrecadação, legítimo: modules/m04-receita/servico.ts passo 4b). Testes: modules/m04-receita/m04-ementario.test.ts (5 casos: N=2, duplicata, código malformado, negação por ação, normalização). " +
+      "⚠️ PARCIAL, por dois motivos: (1) a TELA da arrecadação oferece só o rol das naturezas previstas na LOA (`listarNaturezasPrevistas`), então a natureza nova não chega à arrecadação pela interface; (2) o cadastro pela tela não foi exercitado por percurso de navegador — os conferidores da V22 abrem /receita/naturezas, mas não enviam formulário que grava.",
+  },
+  "5.9.3.1": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia:
+      "V22, medido ao construir a tela da LOA: NÃO existe cadastro da Lei Orçamentária Anual. O schema tem a lei do PPA (`PlanoPlurianual.leiRef`) e a LDO (`LeiDiretrizesOrcamentarias`), e nenhum modelo para a LOA — sem projeto de lei, sem lei que a aprovou e sem anexos. A tela /planejamento/loa, entregue na V22, é CONSULTA da LOA consolidada a partir das fichas e da receita prevista (leitura por CONSULTAR_PLANEJAMENTO, nenhum formulário), por decisão declarada em modules/m02b-plurianual/anexos/loa.ts: 'Nada é cadastrado para a LOA além do que a execução já usa'. Pendência: LOA-SEM-CADASTRO-DA-LEI.",
   },
 };
 
