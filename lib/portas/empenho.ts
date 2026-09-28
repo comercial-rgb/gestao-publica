@@ -41,6 +41,9 @@ export interface EmpenhoDaTela {
   readonly credorCpfCnpj: string;
   /** V22: o nome do credor no cadastro de pessoas, quando o documento está lá; `null` quando não está. */
   readonly credorNome: string | null;
+  /** V22: os vínculos voluntários do empenho, em texto ("CP-001/2026 — Vacinação"); `null` quando não há. */
+  readonly campanha: string | null;
+  readonly convenio: string | null;
   readonly historico: string;
   readonly fichaNumero: number;
   readonly unidadeCodigo: string;
@@ -89,8 +92,42 @@ export async function listarEmpenhosDaExecucao(p: {
     ...(p.credorCpfCnpj !== undefined ? { credorCpfCnpj: p.credorCpfCnpj } : {}),
     ...(p.fonteCodigo !== undefined ? { fonteCodigo: p.fonteCodigo } : {}),
   });
-  const nomes = await nomesDosCredores(linhas.map((l) => l.credorCpfCnpj));
-  return linhas.map((l) => ({ ...paraTela(l), credorNome: nomes.get(l.credorCpfCnpj) ?? null }));
+  const [nomes, vinculos] = await Promise.all([
+    nomesDosCredores(linhas.map((l) => l.credorCpfCnpj)),
+    vinculosDosEmpenhos(linhas.map((l) => l.id)),
+  ]);
+  return linhas.map((l) => ({
+    ...paraTela(l),
+    credorNome: nomes.get(l.credorCpfCnpj) ?? null,
+    campanha: vinculos.get(l.id)?.campanha ?? null,
+    convenio: vinculos.get(l.id)?.convenio ?? null,
+  }));
+}
+
+/**
+ * V22 — OS VÍNCULOS VOLUNTÁRIOS (campanha publicitária e convênio), lidos numa consulta só para a
+ * lista inteira. São exibição: a soma por vínculo é do M05 (`empenhadoLiquidoDaCampanha`,
+ * `empenhadoLiquidoDoConvenio`).
+ */
+async function vinculosDosEmpenhos(ids: readonly string[]): Promise<ReadonlyMap<string, { readonly campanha: string | null; readonly convenio: string | null }>> {
+  if (ids.length === 0) return new Map();
+  const linhas = await cliente().empenho.findMany({
+    where: { id: { in: [...ids] }, OR: [{ campanhaPublicitariaId: { not: null } }, { convenioId: { not: null } }] },
+    select: {
+      id: true,
+      campanhaPublicitaria: { select: { identificador: true, titulo: true } },
+      convenio: { select: { identificador: true, objeto: true } },
+    },
+  });
+  return new Map(
+    linhas.map((l) => [
+      l.id,
+      {
+        campanha: l.campanhaPublicitaria === null ? null : `${l.campanhaPublicitaria.identificador} — ${l.campanhaPublicitaria.titulo}`,
+        convenio: l.convenio === null ? null : `${l.convenio.identificador} — ${l.convenio.objeto}`,
+      },
+    ])
+  );
 }
 
 /**
@@ -232,7 +269,7 @@ export async function registrarEmpenho(input: {
   });
 }
 
-function paraTela(e: EmpenhoNaLista): Omit<EmpenhoDaTela, "credorNome"> {
+function paraTela(e: EmpenhoNaLista): Omit<EmpenhoDaTela, "credorNome" | "campanha" | "convenio"> {
   return {
     id: e.id,
     numero: e.numero,

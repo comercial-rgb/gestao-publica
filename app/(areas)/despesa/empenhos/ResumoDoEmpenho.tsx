@@ -48,6 +48,8 @@ export function ResumoDoEmpenho({ e, queryRecorte }: { readonly e: EmpenhoDaTela
         {linha("Ficha", e.fichaNumero)}
         {linha("Fonte de recursos", e.fonteCodigo)}
         {linha("Natureza da despesa", e.naturezaCodigo)}
+        {e.campanha !== null ? linha("Campanha publicitária", e.campanha) : null}
+        {e.convenio !== null ? linha("Convênio", e.convenio) : null}
       </dl>
 
       <div>

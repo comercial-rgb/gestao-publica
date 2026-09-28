@@ -132,6 +132,9 @@ async function percorrer(navegador: Awaited<ReturnType<typeof puppeteer.launch>>
   await foto(p, "03-credor-por-documento");
   afirmar(await escolherNoSeletor(p, "Credor", credor.slice(0, 5), nomeDoCredor), `e volta ao credor da ordem pelos 5 primeiros dígitos (${credor.slice(0, 5)})`);
 
+  console.log("4b. a nota de empenho se vincula à campanha publicitária");
+  afirmar(await escolherNoSeletor(p, "Campanha publicitária", "vacina", "CP-001/2026"), 'digitar "vacina" lista a campanha CP-001/2026 e ela é escolhida');
+
   console.log("5. emitir e ver na lista");
   const numero = `2026NE9${String(Date.now()).slice(-5)}`;
   await p.type('input[name="numero"]', numero);
@@ -157,6 +160,7 @@ async function percorrer(navegador: Awaited<ReturnType<typeof puppeteer.launch>>
   const modal = await p.$("dialog[open]");
   const textoDoModal = (await modal?.evaluate((d) => d.textContent ?? "")) ?? "";
   afirmar(textoDoModal.includes(nomeDoCredor) && textoDoModal.includes(valorEmReais), `o modal mostra o credor pelo nome e o valor em reais (${valorEmReais})`);
+  afirmar(textoDoModal.includes("Campanha publicitária") && textoDoModal.includes("CP-001/2026"), "o modal mostra a campanha publicitária vinculada (CP-001/2026)");
   afirmar(textoDoModal.includes("Nota de Empenho (PDF)") && textoDoModal.includes("Imprimir") && textoDoModal.includes("dossiê"), "o modal oferece NE em PDF, impressão e o dossiê");
   await foto(p, "04-modal-do-empenho");
   await p.keyboard.press("Escape");

@@ -138,11 +138,104 @@ async function enviarFiltros(p: Page, rota: string): Promise<{ verificados: numb
   return { verificados: total, falhas };
 }
 
+/**
+ * OS SELETORES QUE TROCAM A URL SEM FORMULÁRIO — a data de corte com "Aplicar" dos demonstrativos
+ * e os seletores de exercício/bimestre/quadrimestre dos anexos fiscais. Eles fazem `router.push`
+ * no navegador, e o `requestSubmit` dos filtros não os alcança. Aqui cada um é acionado com um
+ * valor DIFERENTE do atual, e a tela que volta tem de ter mudado de URL, ter título e não ter erro.
+ */
+async function acionarSeletores(p: Page, rota: string): Promise<{ verificados: number; falhas: string[] }> {
+  const falhas: string[] = [];
+  let verificados = 0;
+  const alvos = await p.evaluate(() => {
+    const main = document.querySelector("main");
+    if (main === null) return [] as { tipo: "data" | "select"; indice: number }[];
+    const fora = (el: Element): boolean => el.closest("form") === null;
+    const datas = [...main.querySelectorAll<HTMLInputElement>('input[type="date"]')].filter(fora);
+    // Só os seletores de PERÍODO (pelo rótulo): um select fora de formulário que não navega
+    // (ordenação local, por exemplo) daria falha falsa de "a URL não mudou".
+    const dePeriodo = (s: HTMLSelectElement): boolean => {
+      const rotulo = [
+        s.getAttribute("aria-label") ?? "",
+        s.name,
+        s.closest("label")?.textContent ?? "",
+        s.previousElementSibling?.textContent ?? "",
+        s.parentElement?.previousElementSibling?.textContent ?? "",
+      ].join(" ");
+      return /exerc|bimestre|quadrimestre|per[ií]odo|m[eê]s|compet/i.test(rotulo);
+    };
+    const selects = [...main.querySelectorAll<HTMLSelectElement>("select")].filter(fora).filter((s) => s.options.length > 1).filter(dePeriodo);
+    return [
+      ...datas.map((_, indice) => ({ tipo: "data" as const, indice })),
+      ...selects.map((_, indice) => ({ tipo: "select" as const, indice })),
+    ];
+  });
+  for (const alvo of alvos) {
+    await p.goto(`${BASE}${rota}`, { waitUntil: "networkidle0", timeout: 180000 });
+    const antes = await p.evaluate(() => location.pathname + location.search);
+    const acionou = await p.evaluate((a) => {
+      const main = document.querySelector("main");
+      if (main === null) return "";
+      const fora = (el: Element): boolean => el.closest("form") === null;
+      if (a.tipo === "data") {
+        const el = [...main.querySelectorAll<HTMLInputElement>('input[type="date"]')].filter(fora)[a.indice];
+        if (el === undefined) return "";
+        const novo = el.value === "2026-06-30" ? "2026-05-31" : "2026-06-30";
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+        set?.call(el, novo);
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        const botao = [...(el.parentElement?.parentElement ?? main).querySelectorAll("button")].find((b) => /aplicar/i.test(b.textContent ?? ""));
+        botao?.click();
+        return botao === undefined ? "" : `data ${novo}`;
+      }
+      const dePeriodo = (x: HTMLSelectElement): boolean =>
+        /exerc|bimestre|quadrimestre|per[ií]odo|m[eê]s|compet/i.test(
+          [
+            x.getAttribute("aria-label") ?? "",
+            x.name,
+            x.closest("label")?.textContent ?? "",
+            x.previousElementSibling?.textContent ?? "",
+            x.parentElement?.previousElementSibling?.textContent ?? "",
+          ].join(" ")
+        );
+      const s = [...main.querySelectorAll<HTMLSelectElement>("select")].filter(fora).filter((x) => x.options.length > 1).filter(dePeriodo)[a.indice];
+      if (s === undefined) return "";
+      const outra = [...s.options].find((o) => o.value !== s.value && !o.disabled);
+      if (outra === undefined) return "";
+      const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+      set?.call(s, outra.value);
+      s.dispatchEvent(new Event("change", { bubbles: true }));
+      return `${s.getAttribute("aria-label") ?? s.name ?? "seletor"} = ${outra.value}`;
+    }, alvo);
+    if (acionou === "") continue;
+    verificados++;
+    const mudou = await p
+      .waitForFunction((a: string) => location.pathname + location.search !== a, { timeout: 30000 }, antes)
+      .then(() => true)
+      .catch(() => false);
+    await p.waitForNetworkIdle({ timeout: 60000 }).catch(() => undefined);
+    const m = await p.evaluate(() => ({
+      url: location.pathname + location.search,
+      h1: document.querySelector("main h1")?.textContent?.trim() ?? "",
+      texto: document.body.innerText ?? "",
+    }));
+    const erro = ERRO_DE_PAGINA.exec(m.texto)?.[0];
+    if (!mudou) falhas.push(`seletor (${acionou}): a URL não mudou`);
+    else if (erro !== undefined) falhas.push(`seletor (${acionou}) -> ${m.url}: "${erro}"`);
+    else if (m.h1 === "") falhas.push(`seletor (${acionou}) -> ${m.url}: voltou sem título`);
+  }
+  return { verificados, falhas };
+}
+
 async function main(): Promise<void> {
   const navegador = await puppeteer.launch({ headless: true, args: ["--lang=pt-BR"] });
   const resultados: Resultado[] = [];
   try {
     const p = await navegador.newPage();
+    // O tsx compila as funções nomeadas de dentro do `evaluate` com o auxiliar `__name`, que não
+    // existe no navegador ("__name is not defined"). Define-se a identidade antes de qualquer página.
+    await p.evaluateOnNewDocument("globalThis.__name = (f) => f;");
     await p.setViewport({ width: 1440, height: 900 });
     await p.goto(`${BASE}/login`, { waitUntil: "networkidle0", timeout: 120000 });
     await p.type('input[name="identificador"]', "admin@cg.pb.gov.br");
@@ -169,15 +262,16 @@ async function main(): Promise<void> {
       const links = await seguirLinks(p, rota);
       const janelas = await abrirJanelas(p);
       const filtros = await enviarFiltros(p, rota);
+      const seletores = await acionarSeletores(p, rota);
       const r: Resultado = {
         tela: `${nome} (${rota})`,
-        verificados: links.verificados + janelas.verificados + filtros.verificados,
-        falhas: [...links.falhas, ...janelas.falhas, ...filtros.falhas],
+        verificados: links.verificados + janelas.verificados + filtros.verificados + seletores.verificados,
+        falhas: [...links.falhas, ...janelas.falhas, ...filtros.falhas, ...seletores.falhas],
         pulados: links.pulados,
       };
       resultados.push(r);
       console.log(
-        `${r.falhas.length === 0 ? "ok   " : "FALHA"} | ${r.tela} | ${links.verificados} link(s), ${janelas.verificados} janela(s), ${filtros.verificados} filtro(s)` +
+        `${r.falhas.length === 0 ? "ok   " : "FALHA"} | ${r.tela} | ${links.verificados} link(s), ${janelas.verificados} janela(s), ${filtros.verificados} filtro(s), ${seletores.verificados} seletor(es) de período` +
           (r.pulados > 0 ? ` | ${r.pulados} link(s) além do limite não seguidos` : "")
       );
       for (const f of r.falhas) console.log(`        - ${f}`);
