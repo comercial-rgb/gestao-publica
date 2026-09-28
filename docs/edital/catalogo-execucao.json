@@ -1400,9 +1400,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: CRIAR_VERSAO_CMD / CRIAR_VERSAO_MBA / CONFIGURAR_LIMITACAO_EMPENHO / LIBERAR_PROGRAMACAO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: banco de apresentacao (gestao_publica_apresentacao) clonado, next start sobre build proprio na 3010 com papel de runtime, 2026-09-28 · passos: /planejamento/cmd-mba -> propor o cronograma da previsao da LOA (12 cotas) -> propor as metas (6) -> ligar a limitacao por ato e motivo -> /despesa/empenhos: empenho de 20.000,00 contra cota de 12.500,00 RECUSADO -> liberar 10.000,00 por ato -> o MESMO empenho aceito -> desligar a limitacao · obtido: 14/14 e 15/15 em duas corridas (scripts/smoke-programacao-financeira.ts, 0 falhas) · artefato: saida do percurso na sessao da V19.",
+      "evidencia": "V19/C22: o CRONOGRAMA MENSAL DE DESEMBOLSO passou a ser cadastravel pela tela — proposto da previsao da lei orcamentaria em doze cotas por FONTE que fecham ao centavo, com o ato que o autoriza obrigatorio (atoRef), a limitacao de empenho ligada/desligada por ato e a liberacao de saldo do mes. A informacao chega ao nivel de FONTE DE RECURSOS, que e o que a clausula pede: o grao do modelo e (fonte x mes). ⚠️ FALTA 'POR ENTIDADE': a programacao financeira e do ENTE neste repositorio, por decisao registrada ('o caixa e um so'), e nenhuma entidade do M02 tem recorte de entidade — a mesma ausencia estrutural que deixou 5.10.1.3 e 5.10.1.108 parciais. ⚠️ E o guard do cronograma JA era cobrado dentro da transacao do empenho antes desta unidade; o que faltava era o INTERRUPTOR ter dono visivel.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.21",
@@ -2366,9 +2366,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: CRIAR_VERSAO_CMD / CRIAR_VERSAO_MBA / CONFIGURAR_LIMITACAO_EMPENHO / LIBERAR_PROGRAMACAO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: banco de apresentacao (gestao_publica_apresentacao) clonado, next start sobre build proprio na 3010 com papel de runtime, 2026-09-28 · passos: /planejamento/cmd-mba -> propor o cronograma da previsao da LOA (12 cotas) -> propor as metas (6) -> ligar a limitacao por ato e motivo -> /despesa/empenhos: empenho de 20.000,00 contra cota de 12.500,00 RECUSADO -> liberar 10.000,00 por ato -> o MESMO empenho aceito -> desligar a limitacao · obtido: 14/14 e 15/15 em duas corridas (scripts/smoke-programacao-financeira.ts, 0 falhas) · artefato: saida do percurso na sessao da V19.",
+      "evidencia": "V19/C22: a consulta dos bloqueios que visam a LIMITACAO DE EMPENHO existe em /planejamento/cmd-mba — a situacao do regime (ligado/desligado, com o ato e a data), a cota de cada fonte em cada mes, os meses SEM cota (que sao diferentes de cota zero: ausencia recusa, zero e bloqueio deliberado) e as liberacoes. E a recusa que o regime causa foi medida pela tela, com o numero: cota 12.500,00 contra empenho de 20.000,00. ⚠️ FALTA A OUTRA METADE DA CLAUSULA: 'bloqueios de dotacao por tipo de modalidade de licitacao' e a RESERVA de dotacao por processo (M05/M11), que existe, mas nao tem consulta por modalidade — nao foi conferida nesta unidade e fica NAO afirmada.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.45",
@@ -2800,9 +2800,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ESTORNAR_MOVIMENTO_EXTRA · contexto: banco de apresentacao, next start sobre build proprio, 2026-09-28 · passos: /financeiro/extraorcamentario -> abrir o detalhe 'Estornar' na linha do recolhimento -> data e motivo -> confirmar · esperado: o original permanece e o saldo a recolher volta a considerar o valor · obtido: a tela e a porta existem e o conferidor pre-apresentacao passa a rota e o conteudo (22/22 no BLOCO 3); o par recolher/estornar pela tela NAO foi percorrido nesta rodada — fica nomeado como percurso devido.",
+      "evidencia": "V19: o ESTORNO das notas de despesa extraorcamentaria ganhou caminho pela tela (/financeiro/extraorcamentario) — um formulario por LINHA, em divulgacao progressiva, com data e motivo, e o estorno e ATO NOVO: o original continua na lista e o saldo a recolher volta a considerar o valor. O servico existia desde que o M07 nasceu, era censado com acao propria, e nenhuma porta o expunha: a coluna 'Estorno de recolhimento' mostrava so o que um script tivesse feito. O gerenciador exibe as notas com data, tipo, consignatario, historico e valor, e a composicao por consignatario separa retido, estornado, recolhido e a recolher. ⚠️ FALTA: distinguir no gerenciador as notas MANUAIS das originarias de empenho/receita extra (o M07 registra o vinculo com o pagamento, mas a tela nao filtra por origem), consolidar POR ENTIDADE (sem dimensao de entidade) e exibir os lancamentos contabeis da nota na propria tela.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.76",
@@ -3164,9 +3164,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ENCERRAR_EXERCICIO e APURAR_RESULTADO · contexto: clone descartavel do banco de apresentacao, next start sobre build proprio na 3011, 2026-09-28 · passos: /despesa/restos-a-pagar -> confirmacao errada RECUSADA -> encerrar 2026 (2 restos processados inscritos) -> a tela recarregada mostra as inscricoes -> encerrar de novo RECUSADO -> apurar o resultado (superavit de 255.625,00, 4 contas de variacao zeradas) -> empenhar no ano fechado RECUSADO · obtido: 13/13 (scripts/smoke-encerramento-do-exercicio.ts, 0 falhas) · artefato: saida do percurso na sessao da V19.",
+      "evidencia": "V19: INSCREVER EM RESTOS A PAGAR no encerramento do exercicio, individualmente, demonstrando processados e nao processados — agora pela TELA (/despesa/restos-a-pagar). O servico varre as fichas de todas as unidades, inscreve o liquidado-e-nao-pago (processado) e o empenhado-e-nao-liquidado (nao processado) e grava o encerramento na MESMA transacao, sem tocar dotacao (inscrever resto nao e gastar de novo). A mensagem separa as duas contagens e a tela recarregada lista as inscricoes por tipo — persistencia, nao mensagem. ⚠️ E O FORMULARIO APARECE NO ESTADO VAZIO, que e onde importa: antes do primeiro encerramento nao existe inscricao nenhuma, e era justamente essa a tela em que o operador nao tinha como produzir a primeira. Confirmacao por DIGITAR O ANO, conferida no servidor.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.102",
@@ -3178,9 +3178,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ENCERRAR_EXERCICIO e APURAR_RESULTADO · contexto: clone descartavel do banco de apresentacao, next start sobre build proprio na 3011, 2026-09-28 · passos: /despesa/restos-a-pagar -> confirmacao errada RECUSADA -> encerrar 2026 (2 restos processados inscritos) -> a tela recarregada mostra as inscricoes -> encerrar de novo RECUSADO -> apurar o resultado (superavit de 255.625,00, 4 contas de variacao zeradas) -> empenhar no ano fechado RECUSADO · obtido: 13/13 (scripts/smoke-encerramento-do-exercicio.ts, 0 falhas) · artefato: saida do percurso na sessao da V19.",
+      "evidencia": "V19: os lancamentos contabeis de encerramento das CLASSES 3 E 4 saem automaticamente pela tela — a apuracao do resultado zera as contas de variacao patrimonial e transfere o saldo a conta de resultados acumulados, sem nenhuma partida digitada a mao (medido: superavit de 255.625,00 com 4 contas zeradas). ⚠️ E O PARAMETRO NAO EXISTIA EM INSTALACAO NENHUMA: zero linhas de RoteiroEncerramento, e a apuracao recusava — corretamente — com 'o M08 nao inventa conta'. Agora a conta do plano OFICIAL (2.3.7.1.1.01.00) entra na sequencia canonica de instalacao. ⚠️ FALTA A VIRADA DAS CLASSES 5 E 6 (`encerrarControlesOrcamentarios`): o servico existe e e censado, nao tem borda, e depende de uma classificacao ENCERRA/TRANSFERE por conta de controle com saldo — decisao contabil do ente, que nenhum seed pode adivinhar. Sem ela, dotacao inicial e credito disponivel seguem acumulando entre exercicios. Pendencia: VIRADA-DAS-CLASSES-DE-CONTROLE-SEM-BORDA.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.103",
@@ -3207,8 +3207,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V19, medido ao construir a virada: a DESMOVIMENTACAO separada do encerramento, da inscricao dos restos e das notas extraorcamentarias nao existe pela tela. O que existe: `estornarApuracao` no dominio (censado, SEM borda — ele exige o id da operacao, o que pede uma listagem de apuracoes que esta unidade nao construiu) e o estorno de movimento extraorcamentario, que GANHOU borda nesta unidade (ver 5.10.1.75). Desfazer o ENCERRAMENTO e a INSCRICAO nao tem servico nem tela, e o percurso afirma o oposto: encerrar de novo e recusado nomeando. Pendencias: ESTORNO-DA-APURACAO-SEM-BORDA e DESFAZER-ENCERRAMENTO-INEXISTENTE.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.105",
