@@ -435,8 +435,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe importacao de vinculos da LOA para o PPA novo — os 22 servicos do M02b sao de criacao e de alteracao, nenhum de importacao. Pendencia: IMPORTACAO-DE-PECA-ANTERIOR.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.6",
@@ -463,8 +463,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe importacao de acoes e programas da LOA para o PPA. O programa e a acao ENTRAM no plano por cadastro proprio (criarProgramaPpa/criarAcaoPpa), reusando o `Programa` e a `Acao` do M02 — o que evita redigitar a CLASSIFICACAO, mas nao e a importacao em lote que a clausula pede. Pendencia: IMPORTACAO-DE-PECA-ANTERIOR.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.8",
@@ -491,8 +491,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe importacao de receitas e despesas de PPA anterior nem da LOA. Pendencia: IMPORTACAO-DE-PECA-ANTERIOR.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.10",
@@ -505,8 +505,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe a importacao com escolha entre 'so as dotacoes', 'dotacoes e valores' e dotacoes selecionadas — ela pressupoe a importacao, que nao existe. Pendencia: IMPORTACAO-DE-PECA-ANTERIOR.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.11",
@@ -560,9 +560,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: as alteracoes orcamentarias da receita do PPA entram por ATO (lei/decreto) com ajuste COM SINAL, append-only — a linha aprovada nunca muda e o vigente e `original + soma dos ajustes`, nunca coluna cache. As DUAS metades da clausula estao na tela /planejamento/alteracoes: 'consultar todas as alteracoes incluidas' e a lista cronologica de atos mais o comparativo; 'de uma receita individualmente' e o historico DA LINHA, que abre e mostra cada ajuste com data, valor e a justificativa daquele item. ⚠️ ESSE HISTORICO NASCEU DO PROPRIO PERCURSO: a primeira versao da tela mostrava so a SOMA, e a justificativa que o formulario captura nao aparecia em tela nenhuma — campo gravado que ninguem le e campo que o operador aprende a deixar em branco. Motor: modules/m02b-plurianual/{alteracao,servico-alteracao,comparativo}.ts, 38 testes dirigidos com tres mutacoes (guard reimposto calado derruba 8; guard de peca calado derruba 1; derivacao ignorando os ajustes derruba 2).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.1.15",
@@ -574,9 +574,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: o 'valor orcado atualizado ATE A DATA SELECIONADA' EXISTE e e exercitado pela tela — o corte por data do comparativo devolve o estado da peca naquele dia (percurso: com o corte antes do ato a tela mostra a peca como ela estava; depois, as duas linhas voltam). ⚠️ FALTAM DUAS COISAS, e as duas estao ditas: (a) a consulta mostra as linhas que algum ato ALTEROU, nao o orcamento inteiro do PPA naquela posicao; (b) 'selecionar uma ou mais entidades' nao existe — nenhuma entidade do M02b tem recorte de entidade, e o razao tambem nao (mesma pendencia estrutural de 5.10.1.3). Pendencia: CONSULTA-POR-VERSAO-NAS-DEMAIS-TELAS.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.16",
@@ -616,9 +616,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: a consulta das alteracoes orcamentarias do PPA existe, em ORDEM CRONOLOGICA (atos ordenados por data do ato e, no empate, por instante de registro) e com 'ate qual data se pretende consultar' — o mesmo corte que faz a versao da peca. ⚠️ FALTA 'POR ENTIDADE E CONSOLIDADO': nao ha dimensao de entidade nas pecas de planejamento nem no razao, entao nao existe a consulta de UMA entidade nem a soma delas. Mesma pendencia estrutural que deixou 5.10.1.3 e 5.10.1.108 parciais.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.19",
@@ -659,8 +659,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe cadastro de emenda ao PPA (zero ocorrencias de 'emenda' no schema e nos servicos do M02b). ⚠️ E ELA NAO E UM SUBCASO DO ATO DE ALTERACAO DA V18, e essa distincao e a razao de nao ter sido forcada aqui: a emenda tem campos proprios (vereador responsavel, objetivo, texto juridico) e, sobretudo, um RITO — o valor proposto nao altera a peca enquanto nao for sancionado. O ato desta unidade vale por existir. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.22",
@@ -673,8 +673,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe bloqueio de dotacao inemendavel — ele e guard SOBRE a emenda, que nao existe. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.23",
@@ -687,8 +687,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe sancionamento de emenda (total, reprovacao total ou PARCIAL por dotacao). A sancao parcial e a parte dificil: ela exige que cada item nasca pendente e mude de estado, o que e rito, nao ajuste. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.24",
@@ -715,8 +715,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: compatibilizar as despesas do PPA replicando AUTOMATICAMENTE a alteracao para a LDO e a LOA nao existe, e nao foi construido de proposito. Ela pressupoe o vinculo PPA->LOA, que o `MODULO.md` do M02b registra como ausente desde a V4 (pendencia VINCULO-PPA-LOA) por nao estar decidido se a amarracao e por `Acao` (M02) ou por `AcaoPpa` — nao se replica o que nao se sabe onde ligar. O ato de alteracao da V18 e deliberadamente de UMA peca so (CHECK ck_ato_alteracao_uma_peca): um ato que alcancasse duas pecas produziria um comparativo em que o total de nenhuma delas fecha.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.26",
@@ -784,9 +784,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: a VERSAO do PPA e gerenciada como o ESTADO DA PECA ATE UMA DATA — o original preservado, os atos em ordem e o vigente derivado; e o comparativo aceita o corte, que e o 'relatorio por versao'. ⚠️ A DECISAO DE MODELO ESTA REGISTRADA em docs/varreduras/varredura-v18-versao-do-planejamento.md: a candidata 'copia da peca por versao' (versaoId nas 20 tabelas) exigiria derrubar PlanoPlurianual.@@unique([anoInicio]) e LeiDiretrizesOrcamentarias.exercicio @unique — as duas unicidades que impedem duas verdades sobre o mesmo periodo — e multiplicaria as 29 colunas de dinheiro do modulo em N copias. ⚠️ FALTA A SEGUNDA METADE DA CLAUSULA: 'controle de TODAS as consultas' por versao. As telas do PPA e os oito anexos da LDO mostram o vigente, nao a posicao de uma data passada; so o comparativo aceita o corte. E nao existe VERSAO NOMEADA ('versao 2 - proposta'): pendencias CONSULTA-POR-VERSAO-NAS-DEMAIS-TELAS e VERSAO-NOMEADA-DA-PECA.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.31",
@@ -855,8 +855,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido ao construir a alteracao da peca: a clausula pede alteracao orcamentaria da RECEITA da LDO informando 'a entidade, a conta de receita, a justificativa' — e nao existe previsao de receita na LDO deste repositorio. Os nove models da LDO sao o tramite, as prioridades (meta fisica), as metas anuais e os anexos da LRF; nao ha `PrevisaoReceitaLdo`. O que a V18 entregou do lado da LDO e a alteracao versionada da META FISCAL, com ato, justificativa e comparativo — o mecanismo esta pronto e o objeto da clausula nao existe. Pendencia: LDO-SEM-PREVISAO-ORCAMENTARIA. (A 'entidade' da clausula e a mesma ausencia estrutural de 5.10.1.3.)",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.4",
@@ -868,9 +868,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: o mecanismo do 'valor atualizado ate a data selecionada' existe para a LDO e e exercitado pela tela — mas o que a LDO deste repositorio tem de valor orcado sao as METAS FISCAIS (Anexo de Metas Fiscais, LRF art. 4o §1o), e e sobre elas que o corte responde. ⚠️ MEDIDO E AUSENTE: nao existem `PrevisaoReceitaLdo` nem `PrevisaoDespesaLdo` — a LDO daqui nao orca por natureza de receita nem por dotacao, entao 'consultar o orcamento da receita e da despesa da LDO' nao tem objeto. Criar a previsao da LDO e outra capacidade (5.9.2.6/5.9.2.7) e precisa decidir antes se ela e a mesma entidade da LOA. Pendencia: LDO-SEM-PREVISAO-ORCAMENTARIA. 'Selecionar uma ou mais entidades' tambem nao existe.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.2.5",
@@ -897,8 +897,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe importacao da previsao da DESPESA para a LDO — e, antes disso, nao existe previsao de despesa NA LDO deste repositorio (LDO-SEM-PREVISAO-ORCAMENTARIA). Pendencia: IMPORTACAO-DE-PECA-ANTERIOR.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.7",
@@ -911,8 +911,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe importacao da previsao da RECEITA para a LDO, e tambem nao existe a previsao de receita na LDO (LDO-SEM-PREVISAO-ORCAMENTARIA). Pendencia: IMPORTACAO-DE-PECA-ANTERIOR.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.8",
@@ -952,9 +952,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: a consulta cronologica das alteracoes da LDO existe, com corte 'ate qual data'. ⚠️ FALTA 'por entidade e consolidado' (sem dimensao de entidade) e o objeto das alteracoes na LDO e a META FISCAL, nao a dotacao — ver LDO-SEM-PREVISAO-ORCAMENTARIA em 5.9.2.3.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.2.11",
@@ -967,8 +967,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe cadastro de emenda na LDO — mesma ausencia de 5.9.1.21, mesma pendencia EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.12",
@@ -981,8 +981,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe bloqueio de dotacao inemendavel na LDO. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.13",
@@ -995,8 +995,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe sancionamento de emenda da LDO. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.14",
@@ -1064,9 +1064,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: ALTERAR_PLANEJAMENTO (escrita) e CONSULTAR_PLANEJAMENTO (leitura) · contexto: clone gestao_publica_percursos_v18b, next dev em 3010 sob o papel de runtime, 2026-09-27 · passos: /administracao/perfis (aplicar a fila de atualizacoes, a v34 inclusive) -> /planejamento/alteracoes -> registrar ato no PPA (numero, ano, data, publicacao, linha e grandeza, ajuste com sinal, fundamento, justificativa) -> acrescentar segundo valor AO MESMO ato -> ler aprovado/ajuste/vigente e o total por grandeza -> abrir o historico da linha -> recusa da reducao maior que a previsao -> corte por data antes e depois -> trocar para a LDO -> recusa da primaria sozinha -> ato que sobe a total -> a mesma primaria passa a caber -> anexo de metas fiscais em PDF · obtido: 26/26 (scripts/smoke-alteracoes-do-planejamento.ts, 0 falhas, 0 nao executados) · artefato: saida do percurso na sessao da V18.",
+      "evidencia": "V18/C13: igual a 5.9.1.30, para a LDO — a versao e o estado da peca ate uma data, com o comparativo aceitando o corte (percurso: o corte por data foi exercitado nas duas pecas). ⚠️ E AQUI HA UMA SEGUNDA LIMITACAO, PROPRIA DA LDO: o que se versiona nela e a META FISCAL, porque nao existe previsao orcamentaria de receita/despesa na LDO deste repositorio (pendencia LDO-SEM-PREVISAO-ORCAMENTARIA). Os oito anexos da LDO continuam saindo na posicao vigente, nao na de uma data passada — mas o de Metas Fiscais JA le pelo dono da derivacao, entao ele imprime a meta ALTERADA, e nao a revogada (percurso 9.1: o PDF continua sendo gerado depois da alteracao).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.2.19",
@@ -1303,8 +1303,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe cadastro de emenda na LOA. ⚠️ E O QUE EXISTE NA LOA NAO A SUBSTITUI: a reprevisao da receita (append-only com sinal) e o credito adicional do M03 (lei autorizadora, decreto, itens de suplementacao e anulacao) sao atos do EXECUTIVO; a emenda e proposta do Legislativo e depende de sancao. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.14",
@@ -1317,8 +1317,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe bloqueio de dotacao inemendavel na LOA. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.15",
@@ -1331,8 +1331,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V18/C13, medido: nao existe sancionamento de emenda da LOA. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.16",
