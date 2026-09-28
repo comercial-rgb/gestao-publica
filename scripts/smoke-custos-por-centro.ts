@@ -47,6 +47,14 @@ if (BASE.includes(":3010")) {
 }
 
 const CHAVE = `Rateio do percurso ${String(Date.now()).slice(-6)}`;
+/**
+ * ⚠️ `irPara` DEVOLVE O TEXTO DA PÁGINA EM MINÚSCULAS (`percursos-navegador.ts:52`), e a primeira
+ * corrida deste percurso reprovou dois passos por causa disso: `texto.includes(CHAVE)` procurava
+ * "Rateio do percurso 809557" numa string onde estava "rateio do percurso 809557". Era falso
+ * vermelho — a tela mostrava o critério. Comparar em minúsculas é o que o helper pede; um
+ * `.includes` de literal capitalizado contra ele nunca casa.
+ */
+const CHAVE_NA_TELA = CHAVE.toLowerCase();
 const ROTA = "/contabilidade/custos";
 
 const falhas: string[] = [];
@@ -150,7 +158,7 @@ async function main(): Promise<void> {
     const depoisDaRecusa = await irPara(n, page, `${ROTA}?exercicio=${String(ANO)}`);
     conferir(
       "2.2 e NADA foi gravado: o critério recusado não aparece na lista",
-      !depoisDaRecusa.includes(`${CHAVE} (recusado)`),
+      !depoisDaRecusa.includes(`${CHAVE_NA_TELA} (recusado)`),
       depoisDaRecusa.slice(0, 300)
     );
 
@@ -175,9 +183,9 @@ async function main(): Promise<void> {
     const comCriterio = await irPara(n, page, `${ROTA}?exercicio=${String(ANO)}`);
     conferir(
       "3.2 a tela recarregada mostra o critério como VIGENTE, com o ato que o aprovou",
-      comCriterio.includes(CHAVE) &&
-        /Vigente/i.test(comCriterio) &&
-        /Portaria 12\/2026/.test(comCriterio),
+      comCriterio.includes(CHAVE_NA_TELA) &&
+        /vigente/i.test(comCriterio) &&
+        /portaria 12\/2026/i.test(comCriterio),
       comCriterio.slice(0, 400)
     );
     conferir(
@@ -275,46 +283,74 @@ async function main(): Promise<void> {
     const numeroDaLiquidacao = liq.rotulo.split(" — ")[0]?.trim() ?? "";
     conferir(
       "6.3 e o número da liquidação apropriada está na composição, não só um valor",
-      numeroDaLiquidacao !== "" && comComposicao.includes(numeroDaLiquidacao),
+      numeroDaLiquidacao !== "" && comComposicao.includes(numeroDaLiquidacao.toLowerCase()),
       `procurado "${numeroDaLiquidacao}" em: ${comComposicao.slice(0, 400)}`
     );
     conferir(
       "6.4 a composição nomeia o CRITÉRIO e a versão pela qual aquela parte foi rateada",
-      comComposicao.includes(CHAVE) && /vers[ãa]o 1/i.test(comComposicao),
+      comComposicao.includes(CHAVE_NA_TELA) && /vers[ãa]o 1/i.test(comComposicao),
       comComposicao.slice(0, 400)
     );
 
-    // ══ 7. O TETO — apropriar a MESMA liquidação de novo é recusado ══
+    // ══ 7. O TETO, MEDIDO NUMA SEGUNDA LIQUIDAÇÃO (N=2) ══
     //
-    // ⚠️ É O EFEITO QUE SE MEDE, e não a promessa: a liquidação já foi apropriada por inteiro, e a
-    // segunda tentativa tem de ser recusada NOMEANDO o quanto resta. Sem este passo, a tela poderia
-    // acumular custo acima da despesa e o relatório somaria mais do que o razão.
+    // ⚠️ DUAS COISAS SE MEDEM AQUI, E ELAS SÃO DIFERENTES. A primeira é que a liquidação apropriada
+    // POR INTEIRO sai do rol — a tela não oferece o que o serviço recusaria. A segunda é o TETO em
+    // si, e ele só se mede numa liquidação com saldo: apropriar uma parte e depois pedir um absurdo
+    // tem de ser recusado NOMEANDO o disponível. Sem a segunda, a primeira corrida deste percurso
+    // passava pelo caminho fácil e o guard do teto não era exercitado por tela nenhuma.
     await irPara(n, page, `${ROTA}?exercicio=${String(ANO)}`);
     const restantes = await opcoes(
       page,
       'form[data-acao="apropriar-custo"] select[name="liquidacaoId"]'
     );
-    const aindaOferecida = restantes.some((o) => o.valor === liq.valor);
-    nota(`a liquidação apropriada continua no rol: ${String(aindaOferecida)}`);
-    if (aindaOferecida) {
-      // Ela só continua no rol se sobrou saldo — e então a recusa esperada é a do EXCESSO.
+    nota(`liquidações ainda com saldo: ${String(restantes.length)}`);
+    conferir(
+      "7.1 ⚠️ a liquidação apropriada por INTEIRO sai do rol — a tela não oferece o que o serviço recusaria",
+      !restantes.some((o) => o.valor === liq.valor),
+      `a liquidação ${liq.rotulo} continua sendo oferecida`
+    );
+
+    const segunda = restantes[0];
+    if (segunda === undefined) {
+      conferir(
+        "7.2 o teto medido numa segunda liquidação",
+        false,
+        "não há segunda liquidação com saldo para exercitar o teto"
+      );
+    } else {
+      nota(`segunda liquidação: ${segunda.rotulo}`);
+      const rParcial = await preencherEEnviar(page, "apropriar-custo", [
+        { sel: 'select[name="liquidacaoId"]', valor: segunda.valor, tipo: "select" },
+        { sel: 'select[name="criterioChave"]', valor: CHAVE, tipo: "select" },
+        { sel: 'input[name="competencia"]', valor: `${String(ANO)}-08`, tipo: "data" },
+        { sel: 'input[name="valor"]', valor: "10,00" },
+        { sel: 'textarea[name="motivo"]', valor: "Apropriacao PARCIAL para medir o teto (percurso)" },
+      ]);
+      conferir(
+        "7.2 a apropriação PARCIAL é aceita — e o resto da liquidação continua disponível",
+        rParcial.tipo === "ok" && /10\.00/.test(rParcial.texto),
+        `${rParcial.tipo}: ${rParcial.texto.slice(0, 220)}`
+      );
+
       const rExcesso = await preencherEEnviar(page, "apropriar-custo", [
-        { sel: 'select[name="liquidacaoId"]', valor: liq.valor, tipo: "select" },
+        { sel: 'select[name="liquidacaoId"]', valor: segunda.valor, tipo: "select" },
         { sel: 'select[name="criterioChave"]', valor: CHAVE, tipo: "select" },
         { sel: 'input[name="competencia"]', valor: `${String(ANO)}-08`, tipo: "data" },
         { sel: 'input[name="valor"]', valor: "99999999,00" },
         { sel: 'textarea[name="motivo"]', valor: "Tentativa de apropriar acima da despesa (percurso)" },
       ]);
       conferir(
-        "7.1 ⚠️ apropriar ACIMA da despesa reconhecida é recusado, dizendo o disponível",
-        rExcesso.tipo === "erro" && /acima da despesa/i.test(rExcesso.texto),
+        "7.3 ⚠️ apropriar ACIMA da despesa reconhecida é recusado, dizendo o disponível",
+        rExcesso.tipo === "erro" &&
+          /acima da despesa/i.test(rExcesso.texto) &&
+          /dispon[íi]vel/i.test(rExcesso.texto),
         `${rExcesso.tipo}: ${rExcesso.texto.slice(0, 250)}`
       );
-    } else {
       conferir(
-        "7.1 ⚠️ a liquidação apropriada por inteiro SAI do rol — a tela não oferece o que o serviço recusaria",
-        true,
-        ""
+        "7.4 e a recusa diz que NADA foi gravado",
+        /nada foi gravado/i.test(rExcesso.texto),
+        rExcesso.texto.slice(0, 250)
       );
     }
   } finally {

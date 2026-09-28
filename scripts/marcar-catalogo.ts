@@ -1928,6 +1928,35 @@ const MAPA: Readonly<Record<string, Marca>> = {
       "porta existem e o conferidor pre-apresentacao passa a rota e o conteudo (22/22 no BLOCO 3); o par recolher/estornar " +
       "pela tela NAO foi percorrido nesta rodada — fica nomeado como percurso devido.",
   },
+  // ═══ V19/C05 — a APROPRIACAO DE CUSTO POR CENTRO ═══
+  //
+  // ⚠️ C05 NAO TEM CLAUSULA PROPRIA NO TERMO DE REFERENCIA, e isso foi MEDIDO, nao suposto: busca
+  // no catalogo por "centro de custo" (32 clausulas), "rateio" e "apropriar/apropriacao" (5) — e
+  // nenhuma delas enuncia "acumular registros e distribuir custos por programa/unidade/centro".
+  // C05 vem da matriz da ordem de construcao (`docs/lotes/V14-contabilidade-esperanca-dois-dias.md`),
+  // que e mais exigente que o edital neste ponto. As 32 de "centro de custo" sao de PESSOAL (folha,
+  // ponto, EPI, treinamento), de COMPRAS (solicitacao por centro), de ALMOXARIFADO (consumo por
+  // setor) e de AUDITORIA — eixos que ja existem e nao sao o acumulo contabil.
+  //
+  // A UNICA clausula adjacente e a 5.10.1.13, e ela pede COISA DIFERENTE — por isso vai marcada
+  // como ausencia, que e informacao: NAO_VERIFICADO significa "ninguem olhou", e alguem olhou.
+  "5.10.1.13": {
+    situacao: "AUSENTE_CONFIRMADO",
+    evidencia:
+      "V19, medido ao construir a apropriacao de custo por centro (C05): esta clausula pede a " +
+      "apropriacao MES A MES de assinaturas e seguros COM OS RESPECTIVOS LANCAMENTOS CONTABEIS — o " +
+      "diferimento de despesa paga adiantada, que reconhece 1/12 da variacao patrimonial diminutiva " +
+      "por competencia. Nao existe. ⚠️ E O QUE A V19 CONSTRUIU NAO E ISSO, deliberadamente: a " +
+      "apropriacao de custo por centro tem competencia propria (o aluguel liquidado em janeiro pode " +
+      "ser custo de dezembro) mas NAO lanca no razao, porque a despesa ja foi reconhecida na " +
+      "liquidacao — lancar de novo contaria a mesma VPD duas vezes. O diferimento e o oposto: ali a " +
+      "despesa AINDA NAO foi reconhecida como custo do periodo, e o lancamento e justamente o " +
+      "ponto. Marcar esta clausula com o que C05 entregou seria declarar atendido um mecanismo " +
+      "contabil que nao existe. Pendencia: APROPRIACAO-MENSAL-DE-DESPESA-ANTECIPADA — ela pede " +
+      "conta de despesa antecipada no ativo, um roteiro proprio e uma rotina periodica, e nenhum " +
+      "dos tres existe.",
+  },
+
   // ═══ V18/C13 — a ALTERACAO VERSIONADA do PPA e da LDO ═══
   // ⚠️ A REGRA QUE GOVERNA ESTAS MARCACOES: o que esta unidade entregou e o ATO que altera a peca
   // aprovada, o ajuste COM SINAL append-only, o comparativo (aprovado × ajuste × vigente) e o

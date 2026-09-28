@@ -90,3 +90,47 @@ afirma que nenhum `LancamentoContabil` e criado.
   centro. Programa e acao sao dimensoes da ficha, e o custo por programa sai de outra consulta —
   nao construida aqui. Pendencia `CUSTO-POR-PROGRAMA`.
 - **Apropriar custo de patrimonio (depreciacao) por centro.** Pendencia `DEPRECIACAO-SEM-CENTRO`.
+
+---
+
+## O que a construcao mediu, depois da varredura (fechamento)
+
+Tres coisas que a varredura nao previu, e que so apareceram construindo:
+
+1. **`toMoney` achatava o percentual.** O contrato de dinheiro arredonda a DUAS casas, e percentual
+   e `Decimal(9,6)` desde o `_base.prisma`. O primeiro `zPercentual` deste modulo era
+   `zMoney.refine(...)`: 33,333333 % virava 33,33 %, tres partes iguais somavam 99,99 e a publicacao
+   era RECUSADA por nao fechar em 100 — recusada pelo contrato, culpando o usuario. Nasceu
+   `packages/contracts/percentual.ts`, com dois testes de CONTRASTE que afirmam o que o contrato
+   errado fazia. E a mesma leitura errada existe no M10 (`percentualResidual`): pendencia
+   `PERCENTUAL-RESIDUAL-LIDO-COM-DUAS-CASAS`.
+2. **O percurso reprovou dois passos por CAIXA, nao por comportamento.** `irPara` devolve o texto da
+   pagina em minusculas (`percursos-navegador.ts:52`), e `texto.includes("Rateio do percurso ...")`
+   nunca casava. Falso vermelho, com a tela certa. O percurso passou a comparar em minusculas, com o
+   motivo escrito ao lado da constante.
+3. **O passo do TETO passava pelo caminho facil.** Apropriando a liquidacao por INTEIRO, ela sai do
+   rol e a segunda tentativa nunca acontece — o guard do teto nao era exercitado por tela nenhuma.
+   O passo 7 passou a usar uma SEGUNDA liquidacao (N=2), apropriar uma parte e so depois pedir um
+   absurdo: e ai que a recusa "acima da despesa" e medida de verdade.
+
+## O catalogo: C05 nao tem clausula propria, e isso foi medido
+
+Busca no catalogo por "centro de custo" (32 clausulas), "rateio" e "apropriar/apropriacao" (5).
+Nenhuma enuncia "acumular registros e distribuir custos por programa/unidade/centro". As 32 sao de
+PESSOAL (folha, ponto, EPI, treinamento), de COMPRAS, de ALMOXARIFADO e de AUDITORIA — eixos que ja
+existem e nao sao o acumulo contabil. C05 vem da matriz da ordem, que e mais exigente que o edital
+aqui.
+
+A unica adjacente e a **5.10.1.13** ("apropriar mes a mes assinaturas e seguros, com os respectivos
+lancamentos contabeis"), e ela pede o OPOSTO: diferimento de despesa antecipada, cujo ponto E o
+lancamento. Marcada `AUSENTE_CONFIRMADO` com a distincao escrita — pendencia
+`APROPRIACAO-MENSAL-DE-DESPESA-ANTECIPADA`.
+
+## Resultado medido
+
+- `modules/m12-relatorios/m12-custos-por-centro.test.ts` — **17/17**
+- `packages/contracts/percentual.test.ts` — **7/7**
+- `scripts/smoke-custos-por-centro.ts` — **22/22, 0 falhas** (clone descartavel
+  `gestao_publica_custos_v19b`, `next start` sobre build proprio na 3011, build `COrWq8o0a_EyjtZ8x2tgc`)
+- mutacao provada nas duas direcoes: residuo, teto e o lancamento a mais (ver a mensagem do commit)
+- `npm run deriva` — 32 statements, a deriva pre-existente, inalterada

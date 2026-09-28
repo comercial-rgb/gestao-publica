@@ -1933,8 +1933,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V19, medido ao construir a apropriacao de custo por centro (C05): esta clausula pede a apropriacao MES A MES de assinaturas e seguros COM OS RESPECTIVOS LANCAMENTOS CONTABEIS — o diferimento de despesa paga adiantada, que reconhece 1/12 da variacao patrimonial diminutiva por competencia. Nao existe. ⚠️ E O QUE A V19 CONSTRUIU NAO E ISSO, deliberadamente: a apropriacao de custo por centro tem competencia propria (o aluguel liquidado em janeiro pode ser custo de dezembro) mas NAO lanca no razao, porque a despesa ja foi reconhecida na liquidacao — lancar de novo contaria a mesma VPD duas vezes. O diferimento e o oposto: ali a despesa AINDA NAO foi reconhecida como custo do periodo, e o lancamento e justamente o ponto. Marcar esta clausula com o que C05 entregou seria declarar atendido um mecanismo contabil que nao existe. Pendencia: APROPRIACAO-MENSAL-DE-DESPESA-ANTECIPADA — ela pede conta de despesa antecipada no ativo, um roteiro proprio e uma rotina periodica, e nenhum dos tres existe.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.14",
