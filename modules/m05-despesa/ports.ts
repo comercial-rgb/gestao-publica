@@ -68,6 +68,10 @@ export interface EmpenharParams {
   readonly dividaId?: string | undefined;
   /** M11 (TR 4.50) — a obra que este empenho executa. Guard UNIDIRECIONAL (elemento 51). */
   readonly obraId?: string | undefined;
+  /** M28 (V22) — o convênio que este empenho executa. VOLUNTÁRIO. A anulação o COPIA. */
+  readonly convenioId?: string | undefined;
+  /** V22 — a solicitação autorizada de origem. A anulação NÃO a copia (é origem, não dimensão). */
+  readonly solicitacaoDeEmpenhoId?: string | undefined;
   readonly numero: string;
   readonly tipo: TipoEmpenho;
   readonly valor: Money;

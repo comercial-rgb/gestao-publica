@@ -10,6 +10,7 @@ import {
   type LinhaBaseImposto,
 } from "./base-impostos.js";
 import { janelaDoBimestre, type Bimestre } from "./rreo-anexo1.js";
+import { apurarMinimo } from "./apuracao-do-minimo.js";
 import { reprevisaoAcumuladaPorNatureza } from "../m02-planejamento/consultas.js";
 
 /**
@@ -140,9 +141,8 @@ export async function anexo12(
   const IV = toMoney(despesas.total.liquidada); // base do VI: liquidada até o bimestre
   const V = despesas.totalNaoComputadas;
   const VI = toMoney(IV.minus(V));
-  const percentualAplicacao = percent(VI, baseB); // VII%
-  const minimoExigido = toMoney(baseB.times(LIMITE_ASPS).dividedBy(100)); // 15% de III(b)
-  const valorDiferenca = toMoney(VI.minus(minimoExigido));
+  // VII%, 15% de III(b) e VI − 15%·III(b) — o veredito é da comparação em dinheiro (ver apuracao-do-minimo.ts).
+  const apuracao = apurarMinimo(VI, baseB, LIMITE_ASPS);
 
   notas.push(
     "VI usa a despesa LIQUIDADA até o bimestre. No último bimestre o MDF soma os RPNP inscritos; " +
@@ -162,10 +162,10 @@ export async function anexo12(
     naoComputadas: despesas.naoComputadas,
     totalNaoComputadas: V.toFixed(2),
     totalAsps: VI.toFixed(2),
-    percentualAplicacao,
+    percentualAplicacao: apuracao.percentual,
     limitePercentual: LIMITE_ASPS.toFixed(2),
-    valorDiferenca: valorDiferenca.toFixed(2),
-    atingiuMinimo: toMoney(percentualAplicacao).greaterThanOrEqualTo(LIMITE_ASPS),
+    valorDiferenca: apuracao.diferenca,
+    atingiuMinimo: apuracao.atingiu,
     notas,
   };
 }

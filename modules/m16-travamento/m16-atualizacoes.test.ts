@@ -12,6 +12,7 @@ import {
   derivarLeituraPorArea,
   derivarPlanejamentoPlurianual,
   derivarPublicarRoteiro,
+  derivarSolicitacaoDeEmpenho,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -164,6 +165,29 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     expect(derivadas.some((d) => d.perfilId === "emi")).toBe(false);
     expect(derivadas.filter((d) => d.perfilId === "ja").map((d) => d.acao)).toEqual(["CONFERIR_DOCUMENTO_FISCAL"]);
     expect(derivadas.every((d) => d.unidadeOrcId === UG_A)).toBe(true);
+  });
+
+  it("v37: quem empenha recebe SOLICITAR no mesmo escopo; quem autoriza ordem recebe AUTORIZAR a solicitação no mesmo escopo; EMPENHAR não deriva autorização (V22)", () => {
+    // ⚠️ N=2 EM PERFIS E EM ESCOPOS: dois perfis que empenham (global e UG_A), um ordenador em UG_B,
+    // e um perfil que JÁ tem a solicitação (não deriva de novo).
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "exe", nome: "EXECUCAO", permissoes: [{ acao: "EMPENHAR", unidadeOrcId: null }] },
+      { id: "exe-a", nome: "EXECUCAO-A", permissoes: [{ acao: "EMPENHAR", unidadeOrcId: UG_A }, { acao: "EMPENHAR", unidadeOrcId: UG_B }] },
+      { id: "ord-b", nome: "ORDENADOR-B", permissoes: [{ acao: "AUTORIZAR_ORDEM_PAGAMENTO", unidadeOrcId: UG_B }] },
+      { id: "ja", nome: "JA-SOLICITA", permissoes: [{ acao: "EMPENHAR", unidadeOrcId: UG_A }, { acao: "SOLICITAR_EMPENHO", unidadeOrcId: UG_A }] },
+    ];
+    const d = derivarSolicitacaoDeEmpenho(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect([...d].sort()).toEqual(
+      [
+        "exe SOLICITAR_EMPENHO G",
+        `exe-a SOLICITAR_EMPENHO ${UG_A}`,
+        `exe-a SOLICITAR_EMPENHO ${UG_B}`,
+        `ord-b AUTORIZAR_SOLICITACAO_DE_EMPENHO ${UG_B}`,
+      ].sort()
+    );
+    // quem só empenha NÃO recebe o consentimento — o motivo da derivação desigual
+    expect(d.some((x) => x.startsWith("exe ") && x.includes("AUTORIZAR"))).toBe(false);
+    expect(d.some((x) => x.startsWith("ja "))).toBe(false);
   });
 
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
@@ -337,6 +361,10 @@ describe("instalação limpa e atualização — no banco", () => {
       // ACOES_DO_ENTE. Se ela tivesse ficado fora de TODAS_AS_ACOES, o bootstrap nao a concederia e
       // esta previa viria 1 — foi exatamente este numero que apontou o furo da v32.
       { versao: 36, previa: 0, aplicada: false },
+      // ⚠️ PREVIA 0 NA INSTALACAO LIMPA prova que SOLICITAR_EMPENHO e AUTORIZAR_SOLICITACAO_DE_EMPENHO
+      // chegaram a ACOES_DO_ENTE (o admin tem EMPENHAR e AUTORIZAR_ORDEM_PAGAMENTO globais, e ja nasce
+      // com as duas derivadas). Fora de TODAS_AS_ACOES, esta previa viria 2.
+      { versao: 37, previa: 0, aplicada: false },
     ]);
   });
 

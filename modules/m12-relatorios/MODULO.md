@@ -890,3 +890,20 @@ reescrever a régua pela qual ele próprio é medido.
   e `toMoney` arredonda a DUAS casas. Um residual de 0,05 não sofre; um de 0,033333 viraria 0,03.
   A correção é `toPercentual` (`packages/contracts/percentual.ts`), e ela não foi feita aqui porque
   mexe na aritmética da depreciação, que tem suíte própria a reconferir.
+
+## O veredito dos mínimos sai do dinheiro, não do percentual (V22)
+
+`apuracao-do-minimo.ts` — `apurarMinimo(aplicado, base, limite)`, usada pelo Anexo 12 (ASPS, 15%) e
+pelo indicador dos profissionais do Anexo 8 (70% do FUNDEB).
+
+**Defeito medido na tela do Anexo 12:** base de impostos 0,00 e aplicado 37.875,00 saíam como
+"0,00%", "abaixo de 15%" e "Falta para o mínimo 37.875,00". O defeito era do MOTOR: o `atingiu`
+vinha do percentual arredondado, que vale "0.00" por convenção quando a base é zero — e que, no
+outro sentido, arredonda 14,996% para "15.00" e dava "≥ 15%" com R$ 0,04 faltando. Agora o veredito
+é `aplicado × 100 ≥ base × limite`, exato, e o selo concorda com o sinal da diferença.
+`m12-apuracao-do-minimo.test.ts` (N=2 nas duas direções) falhou 5/5 antes e passa 5/5 depois;
+mutação provada (volta ao percentual: 5 vermelhos; conserto só da base zero: 4 vermelhos).
+
+A tela, com base nula, mostra "—" no lugar do percentual e o selo "sem base de impostos" (Anexo 12)
+ou "sem recurso do FUNDEB" (Anexo 8). O Anexo 8 não tem indicador próprio do mínimo de 25% em MDE —
+só a linha 5 (mínimo além do FUNDEB) —, e por isso o mesmo padrão só existia no indicador dos 70%.

@@ -150,6 +150,7 @@ export const RELATORIOS_RGF: readonly RelatorioNav[] = [
  * fluxo de trabalho.
  */
 export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
+  { href: "/despesa/solicitacoes-de-empenho", numero: "Solicitações de empenho", rotulo: "Solicitações de Empenho", descricao: "Solicitação da despesa pelo setor e autorização prévia à emissão do empenho." },
   { href: "/despesa/empenhos", numero: "Empenhos", rotulo: "Empenhos", descricao: "Emissão e consulta de empenhos, com saldos a liquidar e a pagar." },
   { href: "/despesa/liquidacoes", numero: "Liquidações", rotulo: "Liquidações", descricao: "Liquidação da despesa com nota fiscal, atesto e comprovantes." },
   { href: "/despesa/ordens", numero: "Ordens de pagamento", rotulo: "Ordens de Pagamento", descricao: "Preparação, autorização e registro das ordens de pagamento." },
@@ -194,6 +195,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
   { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "Alterações do PPA e da LDO por lei ou decreto, com o valor original e o vigente." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
+  { href: "/planejamento/loa", numero: "LOA", rotulo: "Lei Orçamentária Anual", descricao: "Receita prevista, despesa fixada, equilíbrio e anexos da Lei 4.320/64 do exercício." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },
@@ -243,6 +245,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa
   // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
   { href: "/contabilidade/exportacoes-federais", numero: "Arquivos federais", rotulo: "Arquivos para a STN e a Receita", descricao: "Matriz de Saldos Contábeis (SICONFI) e MANAD gerados a partir dos lançamentos, para download e conferência." },
+  { href: "/contabilidade/exportacoes-federais/responsaveis", numero: "Responsáveis técnicos", rotulo: "Responsáveis técnicos", descricao: "Contabilista e empresa responsáveis pela escrituração informados nos arquivos da Receita Federal." },
   { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "Superávit financeiro apurado, utilizado e disponível, por fonte de recurso." },
   // V19/C05 — o custo por centro fica na CONTABILIDADE, e não em relatórios gerenciais: a
   // apropriação referencia a liquidação e NÃO lança no razão, o que é uma decisão contábil que
@@ -262,6 +265,7 @@ export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
 export const EXECUCAO_RECEITA: readonly RelatorioNav[] = [
   { href: "/receita/arrecadacoes", numero: "Arrecadação", rotulo: "Arrecadação", descricao: "Guias de arrecadação e receita realizada no exercício." },
   // V7 B1 — a primeira unidade tributária: cadastrar, parametrizar e SIMULAR (sem lançar nem constituir dívida).
+  { href: "/receita/naturezas", numero: "Naturezas", rotulo: "Naturezas de receita", descricao: "Ementário da receita: os códigos em que a arrecadação é classificada." },
   { href: "/receita/imoveis", numero: "Imóveis", rotulo: "Cadastro imobiliário", descricao: "Cadastro imobiliário, proprietários e simulação do imposto." },
   { href: "/receita/parametros-tributarios", numero: "Parâmetros", rotulo: "Parâmetros do tributo", descricao: "Fórmulas, alíquotas e valores dos tributos municipais por exercício." },
 ];

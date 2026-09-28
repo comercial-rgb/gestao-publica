@@ -52,6 +52,12 @@ export {
   TIP_ORIG_RECURSO,
 } from "./manad/dominio.js";
 export type { LinhaManad } from "./manad/dominio.js";
+export {
+  motivoDeTextoInvalidoNoManad,
+  responsaveisDoPeriodo,
+  vigenciasEfetivas,
+} from "./manad/responsaveis.js";
+export type { ComVigenciaEfetiva, PeriodoDeclarado } from "./manad/responsaveis.js";
 
 // ═══ eSocial (V11 V2.1) — o REGISTRO do leiaute e a consistência derivada dele ═══
 // ⚠️ Nenhum código de evento do eSocial mora aqui: o leiaute é documento oficial, entra por

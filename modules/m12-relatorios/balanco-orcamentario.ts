@@ -1,4 +1,5 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   montarBalancoOrcamentario,
@@ -34,25 +35,32 @@ import {
  * Exercício ABERTO: sem corte superior (tudo até agora), e `parcial: true`.
  */
 
-/** Linhas append-only que podem ter um estorno apontando para elas. */
+/** Linhas append-only que podem ter um estorno (total) ou uma anulação parcial apontando para elas. */
 interface Estornavel {
   readonly id: string;
   readonly valor: { toFixed(n: number): string };
   readonly estornoDeId: string | null;
+  readonly anulacaoParcialDeId: string | null;
 }
 
-/** SUM líquido: originais vivos (menos os que foram estornados). */
+/**
+ * SUM líquido pela régua única (`packages/estornaveis`): originais vivos, cada um descontado
+ * das suas anulações PARCIAIS vivas.
+ *
+ * ⚠️ A CÓPIA LOCAL QUE MORAVA AQUI SÓ CONHECIA O `estornoDeId`. A anulação parcial (TR 5.35) é
+ * uma linha nova com `anulacaoParcialDeId` e `estornoDeId` nulo — para aquela cópia, um fato
+ * original vivo, e a coluna SOMAVA o que devia subtrair (liquidado 7.000 com parciais de 1.000 e
+ * 400 saía 8.400). Caracterizado em `m12-balanco-anulacao-parcial.test.ts`.
+ */
 function somaLiquida(linhas: readonly Estornavel[]): Money {
-  const estornados = new Set(
-    linhas.filter((l) => l.estornoDeId !== null).map((l) => l.estornoDeId!)
+  return somaLiquidaEstornaveis(
+    linhas.map((l) => ({
+      id: l.id,
+      valor: toMoney(l.valor.toFixed(2)),
+      estornoDeId: l.estornoDeId,
+      anulacaoParcialDeId: l.anulacaoParcialDeId,
+    }))
   );
-  let total = toMoney("0.00");
-  for (const l of linhas) {
-    if (l.estornoDeId !== null) continue; // o estorno não soma; ele neutraliza
-    if (estornados.has(l.id)) continue;
-    total = toMoney(total.plus(toMoney(l.valor.toFixed(2))));
-  }
-  return total;
 }
 
 /** `criadoEm` dentro da janela `(inicio, fim]`. Limites nulos = sem limite. */
@@ -213,7 +221,7 @@ export async function lerDespesas(
       // execução de restos a pagar, não despesa liquidada deste exercício.
       ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
     },
-    select: { id: true, empenhoId: true, valor: true, estornoDeId: true },
+    select: { id: true, empenhoId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
 
   const pagamentos = await prisma.pagamento.findMany({
@@ -230,6 +238,7 @@ export async function lerDespesas(
       // mas a DESPESA EXECUTADA é o valor cheio. O líquido é assunto do Anexo 13.
       valor: true,
       estornoDeId: true,
+      anulacaoParcialDeId: true,
     },
   });
 
@@ -374,6 +383,7 @@ async function lerRestos(
       empenhoId: true,
       valor: true,
       estornoDeId: true,
+      anulacaoParcialDeId: true,
       criadoEm: true,
     },
   });

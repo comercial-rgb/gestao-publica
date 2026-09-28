@@ -200,15 +200,25 @@ export async function registrarEmpenho(input: {
   readonly reservaId?: string;
   /** V5 Fila A: a ordem de compra da qual este empenho nasce. */
   readonly ordemDeCompraId?: string;
+  /** V22: o convênio, a obra e a dívida fundada — vínculos que o M05 confere na transação. */
+  readonly convenioId?: string;
+  readonly obraId?: string;
+  readonly dividaId?: string;
+  /** V22: a solicitação autorizada de origem — o M05 confere situação e conteúdo, sob trava. */
+  readonly solicitacaoDeEmpenhoId?: string;
 }): Promise<string> {
   return comEscritaAutenticada("EMPENHAR", async (criadoPor) => {
-    const { contratoId, reservaId, ordemDeCompraId, ...resto } = input;
+    const { contratoId, reservaId, ordemDeCompraId, convenioId, obraId, dividaId, solicitacaoDeEmpenhoId, ...resto } = input;
     const r = await empenhar(
       {
         ...resto,
         ...(contratoId !== undefined ? { contratoId } : {}),
         ...(reservaId !== undefined ? { reservaId } : {}),
         ...(ordemDeCompraId !== undefined ? { ordemDeCompraId } : {}),
+        ...(convenioId !== undefined ? { convenioId } : {}),
+        ...(obraId !== undefined ? { obraId } : {}),
+        ...(dividaId !== undefined ? { dividaId } : {}),
+        ...(solicitacaoDeEmpenhoId !== undefined ? { solicitacaoDeEmpenhoId } : {}),
         criadoPor,
       },
       roteiroEmpenho(),

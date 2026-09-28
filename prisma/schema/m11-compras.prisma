@@ -284,6 +284,8 @@ model OrdemDeCompra {
   /// V5 — os documentos fiscais que declararam esta ordem na origem; o empenho que nasceu dela.
   documentosFiscais DocumentoFiscalRecebido[]
   empenhos          Empenho[]
+  /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
+  solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
   /// V6 P1.1 — o ESTORNO da ordem é um fato (append-only), não um DELETE: o papel de
   /// runtime não apaga linha, e a ordem estornada continua existindo para o histórico e
   /// para as solicitações que ela atendia. "Estornada" é derivado da existência do movimento.

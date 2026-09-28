@@ -171,6 +171,11 @@ export async function empenhar(
       ...(dados.dividaId !== undefined ? { dividaId: dados.dividaId } : {}),
       // M11 (TR 4.50) — a obra. O guard vive no adapter (lê a natureza da ficha).
       ...(dados.obraId !== undefined ? { obraId: dados.obraId } : {}),
+      // V22 — o convênio e a solicitação autorizada. Os guards vivem no adapter, na transação.
+      ...(dados.convenioId !== undefined ? { convenioId: dados.convenioId } : {}),
+      ...(dados.solicitacaoDeEmpenhoId !== undefined
+        ? { solicitacaoDeEmpenhoId: dados.solicitacaoDeEmpenhoId }
+        : {}),
       numero: dados.numero,
       tipo: dados.tipo,
       valor: dados.valor,

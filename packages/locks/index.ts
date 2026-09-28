@@ -328,6 +328,18 @@ export const ORDEM_DOS_LOCKS = {
    * passasse a travar a conta — e a inversão é o que esta tabela existe para recusar.
    */
   MovimentoExtraorcamentario: 30,
+  /**
+   * V22 — A SOLICITAÇÃO DE EMPENHO. A corrida é de ESTADO, não de saldo: emitir o empenho e
+   * cancelar (ou rejeitar) a mesma solicitação leem a situação no mesmo estado, as duas veem
+   * "autorizada, sem empenho", e as duas gravam — a solicitação termina cancelada E empenhada.
+   * Autorizar, rejeitar, cancelar e emitir travam a solicitação ANTES de derivar a situação.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: o empenho trava a ficha (2), a cota (3), o contrato (5)
+   * e a ordem (6) e SÓ ENTÃO a solicitação, logo antes de gravar; os atos da própria
+   * solicitação não travam mais nada depois dela. A unicidade de `Empenho.solicitacaoDeEmpenhoId`
+   * continua sendo a garantia dura contra duas emissões.
+   */
+  SolicitacaoDeEmpenho: 31,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

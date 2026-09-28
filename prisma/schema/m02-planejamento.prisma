@@ -336,6 +336,8 @@ model FichaOrcamentaria {
   gruposDaFolha GrupoDeEmpenhoDaFolha[]
   reservas     ReservaDotacao[]
   empenhos     Empenho[]
+  /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
+  solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
   itensCredito ItemCredito[]
   // ---------------------------------------------------------------------------
 

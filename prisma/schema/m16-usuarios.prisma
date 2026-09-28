@@ -64,6 +64,10 @@ enum AcaoDoSistema {
   PREPARAR_ORDEM_PAGAMENTO
   AUTORIZAR_ORDEM_PAGAMENTO
   CANCELAR_ORDEM_PAGAMENTO
+  // V22 — a solicitação de empenho: pedir e autorizar são crachás distintos (quem pede a
+  // despesa não é quem consente com ela). Ver `modules/m05-despesa/solicitacao-de-empenho.ts`.
+  SOLICITAR_EMPENHO
+  AUTORIZAR_SOLICITACAO_DE_EMPENHO
   ANULAR_PAGAMENTO
   ANULAR_PAGAMENTO_PARCIAL
   ESTORNAR_ANULACAO_PARCIAL

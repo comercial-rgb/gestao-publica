@@ -1,0 +1,92 @@
+// ============================================================================
+// M05 — A SOLICITAÇÃO DE EMPENHO: pedir, autorizar, e só então emitir.
+//
+// O termo de referência pede que o empenho possa nascer de uma solicitação, e que a
+// efetivação dependa da AUTORIZAÇÃO de usuário devidamente autorizado. É a mesma
+// segregação da ordem de pagamento (T07), um passo antes: quem pede a despesa não é
+// quem consente com ela.
+//
+// ⚠️ A SOLICITAÇÃO É ADMINISTRATIVA: não toca o razão e não reserva dotação. Quem
+// compromete o crédito é o empenho, e o saldo é conferido na transação dele. Uma
+// solicitação que reservasse saldo seria uma reserva de dotação com outro nome — e a
+// reserva já existe.
+//
+// ═══ SEM COLUNA DE STATUS ═══
+// A situação é DERIVADA (`situacaoDaSolicitacao`, em solicitacao-de-empenho.ts): o
+// último movimento manda, e a existência de um empenho emitido dela vence tudo. Uma
+// coluna `status` numa tabela append-only ficaria congelada no valor inicial.
+// ============================================================================
+
+/// V22 — a solicitação, com os dados PROPOSTOS do empenho. APPEND-ONLY.
+model SolicitacaoDeEmpenho {
+  id String @id @default(cuid())
+
+  /// Número administrativo da solicitação, único DENTRO da ficha (como o do empenho).
+  numero String
+
+  /// A ficha é a dotação proposta — e é ela que dá a UNIDADE GESTORA do ato: solicitar e
+  /// autorizar são escopados pela unidade da ficha, como o empenho.
+  fichaId String
+  ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
+
+  /// O credor proposto — o documento, normalizado, como no empenho.
+  credorCpfCnpj String
+  /// O valor proposto. O empenho emitido dela pode ser MENOR, nunca maior.
+  valor         Decimal     @db.Decimal(18, 2)
+  tipo          TipoEmpenho
+  /// Sem default, pela mesma razão do empenho. NULLABLE só quando há contrato (herda dele).
+  categoriaOrdemCronologica CategoriaOrdemCronologica?
+  historico     String
+
+  /// Os vínculos propostos. Opcionais; o empenho emitido dela tem de carregar os MESMOS.
+  contratoId      String?
+  contrato        Contrato?          @relation(fields: [contratoId], references: [id])
+  ordemDeCompraId String?
+  ordemDeCompra   OrdemDeCompra?     @relation(fields: [ordemDeCompraId], references: [id])
+  convenioId      String?
+  convenio        Convenio?          @relation(fields: [convenioId], references: [id])
+  obraId          String?
+  obra            Obra?              @relation(fields: [obraId], references: [id])
+  dividaId        String?
+  divida          DividaConsolidada? @relation(fields: [dividaId], references: [id])
+
+  movimentos MovimentoDaSolicitacaoDeEmpenho[]
+  /// back-relation: o empenho emitido desta solicitação (no máximo um). Campo VIRTUAL.
+  empenho    Empenho?
+
+  /// Quem solicitou. É contra este campo que a segregação é conferida.
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([fichaId, numero])
+  @@index([fichaId])
+  @@index([criadoEm])
+}
+
+/// ⚠️ TRÊS MOVIMENTOS, e nenhum "SOLICITADA": solicitar É criar a solicitação. A situação
+/// PENDENTE é a ausência de movimento.
+enum TipoMovimentoDaSolicitacaoDeEmpenho {
+  /// Alguém — que não pode ser quem solicitou — autorizou a emissão.
+  AUTORIZADA
+  /// A autoridade recusou. Motivo OBRIGATÓRIO.
+  REJEITADA
+  /// O próprio setor retirou o pedido antes de virar empenho. Motivo OBRIGATÓRIO.
+  CANCELADA
+}
+
+model MovimentoDaSolicitacaoDeEmpenho {
+  id String @id @default(cuid())
+
+  solicitacaoId String
+  solicitacao   SolicitacaoDeEmpenho @relation(fields: [solicitacaoId], references: [id])
+
+  tipo TipoMovimentoDaSolicitacaoDeEmpenho
+
+  /// Opcional na AUTORIZAÇÃO; OBRIGATÓRIO (mín. 10) na REJEIÇÃO e no CANCELAMENTO — o Zod cobra.
+  motivo String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([solicitacaoId, criadoEm])
+}

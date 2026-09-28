@@ -1159,6 +1159,45 @@ export function derivarAgendaDoGuiche(
   return saida;
 }
 
+/**
+ * V22 — AS DUAS AÇÕES DA SOLICITAÇÃO DE EMPENHO.
+ *
+ * ⚠️ A DERIVAÇÃO É DESIGUAL DE PROPÓSITO, e cada lado segue o critério do detector:
+ *
+ *   · SOLICITAR_EMPENHO vai a quem já EMPENHA, no MESMO escopo. Pedir a despesa não compromete
+ *     nada: uma solicitação indevida só vira empenho se alguém a autorizar E alguém com EMPENHAR a
+ *     emitir. O erro tem detector adiante — a própria autorização.
+ *   · AUTORIZAR_SOLICITACAO_DE_EMPENHO vai a quem já AUTORIZA ORDEM DE PAGAMENTO, no MESMO escopo.
+ *     É a mesma autoridade (o ordenador de despesa consente com o gasto), um passo antes na cadeia.
+ *     Derivá-la de EMPENHAR entregaria o consentimento a quem executa — exatamente a mistura que a
+ *     solicitação existe para separar.
+ *
+ * ⚠️ O ESCOPO É O DA AÇÃO DE ORIGEM: quem empenha só na Saúde passa a solicitar só na Saúde. E a
+ * segregação (quem solicita não decide a própria solicitação) é cobrada no caso de uso, mesmo que
+ * um perfil acabe com as duas.
+ */
+export function derivarSolicitacaoDeEmpenho(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const derivacoes = [
+    { de: "EMPENHAR", para: "SOLICITAR_EMPENHO" },
+    { de: "AUTORIZAR_ORDEM_PAGAMENTO", para: "AUTORIZAR_SOLICITACAO_DE_EMPENHO" },
+  ] as const;
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    for (const { de, para } of derivacoes) {
+      for (const origem of perfil.permissoes.filter((p) => p.acao === de)) {
+        // IDEMPOTENTE POR CONSTRUÇÃO: só deriva o que o perfil NÃO tem naquele escopo.
+        if (perfil.permissoes.some((p) => p.acao === para && p.unidadeOrcId === origem.unidadeOrcId)) continue;
+        if (saida.some((c) => c.perfilId === perfil.id && c.acao === para && c.unidadeOrcId === origem.unidadeOrcId)) continue;
+        saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: para, unidadeOrcId: origem.unidadeOrcId });
+      }
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -1592,6 +1631,22 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "publica a Uniao um orcamento que e a soma de dois. Vai so a quem administra permissoes no " +
       "global, que a distribui nomeando a pessoa.",
     derivar: derivarViradaDosControles,
+  },
+  {
+    versao: 37,
+    nome: "solicitacao-de-empenho",
+    descricao:
+      "O empenho passou a poder nascer de uma SOLICITACAO AUTORIZADA (V22): o setor solicita (ficha, " +
+      "credor, valor, historico e vinculos propostos), a autoridade autoriza ou rejeita com motivo, e " +
+      "o empenho emitido dela confere, na transacao, que a solicitacao esta autorizada, nao foi " +
+      "empenhada e casa com o que foi autorizado. Com isso vem DUAS acoes: SOLICITAR_EMPENHO (pedir e " +
+      "retirar o pedido) e AUTORIZAR_SOLICITACAO_DE_EMPENHO (autorizar ou rejeitar). " +
+      "⚠️ A DERIVACAO E DESIGUAL: quem EMPENHA passa a SOLICITAR no mesmo escopo (pedir nao compromete " +
+      "nada — o erro tem detector adiante, a propria autorizacao); quem AUTORIZA ORDEM DE PAGAMENTO " +
+      "passa a AUTORIZAR A SOLICITACAO no mesmo escopo (e a mesma autoridade, o ordenador de despesa, " +
+      "um passo antes na cadeia). Derivar a autorizacao de EMPENHAR entregaria o consentimento a quem " +
+      "executa. E quem solicita nao decide a propria solicitacao — regra do caso de uso.",
+    derivar: derivarSolicitacaoDeEmpenho,
   },
 ];
 

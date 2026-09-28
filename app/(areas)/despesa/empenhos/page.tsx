@@ -106,7 +106,12 @@ export default async function EmpenhosPage({
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         O valor <strong>empenhado</strong> já desconta as anulações. O disponível exibido na ficha é
-        indicativo: a suficiência de saldo é conferida no momento da emissão.
+        indicativo: a suficiência de saldo é conferida no momento da emissão. Empenhos que dependem de
+        autorização prévia são emitidos a partir das{" "}
+        <a href={`/despesa/solicitacoes-de-empenho?${queryRecorte(recorte)}`} className="font-medium text-[color:var(--color-primary)] hover:underline">
+          solicitações de empenho autorizadas
+        </a>
+        .
       </div>
 
       <FormEmpenho
@@ -119,6 +124,7 @@ export default async function EmpenhosPage({
           saldoDisponivel: f.saldoDisponivel,
         }))}
         ordemPadrao={typeof sp["ordemId"] === "string" ? sp["ordemId"] : ""}
+        solicitacaoPadrao={typeof sp["solicitacaoId"] === "string" ? sp["solicitacaoId"] : ""}
       />
 
       {empenhos.length === 0 ? (

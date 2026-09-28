@@ -332,6 +332,16 @@ export const zEmpenharInput = z
      * PROIBIDA fora dele; o guard vive no adapter (precisa ler a natureza da ficha).
      */
     dividaId: z.string().min(1).optional(),
+    /**
+     * M28 (V22) — o CONVÊNIO que este empenho executa. VOLUNTÁRIO (ver o schema); o adapter confere
+     * que ele existe, e a anulação o COPIA, como copia o contrato e a obra.
+     */
+    convenioId: z.string().min(1).optional(),
+    /**
+     * V22 — a SOLICITAÇÃO AUTORIZADA da qual o empenho é emitido. O adapter confere, DENTRO da
+     * transação e sob trava, que ela está autorizada, não foi empenhada e casa com o empenho.
+     */
+    solicitacaoDeEmpenhoId: z.string().min(1).optional(),
     numero: z.string().min(1),
     tipo: zTipoEmpenho,
     valor: zValorPositivo,

@@ -112,7 +112,7 @@ async function percorrer(navegador: Awaited<ReturnType<typeof puppeteer.launch>>
   const nomeDoCredor = rotuloDaOrdem.split(" — ").slice(1).join(" — ");
   await p.waitForFunction((n) => (document.querySelector('textarea[name="historico"]') as HTMLTextAreaElement | null)?.value.includes(n) === true, { timeout: 15000 }, numeroDaOrdem).catch(() => undefined);
   const historico = await p.$eval('textarea[name="historico"]', (t) => (t as HTMLTextAreaElement).value);
-  afirmar(historico.startsWith(`Empenho referente à Ordem de Compra ${numeroDaOrdem}`) && !historico.includes(".."), `o histórico se autopreencheu: "${historico}"`);
+  afirmar(historico.startsWith(`Empenho referente à Ordem de Compra ${numeroDaOrdem} - `) && !historico.includes("..") && !/[—–]/.test(historico), `o histórico se autopreencheu, sem travessão (o MANAD só aceita ISO 8859-1): "${historico}"`);
   const fichaEscolhida = await p.$eval('select[name="fichaId"]', (s) => (s as HTMLSelectElement).value);
   afirmar(fichaEscolhida !== "", "a ficha da ordem foi selecionada");
   await p.waitForFunction(() => /^(\d{11}|\d{14})$/.test((document.querySelector('input[type="hidden"][name="credor"]') as HTMLInputElement | null)?.value ?? ""), { timeout: 15000 }).catch(() => undefined);

@@ -1,6 +1,7 @@
 import {
   conferirM3,
   gerarManad,
+  responsaveisDoPeriodo,
   gerarMsc,
   serializarMscCsv,
   zipar,
@@ -437,15 +438,26 @@ function descreverPendenciaDoManad(p: PendenciaManad): PendenciaDoArquivo {
  * mesma coisa (fail-closed, e ele continua sendo a autoridade); a porta pergunta ANTES para
  * poder dizer TUDO o que falta de uma vez, e em linguagem de quem vai cadastrar.
  */
-async function faltasDoCadastroDoManad(): Promise<readonly string[]> {
+async function faltasDoCadastroDoManad(exercicio: number): Promise<readonly string[]> {
   const prisma = cliente();
+  const janela = entradaDoManad(exercicio);
+  // ⚠️ OS RESPONSÁVEIS CONTAM PELO PERÍODO, e pela MESMA função que o gerador usa
+  // (`responsaveisDoPeriodo`). Contar "existe algum" diria que não falta nada quando o único
+  // contabilista cadastrado respondeu por outro exercício — e o gerador recusaria em seguida.
   const [ente, contabilistas, geradoras] = await Promise.all([
     prisma.enteConfig.findUnique({
       where: { id: "unico" },
       select: { cnpj: true, uf: true, indCentralizacao: true, codigoIbge: true },
     }),
-    prisma.manadContabilista.count(),
-    prisma.manadEmpresaGeradora.count(),
+    prisma.manadContabilista
+      .findMany({ select: { dtInicio: true, dtFim: true } })
+      .then((l) => responsaveisDoPeriodo(l, (c) => ({ inicio: c.dtInicio, fim: c.dtFim }), janela).length),
+    prisma.manadEmpresaGeradora
+      .findMany({ select: { dtInicioServico: true, dtFimServico: true } })
+      .then(
+        (l) =>
+          responsaveisDoPeriodo(l, (g) => ({ inicio: g.dtInicioServico, fim: g.dtFimServico }), janela).length
+      ),
   ]);
   const faltas: string[] = [];
   if (ente === null) {
@@ -459,6 +471,31 @@ async function faltasDoCadastroDoManad(): Promise<readonly string[]> {
   if (contabilistas === 0) faltas.push("o contabilista responsável, com CRC e período de responsabilidade");
   if (geradoras === 0) faltas.push("a empresa ou o técnico responsável pela geração do arquivo");
   return faltas;
+}
+
+/**
+ * A CLASSIFICAÇÃO ORÇAMENTÁRIA QUE O MANAD EXIGE E O CADASTRO NÃO TEM (L400, L650, L700, L200).
+ *
+ * O gerador recusa nomeando o item (fail-closed, e ele não escolhe por ninguém). Sem esta
+ * tradução a tela dizia só "o arquivo não pôde ser gerado", e quem lê não saberia QUAL cadastro
+ * completar. O código e a descrição vêm da própria mensagem do gerador.
+ */
+function classificacaoAusente(msg: string): string | null {
+  const item = /(unidade orçamentária|ação|rubrica|natureza de receita) (\S+) \("([^"]*)"\) não tem/u.exec(msg);
+  if (item === null) return null;
+  const [, tipo, codigo, descricao] = item;
+  const exigencia: Readonly<Record<string, string>> = {
+    "unidade orçamentária":
+      "o tipo de unidade exigido pelo arquivo da Receita (Prefeitura, Câmara, Secretaria de Educação ou de Saúde, regime próprio de previdência, autarquia, fundação, entre outros)",
+    "ação": "a indicação de pertencer ou não ao regime próprio de previdência, exigida pelo arquivo da Receita",
+    rubrica: "o tipo de conta (sintética ou analítica) e o nível exigidos pelo arquivo da Receita",
+    "natureza de receita": "o tipo de conta (sintética ou analítica) e o nível exigidos pelo arquivo da Receita",
+  };
+  const nome = tipo === "rubrica" ? "A natureza de despesa" : tipo === "ação" ? "A ação" : `A ${tipo ?? ""}`;
+  return (
+    `${nome} ${codigo ?? ""} (${descricao ?? ""}) não tem ${exigencia[tipo ?? ""] ?? "a classificação exigida pelo arquivo da Receita"}. ` +
+    "O arquivo não foi gerado. Solicite o registro dessa classificação à equipe de implantação."
+  );
 }
 
 function traduzirRecusaDoManad(e: unknown): never {
@@ -475,6 +512,8 @@ function traduzirRecusaDoManad(e: unknown): never {
     traducao = `Um texto cadastrado contém a barra vertical, que o arquivo usa como separador${noRegistro}. Corrija o cadastro e gere de novo.`;
   } else if (msg.includes("ACIMA DE") || msg.includes("LONGO DEMAIS") || msg.includes("não-dígito")) {
     traducao = `Um dado cadastrado não cabe no formato do arquivo da Receita${noRegistro}. Corrija o cadastro e gere de novo.`;
+  } else if (classificacaoAusente(msg) !== null) {
+    traducao = classificacaoAusente(msg);
   } else if (/N2(-RP)? NÃO FECHA|N3 NÃO FECHA/.test(msg)) {
     traducao =
       "O total empenhado no arquivo não confere com a execução da despesa. O arquivo não foi gerado.";
@@ -499,7 +538,7 @@ function entradaDoManad(exercicio: number): Parameters<typeof gerarManad>[1] {
 }
 
 async function gerarManadConferido(exercicio: number): Promise<Awaited<ReturnType<typeof gerarManad>>> {
-  const faltas = await faltasDoCadastroDoManad();
+  const faltas = await faltasDoCadastroDoManad(exercicio);
   if (faltas.length > 0) {
     throw new ArquivoFederalIndisponivelError(
       `O arquivo para a Receita não pode ser gerado: falta cadastrar ${faltas.join("; ")}.`,

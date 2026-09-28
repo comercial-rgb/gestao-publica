@@ -87,6 +87,11 @@ export type AcaoDoSistema =
   | "AUTORIZAR_ORDEM_PAGAMENTO"
   /** Cancelar a ordem — motivo obrigatório. */
   | "CANCELAR_ORDEM_PAGAMENTO"
+  // ── M05 — V22: a solicitação de empenho. DUAS ações, e a separação é o ponto ──
+  /** Solicitar (e cancelar o próprio pedido): pedir a despesa. Não compromete saldo. */
+  | "SOLICITAR_EMPENHO"
+  /** Autorizar (ou rejeitar com motivo): consentir com a despesa. Quem solicitou não decide. */
+  | "AUTORIZAR_SOLICITACAO_DE_EMPENHO"
   | "ANULAR_PAGAMENTO"
   | "ANULAR_PAGAMENTO_PARCIAL"
   | "ESTORNAR_ANULACAO_PARCIAL"
@@ -807,6 +812,10 @@ export type NomeDeServico =
   | "prepararOrdemDePagamento"
   | "autorizarOrdemDePagamento"
   | "cancelarOrdemDePagamento"
+  | "solicitarEmpenho"
+  | "cancelarSolicitacaoDeEmpenho"
+  | "autorizarSolicitacaoDeEmpenho"
+  | "rejeitarSolicitacaoDeEmpenho"
   | "anularPagamento"
   | "anularPagamentoParcial"
   | "estornarAnulacaoParcial"
@@ -962,6 +971,10 @@ export type NomeDeServico =
   // typecheck prova que a união o CONHECE. Um não substitui o outro.
   | "cadastrarEntidadeContabil"
   | "publicarVersaoDaEntidadeContabil"
+  // ── V22 — os responsáveis técnicos do MANAD (0050, 0100) e o indicador de centralização (0000) ──
+  | "registrarContabilistaDoManad"
+  | "registrarEmpresaGeradoraDoManad"
+  | "declararCentralizacaoDaEscrituracao"
   | "declararTitularDaContaBancaria"
   | "atribuirEntidadeAArrecadacao"
   // ── V6 (P2) — M32 pessoal ──
@@ -1085,6 +1098,8 @@ export type NomeDeServico =
   | "publicarPoliticaDaDotacaoAdicional"
   | "publicarRoteiroDaDotacaoPorFonte"
   | "declararNaturezaDaFonte"
+  // M04 V22 — o ementário da receita (cadastro das naturezas de receita do ente)
+  | "cadastrarNaturezaReceita"
   // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
   | "acrescentarFonteAoRol"
   | "removerFonteDoRol"
@@ -1326,6 +1341,15 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   prepararOrdemDePagamento: "PREPARAR_ORDEM_PAGAMENTO",
   autorizarOrdemDePagamento: "AUTORIZAR_ORDEM_PAGAMENTO",
   cancelarOrdemDePagamento: "CANCELAR_ORDEM_PAGAMENTO",
+  // V22 — a solicitação de empenho. QUATRO serviços, DUAS ações, e o corte é por QUEM FAZ:
+  // o setor pede e retira o pedido (SOLICITAR_EMPENHO); a autoridade autoriza ou rejeita
+  // (AUTORIZAR_SOLICITACAO_DE_EMPENHO). Rejeitar é a mesma autoridade de autorizar — um crachá
+  // só para "sim" ou "não"; separá-los daria a alguém o poder de recusar sem o de consentir,
+  // que ninguém pediu. E a segregação (quem solicita não decide) é cobrada no caso de uso.
+  solicitarEmpenho: "SOLICITAR_EMPENHO",
+  cancelarSolicitacaoDeEmpenho: "SOLICITAR_EMPENHO",
+  autorizarSolicitacaoDeEmpenho: "AUTORIZAR_SOLICITACAO_DE_EMPENHO",
+  rejeitarSolicitacaoDeEmpenho: "AUTORIZAR_SOLICITACAO_DE_EMPENHO",
   anularPagamento: "ANULAR_PAGAMENTO",
   anularPagamentoParcial: "ANULAR_PAGAMENTO_PARCIAL",
   estornarAnulacaoParcial: "ESTORNAR_ANULACAO_PARCIAL",
@@ -1512,6 +1536,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // quem a entidade é; ver o bloco da união de tipos acima.
   cadastrarEntidadeContabil: "CADASTRAR_ENTIDADE_CONTABIL",
   publicarVersaoDaEntidadeContabil: "CADASTRAR_ENTIDADE_CONTABIL",
+  // V22 — OS RESPONSÁVEIS DO MANAD, sob a MESMA autoridade: dizer quem responde pela escrituração
+  // da entidade perante a Receita é parte de dizer quem a entidade é. Nenhuma ação nova foi criada;
+  // `CONFIGURAR_APRESENTACAO_DO_ENTE` foi descartada porque declara não tocar o EnteConfig fiscal.
+  // Ver `modules/m01-core-contabil/responsaveis-do-manad.ts`.
+  registrarContabilistaDoManad: "CADASTRAR_ENTIDADE_CONTABIL",
+  registrarEmpresaGeradoraDoManad: "CADASTRAR_ENTIDADE_CONTABIL",
+  declararCentralizacaoDaEscrituracao: "CADASTRAR_ENTIDADE_CONTABIL",
   // Declarar de QUEM é a conta é decisão de titularidade, e não cadastro de conta: quem
   // parametriza uma conta bancária não decide, por isso, a quem o dinheiro dela pertence.
   declararTitularDaContaBancaria: "DECLARAR_TITULAR_DA_CONTA_BANCARIA",
@@ -1724,6 +1755,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // movimento entra, exatamente como as três acima. Um crachá próprio aqui seria o quarto para a
   // mesma decisão contábil.
   declararNaturezaDaFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // ⚠️ V22 — E A QUINTA É A MESMA AUTORIDADE. Cadastrar uma natureza de receita no ementário diz
+  // em que classificação orçamentária a arrecadação entra e, pelos de-paras dos demonstrativos,
+  // em que linha da base de impostos ela soma: é parametrizar a classificação do orçamento, como
+  // declarar a natureza da fonte. NÃO é `REGISTRAR_ARRECADACAO` — quem registra a guia não cria
+  // o código em que a registra (segregação do 6.4) — nem `CRIAR_RECEITA_PREVISTA`, que é ato da
+  // LOA de um exercício sobre um código que já existe.
+  cadastrarNaturezaReceita: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // ── M07 V11 V8.3 — os tipos de consignação ──
   cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
@@ -2643,6 +2681,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "leitura (as liquidações que ainda comportam ordem — o vocabulário do formulário)",
   exigirOrdemAutorizada:
     "guard (T07 — confere, DENTRO da transação do pagamento, que a ordem está AUTORIZADA, é da mesma liquidação e tem o valor exato; não abre transação e não pede permissão própria — quem paga já pediu a dele)",
+  exigirSolicitacaoParaEmpenho:
+    "guard (V22 — confere, DENTRO da transação do empenho e sob a trava da solicitação, que ela está AUTORIZADA, não foi empenhada e casa com o empenho; não abre transação e não pede permissão própria — quem empenha já pediu EMPENHAR)",
+  listarSolicitacoesDeEmpenho:
+    "leitura (as solicitações de empenho de um exercício/unidade, com a situação derivada — a tela)",
+  empenhadoLiquidoDoConvenio:
+    "leitura derivada (V22 — Σ dos empenhos vivos do convênio, com a anulação copiando a FK)",
   dossieDoEmpenho:
     "leitura (o dossiê de UM empenho: origem, liquidações, pagamentos, retenções, anulações e o razão de toda a cadeia — a tela de conferência do empenho)",
   dadosDasLiquidacoes: "leitura (credor e empenho de cada liquidação — o que a fila do art. 141 não carrega; enriquece o painel do M06)",
@@ -2829,6 +2873,18 @@ export const FORA_DO_CENSO: Record<string, string> = {
   criteriosDeRateio: "leitura (os critérios publicados, com a marca do vigente — não muta)",
   centrosDeCusto: "leitura (o rol curto de setores ativos que o formulário do critério oferece)",
   criterioVigenteDeRateio: "leitura (resolve a versão vigente de uma chave numa data — composável interno do apropriar)",
+  // ── V22 — leituras exportadas para reuso entre demonstrativos (BF, BO, DFC), o seletor de
+  // ordens do empenho e a lista de comprovantes da liquidação. Nenhuma muta; a leitura é
+  // autorizada na porta que as chama (CONSULTAR_CONTABILIDADE / CONSULTAR_DESPESA por unidade).
+  lerDespesas: "leitura (empenhado, liquidado e pago do Balanço Orçamentário, reusada pela DFC — não muta)",
+  demonstracaoFluxosDeCaixa: "leitura (a DFC sobre os mesmos fatos do Balanço Financeiro — não muta)",
+  apurarCaixa: "leitura (o caixa pelas partidas de disponibilidade na janela — não muta)",
+  lerDepositos: "leitura (retenções e depósitos recebidos e devolvidos na janela — não muta)",
+  empenhadoLiquidoDaOrdem: "leitura (o empenhado líquido de anulações de uma ordem de compra — composável do empenhar e do seletor)",
+  situacaoDosEmpenhos: "leitura (a situação de cada empenho do exercício para os restos a pagar — composável do encerramento e do BF parcial)",
+  listarAnexosDasLiquidacoes: "leitura (os comprovantes das liquidações autorizadas pela porta — não muta)",
+  lerDadosDaLoa: "leitura (dotação inicial das fichas e previsão inicial da receita do exercício — não muta)",
+  loaDoExercicio: "leitura (a LOA e os anexos da Lei 4.320 montados sobre os dados já registrados — demonstrativo, não muta)",
   //
   autenticar: "autenticação (precede a autorização — autorizá-la seria circular)",
   validarSessao: "autenticação (é ela que troca o token pela identidade, na borda)",

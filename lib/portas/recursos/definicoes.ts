@@ -9,6 +9,7 @@ import { ORDENS_DE_COMPRA, PESQUISAS_DE_PRECOS, SOLICITACOES_DE_COMPRA } from ".
 import { DOCUMENTOS_FISCAIS } from "./documentos-fiscais.js";
 import { RECURSOS_DO_PESSOAL } from "./pessoal.js";
 import { RECURSOS_DA_FOLHA } from "./folha.js";
+import { EMENTARIO_DA_RECEITA } from "./ementario-receita.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -737,4 +738,6 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   ...RECURSOS_DO_PESSOAL,
   // V6 P2.3 — M33 folha (folhas, rubricas, lançamentos, tabelas do ente)
   ...RECURSOS_DA_FOLHA,
+  // V22 — M04 o ementário da receita. Pela mesma lista: busca global e amarração ao censo do M16.
+  EMENTARIO_DA_RECEITA,
 ];

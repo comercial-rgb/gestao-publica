@@ -38,10 +38,22 @@ const ehCategoria = (v: string | undefined): v is Exclude<Categoria, ""> => v !=
 
 /** O que cada vínculo escolhido trouxe do catálogo — só para compor sugestões. */
 interface Origens {
+  readonly solicitacao: OpcaoDoSeletor | null;
   readonly ordem: OpcaoDoSeletor | null;
   readonly contrato: OpcaoDoSeletor | null;
   readonly reserva: OpcaoDoSeletor | null;
 }
+
+const SEM_ORIGEM: Origens = { solicitacao: null, ordem: null, contrato: null, reserva: null };
+
+/** Os vínculos que a solicitação autorizada fixa — o empenho emitido dela tem de levar os mesmos. */
+const VINCULOS_DA_SOLICITACAO = [
+  { campo: "contratoId", rotulo: "Contrato", chaveDoRotulo: "contratoRotulo" },
+  { campo: "ordemDeCompraId", rotulo: "Ordem de compra", chaveDoRotulo: "ordemRotulo" },
+  { campo: "convenioId", rotulo: "Convênio", chaveDoRotulo: "convenioRotulo" },
+  { campo: "obraId", rotulo: "Obra", chaveDoRotulo: "obraRotulo" },
+  { campo: "dividaId", rotulo: "Dívida fundada", chaveDoRotulo: "dividaRotulo" },
+] as const;
 
 /**
  * OS TEXTOS DE HISTÓRICO (V22) — compostos do documento de origem, nunca de uma lista fixa de
@@ -51,23 +63,33 @@ interface Origens {
 export function sugestoesDeHistorico(o: Origens, credorNome: string): readonly string[] {
   const s: string[] = [];
   // sem o ponto final do texto de origem: a frase recebe o dela, e "setembro.." não chega ao histórico
-  const a = (x: string | undefined): string => (x ?? "").trim().replace(/[.;,s]+$/, "");
+  // ⚠️ E SEM TRAVESSÃO: o histórico do empenho é imutável e vai ao MANAD da Receita, que só aceita
+  // ISO 8859-1 — um "—" sugerido aqui tornava o empenho impossível de exportar. O separador é " - ",
+  // e o travessão que vier no texto de origem (objeto da ordem, do contrato) também é trocado.
+  const a = (x: string | undefined): string => (x ?? "").trim().replace(/[—–]/g, "-").replace(/[.;,\s]+$/, "");
+  // (⚠️ era `[.;,s]`: sem a barra, a classe comia o "s" final — "materiais" virava "materiai".)
   const credor = credorNome.trim() !== "" ? ` Credor: ${credorNome.trim()}.` : "";
+  if (o.solicitacao !== null) {
+    const d = o.solicitacao.dados ?? {};
+    // o histórico AUTORIZADO vem primeiro, como foi escrito; a referência à solicitação, em seguida
+    if (a(d["objeto"]) !== "") s.push(`${a(d["objeto"])}.`);
+    s.push(`Empenho conforme a Solicitação de Empenho ${a(d["numero"])}, autorizada - ${a(d["objeto"])}.${credor}`);
+  }
   if (o.ordem !== null) {
     const d = o.ordem.dados ?? {};
-    s.push(`Empenho referente à Ordem de Compra ${a(d["numero"])} — ${a(d["objeto"])}.${credor}`);
+    s.push(`Empenho referente à Ordem de Compra ${a(d["numero"])} - ${a(d["objeto"])}.${credor}`);
   }
   if (o.contrato !== null) {
     const d = o.contrato.dados ?? {};
-    s.push(`Empenho para atender ao Contrato ${a(d["numero"])}, processo ${a(d["processo"])} — ${a(d["objeto"])}.${credor}`);
+    s.push(`Empenho para atender ao Contrato ${a(d["numero"])}, processo ${a(d["processo"])} - ${a(d["objeto"])}.${credor}`);
     s.push(`Despesa com ${a(d["objeto"]).toLowerCase()}, conforme Contrato ${a(d["numero"])}.`);
   }
   if (o.reserva !== null) {
     const d = o.reserva.dados ?? {};
     const proc = a(d["processo"]) !== "" ? `, processo ${a(d["processo"])}` : "";
-    s.push(`Empenho à conta da reserva de dotação${proc} — ${a(d["objeto"])}.${credor}`);
+    s.push(`Empenho à conta da reserva de dotação${proc} - ${a(d["objeto"])}.${credor}`);
   }
-  return s.filter((x) => x.replace(/[\s.—,]/g, "") !== "");
+  return s.filter((x) => x.replace(/[\s.,-]/g, "") !== "");
 }
 
 /**
@@ -87,9 +109,12 @@ export function sugestoesDeHistorico(o: Origens, credorNome: string): readonly s
 export function FormEmpenho({
   fichas,
   ordemPadrao = "",
+  solicitacaoPadrao = "",
 }: {
   readonly fichas: readonly FichaParaEmpenho[];
   readonly ordemPadrao?: string;
+  /** V22: a solicitação autorizada vinda da tela de solicitações ("Emitir empenho"). */
+  readonly solicitacaoPadrao?: string;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoEmpenho, FormData>(empenharAction, {});
   const ref = useRef<HTMLFormElement>(null);
@@ -102,7 +127,7 @@ export function FormEmpenho({
   const [tipo, setTipo] = useState<"ORDINARIO" | "GLOBAL" | "ESTIMATIVO">("ORDINARIO");
   const [historico, setHistorico] = useState("");
   const historicoAutomatico = useRef("");
-  const [origens, setOrigens] = useState<Origens>({ ordem: null, contrato: null, reserva: null });
+  const [origens, setOrigens] = useState<Origens>(SEM_ORIGEM);
   const [rodada, setRodada] = useState(0);
 
   // Sucesso: limpa o formulário inteiro (inclusive os seletores, pela `key` da rodada).
@@ -117,7 +142,7 @@ export function FormEmpenho({
     setTipo("ORDINARIO");
     setHistorico("");
     historicoAutomatico.current = "";
-    setOrigens({ ordem: null, contrato: null, reserva: null });
+    setOrigens(SEM_ORIGEM);
     setRodada((r) => r + 1);
   }, [estado]);
 
@@ -161,38 +186,76 @@ export function FormEmpenho({
   }
 
   const fichaEscolhida = fichas.find((f) => f.id === fichaId);
+  // V22: escolhida uma solicitação, os vínculos são os DELA (enviados como estão; o M05 confere).
+  const solicitacaoEscolhida: Readonly<Record<string, string>> | null = origens.solicitacao === null ? null : (origens.solicitacao.dados ?? {});
 
   return (
     <form ref={ref} action={action} data-acao="empenhar" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Emitir empenho</h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
-        Comece pela origem: a ordem de compra, o contrato ou a reserva preenchem a ficha, o credor, o
-        valor e o histórico. Tudo continua editável.
+        Comece pela origem: a solicitação autorizada, a ordem de compra, o contrato ou a reserva
+        preenchem a ficha, o credor, o valor e o histórico. Tudo continua editável.
       </p>
 
       <fieldset className="mb-4 grid gap-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3 md:grid-cols-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink-2)]">Origem (opcional)</legend>
         <CampoReferenciado
-          key={`ordem-${rodada}`}
-          name="ordemDeCompraId"
-          rotulo="Ordem de compra"
-          catalogo="ordens-para-empenho"
-          placeholder="Digite o número da ordem"
-          largura={1}
-          valorInicial={ordemPadrao}
+          key={`solicitacao-${rodada}`}
+          name="solicitacaoDeEmpenhoId"
+          rotulo="Solicitação de empenho autorizada"
+          catalogo="solicitacoes-autorizadas-para-empenho"
+          placeholder="Digite o número da solicitação ou parte do histórico"
+          ajuda="O empenho emitido de uma solicitação mantém a ficha, o credor, o tipo e os vínculos autorizados; o valor pode ser igual ou menor."
+          largura={3}
+          valorInicial={solicitacaoPadrao}
           avisarInicial
-          aoEscolher={(o) => aplicarOrigem("ordem", o)}
+          aoEscolher={(o) => aplicarOrigem("solicitacao", o)}
         />
-        <CampoReferenciado
-          key={`contrato-${rodada}`}
-          name="contratoId"
-          rotulo="Contrato"
-          catalogo="contratos-para-empenho"
-          placeholder="Digite o número do contrato"
-          largura={1}
-          aoEscolher={(o) => aplicarOrigem("contrato", o)}
-        />
+        {solicitacaoEscolhida !== null ? (
+          <div className="md:col-span-3" data-vinculos-da-solicitacao>
+            <span className={ROTULO}>Vínculos definidos pela solicitação</span>
+            {VINCULOS_DA_SOLICITACAO.filter((v) => (solicitacaoEscolhida[v.campo] ?? "") !== "").length === 0 ? (
+              <p className="text-xs text-[color:var(--color-ink-3)]">A solicitação não indica contrato, ordem de compra, convênio, obra nem dívida fundada.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2 text-xs">
+                {VINCULOS_DA_SOLICITACAO.filter((v) => (solicitacaoEscolhida[v.campo] ?? "") !== "").map((v) => (
+                  <li key={v.campo} className="rounded-[var(--radius-md)] bg-[color:var(--color-surface-2)] px-2 py-1 text-[color:var(--color-ink-2)]">
+                    {v.rotulo}: <strong className="text-[color:var(--color-ink)]">{solicitacaoEscolhida[v.chaveDoRotulo] ?? ""}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {VINCULOS_DA_SOLICITACAO.map((v) =>
+              (solicitacaoEscolhida[v.campo] ?? "") !== "" ? (
+                <input key={v.campo} type="hidden" name={v.campo} value={solicitacaoEscolhida[v.campo]} />
+              ) : null
+            )}
+          </div>
+        ) : (
+          <>
+            <CampoReferenciado
+              key={`ordem-${rodada}`}
+              name="ordemDeCompraId"
+              rotulo="Ordem de compra"
+              catalogo="ordens-para-empenho"
+              placeholder="Digite o número da ordem"
+              largura={1}
+              valorInicial={ordemPadrao}
+              avisarInicial
+              aoEscolher={(o) => aplicarOrigem("ordem", o)}
+            />
+            <CampoReferenciado
+              key={`contrato-${rodada}`}
+              name="contratoId"
+              rotulo="Contrato"
+              catalogo="contratos-para-empenho"
+              placeholder="Digite o número do contrato"
+              largura={1}
+              aoEscolher={(o) => aplicarOrigem("contrato", o)}
+            />
+          </>
+        )}
         <CampoReferenciado
           key={`reserva-${rodada}`}
           name="reservaId"
@@ -203,6 +266,39 @@ export function FormEmpenho({
           aoEscolher={(o) => aplicarOrigem("reserva", o)}
         />
       </fieldset>
+
+      {solicitacaoEscolhida === null ? (
+        <fieldset className="mb-4 grid gap-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3 md:grid-cols-3" data-vinculacoes>
+          <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink-2)]">Vinculações (opcional)</legend>
+          <CampoReferenciado
+            key={`convenio-${rodada}`}
+            name="convenioId"
+            rotulo="Convênio"
+            catalogo="convenios-para-empenho"
+            placeholder="Número do termo, objeto ou concedente"
+            ajuda="Vincule quando a despesa executa um convênio, inclusive a contrapartida."
+            largura={1}
+          />
+          <CampoReferenciado
+            key={`obra-${rodada}`}
+            name="obraId"
+            rotulo="Obra"
+            catalogo="obras-para-empenho"
+            placeholder="Identificador ou descrição da obra"
+            ajuda="Obrigatória no elemento 51 (obras e instalações); nos demais, vincule para acompanhar a obra."
+            largura={1}
+          />
+          <CampoReferenciado
+            key={`divida-${rodada}`}
+            name="dividaId"
+            rotulo="Dívida fundada"
+            catalogo="dividas-para-empenho"
+            placeholder="Identificador, credor ou objeto"
+            ajuda="Somente em empenho de amortização da dívida (grupo 6), onde é obrigatória."
+            largura={1}
+          />
+        </fieldset>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">

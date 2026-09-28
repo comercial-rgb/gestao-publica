@@ -228,6 +228,8 @@ model Contrato {
   /// back-relation M05 — campo VIRTUAL, não gera coluna. É a dimensão CONTRATO do
   /// empenho: o `empenhadoLiquidoDoContrato` soma por aqui.
   empenhos   Empenho[]
+  /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
+  solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
   documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoContrato")
   /// back-relations V7 M2.1 (`m11-fiscalizacao.prisma`) — campos VIRTUAIS.
   designacoes          DesignacaoNoContrato[]     @relation("DesignacoesDoContrato")
@@ -499,6 +501,8 @@ model Obra {
   ativa Boolean @default(true)
 
   empenhos Empenho[]
+  /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
+  solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
   /// back-relation M11 (ENT03b) — campo VIRTUAL.
   medicoes MedicaoDeObra[]
   /// back-relations V7 M2 U6 — a planilha orçamentária. VIRTUAIS.

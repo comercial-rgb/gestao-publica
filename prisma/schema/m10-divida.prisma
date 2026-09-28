@@ -59,6 +59,8 @@ model DividaConsolidada {
   movimentos MovimentoDivida[]
   /// back-relation M05 (TR 4.48) — campo VIRTUAL, não gera coluna.
   empenhos   Empenho[]
+  /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
+  solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
 
   criadoEm  DateTime @default(now())
   criadoPor String

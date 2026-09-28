@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Alerta } from "../../../../components/ui/Alerta";
 import { Badge } from "../../../../components/ui/Badge";
 import { Card } from "../../../../components/ui/Card";
@@ -37,6 +38,9 @@ import { anoCivil, competenciaCivil } from "../../../../packages/datas/index";
  *
  * ⚠️ AUTORIZAÇÃO: `CONSULTAR_CONTABILIDADE`, concessão global (os arquivos são do ente inteiro).
  * A tela redireciona para /sem-acesso; as rotas de download respondem 403; a porta confere de novo.
+ *
+ * ⚠️ SEM `id` LITERAL (test/ui/formularios-na-mesma-pagina.test.tsx, t6): as seções se rotulam por
+ * `aria-label`, que não depende de um id único no documento.
  *
  * ⚠️ Imports RELATIVOS na UI. `force-dynamic`: depende de sessão.
  */
@@ -141,9 +145,9 @@ export default async function Pagina({
       </Alerta>
 
       {/* ═══ MSC ═══ */}
-      <section aria-labelledby="titulo-msc" className="space-y-4" data-papel="secao-msc">
+      <section aria-label="Matriz de Saldos Contábeis (SICONFI)" className="space-y-4" data-papel="secao-msc">
         <div>
-          <h2 id="titulo-msc" className="text-lg font-semibold text-[color:var(--color-ink)]">
+          <h2 className="text-lg font-semibold text-[color:var(--color-ink)]">
             Matriz de Saldos Contábeis (SICONFI)
           </h2>
           <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
@@ -192,15 +196,24 @@ export default async function Pagina({
       </section>
 
       {/* ═══ MANAD ═══ */}
-      <section aria-labelledby="titulo-manad" className="space-y-4" data-papel="secao-manad">
+      <section aria-label="Arquivo digital da Receita Federal (MANAD)" className="space-y-4" data-papel="secao-manad">
         <div>
-          <h2 id="titulo-manad" className="text-lg font-semibold text-[color:var(--color-ink)]">
+          <h2 className="text-lg font-semibold text-[color:var(--color-ink)]">
             Arquivo digital da Receita Federal (MANAD)
           </h2>
           <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
             Movimento anual do órgão público: execução orçamentária do exercício inteiro, no
             leiaute da Receita. O arquivo é sempre do exercício completo, de 1º de janeiro a 31 de
             dezembro.
+          </p>
+          <p className="mt-1 text-sm">
+            <Link
+              href="/contabilidade/exportacoes-federais/responsaveis"
+              className="font-medium text-[color:var(--color-primary)] hover:underline"
+              data-papel="link-responsaveis"
+            >
+              Responsáveis pelo arquivo: contabilista e empresa geradora
+            </Link>
           </p>
         </div>
 

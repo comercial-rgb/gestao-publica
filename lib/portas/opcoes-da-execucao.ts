@@ -2,7 +2,9 @@ import { formatarMoeda } from "../../packages/contracts/moeda";
 import { toMoney } from "../../packages/contracts/index";
 import { formatarDocumento } from "../../packages/documento/index.js";
 import { homologadoEm, situacaoDoProcesso, vigenciaFimDoContrato } from "../../modules/m11-licitacoes/contratos";
-import { empenhadoLiquidoDaOrdem, TIPO_EMPENHO_DA_ORDEM, valorDaOrdem } from "../../modules/m05-despesa/adapter-prisma";
+import { empenhadoLiquidoDaOrdem, empenhadoLiquidoDoConvenio, TIPO_EMPENHO_DA_ORDEM, valorDaOrdem } from "../../modules/m05-despesa/adapter-prisma";
+import { situacaoDaSolicitacao } from "../../modules/m05-despesa/solicitacao-de-empenho";
+import { diaCivilBr } from "../../packages/datas/index";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import { cliente } from "./cliente";
 import type { Identidade } from "./sessao";
@@ -247,6 +249,166 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
         });
       }
       return { opcoes, temMais: r.temMais };
+    },
+  },
+
+  /**
+   * V22 — CONVÊNIOS, para o vínculo VOLUNTÁRIO do empenho (e da solicitação). Busca pelo número do
+   * termo, pelo objeto ou pela outra parte. O detalhe mostra a vigência e o já empenhado líquido
+   * (`empenhadoLiquidoDoConvenio`, a mesma soma que o M05 mantém com as anulações copiando o vínculo).
+   * ⚠️ NÃO filtra por vigência: o M28 não a cobra em ato de execução, e a lista não inventa a regra.
+   */
+  "convenios-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const filtro =
+        p.valor !== undefined
+          ? { id: p.valor }
+          : p.q === ""
+            ? {}
+            : { OR: [{ identificador: contem(p.q) }, { objeto: contem(p.q) }, { partidaNome: contem(p.q) }] };
+      const linhas = await cliente().convenio.findMany({
+        where: filtro,
+        orderBy: { identificador: "desc" },
+        skip: (p.pagina - 1) * TAMANHO,
+        take: TAMANHO + 1,
+        select: { id: true, identificador: true, objeto: true, papelDoEnte: true, partidaNome: true, vigenciaInicio: true, vigenciaFim: true },
+      });
+      const r = paginar(linhas);
+      const opcoes: Opcao[] = [];
+      for (const c of r.linhas) {
+        const empenhado = await empenhadoLiquidoDoConvenio(cliente(), c.id);
+        opcoes.push({
+          valor: c.id,
+          rotulo: `${c.identificador} — ${c.objeto}`,
+          detalhe: `${c.papelDoEnte === "CONVENENTE" ? "convenente" : "concedente"} · ${c.partidaNome} · vigência ${diaCivilBr(c.vigenciaInicio)} a ${diaCivilBr(c.vigenciaFim)} · empenhado ${reais(empenhado.toFixed(2))}`,
+          dados: { identificador: c.identificador, objeto: c.objeto },
+        });
+      }
+      return { opcoes, temMais: r.temMais };
+    },
+  },
+
+  /** V22 — OBRAS ATIVAS (obra encerrada não recebe empenho — o M05 recusa). Busca pelo identificador ou descrição. */
+  "obras-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const filtro = p.valor !== undefined ? { id: p.valor } : p.q === "" ? {} : { OR: [{ identificador: contem(p.q) }, { descricao: contem(p.q) }] };
+      const linhas = await cliente().obra.findMany({
+        where: { ...filtro, ativa: true },
+        orderBy: { identificador: "asc" },
+        skip: (p.pagina - 1) * TAMANHO,
+        take: TAMANHO + 1,
+        select: { id: true, identificador: true, descricao: true, cei: true },
+      });
+      const r = paginar(linhas);
+      return {
+        opcoes: r.linhas.map((o) => ({
+          valor: o.id,
+          rotulo: `${o.identificador} — ${o.descricao}`,
+          detalhe: o.cei !== null && o.cei !== "" ? `matrícula CEI ${o.cei}` : "sem matrícula CEI informada",
+          dados: { identificador: o.identificador, objeto: o.descricao },
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
+
+  /** V22 — DÍVIDA FUNDADA (consolidada). O M05 só aceita o vínculo em empenho de amortização (grupo 6). */
+  "dividas-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const filtro =
+        p.valor !== undefined
+          ? { id: p.valor }
+          : p.q === ""
+            ? {}
+            : { OR: [{ identificador: contem(p.q) }, { credorNome: contem(p.q) }, { objeto: contem(p.q) }] };
+      const linhas = await cliente().dividaConsolidada.findMany({
+        where: filtro,
+        orderBy: { identificador: "asc" },
+        skip: (p.pagina - 1) * TAMANHO,
+        take: TAMANHO + 1,
+        select: { id: true, identificador: true, credorNome: true, credorDocumento: true, objeto: true, leiAutorizativa: true },
+      });
+      const r = paginar(linhas);
+      return {
+        opcoes: r.linhas.map((d) => ({
+          valor: d.id,
+          rotulo: `${d.identificador} — ${d.credorNome}`,
+          detalhe: `${d.objeto} · ${d.leiAutorizativa}`,
+          dados: { identificador: d.identificador, objeto: d.objeto, credorDocumento: d.credorDocumento, credorNome: d.credorNome },
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
+
+  /**
+   * V22 — SOLICITAÇÕES AUTORIZADAS e ainda não empenhadas: a origem que autopreenche o empenho. A
+   * situação vem de `situacaoDaSolicitacao` (a mesma função que o M05 usa para recusar). Os `dados`
+   * levam os vínculos da solicitação, que o formulário envia como estão — o empenho emitido tem de
+   * carregar os mesmos, e é o M05 que confere, na transação.
+   */
+  "solicitacoes-autorizadas-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const filtro = p.valor !== undefined ? { id: p.valor } : p.q === "" ? {} : { OR: [{ numero: contem(p.q) }, { historico: contem(p.q) }] };
+      const linhas = await cliente().solicitacaoDeEmpenho.findMany({
+        where: { ...filtro, empenho: { is: null }, movimentos: { some: { tipo: "AUTORIZADA" } } },
+        orderBy: { criadoEm: "desc" },
+        skip: (p.pagina - 1) * TAMANHO,
+        take: TAMANHO + 1,
+        select: {
+          id: true, numero: true, fichaId: true, credorCpfCnpj: true, valor: true, tipo: true, categoriaOrdemCronologica: true, historico: true,
+          contratoId: true, ordemDeCompraId: true, convenioId: true, obraId: true, dividaId: true,
+          ficha: { select: { numero: true } },
+          contrato: { select: { numeroContrato: true } },
+          ordemDeCompra: { select: { numero: true } },
+          convenio: { select: { identificador: true } },
+          obra: { select: { identificador: true } },
+          divida: { select: { identificador: true } },
+          movimentos: { select: { tipo: true, criadoEm: true } },
+        },
+      });
+      const r = paginar(linhas);
+      const autorizadas = r.linhas.filter((s) => situacaoDaSolicitacao(s.movimentos, false) === "AUTORIZADA");
+      const pessoas = await cliente().pessoa.findMany({
+        where: { documento: { in: [...new Set(autorizadas.map((s) => s.credorCpfCnpj))] } },
+        select: { documento: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } },
+      });
+      const nome = new Map(pessoas.map((x) => [x.documento, x.versoes[0]?.nome ?? ""]));
+      return {
+        opcoes: autorizadas.map((s) => {
+          const credorNome = nome.get(s.credorCpfCnpj) ?? "";
+          return {
+            valor: s.id,
+            rotulo: `${s.numero} — ${credorNome !== "" ? credorNome : formatarDocumento(s.credorCpfCnpj)}`,
+            detalhe: `${s.historico} · ${reais(s.valor.toFixed(2))} · ficha ${s.ficha.numero}`,
+            dados: {
+              numero: s.numero,
+              fichaId: s.fichaId,
+              credorDocumento: s.credorCpfCnpj,
+              credorNome,
+              valor: s.valor.toFixed(2),
+              tipoEmpenho: s.tipo,
+              ...(s.categoriaOrdemCronologica !== null ? { categoria: s.categoriaOrdemCronologica } : {}),
+              objeto: s.historico,
+              contratoId: s.contratoId ?? "",
+              contratoRotulo: s.contrato?.numeroContrato ?? "",
+              ordemDeCompraId: s.ordemDeCompraId ?? "",
+              ordemRotulo: s.ordemDeCompra?.numero ?? "",
+              convenioId: s.convenioId ?? "",
+              convenioRotulo: s.convenio?.identificador ?? "",
+              obraId: s.obraId ?? "",
+              obraRotulo: s.obra?.identificador ?? "",
+              dividaId: s.dividaId ?? "",
+              dividaRotulo: s.divida?.identificador ?? "",
+            },
+          };
+        }),
+        temMais: r.temMais,
+      };
     },
   },
 };

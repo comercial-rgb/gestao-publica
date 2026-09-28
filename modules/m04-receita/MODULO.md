@@ -130,6 +130,8 @@ receita.tipo == ANULACAO        => não se anula uma anulação
 - `modules/m04-receita/servico.ts` — `registrarArrecadacao`, `anularArrecadacao`.
 - `modules/m04-receita/adapter-prisma.ts` — única camada com Prisma.
 - `modules/m04-receita/m04.test.ts` — 17 testes no banco de TESTE.
+- `modules/m04-receita/ementario.ts` — `cadastrarNaturezaReceita` (V22): o ementário da receita.
+- `modules/m04-receita/m04-ementario.test.ts` — N=2, duplicata, código malformado, negação com motivo.
 
 ## Pendências conhecidas
 
@@ -168,6 +170,27 @@ receita.tipo == ANULACAO        => não se anula uma anulação
   `atribuirContaAArrecadacao` (conferido contra o razão), nunca por UPDATE. O importador (M20) e
   as compostas do M10 ainda registram guias SEM conta — entram como legado a atribuir
   (`IMPORTADOR-SEM-CONTA-BANCARIA`).
+
+## O ementário da receita (V22)
+
+`NaturezaReceita` não tinha escritor: o ente não cadastrava o próprio IPTU. `cadastrarNaturezaReceita`
+(`ementario.ts`) é o caso de uso, e a tela é `/receita/naturezas` (molde, `lib/portas/recursos/ementario-receita.ts`).
+
+- **O código passa pelo `parsearNaturezaReceita`** — 8 dígitos, origem do rol da categoria, tipo 0 a 4.
+  A hierarquia com pontos (1.1.1.8.01.1.1) é aceita e normalizada; qualquer outro caractere recusa.
+- **Duplicata recusa nomeando o rótulo que já está lá.** O `@unique` é a garantia dura; P2002 da corrida
+  vira mensagem.
+- **Ação: `PARAMETRIZAR_ROTEIRO_ORCAMENTARIO`, escopo do ente.** Cadastrar a natureza é dizer em que
+  classificação do orçamento a arrecadação entra — a mesma autoridade de `declararNaturezaDaFonte`.
+  Não é `REGISTRAR_ARRECADACAO`: quem registra a guia não cria o código em que a registra.
+- **Só cadastro, sem edição.** O model não tem versão; reescrever a descrição de uma natureza já
+  arrecadada mudaria o rótulo de toda guia dela. Corrigir rótulo pede versão no model
+  (`EMENTARIO-SEM-VERSAO`, pendência).
+- **Os campos MANAD (`indTipoContaManad`, `nivelContaManad`) ficam nulos** no cadastro pela tela: a
+  hierarquia do MANAD é dado do ente, e o gerador continua fail-closed sem ela
+  (`EMENTARIO-SEM-NIVEL-MANAD`, pendência).
+- **O ementário não exige o nível sintético pai.** O extrato oficial do repositório só traz as analíticas
+  dos impostos; exigir o pai recusaria o próprio extrato.
 
 ## Fora de escopo aqui
 

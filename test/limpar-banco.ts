@@ -485,6 +485,8 @@ export const TABELAS = [
   "Orgao",
   // M05 — T07: a ordem de pagamento (movimentos antes da ordem, pela FK)
   "MovimentoDaOrdemDePagamento",
+  "MovimentoDaSolicitacaoDeEmpenho",
+  "SolicitacaoDeEmpenho",
   "OrdemDePagamento",
   // M19 — pessoas e credores (cadastro append-only: pessoa, versões e papéis)
   "MovimentoDePapelDaPessoa",

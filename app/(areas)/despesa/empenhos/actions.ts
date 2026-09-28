@@ -55,6 +55,11 @@ export async function empenharAction(
     const contratoId = String(formData.get("contratoId") ?? "").trim();
     const reservaId = String(formData.get("reservaId") ?? "").trim();
     const ordemDeCompraId = String(formData.get("ordemDeCompraId") ?? "").trim();
+    // V22: os vínculos de convênio, obra e dívida, e a solicitação autorizada de origem.
+    const convenioId = String(formData.get("convenioId") ?? "").trim();
+    const obraId = String(formData.get("obraId") ?? "").trim();
+    const dividaId = String(formData.get("dividaId") ?? "").trim();
+    const solicitacaoDeEmpenhoId = String(formData.get("solicitacaoDeEmpenhoId") ?? "").trim();
 
     if (!ehTipo(tipoBruto)) return { erro: "Tipo de empenho inválido." };
     // ⚠️ SEM DEFAULT: o `zEmpenharInput` recusa empenho sem contrato e sem categoria,
@@ -82,9 +87,14 @@ export async function empenharAction(
         ...(contratoId !== "" ? { contratoId } : {}),
         ...(reservaId !== "" ? { reservaId } : {}),
         ...(ordemDeCompraId !== "" ? { ordemDeCompraId } : {}),
+        ...(convenioId !== "" ? { convenioId } : {}),
+        ...(obraId !== "" ? { obraId } : {}),
+        ...(dividaId !== "" ? { dividaId } : {}),
+        ...(solicitacaoDeEmpenhoId !== "" ? { solicitacaoDeEmpenhoId } : {}),
       });
       revalidatePath("/despesa/empenhos");
       if (ordemDeCompraId !== "") revalidatePath("/licitacoes/ordens-de-compra");
+      if (solicitacaoDeEmpenhoId !== "") revalidatePath("/despesa/solicitacoes-de-empenho");
       return { sucesso: `Empenho ${numero} emitido. Valor: R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível emitir o empenho." };

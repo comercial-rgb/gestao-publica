@@ -5,6 +5,7 @@ import { arrecadadoPorNaturezaFonte } from "../m04-receita/consultas.js";
 import { reprevisaoAcumuladaPorNatureza } from "../m02-planejamento/consultas.js";
 import { baseDeImpostos, lerDeParaBaseImpostos } from "./base-impostos.js";
 import { janelaDoBimestre, type Bimestre } from "./rreo-anexo1.js";
+import { apurarMinimo } from "./apuracao-do-minimo.js";
 
 /**
  * RREO — ANEXO 8: MDE (Manutenção e Desenvolvimento do Ensino), BLOCO 1. LDB art. 72 · CF art.
@@ -170,7 +171,9 @@ export async function anexo8(
   // INDICADOR 70% dos profissionais (art. 212-A XI): profissionais(acomp) / recebido do FUNDEB.
   const recebido = toMoney(fundeb.totalRecebido);
   const profissionaisAcomp = toMoney(fundeb.despesaProfissionais.acompanhamento);
-  const indicadorProfissionais = percent(profissionaisAcomp, recebido);
+  // O veredito é da comparação em dinheiro, não do percentual arredondado (ver apuracao-do-minimo.ts).
+  const apuracaoProfissionais = apurarMinimo(profissionaisAcomp, recebido, LIMITE_PROFISSIONAIS);
+  const indicadorProfissionais = apuracaoProfissionais.percentual;
 
   notas.push(
     baseAcompanhamento === "empenhada"
@@ -193,7 +196,7 @@ export async function anexo8(
     despesaProfissionais: fundeb.despesaProfissionais,
     indicadorProfissionais,
     limiteProfissionais: LIMITE_PROFISSIONAIS.toFixed(2),
-    atingiuProfissionais: toMoney(indicadorProfissionais).greaterThanOrEqualTo(LIMITE_PROFISSIONAIS),
+    atingiuProfissionais: apuracaoProfissionais.atingiu,
     baseAcompanhamento,
     notas,
   };

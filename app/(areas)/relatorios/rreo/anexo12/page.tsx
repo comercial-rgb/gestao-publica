@@ -79,6 +79,9 @@ export default async function RreoAnexo12Page({
   }
 
   const atingiu = dados.atingiuMinimo;
+  // Base de impostos nula: não há percentual a exibir (a divisão não existe), e o mínimo exigido é
+  // zero. O veredito continua sendo o do motor, que compara em dinheiro.
+  const semBase = dados.baseAsps.realizada === "0.00";
 
   return (
     <div className="space-y-6">
@@ -95,8 +98,12 @@ export default async function RreoAnexo12Page({
         <Card>
           <p className="text-xs uppercase tracking-wide text-[color:var(--color-ink-2)]">Aplicação (VII)</p>
           <div className="mt-1 flex items-center gap-2">
-            <span className="text-2xl font-semibold tabular text-[color:var(--color-ink)]">{fmtPercent(dados.percentualAplicacao)}</span>
-            <Badge status={atingiu ? "ok" : "erro"}>{atingiu ? "≥ 15%" : "abaixo de 15%"}</Badge>
+            <span className="text-2xl font-semibold tabular text-[color:var(--color-ink)]">{semBase ? "—" : fmtPercent(dados.percentualAplicacao)}</span>
+            {semBase ? (
+              <Badge status="alerta">sem base de impostos</Badge>
+            ) : (
+              <Badge status={atingiu ? "ok" : "erro"}>{atingiu ? "≥ 15%" : "abaixo de 15%"}</Badge>
+            )}
           </div>
           <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">Mínimo constitucional: {fmtPercent(dados.limitePercentual)}</p>
         </Card>

@@ -88,6 +88,8 @@ export default async function RreoAnexo8Page({
   }
 
   const atingiu = dados.atingiuProfissionais;
+  // Sem recurso do FUNDEB recebido não há percentual a exibir; o veredito é o do motor (em dinheiro).
+  const semFundeb = dados.totalRecebidoFundeb === "0.00";
 
   return (
     <div className="space-y-6">
@@ -101,8 +103,12 @@ export default async function RreoAnexo8Page({
         <Card>
           <p className="text-xs uppercase tracking-wide text-[color:var(--color-ink-2)]">Profissionais da educação (70%)</p>
           <div className="mt-1 flex items-center gap-2">
-            <span className="text-2xl font-semibold tabular text-[color:var(--color-ink)]">{fmtPct(dados.indicadorProfissionais)}</span>
-            <Badge status={atingiu ? "ok" : "erro"}>{atingiu ? "≥ 70%" : "abaixo de 70%"}</Badge>
+            <span className="text-2xl font-semibold tabular text-[color:var(--color-ink)]">{semFundeb ? "—" : fmtPct(dados.indicadorProfissionais)}</span>
+            {semFundeb ? (
+              <Badge status="alerta">sem recurso do FUNDEB</Badge>
+            ) : (
+              <Badge status={atingiu ? "ok" : "erro"}>{atingiu ? "≥ 70%" : "abaixo de 70%"}</Badge>
+            )}
           </div>
           <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">Acompanhamento pela {dados.baseAcompanhamento} · mínimo {fmtPct(dados.limiteProfissionais)}</p>
         </Card>

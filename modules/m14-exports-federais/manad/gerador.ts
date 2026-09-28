@@ -25,6 +25,7 @@ import {
   type LinhaManad,
   type Onde,
 } from "./dominio.js";
+import { responsaveisDoPeriodo } from "./responsaveis.js";
 
 /**
  * M14 — O GERADOR DO MANAD. LEITURA PURA (TR 7.36).
@@ -226,17 +227,23 @@ async function bloco0(
   // 01|REG  02|NOME  03|CNPJ escritório  04|CPF  05|CRC  06|DT_INI  07|DT_FIN
   // 08|END  09|NUM  10|COMPL  11|BAIRRO  12|CEP  13|UF  14|CP  15|CEP_CP
   // 16|FONE  17|FAX  18|EMAIL
-  const contabilistas = await leitor.manadContabilista.findMany({
-    orderBy: { dtInicio: "asc" },
-  });
+  //
+  // ⚠️ SÓ OS DO PERÍODO, E COM O FIM EFETIVO. O cadastro é append-only (o papel da aplicação não
+  // tem UPDATE nesta tabela): trocar de contabilista é INSERIR o sucessor, e o antecessor aberto
+  // termina na véspera do início dele. Ver `responsaveis.ts`.
+  const contabilistas = responsaveisDoPeriodo(
+    await leitor.manadContabilista.findMany({ orderBy: { dtInicio: "asc" } }),
+    (c) => ({ inicio: c.dtInicio, fim: c.dtFim }),
+    entrada
+  );
   if (contabilistas.length === 0) {
     throw new Error(
-      `MANAD — nenhum CONTABILISTA cadastrado (registro 0050). O arquivo vai à Receita ` +
-        `com o CRC de um responsável — não existe MANAD anônimo. Cadastre em ` +
-        `ManadContabilista, com o período de responsabilidade.`
+      `MANAD — nenhum CONTABILISTA cadastrado (registro 0050) com responsabilidade no período ` +
+        `do arquivo. O arquivo vai à Receita com o CRC de um responsável — não existe MANAD ` +
+        `anônimo. Cadastre em ManadContabilista, com o período de responsabilidade.`
     );
   }
-  for (const c of contabilistas) {
+  for (const { registro: c, fimEfetivo } of contabilistas) {
     linhas.push({
       reg: "0050",
       campos: [
@@ -245,7 +252,7 @@ async function bloco0(
         numeroFixo(c.cpf, 11, onde("0050", "CPF")),
         alfa(c.crc, onde("0050", "CRC")),
         data(c.dtInicio),
-        data(c.dtFim),
+        data(fimEfetivo),
         alfa(c.endereco, onde("0050", "END")),
         alfa(c.numero, onde("0050", "NUM")),
         alfa(c.complemento, onde("0050", "COMPL")),
@@ -264,23 +271,25 @@ async function bloco0(
   // ── REGISTRO 0100 (empresa/técnico gerador; vários) ───────────────────────
   // 01|REG  02|EMP_TEC  03|CARGO  04|DT_INI_SERV_INF  05|DT_FIM_SERV_INF
   // 06|CNPJ  07|CPF  08|FONE  09|FAX  10|EMAIL
-  const geradoras = await leitor.manadEmpresaGeradora.findMany({
-    orderBy: { dtInicioServico: "asc" },
-  });
+  const geradoras = responsaveisDoPeriodo(
+    await leitor.manadEmpresaGeradora.findMany({ orderBy: { dtInicioServico: "asc" } }),
+    (g) => ({ inicio: g.dtInicioServico, fim: g.dtFimServico }),
+    entrada
+  );
   if (geradoras.length === 0) {
     throw new Error(
-      `MANAD — nenhuma EMPRESA/TÉCNICO gerador cadastrado (registro 0100). Cadastre em ` +
-        `ManadEmpresaGeradora.`
+      `MANAD — nenhuma EMPRESA/TÉCNICO gerador cadastrado (registro 0100) com serviço no ` +
+        `período do arquivo. Cadastre em ManadEmpresaGeradora.`
     );
   }
-  for (const g of geradoras) {
+  for (const { registro: g, fimEfetivo } of geradoras) {
     linhas.push({
       reg: "0100",
       campos: [
         alfa(g.empresaOuTecnico, onde("0100", "EMP_TEC")),
         alfa(g.cargo, onde("0100", "CARGO")),
         data(g.dtInicioServico),
-        data(g.dtFimServico),
+        data(fimEfetivo),
         numeroFixo(g.cnpj, 14, onde("0100", "CNPJ")),
         numeroFixo(g.cpf, 11, onde("0100", "CPF")),
         alfa(g.fone, onde("0100", "FONE")),

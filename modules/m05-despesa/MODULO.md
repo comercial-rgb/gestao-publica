@@ -344,3 +344,56 @@ OPCIONAL no `zLiquidarInput` e conferida pelo adapter dentro da transação, ANT
 mesmo contrato; empenho do contrato com credor = contratado; empenho que não seja de material; empenho indicado na
 ordem; elegível não consumido — sob o trinco do contrato. As alocações (`AlocacaoDaLiquidacaoNaParcela`) são gravadas
 no mesmo commit da liquidação. Liquidação de custeio, folha e encargos não passam parcela e não mudam.
+
+## V22 — a solicitação de empenho e os vínculos de convênio, obra e dívida
+
+**O pedido.** O termo de referência pede (a) a solicitação de empenho, com a efetivação condicionada à
+autorização por usuário autorizado, e (b) o empenho vinculável à solicitação, licitação, contrato, obra,
+campanha publicitária, convênio, programa ou dívida fundada.
+
+### A solicitação (`solicitacao-de-empenho.ts`, `prisma/schema/m05-solicitacao-de-empenho.prisma`)
+
+- **Append-only, sem coluna de status.** `SolicitacaoDeEmpenho` guarda a despesa proposta (ficha, credor,
+  valor, tipo, categoria, histórico, vínculos opcionais, solicitante); `MovimentoDaSolicitacaoDeEmpenho`
+  guarda AUTORIZADA / REJEITADA (motivo) / CANCELADA (motivo). `situacaoDaSolicitacao` deriva:
+  PENDENTE sem movimento; o último movimento manda; **o empenho emitido vence tudo** (EMPENHADA).
+- **Duas ações novas no censo do M16**, escopadas pela unidade da ficha: `SOLICITAR_EMPENHO`
+  (`solicitarEmpenho`, `cancelarSolicitacaoDeEmpenho`) e `AUTORIZAR_SOLICITACAO_DE_EMPENHO`
+  (`autorizarSolicitacaoDeEmpenho`, `rejeitarSolicitacaoDeEmpenho`). Chegam às instalações existentes
+  pela atualização de permissões **v37** (SOLICITAR a quem EMPENHA; AUTORIZAR a quem AUTORIZA ORDEM DE
+  PAGAMENTO — ambas no mesmo escopo).
+- **Segregação no caso de uso:** quem solicitou não autoriza nem rejeita a própria solicitação, mesmo
+  tendo as duas ações. O caminho dele é cancelar.
+- **Administrativa:** não reserva dotação e não lança no razão. Quem compromete o crédito é o empenho.
+- **Emitir:** `empenhar` com `solicitacaoDeEmpenhoId`. O adapter chama `exigirSolicitacaoParaEmpenho`
+  **dentro da transação**, sob a trava `SolicitacaoDeEmpenho` (posto 31, o último — a ficha, a cota, o
+  contrato e a ordem já foram travados antes). Exige AUTORIZADA e não empenhada; mesma ficha, credor, tipo
+  e vínculos; valor **até** o autorizado (a sobra não fica autorizada). A unicidade de
+  `Empenho.solicitacaoDeEmpenhoId` é a garantia dura contra duas emissões.
+- **Decisão — anular o empenho NÃO devolve a solicitação.** A autorização foi para um ato, e ele
+  aconteceu. A solicitação segue EMPENHADA ("empenho anulado" na tela); a nova necessidade pede nova
+  solicitação. A anulação não copia `solicitacaoDeEmpenhoId` (é origem, não dimensão; a coluna é única).
+- **Opcional no empenho, de propósito:** exigi-la quebraria folha, encargos e ordem de compra.
+
+### Convênio no empenho
+
+`zEmpenharInput` aceita `convenioId`; o adapter confere que o convênio existe
+(`exigirVinculoDeConvenio`). A anulação **total**, a **parcial** e o **estorno da parcial** copiam o
+`convenioId` — sem isso, `empenhadoLiquidoDoConvenio` veria o empenho e não a redução. Provado N=2 e por
+mutação das três cópias (`m05-solicitacao-de-empenho.test.ts` t12).
+
+### Pendências nomeadas (V22)
+
+- `VIGENCIA-DO-CONVENIO-NO-EMPENHO` — o M28 grava a vigência mas não a cobra em ato de execução nenhum
+  (nem na liberação de parcela). O empenho não inventa a regra; ela precisa de fonte e de decisão.
+- `CAMPANHA-PUBLICITARIA-SEM-MODELO` — não há modelo de campanha publicitária no repositório; o vínculo do
+  empenho a campanha não foi construído (e não se inventa modelo para isso).
+- `PROGRAMA-DO-EMPENHO` — o programa já é dimensão do empenho **pela ficha** (`FichaOrcamentaria.programaId`);
+  não há coluna própria. Se o termo pedir "programa" no sentido de programa federal/transferência (PNAE,
+  PDDE…), não há modelo — pendência.
+- `EXIGIR-SOLICITACAO-POR-PARAMETRO` — tornar a solicitação obrigatória para o ente que quiser (parâmetro
+  do ente); hoje o controle é por concessão de EMPENHAR.
+- `DIMENSOES-NAS-ANULACOES` (achado, pré-existente, não corrigido aqui): a anulação TOTAL não copia
+  `dividaId`; o ESTORNO da anulação parcial não copia `obraId` nem `ordemDeCompraId`. Com isso,
+  `empenhadoLiquidoDaOrdem` (e qualquer soma por obra/dívida) erra depois de um estorno de parcial ou de
+  uma anulação total de empenho de amortização. Mesmo desenho da correção do convênio.

@@ -208,6 +208,17 @@ model Empenho {
   ordemDeCompraId String?
   ordemDeCompra   OrdemDeCompra? @relation(fields: [ordemDeCompraId], references: [id])
 
+  /// V22 — a SOLICITAÇÃO AUTORIZADA da qual este empenho foi emitido. NULLABLE: o empenho
+  /// direto continua existindo (folha, encargos, ordem de compra), e exigir solicitação é
+  /// decisão do ente, não do schema.
+  ///
+  /// ⚠️ ÚNICO, e a anulação NÃO o copia. A solicitação autoriza UM ato: a unicidade é a
+  /// garantia dura contra duas emissões da mesma autorização (a trava e a situação derivada
+  /// são a primeira linha, dentro da transação). Copiá-lo para a linha da anulação violaria a
+  /// unicidade — e não há soma por solicitação que precise dele: ele é ORIGEM, não dimensão.
+  solicitacaoDeEmpenhoId String?               @unique
+  solicitacaoDeEmpenho   SolicitacaoDeEmpenho? @relation(fields: [solicitacaoDeEmpenhoId], references: [id])
+
   /// back-relations ENT03b — os movimentos que ESTE empenho executou. Campos VIRTUAIS.
   movimentosConvenio  MovimentoConvenio[]
   movimentosConsorcio MovimentoConsorcio[]

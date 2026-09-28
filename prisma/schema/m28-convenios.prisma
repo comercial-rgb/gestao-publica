@@ -77,6 +77,8 @@ model Convenio {
   movimentos MovimentoConvenio[]
   /// back-relation M05 — campo VIRTUAL, não gera coluna.
   empenhos   Empenho[]
+  /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
+  solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
   /// back-relations M22/M25 (ENT03b) — campos VIRTUAIS.
   anexos          Anexo[]
   camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeConvenio")

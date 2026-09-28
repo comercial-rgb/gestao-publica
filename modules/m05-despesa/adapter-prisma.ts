@@ -42,6 +42,7 @@ import {
 import { ELEMENTOS_DE_OBRA } from "../m11-licitacoes/obras.js";
 // T07 — o guard da ordem de pagamento. Ele NÃO abre transação: roda dentro desta.
 import { exigirOrdemAutorizada } from "./ordem-pagamento.js";
+import { exigirSolicitacaoParaEmpenho } from "./solicitacao-de-empenho.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
@@ -502,6 +503,45 @@ async function guardsDaOrdem(tx: Tx, p: EmpenharParams): Promise<void> {
         `empenhado ${empenhado.toFixed(2)} = residual ${residual.toFixed(2)}, e o ` +
         `empenho ${p.numero} pede ${p.valor.toFixed(2)}.`
     );
+  }
+}
+
+/**
+ * M28 (V22) — o EMPENHADO LÍQUIDO de um convênio: Σ dos empenhos que o executam, líquida de
+ * anulações totais e parciais (a mesma soma do repositório, `packages/estornaveis`).
+ *
+ * ⚠️ É esta soma que exige que a anulação COPIE o `convenioId`: o filtro é pelo convênio, e uma
+ * anulação sem ele ficaria fora do conjunto — o empenho seria contado inteiro para sempre.
+ */
+export async function empenhadoLiquidoDoConvenio(tx: Tx, convenioId: string): Promise<Money> {
+  const empenhos = await tx.empenho.findMany({
+    where: { convenioId },
+    select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+  });
+  return somaLiquidaEstornaveis(
+    empenhos.map((e) => ({
+      id: e.id,
+      valor: toMoney(e.valor.toFixed(2)),
+      estornoDeId: e.estornoDeId,
+      anulacaoParcialDeId: e.anulacaoParcialDeId,
+    }))
+  );
+}
+
+/**
+ * M28 (V22) — O VÍNCULO COM O CONVÊNIO: VOLUNTÁRIO, como o da obra (ver o schema), e por isso SEM
+ * gatilho por elemento. O que se confere é que o convênio EXISTE.
+ *
+ * ⚠️ VIGÊNCIA NÃO É CONFERIDA AQUI, e é decisão: o M28 grava a vigência mas não a cobra em ato de
+ * execução nenhum (a liberação de parcela aceita qualquer data). Inventar aqui a regra "empenho só
+ * dentro da vigência" seria a segunda régua sobre o mesmo convênio, sem fonte que a declare — fica
+ * nomeada como pendência no MODULO.md do M05.
+ */
+async function exigirVinculoDeConvenio(tx: Tx, p: EmpenharParams): Promise<void> {
+  if (p.convenioId === undefined) return;
+  const c = await tx.convenio.findUnique({ where: { id: p.convenioId }, select: { id: true } });
+  if (c === null) {
+    throw new Error(`Convênio ${p.convenioId} não existe. Nada foi gravado.`);
   }
 }
 
@@ -1031,6 +1071,26 @@ export function criarDespesaRepositoryPrisma(
         // administração direta não tem contrato, e nem por isso deixa de ter CEI.
         await exigirVinculoDeObra(tx, p);
 
+        // M28 (V22) — o vínculo com o CONVÊNIO: voluntário, mas tem de existir.
+        await exigirVinculoDeConvenio(tx, p);
+
+        // V22 — emitido de SOLICITAÇÃO: ela tem de estar autorizada, não empenhada, e casar com
+        // o empenho. ÚLTIMO trinco da transação (posto da solicitação) — logo antes de gravar.
+        if (p.solicitacaoDeEmpenhoId !== undefined) {
+          await exigirSolicitacaoParaEmpenho(tx, {
+            solicitacaoDeEmpenhoId: p.solicitacaoDeEmpenhoId,
+            fichaId: p.fichaId,
+            credorCpfCnpj: p.credorCpfCnpj,
+            valor: p.valor,
+            tipo: p.tipo,
+            contratoId: p.contratoId,
+            ordemDeCompraId: p.ordemDeCompraId,
+            convenioId: p.convenioId,
+            obraId: p.obraId,
+            dividaId: p.dividaId,
+          });
+        }
+
         await criarLancamento(tx, lancamento);
 
         const empenho = await tx.empenho.create({
@@ -1047,6 +1107,10 @@ export function criarDespesaRepositoryPrisma(
             dividaId: p.dividaId ?? null,
             // M11 (TR 4.50) — a obra que este empenho executa. A anulação a COPIA.
             obraId: p.obraId ?? null,
+            // M28 (V22) — o convênio que este empenho executa. A anulação o COPIA.
+            convenioId: p.convenioId ?? null,
+            // V22 — a solicitação autorizada de origem (única; a anulação NÃO a copia).
+            solicitacaoDeEmpenhoId: p.solicitacaoDeEmpenhoId ?? null,
             numero: p.numero,
             tipo: p.tipo,
             valor: p.valor.toFixed(2),
@@ -1112,6 +1176,7 @@ export function criarDespesaRepositoryPrisma(
             categoriaOrdemCronologica: true,
             contratoId: true,
             obraId: true,
+            convenioId: true,
             ordemDeCompraId: true,
             estornos: { select: { id: true } },
           },
@@ -1158,6 +1223,9 @@ export function criarDespesaRepositoryPrisma(
             // contrato ficaria eternamente empenhado, e o saldo nunca voltaria.
             contratoId: original.contratoId,
             obraId: original.obraId,
+            // M28 (V22) — e o CONVÊNIO, pelo mesmo motivo: sem ele, a soma por convênio veria o
+            // empenho e não veria a anulação (`empenhadoLiquidoDoConvenio`).
+            convenioId: original.convenioId,
             ordemDeCompraId: original.ordemDeCompraId,
             lancamentoId: lancamento.id,
             estornoDeId: original.id,
@@ -1210,6 +1278,7 @@ export function criarDespesaRepositoryPrisma(
             obraId: true,
             classeDeBensId: true,
             dividaId: true,
+            convenioId: true,
             ordemDeCompraId: true,
             categoriaOrdemCronologica: true,
             estornoDeId: true,
@@ -1272,6 +1341,7 @@ export function criarDespesaRepositoryPrisma(
             classeDeBensId: original.classeDeBensId,
             dividaId: original.dividaId,
             obraId: original.obraId,
+            convenioId: original.convenioId,
             ordemDeCompraId: original.ordemDeCompraId,
             lancamentoId: lancamento.id,
             // ⚠️ NÃO é estornoDeId: a parcial REDUZ, não NEGA.
@@ -1511,6 +1581,7 @@ export function criarDespesaRepositoryPrisma(
               obraId: true,
               classeDeBensId: true,
               dividaId: true,
+              convenioId: true,
               categoriaOrdemCronologica: true,
               anulacaoParcialDeId: true,
               estornos: { select: { id: true } },
@@ -1548,6 +1619,9 @@ export function criarDespesaRepositoryPrisma(
               contratoId: parcial.contratoId,
               classeDeBensId: parcial.classeDeBensId,
               dividaId: parcial.dividaId,
+              // M28 (V22) — o estorno da parcial também entra na soma por convênio: sem ele, a
+              // parcial continuaria "viva" para quem filtra pelo convênio.
+              convenioId: parcial.convenioId,
               lancamentoId: lancamento.id,
               estornoDeId: parcial.id,
               criadoPor: p.criadoPor,

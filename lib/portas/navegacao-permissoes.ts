@@ -106,6 +106,9 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   PREPARAR_ORDEM_PAGAMENTO: "despesa",
   AUTORIZAR_ORDEM_PAGAMENTO: "despesa",
   CANCELAR_ORDEM_PAGAMENTO: "despesa",
+  // M05 — V22: a solicitação de empenho (pedir e autorizar são crachás distintos)
+  SOLICITAR_EMPENHO: "despesa",
+  AUTORIZAR_SOLICITACAO_DE_EMPENHO: "despesa",
   ANULAR_PAGAMENTO: "despesa",
   ANULAR_PAGAMENTO_PARCIAL: "despesa",
   ESTORNAR_ANULACAO_PARCIAL: "despesa",
