@@ -10,6 +10,7 @@ import { DOCUMENTOS_FISCAIS } from "./documentos-fiscais.js";
 import { RECURSOS_DO_PESSOAL } from "./pessoal.js";
 import { RECURSOS_DA_FOLHA } from "./folha.js";
 import { EMENTARIO_DA_RECEITA } from "./ementario-receita.js";
+import { CAMPANHAS_PUBLICITARIAS } from "./campanhas-publicitarias.js";
 
 /**
  * OS DESCRITORES DOS CADASTROS DO ENT03b — a prova do molde.
@@ -740,4 +741,6 @@ export const RECURSOS_DO_MOLDE: readonly DefinicaoDeRecurso[] = [
   ...RECURSOS_DA_FOLHA,
   // V22 — M04 o ementário da receita. Pela mesma lista: busca global e amarração ao censo do M16.
   EMENTARIO_DA_RECEITA,
+  // V22 — M05 as campanhas publicitárias (o vínculo da nota de empenho). Pela mesma lista.
+  CAMPANHAS_PUBLICITARIAS,
 ];

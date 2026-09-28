@@ -451,6 +451,8 @@ export const TABELAS = [
   "MovimentoDotacao",
   "ReservaEmpenho",
   "Empenho",
+  // V22 — a campanha publicitária (M05), vínculo da nota de empenho.
+  "CampanhaPublicitaria",
   "ReservaDotacao",
   // M04 — receita
   "ReceitaArrecadada",

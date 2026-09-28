@@ -173,6 +173,7 @@ export async function empenhar(
       ...(dados.obraId !== undefined ? { obraId: dados.obraId } : {}),
       // V22 — o convênio e a solicitação autorizada. Os guards vivem no adapter, na transação.
       ...(dados.convenioId !== undefined ? { convenioId: dados.convenioId } : {}),
+      ...(dados.campanhaPublicitariaId !== undefined ? { campanhaPublicitariaId: dados.campanhaPublicitariaId } : {}),
       ...(dados.solicitacaoDeEmpenhoId !== undefined
         ? { solicitacaoDeEmpenhoId: dados.solicitacaoDeEmpenhoId }
         : {}),

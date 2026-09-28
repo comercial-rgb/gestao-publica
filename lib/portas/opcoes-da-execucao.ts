@@ -4,6 +4,7 @@ import { formatarDocumento } from "../../packages/documento/index.js";
 import { homologadoEm, situacaoDoProcesso, vigenciaFimDoContrato } from "../../modules/m11-licitacoes/contratos";
 import { empenhadoLiquidoDaOrdem, empenhadoLiquidoDoConvenio, TIPO_EMPENHO_DA_ORDEM, valorDaOrdem } from "../../modules/m05-despesa/adapter-prisma";
 import { situacaoDaSolicitacao } from "../../modules/m05-despesa/solicitacao-de-empenho";
+import { empenhadoLiquidoDaCampanha } from "../../modules/m05-despesa/campanha-publicitaria";
 import { diaCivilBr } from "../../packages/datas/index";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import { cliente } from "./cliente";
@@ -258,6 +259,43 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
    * (`empenhadoLiquidoDoConvenio`, a mesma soma que o M05 mantém com as anulações copiando o vínculo).
    * ⚠️ NÃO filtra por vigência: o M28 não a cobra em ato de execução, e a lista não inventa a regra.
    */
+  /**
+   * V22 — as CAMPANHAS PUBLICITÁRIAS, para o vínculo da nota de empenho. O detalhe traz o período e
+   * o empenhado líquido da campanha (`empenhadoLiquidoDaCampanha`, a soma com as anulações copiando
+   * o vínculo).
+   */
+  "campanhas-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const filtro =
+        p.valor !== undefined
+          ? { id: p.valor }
+          : p.q === ""
+            ? {}
+            : { OR: [{ identificador: contem(p.q) }, { titulo: contem(p.q) }, { objetivo: contem(p.q) }] };
+      const linhas = await cliente().campanhaPublicitaria.findMany({
+        where: filtro,
+        orderBy: { identificador: "desc" },
+        skip: (p.pagina - 1) * TAMANHO,
+        take: TAMANHO + 1,
+        select: { id: true, identificador: true, titulo: true, inicio: true, fim: true },
+      });
+      const r = paginar(linhas);
+      const opcoes: Opcao[] = [];
+      for (const c of r.linhas) {
+        const empenhado = await empenhadoLiquidoDaCampanha(cliente(), c.id);
+        const periodo = c.fim === null ? `de ${diaCivilBr(c.inicio)} em diante` : `de ${diaCivilBr(c.inicio)} a ${diaCivilBr(c.fim)}`;
+        opcoes.push({
+          valor: c.id,
+          rotulo: `${c.identificador} — ${c.titulo}`,
+          detalhe: `${periodo} · empenhado ${reais(empenhado.toFixed(2))}`,
+          dados: { identificador: c.identificador, titulo: c.titulo },
+        });
+      }
+      return { opcoes, temMais: r.temMais };
+    },
+  },
+
   "convenios-para-empenho": {
     leitura: "CONSULTAR_DESPESA",
     async buscar(_s, p) {

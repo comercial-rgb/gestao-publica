@@ -20,6 +20,7 @@ import {
   solicitarEmpenho,
 } from "./solicitacao-de-empenho.js";
 import type { M05Deps } from "./ports.js";
+import { cadastrarCampanhaPublicitaria, empenhadoLiquidoDaCampanha } from "./campanha-publicitaria.js";
 
 /**
  * V22 — A SOLICITAÇÃO DE EMPENHO: solicitar, autorizar (ou rejeitar), e só então emitir.
@@ -121,7 +122,7 @@ async function solicitar(p: { ficha?: string; valor?: string; por?: string; conv
   return r.solicitacaoId;
 }
 
-async function emitir(p: { solicitacaoId?: string; valor?: string; credor?: string; ficha?: string; numero?: string; convenioId?: string }) {
+async function emitir(p: { solicitacaoId?: string; valor?: string; credor?: string; ficha?: string; numero?: string; convenioId?: string; campanhaId?: string }) {
   seq += 1;
   return empenhar(
     {
@@ -135,6 +136,7 @@ async function emitir(p: { solicitacaoId?: string; valor?: string; credor?: stri
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       ...(p.solicitacaoId !== undefined ? { solicitacaoDeEmpenhoId: p.solicitacaoId } : {}),
       ...(p.convenioId !== undefined ? { convenioId: p.convenioId } : {}),
+      ...(p.campanhaId !== undefined ? { campanhaPublicitariaId: p.campanhaId } : {}),
       criadoPor: AUTORIDADE,
     },
     R_EMPENHO,
@@ -430,5 +432,62 @@ describe("a atualização de permissões v39 (upgrade de instalação existente)
       ].sort()
     );
     await expect(aplicarAtualizacaoDePermissoes(prisma, { versao: 39, criadoPor: SOLICITANTE, areaDaAcao: AREA_DA_ACAO })).rejects.toThrow(/JÁ APLICADA/);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V22 — A CAMPANHA PUBLICITÁRIA (o vínculo da nota de empenho pedido pelo termo de referência)
+// ═══════════════════════════════════════════════════════════════════════════
+describe("a campanha publicitária no empenho", () => {
+  async function campanha(identificador: string, por = AUTORIDADE): Promise<string> {
+    const c = await cadastrarCampanhaPublicitaria(prisma, {
+      identificador,
+      titulo: `Campanha ${identificador}`,
+      objetivo: "Divulgar a vacinação contra a gripe",
+      inicio: "2026-04-01",
+      fim: "2026-06-30",
+      criadoPor: por,
+    });
+    return c.id;
+  }
+
+  it("t16 N=2: o empenhado por campanha fecha com anulação total e parcial — e a outra campanha não se mistura", async () => {
+    const a = await campanha("CP-001/2026");
+    const b = await campanha("CP-002/2026");
+    const e1 = await emitir({ campanhaId: a, valor: "1000.00" });
+    const e2 = await emitir({ campanhaId: a, valor: "400.00" });
+    await emitir({ campanhaId: b, valor: "250.00" });
+    expect((await empenhadoLiquidoDaCampanha(prisma, a)).toFixed(2)).toBe("1400.00");
+
+    await anularEmpenhoParcial(
+      { originalId: e1.empenhoId, numero: "ANP-C1", valor: "300.00", data: DATA, motivo: "redução da veiculação", criadoPor: AUTORIDADE },
+      deps
+    );
+    await anularEmpenho({ empenhoId: e2.empenhoId, numero: "AN-C2", data: DATA, historico: "campanha cancelada", criadoPor: AUTORIDADE }, deps);
+    // 1000 − 300 + 0 = 700; a campanha B continua 250
+    expect((await empenhadoLiquidoDaCampanha(prisma, a)).toFixed(2)).toBe("700.00");
+    expect((await empenhadoLiquidoDaCampanha(prisma, b)).toFixed(2)).toBe("250.00");
+  });
+
+  it("t17 campanha inexistente é recusada nomeando — e nada é gravado", async () => {
+    const antes = await prisma.empenho.count();
+    await expect(emitir({ campanhaId: "nao-existe" })).rejects.toThrow(/Campanha publicitária nao-existe não existe/);
+    expect(await prisma.empenho.count()).toBe(antes);
+  });
+
+  it("t18 o cadastro recusa identificador repetido e fim antes do início, com o motivo — e nada é gravado", async () => {
+    await campanha("CP-010/2026");
+    await expect(campanha("CP-010/2026")).rejects.toThrow(/Já existe a campanha CP-010\/2026 \("Campanha CP-010\/2026"\)/);
+    await expect(
+      cadastrarCampanhaPublicitaria(prisma, {
+        identificador: "CP-011/2026", titulo: "Invertida", objetivo: "Teste de período", inicio: "2026-05-10", fim: "2026-05-01", criadoPor: AUTORIDADE,
+      })
+    ).rejects.toThrow(/A data de fim \(2026-05-01\) é anterior à de início \(2026-05-10\)/);
+    expect(await prisma.campanhaPublicitaria.count()).toBe(1);
+  });
+
+  it("t19 NEGATIVO: quem não tem CADASTRAR_CONTRATO não cadastra campanha — recusado pelo motivo", async () => {
+    await expect(campanha("CP-020/2026", ORDENADOR_A)).rejects.toThrow(/ACESSO NEGADO.*CADASTRAR_CONTRATO/);
+    expect(await prisma.campanhaPublicitaria.count()).toBe(0);
   });
 });

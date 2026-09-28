@@ -1,0 +1,30 @@
+/// V22 — A CAMPANHA PUBLICITÁRIA (M05). O termo de referência pede que a nota de empenho possa ser
+/// vinculada à campanha publicitária que ela custeia; a campanha é o cadastro que dá nome a esse
+/// vínculo e permite somar o empenhado por campanha.
+///
+/// ⚠️ SÓ O QUE O VÍNCULO PRECISA, SEM CLASSIFICAÇÃO INVENTADA: identificador, título, objetivo,
+/// período e, quando houver, o contrato de publicidade (Lei 12.232/2010) que a executa. Tipologias
+/// de publicidade (institucional, de utilidade pública, legal, mercadológica) são de normas de
+/// comunicação que o repositório não transcreveu — entram quando houver a fonte.
+///
+/// Cadastro sem edição e sem exclusão pelo runtime (nenhuma coluna no censo de UPDATE): a campanha
+/// com empenho é referência de fato contábil.
+model CampanhaPublicitaria {
+  id            String    @id @default(cuid())
+  /// Identificador do ente ("CP-001/2026"). Único.
+  identificador String    @unique
+  titulo        String
+  objetivo      String
+  /// Período da campanha, em data civil do ente (meia-noite de Brasília, em UTC).
+  inicio        DateTime
+  fim           DateTime?
+  /// O contrato de publicidade que executa a campanha, quando houver.
+  contratoId    String?
+  contrato      Contrato? @relation(fields: [contratoId], references: [id])
+  criadoEm      DateTime  @default(now())
+  criadoPor     String
+
+  empenhos Empenho[]
+
+  @@index([contratoId])
+}

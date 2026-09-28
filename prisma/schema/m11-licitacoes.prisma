@@ -230,6 +230,8 @@ model Contrato {
   empenhos   Empenho[]
   /// V22 — as solicitações de empenho que apontam para cá (M05). Campo VIRTUAL.
   solicitacoesDeEmpenho SolicitacaoDeEmpenho[]
+  /// V22 — as campanhas publicitárias executadas por este contrato de publicidade. VIRTUAL.
+  campanhasPublicitarias CampanhaPublicitaria[]
   documentosFiscais DocumentoFiscalRecebido[] @relation("DocumentoFiscalDoContrato")
   /// back-relations V7 M2.1 (`m11-fiscalizacao.prisma`) — campos VIRTUAIS.
   designacoes          DesignacaoNoContrato[]     @relation("DesignacoesDoContrato")

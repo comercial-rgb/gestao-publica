@@ -70,6 +70,8 @@ export interface EmpenharParams {
   readonly obraId?: string | undefined;
   /** M28 (V22) — o convênio que este empenho executa. VOLUNTÁRIO. A anulação o COPIA. */
   readonly convenioId?: string | undefined;
+  /** V22 — a campanha publicitária que este empenho custeia. VOLUNTÁRIO. A anulação a COPIA. */
+  readonly campanhaPublicitariaId?: string | undefined;
   /** V22 — a solicitação autorizada de origem. A anulação NÃO a copia (é origem, não dimensão). */
   readonly solicitacaoDeEmpenhoId?: string | undefined;
   readonly numero: string;

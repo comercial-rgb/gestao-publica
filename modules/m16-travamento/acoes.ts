@@ -993,6 +993,8 @@ export type NomeDeServico =
   | "classificarAcaoParaOManad"
   | "classificarNaturezaDespesaParaOManad"
   | "classificarNaturezaReceitaParaOManad"
+  // ── V22 — a campanha publicitária (o vínculo da nota de empenho com a campanha) ──
+  | "cadastrarCampanhaPublicitaria"
   | "declararTitularDaContaBancaria"
   | "atribuirEntidadeAArrecadacao"
   // ── V6 (P2) — M32 pessoal ──
@@ -1571,6 +1573,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   classificarAcaoParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
   classificarNaturezaDespesaParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
   classificarNaturezaReceitaParaOManad: "CADASTRAR_ENTIDADE_CONTABIL",
+  // V22 — a CAMPANHA PUBLICITÁRIA sob a autoridade do contrato: a campanha é executada pelo contrato
+  // de publicidade (Lei 12.232/2010), e quem o cadastra diz que campanhas ele executa. Zero ações novas.
+  cadastrarCampanhaPublicitaria: "CADASTRAR_CONTRATO",
   // Declarar de QUEM é a conta é decisão de titularidade, e não cadastro de conta: quem
   // parametriza uma conta bancária não decide, por isso, a quem o dinheiro dela pertence.
   declararTitularDaContaBancaria: "DECLARAR_TITULAR_DA_CONTA_BANCARIA",
@@ -2923,6 +2928,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   demonstracaoFluxosDeCaixa: "leitura (a DFC sobre os mesmos fatos do Balanço Financeiro — não muta)",
   apurarCaixa: "leitura (o caixa pelas partidas de disponibilidade na janela — não muta)",
   lerDepositos: "leitura (retenções e depósitos recebidos e devolvidos na janela — não muta)",
+  empenhadoLiquidoDaCampanha: "leitura (o empenhado líquido de anulações de uma campanha publicitária — V22, composável do seletor e da lista)",
   empenhadoLiquidoDaOrdem: "leitura (o empenhado líquido de anulações de uma ordem de compra — composável do empenhar e do seletor)",
   situacaoDosEmpenhos: "leitura (a situação de cada empenho do exercício para os restos a pagar — composável do encerramento e do BF parcial)",
   listarAnexosDasLiquidacoes: "leitura (os comprovantes das liquidações autorizadas pela porta — não muta)",

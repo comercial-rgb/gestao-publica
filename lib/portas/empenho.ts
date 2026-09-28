@@ -204,6 +204,8 @@ export async function registrarEmpenho(input: {
   readonly convenioId?: string;
   readonly obraId?: string;
   readonly dividaId?: string;
+  /** V22: a campanha publicitária que o empenho custeia (o M05 confere que existe). */
+  readonly campanhaPublicitariaId?: string;
   /** V22: a solicitação autorizada de origem — o M05 confere situação e conteúdo, sob trava. */
   readonly solicitacaoDeEmpenhoId?: string;
 }): Promise<string> {

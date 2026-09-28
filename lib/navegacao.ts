@@ -151,6 +151,7 @@ export const RELATORIOS_RGF: readonly RelatorioNav[] = [
  */
 export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
   { href: "/despesa/solicitacoes-de-empenho", numero: "Solicitações de empenho", rotulo: "Solicitações de Empenho", descricao: "Solicitação da despesa pelo setor e autorização prévia à emissão do empenho." },
+  { href: "/despesa/campanhas-publicitarias", numero: "Campanhas", rotulo: "Campanhas Publicitárias", descricao: "Campanhas publicitárias do ente, com período e contrato de publicidade, para o vínculo da nota de empenho." },
   { href: "/despesa/empenhos", numero: "Empenhos", rotulo: "Empenhos", descricao: "Emissão e consulta de empenhos, com saldos a liquidar e a pagar." },
   { href: "/despesa/liquidacoes", numero: "Liquidações", rotulo: "Liquidações", descricao: "Liquidação da despesa com nota fiscal, atesto e comprovantes." },
   { href: "/despesa/ordens", numero: "Ordens de pagamento", rotulo: "Ordens de Pagamento", descricao: "Preparação, autorização e registro das ordens de pagamento." },

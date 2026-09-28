@@ -297,6 +297,15 @@ export function FormEmpenho({
             ajuda="Somente em empenho de amortização da dívida (grupo 6), onde é obrigatória."
             largura={1}
           />
+          <CampoReferenciado
+            key={`campanha-${rodada}`}
+            name="campanhaPublicitariaId"
+            rotulo="Campanha publicitária"
+            catalogo="campanhas-para-empenho"
+            placeholder="Identificador ou título da campanha"
+            ajuda="Vincule quando a despesa custeia uma campanha publicitária cadastrada."
+            largura={1}
+          />
         </fieldset>
       ) : null}
 

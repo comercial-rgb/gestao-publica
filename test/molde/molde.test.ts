@@ -51,7 +51,7 @@ describe("o molde — a verificação do descritor", () => {
 
   it("t3: aba de CAMPOS ADICIONAIS sem cadastro do M25 é recusada", () => {
     const erros = verificarDefinicao({ ...BASE, abas: ["dados", "campos"] });
-    expect(erros.join(" ")).toMatch(/cadastro do M25/);
+    expect(erros.join(" ")).toMatch(/não diz qual cadastro de campos adicionais ela usa/);
   });
 
   it("t4: coluna SOMÁVEL que não é dinheiro é recusada", () => {

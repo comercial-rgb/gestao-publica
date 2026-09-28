@@ -204,6 +204,13 @@ model Empenho {
   convenioId String?
   convenio   Convenio? @relation(fields: [convenioId], references: [id])
 
+  /// V22 — a CAMPANHA PUBLICITÁRIA que este empenho custeia (o termo de referência pede o
+  /// vínculo da nota de empenho com a campanha). VOLUNTÁRIO, como o do convênio e o da obra: a
+  /// despesa de publicidade não cai num elemento exclusivo. É DIMENSÃO: a anulação o copia
+  /// (DIMENSOES_DO_EMPENHO), para que o empenhado por campanha feche.
+  campanhaPublicitariaId String?
+  campanhaPublicitaria   CampanhaPublicitaria? @relation(fields: [campanhaPublicitariaId], references: [id])
+
   /// M29 (ENT03b) — o PRECATÓRIO que este empenho paga.
   precatorioId String?
   precatorio   Precatorio? @relation(fields: [precatorioId], references: [id])

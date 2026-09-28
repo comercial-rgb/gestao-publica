@@ -59,6 +59,7 @@ export async function empenharAction(
     const convenioId = String(formData.get("convenioId") ?? "").trim();
     const obraId = String(formData.get("obraId") ?? "").trim();
     const dividaId = String(formData.get("dividaId") ?? "").trim();
+    const campanhaPublicitariaId = String(formData.get("campanhaPublicitariaId") ?? "").trim();
     const solicitacaoDeEmpenhoId = String(formData.get("solicitacaoDeEmpenhoId") ?? "").trim();
 
     if (!ehTipo(tipoBruto)) return { erro: "Tipo de empenho inválido." };
@@ -90,6 +91,7 @@ export async function empenharAction(
         ...(convenioId !== "" ? { convenioId } : {}),
         ...(obraId !== "" ? { obraId } : {}),
         ...(dividaId !== "" ? { dividaId } : {}),
+        ...(campanhaPublicitariaId !== "" ? { campanhaPublicitariaId } : {}),
         ...(solicitacaoDeEmpenhoId !== "" ? { solicitacaoDeEmpenhoId } : {}),
       });
       revalidatePath("/despesa/empenhos");

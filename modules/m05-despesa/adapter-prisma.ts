@@ -525,6 +525,7 @@ export const DIMENSOES_DO_EMPENHO = [
   "dividaId",
   "obraId",
   "convenioId",
+  "campanhaPublicitariaId",
   "precatorioId",
   "consorcioId",
   "ordemDeCompraId",
@@ -590,6 +591,15 @@ async function exigirVinculoDeConvenio(tx: Tx, p: EmpenharParams): Promise<void>
   const c = await tx.convenio.findUnique({ where: { id: p.convenioId }, select: { id: true } });
   if (c === null) {
     throw new Error(`Convênio ${p.convenioId} não existe. Nada foi gravado.`);
+  }
+}
+
+/** V22 — a campanha publicitária vinculada tem de existir. Voluntária: sem ela, nada a conferir. */
+async function exigirVinculoDeCampanha(tx: Tx, p: EmpenharParams): Promise<void> {
+  if (p.campanhaPublicitariaId === undefined) return;
+  const c = await tx.campanhaPublicitaria.findUnique({ where: { id: p.campanhaPublicitariaId }, select: { id: true } });
+  if (c === null) {
+    throw new Error(`Campanha publicitária ${p.campanhaPublicitariaId} não existe. Nada foi gravado.`);
   }
 }
 
@@ -1121,6 +1131,7 @@ export function criarDespesaRepositoryPrisma(
 
         // M28 (V22) — o vínculo com o CONVÊNIO: voluntário, mas tem de existir.
         await exigirVinculoDeConvenio(tx, p);
+        await exigirVinculoDeCampanha(tx, p);
 
         // V22 — emitido de SOLICITAÇÃO: ela tem de estar autorizada, não empenhada, e casar com
         // o empenho. ÚLTIMO trinco da transação (posto da solicitação) — logo antes de gravar.
@@ -1157,6 +1168,8 @@ export function criarDespesaRepositoryPrisma(
             obraId: p.obraId ?? null,
             // M28 (V22) — o convênio que este empenho executa. A anulação o COPIA.
             convenioId: p.convenioId ?? null,
+            // V22 — a campanha publicitária que este empenho custeia. A anulação a COPIA.
+            campanhaPublicitariaId: p.campanhaPublicitariaId ?? null,
             // V22 — a solicitação autorizada de origem (única; a anulação NÃO a copia).
             solicitacaoDeEmpenhoId: p.solicitacaoDeEmpenhoId ?? null,
             numero: p.numero,
