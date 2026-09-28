@@ -34,7 +34,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
             <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">{c.inicio} a {c.fim}</p>
           </div>
           <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-financeiro>
-            <p className="text-xs text-[color:var(--color-ink-2)]">Financeiro (M05)</p>
+            <p className="text-xs text-[color:var(--color-ink-2)]">Financeiro (despesa)</p>
             <dl className="mt-1 grid grid-cols-2 gap-x-2 text-xs">
               <dt>Valor vigente</dt><dd className="text-right"><ValorMonetario valor={d.financeiro.valorVigente} /></dd>
               <dt>Empenhado</dt><dd className="text-right"><ValorMonetario valor={d.financeiro.empenhado} /></dd>
@@ -45,7 +45,7 @@ export function DossieDoContrato({ d, hoje }: { readonly d: DossieParaTela; read
           <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-fisico>
             <p className="text-xs text-[color:var(--color-ink-2)]">Físico (medições)</p>
             <p className="mt-1 text-sm">Medido: <ValorMonetario valor={d.fisico.medidoTotal} comSimbolo /></p>
-            <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">Progresso físico não é pagamento: medir não liquida; a medição precisa de aprovação e a liquidação é do M05.</p>
+            <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">Progresso físico não é pagamento: medir não liquida; a medição precisa de aprovação e a liquidação é da despesa.</p>
           </div>
         </div>
       </section>

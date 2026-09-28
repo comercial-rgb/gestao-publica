@@ -288,7 +288,7 @@ export async function liquidarParcelaNaTela(c: Campos): Promise<string> {
   );
   return r.jaExistia
     ? `Esta liquidação já estava gravada (${r.numero}, R$ ${brl(r.valor)}): nada foi lançado de novo.`
-    : `Liquidação ${r.numero} registrada no M05: R$ ${brl(r.valor)} em ${parcelas.length} parcela(s) recebida(s). O pagamento segue pela despesa.`;
+    : `Liquidação ${r.numero} registrada na despesa: R$ ${brl(r.valor)} em ${parcelas.length} parcela(s) recebida(s). O pagamento segue pela despesa.`;
 }
 
 // ── V7 M2 U5 — o aditivo por itens ──

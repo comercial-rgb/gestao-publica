@@ -568,7 +568,7 @@ export async function verServidor(id: string): Promise<ServidorLido | null> {
   });
 
   const dados = [
-    { rotulo: "Pessoa (cadastro único)", valor: `${versao?.nome ?? s.pessoa.documento} · ${formatarDocumento(s.pessoa.documento)}`, nota: "CPF, nome, endereço e contatos vivem no cadastro de pessoas (M19); aqui só o que é do servidor." },
+    { rotulo: "Pessoa (cadastro único)", valor: `${versao?.nome ?? s.pessoa.documento} · ${formatarDocumento(s.pessoa.documento)}`, nota: "CPF, nome, endereço e contatos vivem no cadastro de pessoas (cadastro de pessoas); aqui só o que é do servidor." },
     { rotulo: "Nome social", valor: s.nomeSocial ?? "—" },
     { rotulo: "Nascimento", valor: diaCivilBr(s.dataNascimento), tipo: "data" as const },
     { rotulo: "Sexo", valor: s.sexo },

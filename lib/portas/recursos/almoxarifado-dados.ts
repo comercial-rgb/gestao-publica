@@ -682,7 +682,7 @@ export async function verInventarioDeEstoque(id: string): Promise<DetalheLido | 
         valor: aberto ? "em aberto" : diaCivilBr(inv.dataFechamento!), tipo: "data" },
       { rotulo: "Termo de abertura",
         valor: inv.termoAbertura?.nomeOriginal ?? "não anexado",
-        nota: "O termo é documento do M22 — ele entra na fila de assinaturas." },
+        nota: "O termo é um documento do acervo — ele entra na fila de assinaturas." },
       { rotulo: "Termo de fechamento", valor: inv.termoFechamento?.nomeOriginal ?? "não anexado" },
       { rotulo: "Contagens registradas", valor: String(inv.contagens.length), tipo: "inteiro" },
       { rotulo: "Divergências",

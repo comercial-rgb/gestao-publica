@@ -81,7 +81,7 @@ function exigirAcaoDoCenso(nome: string): AcaoDoSistema {
   const achada = TODAS_AS_ACOES.find((a) => a === nome);
   if (achada === undefined) {
     throw new Error(
-      `A ação "${nome}", nomeada num descritor do molde, NÃO EXISTE no censo do M16. ` +
+      `A ação "${nome}", nomeada num descritor do molde, NÃO EXISTE no censo do cadastro de ações. ` +
         `Acrescente-a em \`modules/m16-travamento/acoes.ts\` (e conceda-a ao perfil) ou ` +
         `corrija o descritor. Uma ação inexistente esconderia o botão para todo mundo, em ` +
         `silêncio.`

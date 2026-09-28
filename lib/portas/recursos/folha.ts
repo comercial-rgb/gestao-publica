@@ -260,7 +260,7 @@ export const FOLHAS: DefinicaoDeRecurso = definirRecurso({
     {
       nome: "ajustar-encargos", rotulo: "Ajustar os encargos para baixo", acaoDoCenso: "APROPRIAR_FOLHA", irreversivel: true,
       aviso:
-        "Quando a apuração vigente (certificada) pede MENOS do que a despesa já reconhece: anula pelo M05 a parte liquidada e " +
+        "Quando a apuração vigente (certificada) pede MENOS do que a despesa já reconhece: anula pela despesa a parte liquidada e " +
         "não paga, depois a parte do empenho não liquidada; o que já foi PAGO não se anula e fica registrado para restituição. " +
         "A apuração anterior e o contracheque não mudam. Reexecutar continua de onde parou, sem anular duas vezes.",
       campos: [

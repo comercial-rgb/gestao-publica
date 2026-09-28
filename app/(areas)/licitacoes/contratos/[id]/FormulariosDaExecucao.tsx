@@ -499,7 +499,7 @@ export function FormLiquidarParcelas({ contratoId, parcelas, empenhos, documento
       <ChaveDeComando />
       <Ocultos contratoId={contratoId} acao="liquidar" />
       <h3 className="mb-1 text-sm font-semibold">Preparar a liquidação das parcelas recebidas</h3>
-      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A liquidação é gravada no M05 com o documento de cobrança conferido e o empenho do contrato. Informe quanto de cada parcela esta nota cobre; o servidor confere o elegível, o documento e o empenho.</p>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">A liquidação é gravada na despesa com o documento de cobrança conferido e o empenho do contrato. Informe quanto de cada parcela esta nota cobre; o servidor confere o elegível, o documento e o empenho.</p>
       <div className="grid gap-2 sm:grid-cols-2">
         {parcelas.map((p) => (
           <Campo key={p.id} id={a.id} nome={`parcela.${p.id}`} rotulo={`${p.rotulo} — a liquidar ${brl(Number(p.aLiquidar))}`} obrigatorio={false} inputMode="decimal" placeholder="0,00" onChange={(e) => setValores((v) => ({ ...v, [p.id]: e.target.value }))} />

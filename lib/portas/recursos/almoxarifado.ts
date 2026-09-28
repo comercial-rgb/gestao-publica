@@ -241,7 +241,7 @@ export const INVENTARIOS_DE_ESTOQUE: DefinicaoDeRecurso = definirRecurso({
     { nome: "depositoId", rotulo: "Depósito", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
     { nome: "dataAbertura", rotulo: "Data de abertura", tipo: "data", obrigatorio: true, largura: 1 },
     { nome: "termoAberturaId", rotulo: "Termo de abertura", tipo: "selecao", largura: 2, opcoes: [],
-      ajuda: "O termo é um documento do M22 — ele entra na fila de assinaturas como qualquer outro." },
+      ajuda: "O termo é um documento do acervo — ele entra na fila de assinaturas como qualquer outro." },
   ],
   colunas: [
     { nome: "deposito", cabecalho: "Depósito", tipo: "link" },

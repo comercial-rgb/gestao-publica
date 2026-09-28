@@ -1,10 +1,15 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
+import { comEscritaAutenticada } from "./sessao";
 import {
   bimestreDoMes,
   confrontoMba,
   gerarDecretoCmd,
   gerarDecretoMba,
+  liberarProgramacao,
+  proporCmdDaLoa,
+  proporMbaDaLoa,
+  registrarEventoLimitacao,
 } from "../../modules/m02-planejamento/programacao";
 import { anoCivil, mesCivil } from "../../packages/datas/index";
 
@@ -16,7 +21,8 @@ import { anoCivil, mesCivil } from "../../packages/datas/index";
  * Bimestrais de Arrecadação) no grão FONTE × BIMESTRE, e o CONFRONTO do art. 9º (meta × arrecadado).
  * O domínio (`modules/m02-planejamento`) nunca é importado por `app/` direto: é esta a borda.
  *
- * ═══ ⚠️ PORTA SÓ DE LEITURA, DE PROPÓSITO ═══
+ * ═══ ⚠️ ERA PORTA SÓ DE LEITURA ATÉ A V19 — a reserva, e por que ela caiu, estão na seção
+ * "A ESCRITA" no fim deste arquivo. O parágrafo abaixo é o registro do que valia antes. ═══
  * Registrar CMD/MBA é ATO POLÍTICO — sai de decreto do Prefeito, não de um botão de tela. O domínio
  * já expõe `proporCmdDaLoa`/`registrarVersaoCmd` (autorizados no escopo ENTE pelo M16); enquanto não
  * houver o fluxo de publicação do decreto, esta porta NÃO os expõe. Uma tela que gravasse a
@@ -394,4 +400,99 @@ function emCentavos(decimal: string): bigint {
   const magnitude =
     BigInt(negativo ? inteiro.slice(1) : inteiro) * 100n + BigInt((frac + "00").slice(0, 2));
   return negativo ? -magnitude : magnitude;
+}
+// ═══════════════════════════════════════════════════════════════════════════════════
+// A ESCRITA — V19, e ela REVERTE a decisão declarada no cabeçalho deste arquivo
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/**
+ * ⚠️ O CABEÇALHO DIZIA "PORTA SÓ DE LEITURA", e a condição que ele mesmo pôs está cumprida.
+ *
+ * O argumento era: *"uma tela que gravasse a programação sem o ato correspondente produziria um
+ * cronograma sem lastro legal — e o guard do 4.43 passaria a limitar empenho contra um número que
+ * nenhum decreto autorizou"*, e a reserva vinha com a condição *"enquanto não houver o fluxo de
+ * publicação do decreto"*.
+ *
+ * Três fatos mudaram isso, e os três são verificáveis:
+ *
+ *   1. **o ato é OBRIGATÓRIO em todos os serviços** — `atoRef` é `z.string().trim().min(1)` em
+ *      `proporCmdDaLoa`, `registrarVersaoCmd`, `liberarProgramacao` e `registrarEventoLimitacao`.
+ *      Não existe caminho para publicar cronograma sem citar o ato que o autoriza;
+ *   2. **a minuta do decreto já sai desta tela** (`gerarTextoDecretoCmd`/`...Mba`, o botão
+ *      "Imprimir programação e minutas de decreto"). O fluxo real do município fecha: a tela
+ *      propõe, gera a minuta, o Prefeito assina, e o operador registra a versão CITANDO o ato;
+ *   3. **sem a borda de escrita, o regime só liga por script** — e a ordem de construção é
+ *      explícita: *"demonstração precisa funcionar pela interface, com papel de aplicação, sem
+ *      INSERT manual para fazer a próxima tela andar"*. O guard do 4.43 já é cobrado dentro da
+ *      transação do empenho (`m05-despesa/guard-cmd.ts`, chamado pelo adapter); o que faltava era
+ *      o interruptor ter dono visível.
+ *
+ * ⚠️ E A AUTORIZAÇÃO NÃO AFROUXOU: as quatro ações (`CRIAR_VERSAO_CMD`, `CRIAR_VERSAO_MBA`,
+ * `LIBERAR_PROGRAMACAO`, `CONFIGURAR_LIMITACAO_EMPENHO`) já existiam no censo, no escopo ENTE — a
+ * programação financeira é do ente, porque o caixa é um só.
+ */
+
+/** Propõe a versão 1 do CMD ou do MBA a partir da previsão da LOA. */
+export async function proporProgramacaoDaLoa(p: {
+  readonly peca: "CMD" | "MBA";
+  readonly exercicio: number;
+  readonly atoRef: string;
+  readonly vigenteDesde: Date;
+}): Promise<{ readonly versaoId: string; readonly parcelas: number }> {
+  return comEscritaAutenticada(
+    p.peca === "CMD" ? "CRIAR_VERSAO_CMD" : "CRIAR_VERSAO_MBA",
+    async (criadoPor) => {
+      const entrada = {
+        exercicio: p.exercicio,
+        atoRef: p.atoRef,
+        vigenteDesde: p.vigenteDesde,
+        criadoPor,
+      };
+      if (p.peca === "CMD") {
+        const r = await proporCmdDaLoa(cliente(), entrada);
+        return { versaoId: r.versaoId, parcelas: r.cotas };
+      }
+      const r = await proporMbaDaLoa(cliente(), entrada);
+      return { versaoId: r.versaoId, parcelas: r.metas };
+    }
+  );
+}
+
+/**
+ * LIGA ou DESLIGA a limitação de empenho no exercício.
+ *
+ * ⚠️ É O INTERRUPTOR QUE FAZ O CRONOGRAMA VALER. Desligado (o padrão), o CMD é planejamento e o
+ * empenho só responde à dotação; ligado, o empenho passa a ser julgado também contra a cota do mês,
+ * e fonte SEM cota naquele mês é recusada — que é diferente de cota de valor zero, esta última um
+ * bloqueio deliberado.
+ */
+export async function configurarLimitacaoDeEmpenho(p: {
+  readonly exercicio: number;
+  readonly ativo: boolean;
+  readonly atoRef: string;
+  readonly motivo: string;
+}): Promise<{ readonly eventoId: string; readonly ativo: boolean }> {
+  return comEscritaAutenticada("CONFIGURAR_LIMITACAO_EMPENHO", (criadoPor) =>
+    registrarEventoLimitacao(cliente(), { ...p, criadoPor })
+  );
+}
+
+/**
+ * LIBERA saldo contingenciado de um mês — aumenta o teto daquele mês, por ato.
+ *
+ * ⚠️ NÃO EXISTE LIBERAÇÃO NEGATIVA, e o domínio recusa: retirar cota é publicar versão nova do
+ * cronograma. Uma liberação de sinal invertido seria um jeito de reduzir o teto sem deixar versão,
+ * e o histórico do cronograma deixaria de explicar o que o guard faz.
+ */
+export async function liberarCotaDaProgramacao(p: {
+  readonly exercicio: number;
+  readonly fonteId: string;
+  readonly mes: number;
+  readonly valor: string;
+  readonly atoRef: string;
+  readonly motivo: string;
+}): Promise<{ readonly liberacaoId: string }> {
+  return comEscritaAutenticada("LIBERAR_PROGRAMACAO", (criadoPor) =>
+    liberarProgramacao(cliente(), { ...p, criadoPor })
+  );
 }

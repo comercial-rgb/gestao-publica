@@ -94,7 +94,7 @@ export async function demonstrativoInternoDasObrigacoes(competencia: string, o: 
     secoes: [obrigacoes, guias],
     notas: [
       "Documento interno de conferência. A guia oficial é a emitida pelo arrecadador/destinatário e anexada ao cadastro da guia; anexar não é validação do emissor.",
-      "Liquidado é a obrigação reconhecida; pago vem dos pagamentos do M05; restituição a providenciar é valor pago acima do devido após ajuste — nada foi anulado sobre ele.",
+      "Liquidado é a obrigação reconhecida; pago vem dos pagamentos da despesa; restituição a providenciar é valor pago acima do devido após ajuste — nada foi anulado sobre ele.",
       "Vencimento só aparece com o fundamento informado; sem ele, \"não informado\". Retorno bancário e transmissão externa não existem neste ambiente.",
     ],
   };

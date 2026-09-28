@@ -203,6 +203,12 @@ const JARGAO: readonly { readonly nome: string; readonly padrao: RegExp }[] = [
   // ⚠️ A MÁSCARA DE DATA NÃO É PENDÊNCIA: `AAAA-MM-DD` tem a mesma forma e é rótulo legítimo de
   // campo. A espreita negativa tira as máscaras (só A, M, D, Y) e mantém `DEFINICAO-JA-REVOGADA`.
   { nome: "nome de pendência interna", padrao: /\b(?![AMDY]+(?:-[AMDY]+)+\b)[A-ZÁÉÍÓÚÂÊÔÃÕÇ]{3,}(?:-[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9]{2,}){2,}\b/g },
+  // ⚠️ CÓDIGO INTERNO DE MÓDULO — a pendência `IDENTIFICADOR-DE-MODULO-EM-TELA`, declarada no topo
+  // deste arquivo desde que ele nasceu, e cobrada a partir da V19: "as arrecadações são as do M04"
+  // é uma frase escrita para quem conhece o repositório. ⚠️ E ELA SÓ VALE PARA TEXTO VISÍVEL: em
+  // COMENTÁRIO o código do módulo é rastreabilidade e continua permitido — uma primeira tentativa
+  // de limpeza trocou os dois juntos e degradou 84 arquivos de documentação antes de ser desfeita.
+  { nome: "código interno de módulo", padrao: /\bM\d{2}\b/g },
   { nome: "arquivo de código", padrao: /\b[\w.-]+\.tsx?\b/g },
   { nome: "caminho de módulo", padrao: /\bmodules\/m\d+/g },
 ];

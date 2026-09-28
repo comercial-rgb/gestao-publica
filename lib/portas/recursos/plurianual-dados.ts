@@ -314,7 +314,7 @@ export async function verProgramaDoPpa(id: string): Promise<DetalheLido | null> 
     ],
     dados: [
       { rotulo: "Plano", valor: `${p.plano.anoInicio} a ${p.plano.anoFim}` },
-      { rotulo: "Objetivo do programa", valor: p.programa.objetivo ?? "— (não informado no cadastro do programa)", nota: "O objetivo é do programa (M02) e não se repete por plano." },
+      { rotulo: "Objetivo do programa", valor: p.programa.objetivo ?? "— (não informado no cadastro do programa)", nota: "O objetivo é do programa (planejamento) e não se repete por plano." },
       { rotulo: "Área temática", valor: `${p.areaTematica.codigo} — ${p.areaTematica.descricao}` },
       { rotulo: "Público-alvo", valor: p.publicoAlvo === null ? "—" : `${p.publicoAlvo.codigo} — ${p.publicoAlvo.descricao}` },
       { rotulo: "Estratégia neste plano", valor: p.estrategia ?? "—", tipo: "longo" },

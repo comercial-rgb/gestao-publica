@@ -59,7 +59,7 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
   acoes: [
     {
       nome: "programa-no-plano", rotulo: "Incluir programa no plano", acaoDoCenso: "CADASTRAR_PROGRAMA_PPA",
-      aviso: "O objetivo é do programa (cadastro do M02) e não se repete aqui; o que varia por plano é a estratégia e o valor previsto do quadriênio.",
+      aviso: "O objetivo é do programa (cadastro do planejamento) e não se repete aqui; o que varia por plano é a estratégia e o valor previsto do quadriênio.",
       campos: [
         { nome: "programaId", rotulo: "Programa", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "areaTematicaId", rotulo: "Área temática", tipo: "selecao", obrigatorio: true, largura: 1, opcoes: [] },
@@ -128,7 +128,7 @@ export const PROGRAMAS_DO_PPA: DefinicaoDeRecurso = definirRecurso({
     },
     {
       nome: "acao-do-plano", rotulo: "Incluir ação no programa", acaoDoCenso: "CADASTRAR_PROGRAMA_PPA",
-      aviso: "A ação é a do cadastro do M02, reusada; a classificação aprovada (unidade executora, função, subfunção) é informação do plano e não define escopo de autorização.",
+      aviso: "A ação é a do cadastro do planejamento, reusada; a classificação aprovada (unidade executora, função, subfunção) é informação do plano e não define escopo de autorização.",
       campos: [
         { nome: "acaoId", rotulo: "Ação", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "macroacaoId", rotulo: "Macroação", tipo: "selecao", largura: 1, opcoes: [] },

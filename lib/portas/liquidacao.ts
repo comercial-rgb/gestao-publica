@@ -55,7 +55,7 @@ export class LiquidacaoDeMaterialBloqueadaError extends Error {
     super(
       `LIQUIDAÇÃO DE MATERIAL AINDA NÃO TEM TELA: o empenho é do elemento ${codElemento} ` +
         `(${natureza}), e material de consumo não vira despesa — vira ESTOQUE (ativo). ` +
-        `Mas a entrada no almoxarifado é ato do M10 (classe de material e quantidade), e ` +
+        `Mas a entrada no almoxarifado é ato do patrimônio (classe de material e quantidade), e ` +
         `liquidar sem ela deixaria o razão com estoque que nenhum movimento explica: a ` +
         `amarração razão × almoxarifado passaria a acusar divergência para sempre. Os dois ` +
         `são UM ato, e ele ainda não tem tela. ` +

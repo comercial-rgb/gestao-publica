@@ -203,7 +203,7 @@ export async function verProcesso(id: string): Promise<DetalheLido | null> {
       { rotulo: "Valor licitado", valor: p.valorLicitado.toFixed(2), tipo: "dinheiro", nota: "Teto da estimativa; o contrato sai do lance e não é comparado aqui — é assunto de relatório." },
       { rotulo: "Homologação", valor: homologacao === null ? "Ainda não homologado" : diaCivilBr(homologacao), tipo: "data", nota: "Derivada: a data do cadastro ou o evento de homologação, o que existir." },
       { rotulo: "Total contratado (atualizado)", valor: totalContratado.toFixed(2), tipo: "dinheiro" },
-      { rotulo: "Reserva viva", valor: reservadoVivo.toFixed(2), tipo: "dinheiro", nota: "Reservado menos o que os empenhos já consumiram, sem as liberadas. Orientação: quem decide é o M05 na transação." },
+      { rotulo: "Reserva viva", valor: reservadoVivo.toFixed(2), tipo: "dinheiro", nota: "Reservado menos o que os empenhos já consumiram, sem as liberadas. Orientação: quem decide é a despesa na transação." },
       { rotulo: "Cadastrado em", valor: diaCivilBr(p.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: p.criadoPor },
     ],

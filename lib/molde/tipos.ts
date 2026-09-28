@@ -380,7 +380,7 @@ export function verificarDefinicao(d: DefinicaoDeRecurso): readonly string[] {
     e.push("declara a aba de anexos e não diz qual coluna de `Anexo` aponta para este recurso");
   }
   if (d.abas.includes("campos") && d.cadastroDeCamposAdicionais === undefined) {
-    e.push("declara a aba de campos adicionais e não diz qual cadastro do M25 ela usa");
+    e.push("declara a aba de campos adicionais e não diz qual cadastro de campos adicionais ela usa");
   }
   if (d.abas.includes("relacionados") && (d.relacionados ?? []).length === 0) {
     e.push("declara a aba de relacionados e não lista nenhum");

@@ -124,7 +124,7 @@ export const CONVENIOS: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Empenhos deste convênio",
       href: "/relatorios/gerenciais?convenio={id}",
       explicacao:
-        "Quem soma empenho é o M05. Uma segunda contagem nesta tela seria a segunda verdade " +
+        "Quem soma empenho é a despesa. Uma segunda contagem nesta tela seria a segunda verdade " +
         "sobre a mesma execução.",
     },
   ],
@@ -217,7 +217,7 @@ export const PRECATORIOS: DefinicaoDeRecurso = definirRecurso({
     {
       rotulo: "Empenhos deste precatório",
       href: "/relatorios/gerenciais?precatorio={id}",
-      explicacao: "A execução da despesa é do M05 — esta tela não a reconta.",
+      explicacao: "A execução da despesa é registrada na própria despesa — esta tela não a reconta.",
     },
   ],
 });
@@ -281,7 +281,7 @@ export const CONSORCIOS: DefinicaoDeRecurso = definirRecurso({
     {
       rotulo: "Empenhos deste consórcio",
       href: "/relatorios/gerenciais?consorcio={id}",
-      explicacao: "A execução da despesa é do M05 — esta tela não a reconta.",
+      explicacao: "A execução da despesa é registrada na própria despesa — esta tela não a reconta.",
     },
   ],
 });
@@ -460,7 +460,7 @@ export const DIVIDA_FUNDADA: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Empenhos de amortização (grupo 6)",
       href: "/relatorios/gerenciais?divida={id}",
       explicacao:
-        "A amortização é despesa orçamentária e vive no M05 — esta tela não a reconta. " +
+        "A amortização é despesa orçamentária e vive na despesa — esta tela não a reconta. " +
         "O saldo aqui e o saldo da conta contábil são duas leituras independentes do " +
         "mesmo passivo, e é o teste de integração que as confronta.",
     },
@@ -549,7 +549,7 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
       rotulo: "Arrecadações que quitaram dívida ativa",
       href: "/receita/arrecadacoes",
       explicacao:
-        "O recebimento é RECEITA ORÇAMENTÁRIA e mora no M04 — reconhecê-lo aqui contaria " +
+        "O recebimento é RECEITA ORÇAMENTÁRIA e mora na receita — reconhecê-lo aqui contaria " +
         "a mesma receita duas vezes, porque a VPA já foi reconhecida na inscrição.",
     },
   ],
@@ -626,7 +626,7 @@ export const OBRAS: DefinicaoDeRecurso = definirRecurso({
       href: "/relatorios/gerenciais?obra={id}",
       explicacao:
         "O elemento 51 EXIGE obra — empenhar investimento sem apontá-la é recusado " +
-        "nomeando. A execução continua sendo do M05.",
+        "nomeando. A execução continua sendo da despesa.",
     },
   ],
 });
@@ -698,7 +698,7 @@ export const PROVISOES: DefinicaoDeRecurso = definirRecurso({
       href: "/relatorios/rgf/anexo2",
       explicacao:
         "A provisão matemática previdenciária entra na dívida consolidada do RPPS. " +
-        "Quem soma é o M12 — esta tela não reconta.",
+        "Quem soma são os relatórios — esta tela não reconta.",
     },
   ],
 });
