@@ -22,7 +22,8 @@ export function cliente(): ReturnType<typeof criarPrismaClient> {
 /** Erro nomeado: a variável de ambiente do banco não está configurada. */
 export class PortaSemBancoError extends Error {
   constructor() {
-    super("DATABASE_URL não configurada — a porta de relatórios não tem banco para ler.");
+    // V22: esta mensagem chega à tela. A causa técnica (DATABASE_URL ausente) é identificada pela classe do erro, não pelo texto.
+    super("O serviço de dados não está disponível no momento. Tente novamente em instantes ou acione o suporte.");
     this.name = "PortaSemBancoError";
   }
 }

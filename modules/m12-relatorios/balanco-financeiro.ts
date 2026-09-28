@@ -3,6 +3,10 @@ import { parcelasDaGuia } from "../m04-receita/parcelas-por-fonte.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // A apuração de caixa é do M01: uma aritmética, muitos recortes.
 import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
+// Os restos a pagar DO EXERCÍCIO, num exercício ainda aberto, são o que o encerramento do M08
+// inscreveria — a MESMA apuração, não uma cópia dela.
+import { situacaoDosEmpenhos } from "../m08-restos-a-pagar/encerramento.js";
+import { calcularInscricoes } from "../m08-restos-a-pagar/dominio.js";
 import {
   montarBalancoFinanceiro,
   type BalancoFinanceiro,
@@ -24,7 +28,7 @@ import {
  */
 
 /** Janela `(inicio, fim]`. Limites nulos = sem limite. */
-function naJanela(quando: Date, inicio: Date | null, fim: Date | null): boolean {
+export function naJanela(quando: Date, inicio: Date | null, fim: Date | null): boolean {
   if (inicio !== null && quando <= inicio) return false;
   if (fim !== null && quando > fim) return false;
   return true;
@@ -88,7 +92,9 @@ export async function balancoFinanceiro(
   ] = await Promise.all([
     lerReceitasPorFonte(prisma, exercicio, corte),
     lerDespesasPorFonte(prisma, exercicio, corte),
-    lerInscricoesDoExercicio(prisma, exercicio),
+    parcial
+      ? lerRestosDoExercicioAberto(prisma, exercicio)
+      : lerInscricoesDoExercicio(prisma, exercicio),
     lerPagamentosDeRestos(prisma, exercicio, inicio, corte),
     lerDepositos(prisma, inicio, corte),
     // SALDO ANTERIOR: o caixa como estava NO ENCERRAMENTO do exercício passado.
@@ -132,7 +138,7 @@ export async function balancoFinanceiro(
 // que é um `criadoEm`. (A conciliação usa `dataTransacao`; ver a nota lá.)
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function apurarCaixa(
+export async function apurarCaixa(
   prisma: PrismaClient,
   contas: readonly string[],
   ate: Date | null
@@ -298,6 +304,46 @@ async function lerInscricoesDoExercicio(
   return { naoProcessados, processados };
 }
 
+/**
+ * EXERCÍCIO ABERTO — os restos a pagar DO EXERCÍCIO, antes de existirem como inscrição.
+ *
+ * ═══ POR QUE ISTO EXISTE (o defeito que fechou) ═══
+ * A despesa entra nos dispêndios pela EMPENHADA. Com o exercício encerrado, o que foi empenhado
+ * e não saiu do caixa está do outro lado como inscrição de RP — e a identidade
+ * `empenhado = pago + retido + inscrito` fecha. Com o exercício ABERTO não há inscrição ainda:
+ * lendo só `InscricaoRestosAPagar`, todo empenho não pago virava uma saída de caixa que não
+ * houve, e o Anexo 13 parcial recusava contra o razão por exatamente o valor a pagar — em
+ * qualquer ente, em qualquer mês, desde que houvesse um único empenho em aberto.
+ *
+ * A Lei 4.320, art. 103, parágrafo único: "Os Restos a Pagar do exercício serão computados na
+ * receita extra-orçamentária para compensar sua inclusão na despesa orçamentária." No exercício
+ * aberto, os restos a pagar do exercício são o que o encerramento inscreveria HOJE — e por isso
+ * vêm da MESMA apuração do M08 (`situacaoDosEmpenhos` + `calcularInscricoes`): processado =
+ * liquidado − pago; não processado = empenhado − liquidado. Duas apurações dariam dois números.
+ *
+ * Só se usa com o exercício aberto (sem corte): a situação é a de agora, que é a janela do
+ * balanço parcial. Exercício encerrado lê a inscrição gravada, que é o fato.
+ */
+async function lerRestosDoExercicioAberto(
+  prisma: PrismaClient,
+  exercicio: number
+): Promise<{ naoProcessados: Money; processados: Money }> {
+  const situacoes = await situacaoDosEmpenhos(prisma, exercicio);
+
+  let naoProcessados = toMoney("0.00");
+  let processados = toMoney("0.00");
+  for (const s of situacoes) {
+    for (const calc of calcularInscricoes(s)) {
+      if (calc.tipo === "NAO_PROCESSADO") {
+        naoProcessados = toMoney(naoProcessados.plus(calc.valorInscrito));
+      } else {
+        processados = toMoney(processados.plus(calc.valorInscrito));
+      }
+    }
+  }
+  return { naoProcessados, processados };
+}
+
 /** Pagamentos, DENTRO deste exercício, de RP inscritos em exercícios anteriores. */
 async function lerPagamentosDeRestos(
   prisma: PrismaClient,
@@ -347,7 +393,7 @@ async function lerPagamentosDeRestos(
  *
  * Os quatro tipos NÃO têm o mesmo sinal (lição do M07/M08): os ESTORNO_* desfazem.
  */
-async function lerDepositos(
+export async function lerDepositos(
   prisma: PrismaClient,
   inicio: Date | null,
   corte: Date | null

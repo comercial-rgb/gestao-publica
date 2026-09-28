@@ -242,6 +242,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "Lançamentos em partidas dobradas, com número de controle, histórico e documento de origem." },
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa
   // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
+  { href: "/contabilidade/exportacoes-federais", numero: "Arquivos federais", rotulo: "Arquivos para a STN e a Receita", descricao: "Matriz de Saldos Contábeis (SICONFI) e MANAD gerados a partir dos lançamentos, para download e conferência." },
   { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "Superávit financeiro apurado, utilizado e disponível, por fonte de recurso." },
   // V19/C05 — o custo por centro fica na CONTABILIDADE, e não em relatórios gerenciais: a
   // apropriação referencia a liquidação e NÃO lança no razão, o que é uma decisão contábil que
@@ -374,6 +375,7 @@ export const RELATORIOS_DEMONSTRACOES: readonly RelatorioNav[] = [
   { href: "/relatorios/demonstracoes/balanco-financeiro", numero: "Anexo 13", rotulo: "Balanço Financeiro", descricao: "Ingressos, dispêndios e saldos de caixa do exercício (Lei 4.320, art. 103)." },
   { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro financeiro e permanente (Lei 4.320, art. 105)." },
   { href: "/relatorios/demonstracoes/variacoes-patrimoniais", numero: "Anexo 15", rotulo: "Variações Patrimoniais", descricao: "Variações patrimoniais aumentativas e diminutivas e o resultado do exercício." },
+  { href: "/relatorios/demonstracoes/fluxos-de-caixa", numero: "DFC", rotulo: "Fluxos de Caixa", descricao: "Ingressos e desembolsos das atividades operacionais, de investimento e de financiamento, e a geração líquida de caixa." },
 ];
 
 /** Uma relação entre relatórios — a rota do parente + POR QUE eles se falam (a identidade testada). */

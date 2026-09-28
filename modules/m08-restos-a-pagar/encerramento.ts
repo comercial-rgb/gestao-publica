@@ -61,8 +61,13 @@ function somaLiquida(
 /**
  * O retrato de cada empenho do exercício, TODO ele por SUM.
  * Empenho anulado tem `empenhado = 0` e não gera inscrição.
+ *
+ * Exportada porque o Balanço Financeiro (M12, Anexo 13) de exercício ABERTO precisa
+ * dos restos a pagar DO EXERCÍCIO antes do encerramento (Lei 4.320, art. 103, par.
+ * único) — e eles têm de ser, centavo a centavo, o que este encerramento inscreveria.
+ * Uma segunda apuração seria uma segunda verdade.
  */
-async function situacaoDosEmpenhos(
+export async function situacaoDosEmpenhos(
   tx: Tx,
   ano: number
 ): Promise<readonly SituacaoDoEmpenho[]> {

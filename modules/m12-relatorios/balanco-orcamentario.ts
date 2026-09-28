@@ -175,7 +175,7 @@ async function lerReceitas(
 // QUADRO 2 — despesa
 // ═══════════════════════════════════════════════════════════════════════════
 
-async function lerDespesas(
+export async function lerDespesas(
   prisma: PrismaClient,
   exercicio: number,
   corte: Date | null
