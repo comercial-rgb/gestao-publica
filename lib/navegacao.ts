@@ -247,6 +247,9 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   // apropriação referencia a liquidação e NÃO lança no razão, o que é uma decisão contábil que
   // precisa ficar perto de quem a entende. Quem audita chega por aqui.
   { href: "/contabilidade/custos", numero: "Custo por centro", rotulo: "Custo por centro", descricao: "Quanto custou cada centro no período, pela competência do custo, e a composição de cada total até a liquidação, o empenho e o credor. A apropriação não lança a despesa de novo: ela diz a que centros o custo já reconhecido pertence." },
+  // V20 — a virada das classes 5 e 6, que a apuracao do resultado NAO faz. Fica na contabilidade
+  // porque a decisao ENCERRA/TRANSFERE e contabil, e porque quem audita a virada chega por aqui.
+  { href: "/contabilidade/virada-dos-controles", numero: "Virada dos controles", rotulo: "Virada das contas de controle", descricao: "O que morre em 31 de dezembro e o que atravessa para o exercício seguinte. A apuração do resultado zera as variações patrimoniais; a dotação, o crédito e a previsão de receita são de outro subsistema e precisam de decisão declarada, conta por conta, com justificativa." },
 ];
 
 /** Os relatórios GERENCIAIS — consulta livre com export aberto (TR 7.48). */

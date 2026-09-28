@@ -393,3 +393,72 @@ que a 7.2 consertou.
 
 **"Um dono por roteiro" venceu "intocável de sessão".** Nenhuma outra linha do arquivo
 mudou.
+
+---
+
+## A virada das contas de controle, alcançável (V20)
+
+`encerrarControlesOrcamentarios` estava completo desde a V15 e era **inalcançável**. A causa foi
+medida antes de construir: `contaNaVirada.create|upsert|createMany` aparecia em quatro lugares do
+repositório, e **todos eram arquivos de teste**. A tabela-parâmetro de que o serviço depende era
+populada por fixture e por mais ninguém — logo, em instalação real, ela ficava vazia para sempre e a
+virada recusava com razão ("conta de controle sem destino na virada") e sem caminho para resolver.
+
+O preço disso não tem detector adiante: a dotação inicial e o crédito disponível de um exercício
+**atravessam** para o seguinte. O `beginning_balance` da MSC de janeiro de E+1 traz a dotação de E, e
+o segundo ano do sistema publica à União um orçamento que é a soma de dois.
+
+`classificacao-da-virada.ts` fecha isso com três peças:
+
+| Peça | O que é, e a decisão que ela carrega |
+|---|---|
+| `destinoSugerido(codigo)` | puro. Sugere `TRANSFERE` para os ramos `5.3` e `6.3` (inscrição e execução de restos a pagar) e `ENCERRA` para o resto, com a **razão em português** que a tela mostra ao lado do campo. ⚠️ Ela **sugere e não decide**: o campo nasce preenchido, a justificativa nasce vazia e obrigatória. Uma sugestão aplicada em silêncio seria norma da STN inventada dentro de um `if` |
+| `contasDaVirada(tx, {ano})` | a lista **curta**: só as contas das classes 5 e 6 com saldo no corte. O plano tem 7.864 contas, e um `select` com todas é o formulário bonito e inútil que a regra de interface proíbe. Traz a soma das duas pernas, para o operador ver **antes do clique** se o lançamento vai fechar |
+| `classificarContaNaVirada` | o ato, com ação própria `PARAMETRIZAR_VIRADA_DOS_CONTROLES`. Recusa classe fora de 5/6 dizendo onde cada classe é tratada, recusa sintética **listando a analítica sob ela**, e reclassificar troca destino e justificativa — nada mais |
+
+### Por que a ação é própria, e não um ramo do encerramento
+
+Dizer que a dotação **caduca** (CF art. 167, II) é ato normativo do ente. Enterrar o orçamento é ato
+de execução, feito uma vez por ano. Fundir as duas daria a quem executa o poder de reescrever a régua
+pela qual o próprio encerramento dele é medido — a mesma segregação que separa
+`PARAMETRIZAR_ROTEIRO_ORCAMENTARIO` de `EMPENHAR`.
+
+### A perna sai do SINAL, e a duplicação é conferida
+
+A perna que zera uma conta vem do sinal do saldo, nunca de uma tabela de "que lado essa conta costuma
+ter": credora com saldo positivo morre com débito, credora com saldo **negativo** morre com crédito.
+E isso não é teórico — o banco de apresentação tem `6.2.1.1.0.00.00`, credora, com **-80.000,00**.
+
+`pernaQueZera` duplica a derivação que o serviço faz, e a duplicação só é aceitável porque o teste
+`t7` afirma que, para cada conta, a perna que a tela mostra é a **mesma** que o encerramento grava —
+conferida contra as `PartidaContabil` gravadas, não contra o retorno da função. Mostrar uma perna na
+tela e gravar outra é pior do que não mostrar nada.
+
+### `ContaNaVirada` entrou no censo do papel de runtime
+
+Até a V20 os únicos escritores desta tabela eram testes, que rodam como **dono**. A tela é a primeira
+coisa que a escreve pelo papel da aplicação, e sem a entrada em `ESCRITA_MUTAVEL_DO_RUNTIME` ela
+falharia com "permission denied" no município, com a suíte verde na máquina de quem escreveu. O grant
+é `update: ["destino", "justificativa"]` — **`contaId` fica fora**, porque apontar a classificação
+para outra conta faria a justificativa escrita para a dotação passar a explicar o destino do controle
+de restos a pagar.
+
+### O que o percurso ensinou, e que nenhum teste de módulo pegaria
+
+**Um formulário não pode desaparecer com o próprio sucesso** — e o percurso ensinou isso duas vezes,
+no mesmo ato. O estorno vivia dentro da linha da tabela: estornar re-renderizava a linha como
+"Estornado", o formulário saía da tela e levava a mensagem de sucesso com ele. Movido para fora, o
+defeito voltou um nível acima: a página só o montava quando havia encerramento **vigente**, e
+estornar o último o removia de novo. As duas vezes o percurso leu `silencio` com o estorno **gravado**
+e o saldo já de volta — e silêncio é indistinguível de "nada aconteceu".
+
+### O que falta, nomeado
+
+- **`DESFAZER-ENCERRAMENTO-INEXISTENTE`** — desfazer o encerramento do exercício e a inscrição dos
+  restos não tem serviço nem tela. O percurso afirma o oposto: encerrar de novo é recusado nomeando.
+- **`ESTORNO-DA-APURACAO-SEM-BORDA`** — `estornarApuracao` (classes 3 e 4) existe e é censado, e pede
+  o id da operação: falta a listagem de apurações que o formulário precisaria.
+- **`INSCRICAO-DE-RP-SEM-PERNA-NO-RAZAO`** — a inscrição grava `InscricaoRestosAPagar` e não lança nas
+  contas `5.3`/`6.3`. Por isso o caso `TRANSFERE` não tem saldo real em nenhum banco deste
+  repositório, e o teste o prova pela aritmética (classificar uma perna do espelho como TRANSFERE faz
+  a soma deixar de fechar) em vez de por um saldo que não existe.

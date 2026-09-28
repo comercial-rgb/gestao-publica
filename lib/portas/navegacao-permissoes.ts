@@ -119,6 +119,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   APURAR_RESULTADO: "contabilidade",
   ESTORNAR_APURACAO: "contabilidade",
   ENCERRAR_CONTROLES_ORCAMENTARIOS: "contabilidade",
+  PARAMETRIZAR_VIRADA_DOS_CONTROLES: "contabilidade",
   ESTORNAR_ENCERRAMENTO_CONTROLES: "contabilidade",
   LIQUIDAR_RESTOS_A_PAGAR: "contabilidade",
   PAGAR_RESTOS_A_PAGAR: "contabilidade",

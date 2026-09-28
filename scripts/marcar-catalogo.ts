@@ -1907,15 +1907,74 @@ const MAPA: Readonly<Record<string, Marca>> = {
     rota_verificada: "papel: ENCERRAR_EXERCICIO e APURAR_RESULTADO · contexto: clone descartavel do banco de apresentacao, next start sobre build proprio na 3011, 2026-09-28 · passos: /despesa/restos-a-pagar -> confirmacao errada RECUSADA -> encerrar 2026 (2 restos processados inscritos) -> a tela recarregada mostra as inscricoes -> encerrar de novo RECUSADO -> apurar o resultado (superavit de 255.625,00, 4 contas de variacao zeradas) -> empenhar no ano fechado RECUSADO · obtido: 13/13 (scripts/smoke-encerramento-do-exercicio.ts, 0 falhas) · artefato: saida do percurso na sessao da V19.",
   },
   "5.10.1.102": {
-    situacao: "PARCIAL",
+    situacao: "VALIDADO_LOCALMENTE",
     evidencia:
-      "V19: os lancamentos contabeis de encerramento das CLASSES 3 E 4 saem automaticamente pela tela — a apuracao do resultado zera as contas de variacao patrimonial e transfere o saldo a conta de resultados acumulados, sem nenhuma partida digitada a mao (medido: superavit de 255.625,00 com 4 contas zeradas). ⚠️ E O PARAMETRO NAO EXISTIA EM INSTALACAO NENHUMA: zero linhas de RoteiroEncerramento, e a apuracao recusava — corretamente — com 'o M08 nao inventa conta'. Agora a conta do plano OFICIAL (2.3.7.1.1.01.00) entra na sequencia canonica de instalacao. ⚠️ FALTA A VIRADA DAS CLASSES 5 E 6 (`encerrarControlesOrcamentarios`): o servico existe e e censado, nao tem borda, e depende de uma classificacao ENCERRA/TRANSFERE por conta de controle com saldo — decisao contabil do ente, que nenhum seed pode adivinhar. Sem ela, dotacao inicial e credito disponivel seguem acumulando entre exercicios. Pendencia: VIRADA-DAS-CLASSES-DE-CONTROLE-SEM-BORDA.",
-    rota_verificada: "papel: ENCERRAR_EXERCICIO e APURAR_RESULTADO · contexto: clone descartavel do banco de apresentacao, next start sobre build proprio na 3011, 2026-09-28 · passos: /despesa/restos-a-pagar -> confirmacao errada RECUSADA -> encerrar 2026 (2 restos processados inscritos) -> a tela recarregada mostra as inscricoes -> encerrar de novo RECUSADO -> apurar o resultado (superavit de 255.625,00, 4 contas de variacao zeradas) -> empenhar no ano fechado RECUSADO · obtido: 13/13 (scripts/smoke-encerramento-do-exercicio.ts, 0 falhas) · artefato: saida do percurso na sessao da V19.",
+      "V20 FECHA ESTA CLAUSULA, e ela tem DUAS metades que sao subsistemas diferentes. " +
+      "As CLASSES 3 E 4 (V19): a apuracao do resultado zera as contas de variacao patrimonial e " +
+      "transfere o saldo a conta de resultados acumulados, sem nenhuma partida digitada a mao " +
+      "(medido: superavit de 255.625,00 com 4 contas zeradas). " +
+      "As CLASSES 5 E 6 (V20): a virada dos controles zera a dotacao, o credito disponivel, o " +
+      "liquidado, o pago e a previsao de receita num lancamento unico datado do ultimo instante do " +
+      "exercicio — medido em clone do banco de apresentacao, SEIS contas zeradas de uma vez " +
+      "(5.2.2.1.1.01.00 660.000,00; 6.2.1.1.0.00.00 -80.000,00; 6.2.1.2.0.00.00 80.000,00; " +
+      "6.2.2.1.1.00.00 567.500,00; 6.2.2.1.3.03.00 12.500,00; 6.2.2.1.3.04.00 80.000,00). " +
+      "⚠️ E UMA DELAS TEM SALDO NEGATIVO, o que nao e defeito: a perna que zera a conta sai do " +
+      "SINAL do saldo e nao de uma tabela de 'que lado essa conta costuma ter'. " +
+      "⚠️ O QUE FALTAVA NAO ERA O MOTOR: `encerrarControlesOrcamentarios` estava completo desde a " +
+      "V15. Faltava o ESCRITOR da tabela-parametro de que ele depende — medido antes de construir, " +
+      "`contaNaVirada.create` aparecia em quatro lugares do repositorio e TODOS eram arquivos de " +
+      "teste, logo em instalacao real a tabela ficava vazia para sempre e a virada recusava sem " +
+      "caminho para resolver. Agora a tela /contabilidade/virada-dos-controles lista as contas com " +
+      "saldo (a lista CURTA, contra as 7.864 do plano), sugere o destino pela doutrina SEM aplica-lo, " +
+      "exige justificativa e mostra se a soma das duas pernas FECHA antes do clique. " +
+      "⚠️ E A CLASSIFICACAO NAO VEM SEMEADA, de proposito: um seed que decidisse ENCERRA/TRANSFERE " +
+      "pelo municipio entregaria o sistema com a decisao contabil dele ja tomada por nos.",
+    rota_verificada:
+      "papel: PARAMETRIZAR_VIRADA_DOS_CONTROLES, ENCERRAR_CONTROLES_ORCAMENTARIOS, " +
+      "ESTORNAR_ENCERRAMENTO_CONTROLES, ENCERRAR_EXERCICIO e APURAR_RESULTADO · contexto: clone " +
+      "descartavel do banco de apresentacao (gestao_publica_virada_v20c), next start sobre build " +
+      "proprio na 3011, 2026-09-28 · passos: /contabilidade/virada-dos-controles -> a tela lista as " +
+      "6 contas com saldo, todas SEM DESTINO e com a sugestao ao lado -> os DOIS impedimentos " +
+      "aparecem separados (falta classificacao; exercicio nao encerrado) -> classificar UMA perna " +
+      "como TRANSFERE: a tela diz NAO FECHA -> classificar as 6 como ENCERRA: FECHA -> encerrar os " +
+      "controles ANTES de encerrar o exercicio: RECUSADO nomeando -> confirmacao errada: RECUSADA no " +
+      "servidor -> encerrar o exercicio em /despesa/restos-a-pagar -> encerrar os controles: 6 contas " +
+      "zeradas -> a tela recarregada nao acha mais saldo -> encerrar de novo: RECUSADO com NADA A " +
+      "ENCERRAR -> estornar: o saldo VOLTA e o encerramento e REFEITO · obtido: 25/25 " +
+      "(scripts/smoke-virada-dos-controles.ts, 0 falhas) · artefato: saida do percurso na sessao da " +
+      "V20. Antes, a metade das classes 3 e 4: 13/13 em scripts/smoke-encerramento-do-exercicio.ts.",
   },
   "5.10.1.104": {
-    situacao: "AUSENTE_CONFIRMADO",
+    situacao: "PARCIAL",
     evidencia:
-      "V19, medido ao construir a virada: a DESMOVIMENTACAO separada do encerramento, da inscricao dos restos e das notas extraorcamentarias nao existe pela tela. O que existe: `estornarApuracao` no dominio (censado, SEM borda — ele exige o id da operacao, o que pede uma listagem de apuracoes que esta unidade nao construiu) e o estorno de movimento extraorcamentario, que GANHOU borda nesta unidade (ver 5.10.1.75). Desfazer o ENCERRAMENTO e a INSCRICAO nao tem servico nem tela, e o percurso afirma o oposto: encerrar de novo e recusado nomeando. Pendencias: ESTORNO-DA-APURACAO-SEM-BORDA e DESFAZER-ENCERRAMENTO-INEXISTENTE.",
+      "V20 move esta clausula de ausencia para PARCIAL, e a parte que passou a existir e nomeada: o " +
+      "ESTORNO DO ENCERRAMENTO DOS CONTROLES ORCAMENTARIOS (classes 5 e 6) tem tela, em " +
+      "/contabilidade/virada-dos-controles. Ele e ATO NOVO — o lancamento original permanece no " +
+      "razao — e o efeito foi medido, nao prometido: depois do estorno as seis contas de controle " +
+      "REAPARECEM com saldo, com o destino que ja tinham declarado, e o encerramento pode ser " +
+      "REFEITO (nao existe marca de 'ja encerrado': o saldo e que governa). " +
+      "⚠️ E O PERCURSO ACHOU UM DEFEITO REAL AQUI, duas vezes no mesmo ato: um formulario que " +
+      "DESAPARECE com o proprio sucesso nao da retorno. Na primeira versao o formulario do estorno " +
+      "vivia dentro da linha da tabela e a re-renderizacao o removia junto com a mensagem; movido " +
+      "para fora, a pagina so o montava quando havia encerramento vigente, e estornar o ultimo o " +
+      "removia de novo. As duas vezes o percurso leu `silencio` com o estorno GRAVADO — " +
+      "indistinguivel de 'nada aconteceu'. Corrigido: o formulario fica montado e diz que nao ha " +
+      "mais encerramento vigente. " +
+      "⚠️ O QUE CONTINUA AUSENTE, e sao tres coisas diferentes: desfazer o ENCERRAMENTO DO " +
+      "EXERCICIO e a INSCRICAO DOS RESTOS nao tem servico nem tela — e o percurso afirma o oposto, " +
+      "encerrar de novo e recusado nomeando; `estornarApuracao` (classes 3 e 4) existe no dominio, " +
+      "e censado e NAO tem borda, porque exige o id da operacao e isso pede uma listagem de " +
+      "apuracoes que nenhuma unidade construiu ainda; e o estorno das notas extraorcamentarias tem " +
+      "borda propria (ver 5.10.1.75). A clausula pede as tres SEPARADAMENTE, e duas das tres nao " +
+      "existem. Pendencias: ESTORNO-DA-APURACAO-SEM-BORDA e DESFAZER-ENCERRAMENTO-INEXISTENTE.",
+    rota_verificada:
+      "papel: ESTORNAR_ENCERRAMENTO_CONTROLES · contexto: clone descartavel do banco de apresentacao " +
+      "(gestao_publica_virada_v20c), next start sobre build proprio na 3011, 2026-09-28 · passos: " +
+      "/contabilidade/virada-dos-controles -> encerrar os controles de 2026 (6 contas zeradas) -> " +
+      "escolher o encerramento VIGENTE no rol do estorno (o ja estornado nao e oferecido) -> motivo " +
+      "-> confirmar · esperado: o original permanece no razao, o saldo das seis contas volta e o " +
+      "encerramento pode ser refeito · obtido: 25/25 (scripts/smoke-virada-dos-controles.ts, 0 " +
+      "falhas), com os passos 9.0 a 9.3 cobrindo exatamente isto.",
   },
   "5.10.1.75": {
     situacao: "PARCIAL",

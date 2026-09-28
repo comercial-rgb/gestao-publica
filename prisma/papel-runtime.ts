@@ -116,6 +116,26 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   // As liquidações já gravadas não mudam: elas têm o seu lançamento no razão com as contas que
   // valiam no ato. Trocar aqui vale para as PRÓXIMAS.
   GrupoDeEmpenhoDaFolha: { update: ["contaVariacaoId", "contaObrigacaoId"], delete: false },
+  // ⚠️ V20 — A CLASSIFICAÇÃO DA CONTA DE CONTROLE NA VIRADA É DECISÃO VIGENTE, não fato.
+  //
+  // `ContaNaVirada` diz se a conta das classes 5 e 6 ENCERRA (o orçamento é anual — o crédito não
+  // empenhado caduca) ou TRANSFERE (o controle de restos a pagar atravessa a virada). Ela não
+  // escritura nada: o que escritura é o LANÇAMENTO de encerramento, e esse é append-only e tem
+  // estorno próprio. Trocar a classificação vale para a PRÓXIMA virada, exatamente como trocar as
+  // contas de um grupo de empenho vale para as próximas liquidações.
+  //
+  // ⚠️ E ELE ENTROU AQUI PORQUE A TELA NASCEU — a mesma frase de `PermissaoDePerfil` e de
+  // `FonteDaContaBancaria`, e pelo mesmo motivo medido. Até a V20 os ÚNICOS escritores desta tabela
+  // eram arquivos de TESTE (medido: quatro ocorrências de `contaNaVirada.create`, todas em `.test.ts`),
+  // e teste roda como DONO. Sem esta entrada a tela falharia com "permission denied" no município,
+  // com a suíte verde na máquina de quem escreveu.
+  //
+  // ⚠️ `contaId` FICA FORA DO GRANT, e é aqui que está a proteção: `GRANT UPDATE ON "ContaNaVirada"`
+  // deixaria o runtime apontar a classificação para OUTRA conta — a justificativa escrita para a
+  // dotação passaria a explicar o destino do controle de restos a pagar, sem que nada registrasse a
+  // troca. Reclassificar é trocar `destino` e `justificativa` da MESMA conta, e nada mais.
+  ContaNaVirada: { update: ["destino", "justificativa"], delete: false },
+
   // V3 (4.5): a PUBLICAÇÃO de uma versão de roteiro é a única escrita depois da criação, e
   // só nestas três colunas — as contas e o motivo nunca mudam (para outro par, outra versão).
   VersaoDeRoteiro: { update: ["situacao", "publicadaEm", "publicadaPor"], delete: false },

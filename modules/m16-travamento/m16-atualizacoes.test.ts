@@ -333,6 +333,10 @@ describe("instalação limpa e atualização — no banco", () => {
       // tivesse ficado fora de TODAS_AS_ACOES, o bootstrap nao a concederia e esta previa viria 1
       // ou 2 — foi exatamente este numero que apontou o furo da v32.
       { versao: 35, previa: 0, aplicada: false },
+      // ⚠️ PREVIA 0 NA INSTALACAO LIMPA prova que PARAMETRIZAR_VIRADA_DOS_CONTROLES chegou a
+      // ACOES_DO_ENTE. Se ela tivesse ficado fora de TODAS_AS_ACOES, o bootstrap nao a concederia e
+      // esta previa viria 1 — foi exatamente este numero que apontou o furo da v32.
+      { versao: 36, previa: 0, aplicada: false },
     ]);
   });
 

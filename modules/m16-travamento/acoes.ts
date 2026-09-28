@@ -100,6 +100,13 @@ export type AcaoDoSistema =
   | "APURAR_RESULTADO"
   | "ESTORNAR_APURACAO"
   | "ENCERRAR_CONTROLES_ORCAMENTARIOS"
+  // ── M08 V20 — a REGUA da virada dos controles, separada do ATO de enterrar ──
+  // ⚠️ Acao PROPRIA, e nao um ramo de ENCERRAR_CONTROLES_ORCAMENTARIOS: dizer que a dotacao CADUCA
+  // (art. 167, II da CF) e ato normativo do ente, e enterrar o orcamento e ato de execucao, feito
+  // uma vez por ano. Fundir daria a quem executa o poder de reescrever a regua pela qual o proprio
+  // encerramento dele e medido — a mesma segregacao que separa PARAMETRIZAR_ROTEIRO_ORCAMENTARIO
+  // de EMPENHAR.
+  | "PARAMETRIZAR_VIRADA_DOS_CONTROLES"
   | "ESTORNAR_ENCERRAMENTO_CONTROLES"
   | "LIQUIDAR_RESTOS_A_PAGAR"
   | "PAGAR_RESTOS_A_PAGAR"
@@ -813,6 +820,7 @@ export type NomeDeServico =
   | "estornarApuracao"
   | "encerrarControlesOrcamentarios"
   | "estornarEncerramentoControles"
+  | "classificarContaNaVirada"
   | "liquidarRestosAPagar"
   | "pagarRestosAPagar"
   | "cancelarRestosAPagar"
@@ -1332,6 +1340,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   apurarResultadoDoExercicio: "APURAR_RESULTADO",
   estornarApuracao: "ESTORNAR_APURACAO",
   encerrarControlesOrcamentarios: "ENCERRAR_CONTROLES_ORCAMENTARIOS",
+  classificarContaNaVirada: "PARAMETRIZAR_VIRADA_DOS_CONTROLES",
   estornarEncerramentoControles: "ESTORNAR_ENCERRAMENTO_CONTROLES",
   liquidarRestosAPagar: "LIQUIDAR_RESTOS_A_PAGAR",
   pagarRestosAPagar: "PAGAR_RESTOS_A_PAGAR",
@@ -2804,6 +2813,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ⚠️ Exigir permissão para AUTENTICAR seria circular: para saber o que o usuário pode, é
   // preciso saber QUEM ele é — e é justamente isto que descobre quem ele é. É o mesmo argumento
   // do `autorizar` logo acima.
+  // ── M08 V20 — a LEITURA das contas de controle na virada ──
+  // ⚠️ Nao muta: soma o razao das classes 5 e 6 no corte e junta a classificacao que cada conta ja
+  // tem. Quem pode ler isso e decisao de escopo de leitura (CONSULTAR_CONTABILIDADE), nao uma acao
+  // concedivel. A ESCRITA e que esta no censo: PARAMETRIZAR_VIRADA_DOS_CONTROLES.
+  contasDaVirada: "leitura (as contas das classes 5 e 6 com saldo no corte, com a classificacao de cada uma — nao muta)",
+  //
   // ── M12 V19/C05 — as LEITURAS do custo por centro ──
   // ⚠️ Nenhuma delas muta: o custo é um acúmulo das partes JÁ gravadas pela apropriação. Quem
   // pode ler custo é decisão de escopo de leitura (a política de 4.1), não uma ação concedível —

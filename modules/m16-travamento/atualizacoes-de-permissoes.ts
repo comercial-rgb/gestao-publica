@@ -718,6 +718,40 @@ export function derivarAlteracaoDoPlanejamento(
 }
 
 /**
+ * V20 — a RÉGUA da virada dos controles orçamentários.
+ *
+ * ⚠️ UMA AÇÃO SÓ, e ela é a que faltava. `ENCERRAR_CONTROLES_ORCAMENTARIOS` e
+ * `ESTORNAR_ENCERRAMENTO_CONTROLES` existem desde a V15 e já chegaram ao ente pelo bootstrap; o que
+ * nunca existiu foi quem pudesse ESCREVER a tabela-parâmetro de que as duas dependem. Sem esta ação,
+ * a virada continua recusando com razão — "conta de controle sem destino" — e sem caminho para
+ * resolver.
+ */
+export const ACOES_DA_VIRADA_DOS_CONTROLES: readonly AcaoDoSistema[] = [
+  "PARAMETRIZAR_VIRADA_DOS_CONTROLES",
+];
+
+export function derivarViradaDosControles(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    const jaTem = new Set(
+      perfil.permissoes.filter((p) => p.unidadeOrcId === null).map((p) => p.acao)
+    );
+    for (const acao of ACOES_DA_VIRADA_DOS_CONTROLES) {
+      if (jaTem.has(acao)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
+/**
  * V19/C05 — o CUSTO POR CENTRO: a régua do rateio e a apropriação.
  *
  * ⚠️ AS DUAS AÇÕES VÃO JUNTAS NESTA ATUALIZAÇÃO, mas elas NÃO são a mesma ação: publicar o critério
@@ -1533,6 +1567,31 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "e o total apropriado contra a despesa liquidada. Vai so a quem administra permissoes no " +
       "global, que a distribui nomeando a pessoa.",
     derivar: derivarCustoPorCentro,
+  },
+  {
+    versao: 36,
+    nome: "virada-dos-controles",
+    descricao:
+      "As contas de controle orcamentario (classes 5 e 6) passaram a poder ser CLASSIFICADAS para a " +
+      "virada pela tela (V20): cada conta com saldo em 31 de dezembro declara se ENCERRA (o " +
+      "orcamento e anual — o credito nao empenhado caduca, art. 167, II da CF) ou se TRANSFERE (o " +
+      "controle dos restos a pagar atravessa a virada), com justificativa obrigatoria e autor. Com " +
+      "isso vem a acao PARAMETRIZAR_VIRADA_DOS_CONTROLES. " +
+      "⚠️ ELA E A QUE FALTAVA, E SO ELA: encerrar e estornar o encerramento dos controles ja eram " +
+      "acoes do censo desde a V15, e ja chegavam ao ente pelo bootstrap. O que nunca existiu foi " +
+      "quem pudesse ESCREVER a tabela-parametro de que as duas dependem — medido antes de " +
+      "construir, `contaNaVirada.create` aparecia em quatro lugares do repositorio e todos eram " +
+      "arquivos de TESTE. Em instalacao real a tabela ficava vazia para sempre. " +
+      "⚠️ E ELA NAO SE FUNDE COM ENCERRAR_CONTROLES_ORCAMENTARIOS: dizer que a dotacao caduca e ato " +
+      "NORMATIVO do ente; enterrar o orcamento e ato de EXECUCAO, feito uma vez por ano. Fundir " +
+      "daria a quem executa o poder de reescrever a regua pela qual o proprio encerramento dele e " +
+      "medido — a mesma segregacao que separa PARAMETRIZAR_ROTEIRO_ORCAMENTARIO de EMPENHAR. " +
+      "⚠️ O ERRO NAO TEM DETECTOR ADIANTE, e o preco dele e alto: sem a classificacao, a dotacao " +
+      "inicial e o credito disponivel de um exercicio ATRAVESSAM para o seguinte. O " +
+      "beginning_balance da MSC de janeiro de E+1 traz a dotacao de E, e o segundo ano do sistema " +
+      "publica a Uniao um orcamento que e a soma de dois. Vai so a quem administra permissoes no " +
+      "global, que a distribui nomeando a pessoa.",
+    derivar: derivarViradaDosControles,
   },
 ];
 
