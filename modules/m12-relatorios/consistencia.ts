@@ -4,9 +4,12 @@ import { balancete } from "./livros.js";
 import { balancoPatrimonial } from "./balanco-patrimonial.js";
 import { demonstracaoVariacoesPatrimoniais } from "./dvp.js";
 import { balancoOrcamentario } from "./balanco-orcamentario.js";
-import { medir, verificarGeracao, type EscopoConsistencia, type Verificacao } from "./consistencia-contrato.js";
+import { medir, semDado, verificarGeracao, type EscopoConsistencia, type Verificacao } from "./consistencia-contrato.js";
 import { verificacoesDaLoa } from "./consistencia-loa.js";
-import { janelaCivilDoAno } from "../../packages/datas/index.js";
+import { eliminacoesIntragovernamentais } from "./eliminacoes-intra.js";
+import type { Bimestre } from "./rreo-anexo1.js";
+import { bimestreDoMes } from "../m02-planejamento/programacao-dominio.js";
+import { janelaCivilDoAno, mesCivil } from "../../packages/datas/index.js";
 
 export type { ResultadoVerificacao, EscopoConsistencia, Verificacao } from "./consistencia-contrato.js";
 
@@ -116,7 +119,48 @@ async function verificacoesAnuais(leitor: Leitor, exercicio: number, corte: Date
     }
   );
 
-  return [patrimonial, dvpVsBalanco, orcamentario];
+  return [patrimonial, dvpVsBalanco, orcamentario, ...(await verificacoesDoIntra(leitor, exercicio, corte))];
+}
+
+/**
+ * AS ELIMINAÇÕES INTRAGOVERNAMENTAIS, COMO VERIFICAÇÃO (C07).
+ *
+ * ⚠️ IRMÃS DA `LOA_INTRA`, E A DIFERENÇA É O QUE FALTAVA: aquela confronta a PREVISÃO (receita intra
+ * prevista × despesa intra fixada); estas confrontam a EXECUÇÃO e o PATRIMÔNIO. Um ente pode orçar
+ * as duas pontas certas e executar só uma — e é aí que o consolidado deixa de fechar.
+ *
+ * ⚠️ RESÍDUO É `DIVERGE`, NÃO AVISO. Um par que não fecha significa que o ajuste de consolidação não
+ * tem explicação — e um demonstrativo consolidado com ajuste inexplicado é exatamente o que a
+ * conferência do tribunal devolve.
+ *
+ * O bimestre sai da data do CORTE (`bimestreDoMes` do M02, sobre o mês CIVIL do ente — nunca UTC).
+ */
+async function verificacoesDoIntra(
+  leitor: Leitor,
+  exercicio: number,
+  corte: Date
+): Promise<Verificacao[]> {
+  const bimestre = bimestreDoMes(mesCivil(corte)) as Bimestre;
+  const elim = await eliminacoesIntragovernamentais(leitor, { exercicio, bimestre });
+
+  return elim.pares.map((par) => {
+    const base = {
+      chave: par.chave,
+      titulo: `Eliminação intragovernamental — ${par.titulo}`,
+      escopo: "ANUAL" as const,
+      fonte: "Eliminações intragovernamentais",
+      fonteHref: "/relatorios/eliminacoes-intra",
+    };
+    if (par.situacao === "SEM_DADO") return semDado(base, par.motivo ?? "Nada a eliminar.");
+    return {
+      ...base,
+      resultado: par.situacao === "ELIMINA" ? ("OK" as const) : ("DIVERGE" as const),
+      esquerda: par.esquerda,
+      direita: par.direita,
+      diferenca: par.residuo,
+      detalhe: `${par.rotuloEsquerda} × ${par.rotuloDireita}`,
+    };
+  });
 }
 
 export async function executarVerificacoes(

@@ -42,7 +42,18 @@ const FONTE_ANEXO8 = { fonte: "RREO Anexo 8 — Educação (MDE)", href: "/relat
 const FONTE_ANEXO12 = { fonte: "RREO Anexo 12 — Saúde (ASPS)", href: "/relatorios/rreo/anexo12" };
 const FUNCAO_EDUCACAO = "12";
 const FUNCAO_SAUDE = "10";
-const MODALIDADE_INTRA = "91";
+/**
+ * A MODALIDADE DE APLICAÇÃO QUE MARCA A DESPESA INTRAORÇAMENTÁRIA (Portaria STN 163/2001):
+ * aplicação direta decorrente de operação entre órgãos, fundos e entidades do mesmo ente.
+ *
+ * ⚠️ EXPORTADA na V17 para que as eliminações intragovernamentais (C07) não escrevam um QUARTO
+ * "91" no repositório. As outras duas cópias — `rreo-anexo2.ts:201` e
+ * `m08-restos-a-pagar/consultas.ts:408` — são de rodadas anteriores e ficam NOMEADAS aqui:
+ * pendência **MODALIDADE-INTRA-EM-TRES-LUGARES**. Um marcador de classificação em quatro arquivos
+ * é como o dia em que a STN o mudar deixa dois relatórios discordando.
+ */
+export const MODALIDADE_INTRAORCAMENTARIA = "91";
+const MODALIDADE_INTRA = MODALIDADE_INTRAORCAMENTARIA;
 
 const soma = (xs: readonly Money[]): Money => xs.reduce((a, b) => toMoney(a.plus(b)), toMoney("0.00"));
 

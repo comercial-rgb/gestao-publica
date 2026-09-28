@@ -5,6 +5,11 @@ import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { parcelasDaGuia } from "../m04-receita/parcelas-por-fonte.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
+  codigoDaAncoraDeConsolidacao,
+  nivelDeConsolidacao,
+  type NivelDeConsolidacao,
+} from "./consolidacao.js";
+import {
   CONTA_DDR_COMPROMETIDA_EMPENHO,
   CONTA_DDR_COMPROMETIDA_LIQUIDACAO,
   CONTA_DDR_DISPONIVEL,
@@ -415,4 +420,59 @@ export async function saldoDdrPorFonte(
       };
     })
     .sort((a, b) => a.fonteCodigo.localeCompare(b.fonteCodigo));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// O PLANO, LIDO PELO NÍVEL DE CONSOLIDAÇÃO (C07)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * O PLANO INSTALADO, PRONTO PARA CLASSIFICAR — as âncoras de 5º nível, uma leitura.
+ *
+ * ⚠️ POR QUE AS ÂNCORAS, E NÃO O PLANO INTEIRO. A classificação de `consolidacao.ts` precisa do
+ * NOME da âncora `X.X.X.X.D.00.00`, não da conta toda. São ~2.500 linhas de `{codigo, nome}` contra
+ * as 7.864 do plano completo — e a consulta cabe numa página de leitura.
+ *
+ * ⚠️ E CÓDIGO FORA DO FORMATO NÃO ESTOURA O RELATÓRIO: ele entra em `malformados` e a conta fica
+ * `NAO_CLASSIFICADO`. Um demonstrativo que explode por causa de uma linha ruim do plano não é
+ * fail-closed, é indisponível; o que fail-closed exige é **não classificar no escuro** — e o
+ * número de malformados vai junto, para quem lê saber que existe.
+ */
+export interface PlanoDeConsolidacao {
+  /** O nível de consolidação de uma conta pelo seu código. */
+  readonly nivelDaConta: (codigo: string) => NivelDeConsolidacao;
+  /** Quantas âncoras o plano instalado tem. Zero = plano mínimo, e nada se classifica. */
+  readonly ancoras: number;
+  /** Códigos que não têm a forma do PCASP. Nomeados, nunca silenciosos. */
+  readonly malformados: readonly string[];
+}
+
+export async function planoDeConsolidacao(leitor: Tx): Promise<PlanoDeConsolidacao> {
+  const linhas = await leitor.contaPcasp.findMany({
+    where: { codigo: { endsWith: ".00.00" } },
+    select: { codigo: true, nome: true },
+  });
+  const nomePorAncora = new Map(linhas.map((l) => [l.codigo, l.nome]));
+  const malformados: string[] = [];
+  const cache = new Map<string, NivelDeConsolidacao>();
+
+  const nivelDaConta = (codigo: string): NivelDeConsolidacao => {
+    const jaVisto = cache.get(codigo);
+    if (jaVisto !== undefined) return jaVisto;
+    let nivel: NivelDeConsolidacao;
+    try {
+      const ancora = codigoDaAncoraDeConsolidacao(codigo);
+      nivel = nivelDeConsolidacao(
+        codigo,
+        ancora === null ? null : nomePorAncora.get(ancora) ?? null
+      );
+    } catch {
+      if (!malformados.includes(codigo)) malformados.push(codigo);
+      nivel = "NAO_CLASSIFICADO";
+    }
+    cache.set(codigo, nivel);
+    return nivel;
+  };
+
+  return { nivelDaConta, ancoras: nomePorAncora.size, malformados };
 }

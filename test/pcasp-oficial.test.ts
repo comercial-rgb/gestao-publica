@@ -25,6 +25,11 @@ import {
   CONTAS_FIXTURE_A_CONFIRMAR,
   CONTAS_PCASP_STN,
 } from "../prisma/seed/pcasp.js";
+import {
+  codigoDaAncoraDeConsolidacao,
+  nivelDeclaradoNoNome,
+  nivelDeConsolidacao,
+} from "../modules/m01-core-contabil/consolidacao.js";
 
 /**
  * ═══ O PLANO DE CONTAS OFICIAL — LIDO, CONFERIDO E DERIVADO ═══
@@ -244,6 +249,90 @@ describe("o plano oficial de verdade, contra o plano feito à mão", () => {
 // ── auxiliar ──────────────────────────────────────────────────────────────────
 
 /** Um `.xlsx` mínimo de uma aba, com as células nas referências dadas. */
+/**
+ * ═══ O NÍVEL DE CONSOLIDAÇÃO, MEDIDO NO ARQUIVO OFICIAL (C07) ═══
+ *
+ * ⚠️ POR QUE A MEDIÇÃO MORA NUM TESTE, E NÃO NUM COMENTÁRIO. A regra de
+ * `modules/m01-core-contabil/consolidacao.ts` foi escolhida entre TRÊS candidatas plausíveis que
+ * dão TRÊS respostas diferentes sobre o mesmo arquivo. Um comentário dizendo "993 contas" envelhece
+ * no dia em que o TCE publicar outro `Pcasp`; um teste que conta ACUSA.
+ *
+ * ⚠️ E AS CONTAGENS SÃO CALCULADAS POR UM CAMINHO INDEPENDENTE DA FUNÇÃO — filtros escritos aqui,
+ * sobre o arquivo — para que o teste não use o classificador para conferir o classificador.
+ */
+describe("o nível de consolidação sobre o plano oficial", () => {
+  const contas = carregarPlanoOficial().contas;
+  const semPontos = (c: string): string => c.replace(/\./g, "");
+  const nomePorCodigo = new Map(contas.map((c) => [c.codigo, c.nome]));
+  const ancoraDe = (codigo: string): string | null => {
+    const a = codigoDaAncoraDeConsolidacao(codigo);
+    return a === null ? null : nomePorCodigo.get(a) ?? null;
+  };
+  const nivel = (codigo: string) => nivelDeConsolidacao(codigo, ancoraDe(codigo));
+
+  it("c1 o plano tem 7.864 contas, e 1.130 delas têm o dígito 2 no 5º nível", () => {
+    expect(contas.length).toBe(7864);
+    expect(contas.filter((c) => semPontos(c.codigo)[4] === "2").length).toBe(1130);
+  });
+
+  it("c2 a regra classifica 993 contas como INTRA OFSS — nem 296 nem 1.130", () => {
+    const intra = contas.filter((c) => nivel(c.codigo) === "INTRA_OFSS");
+    expect(intra.length).toBe(993);
+
+    // A candidata do NOME: 296 contas dizem "INTRA", e só 294 delas estão sob âncora intra
+    // (as outras duas são os cabeçalhos sintéticos `3.5.1.0.0.00.00` / `4.5.1.0.0.00.00`).
+    const nomeDizIntra = contas.filter((c) => /INTRA/i.test(c.nome));
+    expect(nomeDizIntra.length).toBe(296);
+    expect(nomeDizIntra.filter((c) => nivel(c.codigo) === "INTRA_OFSS").length).toBe(294);
+    // Logo a regra do nome PERDERIA 699 contas intra.
+    expect(intra.length - 294).toBe(699);
+  });
+
+  it("c3 a regra do DÍGITO marcaria 137 contas a mais, e elas não são obscuras", () => {
+    const digito2 = contas.filter((c) => semPontos(c.codigo)[4] === "2");
+    const falsosPositivos = digito2.filter((c) => nivel(c.codigo) !== "INTRA_OFSS");
+    expect(falsosPositivos.length).toBe(137);
+
+    // As três que ESTE sistema escreve todo dia estão entre elas.
+    for (const codigo of ["5.2.2.1.2.01.00", "8.2.1.1.2.01.00", "7.2.1.1.2.00.00"]) {
+      expect(nomePorCodigo.has(codigo)).toBe(true);
+      expect(nivel(codigo)).toBe("NAO_CLASSIFICADO");
+      expect(falsosPositivos.some((c) => c.codigo === codigo)).toBe(true);
+    }
+  });
+
+  it("c4 nenhuma conta sob âncora que declara INTRA OFSS tem dígito diferente de 2", () => {
+    const desalinhadas = contas.filter((c) => {
+      const ancora = ancoraDe(c.codigo);
+      return (
+        ancora !== null &&
+        nivelDeclaradoNoNome(ancora) === "INTRA_OFSS" &&
+        semPontos(c.codigo)[4] !== "2"
+      );
+    });
+    expect(desalinhadas.map((c) => c.codigo)).toEqual([]);
+  });
+
+  it("c5 nas classes 5 e 6 nenhuma conta é intragovernamental — o 5º nível é outra coisa lá", () => {
+    const em56 = contas.filter((c) => c.codigo[0] === "5" || c.codigo[0] === "6");
+    expect(em56.length).toBeGreaterThan(0);
+    expect(em56.filter((c) => nivel(c.codigo) === "INTRA_OFSS")).toEqual([]);
+  });
+
+  it("c6 os cinco níveis aparecem, e a partição cobre o plano inteiro", () => {
+    const conta = (n: string) => contas.filter((c) => nivel(c.codigo) === n).length;
+    expect(conta("CONSOLIDACAO")).toBeGreaterThan(0);
+    expect(conta("INTRA_OFSS")).toBe(993);
+    expect(conta("INTER_OFSS_UNIAO")).toBeGreaterThan(0);
+    expect(conta("INTER_OFSS_ESTADO")).toBeGreaterThan(0);
+    expect(conta("INTER_OFSS_MUNICIPIO")).toBeGreaterThan(0);
+    const soma =
+      conta("CONSOLIDACAO") + conta("INTRA_OFSS") + conta("INTER_OFSS_UNIAO") +
+      conta("INTER_OFSS_ESTADO") + conta("INTER_OFSS_MUNICIPIO") + conta("NAO_CLASSIFICADO");
+    expect(soma).toBe(contas.length);
+  });
+});
+
 function montarXlsx(celulas: readonly (readonly [string, string])[]): Buffer {
   const porLinha = new Map<string, string[]>();
   for (const [ref, valor] of celulas) {
