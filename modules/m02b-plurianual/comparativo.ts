@@ -3,6 +3,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   GRANDEZAS_DO_ALVO,
   MODELO_DO_ALVO,
+  rotuloDaGrandeza,
   valorVigente,
   type AlvoDaAlteracao,
 } from "./alteracao.js";
@@ -98,32 +99,9 @@ export interface ComparativoDaPeca {
   readonly totais: readonly TotalDaGrandeza[];
 }
 
-/**
- * O NOME DE CADA GRANDEZA EM PORTUGUÊS.
- *
- * ⚠️ O rol de chaves é o mesmo de `GRANDEZAS_DO_ALVO`, e um teste confere que nenhuma grandeza
- * ficou sem rótulo: sem ele, a tela mostraria o nome da coluna do banco ("dividaConsolidadaLiquida")
- * a um servidor municipal.
- */
-export const ROTULO_DA_GRANDEZA: Readonly<Record<string, string>> = {
-  valor: "Previsão de receita",
-  valorPrevisto: "Valor previsto do programa",
-  metaFinanceira: "Meta financeira da ação",
-  receitaTotal: "Receita total",
-  receitaPrimaria: "Receita primária",
-  despesaTotal: "Despesa total",
-  despesaPrimaria: "Despesa primária",
-  resultadoNominal: "Resultado nominal",
-  dividaPublicaConsolidada: "Dívida pública consolidada",
-  dividaConsolidadaLiquida: "Dívida consolidada líquida",
-  receitaPrimariaPpp: "Receita primária de parcerias",
-  despesaPrimariaPpp: "Despesa primária de parcerias",
-  impactoSaldoPpp: "Impacto no saldo das parcerias",
-};
-
-function rotuloDaGrandeza(g: string): string {
-  return ROTULO_DA_GRANDEZA[g] ?? g;
-}
+// ⚠️ O RÓTULO VEM DO DOMÍNIO, NÃO DAQUI: as mensagens de recusa do serviço também precisam dele,
+// e duas cópias divergiriam no dia em que uma grandeza fosse renomeada. Reexportado para a tela.
+export { ROTULO_DA_GRANDEZA } from "./alteracao.js";
 
 /** Qual coluna de ligação está preenchida — o alvo da linha gravada. */
 function alvoDoItem(item: {

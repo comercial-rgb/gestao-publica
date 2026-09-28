@@ -114,6 +114,34 @@ export const GRANDEZAS_DO_ALVO: Readonly<Record<AlvoDaAlteracao, readonly string
   ],
 };
 
+/**
+ * O NOME DE CADA GRANDEZA EM PORTUGUÊS.
+ *
+ * ⚠️ ELE MORA AQUI, JUNTO DO ROL, e não na camada de tela: as mensagens de RECUSA também precisam
+ * dele. "receitaPrimaria ficaria 10.500.000,00" é o nome da coluna do banco vazando para um
+ * servidor municipal; "Receita primária ficaria 10.500.000,00" é a frase que ele lê. Um teste
+ * confere que nenhuma grandeza do rol ficou sem rótulo.
+ */
+export const ROTULO_DA_GRANDEZA: Readonly<Record<string, string>> = {
+  valor: "Previsão de receita",
+  valorPrevisto: "Valor previsto do programa",
+  metaFinanceira: "Meta financeira da ação",
+  receitaTotal: "Receita total",
+  receitaPrimaria: "Receita primária",
+  despesaTotal: "Despesa total",
+  despesaPrimaria: "Despesa primária",
+  resultadoNominal: "Resultado nominal",
+  dividaPublicaConsolidada: "Dívida pública consolidada",
+  dividaConsolidadaLiquida: "Dívida consolidada líquida",
+  receitaPrimariaPpp: "Receita primária de parcerias",
+  despesaPrimariaPpp: "Despesa primária de parcerias",
+  impactoSaldoPpp: "Impacto no saldo das parcerias",
+};
+
+export function rotuloDaGrandeza(g: string): string {
+  return ROTULO_DA_GRANDEZA[g] ?? g;
+}
+
 export function grandezaPertenceAoAlvo(alvo: AlvoDaAlteracao, grandeza: string): boolean {
   return GRANDEZAS_DO_ALVO[alvo].includes(grandeza);
 }
@@ -152,8 +180,8 @@ function exigirNaoNegativas(
     const v = vigente[c];
     if (v !== undefined && v.isNegative()) {
       ruins.push(
-        `${c} ficaria ${v.toFixed(2)}, e valor negativo é recusado pelo banco na linha ` +
-          `original (${constraint}). O ajuste não foi gravado.`
+        `${rotuloDaGrandeza(c)} ficaria ${v.toFixed(2)}, e valor negativo é recusado na linha ` +
+          `aprovada (${constraint}). O ajuste não foi gravado.`
       );
     }
   }
@@ -218,9 +246,10 @@ export function violacoesDoAlvo(alvo: AlvoDaAlteracao, vigente: LinhaVigente): r
         const total = vigente[t];
         if (primaria !== undefined && total !== undefined && primaria.greaterThan(total)) {
           ruins.push(
-            `${p} ficaria ${primaria.toFixed(2)} e ${t} ficaria ${total.toFixed(2)}: a ` +
-              `primária não pode exceder a total (ck_meta_anual_primaria_nao_excede_total). ` +
-              `Se a alteração mexe nas duas, o ato tem de trazer os dois itens.`
+            `${rotuloDaGrandeza(p)} ficaria ${primaria.toFixed(2)} e ${rotuloDaGrandeza(t)} ` +
+              `ficaria ${total.toFixed(2)}: a primária não pode exceder a total ` +
+              `(ck_meta_anual_primaria_nao_excede_total). Se a alteração mexe nas duas, o ato ` +
+              `tem de trazer os dois itens.`
           );
         }
       };

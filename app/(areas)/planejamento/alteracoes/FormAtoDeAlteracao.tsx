@@ -37,12 +37,23 @@ export interface OpcaoDeAto {
   readonly rotulo: string;
 }
 
-function Mensagem({ estado }: { readonly estado: EstadoDaAlteracao }): React.ReactElement | null {
+/**
+ * ⚠️ O MARCADOR LEVA O NOME DA AÇÃO, não "ok"/"erro": é o contrato do V6.2
+ * (`data-resultado-da-acao="<nome>"`), e é por ele que o percurso distingue o resultado DESTE envio
+ * do anterior. O tom quem dá é o `role="alert"` no erro.
+ */
+function Mensagem({
+  estado,
+  acao,
+}: {
+  readonly estado: EstadoDaAlteracao;
+  readonly acao: string;
+}): React.ReactElement | null {
   if (estado.erro !== undefined) {
     return (
       <p
         className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]"
-        data-resultado-da-acao="erro"
+        data-resultado-da-acao={acao}
         role="alert"
       >
         {estado.erro}
@@ -53,7 +64,7 @@ function Mensagem({ estado }: { readonly estado: EstadoDaAlteracao }): React.Rea
     return (
       <p
         className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]"
-        data-resultado-da-acao="ok"
+        data-resultado-da-acao={acao}
       >
         {estado.sucesso}
       </p>
@@ -79,7 +90,7 @@ export function FormAtoDeAlteracao({
   if (estado.sucesso !== undefined) ref.current?.reset();
 
   return (
-    <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-form="ato" ref={ref}>
+    <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-acao="registrar-ato-de-alteracao" ref={ref}>
       <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Registrar ato de alteração
@@ -143,7 +154,7 @@ export function FormAtoDeAlteracao({
         </label>
       </div>
 
-      <Mensagem estado={estado} />
+      <Mensagem acao="registrar-ato-de-alteracao" estado={estado} />
 
       <button className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`} disabled={pendente} type="submit">
         {pendente ? "Registrando…" : "Registrar ato"}
@@ -167,7 +178,7 @@ export function FormItemDoAto({
   if (estado.sucesso !== undefined) ref.current?.reset();
 
   return (
-    <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-form="item" ref={ref}>
+    <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-acao="acrescentar-valor-ao-ato" ref={ref}>
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
         Acrescentar valor a um ato já registrado
@@ -209,7 +220,7 @@ export function FormItemDoAto({
         </label>
       </div>
 
-      <Mensagem estado={estado} />
+      <Mensagem acao="acrescentar-valor-ao-ato" estado={estado} />
 
       <button className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`} disabled={pendente} type="submit">
         {pendente ? "Acrescentando…" : "Acrescentar valor"}

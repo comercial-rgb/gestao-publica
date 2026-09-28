@@ -315,7 +315,9 @@ describe("t2 — o que o banco recusaria na linha, reimposto sobre o valor deriv
       despesaPrimaria: toMoney("100.01"),
     });
     expect(despesaEstourada.length).toBe(1);
-    expect(despesaEstourada[0]).toMatch(/despesaPrimaria/);
+    // ⚠️ O RÓTULO EM PORTUGUÊS, e não o nome da coluna: a mensagem é lida por um servidor
+    // municipal, e "despesaPrimaria" é o schema vazando para a tela.
+    expect(despesaEstourada[0]).toMatch(/Despesa primária/);
   });
 
   /**
