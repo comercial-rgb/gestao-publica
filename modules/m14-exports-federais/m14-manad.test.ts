@@ -594,7 +594,7 @@ describe("M14 — MANAD (TR 7.36)", () => {
       `L750|2026|${CREDOR_PJ}||2|${CREDOR_PJ}|||||||`,
     ]);
 
-    const p = manad.pendencias.find((x) => x.registro === "L750")!;
+    const p = manad.pendencias.find((x) => x.registro === "L750" && /NOM_FORNECEDOR/.test(x.motivo))!;
     expect(p).toBeDefined();
     expect(p.quantidade).toBe(1); // ⚠️ A PENDÊNCIA TEM TAMANHO: 1 credor sem nome.
     expect(p.motivo).toMatch(/NOM_FORNECEDOR sai VAZIO/);
@@ -626,7 +626,19 @@ describe("M14 — MANAD (TR 7.36)", () => {
     expect(textoDe(manad, "L750")).toEqual([
       `L750|2026|${CREDOR_PJ}|Alfa Comércio Ltda|2|${CREDOR_PJ}|||Rua das Flores, 10 - Centro|Campina Grande|PB|58400000|`,
     ]);
-    expect(manad.pendencias.find((x) => x.registro === "L750")).toBeUndefined();
+    expect(manad.pendencias.find((x) => x.registro === "L750" && /NOM_FORNECEDOR/.test(x.motivo))).toBeUndefined();
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // t6c (V22) — o documento com dígito verificador inválido vai como está no empenho (fato), mas
+  // NÃO em silêncio: a pendência o nomeia. O CREDOR_PJ da fixture (12345678000199) não confere.
+  // ═══════════════════════════════════════════════════════════════════════════
+  it("t6c: CPF/CNPJ com dígito verificador inválido vira pendência nomeada", async () => {
+    await ciclo2026();
+    const manad = await gerarManad(prisma, PERIODO_2026);
+    const p = manad.pendencias.find((x) => x.registro === "L750" && /dígito verificador/.test(x.motivo));
+    expect(p?.quantidade).toBe(1);
+    expect(p?.motivo).toMatch(new RegExp(`dígito verificador inválido nos empenhos: ${CREDOR_PJ}\\.`));
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

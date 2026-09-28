@@ -1,5 +1,5 @@
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
-import { cnpjEhAlfanumerico, normalizarDocumento } from "../../../packages/documento/index.js";
+import { cnpjEhAlfanumerico, documentoTemDigitoValido, normalizarDocumento } from "../../../packages/documento/index.js";
 import { somaLiquidaEstornaveis } from "../../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../../prisma/generated/client/client.js";
 import { enteDoContexto } from "../../m01-core-contabil/contexto-do-ente.js";
@@ -1691,6 +1691,25 @@ async function l750(
     })
   );
   for (const [doc, v] of cadastroPorDoc) if (!nomePorDoc.has(doc)) nomePorDoc.set(doc, v.nome);
+
+  // V22 — DOCUMENTO COM DÍGITO VERIFICADOR INVÁLIDO. O arquivo leva o documento como está no
+  // empenho (fato append-only: não se corrige aqui, e trocá-lo mandaria à Receita um credor que o
+  // razão não registrou), mas NÃO em silêncio: a pendência nomeia cada um, para que o ente anule e
+  // reemita o empenho com o documento certo antes de transmitir.
+  const comDigitoInvalido = documentos.filter((d) => {
+    const so = normalizarDocumento(d);
+    return (so.length === 11 || so.length === 14) && !documentoTemDigitoValido(so);
+  });
+  if (comDigitoInvalido.length > 0) {
+    pendencias.push({
+      registro: "L750",
+      quantidade: comDigitoInvalido.length,
+      motivo:
+        `CPF/CNPJ com dígito verificador inválido nos empenhos: ${comDigitoInvalido.join(", ")}. ` +
+        "O arquivo leva o documento como consta no empenho; corrija anulando e reemitindo o empenho " +
+        "com o documento certo antes de transmitir.",
+    });
+  }
 
   const semNome = documentos.filter((d) => !nomePorDoc.has(d));
   if (semNome.length > 0) {
