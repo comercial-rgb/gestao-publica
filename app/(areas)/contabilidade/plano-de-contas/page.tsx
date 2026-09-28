@@ -62,6 +62,12 @@ export default async function PlanoDeContasPage({
   // Recorte de APRESENTAÇÃO (não vai à porta): `?classe=2` mostra só uma classe. É o caminho que
   // o roteiro de demonstração percorre — classe 2 → 2.1.8.8.1.01.00 (Consignações).
   const classeFiltro = umaClasse(sp["classe"]);
+  // ⚠️ V21 — A LISTA CURTA POR PADRÃO. O plano oficial tem 7.864 contas; mandar todas de uma vez
+  // gerava 34 MB de HTML e 53 s de carga medidos (o conferidor da apresentação passou a estourar
+  // 30 s). Sem recorte, a tela mostra só as contas COM MOVIMENTO no exercício; as sem movimento
+  // aparecem ao buscar por prefixo de código ou ao pedir todas as contas de UMA classe.
+  const prefixo = umPrefixo(sp["codigo"]);
+  const todasDaClasse = classeFiltro !== undefined && (Array.isArray(sp["todas"]) ? sp["todas"][0] : sp["todas"]) === "1";
 
   // ⚠️ AQUI O QUE O RECORTE AUTORIZADO ACRESCENTA É O **EXERCÍCIO**, NÃO A UNIDADE — e isso
   // foi medido, não suposto. As três leituras desta tela (`listarPlanoDeContas` e os dois
@@ -140,7 +146,14 @@ export default async function PlanoDeContasPage({
   });
 
   const classesPresentes = [...new Set(linhas.map((l) => l.classe))].sort();
-  const visiveis = classeFiltro === undefined ? linhas : linhas.filter((l) => l.classe === classeFiltro);
+  const daClasseFiltrada = classeFiltro === undefined ? linhas : linhas.filter((l) => l.classe === classeFiltro);
+  const visiveis =
+    prefixo !== undefined
+      ? daClasseFiltrada.filter((l) => l.codigo.startsWith(prefixo))
+      : todasDaClasse
+        ? daClasseFiltrada
+        : daClasseFiltrada.filter((l) => !l.semMovimento);
+  const ocultas = daClasseFiltrada.length - visiveis.length;
 
   return (
     <div className="space-y-4">
@@ -176,13 +189,48 @@ export default async function PlanoDeContasPage({
         ))}
       </nav>
 
+      {/* A BUSCA POR CÓDIGO — o caminho do roteiro (2.1.8 → consignações) sem descer 7.864 linhas. */}
+      <form method="get" action="/contabilidade/plano-de-contas" className="flex flex-wrap items-end gap-2 text-xs" data-chrome>
+        {classeFiltro !== undefined ? <input type="hidden" name="classe" value={classeFiltro} /> : null}
+        <label className="block">
+          <span className="mb-1 block font-medium text-[color:var(--color-ink-2)]">Buscar por código (início)</span>
+          <input
+            name="codigo"
+            defaultValue={prefixo ?? ""}
+            placeholder="2.1.8"
+            className="h-9 w-40 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 font-mono"
+          />
+        </label>
+        <button type="submit" className="h-9 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 font-semibold">
+          Buscar
+        </button>
+      </form>
+
+      {ocultas > 0 && prefixo === undefined ? (
+        <p className="text-xs text-[color:var(--color-ink-2)]" data-contas-ocultas={String(ocultas)}>
+          Mostrando {String(visiveis.length)} conta(s) com movimento no exercício; {String(ocultas)} sem movimento
+          ficaram de fora.{" "}
+          {classeFiltro !== undefined ? (
+            <a href={`/contabilidade/plano-de-contas?classe=${classeFiltro}&todas=1`} className="text-[color:var(--color-primary)] hover:underline">
+              Mostrar todas as contas da classe {classeFiltro}
+            </a>
+          ) : (
+            "Escolha uma classe acima para ver todas as contas dela, ou busque pelo início do código."
+          )}
+        </p>
+      ) : null}
+
       {visiveis.length === 0 ? (
         <EstadoVazio
           titulo="Sem contas"
           descricao={
-            classeFiltro !== undefined
-              ? `A classe ${classeFiltro} não tem conta cadastrada no plano.`
-              : "O plano de contas PCASP ainda não foi carregado."
+            prefixo !== undefined
+              ? `Nenhuma conta do plano começa com ${prefixo}.`
+              : daClasseFiltrada.length > 0
+                ? "Nenhuma conta com movimento no exercício neste recorte. Escolha uma classe e peça todas as contas dela."
+                : classeFiltro !== undefined
+                  ? `A classe ${classeFiltro} não tem conta cadastrada no plano.`
+                  : "O plano de contas PCASP ainda não foi carregado."
           }
         />
       ) : (
@@ -221,6 +269,12 @@ type LinhaDoPlano = ContaDoPlano & {
   readonly saldoCredor: string;
   readonly semMovimento: boolean;
 };
+
+/** `?codigo=2.1.8` — início de código do plano (dígitos e pontos); qualquer outra coisa é ignorada. */
+function umPrefixo(v: string | string[] | undefined): string | undefined {
+  const bruto = (Array.isArray(v) ? v[0] : v)?.trim();
+  return bruto !== undefined && /^\d[\d.]*$/.test(bruto) ? bruto : undefined;
+}
 
 /** `?classe=2` — um dígito só; qualquer outra coisa é ignorada (vale "todas"). */
 function umaClasse(v: string | string[] | undefined): string | undefined {

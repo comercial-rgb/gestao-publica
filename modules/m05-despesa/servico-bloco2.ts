@@ -18,6 +18,7 @@ import {
   type PagarInput,
   type RoteiroContabil,
   type StatusEmpenho,
+  exigirMotivoDeAnulacaoDePagamento,
 } from "./dominio.js";
 import { resolverContas } from "./servico.js";
 import type { M05Deps } from "./ports.js";
@@ -308,6 +309,8 @@ export async function anularPagamento(
   deps: M05Deps
 ): Promise<{ readonly pagamentoId: string; readonly lancamentoId: string }> {
   const dados = zAnularPagamentoInput.parse(input);
+  // V21 — antes de qualquer outra coisa: um motivo que não se exporta não deixa a anulação nascer.
+  const motivo = exigirMotivoDeAnulacaoDePagamento(dados.historico);
 
   // A UG vem do PAGAMENTO -> liquidação -> empenho -> ficha. (E, como no anular da liquidação,
   // as pernas que morrem junto — retenção do M07, amortização do M10 — vão nesta autorização.)
@@ -350,6 +353,9 @@ export async function anularPagamento(
       pagamentoOriginalId: original.id,
       numero: dados.numero,
       data: dados.data,
+      // ⚠️ V21 — o `historico` desta entrada É o motivo que a tela exige (a porta de anulação mapeia
+      // um no outro). Até aqui ele era validado e DESCARTADO: nenhum campo o recebia.
+      motivo,
       criadoPor: dados.criadoPor,
     },
     {

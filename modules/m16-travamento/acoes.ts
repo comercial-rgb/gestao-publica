@@ -61,6 +61,16 @@ export type AcaoDoSistema =
   | "CRIAR_DECRETO_DE_CREDITO"
   | "EXECUTAR_CREDITO"
   | "ANULAR_CREDITO"
+  // ── M03 V21 — a REALOCAÇÃO por lei específica (CF art. 167, VI) ──
+  // ⚠️ Ações PRÓPRIAS, e não EXECUTAR_CREDITO/ANULAR_CREDITO: a realocação não é crédito adicional
+  // (não traz recurso novo nem consome o limite da LOA), e quem pode abrir crédito não passa, por
+  // isso, a poder mover dotação entre órgãos. Registrar e anular separadas, como no crédito.
+  | "REGISTRAR_REALOCACAO_DE_DOTACAO"
+  // ── M02 V21 — os dados da unidade que a prestação de contas pede (SAGRES §4.1) ──
+  // ⚠️ Ação PRÓPRIA: dizer quem é o secretário responsável e a natureza jurídica da unidade é
+  // cadastro do ente, e não um ato de execução de quem empenha nela.
+  | "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA"
+  | "ANULAR_REALOCACAO_DE_DOTACAO"
   | "ENCERRAR_DECRETO"
   | "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO"
   // ── M04 — receita ──
@@ -793,6 +803,9 @@ export type NomeDeServico =
   | "criarDecreto"
   | "executarCredito"
   | "anularCredito"
+  | "registrarRealocacao"
+  | "declararDadosDaUnidade"
+  | "anularRealocacao"
   | "encerrarDecreto"
   | "declararDisponibilidade"
   | "registrarArrecadacao"
@@ -1317,6 +1330,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarDecreto: "CRIAR_DECRETO_DE_CREDITO",
   executarCredito: "EXECUTAR_CREDITO",
   anularCredito: "ANULAR_CREDITO",
+  registrarRealocacao: "REGISTRAR_REALOCACAO_DE_DOTACAO",
+  declararDadosDaUnidade: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA",
+  anularRealocacao: "ANULAR_REALOCACAO_DE_DOTACAO",
   encerrarDecreto: "ENCERRAR_DECRETO",
   declararDisponibilidade: "DECLARAR_DISPONIBILIDADE_DE_RECURSO_NOVO",
 
@@ -2560,6 +2576,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerFatosMovimentacao: "leitura (Prisma → DTO MovimentacaoEntreContas — não muta)",
   gerarPagamentos: "leitura (gera o TXT SAGRES Pagamentos — não muta)",
   lerFatosPagamentos: "leitura (Prisma → DTO Pagamentos, conta pagadora por código — não muta)",
+  gerarConciliacaoBancaria: "leitura (gera o TXT SAGRES ConciliacaoBancaria §4.27 — não muta)",
+  gerarConciliacaoBancariaOuRecusa: "leitura (o arquivo §4.27 ou a recusa nomeada da conciliação — não muta)",
+  lerFatosConciliacaoBancaria: "leitura (o relatório de conciliação do M09 → DTO §4.27 — não muta)",
+  gerarEstornoPagamento: "leitura (gera o TXT SAGRES EstornoPagamento §4.13 — não muta)",
+  lerFatosEstornoPagamento: "leitura (Prisma → DTO EstornoPagamento, a anulação com o pagamento anulado — não muta)",
   gerarReceitaOrcamentaria: "leitura (gera o TXT SAGRES ReceitaOrcamentaria — não muta)",
   lerFatosReceitaOrcamentaria: "leitura (Prisma → DTO ReceitaOrcamentaria, conta arrecadadora é param export — não muta)",
   gerarRetencao: "leitura (gera o TXT SAGRES Retencao §4.14 do M07 — não muta)",
@@ -2809,6 +2830,16 @@ export const FORA_DO_CENSO: Record<string, string> = {
   registrarRetencoesDoPagamento: "composável interno (perna do pagar)",
   estornarRetencoesDoPagamento: "composável interno",
   registrarMovimentoDotacao: "composável interno",
+  // M05 V21 — o estorno EXATO de um movimento de dotação: chamado DENTRO de `anularRealocacao`, que
+  // é quem autoriza. Sozinho ele não é ato de ninguém.
+  estornarMovimentoDotacao: "composável interno",
+  // M03 V21 — a LEITURA dos atos de realocação do exercício, com as pernas. Não muta.
+  listarRealocacoes: "leitura",
+  // M02 V21 — as unidades com a declaração vigente, para a tela. Não muta.
+  unidadesComDeclaracao: "leitura",
+  gerarUnidadeOrcamentaria: "leitura (gera o TXT SAGRES UnidadeOrcamentaria §4.1 — não muta)",
+  gerarUnidadeOrcamentariaOuRecusa: "leitura (o arquivo §4.1 ou a recusa nomeada — não muta)",
+  lerFatosUnidadeOrcamentaria: "leitura (a unidade com a declaração vigente no fim do mês → DTO §4.1 — não muta)",
   amortizarNoPagamento: "composável interno (perna do pagar)",
   estornarAmortizacaoDoPagamento: "composável interno",
   aoAnularLiquidacaoTotal: "composável interno (cascata do M05)",

@@ -96,6 +96,9 @@ function diff(de: readonly string[], url?: string): string {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
       env: url === undefined ? process.env : { ...process.env, DATABASE_URL: url },
+      // No Windows `npx` é `npx.cmd`, que o Node não executa sem shell (V21 R0). Os argumentos são
+      // flags fixas, sem espaço.
+      shell: process.platform === "win32",
     }
   );
 }
@@ -171,6 +174,7 @@ async function montarSombra(): Promise<string> {
   execFileSync("npx", ["prisma", "migrate", "deploy"], {
     env: { ...process.env, DATABASE_URL: url },
     stdio: ["ignore", "pipe", "pipe"],
+    shell: process.platform === "win32",
   });
 
   // O mesmo SQL manual que `npm run db:sql` aplica, na mesma ordem.

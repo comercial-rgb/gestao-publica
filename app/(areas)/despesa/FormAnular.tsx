@@ -63,8 +63,20 @@ export function FormAnular({
           <input name="numero" required placeholder="2026NA000001" className={CAMPO} />
         </label>
         <label className="block">
-          <span className={ROTULO}>Motivo (mín. 10 caracteres)</span>
-          <input name="motivo" required minLength={10} placeholder="cancelamento por erro de classificação" className={CAMPO} />
+          <span className={ROTULO}>
+            {tipo === "pagamento" ? "Motivo (de 10 a 120 caracteres, sem aspas)" : "Motivo (mín. 10 caracteres)"}
+          </span>
+          {/* V21 — o motivo da anulação de PAGAMENTO vai à prestação de contas do Tribunal de Contas,
+              num campo de 120 caracteres sem aspas. O servidor recusa o que não cabe; o navegador só
+              antecipa o limite de tamanho. */}
+          <input
+            name="motivo"
+            required
+            minLength={10}
+            maxLength={tipo === "pagamento" ? 120 : undefined}
+            placeholder="cancelamento por erro de classificação"
+            className={CAMPO}
+          />
         </label>
         <label className="block">
           <span className={ROTULO}>Data da anulação</span>

@@ -393,6 +393,176 @@ export const LAYOUT_PAGAMENTOS: LayoutArquivo<PagamentoFato> = {
   campos: camposPagamentos,
 };
 
+// ═══ 4.1 UNIDADEORCAMENTARIA (Mensal) — V21 ═══════════════════════════════════════
+// Origem: UnidadeOrcamentaria (código, descrição) + a DeclaracaoDaUnidadeOrcamentaria VIGENTE no fim
+// do mês (natureza jurídica, secretário, ato de nomeação — versionada, M02 V21). Os códigos do leiaute
+// (§5.14 e §5.26) saem por DE-PARA EXAUSTIVO dos enums do domínio: um valor novo no enum não compila
+// até alguém dizer o código dele. Unidade sem declaração até o corte: o arquivo é RECUSADO nomeando-a.
+
+export interface UnidadeOrcamentariaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly nomeSecretario: string;
+  readonly cpfSecretario: string;
+  readonly atoAdministrativo: string;
+  readonly tipoNaturezaJuridica: string;
+}
+
+const camposUnidadeOrcamentaria: readonly CampoLayout<UnidadeOrcamentariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "unidadeOrc.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 12, posFinal: 61, tipo: "ALFA", obrigatorio: true, origem: "unidadeOrc.descricao", extrair: (f) => f.descricao },
+  { nome: "nomeSecretario", posInicial: 62, posFinal: 121, tipo: "ALFA", obrigatorio: true, origem: "declaração vigente.nomeSecretario", extrair: (f) => f.nomeSecretario },
+  { nome: "cpfSecretario", posInicial: 122, posFinal: 132, tipo: "DOCUMENTO", obrigatorio: true, origem: "declaração vigente.cpfSecretario", extrair: (f) => f.cpfSecretario },
+  { nome: "atoAdministrativo", posInicial: 133, posFinal: 133, tipo: "NUMERICO", obrigatorio: true, origem: "§5.14 ← declaração.atoDeNomeacao", extrair: (f) => f.atoAdministrativo },
+  { nome: "tipoNaturezaJuridica", posInicial: 134, posFinal: 134, tipo: "NUMERICO", obrigatorio: true, origem: "§5.26 ← declaração.naturezaJuridica", extrair: (f) => f.tipoNaturezaJuridica },
+  { nome: "reservado", posInicial: 135, posFinal: 140, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+
+export const LAYOUT_UNIDADE_ORCAMENTARIA: LayoutArquivo<UnidadeOrcamentariaFato> = {
+  entidade: "UnidadeOrcamentaria",
+  periodicidade: "MENSAL",
+  versao: VERSAO,
+  campos: camposUnidadeOrcamentaria,
+};
+
+/** §5.14 TipoAtoJuridico — de-para EXAUSTIVO do enum do domínio. */
+export const DEPARA_ATO_JURIDICO_SAGRES: Readonly<Record<"LEI" | "DECRETO" | "PORTARIA" | "OUTROS", string>> = {
+  LEI: "1",
+  DECRETO: "2",
+  PORTARIA: "3",
+  OUTROS: "4",
+};
+
+/** §5.26 TipoNaturezaJuridica — de-para EXAUSTIVO do enum do domínio. */
+export const DEPARA_NATUREZA_JURIDICA_SAGRES: Readonly<
+  Record<
+    | "CAMARA_MUNICIPAL"
+    | "PREFEITURA_OU_SECRETARIA"
+    | "AUTARQUIA"
+    | "FUNDACAO"
+    | "SOCIEDADE_DE_ECONOMIA_MISTA"
+    | "FUNDO"
+    | "EMPRESA_PUBLICA"
+    | "AUTARQUIA_PREVIDENCIARIA"
+    | "FUNDO_PREVIDENCIARIO",
+    string
+  >
+> = {
+  CAMARA_MUNICIPAL: "1",
+  PREFEITURA_OU_SECRETARIA: "2",
+  AUTARQUIA: "3",
+  FUNDACAO: "4",
+  SOCIEDADE_DE_ECONOMIA_MISTA: "5",
+  FUNDO: "6",
+  EMPRESA_PUBLICA: "7",
+  AUTARQUIA_PREVIDENCIARIA: "8",
+  FUNDO_PREVIDENCIARIO: "9",
+};
+
+// ═══ 4.13 ESTORNOPAGAMENTO (Diário) — V21 ═════════════════════════════════════════
+// Origem: o Pagamento de ANULAÇÃO (inteira: `estornoDeId`; parcial: `anulacaoParcialDeId`) + o
+// pagamento anulado (a parcela) + a cadeia até a ficha. `motivo` ← Pagamento.motivo (V21), gravado
+// pela anulação — que já o exigia na tela e o descartava no serviço. Anulação sem motivo (as gravadas
+// antes da V21) é RECUSADA nomeando: o campo é obrigatório e inventar um texto seria pior.
+// `despesaLiquidada` = "S": neste modelo todo pagamento nasce de uma liquidação.
+
+export interface EstornoPagamentoFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  /** O número da PARCELA estornada — o pagamento anulado. */
+  readonly numPagamento: string;
+  readonly data: Date;
+  readonly motivo: string;
+  readonly despesaLiquidada: string;
+  readonly valor: Money;
+  /** O número do estorno — o da própria linha de anulação. */
+  readonly numero: string;
+}
+
+const camposEstornoPagamento: readonly CampoLayout<EstornoPagamentoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "anulado.liquidacao.empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "anulado.liquidacao.empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numPagamento", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "pagamento anulado.numero (parcela)", extrair: (f) => f.numPagamento },
+  { nome: "data", posInicial: 30, posFinal: 37, tipo: "DATA", obrigatorio: true, origem: "anulação.data", extrair: (f) => f.data },
+  { nome: "motivo", posInicial: 38, posFinal: 157, tipo: "ALFA", obrigatorio: true, origem: "Pagamento.motivo (V21)", extrair: (f) => f.motivo },
+  { nome: "despesaLiquidada", posInicial: 158, posFinal: 158, tipo: "ALFA", obrigatorio: true, origem: "\"S\" (todo pagamento nasce de liquidação)", extrair: (f) => f.despesaLiquidada },
+  { nome: "valor", posInicial: 159, posFinal: 174, tipo: "VALOR", obrigatorio: true, origem: "anulação.valor", extrair: (f) => f.valor },
+  { nome: "numero", posInicial: 175, posFinal: 181, tipo: "NUMERICO", obrigatorio: true, origem: "anulação.numero", extrair: (f) => f.numero },
+];
+
+export const LAYOUT_ESTORNO_PAGAMENTO: LayoutArquivo<EstornoPagamentoFato> = {
+  entidade: "EstornoPagamento",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornoPagamento,
+};
+
+// ═══ 4.27 CONCILIACAOBANCARIA (Mensal) — V21 ═══════════════════════════════════════
+// ⚠️ NÃO SÃO OS VÍNCULOS. O registro explica a diferença entre o saldo do BANCO e o da CONTABILIDADE
+// no fim do mês: uma linha do saldo do extrato (§5.15 tipo 1) e uma por PENDÊNCIA (tipos 2 a 5). Os
+// `VinculoConciliacao` são o que JÁ bateu — mandá-los seria o registro errado. Origem: o relatório
+// derivado `conciliacaoBancaria` (M09), cuja identidade (diferença == Σ pendências) é a trava: conta
+// que não fecha não sai. Conta/agência/banco: a tripla da S2, como em CadastroContaBancaria.
+// `numero`: sequencial por conta, 1 = o saldo, depois as pendências por (data, id). Cheque e documento
+// do débito: sem origem no relatório → zeros/espaços.
+
+export interface ConciliacaoBancariaFato {
+  readonly codUnidadeGestora: string;
+  readonly numeroConta: string;
+  readonly numeroAgencia: string;
+  readonly banco: string;
+  readonly numero: number;
+  /** §5.15 — 1 saldo do extrato; 2/3/4/5 as pendências. */
+  readonly tipoConciliacao: string;
+  readonly descricao: string;
+  readonly data: Date;
+  /** Sempre positivo: o sentido está no tipo. */
+  readonly valor: Money;
+  readonly tipoContaBancaria: string;
+  readonly cnpjGerencia: string;
+}
+
+const camposConciliacao: readonly CampoLayout<ConciliacaoBancariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numContaBancaria", posInicial: 7, posFinal: 19, tipo: "ALFA", obrigatorio: true, origem: "conta.conta+digito", extrair: (f) => f.numeroConta },
+  { nome: "numAgencia", posInicial: 20, posFinal: 25, tipo: "ALFA", obrigatorio: true, origem: "conta.agencia+digito", extrair: (f) => f.numeroAgencia },
+  { nome: "codBanco", posInicial: 26, posFinal: 28, tipo: "ALFA", obrigatorio: true, origem: "conta.banco", extrair: (f) => f.banco },
+  { nome: "numero", posInicial: 29, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "sequencial por conta (1 = saldo)", extrair: (f) => f.numero },
+  { nome: "tipoConciliacao", posInicial: 37, posFinal: 37, tipo: "NUMERICO", obrigatorio: true, origem: "§5.15 pelo lado e o sentido da pendência", extrair: (f) => f.tipoConciliacao },
+  { nome: "descricao", posInicial: 38, posFinal: 187, tipo: "ALFA", obrigatorio: true, origem: "descrição da linha do relatório", extrair: (f) => f.descricao },
+  { nome: "data", posInicial: 188, posFinal: 195, tipo: "DATA", obrigatorio: true, origem: "corte do mês / data do fato pendente", extrair: (f) => f.data },
+  { nome: "numCheque", posInicial: 196, posFinal: 201, tipo: "NUMERICO", obrigatorio: false, origem: "sem origem no relatório → zeros", extrair: () => null },
+  { nome: "numDocDebito", posInicial: 202, posFinal: 212, tipo: "ALFA", obrigatorio: false, origem: "sem origem no relatório → espaços", extrair: () => null },
+  { nome: "valor", posInicial: 213, posFinal: 228, tipo: "VALOR", obrigatorio: true, origem: "|saldo| ou |residual|", extrair: (f) => f.valor },
+  { nome: "tipoContaBancaria", posInicial: 229, posFinal: 229, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1)", extrair: (f) => f.tipoContaBancaria },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 230, posFinal: 243, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+];
+
+export const LAYOUT_CONCILIACAO_BANCARIA: LayoutArquivo<ConciliacaoBancariaFato> = {
+  entidade: "ConciliacaoBancaria",
+  periodicidade: "MENSAL",
+  versao: VERSAO,
+  campos: camposConciliacao,
+};
+
+/**
+ * §5.15 — o TIPO pelo LADO em que a pendência está e pelo SENTIDO do residual. Puro, e exportado para o
+ * teste conferir contra a tabela transcrita à mão do leiaute.
+ *   extrato sem vínculo (o banco registrou, a contabilidade não): entrada → 4, saída → 3
+ *   razão sem vínculo (a contabilidade registrou, o banco não):   entrada → 2, saída → 5
+ */
+export function tipoConciliacaoDe(lado: "EXTRATO" | "RAZAO", residual: Money): string {
+  const entrada = residual.greaterThan(0);
+  if (lado === "EXTRATO") return entrada ? "4" : "3";
+  return entrada ? "2" : "5";
+}
+
 // ═══ 4.16 RECEITAORCAMENTARIA (Diária) ═════════════════════════════════════════
 // Origem: ReceitaArrecadada (m04) + naturezaReceita + fonte + co. A CONTA ARRECADADORA é PARÂMETRO
 // DE EXPORTAÇÃO (a designação da UG), não vínculo por-guia: o modelo NÃO amarra receita a conta —
@@ -613,6 +783,7 @@ export const LAYOUT_DESPESA_EXTRA: LayoutArquivo<DespesaExtraFato> = {
 
 /** Todos os layouts desta versão, para a auto-validação em lote e a matriz. */
 export const LAYOUTS_2026V11 = [
+  LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
   LAYOUT_EMPENHOS,
   LAYOUT_LIQUIDACAO,
@@ -620,6 +791,8 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_SALDO_MENSAL,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_CONCILIACAO_BANCARIA,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_DESPESA_EXTRA,

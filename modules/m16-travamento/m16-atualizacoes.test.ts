@@ -361,10 +361,15 @@ describe("instalação limpa e atualização — no banco", () => {
       // ACOES_DO_ENTE. Se ela tivesse ficado fora de TODAS_AS_ACOES, o bootstrap nao a concederia e
       // esta previa viria 1 — foi exatamente este numero que apontou o furo da v32.
       { versao: 36, previa: 0, aplicada: false },
+      // ⚠️ V21 — PREVIA 0 NA INSTALACAO LIMPA prova que as duas acoes da realocacao chegaram a
+      // ACOES_DO_ENTE pelo bootstrap. Fora de TODAS_AS_ACOES, esta previa viria 2.
+      { versao: 37, previa: 0, aplicada: false },
+      // V21 — prévia 0 na instalação limpa: DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA chegou pelo bootstrap.
+      { versao: 38, previa: 0, aplicada: false },
       // ⚠️ PREVIA 0 NA INSTALACAO LIMPA prova que SOLICITAR_EMPENHO e AUTORIZAR_SOLICITACAO_DE_EMPENHO
       // chegaram a ACOES_DO_ENTE (o admin tem EMPENHAR e AUTORIZAR_ORDEM_PAGAMENTO globais, e ja nasce
       // com as duas derivadas). Fora de TODAS_AS_ACOES, esta previa viria 2.
-      { versao: 37, previa: 0, aplicada: false },
+      { versao: 39, previa: 0, aplicada: false },
     ]);
   });
 

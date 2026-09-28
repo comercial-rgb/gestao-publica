@@ -8,6 +8,9 @@ import {
   gerarLiquidacao,
   gerarMovimentacaoEntreContas,
   gerarPagamentos,
+  gerarEstornoPagamento,
+  gerarConciliacaoBancariaOuRecusa,
+  gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -18,6 +21,7 @@ import {
   lerFatosLiquidacao,
   lerFatosMovimentacao,
   lerFatosPagamentos,
+  lerFatosEstornoPagamento,
   lerFatosReceitaOrcamentaria,
   lerFatosRetencao,
   lerFatosSaldoMensal,
@@ -32,6 +36,9 @@ import {
   LAYOUT_LIQUIDACAO,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_CONCILIACAO_BANCARIA,
+  LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
@@ -193,11 +200,12 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const exercicio = anoCivil(mesRef);
 
   // (1) LER OS FATOS (uma vez) — para validar antes de serializar.
-  const [dotacao, empenhos, liquidacoes, pagamentos, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
+  const [dotacao, empenhos, liquidacoes, pagamentos, estornosDePagamento, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
     lerFatosDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio }),
     lerFatosEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosPagamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
+    lerFatosEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     lerFatosCadastroConta(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora }),
     lerFatosSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -206,12 +214,24 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     lerFatosDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
 
+  // V21 — a CONCILIAÇÃO (§4.27): o arquivo, ou a recusa nomeada. Ver `gerarConciliacaoBancariaOuRecusa`.
+  const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
+  // V21 — a UNIDADE ORÇAMENTÁRIA (§4.1), no mesmo regime: o arquivo, ou a recusa nomeada.
+  const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: mesRef });
+
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
+    ...("recusa" in unidades
+      ? [{ arquivo: "UnidadeOrcamentaria", linha: 0, campo: "unidade", regra: "DADOS_DA_UNIDADE_AUSENTES" as const, detalhe: `${unidades.recusa} O arquivo das unidades fica FORA do pacote até a declaração.` }]
+      : validarObrigatorios(LAYOUT_UNIDADE_ORCAMENTARIA, unidades.fatos)),
+    ...("recusa" in conciliacao
+      ? [{ arquivo: "ConciliacaoBancaria", linha: 0, campo: "conta", regra: "CONCILIACAO_NAO_FECHA" as const, detalhe: `${conciliacao.recusa} O arquivo da conciliação fica FORA do pacote até a conta fechar.` }]
+      : validarObrigatorios(LAYOUT_CONCILIACAO_BANCARIA, conciliacao.fatos)),
     ...validarObrigatorios(LAYOUT_DOTACAO, dotacao),
     ...validarObrigatorios(LAYOUT_EMPENHOS, empenhos),
     ...validarObrigatorios(LAYOUT_LIQUIDACAO, liquidacoes),
     ...validarObrigatorios(LAYOUT_PAGAMENTOS, pagamentos),
+    ...validarObrigatorios(LAYOUT_ESTORNO_PAGAMENTO, estornosDePagamento),
     ...validarObrigatorios(LAYOUT_RECEITA_ORCAMENTARIA, receitas),
     ...validarObrigatorios(LAYOUT_CADASTRO_CONTA, cadastro),
     ...validarObrigatorios(LAYOUT_SALDO_MENSAL, saldos),
@@ -223,11 +243,12 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   ];
 
   // (3) SERIALIZAR os arquivos + montar o pacote/manifesto.
-  const [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra] = await Promise.all([
+  const [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio, competencia: mesRef }),
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarPagamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
+    gerarEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -235,7 +256,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra];
+  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : [])];
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -252,6 +273,9 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     { g: aEmpenhos, l: LAYOUT_EMPENHOS },
     { g: aLiquidacao, l: LAYOUT_LIQUIDACAO },
     { g: aPagamentos, l: LAYOUT_PAGAMENTOS },
+    { g: aEstornoPagamento, l: LAYOUT_ESTORNO_PAGAMENTO },
+    ...("arquivo" in conciliacao ? [{ g: conciliacao.arquivo, l: LAYOUT_CONCILIACAO_BANCARIA }] : []),
+    ...("arquivo" in unidades ? [{ g: unidades.arquivo, l: LAYOUT_UNIDADE_ORCAMENTARIA }] : []),
     { g: aReceita, l: LAYOUT_RECEITA_ORCAMENTARIA },
     { g: aCadastro, l: LAYOUT_CADASTRO_CONTA },
     { g: aSaldo, l: LAYOUT_SALDO_MENSAL },
@@ -285,7 +309,7 @@ export interface PacoteParaDownload {
   readonly hashPacote: string;
 }
 
-/** Monta o ZIP do pacote para download (os 10 .txt + manifesto.json). Determinístico. */
+/** Monta o ZIP do pacote para download (os .txt + manifesto.json). Determinístico. */
 export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDownload> {
   await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
   const prisma = cliente();
@@ -293,11 +317,12 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   // Mesma normalização da prévia — o ZIP baixado TEM de ser o que a tela mostrou.
   const mesRef = competenciaMensalDe(p);
   const exercicio = anoCivil(mesRef);
-  const arquivos = await Promise.all([
+  const arquivos: ArquivoGerado[] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio, competencia: mesRef }),
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarPagamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
+    gerarEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -305,6 +330,11 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
+  // V21 — a conciliação entra quando fecha; quando não, a prévia já disse por quê.
+  const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
+  if ("arquivo" in conciliacao) arquivos.push(conciliacao.arquivo);
+  const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: mesRef });
+  if ("arquivo" in unidades) arquivos.push(unidades.arquivo);
 
   const pacote = montarPacote(
     { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora },

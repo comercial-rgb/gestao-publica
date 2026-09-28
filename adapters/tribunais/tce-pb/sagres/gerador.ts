@@ -2,6 +2,12 @@ import type { PrismaClient } from "../../../../prisma/generated/client/client.js
 import { Decimal, toMoney } from "../../../../packages/contracts/index.js";
 import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
+import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
+import {
+  conciliacaoBancaria,
+  ConciliacaoNaoFechaError,
+  MapeamentoContabilAusenteError,
+} from "../../../../modules/m09-tesouraria/conciliacao.js";
 import {
   EXERCICIO_FONTE_ATUAL,
   FONTES_RECURSO_EXTRA_SAGRES,
@@ -12,6 +18,12 @@ import {
   LAYOUT_LIQUIDACAO,
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
+  LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_UNIDADE_ORCAMENTARIA,
+  DEPARA_ATO_JURIDICO_SAGRES,
+  DEPARA_NATUREZA_JURIDICA_SAGRES,
+  LAYOUT_CONCILIACAO_BANCARIA,
+  tipoConciliacaoDe,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
@@ -25,6 +37,9 @@ import {
   type LiquidacaoFato,
   type MovimentacaoFato,
   type PagamentoFato,
+  type EstornoPagamentoFato,
+  type UnidadeOrcamentariaFato,
+  type ConciliacaoBancariaFato,
   type ReceitaOrcamentariaFato,
   type RetencaoFato,
   type SaldoMensalFato,
@@ -288,6 +303,76 @@ export async function gerarSaldoMensal(
   return empacotar(LAYOUT_SALDO_MENSAL, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "SaldoMensal", competencia: params.competencia }), fatos);
 }
 
+// ── CONCILIACAOBANCARIA (Mensal, V21) — o saldo do extrato e as pendências do fim do mês. ──────
+// O corte é o MESMO do SaldoMensal (fim do mês, formato externo em UTC): a linha tipo 1 tem de ser o
+// mesmo número que o SaldoMensal manda para a mesma conta.
+export async function lerFatosConciliacaoBancaria(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly competencia: Date }
+): Promise<ConciliacaoBancariaFato[]> {
+  const fimDoMes = new Date(Date.UTC(params.competencia.getUTCFullYear(), params.competencia.getUTCMonth() + 1, 1, 0, 0, 0));
+  const corte = new Date(fimDoMes.getTime() - 1);
+  const contas = await prisma.contaBancaria.findMany({ orderBy: [{ codigo: "asc" }] });
+  const fatos: ConciliacaoBancariaFato[] = [];
+  for (const c of contas) {
+    const t = exigirTripla(c);
+    const r = await conciliacaoBancaria(prisma, c.id, corte);
+    const comum = {
+      codUnidadeGestora: params.codUnidadeGestora,
+      numeroConta: comDigito(t.conta, c.digitoConta),
+      numeroAgencia: comDigito(t.agencia, c.digitoAgencia),
+      banco: t.banco,
+      tipoContaBancaria: TIPO_CONTA_CORRENTE,
+      cnpjGerencia: params.cnpjGerenciadora,
+    };
+    let numero = 1;
+    fatos.push({ ...comum, numero, tipoConciliacao: "1", descricao: "Saldo conforme extrato bancario", data: corte, valor: toMoney(toMoney(r.saldoExtrato).abs().toFixed(2)) });
+    const pendencias = [
+      ...r.noExtratoSemVinculo.map((l) => ({ l, lado: "EXTRATO" as const })),
+      ...r.internoSemVinculo.map((l) => ({ l, lado: "RAZAO" as const })),
+    ].sort((a, b) => a.l.data.getTime() - b.l.data.getTime() || (a.l.id < b.l.id ? -1 : a.l.id > b.l.id ? 1 : 0));
+    for (const { l, lado } of pendencias) {
+      numero += 1;
+      const residual = toMoney(l.residual);
+      fatos.push({ ...comum, numero, tipoConciliacao: tipoConciliacaoDe(lado, residual), descricao: l.descricao, data: l.data, valor: toMoney(residual.abs().toFixed(2)) });
+    }
+  }
+  return fatos;
+}
+
+export async function gerarConciliacaoBancaria(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly competencia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosConciliacaoBancaria(prisma, params);
+  return empacotar(LAYOUT_CONCILIACAO_BANCARIA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "ConciliacaoBancaria", competencia: params.competencia }), fatos);
+}
+
+/**
+ * O arquivo, OU a recusa nomeada — para o PACOTE (V21).
+ *
+ * ⚠️ POR QUE O PACOTE NÃO CAI JUNTO. A conciliação recusa, com razão, a conta que não fecha ou que não
+ * tem conta contábil. Deixar essa recusa derrubar o pacote mensal inteiro esconderia os outros onze
+ * arquivos atrás de um problema de UMA conta; omitir a conciliação em silêncio seria pior. O pacote
+ * sai SEM este arquivo e a prévia diz por quê. Só as duas recusas conhecidas são convertidas; qualquer
+ * outro erro sobe.
+ */
+export async function gerarConciliacaoBancariaOuRecusa(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly competencia: Date }
+): Promise<{ readonly arquivo: ArquivoGerado; readonly fatos: ConciliacaoBancariaFato[] } | { readonly recusa: string }> {
+  try {
+    const fatos = await lerFatosConciliacaoBancaria(prisma, params);
+    const arquivo = empacotar(LAYOUT_CONCILIACAO_BANCARIA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "ConciliacaoBancaria", competencia: params.competencia }), fatos);
+    return { arquivo, fatos };
+  } catch (e) {
+    if (e instanceof ConciliacaoNaoFechaError || e instanceof MapeamentoContabilAusenteError) {
+      return { recusa: e.message };
+    }
+    throw e;
+  }
+}
+
 // ── MOVIMENTACAOENTRECONTASBANCARIAS (Diário) — Origem: TransferenciaEntreContas (F1). ──
 export async function lerFatosMovimentacao(
   prisma: PrismaClient,
@@ -379,6 +464,140 @@ export async function gerarPagamentos(
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosPagamentos(prisma, params);
   return empacotar(LAYOUT_PAGAMENTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Pagamentos", competencia: params.dia }), fatos);
+}
+
+// ── UNIDADEORCAMENTARIA (Mensal, V21) — a unidade + a declaração vigente no fim do mês. ─────────
+/** Recusa conhecida do §4.1: vira violação da prévia, e o arquivo fica fora do pacote. */
+export class UnidadeSemDadosParaPrestacaoError extends Error {}
+
+export async function lerFatosUnidadeOrcamentaria(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<UnidadeOrcamentariaFato[]> {
+  const fimDoMes = new Date(Date.UTC(params.competencia.getUTCFullYear(), params.competencia.getUTCMonth() + 1, 1, 0, 0, 0));
+  const corte = new Date(fimDoMes.getTime() - 1);
+  const unidades = await prisma.unidadeOrcamentaria.findMany({
+    orderBy: { codigo: "asc" },
+    select: {
+      codigo: true,
+      descricao: true,
+      declaracoes: {
+        select: { naturezaJuridica: true, nomeSecretario: true, cpfSecretario: true, atoDeNomeacao: true, vigenteDesde: true, criadoEm: true },
+      },
+    },
+  });
+  const semDeclaracao: string[] = [];
+  const descricaoLonga: string[] = [];
+  const fatos: UnidadeOrcamentariaFato[] = [];
+  for (const u of unidades) {
+    const v = vigenteNoCorte(u.declaracoes, corte);
+    if (v === null) {
+      semDeclaracao.push(u.codigo + " " + u.descricao);
+      continue;
+    }
+    if (u.descricao.trim().length > 50) {
+      descricaoLonga.push(u.codigo + " (" + String(u.descricao.trim().length) + " caracteres)");
+      continue;
+    }
+    fatos.push({
+      codUnidadeGestora: params.codUnidadeGestora,
+      codigo: u.codigo,
+      descricao: u.descricao,
+      nomeSecretario: v.nomeSecretario,
+      cpfSecretario: v.cpfSecretario,
+      atoAdministrativo: DEPARA_ATO_JURIDICO_SAGRES[v.atoDeNomeacao],
+      tipoNaturezaJuridica: DEPARA_NATUREZA_JURIDICA_SAGRES[v.naturezaJuridica],
+    });
+  }
+  if (semDeclaracao.length > 0 || descricaoLonga.length > 0) {
+    throw new UnidadeSemDadosParaPrestacaoError(
+      (semDeclaracao.length > 0
+        ? "Unidade(s) sem natureza jurídica e secretário declarados até o fim do mês: " +
+          semDeclaracao.join("; ") +
+          ". Declare em Planejamento › Unidades orçamentárias. "
+        : "") +
+        (descricaoLonga.length > 0
+          ? "Unidade(s) com descrição acima dos 50 caracteres que o arquivo aceita: " + descricaoLonga.join("; ") + "."
+          : "")
+    );
+  }
+  return fatos;
+}
+
+export async function gerarUnidadeOrcamentariaOuRecusa(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<{ readonly arquivo: ArquivoGerado; readonly fatos: UnidadeOrcamentariaFato[] } | { readonly recusa: string }> {
+  try {
+    const fatos = await lerFatosUnidadeOrcamentaria(prisma, params);
+    const arquivo = empacotar(LAYOUT_UNIDADE_ORCAMENTARIA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "UnidadeOrcamentaria", competencia: params.competencia }), fatos);
+    return { arquivo, fatos };
+  } catch (e) {
+    if (e instanceof UnidadeSemDadosParaPrestacaoError) return { recusa: e.message.trim() };
+    throw e;
+  }
+}
+
+export async function gerarUnidadeOrcamentaria(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosUnidadeOrcamentaria(prisma, params);
+  return empacotar(LAYOUT_UNIDADE_ORCAMENTARIA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "UnidadeOrcamentaria", competencia: params.competencia }), fatos);
+}
+
+// ── ESTORNOPAGAMENTO (Diário, V21) — a linha de anulação + o pagamento anulado + a cadeia. ────
+export async function lerFatosEstornoPagamento(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoPagamentoFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const anulacoes = await prisma.pagamento.findMany({
+    where: {
+      data: { gte, lt },
+      OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }],
+    },
+    include: {
+      estornoDe: { select: { numero: true } },
+      anulacaoParcialDe: { select: { numero: true } },
+      liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } },
+    },
+    orderBy: [{ numero: "asc" }],
+  });
+  return anulacoes.map((a) => {
+    const anulado = a.estornoDe ?? a.anulacaoParcialDe;
+    if (anulado === null) {
+      throw new Error(`SAGRES/EstornoPagamento — a anulação ${a.numero} não aponta o pagamento anulado.`);
+    }
+    if (a.motivo === null || a.motivo.trim() === "") {
+      throw new Error(
+        `SAGRES/EstornoPagamento — a anulação ${a.numero} (do pagamento ${anulado.numero}) foi gravada ` +
+          `sem motivo, antes de o sistema guardá-lo. O campo é obrigatório no leiaute e não se inventa ` +
+          `texto para ele. Nada foi gerado.`
+      );
+    }
+    const ficha = a.liquidacao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: a.liquidacao.empenho.numero,
+      numPagamento: anulado.numero,
+      data: a.data,
+      motivo: a.motivo,
+      despesaLiquidada: "S",
+      valor: money(a.valor),
+      numero: a.numero,
+    };
+  });
+}
+
+export async function gerarEstornoPagamento(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosEstornoPagamento(prisma, params);
+  return empacotar(LAYOUT_ESTORNO_PAGAMENTO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoPagamento", competencia: params.dia }), fatos);
 }
 
 // ── RECEITAORCAMENTARIA (Diária) — Origem: ReceitaArrecadada + natureza/fonte/co. ───────────────

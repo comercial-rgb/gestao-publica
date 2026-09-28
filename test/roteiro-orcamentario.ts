@@ -38,6 +38,8 @@ import type { PrismaClient } from "../prisma/generated/client/client.js";
  */
 export {
   CONTA_DOTACAO_INICIAL,
+  CONTA_REALOCACAO_ACRESCIMO,
+  CONTA_REALOCACAO_REDUCAO,
   CONTA_DOTACAO_ADICIONAL,
   CONTA_CREDITO_ADICIONAL_SUPLEMENTAR,
   CONTA_CREDITO_DISPONIVEL,
@@ -56,6 +58,8 @@ import {
   CONTA_CREDITO_ADICIONAL_SUPLEMENTAR as _SUPL,
   CONTA_DOTACAO_ADICIONAL as _ADIC,
   CONTA_DOTACAO_INICIAL as _INIC,
+  CONTA_REALOCACAO_ACRESCIMO as _REAL_ACR,
+  CONTA_REALOCACAO_REDUCAO as _REAL_RED,
 } from "../modules/m01-core-contabil/roteiros.js";
 
 /**
@@ -107,6 +111,8 @@ const CONTA_DOTACAO_ADICIONAL = _ADIC;
 const CONTA_CREDITO_ADICIONAL_SUPLEMENTAR = _SUPL;
 const CONTA_CREDITO_DISPONIVEL = _DISP;
 const CONTA_CREDITO_RESERVADO = _RESERV;
+const CONTA_REALOCACAO_ACRESCIMO = _REAL_ACR;
+const CONTA_REALOCACAO_REDUCAO = _REAL_RED;
 
 const CONTAS: readonly {
   codigo: string;
@@ -121,6 +127,8 @@ const CONTAS: readonly {
   { codigo: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO, nome: "Creditos extraordinarios abertos", naturezaSaldo: "DEVEDORA" },
   { codigo: FIXTURE_CONTA_CREDITO_EXTRAORDINARIO_REABERTO, nome: "Creditos extraordinarios reabertos", naturezaSaldo: "DEVEDORA" },
   { codigo: CONTA_CREDITO_DISPONIVEL, nome: "Crédito disponível", naturezaSaldo: "CREDORA" },
+  { codigo: CONTA_REALOCACAO_ACRESCIMO, nome: "Alteracao da lei orcamentaria - acrescimo", naturezaSaldo: "DEVEDORA" },
+  { codigo: CONTA_REALOCACAO_REDUCAO, nome: "Alteracao da lei orcamentaria - reducao", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_RESERVADO, nome: "Crédito reservado", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_EMPENHADO, nome: "Crédito empenhado", naturezaSaldo: "CREDORA" },
 
@@ -171,7 +179,9 @@ const ROTEIROS: readonly {
     | "CREDITO_ADICIONAL"
     | "ANULACAO_CREDITO"
     | "RESERVA"
-    | "RESERVA_LIBERADA";
+    | "RESERVA_LIBERADA"
+    | "REALOCACAO_ACRESCIMO"
+    | "REALOCACAO_REDUCAO";
   tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
   abertura?: "ABERTO" | "REABERTO";
   debito: string;
@@ -191,6 +201,9 @@ const ROTEIROS: readonly {
   { tipo: "ANULACAO_CREDITO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_DOTACAO_ADICIONAL },
   { tipo: "RESERVA", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_CREDITO_RESERVADO },
   { tipo: "RESERVA_LIBERADA", debito: CONTA_CREDITO_RESERVADO, credito: CONTA_CREDITO_DISPONIVEL },
+  // V21 — a realocação por lei específica, com as contas REAIS do plano (5.2.2.1.9.02).
+  { tipo: "REALOCACAO_ACRESCIMO", debito: CONTA_REALOCACAO_ACRESCIMO, credito: CONTA_CREDITO_DISPONIVEL },
+  { tipo: "REALOCACAO_REDUCAO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_REALOCACAO_REDUCAO },
 ];
 
 /**

@@ -26,7 +26,9 @@ export type TipoMovimentoDotacao =
   | "RESERVA"
   | "RESERVA_LIBERADA"
   | "EMPENHO"
-  | "EMPENHO_ANULADO";
+  | "EMPENHO_ANULADO"
+  | "REALOCACAO_ACRESCIMO"
+  | "REALOCACAO_REDUCAO";
 
 export const TIPOS_MOVIMENTO: readonly TipoMovimentoDotacao[] = [
   "DOTACAO_INICIAL",
@@ -36,6 +38,8 @@ export const TIPOS_MOVIMENTO: readonly TipoMovimentoDotacao[] = [
   "RESERVA_LIBERADA",
   "EMPENHO",
   "EMPENHO_ANULADO",
+  "REALOCACAO_ACRESCIMO",
+  "REALOCACAO_REDUCAO",
 ] as const;
 
 /**
@@ -54,6 +58,11 @@ const SINAIS: Record<
   RESERVA_LIBERADA: { saldo: "reservado", sinal: -1 },
   EMPENHO: { saldo: "empenhado", sinal: 1 },
   EMPENHO_ANULADO: { saldo: "empenhado", sinal: -1 },
+  // V21 — a realocação por lei específica (CF art. 167, VI) mexe no AUTORIZADO, como o crédito:
+  // a ficha que recebe passa a poder empenhar mais, a que cede, menos. Entra aqui e em nenhum outro
+  // lugar da aritmética — o QDD, o saldo e a reconciliação leem esta tabela.
+  REALOCACAO_ACRESCIMO: { saldo: "autorizado", sinal: 1 },
+  REALOCACAO_REDUCAO: { saldo: "autorizado", sinal: -1 },
 };
 
 /** Total por tipo, como sai de um GROUP BY no banco. */
@@ -533,4 +542,32 @@ export function comporEmpenho(
 } {
   const dados = zEmpenharInput.parse(input);
   return { dados, partidas: comporPartidas(dados.valor, roteiro) };
+}
+
+/**
+ * V21 — O MOTIVO DA ANULAÇÃO DE PAGAMENTO nasce EXPORTÁVEL.
+ *
+ * Ele vai à prestação de contas do Tribunal de Contas (SAGRES, EstornoPagamento), num campo de 120
+ * caracteres que proíbe aspas e apóstrofo e em que uma quebra de linha parte o arquivo. O gerador
+ * RECUSA o que não cabe — e descobrir isso no dia da remessa, meses depois, deixaria um fato que não
+ * se exporta. Por isso a regra é conferida AQUI, na anulação, antes de gravar.
+ */
+export const TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO = 120;
+
+export function exigirMotivoDeAnulacaoDePagamento(motivo: string): string {
+  const m = motivo.trim();
+  if (m === "") throw new Error("Informe o motivo da anulação do pagamento. Nada foi gravado.");
+  if (m.length > TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO) {
+    throw new Error(
+      `O motivo tem ${String(m.length)} caracteres; a prestação de contas ao Tribunal de Contas aceita até ` +
+        `${String(TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO)}. Resuma o motivo. Nada foi gravado.`
+    );
+  }
+  if (/[\u0000-\u001f]/.test(m)) {
+    throw new Error("Escreva o motivo numa linha só, sem quebra de linha. Nada foi gravado.");
+  }
+  if (m.includes("'") || m.includes('"')) {
+    throw new Error("O motivo não pode ter aspas nem apóstrofo (o arquivo do Tribunal de Contas não aceita). Nada foi gravado.");
+  }
+  return m;
 }

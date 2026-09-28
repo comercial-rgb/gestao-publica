@@ -22,6 +22,13 @@ enum TipoMovimentoDotacao {
   RESERVA_LIBERADA
   EMPENHO
   EMPENHO_ANULADO
+  /// V21 — a dotação que uma LEI ESPECÍFICA move de uma programação para outra (CF art. 167, VI:
+  /// remanejamento, transposição e transferência). NÃO é crédito adicional: não traz recurso
+  /// novo, não consome o limite de crédito da LOA, e no plano de contas mora em
+  /// 5.2.2.1.9.02 ALTERAÇÃO DA LEI ORÇAMENTÁRIA, não em 5.2.2.1.2. Por isso é tipo PRÓPRIO, e não
+  /// um quarto valor de TipoCredito — aquele enum governa o limite, e dez sítios o enumeram.
+  REALOCACAO_ACRESCIMO
+  REALOCACAO_REDUCAO
 }
 
 enum TipoEmpenho {
@@ -67,6 +74,8 @@ model MovimentoDotacao {
 
   /// back-relation M03 — campo VIRTUAL, não gera coluna.
   itemCredito ItemCredito?
+  /// back-relation M03 V21 — campo VIRTUAL, não gera coluna.
+  itemDeRealocacao ItemDeRealocacao?
 
   @@index([fichaId, tipo])
   @@index([origemTipo, origemId])
@@ -465,6 +474,12 @@ model Pagamento {
   /// regulares, cada um com a sua assinatura.
   ordemDePagamentoId String?           @unique
   ordemDePagamento   OrdemDePagamento? @relation(fields: [ordemDePagamentoId], references: [id])
+
+  /// V21 — POR QUE o pagamento foi anulado (inteiro ou em parte). Só existe nas linhas de ANULAÇÃO;
+  /// nulo no pagamento genuíno e nas anulações gravadas antes da V21 (sem backfill: inventar um
+  /// motivo retroativo seria pior que não ter nenhum). A tela sempre exigiu o texto e o serviço o
+  /// DESCARTAVA antes do banco — e o SAGRES (§4.13, EstornoPagamento) o exige, até 120 caracteres.
+  motivo String?
 
   estornoDeId String?
   estornoDe   Pagamento?  @relation("EstornoPagamento", fields: [estornoDeId], references: [id])

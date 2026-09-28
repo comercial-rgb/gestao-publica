@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { mkdirSync, writeFileSync } from "node:fs";
 import puppeteer from "puppeteer";
+import { ROTEIRO } from "./roteiro-da-apresentacao.js";
 
 /**
  * AS TELAS DO ROTEIRO DA APRESENTAÇÃO DA CONTABILIDADE (V22) — uma por requisito do termo de
@@ -19,49 +20,6 @@ const PASTA = process.argv[3] ?? "telas-da-apresentacao";
 const SENHA = process.env["SEED_ADMIN_SENHA"] ?? "";
 if (SENHA === "") throw new Error("SEED_ADMIN_SENHA ausente.");
 
-const ROTEIRO: readonly (readonly [string, string])[] = [
-  ["Registro contábil — lançamentos", "/contabilidade/lancamentos"],
-  ["Centros de custo", "/contabilidade/custos"],
-  ["Diário", "/relatorios/livros/diario"],
-  ["Razão (conta de caixa)", "/relatorios/livros/razao?conta=1.1.1.1.1.19.00"],
-  ["Balancete", "/relatorios/livros/balancete"],
-  ["Balanço orçamentário", "/relatorios/demonstracoes/balanco-orcamentario"],
-  ["Balanço financeiro", "/relatorios/demonstracoes/balanco-financeiro"],
-  ["Balanço patrimonial", "/relatorios/demonstracoes/balanco-patrimonial"],
-  ["Variações patrimoniais", "/relatorios/demonstracoes/variacoes-patrimoniais"],
-  ["Fluxos de caixa (DFC)", "/relatorios/demonstracoes/fluxos-de-caixa"],
-  ["Arquivos para a STN e a Receita", "/contabilidade/exportacoes-federais"],
-  ["Responsáveis técnicos", "/contabilidade/exportacoes-federais/responsaveis"],
-  ["RREO anexo 1", "/relatorios/rreo/anexo1"],
-  ["RREO anexo 3 (RCL)", "/relatorios/rreo/anexo3?exercicio=2026&bimestre=5"],
-  ["RREO anexo 8 (MDE)", "/relatorios/rreo/anexo8?exercicio=2026&bimestre=5"],
-  ["RREO anexo 12 (saúde)", "/relatorios/rreo/anexo12?exercicio=2026&bimestre=5"],
-  ["RGF anexo 1 (pessoal)", "/relatorios/rgf/anexo1"],
-  ["PPA", "/planejamento/ppa"],
-  ["LDO", "/planejamento/ldo"],
-  ["Lei Orçamentária Anual", "/planejamento/loa"],
-  ["Fichas da LOA", "/planejamento/fichas"],
-  ["QDD", "/planejamento/qdd"],
-  ["Alterações de PPA/LDO", "/planejamento/alteracoes"],
-  ["CMD e MBA", "/planejamento/cmd-mba"],
-  ["Créditos adicionais", "/planejamento/creditos-adicionais"],
-  ["Processos (reserva de dotação)", "/licitacoes/processos"],
-  ["Solicitações de compra", "/licitacoes/solicitacoes"],
-  ["Contratos", "/licitacoes/contratos"],
-  ["Solicitações de empenho", "/despesa/solicitacoes-de-empenho"],
-  ["Empenhos", "/despesa/empenhos"],
-  ["Liquidações", "/despesa/liquidacoes"],
-  ["Pagamentos", "/despesa/pagamentos"],
-  ["Assinaturas", "/despesa/assinaturas"],
-  ["Restos a pagar", "/despesa/restos-a-pagar"],
-  ["Naturezas de receita", "/receita/naturezas"],
-  ["Arrecadação", "/receita/arrecadacoes"],
-  ["Extraorçamentário", "/financeiro/extraorcamentario"],
-  ["Retenções a recolher", "/financeiro/extraorcamentario/recolher"],
-  ["Convênios", "/transferencias/convenios"],
-  ["Natureza das fontes", "/contabilidade/natureza-das-fontes"],
-  ["Eliminações intragovernamentais", "/relatorios/eliminacoes-intra"],
-];
 
 const RECUSA = /Não foi possível|não está no seu acesso|Application error|Unhandled Runtime Error|This page could not be found|Página não encontrada/;
 

@@ -18,6 +18,7 @@ import {
   anularPagamentoParcial,
   estornarAnulacaoParcial,
 } from "./anulacao-parcial.js";
+import { lerFatosEstornoPagamento } from "../../adapters/tribunais/tce-pb/sagres/gerador.js";
 import type { M05Deps } from "./ports.js";
 import { criarM05DepsComAlmoxarifado } from "../m10-patrimonial/adapter-m05-almox.js";
 import { cadastrarDivida } from "../m10-patrimonial/divida.js";
@@ -600,5 +601,84 @@ describe("TR 5.35 — anulação parcial", () => {
     expect(depois.get(FONTE)!.pagoBruto.toFixed(2)).toBe("1500.00");
     // obrigações a pagar = liquidado 6.000 − pago 1.500 = 4.500
     expect(depois.get(FONTE)!.obrigacoesAPagar.toFixed(2)).toBe("4500.00");
+  });
+});
+
+/**
+ * V21 — O MOTIVO DA ANULAÇÃO DE PAGAMENTO CHEGA AO BANCO, E DO BANCO AO SAGRES (§4.13).
+ *
+ * Até aqui a tela exigia o motivo, a porta o repassava, o serviço o validava — e nenhum campo o
+ * recebia. N=2: uma anulação PARCIAL e uma INTEIRA no mesmo dia, cada uma com o seu motivo; o
+ * gerador tem de devolver as duas, cada uma apontando a SUA parcela.
+ */
+describe("V21 — o motivo da anulação de pagamento e o SAGRES EstornoPagamento", () => {
+  beforeEach(semear);
+
+  const DIA = new Date("2026-05-01T12:00:00Z");
+
+  it("grava o motivo nas duas anulações e o gerador devolve as duas, cada uma com a sua parcela", async () => {
+    const empenhoId = await empenhaDe("10000.00");
+    const liq = await liquidaDe(empenhoId, "6000.00");
+    const pag1 = await pagaDe(liq, "2500.00", "1");
+    const pag2 = await pagaDe(liq, "1000.00", "2");
+
+    await anularPagamentoParcial(
+      { originalId: pag1, numero: "91", valor: "500.00", data: DIA, motivo: "Devolucao parcial do fornecedor", criadoPor: POR },
+      deps
+    );
+    await anularPagamento(
+      { pagamentoId: pag2, numero: "92", data: DIA, historico: "Credor indicado errado na ordem", criadoPor: POR },
+      deps
+    );
+
+    const anulacoes = await prisma.pagamento.findMany({
+      where: { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] },
+      select: { numero: true, motivo: true },
+      orderBy: { numero: "asc" },
+    });
+    expect(anulacoes).toEqual([
+      { numero: "91", motivo: "Devolucao parcial do fornecedor" },
+      { numero: "92", motivo: "Credor indicado errado na ordem" },
+    ]);
+
+    const fatos = await lerFatosEstornoPagamento(prisma, { codUnidadeGestora: "999001", dia: DIA });
+    expect(fatos.map((f) => [f.numero, f.numPagamento, f.motivo, f.valor.toFixed(2), f.despesaLiquidada])).toEqual([
+      ["91", "NP-1", "Devolucao parcial do fornecedor", "500.00", "S"],
+      ["92", "NP-2", "Credor indicado errado na ordem", "1000.00", "S"],
+    ]);
+  });
+
+  it("recusa na ENTRADA o motivo que o arquivo do tribunal não aceita — e não grava nada", async () => {
+    const empenhoId = await empenhaDe("10000.00");
+    const liq = await liquidaDe(empenhoId, "6000.00");
+    const pag = await pagaDe(liq, "2500.00");
+    const antes = await prisma.pagamento.count();
+
+    await expect(
+      anularPagamento({ pagamentoId: pag, numero: "93", data: DIA, historico: "x".repeat(121), criadoPor: POR }, deps)
+    ).rejects.toThrow(/121 caracteres.*até 120/);
+    await expect(
+      anularPagamentoParcial(
+        { originalId: pag, numero: "94", valor: "100.00", data: DIA, motivo: 'Pedido do "fiscal" do contrato', criadoPor: POR },
+        deps
+      )
+    ).rejects.toThrow(/aspas nem apóstrofo/);
+    await expect(
+      anularPagamento({ pagamentoId: pag, numero: "95", data: DIA, historico: "primeira linha\nsegunda linha", criadoPor: POR }, deps)
+    ).rejects.toThrow(/numa linha só/);
+    expect(await prisma.pagamento.count()).toBe(antes);
+  });
+
+  it("a anulação gravada SEM motivo (anterior à V21) faz o gerador RECUSAR nomeando — não inventa texto", async () => {
+    const empenhoId = await empenhaDe("10000.00");
+    const liq = await liquidaDe(empenhoId, "6000.00");
+    const pag = await pagaDe(liq, "2500.00");
+    await anularPagamento({ pagamentoId: pag, numero: "96", data: DIA, historico: "Motivo que sera apagado", criadoPor: POR }, deps);
+    // Simula o legado: a coluna nasceu nula para tudo o que veio antes. (O teste roda como DONO.)
+    await prisma.pagamento.updateMany({ where: { numero: "96" }, data: { motivo: null } });
+
+    await expect(lerFatosEstornoPagamento(prisma, { codUnidadeGestora: "999001", dia: DIA })).rejects.toThrow(
+      /anulação 96 \(do pagamento NP-1\) foi gravada sem motivo/
+    );
   });
 });

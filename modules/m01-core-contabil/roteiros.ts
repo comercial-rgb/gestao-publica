@@ -208,6 +208,33 @@ export const CONTA_DOTACAO_POR_FONTE_ANULACAO = "5.2.2.1.3.03.00";
 export const CONTA_DOTACAO_POR_FONTE_OPERACAO_CREDITO = "5.2.2.1.3.04.00";
 
 /**
+ * ═══ A REALOCAÇÃO POR LEI ESPECÍFICA: `5.2.2.1.9.02 ALTERAÇÃO DA LEI ORÇAMENTÁRIA` (V21) ═══
+ *
+ * **Fonte:** o plano oficial do TCE-PB que está no banco (`prisma/seed/pcasp-oficial.ts`), lido
+ * por consulta, não de memória:
+ *
+ *   `5.2.2.1.9.00.00` CANCELAMENTO/REMANEJAMENTO DE DOTAÇÃO         (sintética)
+ *     · `.01.00` ALTERAÇÃO DO QUADRO DE DETALHAMENTO DA DESPESA     (sintética)
+ *         `.01.01` ACRESCIMO  (devedora)   `.01.09` (-) REDUÇÃO  (credora)
+ *     · `.02.00` ALTERAÇÃO DA LEI ORCAMENTARIA                      (sintética)
+ *         `.02.01` ACRESCIMO  (devedora)   `.02.09` (-) REDUÇÃO  (credora)
+ *     · `.04.00` (-) CANCELAMENTO DE DOTAÇÕES
+ *     · `.99.00` (-) OUTROS CANCELAMENTOS/REMANEJAMENTOS DE DOTAÇÃO
+ *
+ * ⚠️ POR QUE `.02` E NÃO `.01`. O remanejamento, a transposição e a transferência do art. 167, VI
+ * exigem LEI específica — alteram a lei orçamentária, e o ramo `.02` é exatamente esse. O `.01` é
+ * o ajuste do quadro de detalhamento (modalidade, elemento) que o Executivo faz por ato próprio,
+ * dentro da mesma programação: outro fato, que este sistema ainda não representa. Aqui há UMA
+ * analítica por perna, e o discriminador (acréscimo ou redução) é o próprio tipo do movimento —
+ * nada a escolher, o mesmo argumento que tornou semeável a conta do crédito suplementar.
+ *
+ * ⚠️ E O ENTE PODE TROCAR. Estas constantes alimentam o SEED do roteiro orçamentário; a decisão
+ * vigente mora na tabela, versionada, e se publica em `/contabilidade/roteiros-orcamentarios`.
+ */
+export const CONTA_REALOCACAO_ACRESCIMO = "5.2.2.1.9.02.01";
+export const CONTA_REALOCACAO_REDUCAO = "5.2.2.1.9.02.09";
+
+/**
  * ⚠️ SINTÉTICA NO PLANO OFICIAL, E O NOME DIVERGE. Pendência `ROTEIRO-RESERVA-SEM-CONTA`.
  *
  * Este sistema chama `6.2.2.1.2.00.00` de "crédito reservado"; no PCASP ela é **CREDITO

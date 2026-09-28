@@ -112,7 +112,7 @@ export default async function QddPage({
             colunas={COLUNAS}
             linhas={linhas}
             keyDe={(l) => l.fichaId}
-            legenda={`${linhas.length} ficha(s) · valores em R$ · atualizada = inicial + suplementações − anulações.`}
+            legenda={`${linhas.length} ficha(s) · valores em R$ · atualizada = inicial + suplementações − anulações + realocações.`}
           />
         </>
       )}
@@ -131,7 +131,7 @@ function csvQdd(linhas: readonly LinhaQdd[]): string {
   return paraCsv(
     // ⚠️ No CSV cada componente da chave é COLUNA PRÓPRIA: quem abre em planilha filtra por função
     // ou por programa, e não conseguiria fazê-lo sobre a string composta que a tela exibe.
-    ["Ficha", "Órgão", "Órgão (nome)", "Unidade", "Unidade (nome)", "Programa", "Função", "Subfunção", "Ação", "Fonte", "CO", "Natureza", "Descrição", "Dotação inicial", "Suplementações", "Anulações", "Dotação atualizada", "Disponível"],
+    ["Ficha", "Órgão", "Órgão (nome)", "Unidade", "Unidade (nome)", "Programa", "Função", "Subfunção", "Ação", "Fonte", "CO", "Natureza", "Descrição", "Dotação inicial", "Suplementações", "Anulações", "Realocações recebidas", "Realocações cedidas", "Dotação atualizada", "Disponível"],
     linhas.map((l) => [
       String(l.numero),
       l.orgaoCodigo, l.orgaoNome, l.unidadeCodigo, l.unidadeNome,
@@ -140,6 +140,8 @@ function csvQdd(linhas: readonly LinhaQdd[]): string {
       formatarMoeda(l.dotacaoInicial).texto,
       formatarMoeda(l.creditoSuplementado).texto,
       formatarMoeda(l.creditoAnulado).texto,
+      formatarMoeda(l.realocadoAcrescimo).texto,
+      formatarMoeda(l.realocadoReducao).texto,
       formatarMoeda(l.dotacaoAtualizada).texto,
       formatarMoeda(l.saldoDisponivel).texto,
     ])
@@ -185,6 +187,9 @@ const COLUNAS: readonly ColunaTabela<LinhaQdd>[] = [
   // ⚠️ A anulação vai com sinal −: ela REDUZ a dotação, e a coluna tem de deixar isso óbvio para
   // quem soma a linha com o olho. O `ValorMonetario` a imprime entre parênteses (convenção contábil).
   { chave: "anulado", cabecalho: "Anulações", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.creditoAnulado === "0.00" ? "0.00" : `-${l.creditoAnulado}`} /> },
+  // V21 — o remanejamento, a transposição e a transferência (lei específica) numa coluna só, LÍQUIDA:
+  // recebido menos cedido. A tela já está no limite de largura; as duas pernas separadas vão no CSV.
+  { chave: "realocado", cabecalho: "Realocações", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.realocadoLiquido} /> },
   { chave: "atualizada", cabecalho: "Dotação atualizada", alinhamento: "direita", largura: "10rem", celula: (l) => <strong><ValorMonetario valor={l.dotacaoAtualizada} /></strong> },
   { chave: "disponivel", cabecalho: "Disponível", alinhamento: "direita", largura: "10rem", celula: (l) => <ValorMonetario valor={l.saldoDisponivel} /> },
 ];

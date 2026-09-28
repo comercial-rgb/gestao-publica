@@ -33,7 +33,7 @@ import type { M05Deps } from "./ports.js";
  *   · anular o empenho NÃO devolve a solicitação (decisão declarada no módulo);
  *   · o convênio no empenho: a anulação total, a parcial e o estorno da parcial COPIAM o vínculo,
  *     e a soma por convênio fecha (N=2);
- *   · a atualização de permissões v37 leva as duas ações a um perfil legado, no escopo certo.
+ *   · a atualização de permissões v39 leva as duas ações a um perfil legado, no escopo certo.
  *
  * ⚠️ AS IDENTIDADES POSITIVAS são as da fixture (ADMIN: todas as ações). O ATOR NEGATIVO do escopo
  * é um usuário criado AQUI, com perfil restrito — nenhuma identidade da fixture serve para isso.
@@ -393,7 +393,7 @@ describe("o convênio no empenho", () => {
   });
 });
 
-describe("a atualização de permissões v37 (upgrade de instalação existente)", () => {
+describe("a atualização de permissões v39 (upgrade de instalação existente)", () => {
   it("t15 o perfil legado recebe SOLICITAR onde empenha e AUTORIZAR onde autoriza ordem — e reaplicar é recusado", async () => {
     const p = await prisma.perfil.create({
       data: {
@@ -409,7 +409,7 @@ describe("a atualização de permissões v37 (upgrade de instalação existente)
       },
       select: { id: true },
     });
-    await aplicarAtualizacaoDePermissoes(prisma, { versao: 37, criadoPor: SOLICITANTE, areaDaAcao: AREA_DA_ACAO });
+    await aplicarAtualizacaoDePermissoes(prisma, { versao: 39, criadoPor: SOLICITANTE, areaDaAcao: AREA_DA_ACAO });
     const ps = await prisma.permissaoDePerfil.findMany({ where: { perfilId: p.id }, select: { acao: true, unidadeOrcId: true } });
     expect(ps.map((x) => `${x.acao} ${x.unidadeOrcId}`).sort()).toEqual(
       [
@@ -419,6 +419,6 @@ describe("a atualização de permissões v37 (upgrade de instalação existente)
         `SOLICITAR_EMPENHO ${UG_A}`,
       ].sort()
     );
-    await expect(aplicarAtualizacaoDePermissoes(prisma, { versao: 37, criadoPor: SOLICITANTE, areaDaAcao: AREA_DA_ACAO })).rejects.toThrow(/JÁ APLICADA/);
+    await expect(aplicarAtualizacaoDePermissoes(prisma, { versao: 39, criadoPor: SOLICITANTE, areaDaAcao: AREA_DA_ACAO })).rejects.toThrow(/JÁ APLICADA/);
   });
 });

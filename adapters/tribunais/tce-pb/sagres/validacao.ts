@@ -21,7 +21,7 @@ export interface Violacao {
   /** 1-indexado (a linha do registro no arquivo). 0 = violação de pacote (entre arquivos). */
   readonly linha: number;
   readonly campo: string;
-  readonly regra: "OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL";
+  readonly regra: "OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES";
   readonly detalhe: string;
 }
 

@@ -30,6 +30,9 @@ import {
   gerarLiquidacao,
   gerarMovimentacaoEntreContas,
   gerarPagamentos,
+  gerarEstornoPagamento,
+  gerarConciliacaoBancariaOuRecusa,
+  gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
   gerarRetencao,
   gerarSaldoMensal,
@@ -155,6 +158,7 @@ async function gerarSagresDiario(prisma: PrismaClient, dia: string): Promise<num
     gerarEmpenhos(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarLiquidacao(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarPagamentos(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, dia: d }),
+    gerarEstornoPagamento(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, codContaArrecadadora: POC_SAGRES.codContaArrecadadora, dia: d }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, dia: d }),
     gerarMovimentacaoEntreContas(prisma, { codUnidadeGestora: ug, dia: d }),
@@ -169,10 +173,17 @@ async function gerarSagresMensal(prisma: PrismaClient, mes: string): Promise<num
   const [ano, mm] = mes.split("-").map(Number) as [number, number];
   const fimDoMes = new Date(Date.UTC(ano, mm, 0));
   const ug = POC_SAGRES.codUnidadeGestora;
-  const arquivos = await Promise.all([
+  const arquivos: ArquivoGerado[] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: ug, exercicio: ano, competencia: fimDoMes }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: POC_SAGRES.cnpjGerenciadora, competencia: fimDoMes }),
   ]);
+  // V21 — a conciliação (§4.27) quando a conta fecha; quando não, o motivo vai ao console.
+  const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: POC_SAGRES.cnpjGerenciadora, competencia: fimDoMes });
+  if ("arquivo" in conciliacao) arquivos.push(conciliacao.arquivo);
+  else console.log(`  · ${mes} — ConciliacaoBancaria fora do pacote: ${conciliacao.recusa.slice(0, 160)}`);
+  const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: ug, competencia: fimDoMes });
+  if ("arquivo" in unidades) arquivos.push(unidades.arquivo);
+  else console.log(`  · ${mes} — UnidadeOrcamentaria fora do pacote: ${unidades.recusa.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "mensal", mes), mes, "MENSAL", arquivos);
 }
 

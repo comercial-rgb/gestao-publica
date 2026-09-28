@@ -202,3 +202,112 @@ model DisponibilidadeRecursoNovo {
   /// decreto. Sem ele, `ORDER BY versao DESC LIMIT 1` varre todas as versões da fonte.
   @@index([exercicio, fonteId, origem, versao])
 }
+
+// ============================================================================
+// V21 — REALOCAÇÃO DE DOTAÇÃO: remanejamento, transposição e transferência
+// (Constituição, art. 167, VI).
+//
+// ⚠️ NÃO É CRÉDITO ADICIONAL, E POR ISSO NÃO É UM QUARTO `TipoCredito`. O crédito adicional
+// autoriza despesa NÃO computada ou insuficientemente dotada (Lei 4.320, art. 40) e consome o
+// limite que a LOA dá ao Executivo; o `TipoCredito` governa esse limite, e dez sítios o enumeram.
+// A realocação move dotação que JÁ EXISTE, de uma programação para outra, por LEI ESPECÍFICA —
+// fora daquele limite. Acrescentar ali faria o remanejamento herdar a lógica do teto em todos
+// aqueles sítios.
+//
+// ⚠️ UM ATO, INDIVISÍVEL. O ato nasce COM as pernas, na mesma transação: não existe ato vazio
+// esperando itens (o par lei/decreto do crédito adicional tem esse estado intermediário porque a
+// lei autoriza um teto que vários decretos consomem; aqui a lei específica autoriza exatamente o
+// que o ato move). Σ acréscimo == Σ redução no total e em CADA FONTE.
+//
+// APPEND-ONLY. Desfazer é a `AnulacaoDeRealocacao` + uma perna NOVA invertida por perna viva, com
+// o lançamento no razão ESTORNANDO o original (mesmas contas, lados trocados).
+// ============================================================================
+
+/// A espécie que a LEI declara. O sistema não a deduz: a doutrina distingue as três pela natureza
+/// da mudança (órgão, programa, categoria econômica), e é a lei que diz qual delas autorizou.
+enum EspecieDeRealocacao {
+  /// Entre órgãos ou unidades — em geral por reorganização administrativa.
+  REMANEJAMENTO
+  /// Entre programas de trabalho, dentro do mesmo órgão.
+  TRANSPOSICAO
+  /// Entre categorias econômicas de despesa, dentro do mesmo programa de trabalho.
+  TRANSFERENCIA
+}
+
+enum TipoPernaDeRealocacao {
+  /// A ficha que RECEBE dotação.
+  ACRESCIMO
+  /// A ficha que CEDE dotação. Não pode ceder o que já está empenhado ou reservado.
+  REDUCAO
+}
+
+model AtoDeRealocacao {
+  id       String              @id @default(cuid())
+  especie  EspecieDeRealocacao
+  /// Número do ato do Executivo que executa a realocação (em geral, decreto).
+  numero   String
+  /// Exercício do ato — o ano CIVIL da `data`, no fuso do ente. Todas as fichas são deste ano.
+  ano      Int
+  /// A data do FATO: é a competência dos movimentos e dos lançamentos.
+  data     DateTime
+
+  /// A autorização legislativa PRÉVIA que o art. 167, VI exige. Obrigatória: sem ela o ato não
+  /// nasce.
+  leiNumero          String
+  leiDataPublicacao  DateTime
+
+  /// Por que a dotação muda de lugar — o que a prestação de contas lê.
+  justificativa String
+
+  itens     ItemDeRealocacao[]
+  anulacao  AnulacaoDeRealocacao?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ano, numero])
+  @@index([ano])
+}
+
+/// Uma perna da realocação. Cada perna gera UM `MovimentoDotacao` (e a perna dele no razão).
+model ItemDeRealocacao {
+  id    String          @id @default(cuid())
+  atoId String
+  ato   AtoDeRealocacao @relation(fields: [atoId], references: [id])
+
+  fichaId String
+  ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
+
+  tipo  TipoPernaDeRealocacao
+  valor Decimal               @db.Decimal(18, 2)
+
+  /// Fonte desta perna. TEM de ser a fonte da ficha (conferido no adapter).
+  fonteId String
+  fonte   FonteRecurso @relation(fields: [fonteId], references: [id])
+
+  /// O movimento de saldo que esta perna gerou (M05). 1-1.
+  movimentoDotacaoId String           @unique
+  movimentoDotacao   MovimentoDotacao @relation(fields: [movimentoDotacaoId], references: [id])
+
+  /// A perna original, quando esta é o estorno dela. Único: uma perna se estorna uma vez.
+  estornoDeId String?           @unique
+  estornoDe   ItemDeRealocacao? @relation("EstornoDaRealocacao", fields: [estornoDeId], references: [id])
+  estorno     ItemDeRealocacao? @relation("EstornoDaRealocacao")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([atoId])
+  @@index([fichaId])
+}
+
+/// O FATO "esta realocação foi desfeita". Existir = anulada. Uma por ato.
+model AnulacaoDeRealocacao {
+  id        String          @id @default(cuid())
+  atoId     String          @unique
+  ato       AtoDeRealocacao @relation(fields: [atoId], references: [id])
+  data      DateTime
+  motivo    String
+  criadoEm  DateTime        @default(now())
+  criadoPor String
+}

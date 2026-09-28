@@ -308,6 +308,10 @@ describe("M02/M05 — a dotação no razão", () => {
       "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",
       "DOTACAO_INICIAL",
+      // V21 — a realocação por lei específica (5.2.2.1.9.02 ACRÉSCIMO e REDUÇÃO): dois tipos
+      // próprios, e não um quarto tipo de crédito adicional.
+      "REALOCACAO_ACRESCIMO",
+      "REALOCACAO_REDUCAO",
       "RESERVA",
       "RESERVA_LIBERADA",
     ]);

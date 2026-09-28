@@ -448,6 +448,7 @@ const ROTAS_PROTEGIDAS = [
   "/planejamento/qdd",
   "/planejamento/cmd-mba",
   "/planejamento/creditos-adicionais",
+  "/planejamento/realocacoes",
   "/planejamento/reprevisao",
   "/despesa/empenhos",
   "/despesa/liquidacoes",
@@ -690,6 +691,17 @@ const TELAS: readonly TelaDoRoteiro[] = [
       { rotulo: "linhas de empenho", tipo: "seletor", alvo: "table tbody tr", minimo: 1 },
       // Um link por linha ("Emitir NE") — é o clique do passo da Nota de Empenho.
       { rotulo: "link Nota de Empenho", tipo: "seletor", alvo: 'a[href*="/despesa/empenhos/ne?"]', minimo: 1 },
+    ],
+  },
+  {
+    /**
+     * ⚠️ O REMANEJAMENTO, A TRANSPOSIÇÃO E A TRANSFERÊNCIA (V21). Nenhum ato vem semeado: a
+     * demonstração registra um AO VIVO, e o que se confere é que o painel está lá e que a lista de
+     * fichas oferece ao menos duas (uma que cede, uma que recebe).
+     */
+    rota: "/planejamento/realocacoes",
+    sondas: [
+      { rotulo: "painel do ato de realocacao", tipo: "seletor", alvo: '[data-painel="registrar-realocacao"]', minimo: 1 },
     ],
   },
   {

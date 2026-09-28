@@ -194,11 +194,13 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações do PPA." },
   // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
   { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "Alterações do PPA e da LDO por lei ou decreto, com o valor original e o vigente." },
+  { href: "/planejamento/unidades-orcamentarias", numero: "Unidades", rotulo: "Unidades orçamentárias", descricao: "Natureza jurídica, secretário responsável e ato de nomeação de cada unidade orçamentária, com histórico." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
   { href: "/planejamento/loa", numero: "LOA", rotulo: "Lei Orçamentária Anual", descricao: "Receita prevista, despesa fixada, equilíbrio e anexos da Lei 4.320/64 do exercício." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },
+  { href: "/planejamento/realocacoes", numero: "Realocações", rotulo: "Remanejamento, Transposição e Transferência", descricao: "Movimentação de dotação entre programações autorizada por lei específica, com as fichas cedentes e as recebedoras." },
   { href: "/planejamento/recursos-novos", numero: "Recurso novo", rotulo: "Disponibilidade de Recurso Novo", descricao: "Superávit financeiro, excesso de arrecadação e operações de crédito que lastreiam créditos adicionais (Lei 4.320, art. 43)." },
   { href: "/planejamento/reprevisao", numero: "Reprevisão", rotulo: "Reprevisão da Receita", descricao: "Revisão da previsão de receita ao longo do exercício (LRF art. 12)." },
 ];
