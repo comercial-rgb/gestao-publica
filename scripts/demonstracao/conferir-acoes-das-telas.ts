@@ -206,6 +206,16 @@ async function acionarSeletores(p: Page, rota: string): Promise<{ verificados: n
       const set = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
       set?.call(s, outra.value);
       s.dispatchEvent(new Event("change", { bubbles: true }));
+      // Filtro que só navega no "Aplicar" (ex.: restos a pagar): clica, como a pessoa faria. O
+      // bloco do filtro é o ancestral mais próximo (até três níveis) que tem o botão.
+      let bloco: Element | null = s.parentElement;
+      for (let n = 0; n < 3 && bloco !== null; n++, bloco = bloco.parentElement) {
+        const aplicar = [...bloco.querySelectorAll("button")].find((b) => /aplicar/i.test(b.textContent ?? ""));
+        if (aplicar !== undefined) {
+          aplicar.click();
+          break;
+        }
+      }
       return `${s.getAttribute("aria-label") ?? s.name ?? "seletor"} = ${outra.value}`;
     }, alvo);
     if (acionou === "") continue;

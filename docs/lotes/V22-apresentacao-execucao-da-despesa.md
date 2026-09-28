@@ -222,3 +222,30 @@ de Downloads foram removidas depois de conferir que a cópia do OneDrive era id�
   quem responde pela folha (Lei 9.250, art. 4º).
 - Encargos patronais da folha de demonstração não semeados (alíquota patronal sem fonte).
 - MANAD L750: 3 documentos antigos da prova de conceito sem cadastro de pessoa saem sem nome.
+
+## O pedido da rodada 4, como veio (2026-09-28)
+
+> "nao vou apresentar hoje mais, pode fazer e criar tudo que ficou pendente para testarmos"
+
+## Checkpoint 4 — 2026-09-28, os pendentes fechados
+
+Commits: `4c4f47d` catálogo, `fdcd63d` campanha publicitária, `c8c462d` vigência do convênio,
+`fca6b9e` dígito verificador no MANAD, `2c16b12` detalhe do empenho + percurso + seletores,
+`bf5d372` folha (redução do IRRF, simplificado, encargos patronais), `f4d71f8` roteiro, e o deste.
+
+- **Vigência do convênio:** fonte achada — Portaria Conjunta MGI/MF/CGU 33/2023, art. 44, I e IX.
+  O empenho do convenente fora da vigência é recusado, por dia civil, com a norma na mensagem.
+- **Campanha publicitária:** estava no termo de referência do pedido (o catálogo é de outro TR). Cadastro,
+  vínculo no empenho como dimensão, detalhe, percurso.
+- **Folha:** redução do IRRF 2026 com o teto da faixa isenta (Lei 9.250, art. 3º-A); simplificado sem o
+  INSS (art. 4º, § 2º); CHECK do banco corrigido; encargos patronais RGPS (Lei 8.212, art. 22) na
+  demonstração — RGF 1 do 2º quadrimestre: 6.344,00 (2,23%).
+- **Catálogo:** marcado com evidência (436 verificadas).
+- **Credores da prova de conceito:** CNPJs com dígito inválido — não se cadastram (o cadastro recusa,
+  com razão); o MANAD passou a nomeá-los como pendência.
+- **Conferidor de ações:** passa a acionar os seletores de período e o "Aplicar" dos filtros.
+- **Defeitos achados no caminho:** o t20 do molde (5 selects de parâmetros do 13º e do adiantamento sem
+  rol declarado, herdado da v21) e o t3 com a mensagem antiga; ambos corrigidos.
+
+Medições em produção: ver a seção V22 do `ESTADO-EXECUCAO.md` (tipos APROVADO, build 0, telas 45/45,
+ações 156 sem falha real, percurso 35/35).
