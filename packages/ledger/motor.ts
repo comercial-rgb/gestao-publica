@@ -59,6 +59,17 @@ const NATUREZA_DA_CLASSE: Readonly<Record<string, Subsistema>> = {
   "8": "CONTROLE", // CONTROLES CREDORES
 };
 
+/**
+ * O SUBSISTEMA DE UMA CONTA, pelo primeiro dígito do código PCASP — a MESMA tabela que o motor confere.
+ * Exposto para quem monta partidas (a tela do lançamento manual) não pedir ao operador um dado que é
+ * consequência do código. FAIL-CLOSED: classe desconhecida lança.
+ */
+export function subsistemaDaConta(codigo: string): Subsistema {
+  const s = NATUREZA_DA_CLASSE[codigo.trim().charAt(0)];
+  if (s === undefined) throw new Error(`A conta ${codigo} não começa por uma classe do PCASP (1 a 8).`);
+  return s;
+}
+
 export function validarLancamento(
   partidas: readonly Partida[]
 ): readonly Partida[] {

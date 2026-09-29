@@ -8,9 +8,10 @@ import {
   listarDispendios,
   retencoesComSaldo,
 } from "../../modules/m07-extraorcamentario/consultas";
-import { estornarMovimentoExtra, registrarDispendioExtra } from "../../modules/m07-extraorcamentario/extraorcamentario";
-import { roteiroDispendioExtra } from "../../modules/m07-extraorcamentario/dominio";
+import { estornarMovimentoExtra, registrarDispendioExtra, registrarIngressoExtra } from "../../modules/m07-extraorcamentario/extraorcamentario";
+import { roteiroDispendioExtra, roteiroIngressoExtra } from "../../modules/m07-extraorcamentario/dominio";
 import { toMoney } from "../../packages/contracts/index";
+import { meioDiaCivil } from "../../packages/datas/index";
 import { comEscritaAutenticada } from "./sessao";
 
 /**
@@ -202,7 +203,7 @@ export async function registrarRecolhimento(input: {
         contaBancaria: input.contaBancaria,
         fonteId: conta.fonteId,
         valor: total.toFixed(2),
-        data: input.data,
+        data: meioDiaCivil(input.data), // dia civil do ente, nunca meia-noite UTC (caía no dia anterior)
         historico: input.historico,
         criadoPor,
         alocacoes: valores,
@@ -214,6 +215,42 @@ export async function registrarRecolhimento(input: {
     `Recolhimento de ${total.toFixed(2)} registrado, composto de ${valores.length} ` +
     `retenç${valores.length === 1 ? "ão" : "ões"}. O que cada uma ainda tem a recolher já reflete esta guia.`
   );
+}
+
+/**
+ * V22 rodada 7 — O INGRESSO AVULSO (caução, depósito de terceiro, consignação recebida fora da folha).
+ *
+ * ⚠️ ELE EXISTIA NO DOMÍNIO E NÃO TINHA BORDA, como o estorno tinha deixado de ter na V19: a tela só
+ * mostrava a retenção que nascia do pagamento, e um depósito de caução não tinha por onde entrar. As
+ * contas vêm do CADASTRO — o passivo do tipo de consignação vigente e a contábil da conta bancária —,
+ * no mesmo molde da guia de recolhimento; a fonte é a da conta, e o domínio confere que ela está no rol.
+ */
+export async function registrarIngressoManual(input: {
+  readonly tipoConsignacaoCodigo: string;
+  readonly credorConsignatario: string;
+  readonly contaBancaria: string;
+  readonly valor: string;
+  readonly data: string;
+  readonly historico: string;
+}): Promise<string> {
+  const prisma = cliente();
+  const tipo = await prisma.tipoConsignacao.findUnique({ where: { codigo: input.tipoConsignacaoCodigo }, select: { id: true } });
+  if (tipo === null) throw new Error("O tipo de consignação informado não existe. Nada foi gravado.");
+  const [consignacaoAPagar, disponibilidade, conta] = await Promise.all([
+    contaDoPassivoVigente(tipo.id),
+    contaContabilDaConta(input.contaBancaria),
+    prisma.contaBancaria.findUnique({ where: { codigo: input.contaBancaria }, select: { fonteId: true } }),
+  ]);
+  if (conta === null) throw new Error(`A conta bancária "${input.contaBancaria}" não está cadastrada.`);
+  const valor = dinheiroDoFormularioExtra(input.valor);
+  await comEscritaAutenticada("REGISTRAR_INGRESSO_EXTRA", (criadoPor) =>
+    registrarIngressoExtra(
+      prisma,
+      { tipoConsignacaoId: tipo.id, credorConsignatario: input.credorConsignatario, contaBancaria: input.contaBancaria, fonteId: conta.fonteId, valor, data: meioDiaCivil(input.data), historico: input.historico, criadoPor },
+      roteiroIngressoExtra({ disponibilidade, consignacaoAPagar })
+    )
+  );
+  return `Ingresso de ${toMoney(valor).toFixed(2)} registrado. A obrigação de repassá-lo passa a constar do saldo a recolher.`;
 }
 
 /**
@@ -237,7 +274,7 @@ export async function estornarMovimentoExtraorcamentario(input: {
   const r = await comEscritaAutenticada("ESTORNAR_MOVIMENTO_EXTRA", (criadoPor) =>
     estornarMovimentoExtra(cliente(), {
       movimentoId: input.movimentoId,
-      data: input.data,
+      data: meioDiaCivil(input.data), // dia civil do ente, nunca meia-noite UTC (caía no dia anterior)
       motivo: input.motivo,
       criadoPor,
     })

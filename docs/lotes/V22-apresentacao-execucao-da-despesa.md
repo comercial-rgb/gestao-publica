@@ -360,3 +360,35 @@ O banco `gestao_publica_apresentacao` está pronto e conferido. A cópia `gestao
 Os três pontos: `FOLHA-NUMERO-DE-EMPENHO-FORA-DO-SAGRES` (M33/M05 + adaptador SAGRES), a conta corrente
 bancária na partida (M01 + M09) e `CONCILIACAO-VINCULO-DEPOIS-DO-CORTE` com a tela de vínculo (M09).
 Regime: **profundidade** nos três.
+
+## O pedido complementar da rodada 7, como veio (2026-09-29)
+
+> "ja emendar nesta sessao sua, quero o modulo de contabilidade pronto com as rotas que esperanca pede
+> para eu clicar e executar em sessao, deixar o sistema pronto para publicarmos em producao, quero um
+> sistema em producao que ao mudar o codigo atualize na hora sem demoras, igual frota manuntencao ja e"
+
+## Checkpoint 7 — 2026-09-29
+
+Regime: **profundidade** (numerador, conciliação, razão manual, datas civis) e **superfície** (telas,
+roteiro, publicação).
+
+- **Os três pontos autorizados** (commits `23e6887`, `59ee6bb`): numerador numérico da folha e dos
+  encargos, com o número reservado protegido contra digitação (achado da auditoria dos invariantes);
+  conciliação atribuída por conta bancária quando a contábil é compartilhada, sem reescrever o razão;
+  duas datas na conciliação e o vínculo pela tela (cinco tipos internos).
+- **Publicação** (`b7e4490`): `scripts/atualizar-no-servidor.sh` + `.github/workflows/publicar.yml`
+  (inerte sem os segredos) + `docs/operacao/ATUALIZACAO-AUTOMATICA.md`. A frota não se atualiza
+  sozinha: é `git pull` + recarga do Puma por SSH, e parece instantâneo porque Rails não compila. Aqui,
+  3 a 6 min de compilação **com o site no ar** e troca sem queda. Depende do usuário: credencial AWS
+  (IAM sem chave nem Lightsail), DNS, deploy key, segredos.
+- **Esperança**: o PDF do edital não está nesta máquina; a matriz C01–C40 da V14 foi conferida rota a
+  rota (`docs/demonstracao/ROTEIRO-ESPERANCA.md`). Construído: **lançamento contábil manual** (C01/C03,
+  o serviço existia sem tela), **ingresso extraorçamentário avulso** (C32, idem). Roteiro da apresentação
+  de 48 para 66 telas.
+- **Defeito achado no caminho — data civil:** a guia de recolhimento, o estorno extraorçamentário e
+  quatro atos de restos a pagar passavam "AAAA-MM-DD" cru ao domínio, que virava meia-noite UTC — o
+  DIA ANTERIOR no ente (um pagamento de restos em 01/01 cairia no exercício anterior). Corrigido na
+  porta com `meioDiaCivil`; varredura por propriedade em curso.
+- **Continua pendente, com motivo:** SIOPE (sem leiaute do FNDE aqui); retenção automática de
+  fornecedor (tabela de alíquotas por serviço é do ente e da Receita); três leiautes do SAGRES com
+  lacuna de modelo; FAP e natureza 319013 (terceiros).

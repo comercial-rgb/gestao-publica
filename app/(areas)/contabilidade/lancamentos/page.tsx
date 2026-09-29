@@ -21,6 +21,9 @@ import {
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { lerPeriodo } from "../../relatorios/livros/periodo";
 import { FiltroDeLancamentos } from "./FiltroDeLancamentos";
+import { FormEstornoManual, FormLancamentoManual } from "./FormsDoLancamentoManual";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { lancamentosManuaisEstornaveis } from "../../../../lib/portas/lancamento-manual";
 
 /**
  * LANÇAMENTOS — a CONSULTA ANALÍTICA do razão: filtra, mostra as partidas e leva ao documento.
@@ -152,6 +155,11 @@ export default async function LancamentosPage({
     })),
   }));
 
+  // V22 rodada 7 — o LANÇAMENTO MANUAL. Os formulários aparecem só para quem tem a ação (a mesma fonte
+  // que o domínio confere); o estorno oferece só os manuais ainda não estornados.
+  const permitidas = await acoesPermitidas(["REGISTRAR_LANCAMENTO_MANUAL", "ESTORNAR_LANCAMENTO_MANUAL"]);
+  const estornaveis = permitidas.has("ESTORNAR_LANCAMENTO_MANUAL") ? await lancamentosManuaisEstornaveis() : [];
+
   const cabecalho = (
     <PageHeader
       titulo="Lançamentos contábeis"
@@ -182,6 +190,11 @@ export default async function LancamentosPage({
         livro obrigatório, completo e cronológico. O <strong>subsistema</strong> de cada partida
         (orçamentário, patrimonial ou controle) corresponde à natureza da informação da MSC.
       </div>
+
+      {permitidas.has("REGISTRAR_LANCAMENTO_MANUAL") ? <FormLancamentoManual /> : null}
+      {permitidas.has("ESTORNAR_LANCAMENTO_MANUAL") && estornaveis.length > 0 ? (
+        <FormEstornoManual opcoes={estornaveis.map((l) => ({ id: l.id, rotulo: `${l.numeroControle} · ${dataBr(l.data)} · R$ ${l.valor} — ${l.historico.slice(0, 60)}` }))} />
+      ) : null}
 
       {desbalanceados > 0 ? (
         // ⚠️ NOMEAR, NÃO ESCONDER. ΣD == ΣC é invariante do M01; se uma linha não fecha, o problema

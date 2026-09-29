@@ -6,9 +6,11 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { FormEstornoDoRecolhimento } from "./FormEstorno";
+import { FormIngresso } from "./FormIngresso";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import {
-  lerConferenciaDaComposicao, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
+  lerConferenciaDaComposicao, lerContasParaRecolhimento, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
   type TipoConsignacaoNaLista, type SaldoConsignatarioNaLista, type RetencaoNaLista, type DispendioNaLista,
 } from "../../../../lib/portas/extraorcamentario";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
@@ -17,7 +19,8 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 /**
  * EXTRAORÇAMENTÁRIO (M07, TR 5.39–5.49) — dinheiro de terceiros no caixa: eventos (consignações),
  * saldos por consignatário (o que o ente deve, 5.41), retenções na fonte com drill ao pagamento
- * (5.25) e despesas extra (recolhimentos). A tela consome a PORTA (grep trivalente); é consulta.
+ * (5.25) e despesas extra (recolhimentos). A tela consome a PORTA (grep trivalente). Desde a V22 rodada 7
+ * também registra o INGRESSO avulso (caução, depósito), para quem tem a ação.
  */
 export const dynamic = "force-dynamic";
 
@@ -89,10 +92,21 @@ export default async function ExtraorcamentarioPage({
     );
   }
 
+  // V22 rodada 7 — o ingresso avulso, só para quem tem a ação (a mesma fonte que o domínio confere).
+  const podeIngressar = (await acoesPermitidas(["REGISTRAR_INGRESSO_EXTRA"])).has("REGISTRAR_INGRESSO_EXTRA");
+  const contasDoIngresso = podeIngressar ? await lerContasParaRecolhimento() : [];
+
   return (
     <div className="space-y-4">
       <SincronizarContexto />
       {cabecalho}
+
+      {podeIngressar ? (
+        <FormIngresso
+          tipos={eventos.filter((e) => e.ativo).map((e) => ({ codigo: e.codigo, descricao: e.descricao }))}
+          contas={contasDoIngresso.map((c) => ({ codigo: c.codigo, descricao: c.descricao }))}
+        />
+      ) : null}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         Os valores extraorçamentários pertencem a <strong>terceiros</strong>: não constituem receita nem

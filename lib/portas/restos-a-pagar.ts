@@ -26,7 +26,7 @@ import {
   estornarApuracao,
   ORIGEM_APURACAO,
 } from "../../modules/m08-restos-a-pagar/apuracao";
-import { anoCivil } from "../../packages/datas/index";
+import { anoCivil, meioDiaCivil } from "../../packages/datas/index";
 
 export { RoteiroDeRestosAusenteError };
 
@@ -343,7 +343,7 @@ export async function liquidarResto(input: {
         empenhoId: input.empenhoId,
         numero: input.numero,
         valor: dinheiroDoFormulario(input.valor, "valor da liquidação") as never,
-        data: input.data,
+        data: meioDiaCivil(input.data), // dia civil do ente: "AAAA-MM-DD" cru virava meia-noite UTC, o dia anterior no ente
         responsavelAtesto: input.responsavelAtesto,
         historico: input.historico,
         criadoPor,
@@ -407,7 +407,7 @@ export async function pagarResto(input: {
         liquidacaoId: input.liquidacaoId,
         numero: input.numero,
         valor: dinheiroDoFormulario(input.valor, "valor do pagamento") as never,
-        data: input.data,
+        data: meioDiaCivil(input.data), // dia civil do ente: "AAAA-MM-DD" cru virava meia-noite UTC, o dia anterior no ente
         contaBancaria: input.contaBancaria,
         fonteId: input.fonteId,
         historico: input.historico,
@@ -492,7 +492,7 @@ export async function anularPagamentoDeResto(input: {
     anularPagamentoRestosAPagar(cliente(), {
       pagamentoId: input.pagamentoId,
       numero: input.numero,
-      data: input.data,
+      data: meioDiaCivil(input.data), // dia civil do ente: "AAAA-MM-DD" cru virava meia-noite UTC, o dia anterior no ente
       motivo: input.motivo,
       criadoPor,
     } as never)
@@ -511,7 +511,7 @@ export async function anularCancelamentoDeResto(input: {
     anularCancelamentoRestosAPagar(cliente(), {
       movimentoId: input.movimentoId,
       numero: input.numero,
-      data: input.data,
+      data: meioDiaCivil(input.data), // dia civil do ente: "AAAA-MM-DD" cru virava meia-noite UTC, o dia anterior no ente
       motivo: input.motivo,
       criadoPor,
     } as never)
