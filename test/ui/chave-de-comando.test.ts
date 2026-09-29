@@ -97,7 +97,7 @@ describe("a chave de comando cobre os chamadores", () => {
     const faltando: string[] = [];
     for (const f of fontes) {
       const b = balancoDaChave(readFileSync(f, "utf8"));
-      if (b.formularios !== b.chaves) faltando.push(`${f.slice(RAIZ.length)}: ${b.formularios} formulário(s) de ação, ${b.chaves} chave(s)`);
+      if (b.formularios !== b.chaves) faltando.push(`${f.slice(RAIZ.length).replace(/\\/g, "/")}: ${b.formularios} formulário(s) de ação, ${b.chaves} chave(s)`);
     }
     expect(
       faltando,
@@ -110,7 +110,7 @@ describe("a chave de comando cobre os chamadores", () => {
     const faltando: string[] = [];
     let actions = 0;
     for (const f of fontes) {
-      const rel = f.slice(RAIZ.length);
+      const rel = f.slice(RAIZ.length).replace(/\\/g, "/"); // barras normais: as exceções acima são escritas com "/"
       const fonte = readFileSync(f, "utf8");
       const exportadas = acoesDoServidor(fonte);
       actions += exportadas;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { Badge } from "../../../../components/ui/Badge";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
 import { previaAction, confirmarAction, type EstadoImportacao } from "./actions";
@@ -15,6 +15,7 @@ import { CampoCpfCnpj } from "../../../../components/ui/Campos";
 export function FormImportador(): React.ReactElement {
   const [previa, acaoPrevia, pendentePrevia] = useActionState<EstadoImportacao, FormData>(previaAction, {});
   const [conf, acaoConfirmar, pendenteConf] = useActionState<EstadoImportacao, FormData>(confirmarAction, {});
+  const idCredor = `credor-da-folha-${useId()}`;
 
   const p = previa.previaFolha ?? previa.previaTributos;
   const linhasFolha = previa.previaFolha?.linhas ?? [];
@@ -99,8 +100,8 @@ export function FormImportador(): React.ReactElement {
             <input type="hidden" name="nomeArquivo" value={previa.nomeArquivo ?? ""} />
             {previa.tipo === "FOLHA" ? (
               <div className="mb-3 max-w-sm">
-                <label htmlFor="credor-da-folha" className={ROTULO}>CPF/CNPJ do credor dos empenhos da folha</label>
-                <CampoCpfCnpj id="credor-da-folha" name="credor" required className={CAMPO} />
+                <label htmlFor={idCredor} className={ROTULO}>CPF/CNPJ do credor dos empenhos da folha</label>
+                <CampoCpfCnpj id={idCredor} name="credor" required className={CAMPO} />
                 <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">Cada linha vira um empenho em nome deste credor. O dígito verificador é conferido.</p>
               </div>
             ) : null}
