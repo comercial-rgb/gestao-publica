@@ -54,6 +54,8 @@ import {
   exigirOrdemDoArt100,
 } from "../m29-precatorios/servico.js";
 import { anoCivil, diaCivil } from "../../packages/datas/index.js";
+import { exigirUsoDoNumero } from "./numerador.js";
+import type { Tx as TxDoRazao } from "../m01-core-contabil/razao.js";
 // M10 — a dívida. A amortização nasce DENTRO do pagamento e morre com ele.
 import {
   amortizarNoPagamento,
@@ -1177,6 +1179,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+        await conferirNumeroDoEmpenho(tx, p.fichaId, p.numero, p.chaveDoNumero);
         const empenho = await tx.empenho.create({
           data: {
             id: p.empenhoId,
@@ -1289,6 +1293,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+        await conferirNumeroDoEmpenho(tx, original.fichaId, p.numero, undefined);
         const anulacao = await tx.empenho.create({
           data: {
             id: p.empenhoAnulacaoId,
@@ -1397,6 +1403,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+        await conferirNumeroDoEmpenho(tx, original.fichaId, p.numero, p.chaveDoNumero);
         const anulacao = await tx.empenho.create({
           data: {
             id: p.anulacaoId,
@@ -1500,6 +1508,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+        await conferirNumeroDaLiquidacao(tx, original.empenhoId, p.numero, p.chaveDoNumero);
         const anulacao = await tx.liquidacao.create({
           data: {
             id: p.anulacaoId,
@@ -1670,6 +1680,8 @@ export function criarDespesaRepositoryPrisma(
 
           await criarLancamento(tx, lancamento);
 
+          // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+          await conferirNumeroDoEmpenho(tx, parcial.fichaId, p.numero, undefined);
           const estorno = await tx.empenho.create({
             data: {
               id: p.estornoId,
@@ -1735,6 +1747,8 @@ export function criarDespesaRepositoryPrisma(
           await travarLiquidacoes(tx, [parcial.anulacaoParcialDeId]);
 
           await criarLancamento(tx, lancamento);
+          // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+          await conferirNumeroDaLiquidacao(tx, parcial.empenhoId, p.numero, undefined);
           const estorno = await tx.liquidacao.create({
             data: {
               id: p.estornoId,
@@ -2041,6 +2055,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+        await conferirNumeroDaLiquidacao(tx, p.empenhoId, p.numero, undefined);
         const liq = await tx.liquidacao.create({
           data: {
             id: p.liquidacaoId,
@@ -2375,6 +2391,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
+        await conferirNumeroDaLiquidacao(tx, original.empenhoId, p.numero, undefined);
         const anulacao = await tx.liquidacao.create({
           data: {
             id: p.anulacaoId,
@@ -2771,4 +2789,19 @@ export function criarM05Deps(
     ),
     ids: idsUuid,
   };
+}
+
+
+/** V22 — a conferência do numerador para um EMPENHO (e a anulação/estorno dele), no exercício da ficha. */
+async function conferirNumeroDoEmpenho(tx: TxDoRazao, fichaId: string, numero: string, chaveDoNumero: string | undefined): Promise<void> {
+  const ficha = await tx.fichaOrcamentaria.findUnique({ where: { id: fichaId }, select: { exercicio: true } });
+  if (ficha === null) throw new Error(`Ficha ${fichaId} não existe. Nada foi gravado.`);
+  await exigirUsoDoNumero(tx, { exercicio: ficha.exercicio, numero, chaveDoNumero });
+}
+
+/** V22 — idem para uma LIQUIDAÇÃO: a que leva o número do próprio empenho passa (convenção da folha). */
+async function conferirNumeroDaLiquidacao(tx: TxDoRazao, empenhoId: string, numero: string, chaveDoNumero: string | undefined): Promise<void> {
+  const e = await tx.empenho.findUnique({ where: { id: empenhoId }, select: { numero: true, ficha: { select: { exercicio: true } } } });
+  if (e === null) throw new Error(`Empenho ${empenhoId} não existe. Nada foi gravado.`);
+  await exigirUsoDoNumero(tx, { exercicio: e.ficha.exercicio, numero, chaveDoNumero, numeroDoEmpenho: e.numero });
 }

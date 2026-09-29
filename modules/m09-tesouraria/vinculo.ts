@@ -367,20 +367,11 @@ async function carregarTransferencia(
     throw new Error(`Transferência entre contas ${id} não encontrada.`);
   }
 
-  // ⚠️ A TRANSFERÊNCIA ENTRE CONTAS DE MESMA CONTA CONTÁBIL NÃO É CONCILIÁVEL, e a
-  // recusa é honesta: o razão registrou D e C na MESMA conta, então o saldo contábil
-  // desta conta bancária não se moveu. Conciliar a linha do extrato contra ela faria a
-  // identidade da conciliação deixar de fechar — o relatório inteiro pararia de sair.
-  // Ver o critério no cabeçalho de `caixa.ts`.
-  if (t.contaOrigem.contaContabilId === t.contaDestino.contaContabilId) {
-    throw new Error(
-      `A transferência ${t.codigo} liga duas contas bancárias mapeadas para a MESMA ` +
-        `conta contábil: no razão ela é um lançamento de saldo líquido zero, e o saldo ` +
-        `contábil desta conta não se moveu. Conciliar contra ela faria a amarração do ` +
-        `relatório deixar de fechar. A linha do extrato fica como diferença — e isso é ` +
-        `verdade, porque o razão realmente não distingue este movimento.`
-    );
-  }
+  // ⚠️ V22 rodada 7 — A TRANSFERÊNCIA ENTRE CONTAS DA MESMA CONTA CONTÁBIL PASSOU A SER CONCILIÁVEL.
+  // Antes ela era recusada aqui: o razão da contábil inteira não se movia, e conciliá-la quebrava a
+  // identidade. Com o lado contábil atribuído por conta bancária (`lancamentosDaContaBancaria`, em
+  // `caixa.ts`: a origem fica com o crédito, o destino com o débito), cada conta se move — e o fato
+  // entra no lado interno das duas. A recusa virou o defeito.
 
   const ehOrigem = t.contaOrigemId === contaDaLinha;
   const ehDestino = t.contaDestinoId === contaDaLinha;

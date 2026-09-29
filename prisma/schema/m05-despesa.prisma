@@ -716,12 +716,14 @@ model RoteiroDaDotacaoPorFonte {
 /// posições. O número digitado pelo operador continua dele; o que o SISTEMA gera (empenho da folha,
 /// empenho e anulações dos encargos) vem daqui: a `chave` é a identidade determinística do documento
 /// (o texto que antes era gravado como número, com a ficha), e o `numero` é o próximo do sequencial
-/// do exercício, acima do maior número numérico já usado na espécie. Mesma chave, mesmo número — é o
-/// que mantém a retomada idempotente. Append-only: o runtime só insere.
+/// do exercício, acima do maior número numérico já usado em empenho ou liquidação. Mesma chave, mesmo
+/// número — é o que mantém a retomada idempotente. E número reservado só é gravado por quem traz a
+/// chave (`exigirUsoDoNumero`, no adapter do M05). Append-only: o runtime só insere.
 model NumeroReservado {
   id        String @id @default(cuid())
   exercicio Int
-  /// EMPENHO (empenhos e anulações de empenho) ou LIQUIDACAO (anulações de liquidação).
+  /// Hoje sempre DOCUMENTO: empenho e liquidação dividem UM espaço de números por exercício (a
+  /// liquidação da folha leva o número do empenho). A coluna fica para uma espécie futura.
   especie   String
   chave     String
   numero    String

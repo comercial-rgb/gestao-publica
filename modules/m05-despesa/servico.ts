@@ -177,6 +177,7 @@ export async function empenhar(
       ...(dados.solicitacaoDeEmpenhoId !== undefined
         ? { solicitacaoDeEmpenhoId: dados.solicitacaoDeEmpenhoId }
         : {}),
+      ...(dados.chaveDoNumero !== undefined ? { chaveDoNumero: dados.chaveDoNumero } : {}),
       numero: dados.numero,
       tipo: dados.tipo,
       valor: dados.valor,

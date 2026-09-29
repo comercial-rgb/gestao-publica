@@ -9,9 +9,24 @@ import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
 import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { FormDesfazerVinculo, FormVincular } from "./FormsDoVinculo";
+
+/** O nome do registro do sistema como o tesoureiro o chama (o tipo interno é código). */
+const TIPO_DO_REGISTRO: Readonly<Record<string, string>> = {
+  PAGAMENTO: "pagamento",
+  ARRECADACAO: "arrecadação",
+  MOVIMENTO_EXTRA: "extraorçamentário",
+  MOVIMENTO_BANCARIO: "movimentação bancária",
+  TRANSFERENCIA: "transferência",
+};
+
+/** O valor sem sinal (o residual vem com sinal: negativo = saída). */
+const semSinal = (v: string): string => (v.startsWith("-") ? v.slice(1) : v);
 
 /**
- * CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a) — SÓ LEITURA.
+ * CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a) — consulta e, desde a V22 rodada 7, o VÍNCULO entre a
+ * linha do extrato e o registro do sistema (e o desfazer dele), para quem tem a permissão.
  *
  * ═══ POR QUE ESTA TELA MORA EM /financeiro E NÃO EM /integracoes ═══
  * A Central de Integrações responde "o canal está de pé, e em que modo?"; esta tela responde "o
@@ -119,6 +134,10 @@ export default async function ConciliacaoBancariaPage({
 
   const { conta, extrato, resumo, modo } = painel;
   const fecha = resumo.diferenca === resumo.diferencaExplicada;
+  // O menu e os botões mostram só o que o servidor autoriza — a MESMA fonte que o ato confere.
+  const permitidas = await acoesPermitidas(["VINCULAR_CONCILIACAO", "ESTORNAR_VINCULO"]);
+  const podeVincular = permitidas.has("VINCULAR_CONCILIACAO");
+  const podeDesfazer = permitidas.has("ESTORNAR_VINCULO");
 
   return (
     <div className="space-y-4">
@@ -176,6 +195,10 @@ export default async function ConciliacaoBancariaPage({
             <dd className="mt-0.5 text-[color:var(--color-ink)]">{dataBr(painel.corte)}</dd>
           </div>
           <div>
+            <dt className="text-[color:var(--color-ink-3)]">Vínculos considerados até</dt>
+            <dd className="mt-0.5 text-[color:var(--color-ink)]">{carimbo(painel.conhecimento)} (agora)</dd>
+          </div>
+          <div>
             <dt className="text-[color:var(--color-ink-3)]">Linhas importadas</dt>
             <dd className="mt-0.5 tabular text-[color:var(--color-ink)]">{extrato.quantidadeLinhas}</dd>
           </div>
@@ -206,7 +229,7 @@ export default async function ConciliacaoBancariaPage({
           exibido separadamente dos valores do extrato e do sistema.
         </p>
         {painel.correspondencias.length === 0 ? (
-          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma linha do extrato foi conciliada até a data de corte.</p>
+          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma linha do extrato foi conciliada ainda.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -219,6 +242,7 @@ export default async function ConciliacaoBancariaPage({
                   <th className="py-1.5 pr-4">Interno — documento</th>
                   <th className="py-1.5 pr-4 text-right">Interno — valor</th>
                   <th className="py-1.5 text-right">Conciliado</th>
+                  {podeDesfazer ? <th className="py-1.5 pl-4">Desfazer</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -245,6 +269,11 @@ export default async function ConciliacaoBancariaPage({
                         {carimbo(c.conciliadoEm)} · {c.conciliadoPor}
                       </div>
                     </td>
+                    {podeDesfazer ? (
+                      <td className="py-1.5 pl-4">
+                        <FormDesfazerVinculo vinculoId={c.vinculoId} rotulo={`${c.extrato.memo} com ${c.interno.rotulo}`} />
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -325,7 +354,7 @@ export default async function ConciliacaoBancariaPage({
                   <tr key={i} className="border-b border-[color:var(--color-border)]">
                     <td className="py-1.5 pr-4 whitespace-nowrap">{dataBr(l.data)}</td>
                     <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">
-                      {l.descricao} <span className="text-[color:var(--color-ink-3)]">[{l.tipo}]</span>
+                      {l.descricao} <span className="text-[color:var(--color-ink-3)]">({TIPO_DO_REGISTRO[l.tipo] ?? l.tipo})</span>
                     </td>
                     <td className="py-1.5 text-right whitespace-nowrap"><ValorMonetario valor={l.residual} /></td>
                   </tr>
@@ -341,6 +370,42 @@ export default async function ConciliacaoBancariaPage({
           )}
         </Card>
       </div>
+
+      {podeVincular && painel.pendenciasExtrato.length > 0 && painel.pendenciasInternas.length > 0 ? (
+        <FormVincular
+          linhas={painel.pendenciasExtrato.map((l) => ({ valor: l.id, residual: semSinal(l.residual), rotulo: `${dataBr(l.data)} · ${l.descricao} · R$ ${l.residual}` }))}
+          registros={painel.pendenciasInternas.map((l) => ({ valor: `${l.tipo}:${l.id}`, residual: semSinal(l.residual), rotulo: `${dataBr(l.data)} · ${l.descricao} (${TIPO_DO_REGISTRO[l.tipo] ?? l.tipo}) · R$ ${l.residual}` }))}
+        />
+      ) : null}
+
+      {painel.lancamentosSemContaBancaria.length > 0 ? (
+        <Card>
+          <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Lançamentos na conta contábil sem conta bancária</h2>
+          <p className="mb-2 text-xs text-[color:var(--color-ink-3)]">
+            A conta contábil <span className="font-mono">{conta.contaContabil}</span> é de mais de uma conta bancária. Estes
+            lançamentos não vêm de pagamento, arrecadação, transferência ou movimentação de conta nenhuma, e por isso não entram
+            na conciliação de nenhuma delas. Confira no razão a que conta cada um pertence.
+          </p>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
+                <th className="py-1.5 pr-4">Data</th>
+                <th className="py-1.5 pr-4">Lançamento</th>
+                <th className="py-1.5 text-right">Valor na conta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {painel.lancamentosSemContaBancaria.map((l) => (
+                <tr key={l.numeroControle + l.data.toISOString()} className="border-b border-[color:var(--color-border)]">
+                  <td className="py-1.5 pr-4 whitespace-nowrap">{dataBr(l.data)}</td>
+                  <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">{l.numeroControle} — {l.historico}</td>
+                  <td className="py-1.5 text-right whitespace-nowrap"><ValorMonetario valor={l.valor} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      ) : null}
 
       {/* ══ O RESUMO QUE FECHA ══ */}
       <Card>
@@ -388,8 +453,8 @@ export default async function ConciliacaoBancariaPage({
       </Card>
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        Esta tela é de <strong>consulta</strong>. A abertura, a justificativa de pendências e o
-        encerramento por período são feitos em{" "}
+        Aqui se vincula e se desfaz o vínculo entre o extrato e o sistema. A abertura, a justificativa de
+        pendências e o encerramento por período são feitos em{" "}
         <Link href="/financeiro/conciliacao/periodo" className="text-[color:var(--color-primary)] underline">
           Conciliação por período
         </Link>

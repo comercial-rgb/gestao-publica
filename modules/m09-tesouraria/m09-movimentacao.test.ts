@@ -392,14 +392,14 @@ describe("M09 — movimentação bancária (TR 5.62)", () => {
   /**
    * ⚠️ O CRITÉRIO NÃO É "TUDO QUE TOCA A CONTA", e este par de testes é a razão.
    *
-   * A conciliação vale por uma identidade que só fecha se o lado interno espelhar o que o
-   * razão registrou NA CONTA CONTÁBIL desta conta bancária. Uma transferência entre duas
-   * contas mapeadas para a MESMA conta contábil é, no razão, um lançamento de saldo
-   * líquido zero — ela não pode entrar no lado interno, ou a identidade quebra.
-   *
-   * Ver a álgebra completa no cabeçalho de `caixa.ts`.
+   * ⚠️ V22 rodada 7 — ESTE TESTE MUDOU DE SENTIDO, e o valor antigo era um defeito. Ele afirmava
+   * que, depois de transferir 400 de A para B (mesma conta contábil), o saldo de A continuava
+   * 1.000: a transferência ficava de fora porque o razão da contábil INTEIRA não se movia. Mas o
+   * dinheiro saiu de A. Com o lado contábil da conciliação atribuído por conta bancária (a origem
+   * fica com o crédito, o destino com o débito — `lancamentosDaContaBancaria`), A tem 600 e B 400,
+   * como no banco. O t14 prova que a identidade continua fechando.
    */
-  it("t12: transferência entre contas de MESMA conta contábil NÃO entra no lado interno", async () => {
+  it("t12: transferência entre contas da MESMA conta contábil ENTRA — saída na origem, entrada no destino", async () => {
     await depositar("1000.00", "2026-03-01");
     await transferirEntreContas(prisma, {
       contaOrigemId: "cb-a", contaDestinoId: "cb-b", valor: "400.00",
@@ -408,9 +408,10 @@ describe("M09 — movimentação bancária (TR 5.62)", () => {
     });
 
     const s = await saldoDaContaBancaria(prisma, "cb-a", EM("2026-03-31"));
-    // O depósito, e só ele: a transferência não move a conta contábil de A.
-    expect(s.fatos.map((f) => f.tipoInterno)).toEqual(["MOVIMENTO_BANCARIO"]);
-    expect(s.saldo.toFixed(2)).toBe("1000.00");
+    expect(s.fatos.map((f) => f.tipoInterno)).toEqual(["MOVIMENTO_BANCARIO", "TRANSFERENCIA"]);
+    expect(s.saldo.toFixed(2)).toBe("600.00"); // 1.000 − 400
+    const b = await saldoDaContaBancaria(prisma, "cb-b", EM("2026-03-31"));
+    expect(b.saldo.toFixed(2)).toBe("400.00");
   });
 
   it("t13: transferência entre contas contábeis DIFERENTES entra, e com o sentido certo", async () => {
@@ -487,10 +488,11 @@ describe("M09 — movimentação bancária (TR 5.62)", () => {
       toMoney(toMoney(rel.saldoExtrato).minus(toMoney(rel.saldoContabil))).toFixed(2)
     );
 
-    // E a transferência de mesma conta contábil NÃO está no lado interno.
+    // V22 rodada 7: as DUAS transferências estão no lado interno — a de mesma conta contábil também,
+    // porque o razão agora é atribuído por conta bancária (e a identidade acima fechou com ela).
     const codigos = rel.internoSemVinculo.map((l) => l.descricao).join(" | ");
     expect(codigos).toContain("TR4");
-    expect(codigos).not.toContain("TR3");
+    expect(codigos).toContain("TR3");
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

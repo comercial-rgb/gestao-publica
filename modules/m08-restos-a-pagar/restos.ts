@@ -1,4 +1,5 @@
 import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
+import { exigirUsoDoNumero } from "../m05-despesa/numerador.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -280,6 +281,12 @@ export async function liquidarRestosAPagar(
       criadoPor: dados.criadoPor,
       partidas: comporPartidas(dados.valor, roteiro),
     });
+
+    // V22 — número reservado pelo numerador só é usado por quem o reservou (`m05-despesa/numerador.ts`).
+    {
+      const e = await tx.empenho.findUniqueOrThrow({ where: { id: dados.empenhoId }, select: { numero: true, ficha: { select: { exercicio: true } } } });
+      await exigirUsoDoNumero(tx, { exercicio: e.ficha.exercicio, numero: dados.numero, numeroDoEmpenho: e.numero });
+    }
 
     // Reutiliza o model Liquidacao — "é liquidação de RP" é DERIVADO
     // (criada depois do encerramento, num empenho com inscrição NP).

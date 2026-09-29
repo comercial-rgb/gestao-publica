@@ -294,7 +294,9 @@ export function exigirCapacidade(
 
 export const zVincularInput = z.object({
   lancamentoExtratoId: z.string().min(1),
-  tipoInterno: z.enum(["PAGAMENTO", "ARRECADACAO", "MOVIMENTO_EXTRA"]),
+  // V22 rodada 7: os CINCO fatos que o M09 sabe enumerar (`caixa.ts`) — antes eram três, e a tarifa,
+  // o rendimento (movimentação bancária) e a transferência não tinham como ser conciliados.
+  tipoInterno: z.enum(["PAGAMENTO", "ARRECADACAO", "MOVIMENTO_EXTRA", "MOVIMENTO_BANCARIO", "TRANSFERENCIA"]),
   internoId: z.string().min(1),
   valor: zMoney.refine((v) => v.greaterThan(0), {
     message: "Valor do vínculo deve ser > 0",

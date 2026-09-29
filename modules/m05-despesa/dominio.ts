@@ -353,6 +353,8 @@ export const zEmpenharInput = z
      * transação e sob trava, que ela está autorizada, não foi empenhada e casa com o empenho.
      */
     solicitacaoDeEmpenhoId: z.string().min(1).optional(),
+    /** V22 — a chave da reserva do numerador, quando o NÚMERO foi reservado pelo sistema (folha, encargos). */
+    chaveDoNumero: z.string().min(1).optional(),
     numero: z.string().min(1),
     tipo: zTipoEmpenho,
     valor: zValorPositivo,

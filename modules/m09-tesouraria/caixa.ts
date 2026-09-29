@@ -47,6 +47,12 @@ import {
  * No caso de mesma conta contábil, ela fechava e continua fechando — a linha do extrato
  * fica como diferença, e isso é **verdade**: o razão de fato não distingue esse
  * movimento, porque as duas pernas caíram na mesma conta.
+ *
+ * ⚠️ V22 rodada 7 — A LINHA "MESMA CONTA CONTÁBIL" DA TABELA ACIMA MUDOU. Com duas contas na
+ * mesma contábil, o lado contábil da conciliação passou a ser atribuído POR CONTA BANCÁRIA
+ * (`lancamentosDaContaBancaria`, no fim deste arquivo): a origem fica com o crédito do
+ * lançamento da transferência, o destino com o débito. Cada conta se move — e a transferência
+ * entra no lado interno das duas, sempre. A tabela fica como registro de como era.
  */
 
 /** Um fato do sistema que moveu esta conta bancária. */
@@ -223,10 +229,10 @@ export async function fatosDeCaixaDaConta(
     },
   });
   for (const t of transferencias) {
-    // As duas pernas caíram na MESMA conta contábil: o razão desta conta não se moveu, e
-    // o fato não pertence ao lado interno.
-    if (t.contaOrigem.contaContabilId === t.contaDestino.contaContabilId) continue;
-
+    // ⚠️ V22 rodada 7 — ANTES, a transferência entre contas da MESMA contábil ficava de fora: o
+    // razão da contábil não se movia no total. Com o lado contábil da conciliação atribuído por
+    // conta bancária (`lancamentosDaContaBancaria`: a origem fica com o crédito, o destino com o
+    // débito), cada conta se move — e o fato entra dos dois lados, como o dinheiro no banco.
     const saiuDaqui = t.contaOrigemId === conta.id;
     fatos.push({
       tipoInterno: "TRANSFERENCIA",
@@ -288,5 +294,63 @@ export async function saldoDaContaBancaria(
       fatos.map((f) => ({ sentido: f.sentido, valor: f.teto }))
     ),
     fatos,
+  };
+}
+
+/**
+ * OS LANÇAMENTOS DO RAZÃO QUE PERTENCEM A ESTA CONTA BANCÁRIA — V22 rodada 7.
+ *
+ * ═══ POR QUE EXISTE ═══
+ * O plano oficial do TCE-PB tem UMA analítica de movimento (`1.1.1.1.1.19.00`) para todas as contas
+ * bancárias, e a partida do razão não guarda a conta bancária. Com duas contas na mesma contábil, o
+ * lado contábil da conciliação de cada uma somava o movimento das duas — e nenhuma fechava.
+ *
+ * ═══ POR QUE NÃO UMA COLUNA NOVA NA PARTIDA ═══
+ * Todo fato que move uma conta bancária JÁ guarda o próprio lançamento (`lancamentoId`) e a própria
+ * conta. A atribuição é lida daqui, igual para o lançamento novo e para o antigo — sem reescrever uma
+ * partida sequer (o razão é append-only; um backfill seria UPDATE em lançamento).
+ *
+ * ⚠️ TODOS OS FATOS DA CONTA, inclusive os estornados, os estornos e as anulações parciais: no razão
+ * eles se anulam aos pares, e deixar um deles de fora deixaria meio par "sem conta bancária".
+ *
+ * ⚠️ A TRANSFERÊNCIA É POR PERNA: o mesmo lançamento debita a contábil do destino e credita a da
+ * origem — e, quando as duas contas dividem a contábil, as duas pernas caem na MESMA conta. A origem
+ * fica com o crédito; o destino, com o débito.
+ */
+export interface LancamentosDaConta {
+  /** Lançamentos cujas partidas na contábil desta conta são TODAS desta conta. */
+  readonly inteiros: ReadonlySet<string>;
+  /** Transferências que saíram daqui: só o CRÉDITO na contábil é desta conta. */
+  readonly soCredito: ReadonlySet<string>;
+  /** Transferências que chegaram aqui: só o DÉBITO na contábil é desta conta. */
+  readonly soDebito: ReadonlySet<string>;
+}
+
+export async function lancamentosDaContaBancaria(
+  prisma: PrismaClient,
+  conta: { readonly id: string; readonly codigo: string }
+): Promise<LancamentosDaConta> {
+  const [pagamentos, arrecadacoes, extras, movimentos, saidas, chegadas] = await Promise.all([
+    prisma.pagamento.findMany({ where: { contaBancaria: conta.codigo }, select: { lancamentoId: true } }),
+    prisma.receitaArrecadada.findMany({
+      where: {
+        OR: [
+          { contaBancariaId: conta.id },
+          { contaBancariaId: null, atribuicaoDeConta: { contaBancariaId: conta.id } },
+          // o estorno herda a conta do original, mesmo quando só o original a declara
+          { estornoDe: { OR: [{ contaBancariaId: conta.id }, { contaBancariaId: null, atribuicaoDeConta: { contaBancariaId: conta.id } }] } },
+        ],
+      },
+      select: { lancamentoId: true },
+    }),
+    prisma.movimentoExtraorcamentario.findMany({ where: { contaBancariaId: conta.id }, select: { lancamentoId: true } }),
+    prisma.movimentoBancario.findMany({ where: { contaBancariaId: conta.id }, select: { lancamentoId: true } }),
+    prisma.transferenciaEntreContas.findMany({ where: { contaOrigemId: conta.id }, select: { lancamentoId: true } }),
+    prisma.transferenciaEntreContas.findMany({ where: { contaDestinoId: conta.id }, select: { lancamentoId: true } }),
+  ]);
+  return {
+    inteiros: new Set([...pagamentos, ...arrecadacoes, ...extras, ...movimentos].map((f) => f.lancamentoId)),
+    soCredito: new Set(saidas.map((t) => t.lancamentoId)),
+    soDebito: new Set(chegadas.map((t) => t.lancamentoId)),
   };
 }

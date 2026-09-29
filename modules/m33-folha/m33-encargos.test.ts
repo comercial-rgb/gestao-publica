@@ -184,9 +184,9 @@ beforeEach(semear, 60_000);
 
 
 /** V22: o número gravado é numérico (SAGRES); a identidade do documento mora na reserva do numerador. */
-async function identidadeDoNumero(numero: string, especie: "EMPENHO" | "LIQUIDACAO" = "EMPENHO"): Promise<string> {
+async function identidadeDoNumero(numero: string): Promise<string> {
   expect(numero).toMatch(/^\d{1,7}$/);
-  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero, especie }, select: { chave: true } });
+  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero }, select: { chave: true } });
   return r.chave.slice(r.chave.indexOf("|") + 1);
 }
 
@@ -490,9 +490,9 @@ describe("(6) ajuste para baixo: empenhado, liquidado não pago e já pago", () 
     const apuracao = await prisma.apuracaoDeEncargos.findFirstOrThrow({ orderBy: { numero: "desc" }, select: { numero: true } });
     // o "primeiro envio" de hoje: reservou o número da identidade e o M05 comitou a anulação com ele
     const identidade = `FE/2026-05/ENCARGOS-AE${apuracao.numero}-${elo.empenhoId.slice(-6)}`;
-    const numero = await reservarNumero(prisma, { fichaId: "ficha-encargos", especie: "EMPENHO", identidade, criadoPor: RH });
+    const { numero, chave } = await reservarNumero(prisma, { fichaId: "ficha-encargos", identidade, criadoPor: RH });
     expect(numero).toMatch(/^\d{1,7}$/);
-    await anularEmpenhoParcial({ originalId: elo.empenhoId, numero, valor: "58.00", data: DATA_ATESTO, motivo: "primeiro envio sem resposta", criadoPor: RH }, criarM05DepsComContratos(prisma));
+    await anularEmpenhoParcial({ originalId: elo.empenhoId, numero, chaveDoNumero: chave, valor: "58.00", data: DATA_ATESTO, motivo: "primeiro envio sem resposta", criadoPor: RH }, criarM05DepsComContratos(prisma));
     const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
     expect([r.atos, r.reconhecidos]).toEqual([0, 1]);
     expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);

@@ -667,8 +667,6 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
     const onde = `${p.grupo.codigo} / ${sufixo}`;
 
     const jaComOTexto = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero: identidade } }, select: { id: true } });
-    const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: p.grupo.fichaId, especie: "EMPENHO", identidade, criadoPor: d.criadoPor });
-    const ja = jaComOTexto ?? (await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } }));
     /**
      * ⚠️ V11 V9.3 — A RETOMADA DO NÚMERO LEGADO, e ela é o que impede a duplicação para trás.
      *
@@ -683,13 +681,21 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
      * de hoje para esse caso fica exatamente como está, sem regressão e sem conserto disfarçado.
      */
     const legado =
-      ja !== null || folha.tipo === "MENSAL"
+      jaComOTexto !== null || folha.tipo === "MENSAL"
         ? null
         : await prisma.empenho.findUnique({
             where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero: numeroLegadoDoEmpenhoDaFolha(p.grupo.serie, folha.competencia, sufixo) } },
             select: { id: true, daFolha: { select: { apropriacao: { select: { folhaId: true } } } } },
           });
     const legadoEDestaFolha = legado !== null && legado.daFolha?.apropriacao.folhaId === folha.id;
+
+    // A reserva só depois de descartar o texto e o legado: documento já gravado não gasta número.
+    // ⚠️ Achar um empenho pelo número reservado PROVA que ele é este documento: o M05 recusa gravar
+    // número reservado a quem não traz a chave (`exigirUsoDoNumero`) — o operador não o digita.
+    const reserva =
+      jaComOTexto !== null || legadoEDestaFolha ? null : await reservarNumero(prisma, { fichaId: p.grupo.fichaId, identidade, criadoPor: d.criadoPor });
+    const numero = reserva?.numero ?? identidade;
+    const ja = jaComOTexto ?? (reserva === null ? null : await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } }));
 
     if (ja !== null || legadoEDestaFolha) {
       jaExistiam += 1;
@@ -700,6 +706,7 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
           {
             fichaId: p.grupo.fichaId,
             numero,
+            ...(reserva !== null ? { chaveDoNumero: reserva.chave } : {}),
             tipo: p.grupo.tipoEmpenho,
             valor: p.valor.toFixed(2),
             data: d.dataDoEmpenho,

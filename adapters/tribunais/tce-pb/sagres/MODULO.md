@@ -148,8 +148,9 @@ conformidade externa.
   antes, ou a chave da reserva), não mais do número. Provas: `m05-numerador.test.ts` (7, com
   concorrência e o oitavo dígito) e `m33-encargos.test.ts` (resposta perdida com número reservado);
   mutação — sem a trava (2 vermelhos), número novo a cada retomada (3), reconhecimento sem a reserva (1).
-  Continua nomeado: o número DIGITADO não passa pelo numerador (a tela orienta, o domínio não impõe);
-  um operador que digite exatamente o próximo número ao mesmo tempo pode colidir numa ficha diferente.
+  O número DIGITADO não passa pelo numerador (a tela orienta), mas NÃO pode ser um número reservado: o
+  M05 recusa a quem não traz a chave (`exigirUsoDoNumero`) — sem isso a retomada reconheceria o empenho
+  alheio como seu (achado da auditoria dos invariantes; mutação: 3 vermelhos).
     Histórico: o empenho e a liquidação da folha nasciam com
     número gerado pelo M33 (`FP/2026-08/DEMO-0001`, `FE/2026-08/ENC-RGPS-PATR-E1`), e o pacote diário
     do dia da folha é RECUSADO nomeando o campo. Resolver pede decisão de numeração (sequência numérica

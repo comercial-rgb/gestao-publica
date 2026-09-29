@@ -7,7 +7,7 @@ import { AtoInelegivelError, Decimal, emProsa, exigirElegivel, sumMoney, toMoney
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
-import { reservarNumero } from "../m05-despesa/numerador.js";
+import { identidadeDaChave, reservarNumero } from "../m05-despesa/numerador.js";
 import { anularEmpenhoParcial, anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroEmpenho, roteiroLiquidacaoDaFolha, elementoDebitaEstoque } from "../m01-core-contabil/roteiros.js";
@@ -492,14 +492,17 @@ export async function apropriarEncargosDaFolha(prisma: PrismaClient, input: Apro
       // A janela entre o empenho do M05 (transação própria) e o elo: reconhecer, não duplicar —
       // pelo texto (gravado antes do numerador) ou pelo número reservado para ele.
       const jaComOTexto = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero: identidade } }, select: { id: true } });
-      const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: p.grupo.fichaId, especie: "EMPENHO", identidade, criadoPor: d.criadoPor });
+      // ⚠️ Achar pelo número reservado PROVA que é este documento: o M05 recusa gravar número reservado
+      // a quem não traz a chave (`exigirUsoDoNumero`).
+      const reserva = jaComOTexto !== null ? null : await reservarNumero(prisma, { fichaId: p.grupo.fichaId, identidade, criadoPor: d.criadoPor });
+      const numero = reserva?.numero ?? identidade;
       const ja = jaComOTexto ?? (await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } }));
       const empenhoId =
         ja?.id ??
         (
           await empenhar(
             {
-              fichaId: p.grupo.fichaId, numero, tipo: p.grupo.tipoEmpenho, valor: valor.toFixed(2), data: d.dataDoEmpenho,
+              fichaId: p.grupo.fichaId, numero, ...(reserva !== null ? { chaveDoNumero: reserva.chave } : {}), tipo: p.grupo.tipoEmpenho, valor: valor.toFixed(2), data: d.dataDoEmpenho,
               credorCpfCnpj: p.grupo.credor?.documento ?? "", categoriaOrdemCronologica: p.grupo.categoriaOrdemCronologica,
               historico: `Encargos do empregador — folha ${folha.tipo.toLowerCase()} de ${folha.competencia}, ${p.grupo.descricao}, apuração nº ${a.numero}${a.numero > 1 ? " (diferença sobre o já empenhado)" : ""} (empenho de ${diaCivil(d.dataDoEmpenho)}).`,
               criadoPor: d.criadoPor,
@@ -698,11 +701,11 @@ async function reconhecerAnulacoesSemRastro(prisma: PrismaClient, folhaId: strin
   let n = 0;
   for (const e of elos) {
     const prefixo = `${e.grupo.serie}/${competencia}/${e.grupo.codigo}`;
-    const reservas = await prisma.numeroReservado.findMany({ where: { chave: { startsWith: `${e.grupo.fichaId}|${prefixo}-A` } }, select: { especie: true, chave: true, numero: true } });
-    const identidadePorNumero = (especie: string): Map<string, string> =>
-      new Map(reservas.filter((r) => r.especie === especie).map((r) => [r.numero, r.chave.slice(e.grupo.fichaId.length + 1)]));
-    const reservadosEmp = identidadePorNumero("EMPENHO");
-    const reservadosLiq = identidadePorNumero("LIQUIDACAO");
+    const reservas = await prisma.numeroReservado.findMany({ where: { chave: { startsWith: `${e.grupo.fichaId}|${prefixo}-A` } }, select: { chave: true, numero: true } });
+    const identidadePorNumero = (sigla: string): Map<string, string> =>
+      new Map(reservas.map((r) => [r.numero, identidadeDaChave(r.chave)] as const).filter(([, id]) => id.startsWith(`${prefixo}-${sigla}`)));
+    const reservadosEmp = identidadePorNumero("AE");
+    const reservadosLiq = identidadePorNumero("AL");
     const [anulEmp, anulLiq] = await Promise.all([
       prisma.empenho.findMany({ where: { anulacaoParcialDeId: e.empenhoId, OR: [{ numero: { startsWith: `${prefixo}-AE` } }, { numero: { in: [...reservadosEmp.keys()] } }], ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
       prisma.liquidacao.findMany({ where: { empenhoId: e.empenhoId, anulacaoParcialDeId: { not: null }, OR: [{ numero: { startsWith: `${prefixo}-AL` } }, { numero: { in: [...reservadosLiq.keys()] } }], ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
@@ -792,9 +795,10 @@ export async function ajustarEncargosDaFolha(prisma: PrismaClient, input: Ajusta
           const valor = toMoney(Decimal.min(faltaLiq, naoPago));
           const identidade = `${prefixo}-AL${a.numero}-${l.numero}`.slice(0, 60);
           const jaComOTexto = await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero: identidade } }, select: { id: true, valor: true } });
-          const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: g.fichaId, especie: "LIQUIDACAO", identidade, criadoPor: d.criadoPor });
-          const ja = jaComOTexto ?? (await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero } }, select: { id: true, valor: true } }));
-          const anulacaoId = ja?.id ?? (await anularLiquidacaoParcial({ originalId: l.id, numero, valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
+          const reserva = jaComOTexto !== null ? null : await reservarNumero(prisma, { fichaId: g.fichaId, identidade, criadoPor: d.criadoPor });
+          const numero = reserva?.numero ?? identidade;
+          const ja = jaComOTexto ?? (await prisma.liquidacao.findFirst({ where: { empenhoId: e.empenhoId, numero, anulacaoParcialDeId: l.id }, select: { id: true, valor: true } }));
+          const anulacaoId = ja?.id ?? (await anularLiquidacaoParcial({ originalId: l.id, numero, ...(reserva !== null ? { chaveDoNumero: reserva.chave } : {}), valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
           const aplicado = ja === null ? valor : toMoney(ja.valor);
           await registrar(`${a.id}:${g.id}:AL:${anulacaoId}`, { grupoId: g.id, tipo: "ANULACAO_DE_LIQUIDACAO", valor: aplicado, anulacaoDeLiquidacaoId: anulacaoId });
           faltaLiq = toMoney(Decimal.max(faltaLiq.minus(aplicado), toMoney(0)));
@@ -812,9 +816,10 @@ export async function ajustarEncargosDaFolha(prisma: PrismaClient, input: Ajusta
           const valor = toMoney(Decimal.min(faltaEmp, aLiquidar));
           const identidade = `${prefixo}-AE${a.numero}-${e.empenhoId.slice(-6)}`;
           const jaComOTexto = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: g.fichaId, numero: identidade } }, select: { id: true, valor: true } });
-          const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: g.fichaId, especie: "EMPENHO", identidade, criadoPor: d.criadoPor });
-          const ja = jaComOTexto ?? (await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: g.fichaId, numero } }, select: { id: true, valor: true } }));
-          const anulacaoId = ja?.id ?? (await anularEmpenhoParcial({ originalId: e.empenhoId, numero, valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
+          const reserva = jaComOTexto !== null ? null : await reservarNumero(prisma, { fichaId: g.fichaId, identidade, criadoPor: d.criadoPor });
+          const numero = reserva?.numero ?? identidade;
+          const ja = jaComOTexto ?? (await prisma.empenho.findFirst({ where: { fichaId: g.fichaId, numero, anulacaoParcialDeId: e.empenhoId }, select: { id: true, valor: true } }));
+          const anulacaoId = ja?.id ?? (await anularEmpenhoParcial({ originalId: e.empenhoId, numero, ...(reserva !== null ? { chaveDoNumero: reserva.chave } : {}), valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
           const aplicado = ja === null ? valor : toMoney(ja.valor);
           await registrar(`${a.id}:${g.id}:AE:${anulacaoId}`, { grupoId: g.id, tipo: "ANULACAO_DE_EMPENHO", valor: aplicado, anulacaoDeEmpenhoId: anulacaoId });
           faltaEmp = toMoney(Decimal.max(faltaEmp.minus(aplicado), toMoney(0)));

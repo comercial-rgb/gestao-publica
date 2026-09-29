@@ -407,14 +407,18 @@ O SAGRES recebe o número do empenho, da liquidação e da anulação como NUMÉ
 DIGITADO continua do operador (a tela sugere "só números, até 7 dígitos"; o domínio não impõe). O que o
 SISTEMA gera — o empenho da folha, o empenho e as anulações dos encargos (M33) — passa por
 `reservarNumero`: a chave é a ficha mais o texto determinístico do documento, e o número é o próximo do
-exercício acima do maior número numérico já usado na espécie (`EMPENHO`, que inclui a anulação de
-empenho; `LIQUIDACAO`, a anulação de liquidação), sob o trinco `NumeradorDoExercicio` (posto 32). Mesma
-chave, mesmo número: é o que mantém a retomada idempotente. `NumeroReservado` é append-only.
+exercício acima do maior número numérico já usado em empenho OU liquidação (um espaço só: a liquidação
+da folha leva o número do empenho), sob o trinco `NumeradorDoExercicio` (posto 32). Mesma chave, mesmo
+número: é o que mantém a retomada idempotente. `NumeroReservado` é append-only.
+
+- **Número reservado só é gravado por quem traz a chave** (`exigirUsoDoNumero`, chamado pelo adapter em
+  TODA gravação de empenho, liquidação, anulação e estorno, e pela liquidação de restos a pagar, sob o
+  mesmo trinco): a retomada acha o documento pelo número, e um número digitado igual ao reservado faria a
+  folha reconhecer o empenho ALHEIO e deixar a despesa sem empenho, em silêncio (achado da auditoria dos
+  invariantes na própria rodada). A liquidação com o número do próprio empenho passa.
 
 - **A reserva vem antes do documento, de propósito:** se o empenho falha, a próxima tentativa reencontra o
   mesmo número. Reserva sem documento é número pulado, não documento a mais.
-- **Nomeado:** o número digitado não passa pela trava; um operador que digite exatamente o próximo número
-  ao mesmo tempo que a folha reserva pode colidir numa ficha diferente (a unicidade do empenho é por ficha).
 - Provas: `m05-numerador.test.ts` (idempotência, N=2, o maior número digitado, texto e outro exercício
   ignorados, espécies separadas, 10 reservas simultâneas, a mesma chave cinco vezes ao mesmo tempo, o
   oitavo dígito recusado).

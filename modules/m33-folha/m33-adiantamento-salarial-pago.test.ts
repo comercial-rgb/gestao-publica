@@ -337,9 +337,9 @@ afterAll(async () => {
 
 
 /** V22: o número gravado é numérico (SAGRES); a identidade do documento mora na reserva do numerador. */
-async function identidadeDoNumero(numero: string, especie: "EMPENHO" | "LIQUIDACAO" = "EMPENHO"): Promise<string> {
+async function identidadeDoNumero(numero: string): Promise<string> {
   expect(numero).toMatch(/^\d{1,7}$/);
-  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero, especie }, select: { chave: true } });
+  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero }, select: { chave: true } });
   return r.chave.slice(r.chave.indexOf("|") + 1);
 }
 

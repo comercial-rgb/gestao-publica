@@ -56,6 +56,8 @@ export interface ReservarParams {
 export interface EmpenharParams {
   readonly empenhoId: string;
   readonly fichaId: string;
+  /** V22 — a chave da reserva do numerador (`numerador.ts`), quando o número foi reservado pelo sistema. */
+  readonly chaveDoNumero?: string | undefined;
   readonly reservaId?: string | undefined;
   readonly subelementoId?: string | undefined;
   /** M11 — o contrato que esta despesa executa. A anulação o COPIA. */
@@ -134,6 +136,8 @@ export interface EmpenhoResumo {
 export interface AnularParcialParams {
   /** O id do registro NOVO (a parcial é um FATO, não um UPDATE). */
   readonly anulacaoId: string;
+  /** V22 — a chave da reserva do numerador (`numerador.ts`), quando o número foi reservado pelo sistema. */
+  readonly chaveDoNumero?: string | undefined;
   readonly originalId: string;
   readonly numero: string;
   readonly valor: Money;

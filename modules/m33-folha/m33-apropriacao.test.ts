@@ -16,6 +16,10 @@ import {
   cadastrarGrupoDeEmpenhoDaFolha,
   numeroDoEmpenhoDaFolha,
 } from "./apropriacao.js";
+import { reservarNumero } from "../m05-despesa/numerador.js";
+import { empenhar } from "../m05-despesa/servico.js";
+import { roteiroEmpenho } from "../m01-core-contabil/roteiros.js";
+import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
 
 /**
  * ═══ A APROPRIAÇÃO CONTÁBIL DA FOLHA (V6 P2.3b; TR 5.12.71) — PROFUNDIDADE ═══
@@ -135,9 +139,9 @@ beforeEach(semear);
 
 
 /** V22: o número gravado é numérico (SAGRES); a identidade do documento mora na reserva do numerador. */
-async function identidadeDoNumero(numero: string, especie: "EMPENHO" | "LIQUIDACAO" = "EMPENHO"): Promise<string> {
+async function identidadeDoNumero(numero: string): Promise<string> {
   expect(numero).toMatch(/^\d{1,7}$/);
-  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero, especie }, select: { chave: true } });
+  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero }, select: { chave: true } });
   return r.chave.slice(r.chave.indexOf("|") + 1);
 }
 
@@ -244,6 +248,34 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
     // A apropriação continua sendo UMA (o ato não se repete; o que se repete é a tentativa).
     expect(await prisma.apropriacaoDaFolha.count({ where: { folhaId } })).toBe(1);
     expect(primeira.apropriacaoId).toBe(segunda.apropriacaoId);
+  });
+
+  it("⚠️ V22 — O NÚMERO RESERVADO NÃO É DIGITÁVEL: a reserva ficou de uma tentativa que falhou; o operador tenta o número e é recusado; a retomada empenha a despesa", async () => {
+    await fecharFolha(prisma, { folhaId, criadoPor: POR });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-UNICA", descricao: "Folha do mês", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FG", porServidor: false, credorId, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaGrat, rubricaHext], criadoPor: POR });
+    // a tentativa que falhou depois da reserva
+    const r = await reservarNumero(prisma, { fichaId: FICHA, identidade: "FG/2026-05/FOLHA-UNICA", criadoPor: POR });
+    // o operador empenha à mão com "o próximo número" — a despesa da folha ficaria sem empenho se passasse
+    await expect(
+      empenhar(
+        { fichaId: FICHA, numero: r.numero, tipo: "ORDINARIO", valor: "10.00", data: DATA_EMPENHO, credorCpfCnpj: "39053344705", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", historico: "Empenho digitado com o número reservado", criadoPor: POR },
+        roteiroEmpenho(),
+        criarM05DepsComContratos(prisma)
+      )
+    ).rejects.toThrow(`NUMERO-RESERVADO: o número ${r.numero} de 2026 está reservado pelo sistema para o documento FG/2026-05/FOLHA-UNICA`);
+    expect(await prisma.empenho.count()).toBe(0);
+    // a retomada empenha — com o número reservado, e o valor da folha
+    const ap = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
+    expect([ap.empenhados, ap.jaExistiam]).toEqual([1, 0]);
+    const e = await prisma.empenho.findFirstOrThrow({ select: { numero: true, valor: true } });
+    expect([e.numero, e.valor.toFixed(2)]).toEqual([r.numero, "5500.00"]);
+    // e o operador empenha normalmente com um número livre
+    await empenhar(
+      { fichaId: FICHA, numero: String(Number(r.numero) + 1), tipo: "ORDINARIO", valor: "10.00", data: DATA_EMPENHO, credorCpfCnpj: "39053344705", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", historico: "Empenho digitado com número livre", criadoPor: POR },
+      roteiroEmpenho(),
+      criarM05DepsComContratos(prisma)
+    );
+    expect(await prisma.empenho.count()).toBe(2);
   });
 
   it("grupo de empenho ÚNICO: um empenho para todos, com o credor declarado e a soma dos proventos", async () => {

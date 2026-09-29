@@ -7,7 +7,7 @@ import {
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // A APURAÇÃO DE CAIXA É DO M01 — a MESMA função do Anexo 13 (M12), com outro
 // recorte. Uma aritmética, muitos recortes.
-import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
+import { saldoDasContas, somasPorContaELancamento } from "../m01-core-contabil/adapter-prisma.js";
 import {
   comSinalDaNatureza,
   comSinalDoSentido,
@@ -16,7 +16,7 @@ import {
   type TipoInternoConciliacao,
 } from "./dominio.js";
 // ⚠️ A FONTE ÚNICA dos fatos que moveram a conta — ver o cabeçalho de `caixa.ts`.
-import { fatosDeCaixaDaConta, type ContaParaCaixa } from "./caixa.js";
+import { fatosDeCaixaDaConta, lancamentosDaContaBancaria, type ContaParaCaixa, type LancamentosDaConta } from "./caixa.js";
 import {
   vinculoLiquidoDoLancamento,
   vinculoLiquidoDoMovimento,
@@ -84,6 +84,22 @@ export interface ConciliacaoBancaria {
   readonly internoSemVinculo: readonly LinhaDiferencaInterna[];
   /** V6 P1.2 — guias da fonte sem conta bancária (legado), fora da identidade, para o tesoureiro resolver. */
   readonly arrecadacoesSemConta: readonly ArrecadacaoSemConta[];
+  /**
+   * V22 rodada 7 — quando a conta contábil é de MAIS DE UMA conta bancária: os lançamentos nela que
+   * não pertencem a fato de conta bancária nenhuma (um ajuste manual, uma abertura de saldo). Fora
+   * da identidade — não se sabe de qual conta são —, listados para o contador resolver.
+   * Vazio quando a contábil é de uma conta só (aí tudo nela é desta conta).
+   */
+  readonly lancamentosSemContaBancaria: readonly LancamentoSemContaBancaria[];
+  /** V22 rodada 7 — os vínculos contados são os gravados até este instante (padrão: o corte). */
+  readonly conhecimento: Date;
+}
+
+/** V22 rodada 7 — um lançamento na contábil compartilhada sem fato de conta bancária que o explique. */
+export interface LancamentoSemContaBancaria {
+  readonly lancamentoId: string;
+  /** ΣD − ΣC dele na contábil. */
+  readonly valor: Dinheiro;
 }
 
 /**
@@ -157,19 +173,32 @@ const zero = () => toMoney("0.00");
 const soma = (a: Money, b: Money) => toMoney(a.plus(b));
 const sub = (a: Money, b: Money) => toMoney(a.minus(b));
 
+/**
+ * @param corte a DATA DO FATO: extrato, razão e fatos internos até ela.
+ * @param opcoes.conhecimento a DATA DO CONHECIMENTO: os vínculos gravados até ela contam. Padrão: o
+ *   próprio corte — "como estava em D", que é o que a conciliação por período (encerrada) precisa
+ *   para continuar reproduzível. O painel ao vivo passa "agora": a conciliação sempre se faz DEPOIS
+ *   do fim do extrato, e com o conhecimento no corte nenhum vínculo feito depois aparecia.
+ *   ⚠️ A identidade continua exata: cada vínculo desconta o MESMO valor dos dois lados.
+ */
 export async function conciliacaoBancaria(
   prisma: PrismaClient,
   contaBancariaId: string,
-  corte: Date
+  corte: Date,
+  opcoes: { readonly conhecimento?: Date } = {}
 ): Promise<ConciliacaoBancaria> {
+  const conhecimento = opcoes.conhecimento ?? corte;
+  if (conhecimento.getTime() < corte.getTime()) {
+    throw new Error("A data do conhecimento dos vínculos não pode ser anterior ao corte dos fatos.");
+  }
   const conta = await prisma.contaBancaria.findUnique({
     where: { id: contaBancariaId },
     select: {
       id: true,
       codigo: true,
       fonteId: true,
-      // ⚠️ O ID, e não só o código: o critério de inclusão da transferência no lado
-      // interno compara a conta contábil da origem com a do destino (ver `caixa.ts`).
+      // ⚠️ O ID, e não só o código: é por ele que se acham as OUTRAS contas bancárias da
+      // mesma contábil, e aí o lado contábil passa a ser atribuído por conta (V22 rodada 7).
       contaContabilId: true,
       contaContabil: { select: { codigo: true } },
     },
@@ -178,7 +207,7 @@ export async function conciliacaoBancaria(
     throw new Error(`Conta bancária ${contaBancariaId} não cadastrada.`);
   }
   // FAIL-CLOSED: sem mapeamento não há contra o que fechar.
-  if (conta.contaContabil === null) {
+  if (conta.contaContabil === null || conta.contaContabilId === null) {
     throw new MapeamentoContabilAusenteError(contaBancariaId, conta.codigo);
   }
   const contaContabil = conta.contaContabil.codigo;
@@ -205,13 +234,7 @@ export async function conciliacaoBancaria(
   );
 
   // ── (b) SALDO CONTÁBIL — a MESMA apuração do Anexo 13, outro recorte ─────
-  const saldoContabil = await saldoDasContas(
-    prisma,
-    [contaContabil],
-    corte,
-    // A data do FATO — ver a nota do corte, no topo.
-    "dataTransacao"
-  );
+  const { saldoContabil, lancamentosSemContaBancaria } = await saldoContabilDaConta(prisma, { id: conta.id, codigo: conta.codigo, contaContabilId: conta.contaContabilId }, contaContabil, corte);
 
   // ── (c) DIFERENÇAS NOMEADAS ──────────────────────────────────────────────
   const noExtratoSemVinculo: LinhaDiferenca[] = [];
@@ -219,7 +242,7 @@ export async function conciliacaoBancaria(
     const valor = toMoney(l.valor.toFixed(2));
     // O vínculo também respeita o corte: um vínculo feito depois não pode
     // explicar retroativamente uma linha que, naquela data, estava em aberto.
-    const vinculado = await vinculoLiquidoDoLancamento(prisma, l.id, corte);
+    const vinculado = await vinculoLiquidoDoLancamento(prisma, l.id, conhecimento);
     const residual = sub(valor, vinculado);
     if (residual.greaterThan(0)) {
       noExtratoSemVinculo.push({
@@ -231,7 +254,7 @@ export async function conciliacaoBancaria(
     }
   }
 
-  const internoSemVinculo = await residuaisInternos(prisma, conta, corte);
+  const internoSemVinculo = await residuaisInternos(prisma, conta, corte, conhecimento);
 
   // ── (c2) O LEGADO SEM CONTA (V6 P1.2) — informativo, fora da identidade ──────
   const arrecadacoesSemConta = await arrecadacoesSemContaDaFonte(prisma, conta.fonteId, corte);
@@ -275,7 +298,60 @@ export async function conciliacaoBancaria(
     noExtratoSemVinculo,
     internoSemVinculo,
     arrecadacoesSemConta,
+    lancamentosSemContaBancaria,
+    conhecimento,
   };
+}
+
+/**
+ * O LADO CONTÁBIL DA CONTA BANCÁRIA — V22 rodada 7.
+ *
+ * Contábil de UMA conta bancária (o caso comum): o saldo dela inteira, exatamente como antes.
+ * Contábil COMPARTILHADA (o plano oficial do TCE-PB tem uma analítica de movimento para todas): só
+ * os lançamentos dos fatos DESTA conta (`lancamentosDaContaBancaria`), na mesma aritmética ΣD − ΣC,
+ * com a data do FATO. O que na contábil não é de conta nenhuma volta nomeado, fora da identidade.
+ */
+async function saldoContabilDaConta(
+  prisma: PrismaClient,
+  conta: { readonly id: string; readonly codigo: string; readonly contaContabilId: string },
+  contaContabil: string,
+  corte: Date
+): Promise<{ saldoContabil: Money; lancamentosSemContaBancaria: LancamentoSemContaBancaria[] }> {
+  const irmas = await prisma.contaBancaria.findMany({ where: { contaContabilId: conta.contaContabilId }, select: { id: true, codigo: true } });
+  if (irmas.length <= 1) {
+    // A data do FATO — ver a nota do corte, no topo.
+    return { saldoContabil: await saldoDasContas(prisma, [contaContabil], corte, "dataTransacao"), lancamentosSemContaBancaria: [] };
+  }
+
+  const porLancamento = await somasPorContaELancamento(prisma, { codigos: [contaContabil], ate: corte, campoData: "dataTransacao" });
+  const atribuidos = await Promise.all(irmas.map((c) => lancamentosDaContaBancaria(prisma, c)));
+  const daqui = atribuidos[irmas.findIndex((c) => c.id === conta.id)]!;
+
+  /** A parte (ΣD, ΣC) de um lançamento que pertence a um conjunto de lançamentos da conta. */
+  const parte = (l: LancamentosDaConta, id: string, debito: Money, credito: Money): { d: Money; c: Money } =>
+    l.inteiros.has(id)
+      ? { d: debito, c: credito }
+      : { d: l.soDebito.has(id) ? debito : zero(), c: l.soCredito.has(id) ? credito : zero() };
+
+  let saldo = zero();
+  const sem: LancamentoSemContaBancaria[] = [];
+  for (const s of porLancamento) {
+    const minha = parte(daqui, s.lancamentoId, s.debito, s.credito);
+    saldo = soma(saldo, sub(minha.d, minha.c));
+    // O que NENHUMA conta reclama deste lançamento.
+    let d = s.debito;
+    let c = s.credito;
+    for (const l of atribuidos) {
+      const p = parte(l, s.lancamentoId, s.debito, s.credito);
+      d = sub(d, p.d);
+      c = sub(c, p.c);
+    }
+    // um lançamento reclamado inteiro por uma conta e só por uma perna por outra não fica negativo:
+    // o que sobra é o que ninguém reclama (quando todas reclamam tudo, sobra zero ou menos).
+    const resto = sub(d.greaterThan(0) ? d : zero(), c.greaterThan(0) ? c : zero());
+    if (!resto.isZero()) sem.push({ lancamentoId: s.lancamentoId, valor: serializar(resto) });
+  }
+  return { saldoContabil: saldo, lancamentosSemContaBancaria: sem };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -296,7 +372,8 @@ export async function conciliacaoBancaria(
 async function residuaisInternos(
   prisma: PrismaClient,
   conta: ContaParaCaixa,
-  corte: Date
+  corte: Date,
+  conhecimento: Date
 ): Promise<readonly LinhaDiferencaInterna[]> {
   const fatos = await fatosDeCaixaDaConta(prisma, conta, corte);
 
@@ -308,7 +385,7 @@ async function residuaisInternos(
       prisma,
       f.tipoInterno,
       f.id,
-      corte
+      conhecimento
     );
     const residual = sub(f.teto, vinculado);
     if (residual.greaterThan(0)) {

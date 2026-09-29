@@ -42,6 +42,8 @@ const zAnularParcialInput = z.object({
   originalId: z.string().min(1),
   /** O número do documento de anulação (a parcial é um documento, não um UPDATE). */
   numero: z.string().min(1),
+  /** V22 — a chave da reserva do numerador, quando o NÚMERO foi reservado pelo sistema (folha, encargos). */
+  chaveDoNumero: z.string().min(1).optional(),
   valor: zValorPositivo,
   data: z.coerce.date(),
   motivo: zMotivo,
@@ -123,6 +125,7 @@ export async function anularEmpenhoParcial(
   await deps.despesa.anularEmpenhoParcial(
     {
       anulacaoId,
+      ...(d.chaveDoNumero !== undefined ? { chaveDoNumero: d.chaveDoNumero } : {}),
       originalId: d.originalId,
       numero: d.numero,
       valor: d.valor,
@@ -173,6 +176,7 @@ export async function anularLiquidacaoParcial(
   await deps.despesa.anularLiquidacaoParcial(
     {
       anulacaoId,
+      ...(d.chaveDoNumero !== undefined ? { chaveDoNumero: d.chaveDoNumero } : {}),
       originalId: d.originalId,
       numero: d.numero,
       valor: d.valor,
@@ -249,6 +253,7 @@ export async function anularPagamentoParcial(
   await deps.despesa.anularPagamentoParcial(
     {
       anulacaoId,
+      ...(d.chaveDoNumero !== undefined ? { chaveDoNumero: d.chaveDoNumero } : {}),
       originalId: d.originalId,
       numero: d.numero,
       valor: d.valor,

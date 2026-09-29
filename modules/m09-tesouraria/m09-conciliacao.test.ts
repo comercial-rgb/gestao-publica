@@ -416,6 +416,27 @@ describe("M09 — conciliação bancária", () => {
     expect(por.has("Arrecadação GUIA-2")).toBe(false);
   });
 
+  it("V22 — DUAS DATAS: com o conhecimento AGORA, o vínculo feito depois do corte conta dos dois lados — e a identidade continua exata", async () => {
+    const agora = await conciliacaoBancaria(prisma, CONTA, corte, { conhecimento: new Date() });
+    // os FATOS são os mesmos (o corte não mudou): saldos e diferença idênticos
+    expect([agora.saldoExtrato, agora.saldoContabil, agora.diferenca]).toEqual([relatorio.saldoExtrato, relatorio.saldoContabil, relatorio.diferenca]);
+    // o vínculo T1 × P2 (35,00), feito depois do corte, agora desconta dos DOIS lados
+    const ext = new Map(agora.noExtratoSemVinculo.map((l) => [l.descricao, l.residual]));
+    const int = new Map(agora.internoSemVinculo.map((l) => [l.descricao, l.residual]));
+    expect([...ext.entries()].find(([d]) => /TARIFA/.test(d))).toBeUndefined(); // 35 de 35: saiu
+    expect(int.get("Pagamento NP-2")).toBe("-1165.00"); // 1.200 − 35
+    // e o relatório "como estava no corte" (o padrão, que a conciliação por período usa) não mudou
+    const comoEstava = await conciliacaoBancaria(prisma, CONTA, corte);
+    expect(comoEstava.internoSemVinculo.find((l) => l.descricao === "Pagamento NP-2")!.residual).toBe("-1200.00");
+    expect(comoEstava.conhecimento).toEqual(corte);
+  });
+
+  it("V22 — o conhecimento não pode ser ANTERIOR ao corte (um vínculo não explica fato que ainda não existia)", async () => {
+    await expect(conciliacaoBancaria(prisma, CONTA, corte, { conhecimento: new Date(corte.getTime() - 1000) })).rejects.toThrow(
+      /conhecimento dos vínculos não pode ser anterior ao corte/
+    );
+  });
+
   it("A RETENÇÃO não aparece em lugar nenhum: ela não tem linha bancária", async () => {
     const retencao = await prisma.movimentoExtraorcamentario.findFirstOrThrow({
       where: { pagamentoId: P1, tipo: "INGRESSO" },

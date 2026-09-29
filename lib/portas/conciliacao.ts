@@ -2,6 +2,8 @@ import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { serializar, toMoney, type Money } from "../../packages/contracts/index.js";
 import { conciliacaoBancaria } from "../../modules/m09-tesouraria/conciliacao";
+import { estornarVinculo, vincular } from "../../modules/m09-tesouraria/vinculo";
+import { comEscritaAutenticada } from "./sessao";
 import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/dominio";
 import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
 import { estadoDoModoBb, mascararAgencia, mascararConta } from "../../modules/m17-banco-bb/modos";
@@ -9,7 +11,8 @@ import { mascararCpfCnpj } from "../format/mascaras";
 import { janelaCivilDoAno } from "../../packages/datas/index";
 
 /**
- * PORTA — CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a). SÓ LEITURA.
+ * PORTA — CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a). Leitura, e — desde a V22 rodada 7 — o vínculo
+ * e o desfazer do vínculo pela tela (no fim do arquivo).
  *
  * ═══ POR QUE ESTA PORTA EXISTE ═══
  * O MOTOR já existia e já estava testado (`modules/m09-tesouraria/conciliacao.ts`,
@@ -116,6 +119,8 @@ export interface Correspondencia {
 
 /** No BANCO e não no razão (tarifa não contabilizada, crédito ainda não registrado). */
 export interface PendenciaExtrato {
+  /** V22 rodada 7 — o id da linha (do extrato ou do fato interno): é o que o formulário de vínculo envia. */
+  readonly id: string;
   readonly data: Date;
   readonly descricao: string;
   /** RESIDUAL COM SINAL: positivo = entrou, negativo = saiu. */
@@ -155,10 +160,25 @@ export interface PainelConciliacao {
   readonly extrato: ExtratoImportado;
   /** A data de corte do relatório = fim do período do extrato. */
   readonly corte: Date;
+  /**
+   * V22 rodada 7 — os vínculos contados são os gravados até AGORA (a conciliação se faz depois do fim
+   * do extrato). Os fatos continuam até o corte. Ver `conciliacaoBancaria`.
+   */
+  readonly conhecimento: Date;
   readonly correspondencias: readonly Correspondencia[];
   readonly pendenciasExtrato: readonly PendenciaExtrato[];
   readonly pendenciasInternas: readonly PendenciaInterna[];
   readonly resumo: ResumoConciliacao;
+  /**
+   * V22 rodada 7 — a conta contábil é de mais de uma conta bancária e estes lançamentos nela não são
+   * de fato de conta nenhuma (ajuste manual, abertura de saldo). Fora da identidade; vazio no caso comum.
+   */
+  readonly lancamentosSemContaBancaria: readonly {
+    readonly numeroControle: string;
+    readonly data: Date;
+    readonly historico: string;
+    readonly valor: string;
+  }[];
 }
 
 /** Agência/conta com o dígito verificador junto — e SEMPRE mascaradas. */
@@ -226,7 +246,10 @@ export async function lerPainelConciliacao(p: {
   // ── O MOTOR (M09 bloco 3): saldos, diferença e pendências dos dois lados ──
   // Ele é FAIL-CLOSED: se a diferença não estivesse toda nomeada, ele lança — e a tela mostra o
   // erro nomeado em vez de um relatório que não fecha. É de propósito.
-  const relatorio = await conciliacaoBancaria(prisma, conta.id, corte);
+  // ⚠️ V22 rodada 7 — DUAS DATAS: os fatos até o corte (o fim do extrato), os vínculos até AGORA. Com
+  // uma data só, todo vínculo feito depois do fim do extrato — que é quando se concilia — sumia daqui.
+  const agora = new Date();
+  const relatorio = await conciliacaoBancaria(prisma, conta.id, corte, { conhecimento: agora });
 
   // ── AS CORRESPONDÊNCIAS — os vínculos VIVOS desta conta até o corte ──
   // "Vivo" é DERIVADO, nunca flag: um vínculo estornado tem `estornos` preenchido (append-only,
@@ -236,8 +259,8 @@ export async function lerPainelConciliacao(p: {
     where: {
       tipo: "VINCULO",
       estornos: { none: {} },
-      criadoEm: { lte: corte },
-      lancamentoExtrato: { contaBancariaId: conta.id },
+      criadoEm: { lte: agora },
+      lancamentoExtrato: { contaBancariaId: conta.id, dataPostagem: { lte: corte } },
     },
     orderBy: { criadoEm: "asc" },
     select: {
@@ -303,13 +326,15 @@ export async function lerPainelConciliacao(p: {
       quantidadeLinhas: extrato._count.lancamentos,
     },
     corte,
+    conhecimento: agora,
     correspondencias,
     pendenciasExtrato: relatorio.noExtratoSemVinculo.map((l) => ({
-      data: l.data, descricao: l.descricao, residual: l.residual,
+      id: l.id, data: l.data, descricao: l.descricao, residual: l.residual,
     })),
     pendenciasInternas: relatorio.internoSemVinculo.map((l) => ({
-      tipo: l.tipoInterno, data: l.data, descricao: l.descricao, residual: l.residual,
+      id: l.id, tipo: l.tipoInterno, data: l.data, descricao: l.descricao, residual: l.residual,
     })),
+    lancamentosSemContaBancaria: await lancamentosNomeados(prisma, relatorio.lancamentosSemContaBancaria),
     resumo: {
       saldoExtrato: relatorio.saldoExtrato,
       saldoContabil: relatorio.saldoContabil,
@@ -434,3 +459,61 @@ const ROTULO_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, string> = {
   RENDIMENTO: "Rendimento creditado",
   TARIFA: "Tarifa bancária",
 };
+
+/** Os lançamentos sem conta bancária, com o que o contador precisa para achá-los no razão. */
+async function lancamentosNomeados(
+  prisma: ReturnType<typeof cliente>,
+  lista: readonly { readonly lancamentoId: string; readonly valor: string }[]
+): Promise<PainelConciliacao["lancamentosSemContaBancaria"]> {
+  if (lista.length === 0) return [];
+  const l = await prisma.lancamentoContabil.findMany({
+    where: { id: { in: lista.map((x) => x.lancamentoId) } },
+    select: { id: true, numeroControle: true, dataTransacao: true, historico: true },
+  });
+  const porId = new Map(l.map((x) => [x.id, x]));
+  return lista
+    .map((x) => {
+      const d = porId.get(x.lancamentoId);
+      return d === undefined ? null : { numeroControle: d.numeroControle, data: d.dataTransacao, historico: d.historico, valor: x.valor };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null)
+    .sort((a, b) => a.data.getTime() - b.data.getTime());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V22 rodada 7 — A ESCRITA: vincular e desfazer, pela tela.
+//
+// O motor (`vincular`/`estornarVinculo`, M09) já existia, testado e com as ações no censo
+// (VINCULAR_CONCILIACAO, ESTORNAR_VINCULO); faltava o caminho da tela. A autorização é do domínio,
+// por ação nomeada e com o escopo do fato interno — esta porta só injeta o autor real.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const TIPOS_INTERNOS: readonly TipoInternoConciliacao[] = ["PAGAMENTO", "ARRECADACAO", "MOVIMENTO_EXTRA", "MOVIMENTO_BANCARIO", "TRANSFERENCIA"];
+
+export async function vincularNaConciliacao(input: {
+  readonly lancamentoExtratoId: string;
+  /** "TIPO:id" — o fato interno como a lista de pendências o oferece. */
+  readonly interno: string;
+  readonly valor: string;
+}): Promise<string> {
+  const i = input.interno.indexOf(":");
+  const tipo = input.interno.slice(0, i) as TipoInternoConciliacao;
+  if (i < 1 || !TIPOS_INTERNOS.includes(tipo)) throw new Error("Escolha o registro do sistema a vincular.");
+  return comEscritaAutenticada("VINCULAR_CONCILIACAO", async (criadoPor) => {
+    const r = await vincular(cliente(), {
+      lancamentoExtratoId: input.lancamentoExtratoId,
+      tipoInterno: tipo,
+      internoId: input.interno.slice(i + 1),
+      valor: input.valor,
+      criadoPor,
+    });
+    return r.vinculoId;
+  });
+}
+
+export async function desfazerVinculoDaConciliacao(input: { readonly vinculoId: string; readonly motivo: string }): Promise<string> {
+  return comEscritaAutenticada("ESTORNAR_VINCULO", async (criadoPor) => {
+    const r = await estornarVinculo(cliente(), { vinculoId: input.vinculoId, motivo: input.motivo, criadoPor });
+    return r.vinculoId;
+  });
+}

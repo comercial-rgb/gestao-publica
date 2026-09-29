@@ -1275,8 +1275,9 @@ A pendência continua aberta abaixo, agora com a decisão **posta** em vez de de
   antes, ou a chave da reserva), não mais do número. Provas: `m05-numerador.test.ts` (7, com
   concorrência e o oitavo dígito) e `m33-encargos.test.ts` (resposta perdida com número reservado);
   mutação — sem a trava (2 vermelhos), número novo a cada retomada (3), reconhecimento sem a reserva (1).
-  Continua nomeado: o número DIGITADO não passa pelo numerador (a tela orienta, o domínio não impõe);
-  um operador que digite exatamente o próximo número ao mesmo tempo pode colidir numa ficha diferente.
+  O número DIGITADO não passa pelo numerador (a tela orienta), mas NÃO pode ser um número reservado: o
+  M05 recusa a quem não traz a chave (`exigirUsoDoNumero`) — sem isso a retomada reconheceria o empenho
+  alheio como seu (achado da auditoria dos invariantes; mutação: 3 vermelhos).
   Histórico (V11 V9.3, **anterior a ela**): o
   SAGRES (TCE-PB) lê `empenho.numero` no campo `numEmpenho`, **NUMÉRICO de 7 posições**
   (`adapters/tribunais/tce-pb/sagres/layout-2026v11.ts`; `captura/dto-captura.ts` faz `cod(...,7)`),
