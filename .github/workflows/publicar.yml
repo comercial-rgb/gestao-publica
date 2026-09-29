@@ -1,0 +1,63 @@
+# PUBLICAÇÃO AUTOMÁTICA (V22) — a cada push na `main`, o servidor monta a versão nova ao lado da antiga
+# e troca sem derrubar o site (`scripts/atualizar-no-servidor.sh`). Ver docs/operacao/ATUALIZACAO-AUTOMATICA.md.
+#
+# ⚠️ INERTE ATÉ SER LIGADO. Sem os segredos PRODUCAO_SSH_HOST, PRODUCAO_SSH_USUARIO e PRODUCAO_SSH_CHAVE
+# cadastrados no repositório (Settings > Secrets and variables > Actions), o job termina dizendo que a
+# publicação não está configurada — não publica nada em lugar nenhum.
+#
+# ⚠️ Um deploy por vez: `concurrency` enfileira pushes seguidos, e o último vence.
+name: Publicar
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: publicar-producao
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Publicação configurada?
+        id: alvo
+        env:
+          HOST: ${{ secrets.PRODUCAO_SSH_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "Publicação automática não configurada (faltam os segredos PRODUCAO_SSH_*). Nada foi publicado."
+            echo "ligada=nao" >> "$GITHUB_OUTPUT"
+          else
+            echo "ligada=sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Atualizar no servidor
+        if: steps.alvo.outputs.ligada == 'sim'
+        env:
+          HOST: ${{ secrets.PRODUCAO_SSH_HOST }}
+          USUARIO: ${{ secrets.PRODUCAO_SSH_USUARIO }}
+          CHAVE: ${{ secrets.PRODUCAO_SSH_CHAVE }}
+          CONHECIDOS: ${{ secrets.PRODUCAO_SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$CHAVE" > ~/.ssh/chave && chmod 600 ~/.ssh/chave
+          # ⚠️ A identidade do servidor é conferida (known_hosts como segredo), nunca aceita às cegas.
+          printf '%s\n' "$CONHECIDOS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/chave -o StrictHostKeyChecking=yes "$USUARIO@$HOST" \
+            "cd /opt/gestao-publica/repositorio && sudo -u gestao-publica git fetch --quiet origin main && sudo -u gestao-publica git checkout --quiet --detach ${{ github.sha }} && sudo scripts/atualizar-no-servidor.sh --commit ${{ github.sha }}"
+          # O script roda a partir do PRÓPRIO commit publicado (a cópia do servidor é atualizada antes).
+
+      - name: A versão no ar é a deste commit?
+        if: steps.alvo.outputs.ligada == 'sim'
+        env:
+          DOMINIO: ${{ secrets.PRODUCAO_DOMINIO }}
+        run: |
+          curto="$(echo '${{ github.sha }}' | cut -c1-7)"
+          for i in $(seq 1 20); do
+            if curl -fsS "https://$DOMINIO/release" | grep -q "\"commit\":\"$curto"; then echo "No ar: $curto"; exit 0; fi
+            sleep 6
+          done
+          echo "O domínio não respondeu o commit $curto."; exit 1
