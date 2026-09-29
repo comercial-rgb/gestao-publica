@@ -15,6 +15,8 @@ import {
   gerarMovimentacaoEntreContas,
   gerarPagamentos,
   gerarEstornoPagamento,
+  gerarEstornos,
+  gerarEstornoLiquidacao,
   gerarConciliacaoBancariaOuRecusa,
   gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
@@ -140,6 +142,8 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
         gerarLiquidacao(prisma, { codUnidadeGestora, dia }),
         gerarPagamentos(prisma, { codUnidadeGestora, cnpjGerenciadora, dia }),
         gerarEstornoPagamento(prisma, { codUnidadeGestora, dia }),
+        gerarEstornos(prisma, { codUnidadeGestora, dia }),
+        gerarEstornoLiquidacao(prisma, { codUnidadeGestora, dia }),
         gerarReceitaOrcamentaria(prisma, {
           codUnidadeGestora,
           cnpjGerenciadora,

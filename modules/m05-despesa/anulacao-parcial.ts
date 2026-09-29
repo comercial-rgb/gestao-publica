@@ -4,7 +4,7 @@ import { toMoney, zMoney } from "../../packages/contracts/index.js";
 import { gerarAnulacaoParcial, gerarEstorno } from "../../packages/ledger/index.js";
 import type { PartidaParaPersistir } from "../m01-core-contabil/ports.js";
 import type { M05Deps } from "./ports.js";
-import { exigirMotivoDeAnulacaoDePagamento } from "./dominio.js";
+import { exigirMotivoDeAnulacao, exigirMotivoDeAnulacaoDePagamento } from "./dominio.js";
 
 /**
  * TR 5.35 — ANULAÇÃO PARCIAL de empenho, liquidação e pagamento.
@@ -100,6 +100,8 @@ export async function anularEmpenhoParcial(
   deps: M05Deps
 ): Promise<{ readonly anulacaoId: string; readonly lancamentoId: string }> {
   const d = zAnularParcialInput.parse(input);
+  // V23 — o motivo vai ao Tribunal de Contas (SAGRES Estornos §4.9); conferido antes de tudo.
+  const motivo = exigirMotivoDeAnulacao(d.motivo, "do empenho");
 
   // A UG vem do EMPENHO reduzido -> ficha. A parcial é um FATO NOVO, mas ela acontece DENTRO
   // da unidade do fato que reduz — não há como reduzir "um pedaço" da despesa da Saúde sem
@@ -130,7 +132,7 @@ export async function anularEmpenhoParcial(
       numero: d.numero,
       valor: d.valor,
       data: d.data,
-      motivo: d.motivo,
+      motivo,
       criadoPor: d.criadoPor,
     },
     {
@@ -154,6 +156,8 @@ export async function anularLiquidacaoParcial(
   deps: M05Deps
 ): Promise<{ readonly anulacaoId: string; readonly lancamentoId: string }> {
   const d = zAnularParcialInput.parse(input);
+  // V23 — o motivo vai ao Tribunal de Contas (SAGRES EstornoLiquidacao §4.11); conferido antes de tudo.
+  const motivo = exigirMotivoDeAnulacao(d.motivo, "da liquidação");
 
   // A UG vem da LIQUIDAÇÃO reduzida -> empenho -> ficha. (E a cascata parcial do almoxarifado
   // — o `aoAnularParcial` do M10 — roda com ESTA autorização: mesma regra do anular total.)
@@ -181,7 +185,7 @@ export async function anularLiquidacaoParcial(
       numero: d.numero,
       valor: d.valor,
       data: d.data,
-      motivo: d.motivo,
+      motivo,
       criadoPor: d.criadoPor,
     },
     {

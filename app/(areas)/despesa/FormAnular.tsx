@@ -65,16 +65,16 @@ export function FormAnular({
         </label>
         <label className="block">
           <span className={ROTULO}>
-            {tipo === "pagamento" ? "Motivo (de 10 a 120 caracteres, sem aspas)" : "Motivo (mín. 10 caracteres)"}
+            Motivo (de 10 a 120 caracteres, sem aspas)
           </span>
-          {/* V21 — o motivo da anulação de PAGAMENTO vai à prestação de contas do Tribunal de Contas,
-              num campo de 120 caracteres sem aspas. O servidor recusa o que não cabe; o navegador só
-              antecipa o limite de tamanho. */}
+          {/* V21/V23 — o motivo da anulação de empenho, liquidação e pagamento vai à prestação de contas
+              do Tribunal de Contas (SAGRES §4.9, §4.11, §4.13), num campo de 120 caracteres sem aspas. O
+              servidor recusa o que não cabe; o navegador só antecipa o limite de tamanho. */}
           <input
             name="motivo"
             required
             minLength={10}
-            maxLength={tipo === "pagamento" ? 120 : undefined}
+            maxLength={120}
             placeholder="cancelamento por erro de classificação"
             className={CAMPO}
           />

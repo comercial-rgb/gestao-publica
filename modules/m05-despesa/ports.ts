@@ -360,6 +360,8 @@ export interface AnularLiquidacaoParams {
   readonly liquidacaoOriginalId: string;
   readonly numero: string;
   readonly data: Date;
+  /** V23 — o motivo que a tela exige; gravado em `Liquidacao.motivo` (SAGRES §4.11). */
+  readonly motivo: string;
   readonly criadoPor: string;
 }
 

@@ -10,15 +10,23 @@ import {
   roteiroLiquidacao,
   roteiroPagamento,
 } from "./dominio.js";
-import { empenhar, saldosCorrentesDaFicha } from "./servico.js";
-import { anularPagamento, liquidar, pagar } from "./servico-bloco2.js";
+import { anularEmpenho, empenhar, saldosCorrentesDaFicha } from "./servico.js";
+import { anularLiquidacao, anularPagamento, liquidar, pagar } from "./servico-bloco2.js";
 import {
   anularEmpenhoParcial,
   anularLiquidacaoParcial,
   anularPagamentoParcial,
   estornarAnulacaoParcial,
 } from "./anulacao-parcial.js";
-import { lerFatosEstornoPagamento } from "../../adapters/tribunais/tce-pb/sagres/gerador.js";
+import {
+  gerarEstornoLiquidacao,
+  gerarEstornos,
+  lerFatosEmpenhos,
+  lerFatosEstornoLiquidacao,
+  lerFatosEstornoPagamento,
+  lerFatosEstornos,
+  lerFatosLiquidacao,
+} from "../../adapters/tribunais/tce-pb/sagres/gerador.js";
 import type { M05Deps } from "./ports.js";
 import { criarM05DepsComAlmoxarifado } from "../m10-patrimonial/adapter-m05-almox.js";
 import { cadastrarDivida } from "../m10-patrimonial/divida.js";
@@ -680,5 +688,164 @@ describe("V21 — o motivo da anulação de pagamento e o SAGRES EstornoPagament
     await expect(lerFatosEstornoPagamento(prisma, { codUnidadeGestora: "999001", dia: DIA })).rejects.toThrow(
       /anulação 96 \(do pagamento NP-1\) foi gravada sem motivo/
     );
+  });
+});
+
+/**
+ * V23 — AS ANULAÇÕES DE EMPENHO E DE LIQUIDAÇÃO CHEGAM AO SAGRES (Estornos §4.9, EstornoLiquidacao §4.11).
+ *
+ * Antes: a linha de anulação saía nos arquivos Empenhos/Liquidacao como se fosse um documento NOVO (o
+ * leitor não filtrava), e o motivo da anulação de liquidação era validado e descartado. N=2 em cada
+ * nível: uma anulação PARCIAL e uma INTEIRA no mesmo dia, cada uma com o seu motivo.
+ *
+ * Contas à mão:
+ *   NE-1 10.000, liquidado 6.000 → anulação parcial 4.000 (o saldo a liquidar) → "S" (há liquidação viva)
+ *   NE-2  2.000, nada liquidado  → anulação inteira 2.000                       → "N"
+ *   NL-1 6.000 (NE-1), pago 2.500 → anulação parcial 3.500 (o não pago)
+ *   NL-2 1.000 (NE-3), nada pago  → anulação inteira 1.000
+ */
+describe("V23 — as anulações de empenho e de liquidação no SAGRES", () => {
+  beforeEach(semear);
+
+  const DIA = new Date("2026-05-01T12:00:00Z");
+  const UG = "999001";
+
+  it("empenho: as duas anulações vão a Estornos com o motivo e o 'já liquidada' certo, e NÃO saem em Empenhos", async () => {
+    const ne1 = await empenhaDe("10000.00", "1");
+    await liquidaDe(ne1, "6000.00", "1");
+    const ne2 = await empenhaDe("2000.00", "2");
+    // Empenho genuíno no MESMO dia: prova que o filtro não tirou os empenhos do dia junto.
+    await empenhar(
+      { fichaId: FICHA, numero: "NE-9", tipo: "ORDINARIO", valor: "100.00", data: DIA, credorCpfCnpj: "12345678000195", historico: "empenho do dia", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+      R_EMPENHO,
+      deps
+    );
+
+    await anularEmpenhoParcial({ originalId: ne1, numero: "81", valor: "4000.00", data: DIA, motivo: "Saldo do empenho nao sera utilizado", criadoPor: POR }, deps);
+    await anularEmpenho({ empenhoId: ne2, numero: "82", data: DIA, historico: "Empenho emitido em duplicidade", criadoPor: POR }, deps);
+
+    const fatos = await lerFatosEstornos(prisma, { codUnidadeGestora: UG, dia: DIA });
+    expect(fatos.map((f) => [f.numEmpenho, f.numero, f.valor.toFixed(2), f.motivo, f.despesaLiquidada])).toEqual([
+      ["NE-1", "81", "4000.00", "Saldo do empenho nao sera utilizado", "S"],
+      ["NE-2", "82", "2000.00", "Empenho emitido em duplicidade", "N"],
+    ]);
+    const empenhosDoDia = await lerFatosEmpenhos(prisma, { codUnidadeGestora: UG, dia: DIA });
+    expect(empenhosDoDia.map((e) => e.numEmpenho)).toEqual(["NE-9"]);
+  });
+
+  it("liquidação: o motivo chega ao banco e as duas anulações vão a EstornoLiquidacao, fora de Liquidacao", async () => {
+    const ne1 = await empenhaDe("10000.00", "1");
+    const nl1 = await liquidaDe(ne1, "6000.00", "1");
+    await pagaDe(nl1, "2500.00", "1");
+    const ne3 = await empenhaDe("1000.00", "3");
+    const nl2 = await liquidaDe(ne3, "1000.00", "2");
+
+    await anularLiquidacaoParcial({ originalId: nl1, numero: "91", valor: "3500.00", data: DIA, motivo: "Parte do servico nao foi prestada", criadoPor: POR }, deps);
+    await anularLiquidacao({ liquidacaoId: nl2, numero: "92", data: DIA, historico: "Nota fiscal cancelada pelo fornecedor", criadoPor: POR }, deps);
+
+    const gravadas = await prisma.liquidacao.findMany({
+      where: { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] },
+      select: { numero: true, motivo: true },
+      orderBy: { numero: "asc" },
+    });
+    expect(gravadas).toEqual([
+      { numero: "91", motivo: "Parte do servico nao foi prestada" },
+      { numero: "92", motivo: "Nota fiscal cancelada pelo fornecedor" },
+    ]);
+
+    const fatos = await lerFatosEstornoLiquidacao(prisma, { codUnidadeGestora: UG, dia: DIA });
+    expect(fatos.map((f) => [f.numEmpenho, f.numLiquidacao, f.numero, f.valor.toFixed(2), f.motivo]).sort()).toEqual([
+      ["NE-1", "NL-1", "91", "3500.00", "Parte do servico nao foi prestada"],
+      ["NE-3", "NL-2", "92", "1000.00", "Nota fiscal cancelada pelo fornecedor"],
+    ]);
+    expect(await lerFatosLiquidacao(prisma, { codUnidadeGestora: UG, dia: DIA })).toEqual([]);
+  });
+
+  it("recusa na ENTRADA o motivo que o arquivo não aceita, nos quatro atos — e não grava nada", async () => {
+    const ne1 = await empenhaDe("10000.00", "1");
+    const nl1 = await liquidaDe(ne1, "6000.00", "1");
+    const antesE = await prisma.empenho.count();
+    const antesL = await prisma.liquidacao.count();
+
+    await expect(anularEmpenho({ empenhoId: ne1, numero: "83", data: DIA, historico: "x".repeat(121), criadoPor: POR }, deps)).rejects.toThrow(/121 caracteres.*até 120/);
+    await expect(
+      anularEmpenhoParcial({ originalId: ne1, numero: "84", valor: "10.00", data: DIA, motivo: "Pedido do 'gestor' do contrato", criadoPor: POR }, deps)
+    ).rejects.toThrow(/aspas nem apóstrofo/);
+    await expect(anularLiquidacao({ liquidacaoId: nl1, numero: "93", data: DIA, historico: "linha um\nlinha dois", criadoPor: POR }, deps)).rejects.toThrow(/numa linha só/);
+    await expect(
+      anularLiquidacaoParcial({ originalId: nl1, numero: "94", valor: "10.00", data: DIA, motivo: "y".repeat(130), criadoPor: POR }, deps)
+    ).rejects.toThrow(/130 caracteres.*até 120/);
+    expect(await prisma.empenho.count()).toBe(antesE);
+    expect(await prisma.liquidacao.count()).toBe(antesL);
+  });
+
+  it("a anulação de liquidação gravada sem motivo (anterior à V23) faz o gerador RECUSAR nomeando", async () => {
+    const ne1 = await empenhaDe("10000.00", "1");
+    const nl1 = await liquidaDe(ne1, "6000.00", "1");
+    await anularLiquidacao({ liquidacaoId: nl1, numero: "95", data: DIA, historico: "Motivo que sera apagado", criadoPor: POR }, deps);
+    // Simula o legado: a coluna nasceu nula para tudo o que veio antes. (O teste roda como DONO.)
+    await prisma.liquidacao.updateMany({ where: { numero: "95" }, data: { motivo: null } });
+
+    await expect(lerFatosEstornoLiquidacao(prisma, { codUnidadeGestora: UG, dia: DIA })).rejects.toThrow(
+      /EstornoLiquidacao — a anulação 95 foi gravada sem motivo/
+    );
+  });
+
+  it("desfazer uma anulação parcial no dia recusa os três arquivos de estorno nomeando — nunca vira estorno nem some", async () => {
+    const ne1 = await empenhaDe("10000.00", "1");
+    const nl1 = await liquidaDe(ne1, "6000.00", "1");
+    const np1 = await pagaDe(nl1, "2500.00", "1");
+    const DEPOIS = new Date("2026-05-02T12:00:00Z");
+    const ap = await anularEmpenhoParcial({ originalId: ne1, numero: "85", valor: "1000.00", data: DIA, motivo: "Reducao do objeto", criadoPor: POR }, deps);
+    const al = await anularLiquidacaoParcial({ originalId: nl1, numero: "96", valor: "500.00", data: DIA, motivo: "Reducao da medicao", criadoPor: POR }, deps);
+    const pp = await anularPagamentoParcial({ originalId: np1, numero: "97", valor: "100.00", data: DIA, motivo: "Devolucao parcial", criadoPor: POR }, deps);
+    await estornarAnulacaoParcial({ anulacaoId: ap.anulacaoId, nivel: "EMPENHO", numero: "86", data: DEPOIS, motivo: "anulação lançada por engano", criadoPor: POR }, deps);
+    await estornarAnulacaoParcial({ anulacaoId: al.anulacaoId, nivel: "LIQUIDACAO", numero: "98", data: DEPOIS, motivo: "anulação lançada por engano", criadoPor: POR }, deps);
+    await estornarAnulacaoParcial({ anulacaoId: pp.anulacaoId, nivel: "PAGAMENTO", numero: "99", data: DEPOIS, motivo: "anulação lançada por engano", criadoPor: POR }, deps);
+
+    // O dia da anulação continua exportável; o dia do "desfazer" é recusado, nomeando o registro.
+    expect((await lerFatosEstornos(prisma, { codUnidadeGestora: UG, dia: DIA })).map((f) => f.numero)).toEqual(["85"]);
+    await expect(lerFatosEstornos(prisma, { codUnidadeGestora: UG, dia: DEPOIS })).rejects.toThrow(/registro 86 desfaz a anulação 85 de um empenho/);
+    await expect(lerFatosEstornoLiquidacao(prisma, { codUnidadeGestora: UG, dia: DEPOIS })).rejects.toThrow(/registro 98 desfaz a anulação 96 de um liquidação/);
+    await expect(lerFatosEstornoPagamento(prisma, { codUnidadeGestora: UG, dia: DEPOIS })).rejects.toThrow(/registro 99 desfaz a anulação 97 de um pagamento/);
+  });
+
+  it("o arquivo sai nas posições do leiaute: 180 caracteres, motivo em 54-173 e 45-164", async () => {
+    const e = await empenhar(
+      { fichaId: FICHA, numero: "1001", tipo: "ORDINARIO", valor: "3000.00", data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "empenho", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+      R_EMPENHO,
+      deps
+    );
+    const l = await liquidar(
+      { empenhoId: e.empenhoId, numero: "2001", valor: "1000.00", data: new Date("2026-03-01T12:00:00Z"), responsavelAtesto: "Fulano", historico: "liquidação", criadoPor: POR },
+      R_LIQUIDACAO,
+      deps
+    );
+    await anularLiquidacao({ liquidacaoId: l.liquidacaoId, numero: "2002", data: DIA, historico: "Nota cancelada", criadoPor: POR }, deps);
+    await anularEmpenhoParcial({ originalId: e.empenhoId, numero: "1002", valor: "2000.00", data: DIA, motivo: "Saldo sem uso", criadoPor: POR }, deps);
+
+    const est = (await gerarEstornos(prisma, { codUnidadeGestora: UG, dia: DIA })).conteudo.toString("utf8").split("\r\n").filter((x) => x !== "");
+    expect(est).toHaveLength(1);
+    const r = est[0]!;
+    expect(r.length).toBe(180);
+    expect(r.slice(0, 6)).toBe(UG);
+    expect(r.slice(15, 22)).toBe("0001001"); //         numEmpenho 16-22
+    expect(r.slice(22, 29)).toBe("0001002"); //         numero 23-29
+    expect(r.slice(29, 37)).toBe("01052026"); //        data 30-37
+    expect(r.slice(37, 53)).toBe("0000000002000,00"); // valor 38-53
+    expect(r.slice(53, 173).trimEnd()).toBe("Saldo sem uso");
+    // A liquidação foi anulada antes, no mesmo dia: o liquidado líquido na data é zero.
+    expect(r.slice(173, 174)).toBe("N");
+    expect(r.slice(174, 180)).toBe("000000");
+
+    const el = (await gerarEstornoLiquidacao(prisma, { codUnidadeGestora: UG, dia: DIA })).conteudo.toString("utf8").split("\r\n").filter((x) => x !== "");
+    expect(el).toHaveLength(1);
+    const s = el[0]!;
+    expect(s.length).toBe(180);
+    expect(s.slice(15, 22)).toBe("0001001"); //         numEmpenho 16-22
+    expect(s.slice(22, 29)).toBe("0002001"); //         numLiquidacao 23-29
+    expect(s.slice(29, 36)).toBe("0002002"); //         numero 30-36
+    expect(s.slice(44, 164).trimEnd()).toBe("Nota cancelada");
+    expect(s.slice(164, 180)).toBe("0000000001000,00");
   });
 });

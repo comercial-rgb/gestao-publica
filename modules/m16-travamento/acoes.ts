@@ -2607,6 +2607,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerFatosConciliacaoBancaria: "leitura (o relatório de conciliação do M09 → DTO §4.27 — não muta)",
   gerarEstornoPagamento: "leitura (gera o TXT SAGRES EstornoPagamento §4.13 — não muta)",
   lerFatosEstornoPagamento: "leitura (Prisma → DTO EstornoPagamento, a anulação com o pagamento anulado — não muta)",
+  gerarEstornos: "leitura (gera o TXT SAGRES Estornos §4.9, a anulação do empenho — não muta)",
+  lerFatosEstornos: "leitura (Prisma → DTO Estornos, a anulação com o empenho anulado — não muta)",
+  gerarEstornoLiquidacao: "leitura (gera o TXT SAGRES EstornoLiquidacao §4.11 — não muta)",
+  lerFatosEstornoLiquidacao: "leitura (Prisma → DTO EstornoLiquidacao, a anulação com a liquidação anulada — não muta)",
   gerarReceitaOrcamentaria: "leitura (gera o TXT SAGRES ReceitaOrcamentaria — não muta)",
   lerFatosReceitaOrcamentaria: "leitura (Prisma → DTO ReceitaOrcamentaria, conta arrecadadora é param export — não muta)",
   gerarRetencao: "leitura (gera o TXT SAGRES Retencao §4.14 do M07 — não muta)",
@@ -2744,6 +2748,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   extraorcamentarioPorFonte: "leitura",
   totaisDoConsignatario: "leitura",
   conciliacaoBancaria: "leitura",
+  lancamentosDaContaBancaria: "leitura (V22: os fatos do razão atribuídos a UMA conta bancária pelo lançamento de origem — não muta)",
+  reservarNumero: "composável interno (V22: reserva o número do documento que o SISTEMA numera — folha e encargos — dentro do ato já autorizado que o chama; não é ato do usuário e não lança nada)",
+  exigirUsoDoNumero: "guard (V22: o número reservado só é usado com a chave de quem o reservou — roda dentro das escritas do M05 já autorizadas)",
   // ⚠️ M09/ENT03a — as duas são LEITURA, e a distinção importa: quem GRAVA movimento
   // bancário é `registrarMovimentoBancario`, que tem ação própria. Estas duas apenas
   // somam os fatos que já existem. Dar ação a elas seria conceder permissão para

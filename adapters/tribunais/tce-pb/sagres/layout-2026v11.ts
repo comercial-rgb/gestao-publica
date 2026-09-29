@@ -503,6 +503,80 @@ export const LAYOUT_ESTORNO_PAGAMENTO: LayoutArquivo<EstornoPagamentoFato> = {
   campos: camposEstornoPagamento,
 };
 
+// ── ESTORNOS (§4.9, Diário, V23) — a anulação (inteira ou parcial) do EMPENHO. ─────────────────────
+// Chave: UG + ano + UO + numEmpenho + numero. Todos os campos são obrigatórios no leiaute.
+export interface EstornoEmpenhoFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  /** O número do empenho ESTORNADO (o original). */
+  readonly numEmpenho: string;
+  /** O número do estorno — o da própria linha de anulação. */
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: Money;
+  readonly motivo: string;
+  /** "S" ou "N": o empenho tinha liquidação viva na data do estorno (ver o gerador). */
+  readonly despesaLiquidada: "S" | "N";
+}
+
+const camposEstornos: readonly CampoLayout<EstornoEmpenhoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "anulado.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "anulado.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho anulado.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numero", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "anulação.numero", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 30, posFinal: 37, tipo: "DATA", obrigatorio: true, origem: "anulação.data", extrair: (f) => f.data },
+  { nome: "valor", posInicial: 38, posFinal: 53, tipo: "VALOR", obrigatorio: true, origem: "anulação.valor", extrair: (f) => f.valor },
+  { nome: "motivo", posInicial: 54, posFinal: 173, tipo: "ALFA", obrigatorio: true, origem: "anulação.historico (o motivo exigido na anulação, V23)", extrair: (f) => f.motivo },
+  { nome: "despesaLiquidada", posInicial: 174, posFinal: 174, tipo: "ALFA", obrigatorio: true, origem: "liquidado líquido do empenho na data do estorno > 0", extrair: (f) => f.despesaLiquidada },
+  { nome: "reservado", posInicial: 175, posFinal: 180, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+
+export const LAYOUT_ESTORNOS: LayoutArquivo<EstornoEmpenhoFato> = {
+  entidade: "Estornos",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornos,
+};
+
+// ── ESTORNOLIQUIDACAO (§4.11, Diário, V23) — a anulação (inteira ou parcial) da LIQUIDAÇÃO. ────────
+// Chave: UG + ano + UO + numEmpenho + numLiquidacao + numero. O leiaute v1.1 lista uma linha
+// "reserva" SEM posição nem tamanho depois de `valor` (165-180): o registro termina em 180 e nenhuma
+// posição é inventada para ela. Premissa a confirmar no validador oficial.
+export interface EstornoLiquidacaoFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  /** O número da liquidação ESTORNADA (a original). */
+  readonly numLiquidacao: string;
+  /** O número do estorno — o da própria linha de anulação. */
+  readonly numero: string;
+  readonly data: Date;
+  readonly motivo: string;
+  readonly valor: Money;
+}
+
+const camposEstornoLiquidacao: readonly CampoLayout<EstornoLiquidacaoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numLiquidacao", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "liquidação anulada.numero", extrair: (f) => f.numLiquidacao },
+  { nome: "numero", posInicial: 30, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "anulação.numero", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 37, posFinal: 44, tipo: "DATA", obrigatorio: true, origem: "anulação.data", extrair: (f) => f.data },
+  { nome: "motivo", posInicial: 45, posFinal: 164, tipo: "ALFA", obrigatorio: true, origem: "Liquidacao.motivo (V23)", extrair: (f) => f.motivo },
+  { nome: "valor", posInicial: 165, posFinal: 180, tipo: "VALOR", obrigatorio: true, origem: "anulação.valor", extrair: (f) => f.valor },
+];
+
+export const LAYOUT_ESTORNO_LIQUIDACAO: LayoutArquivo<EstornoLiquidacaoFato> = {
+  entidade: "EstornoLiquidacao",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornoLiquidacao,
+};
+
 // ═══ 4.27 CONCILIACAOBANCARIA (Mensal) — V21 ═══════════════════════════════════════
 // ⚠️ NÃO SÃO OS VÍNCULOS. O registro explica a diferença entre o saldo do BANCO e o da CONTABILIDADE
 // no fim do mês: uma linha do saldo do extrato (§5.15 tipo 1) e uma por PENDÊNCIA (tipos 2 a 5). Os
@@ -792,6 +866,8 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
   LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_ESTORNOS,
+  LAYOUT_ESTORNO_LIQUIDACAO,
   LAYOUT_CONCILIACAO_BANCARIA,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,

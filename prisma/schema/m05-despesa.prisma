@@ -323,6 +323,11 @@ model Liquidacao {
   data              DateTime
   responsavelAtesto String
 
+  /// V23 — o MOTIVO da anulação (inteira ou parcial) da liquidação: SAGRES EstornoLiquidacao §4.11,
+  /// obrigatório, até 120. Nulo na liquidação genuína e nas anulações gravadas antes (inventar um
+  /// motivo retroativo seria pior que não ter nenhum; o gerador recusa nomeando).
+  motivo String?
+
   /// Nota fiscal — opcional (nem toda liquidação tem NF). Quando há
   /// `documentoFiscalId`, estes campos são COPIADOS do documento na gravação para
   /// os leiautes de tribunal continuarem lendo a liquidação.

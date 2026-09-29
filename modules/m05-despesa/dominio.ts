@@ -566,8 +566,17 @@ export function comporEmpenho(
 export const TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO = 120;
 
 export function exigirMotivoDeAnulacaoDePagamento(motivo: string): string {
+  return exigirMotivoDeAnulacao(motivo, "do pagamento");
+}
+
+/**
+ * V23 — a mesma regra para o EMPENHO (SAGRES Estornos §4.9) e a LIQUIDAÇÃO (EstornoLiquidacao
+ * §4.11): nos dois o motivo é obrigatório no leiaute, com os mesmos 120 caracteres. Conferido na
+ * anulação inteira e na parcial, antes de gravar.
+ */
+export function exigirMotivoDeAnulacao(motivo: string, doQue: "do pagamento" | "do empenho" | "da liquidação" | "dos encargos"): string {
   const m = motivo.trim();
-  if (m === "") throw new Error("Informe o motivo da anulação do pagamento. Nada foi gravado.");
+  if (m === "") throw new Error(`Informe o motivo da anulação ${doQue}. Nada foi gravado.`);
   if (m.length > TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO) {
     throw new Error(
       `O motivo tem ${String(m.length)} caracteres; a prestação de contas ao Tribunal de Contas aceita até ` +

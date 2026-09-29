@@ -19,6 +19,8 @@ import {
   LAYOUT_MOVIMENTACAO,
   LAYOUT_PAGAMENTOS,
   LAYOUT_ESTORNO_PAGAMENTO,
+  LAYOUT_ESTORNOS,
+  LAYOUT_ESTORNO_LIQUIDACAO,
   LAYOUT_UNIDADE_ORCAMENTARIA,
   DEPARA_ATO_JURIDICO_SAGRES,
   DEPARA_NATUREZA_JURIDICA_SAGRES,
@@ -38,6 +40,8 @@ import {
   type MovimentacaoFato,
   type PagamentoFato,
   type EstornoPagamentoFato,
+  type EstornoEmpenhoFato,
+  type EstornoLiquidacaoFato,
   type UnidadeOrcamentariaFato,
   type ConciliacaoBancariaFato,
   type ReceitaOrcamentariaFato,
@@ -122,8 +126,10 @@ export async function lerFatosEmpenhos(
   // O ORDENADOR é atributo do ente (S6): o empenho o herda daqui (quita o gap cpfOrdenador da S3).
   const ente = await prisma.enteConfig.findFirst({ select: { cpfOrdenador: true } });
   const cpfOrdenadorDoEnte = ente?.cpfOrdenador ?? null;
+  // V23 — só EMPENHOS genuínos. A linha de anulação (inteira ou parcial) e o estorno de uma anulação
+  // não são empenhos novos: vão a Estornos (§4.9), ou são recusados nomeando (`lerFatosEstornos`).
   const empenhos = await prisma.empenho.findMany({
-    where: { data: { gte, lt } },
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
     include: {
       subelemento: true,
       obra: true,
@@ -187,8 +193,9 @@ export async function lerFatosLiquidacao(
   params: { readonly codUnidadeGestora: string; readonly dia: Date }
 ): Promise<LiquidacaoFato[]> {
   const { gte, lt } = intervaloDoDia(params.dia);
+  // V23 — só LIQUIDAÇÕES genuínas; as anulações vão a EstornoLiquidacao (§4.11).
   const liqs = await prisma.liquidacao.findMany({
-    where: { data: { gte, lt } },
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
     include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } },
     orderBy: [{ empenhoId: "asc" }, { numero: "asc" }],
   });
@@ -558,7 +565,7 @@ export async function lerFatosEstornoPagamento(
       OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }],
     },
     include: {
-      estornoDe: { select: { numero: true } },
+      estornoDe: { select: { numero: true, estornoDeId: true, anulacaoParcialDeId: true } },
       anulacaoParcialDe: { select: { numero: true } },
       liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } },
     },
@@ -568,6 +575,11 @@ export async function lerFatosEstornoPagamento(
     const anulado = a.estornoDe ?? a.anulacaoParcialDe;
     if (anulado === null) {
       throw new Error(`SAGRES/EstornoPagamento — a anulação ${a.numero} não aponta o pagamento anulado.`);
+    }
+    // V23 — o registro que DESFAZ uma anulação parcial não é estorno de pagamento: antes, ele saía
+    // aqui como se a própria anulação fosse uma parcela paga.
+    if (a.estornoDe !== null && (a.estornoDe.estornoDeId !== null || a.estornoDe.anulacaoParcialDeId !== null)) {
+      throw recusaDoEstornoDeAnulacao("EstornoPagamento", "pagamento", a.numero, anulado.numero);
     }
     if (a.motivo === null || a.motivo.trim() === "") {
       throw new Error(
@@ -598,6 +610,138 @@ export async function gerarEstornoPagamento(
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosEstornoPagamento(prisma, params);
   return empacotar(LAYOUT_ESTORNO_PAGAMENTO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoPagamento", competencia: params.dia }), fatos);
+}
+
+/**
+ * V23 — o leiaute não tem registro para DESFAZER uma anulação parcial (o "estorno do estorno"): ela
+ * restabelece o documento, e nenhuma das tabelas de estorno a descreve. Omiti-la deixaria o saldo do
+ * tribunal diferente do nosso sem aviso; exportá-la como estorno diria o contrário do que aconteceu.
+ * O dia é recusado nomeando o registro.
+ */
+function recusaDoEstornoDeAnulacao(arquivo: string, doc: string, numero: string, anulacao: string): Error {
+  return new Error(
+    `SAGRES/${arquivo} — o registro ${numero} desfaz a anulação ${anulacao} de um ${doc}. O leiaute do ` +
+      `Tribunal de Contas não tem registro para desfazer uma anulação, e ela não pode ser omitida nem ` +
+      `enviada como estorno. Nada foi gerado para este dia.`
+  );
+}
+
+/** O motivo gravado, conferido pela mesma regra da entrada (V21/V23). O registro antigo fora dela é recusado. */
+function motivoExportavel(arquivo: string, numero: string, motivo: string | null): string {
+  const m = (motivo ?? "").trim();
+  if (m === "") {
+    throw new Error(
+      `SAGRES/${arquivo} — a anulação ${numero} foi gravada sem motivo, antes de o sistema guardá-lo. ` +
+        `O campo é obrigatório no leiaute e não se inventa texto para ele. Nada foi gerado.`
+    );
+  }
+  if (m.length > 120 || /[\u0000-\u001f]/.test(m) || m.includes("'") || m.includes('"')) {
+    throw new Error(
+      `SAGRES/${arquivo} — o motivo da anulação ${numero} tem ${String(m.length)} caracteres, quebra de ` +
+        `linha ou aspas; o leiaute aceita até 120 caracteres numa linha, sem aspas. Nada foi gerado.`
+    );
+  }
+  return m;
+}
+
+// ── ESTORNOS (§4.9, Diário, V23) — a anulação (inteira ou parcial) do empenho. ──────────────────
+export async function lerFatosEstornos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoEmpenhoFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const anulacoes = await prisma.empenho.findMany({
+    where: { data: { gte, lt }, OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] },
+    include: {
+      estornoDe: { select: { id: true, numero: true, estornoDeId: true, anulacaoParcialDeId: true } },
+      anulacaoParcialDe: { select: { id: true, numero: true } },
+      ficha: { include: { unidadeOrc: true } },
+    },
+    orderBy: [{ numero: "asc" }],
+  });
+  const fatos: EstornoEmpenhoFato[] = [];
+  for (const a of anulacoes) {
+    const anulado = a.estornoDe ?? a.anulacaoParcialDe;
+    if (anulado === null) throw new Error(`SAGRES/Estornos — a anulação ${a.numero} não aponta o empenho anulado.`);
+    if (a.estornoDe !== null && (a.estornoDe.estornoDeId !== null || a.estornoDe.anulacaoParcialDeId !== null)) {
+      throw recusaDoEstornoDeAnulacao("Estornos", "empenho", a.numero, anulado.numero);
+    }
+    // "A despesa já foi liquidada": o LIQUIDADO LÍQUIDO do empenho na data do estorno. A anulação só
+    // alcança o saldo não liquidado (guarda do M05), mas o empenho pode ter sido liquidado em parte.
+    const liqs = await prisma.liquidacao.findMany({
+      where: { empenhoId: anulado.id, data: { lte: a.data } },
+      select: { valor: true, estornoDeId: true, anulacaoParcialDeId: true, estornoDe: { select: { anulacaoParcialDeId: true } } },
+    });
+    let liquidado = new Decimal(0);
+    for (const l of liqs) {
+      const genuina = l.estornoDeId === null && l.anulacaoParcialDeId === null;
+      const desfazParcial = l.estornoDe !== null && l.estornoDe.anulacaoParcialDeId !== null;
+      liquidado = genuina || desfazParcial ? liquidado.plus(l.valor.toFixed(2)) : liquidado.minus(l.valor.toFixed(2));
+    }
+    fatos.push({
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: a.ficha.exercicio,
+      codUnidadeOrcamentaria: a.ficha.unidadeOrc.codigo,
+      numEmpenho: anulado.numero,
+      numero: a.numero,
+      data: a.data,
+      valor: money(a.valor),
+      motivo: motivoExportavel("Estornos", a.numero, a.historico),
+      despesaLiquidada: liquidado.greaterThan(0) ? "S" : "N",
+    });
+  }
+  return fatos;
+}
+
+export async function gerarEstornos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosEstornos(prisma, params);
+  return empacotar(LAYOUT_ESTORNOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Estornos", competencia: params.dia }), fatos);
+}
+
+// ── ESTORNOLIQUIDACAO (§4.11, Diário, V23) — a anulação (inteira ou parcial) da liquidação. ─────
+export async function lerFatosEstornoLiquidacao(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoLiquidacaoFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const anulacoes = await prisma.liquidacao.findMany({
+    where: { data: { gte, lt }, OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] },
+    include: {
+      estornoDe: { select: { numero: true, estornoDeId: true, anulacaoParcialDeId: true } },
+      anulacaoParcialDe: { select: { numero: true } },
+      empenho: { include: { ficha: { include: { unidadeOrc: true } } } },
+    },
+    orderBy: [{ empenhoId: "asc" }, { numero: "asc" }],
+  });
+  return anulacoes.map((a) => {
+    const anulado = a.estornoDe ?? a.anulacaoParcialDe;
+    if (anulado === null) throw new Error(`SAGRES/EstornoLiquidacao — a anulação ${a.numero} não aponta a liquidação anulada.`);
+    if (a.estornoDe !== null && (a.estornoDe.estornoDeId !== null || a.estornoDe.anulacaoParcialDeId !== null)) {
+      throw recusaDoEstornoDeAnulacao("EstornoLiquidacao", "liquidação", a.numero, anulado.numero);
+    }
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: a.empenho.ficha.exercicio,
+      codUnidadeOrcamentaria: a.empenho.ficha.unidadeOrc.codigo,
+      numEmpenho: a.empenho.numero,
+      numLiquidacao: anulado.numero,
+      numero: a.numero,
+      data: a.data,
+      motivo: motivoExportavel("EstornoLiquidacao", a.numero, a.motivo),
+      valor: money(a.valor),
+    };
+  });
+}
+
+export async function gerarEstornoLiquidacao(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosEstornoLiquidacao(prisma, params);
+  return empacotar(LAYOUT_ESTORNO_LIQUIDACAO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoLiquidacao", competencia: params.dia }), fatos);
 }
 
 // ── RECEITAORCAMENTARIA (Diária) — Origem: ReceitaArrecadada + natureza/fonte/co. ───────────────

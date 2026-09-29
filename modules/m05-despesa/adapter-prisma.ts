@@ -1518,6 +1518,8 @@ export function criarDespesaRepositoryPrisma(
             valor: p.valor.toFixed(2),
             data: p.data,
             responsavelAtesto: "ANULACAO_PARCIAL",
+            // V23 — SAGRES EstornoLiquidacao §4.11 (obrigatório no leiaute).
+            motivo: p.motivo,
             lancamentoId: lancamento.id,
             anulacaoParcialDeId: original.id,
             documentoFiscalId: original.documentoFiscalId,
@@ -2401,6 +2403,8 @@ export function criarDespesaRepositoryPrisma(
             valor: original.valor,
             data: p.data,
             responsavelAtesto: original.responsavelAtesto,
+            // V23 — SAGRES EstornoLiquidacao §4.11 (obrigatório no leiaute).
+            motivo: p.motivo,
             lancamentoId: lancamento.id,
             estornoDeId: original.id,
             documentoFiscalId: original.documentoFiscalId,

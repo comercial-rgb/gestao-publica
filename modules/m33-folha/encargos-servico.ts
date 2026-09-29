@@ -9,6 +9,7 @@ import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { identidadeDaChave, reservarNumero } from "../m05-despesa/numerador.js";
 import { anularEmpenhoParcial, anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { exigirMotivoDeAnulacao, TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO } from "../m05-despesa/dominio.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroEmpenho, roteiroLiquidacaoDaFolha, elementoDebitaEstoque } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
@@ -743,6 +744,16 @@ export async function ajustarEncargosDaFolha(prisma: PrismaClient, input: Ajusta
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.ajustarEncargosDaFolha, "ENTE");
   });
   const a = await apuracaoVigente(prisma, d.folhaId);
+  // V23 — o motivo das anulações do ajuste vai ao Tribunal de Contas (SAGRES §4.9 e §4.11, até 120).
+  // Conferido ANTES de qualquer escrita: descobrir no meio do ato deixaria parte dos grupos ajustada.
+  if (a !== null) {
+    const identificacao = `Ajuste para baixo dos encargos (apuração nº ${a.numero}): `;
+    const cabem = TAMANHO_MAXIMO_DO_MOTIVO_DE_ANULACAO_DE_PAGAMENTO - identificacao.length;
+    if (d.motivo.length > cabem) {
+      throw new Error(`O motivo do ajuste tem ${String(d.motivo.length)} caracteres; junto com a identificação do ajuste, a prestação de contas ao Tribunal de Contas aceita até ${String(cabem)}. Resuma o motivo. Nada foi gravado.`);
+    }
+    exigirMotivoDeAnulacao(identificacao + d.motivo, "dos encargos");
+  }
   // ⚠️ RECONHECER ANTES DE DECIDIR: uma anulação do M05 com o número determinístico do ajuste que ficou
   // sem rastro (a resposta se perdeu depois do commit) é registrada agora — senão o reenvio veria "nada
   // a reduzir" e o ato já praticado ficaria sem autor de negócio no rastro.

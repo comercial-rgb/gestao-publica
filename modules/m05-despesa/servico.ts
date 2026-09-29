@@ -8,6 +8,7 @@ import type {
 import {
   comporEmpenho,
   comporPartidas,
+  exigirMotivoDeAnulacao,
   zAnularEmpenhoInput,
   zLiberarReservaInput,
   zReservarDotacaoInput,
@@ -215,6 +216,8 @@ export async function anularEmpenho(
   deps: M05Deps
 ): Promise<{ readonly empenhoId: string; readonly lancamentoId: string }> {
   const dados = zAnularEmpenhoInput.parse(input);
+  // V23 — o histórico desta entrada É o motivo (SAGRES Estornos §4.9); nasce exportável.
+  const motivo = exigirMotivoDeAnulacao(dados.historico, "do empenho");
 
   // A UG vem do EMPENHO -> ficha. Anular a despesa da Saúde é ato da Saúde.
   await deps.autz.exigir(dados.criadoPor, ACAO_DO_SERVICO.anularEmpenho, {
@@ -262,7 +265,7 @@ export async function anularEmpenho(
       empenhoOriginalId: original.id,
       numero: dados.numero,
       data: dados.data,
-      historico: dados.historico,
+      historico: motivo,
       criadoPor: dados.criadoPor,
     },
     {

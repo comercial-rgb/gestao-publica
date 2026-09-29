@@ -18,6 +18,7 @@ import {
   type PagarInput,
   type RoteiroContabil,
   type StatusEmpenho,
+  exigirMotivoDeAnulacao,
   exigirMotivoDeAnulacaoDePagamento,
 } from "./dominio.js";
 import { resolverContas } from "./servico.js";
@@ -234,6 +235,9 @@ export async function anularLiquidacao(
   deps: M05Deps
 ): Promise<{ readonly liquidacaoId: string; readonly lancamentoId: string }> {
   const dados = zAnularLiquidacaoInput.parse(input);
+  // V23 — o histórico desta entrada É o motivo (SAGRES EstornoLiquidacao §4.11). Até aqui era
+  // validado e descartado, como o do pagamento antes da V21.
+  const motivo = exigirMotivoDeAnulacao(dados.historico, "da liquidação");
 
   // ⚠️ ESTA AUTORIZAÇÃO COBRE A CASCATA DO ALMOXARIFADO — e é a decisão 0(c) deste bloco.
   //
@@ -286,6 +290,7 @@ export async function anularLiquidacao(
       liquidacaoOriginalId: original.id,
       numero: dados.numero,
       data: dados.data,
+      motivo,
       criadoPor: dados.criadoPor,
     },
     {
