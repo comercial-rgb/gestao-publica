@@ -11,7 +11,7 @@ import {
   type LancamentoDoDiario,
 } from "../../../../lib/portas/livros";
 import { SelecaoESoma, type LancamentoSelecionavel } from "./SelecaoESoma";
-import { somarValoresDigitados } from "../../../../lib/format/moeda";
+import { formatarMoeda, somarValoresDigitados } from "../../../../lib/format/moeda";
 import {
   EscopoDeLeituraError,
   ExercicioIlegivelError,
@@ -193,7 +193,7 @@ export default async function LancamentosPage({
 
       {permitidas.has("REGISTRAR_LANCAMENTO_MANUAL") ? <FormLancamentoManual /> : null}
       {permitidas.has("ESTORNAR_LANCAMENTO_MANUAL") && estornaveis.length > 0 ? (
-        <FormEstornoManual opcoes={estornaveis.map((l) => ({ id: l.id, rotulo: `${l.numeroControle} · ${dataBr(l.data)} · R$ ${l.valor} — ${l.historico.slice(0, 60)}` }))} />
+        <FormEstornoManual opcoes={estornaveis.map((l) => ({ id: l.id, rotulo: `${l.numeroControle} · ${dataBr(l.data)} · R$ ${formatarMoeda(l.valor).texto} — ${l.historico.slice(0, 60)}` }))} />
       ) : null}
 
       {desbalanceados > 0 ? (

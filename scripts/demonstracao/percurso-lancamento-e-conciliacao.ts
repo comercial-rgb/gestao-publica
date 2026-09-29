@@ -88,7 +88,7 @@ async function main(): Promise<void> {
     const sufixo = String(Date.now()).slice(-5);
     const numero = `AJ-${sufixo}`;
     const cabecalho = [
-      ['input[name="dia"]', "2026-09-20", "data"],
+      ['input[name="dia"]', "2026-07-20", "data"],
       ['input[name="numeroControle"]', numero, "texto"],
       ['input[name="historico"]', "Ajuste de demonstração: reclassificação de receita", "texto"],
     ] as const;
@@ -106,7 +106,7 @@ async function main(): Promise<void> {
     await ir(p, "/contabilidade/lancamentos");
     const certo = await enviar(p, "registrar-lancamento-manual", [...cabecalho, ...partida(0, "1.1.1.1.1.19.00", "DEBITO", "70,00"), ...partida(1, "4.9.1.1.1.01.00", "CREDITO", "70,00")]);
     afirmar(certo.tipo === "ok" && certo.texto.includes(numero), `o lançamento ${numero} foi registrado (${certo.texto})`);
-    await ir(p, "/contabilidade/lancamentos?desde=2026-09-01&ate=2026-09-30&origem=MANUAL");
+    await ir(p, "/contabilidade/lancamentos?desde=2026-07-01&ate=2026-07-31&origem=MANUAL");
     const lista = await texto(p);
     afirmar(lista.includes(numero), "depois de recarregar, o lançamento está na lista, com a origem manual");
     await p.screenshot({ path: `${PASTA}/lancamento-01-registrado.png`, fullPage: true });
@@ -157,10 +157,10 @@ async function main(): Promise<void> {
       const est = await enviar(p, "estornar-lancamento-manual", [
         ['select[name="lancamentoId"]', alvo.v, "select"],
         ['input[name="numeroControle"]', `EST-${sufixo}`, "texto"],
-        ['input[name="dia"]', "2026-09-21", "data"],
+        ['input[name="dia"]', "2026-07-21", "data"],
       ]);
       afirmar(est.tipo === "ok" || est.tipo === "silencio", `o estorno foi registrado (${est.tipo}: ${est.texto})`);
-      await ir(p, "/contabilidade/lancamentos?desde=2026-09-01&ate=2026-09-30");
+      await ir(p, "/contabilidade/lancamentos?desde=2026-07-01&ate=2026-07-31");
       const l2 = await texto(p);
       afirmar(l2.includes(numero) && l2.includes(`EST-${sufixo}`), "depois de recarregar, o original continua e o estorno está ao lado dele");
     }

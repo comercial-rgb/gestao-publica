@@ -9,6 +9,7 @@ import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
 import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { FormDesfazerVinculo, FormVincular } from "./FormsDoVinculo";
 
@@ -373,8 +374,8 @@ export default async function ConciliacaoBancariaPage({
 
       {podeVincular && painel.pendenciasExtrato.length > 0 && painel.pendenciasInternas.length > 0 ? (
         <FormVincular
-          linhas={painel.pendenciasExtrato.map((l) => ({ valor: l.id, residual: semSinal(l.residual), rotulo: `${dataBr(l.data)} · ${l.descricao} · R$ ${l.residual}` }))}
-          registros={painel.pendenciasInternas.map((l) => ({ valor: `${l.tipo}:${l.id}`, residual: semSinal(l.residual), rotulo: `${dataBr(l.data)} · ${l.descricao} (${TIPO_DO_REGISTRO[l.tipo] ?? l.tipo}) · R$ ${l.residual}` }))}
+          linhas={painel.pendenciasExtrato.map((l) => ({ valor: l.id, residual: semSinal(l.residual), rotulo: `${dataBr(l.data)} · ${l.descricao} · R$ ${formatarMoeda(l.residual).texto}` }))}
+          registros={painel.pendenciasInternas.map((l) => ({ valor: `${l.tipo}:${l.id}`, residual: semSinal(l.residual), rotulo: `${dataBr(l.data)} · ${l.descricao} (${TIPO_DO_REGISTRO[l.tipo] ?? l.tipo}) · R$ ${formatarMoeda(l.residual).texto}` }))}
         />
       ) : null}
 
