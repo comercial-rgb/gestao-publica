@@ -5,6 +5,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { Decimal, toMoney, sumMoney, type Money } from "../../packages/contracts/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
+import { reservarNumero } from "../m05-despesa/numerador.js";
 import { elementoDebitaEstoque, roteiroEmpenho } from "../m01-core-contabil/roteiros.js";
 import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
 import { zCompetencia, type TipoDeFolha } from "./dominio.js";
@@ -655,10 +656,19 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
 
   for (const p of agrupamento.parcelas) {
     const sufixo = p.matricula ?? p.grupo.codigo;
-    const numero = numeroDoEmpenhoDaFolha(p.grupo.serie, folha.competencia, sufixo, folha.tipo as TipoDeFolha);
+    /**
+     * ⚠️ V22 — O TEXTO É A IDENTIDADE, O NÚMERO VEM DO NUMERADOR. O SAGRES só recebe número de 7
+     * dígitos; o texto determinístico ("FP/2026-08/DEMO-0001") passou a ser a CHAVE da reserva
+     * (`m05-despesa/numerador.ts`), que devolve sempre o mesmo número — a retomada continua achando
+     * o empenho pelo número, como antes. E o empenho gravado ANTES do numerador, com o texto como
+     * número, continua reconhecido por ele.
+     */
+    const identidade = numeroDoEmpenhoDaFolha(p.grupo.serie, folha.competencia, sufixo, folha.tipo as TipoDeFolha);
     const onde = `${p.grupo.codigo} / ${sufixo}`;
 
-    const ja = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } });
+    const jaComOTexto = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero: identidade } }, select: { id: true } });
+    const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: p.grupo.fichaId, especie: "EMPENHO", identidade, criadoPor: d.criadoPor });
+    const ja = jaComOTexto ?? (await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } }));
     /**
      * ⚠️ V11 V9.3 — A RETOMADA DO NÚMERO LEGADO, e ela é o que impede a duplicação para trás.
      *

@@ -139,7 +139,18 @@ conformidade externa.
   - V22 (2026-09-28): os formulários de empenho, liquidação, pagamento e anulação passaram a sugerir
     número só com dígitos (antes o exemplo era `2026NE000001`, que este leiaute recusa). A regra NÃO é
     imposta no domínio.
-  - **Pendência `FOLHA-NUMERO-DE-EMPENHO-FORA-DO-SAGRES`:** o empenho e a liquidação da folha nascem com
+  - `FOLHA-NUMERO-DE-EMPENHO-FORA-DO-SAGRES` — **RESOLVIDA na V22 rodada 7 (2026-09-29).** O texto determinístico (`FP/2026-05/MAT-A`, `FE/…-E1`,
+  `…-AL{n}-…`, `…-AE{n}-…`) deixou de ser gravado como número e passou a ser a CHAVE de uma reserva
+  (`NumeroReservado`, `m05-despesa/numerador.ts`): mesma chave, mesmo número, numérico, o próximo do
+  exercício acima do maior número numérico já usado na espécie (inclusive o digitado). A retomada
+  continua achando o documento pelo número; o documento gravado ANTES continua reconhecido pelo texto.
+  O reconhecimento das anulações do ajuste dos encargos lê a apuração da IDENTIDADE (o texto gravado
+  antes, ou a chave da reserva), não mais do número. Provas: `m05-numerador.test.ts` (7, com
+  concorrência e o oitavo dígito) e `m33-encargos.test.ts` (resposta perdida com número reservado);
+  mutação — sem a trava (2 vermelhos), número novo a cada retomada (3), reconhecimento sem a reserva (1).
+  Continua nomeado: o número DIGITADO não passa pelo numerador (a tela orienta, o domínio não impõe);
+  um operador que digite exatamente o próximo número ao mesmo tempo pode colidir numa ficha diferente.
+    Histórico: o empenho e a liquidação da folha nasciam com
     número gerado pelo M33 (`FP/2026-08/DEMO-0001`, `FE/2026-08/ENC-RGPS-PATR-E1`), e o pacote diário
     do dia da folha é RECUSADO nomeando o campo. Resolver pede decisão de numeração (sequência numérica
     por UG e exercício, compartilhada com o empenho digitado), não ajuste de formato.

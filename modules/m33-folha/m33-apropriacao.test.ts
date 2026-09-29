@@ -133,6 +133,14 @@ async function grupoPorServidor(fichaId = FICHA): Promise<string> {
 
 beforeEach(semear);
 
+
+/** V22: o número gravado é numérico (SAGRES); a identidade do documento mora na reserva do numerador. */
+async function identidadeDoNumero(numero: string, especie: "EMPENHO" | "LIQUIDACAO" = "EMPENHO"): Promise<string> {
+  expect(numero).toMatch(/^\d{1,7}$/);
+  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero, especie }, select: { chave: true } });
+  return r.chave.slice(r.chave.indexOf("|") + 1);
+}
+
 describe("(1) o cadastro do grupo — o que ele recusa, e por quê", () => {
   it("recusa rubrica de DESCONTO: desconto é retenção do pagamento, não despesa orçamentária", async () => {
     await expect(
@@ -193,15 +201,17 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
     expect(r.jaExistiam).toBe(0);
 
     const empenhos = await prisma.empenho.findMany({ orderBy: { numero: "asc" }, select: { numero: true, valor: true, credorCpfCnpj: true, historico: true, tipo: true, categoriaOrdemCronologica: true } });
-    expect(empenhos.map((e) => e.numero)).toEqual(["FH/2026-05/MAT-A", "FP/2026-05/MAT-A", "FP/2026-05/MAT-B"]);
+    // V22: o número gravado é numérico; a identidade (o texto de antes) mora na reserva.
+    const porIdentidade = new Map(await Promise.all(empenhos.map(async (e) => [await identidadeDoNumero(e.numero), e] as const)));
+    expect([...porIdentidade.keys()].sort()).toEqual(["FH/2026-05/MAT-A", "FP/2026-05/MAT-A", "FP/2026-05/MAT-B"]);
     // ⚠️ O BRUTO, e não o líquido: Ana recebe 3.000 de vencimento (a contribuição de 350 e o
     // imposto NÃO saem da despesa — são retenções do pagamento).
-    const daAna = empenhos.find((e) => e.numero === "FP/2026-05/MAT-A")!;
+    const daAna = porIdentidade.get("FP/2026-05/MAT-A")!;
     expect(daAna.valor.toFixed(2)).toBe("3000.00");
     expect(daAna.credorCpfCnpj).toBe("11144477735");
     expect(daAna.historico).toMatch(/Folha mensal de 2026-05 — Vencimentos e vantagens fixas, matrícula MAT-A/);
-    expect(empenhos.find((e) => e.numero === "FH/2026-05/MAT-A")!.valor.toFixed(2)).toBe("500.00");
-    expect(empenhos.find((e) => e.numero === "FP/2026-05/MAT-B")!.valor.toFixed(2)).toBe("2000.00");
+    expect(porIdentidade.get("FH/2026-05/MAT-A")!.valor.toFixed(2)).toBe("500.00");
+    expect(porIdentidade.get("FP/2026-05/MAT-B")!.valor.toFixed(2)).toBe("2000.00");
     // ⚠️ V11 V9.3 — ESTA ASSERÇÃO MUDOU DE SENTIDO SEM MUDAR DE VALOR. Ela fixava só o formato;
     // agora, com o tipo entrando na composição, ela afirma a COMPATIBILIDADE PARA TRÁS: a folha
     // MENSAL continua produzindo byte a byte o mesmo número, e por isso todo empenho mensal já
@@ -242,7 +252,7 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
     const r = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
     expect(r.empenhados).toBe(1);
     const e = await prisma.empenho.findFirstOrThrow({ select: { numero: true, valor: true, credorCpfCnpj: true, tipo: true } });
-    expect(e.numero).toBe("FG/2026-05/FOLHA-UNICA");
+    expect(await identidadeDoNumero(e.numero)).toBe("FG/2026-05/FOLHA-UNICA");
     expect(e.valor.toFixed(2)).toBe("5500.00"); // 3000 + 2000 + 500
     expect(e.credorCpfCnpj).toBe("39053344705");
     expect(e.tipo).toBe("GLOBAL");

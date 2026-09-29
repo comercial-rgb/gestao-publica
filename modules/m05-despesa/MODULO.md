@@ -400,3 +400,21 @@ mutação das três cópias (`m05-solicitacao-de-empenho.test.ts` t12).
   `dividaId`; o ESTORNO da anulação parcial não copia `obraId` nem `ordemDeCompraId`. Com isso,
   `empenhadoLiquidoDaOrdem` (e qualquer soma por obra/dívida) erra depois de um estorno de parcial ou de
   uma anulação total de empenho de amortização. Mesmo desenho da correção do convênio.
+
+## V22 — o numerador dos documentos que o sistema numera (`numerador.ts`)
+
+O SAGRES recebe o número do empenho, da liquidação e da anulação como NUMÉRICO de 7 posições. O número
+DIGITADO continua do operador (a tela sugere "só números, até 7 dígitos"; o domínio não impõe). O que o
+SISTEMA gera — o empenho da folha, o empenho e as anulações dos encargos (M33) — passa por
+`reservarNumero`: a chave é a ficha mais o texto determinístico do documento, e o número é o próximo do
+exercício acima do maior número numérico já usado na espécie (`EMPENHO`, que inclui a anulação de
+empenho; `LIQUIDACAO`, a anulação de liquidação), sob o trinco `NumeradorDoExercicio` (posto 32). Mesma
+chave, mesmo número: é o que mantém a retomada idempotente. `NumeroReservado` é append-only.
+
+- **A reserva vem antes do documento, de propósito:** se o empenho falha, a próxima tentativa reencontra o
+  mesmo número. Reserva sem documento é número pulado, não documento a mais.
+- **Nomeado:** o número digitado não passa pela trava; um operador que digite exatamente o próximo número
+  ao mesmo tempo que a folha reserva pode colidir numa ficha diferente (a unicidade do empenho é por ficha).
+- Provas: `m05-numerador.test.ts` (idempotência, N=2, o maior número digitado, texto e outro exercício
+  ignorados, espécies separadas, 10 reservas simultâneas, a mesma chave cinco vezes ao mesmo tempo, o
+  oitavo dígito recusado).

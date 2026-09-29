@@ -11,6 +11,7 @@ import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarT
 import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "./apropriacao.js";
 import { certificarFolha, designarNaFolha } from "./certificacao.js";
 import { anularEmpenhoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { reservarNumero } from "../m05-despesa/numerador.js";
 import { baixarGuiaDeRecolhimento, cancelarGuiaDeRecolhimento, guiasEObrigacoesDaFolha, registrarGuiaDeRecolhimento } from "./recolhimento.js";
 import { pagar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroPagamento } from "../m01-core-contabil/roteiros.js";
@@ -181,6 +182,14 @@ async function fotografiaDaFolhaSalarial() {
 
 beforeEach(semear, 60_000);
 
+
+/** V22: o número gravado é numérico (SAGRES); a identidade do documento mora na reserva do numerador. */
+async function identidadeDoNumero(numero: string, especie: "EMPENHO" | "LIQUIDACAO" = "EMPENHO"): Promise<string> {
+  expect(numero).toMatch(/^\d{1,7}$/);
+  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero, especie }, select: { chave: true } });
+  return r.chave.slice(r.chave.indexOf("|") + 1);
+}
+
 describe("(1) parâmetros: cadastro, aprovação por outra pessoa, e a base só de provento", () => {
   it("quem cadastra não aprova; desconto não compõe a base; versão com o mesmo início é ambígua", async () => {
     const { versaoId } = await cadastrarVersaoDoEncargo(prisma, { componenteId: compPatr, competenciaInicio: "2026-01", aliquota: "0.20", fundamentacaoLegal: "perfil SINTETICO", sintetica: true, rubricaIds: [rubricaVenc], criadoPor: RH });
@@ -278,7 +287,7 @@ describe("(3) atesto, empenho e liquidação dos encargos", () => {
     const r = await apropriarEncargosDaFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: RH });
     expect([r.empenhados, r.total.toFixed(2)]).toEqual([1, "1247.00"]);
     const emp = await prisma.empenho.findMany({ where: { fichaId: "ficha-encargos" }, select: { numero: true, valor: true, credorCpfCnpj: true } });
-    expect(emp.map((e) => `${e.numero}=${e.valor.toFixed(2)}`)).toEqual(["FE/2026-05/ENCARGOS-E1=1247.00"]);
+    expect(await Promise.all(emp.map(async (e) => `${await identidadeDoNumero(e.numero)}=${e.valor.toFixed(2)}`))).toEqual(["FE/2026-05/ENCARGOS-E1=1247.00"]);
     // A contribuição RETIDA (10% de 3500 + 10% de 2300 = 580,00) NÃO foi empenhada em lugar nenhum.
     const todos = await prisma.empenho.findMany({ select: { valor: true } });
     expect(todos.some((e) => e.valor.toFixed(2) === "580.00" || e.valor.toFixed(2) === "350.00" || e.valor.toFixed(2) === "230.00")).toBe(false);
@@ -472,6 +481,34 @@ describe("(6) ajuste para baixo: empenhado, liquidado não pago e já pago", () 
     // e um terceiro envio não tem o que fazer — e diz.
     await expect(ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })).rejects.toThrow(/SEM-REDUCAO-A-AJUSTAR/);
     expect(await liquidoDaFicha()).toBe("1189.00");
+  });
+
+  it("V22 — RESPOSTA PERDIDA COM O NÚMERO RESERVADO: a anulação foi gravada com o número numérico e o rastro não — o ajuste reconhece pela reserva", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    const elo = await prisma.empenhoDosEncargos.findFirstOrThrow({ select: { empenhoId: true } });
+    const apuracao = await prisma.apuracaoDeEncargos.findFirstOrThrow({ orderBy: { numero: "desc" }, select: { numero: true } });
+    // o "primeiro envio" de hoje: reservou o número da identidade e o M05 comitou a anulação com ele
+    const identidade = `FE/2026-05/ENCARGOS-AE${apuracao.numero}-${elo.empenhoId.slice(-6)}`;
+    const numero = await reservarNumero(prisma, { fichaId: "ficha-encargos", especie: "EMPENHO", identidade, criadoPor: RH });
+    expect(numero).toMatch(/^\d{1,7}$/);
+    await anularEmpenhoParcial({ originalId: elo.empenhoId, numero, valor: "58.00", data: DATA_ATESTO, motivo: "primeiro envio sem resposta", criadoPor: RH }, criarM05DepsComContratos(prisma));
+    const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    expect([r.atos, r.reconhecidos]).toEqual([0, 1]);
+    expect(await prisma.empenho.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);
+    expect(await liquidoDaFicha()).toBe("1189.00");
+    // e a anulação que o ajuste faz sozinho também nasce numérica (o terceiro envio não tem o que fazer)
+    await expect(ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH })).rejects.toThrow(/SEM-REDUCAO-A-AJUSTAR/);
+  });
+
+  it("V22 — a anulação que o AJUSTE grava nasce com número numérico, e a identidade fica na reserva", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    const r = await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    expect(r.atos).toBeGreaterThan(0);
+    const anulacoes = await prisma.empenho.findMany({ where: { anulacaoParcialDeId: { not: null } }, select: { numero: true } });
+    expect(anulacoes.length).toBeGreaterThan(0);
+    for (const a of anulacoes) expect(await identidadeDoNumero(a.numero)).toMatch(/^FE\/2026-05\/ENCARGOS-AE\d+-/);
   });
 
   it("EXERCÍCIO ENCERRADO: o M05 recusa nomeando; nada é anulado e a folha não é dada como corrigida", async () => {

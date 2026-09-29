@@ -335,6 +335,14 @@ afterAll(async () => {
 // u1 · A GUARDA 4 PELO CAMINHO `PAGO` — "fechar não é pagar", medido
 // ═══════════════════════════════════════════════════════════════════════════════
 
+
+/** V22: o número gravado é numérico (SAGRES); a identidade do documento mora na reserva do numerador. */
+async function identidadeDoNumero(numero: string, especie: "EMPENHO" | "LIQUIDACAO" = "EMPENHO"): Promise<string> {
+  expect(numero).toMatch(/^\d{1,7}$/);
+  const r = await prisma.numeroReservado.findFirstOrThrow({ where: { numero, especie }, select: { chave: true } });
+  return r.chave.slice(r.chave.indexOf("|") + 1);
+}
+
 describe("u1 · o critério PAGO do adiantamento salarial", () => {
   /**
    * ⚠️ O LADO POSITIVO PRIMEIRO, E ELE NÃO É FORMALIDADE. Sem ele, todas as recusas abaixo
@@ -676,11 +684,12 @@ describe("u3 · a folha de vale vira despesa pelo caminho de sempre", () => {
     expect(r.jaExistiam).toBe(0);
 
     const empenhos = await prisma.empenho.findMany({ orderBy: { numero: "asc" }, select: { numero: true, valor: true, credorCpfCnpj: true } });
-    expect(empenhos.map((e) => e.numero)).toEqual([
+    const identidades = await Promise.all(empenhos.map((e) => identidadeDoNumero(e.numero)));
+    expect(identidades).toEqual([
       numeroDoEmpenhoDaFolha("FPV", JUNHO, "MAT-A", "ADIANTAMENTO_SALARIAL"),
       numeroDoEmpenhoDaFolha("FPV", JUNHO, "MAT-B", "ADIANTAMENTO_SALARIAL"),
     ]);
-    expect(empenhos[0]!.numero).toBe("FPV/2026-06/ADIANTAMENTO_SALARIAL/MAT-A");
+    expect(identidades[0]).toBe("FPV/2026-06/ADIANTAMENTO_SALARIAL/MAT-A");
     expect(empenhos[0]!.valor.toFixed(2)).toBe("1200.00");
     expect(empenhos[0]!.credorCpfCnpj).toBe("11144477735");
     expect(empenhos[1]!.valor.toFixed(2)).toBe("800.00");

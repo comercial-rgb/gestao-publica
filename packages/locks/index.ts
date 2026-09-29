@@ -340,6 +340,15 @@ export const ORDEM_DOS_LOCKS = {
    * continua sendo a garantia dura contra duas emissões.
    */
   SolicitacaoDeEmpenho: 31,
+  /**
+   * V22 — O NUMERADOR DO EXERCÍCIO (M05, `numerador.ts`). A corrida é a de sempre: duas reservas
+   * leem o mesmo "maior número usado" e as duas escolhem o seguinte — a unicidade do banco recusa
+   * a segunda, e a folha pararia no meio. O trinco é por exercício × espécie.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: a reserva roda em transação PRÓPRIA, antes do empenho, e
+   * não trava mais nada depois dela.
+   */
+  NumeradorDoExercicio: 32,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

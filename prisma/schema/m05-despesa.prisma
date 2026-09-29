@@ -709,3 +709,25 @@ model RoteiroDaDotacaoPorFonte {
   @@index([origem, versao])
 }
 
+
+/// V22 — O NUMERADOR DOS DOCUMENTOS QUE O SISTEMA NUMERA (a folha e os encargos).
+///
+/// O SAGRES (TCE-PB) recebe o número do empenho, da liquidação e da anulação como NUMÉRICO de 7
+/// posições. O número digitado pelo operador continua dele; o que o SISTEMA gera (empenho da folha,
+/// empenho e anulações dos encargos) vem daqui: a `chave` é a identidade determinística do documento
+/// (o texto que antes era gravado como número, com a ficha), e o `numero` é o próximo do sequencial
+/// do exercício, acima do maior número numérico já usado na espécie. Mesma chave, mesmo número — é o
+/// que mantém a retomada idempotente. Append-only: o runtime só insere.
+model NumeroReservado {
+  id        String @id @default(cuid())
+  exercicio Int
+  /// EMPENHO (empenhos e anulações de empenho) ou LIQUIDACAO (anulações de liquidação).
+  especie   String
+  chave     String
+  numero    String
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([exercicio, especie, chave])
+  @@unique([exercicio, especie, numero])
+}

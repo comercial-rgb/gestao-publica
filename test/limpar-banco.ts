@@ -451,6 +451,8 @@ export const TABELAS = [
   "MovimentoDotacao",
   "ReservaEmpenho",
   "Empenho",
+  // V22 — o numerador dos documentos que o sistema numera (sem FK: a chave é texto).
+  "NumeroReservado",
   // V22 — a campanha publicitária (M05), vínculo da nota de empenho.
   "CampanhaPublicitaria",
   // V22 — a Lei Orçamentária Anual (projeto e aprovação).

@@ -7,6 +7,7 @@ import { AtoInelegivelError, Decimal, emProsa, exigirElegivel, sumMoney, toMoney
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
+import { reservarNumero } from "../m05-despesa/numerador.js";
 import { anularEmpenhoParcial, anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroEmpenho, roteiroLiquidacaoDaFolha, elementoDebitaEstoque } from "../m01-core-contabil/roteiros.js";
@@ -485,10 +486,14 @@ export async function apropriarEncargosDaFolha(prisma: PrismaClient, input: Apro
       continue;
     }
     const valor = p.diferenca.valor;
-    const numero = `${p.grupo.serie}/${folha.competencia}/${p.grupo.codigo}-E${a.numero}`;
+    // V22: o texto é a IDENTIDADE (chave do numerador); o número gravado é numérico, para o SAGRES.
+    const identidade = `${p.grupo.serie}/${folha.competencia}/${p.grupo.codigo}-E${a.numero}`;
     try {
-      // A janela entre o empenho do M05 (transação própria) e o elo: reconhecer, não duplicar.
-      const ja = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } });
+      // A janela entre o empenho do M05 (transação própria) e o elo: reconhecer, não duplicar —
+      // pelo texto (gravado antes do numerador) ou pelo número reservado para ele.
+      const jaComOTexto = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero: identidade } }, select: { id: true } });
+      const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: p.grupo.fichaId, especie: "EMPENHO", identidade, criadoPor: d.criadoPor });
+      const ja = jaComOTexto ?? (await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } }));
       const empenhoId =
         ja?.id ??
         (
@@ -679,20 +684,34 @@ export class AjusteDosEncargosInterrompidoError extends Error {
  * commit) e o rastro `AjusteDosEncargos` tem chave única. Rodar de novo recalcula a posição LÍQUIDA e
  * faz só o que falta. Uma falha no meio NÃO rotula a folha como corrigida.
  */
-/** As anulações parciais do M05 com número do ajuste (`…-AL{n}-…` / `…-AE{n}-…`) que ainda não têm rastro. */
+/**
+ * As anulações parciais do M05 feitas pelo ajuste (identidade `…-AL{n}-…` / `…-AE{n}-…`) que ainda não
+ * têm rastro.
+ *
+ * ⚠️ V22: A APURAÇÃO SAI DA IDENTIDADE, NÃO DO NÚMERO. Antes do numerador a identidade ERA o número
+ * gravado; depois dele o número é numérico e a identidade mora na reserva (`NumeroReservado.chave`).
+ * As duas formas são lidas — a gravada antes continua reconhecida.
+ */
 async function reconhecerAnulacoesSemRastro(prisma: PrismaClient, folhaId: string, competencia: string, motivo: string, criadoPor: string): Promise<number> {
-  const elos = await prisma.empenhoDosEncargos.findMany({ where: { apuracao: { folhaId } }, select: { empenhoId: true, grupo: { select: { id: true, serie: true, codigo: true } } } });
+  const elos = await prisma.empenhoDosEncargos.findMany({ where: { apuracao: { folhaId } }, select: { empenhoId: true, grupo: { select: { id: true, serie: true, codigo: true, fichaId: true } } } });
   const apuracoes = new Map((await prisma.apuracaoDeEncargos.findMany({ where: { folhaId }, select: { id: true, numero: true } })).map((x) => [x.numero, x.id]));
   let n = 0;
   for (const e of elos) {
     const prefixo = `${e.grupo.serie}/${competencia}/${e.grupo.codigo}`;
+    const reservas = await prisma.numeroReservado.findMany({ where: { chave: { startsWith: `${e.grupo.fichaId}|${prefixo}-A` } }, select: { especie: true, chave: true, numero: true } });
+    const identidadePorNumero = (especie: string): Map<string, string> =>
+      new Map(reservas.filter((r) => r.especie === especie).map((r) => [r.numero, r.chave.slice(e.grupo.fichaId.length + 1)]));
+    const reservadosEmp = identidadePorNumero("EMPENHO");
+    const reservadosLiq = identidadePorNumero("LIQUIDACAO");
     const [anulEmp, anulLiq] = await Promise.all([
-      prisma.empenho.findMany({ where: { anulacaoParcialDeId: e.empenhoId, numero: { startsWith: `${prefixo}-AE` }, ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
-      prisma.liquidacao.findMany({ where: { empenhoId: e.empenhoId, anulacaoParcialDeId: { not: null }, numero: { startsWith: `${prefixo}-AL` }, ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
+      prisma.empenho.findMany({ where: { anulacaoParcialDeId: e.empenhoId, OR: [{ numero: { startsWith: `${prefixo}-AE` } }, { numero: { in: [...reservadosEmp.keys()] } }], ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
+      prisma.liquidacao.findMany({ where: { empenhoId: e.empenhoId, anulacaoParcialDeId: { not: null }, OR: [{ numero: { startsWith: `${prefixo}-AL` } }, { numero: { in: [...reservadosLiq.keys()] } }], ajusteDosEncargos: null }, select: { id: true, numero: true, valor: true } }),
     ]);
-    for (const [tipo, linhas, sigla] of [["ANULACAO_DE_EMPENHO", anulEmp, "AE"], ["ANULACAO_DE_LIQUIDACAO", anulLiq, "AL"]] as const) {
+    for (const [tipo, linhas, sigla, reservados] of [["ANULACAO_DE_EMPENHO", anulEmp, "AE", reservadosEmp], ["ANULACAO_DE_LIQUIDACAO", anulLiq, "AL", reservadosLiq]] as const) {
       for (const l of linhas) {
-        const numeroDaApuracao = Number(new RegExp(`-${sigla}(\\d+)-`).exec(l.numero)?.[1] ?? "0");
+        const identidade = l.numero.startsWith(`${prefixo}-${sigla}`) ? l.numero : (reservados.get(l.numero) ?? "");
+        if (!identidade.startsWith(`${prefixo}-${sigla}`)) continue;
+        const numeroDaApuracao = Number(new RegExp(`-${sigla}(\\d+)-`).exec(identidade)?.[1] ?? "0");
         const apuracaoId = apuracoes.get(numeroDaApuracao);
         if (apuracaoId === undefined) continue;
         try {
@@ -771,8 +790,10 @@ export async function ajustarEncargosDaFolha(prisma: PrismaClient, input: Ajusta
           const naoPago = toMoney(l.liquido.minus(l.pago));
           if (naoPago.lte(0)) continue;
           const valor = toMoney(Decimal.min(faltaLiq, naoPago));
-          const numero = `${prefixo}-AL${a.numero}-${l.numero}`.slice(0, 60);
-          const ja = await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero } }, select: { id: true, valor: true } });
+          const identidade = `${prefixo}-AL${a.numero}-${l.numero}`.slice(0, 60);
+          const jaComOTexto = await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero: identidade } }, select: { id: true, valor: true } });
+          const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: g.fichaId, especie: "LIQUIDACAO", identidade, criadoPor: d.criadoPor });
+          const ja = jaComOTexto ?? (await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: e.empenhoId, numero } }, select: { id: true, valor: true } }));
           const anulacaoId = ja?.id ?? (await anularLiquidacaoParcial({ originalId: l.id, numero, valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
           const aplicado = ja === null ? valor : toMoney(ja.valor);
           await registrar(`${a.id}:${g.id}:AL:${anulacaoId}`, { grupoId: g.id, tipo: "ANULACAO_DE_LIQUIDACAO", valor: aplicado, anulacaoDeLiquidacaoId: anulacaoId });
@@ -789,8 +810,10 @@ export async function ajustarEncargosDaFolha(prisma: PrismaClient, input: Ajusta
           const aLiquidar = toMoney(e.empenhado.minus(e.liquidado));
           if (aLiquidar.lte(0)) continue;
           const valor = toMoney(Decimal.min(faltaEmp, aLiquidar));
-          const numero = `${prefixo}-AE${a.numero}-${e.empenhoId.slice(-6)}`;
-          const ja = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: g.fichaId, numero } }, select: { id: true, valor: true } });
+          const identidade = `${prefixo}-AE${a.numero}-${e.empenhoId.slice(-6)}`;
+          const jaComOTexto = await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: g.fichaId, numero: identidade } }, select: { id: true, valor: true } });
+          const numero = jaComOTexto !== null ? identidade : await reservarNumero(prisma, { fichaId: g.fichaId, especie: "EMPENHO", identidade, criadoPor: d.criadoPor });
+          const ja = jaComOTexto ?? (await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: g.fichaId, numero } }, select: { id: true, valor: true } }));
           const anulacaoId = ja?.id ?? (await anularEmpenhoParcial({ originalId: e.empenhoId, numero, valor: valor.toFixed(2), data: d.data, motivo: `Ajuste para baixo dos encargos (apuração nº ${a.numero}): ${d.motivo}`, criadoPor: d.criadoPor }, deps)).anulacaoId;
           const aplicado = ja === null ? valor : toMoney(ja.valor);
           await registrar(`${a.id}:${g.id}:AE:${anulacaoId}`, { grupoId: g.id, tipo: "ANULACAO_DE_EMPENHO", valor: aplicado, anulacaoDeEmpenhoId: anulacaoId });
