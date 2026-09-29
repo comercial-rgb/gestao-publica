@@ -352,3 +352,11 @@ O banco `gestao_publica_apresentacao` está pronto e conferido. A cópia `gestao
 **Refazer do zero** (≈ 3 min): `scripts/preparar-banco-de-percursos.ts` (a massa da POC; exige
 `DATABASE_URL_PERCURSOS`, `LICENCA_NUMERO` e `LICENCA_CLIENTE`) e depois `npm run demonstracao:preparar` com
 `DATABASE_URL` no mesmo banco — onze passos em ordem de dependência, idempotentes.
+
+## O pedido da rodada 7, como veio (2026-09-29)
+
+> "Pontos que dependem de decisão sua (registrados, não alterados) te autorizo a resolver"
+
+Os três pontos: `FOLHA-NUMERO-DE-EMPENHO-FORA-DO-SAGRES` (M33/M05 + adaptador SAGRES), a conta corrente
+bancária na partida (M01 + M09) e `CONCILIACAO-VINCULO-DEPOIS-DO-CORTE` com a tela de vínculo (M09).
+Regime: **profundidade** nos três.
