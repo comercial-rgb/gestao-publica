@@ -47,8 +47,9 @@ async function main(): Promise<void> {
     console.log("1. a tabela do IRRF de 2026 traz a parcela a deduzir da lei");
     await p.goto(`${BASE}/folha/tabelas`, { waitUntil: "networkidle0", timeout: 180000 });
     const links = await p.$$eval('a[href^="/folha/tabelas/"]', (as) => as.map((a) => ({ href: a.getAttribute("href") ?? "", t: (a.closest("tr")?.textContent ?? a.textContent ?? "").replace(/\s+/g, " ") })));
-    const irrf = links.find((l) => /IRRF|imposto de renda/i.test(l.t) && /2026-01/.test(l.t));
-    afirmar(irrf !== undefined, `a lista tem a tabela do IRRF que começa em 2026-01 (${links.length} links)`);
+    // A de competência mais recente: é a que traz a faixa isenta do redutor (a de janeiro foi cadastrada antes da coluna).
+    const irrf = links.filter((l) => /^IRRF/.test(l.t.trim())).sort((a, b) => b.t.localeCompare(a.t))[0];
+    afirmar(irrf !== undefined && /2026-\d\d/.test(irrf.t), `a lista tem a tabela do IRRF de 2026 (${irrf?.t.slice(0, 20) ?? "nenhuma"})`);
     if (irrf !== undefined) {
       await p.goto(`${BASE}${irrf.href}`, { waitUntil: "networkidle0", timeout: 180000 });
       const d = await texto(p);

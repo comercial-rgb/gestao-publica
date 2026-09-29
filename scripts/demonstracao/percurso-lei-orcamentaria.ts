@@ -127,7 +127,10 @@ async function main(): Promise<void> {
     const r2 = await enviar(p, "registrar-aprovacao", {
       numeroDaLei: lei, dataDaSancao: `${exercicio - 1}-12-18`, dataDaPublicacao: `${exercicio - 1}-12-19`, veiculoDePublicacao: "Diário Oficial do Município",
     });
-    afirmar(r2.tipo === "ok", `a lei foi registrada (${r2.tipo}: ${r2.texto})`);
+    // Com a lei registrada o formulário SAI da tela (a ação deixa de caber), e a mensagem de sucesso sai
+    // com ele: o sinal é o formulário ter sumido sem recusa — a recarga abaixo confere o dado.
+    const sumiu = (await p.$('form[data-acao="registrar-aprovacao"]')) === null;
+    afirmar(r2.tipo === "ok" || (r2.tipo === "silencio" && sumiu), `a lei foi registrada (${r2.tipo}${sumiu ? ", o formulário saiu da tela" : ""})`);
     await p.reload({ waitUntil: "networkidle0", timeout: 180000 });
     const detalhe = await texto(p);
     afirmar(detalhe.includes(`Lei ${lei}`) && /lei aprovada e publicada/.test(detalhe), "depois de recarregar, o detalhe traz a lei e o selo de aprovada");

@@ -1134,9 +1134,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V22, medido ao construir a tela da LOA: NÃO existe cadastro da Lei Orçamentária Anual. O schema tem a lei do PPA (`PlanoPlurianual.leiRef`) e a LDO (`LeiDiretrizesOrcamentarias`), e nenhum modelo para a LOA — sem projeto de lei, sem lei que a aprovou e sem anexos. A tela /planejamento/loa, entregue na V22, é CONSULTA da LOA consolidada a partir das fichas e da receita prevista (leitura por CONSULTAR_PLANEJAMENTO, nenhum formulário), por decisão declarada em modules/m02b-plurianual/anexos/loa.ts: 'Nada é cadastrado para a LOA além do que a execução já usa'. Pendência: LOA-SEM-CADASTRO-DA-LEI.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: admin (CADASTRAR_LOA, ANEXAR_ARQUIVO, CONSULTAR_PLANEJAMENTO) · contexto: banco gestao_publica_local, next build + servir-percursos em 3011, build 900962d, 2026-09-28 · passos: menu do planejamento → /planejamento/leis-orcamentarias → cadastrar o projeto → segunda LOA do mesmo exercício recusada → recarga (aguardando aprovação) → detalhe → publicação antes da sanção recusada → registrar a lei → recarga (lei, datas e selo; a ação deixa de ser oferecida, com o motivo) → aba de anexos: PDF anexado, recarga, download 200 · obtido: 15/15 (scripts/demonstracao/percurso-lei-orcamentaria.ts).",
+      "evidencia": "V22: cadastro da Lei Orçamentária Anual no M02b — LeiOrcamentariaAnual (projeto de lei por exercício: número, envio ao Legislativo, ementa) e AprovacaoDaLeiOrcamentaria (a lei que o aprovou: número, sanção, publicação, veículo; única e append-only; sanção não antes do envio e publicação não antes da sanção, esta também por CHECK), anexos pelo M22 (dono leiOrcamentariaAnualId, integridade por sha256, leitura CONSULTAR_PLANEJAMENTO). Ação CADASTRAR_LOA (atualização de permissões v40, derivada de CADASTRAR_LDO). Testes: modules/m02b-plurianual/m02b-lei-orcamentaria.test.ts (N=2 exercícios, bordas das datas, aprovação única, autorização negativa com motivo, anexos por LOA e dono único). Tela /planejamento/leis-orcamentarias (lista, cadastro, detalhe com a ação de registrar a lei aprovada e aba de anexos). Antes (mesma V22) estava AUSENTE_CONFIRMADO: só havia a consulta consolidada /planejamento/loa.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.2",

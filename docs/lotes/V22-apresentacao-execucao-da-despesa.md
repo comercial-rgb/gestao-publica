@@ -249,3 +249,34 @@ Commits: `4c4f47d` catálogo, `fdcd63d` campanha publicitária, `c8c462d` vigên
 
 Medições em produção: ver a seção V22 do `ESTADO-EXECUCAO.md` (tipos APROVADO, build 0, telas 45/45,
 ações 156 sem falha real, percurso 35/35).
+
+## O pedido da rodada 5, como veio (2026-09-28)
+
+> "Pendente, com motivo, agora avance por estes que ficaram abertos."
+
+## Checkpoint 5 — 2026-09-28, os abertos da rodada 4
+
+Commits: `1e877a8` folha, `5acea63` LOA, `73d2210` dígito verificador, `11cf7dc` e `ffa22b6` fronteira e
+instrumentos, `900962d` telas e percursos, e o deste.
+
+- **IRRF pela tabela da lei:** base × alíquota − parcela a deduzir (Lei 11.482/2007 art. 1º, conferida no
+  Planalto: 908,73 em 27,5%), um arredondamento só — o motor dá os números da Receita (562,63; 1.016,27).
+  Parcela que não fecha com as faixas é recusada no cadastro e no cálculo; tabela sem parcelas segue faixa a
+  faixa.
+- **Parcela isenta dos 65 anos:** só provento de aposentadoria ou pensão (IN RFB 1.500/2014 art. 6º I, redação
+  da IN RFB 2.299/2025), limitada ao provento de inatividade, e fora da renda que a tabela de redução lê
+  (rendimento isento não é "rendimento tributável", Lei 9.250 art. 3º-A). Defeito achado: o motor dava a
+  isenção a servidor ATIVO com 65 anos.
+- **Redução no 13º:** Lei 9.250 art. 3º-A § 3º (texto conferido); teste N=2.
+- **LOA:** cadastro do projeto, da lei que o aprovou e dos anexos; ação CADASTRAR_LOA (v40). Catálogo 5.9.3.1
+  de AUSENTE_CONFIRMADO para VALIDADO_LOCALMENTE (percurso 15/15).
+- **Dígito verificador no empenho:** o empenho e a solicitação novos recusam; o legado segue nomeado pelo
+  portal e pelo MANAD. Fixtures trocadas pelo mesmo número com o dígito certo; o importador de folha deixou
+  de usar credor fictício fixo no código (o credor passa a ser informado na tela).
+- **Achados no caminho:** seis violações da fronteira tela × domínio herdadas da V11–V21; quatro instrumentos
+  de teste que no Windows falhavam por caminho sem examinar nada (e, consertados, acharam dois pontos reais);
+  o seed da POC dependia de conta que só existe no plano oficial.
+
+**Continua pendente, com motivo:** FAP real do ente (dado do ente; a demonstração usa 1,0000, declarado); a
+natureza 319013 das contribuições patronais (confirmar com a contabilidade); push e conciliação com a linha
+do Mac (só com pedido).
