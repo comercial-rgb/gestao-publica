@@ -5,7 +5,7 @@ import { PageHeader } from "../../../../../../../components/ui/PageHeader";
 import { ValorMonetario } from "../../../../../../../components/ui/ValorMonetario";
 import { exigirLeitura } from "../../../../../../../lib/portas/molde";
 import { verContracheque } from "../../../../../../../lib/portas/recursos/folha-dados";
-import type { MemoriaLida } from "../../../../../../../modules/m33-folha/memoria-do-contracheque";
+import type { MemoriaLida } from "../../../../../../../lib/portas/recursos/folha-dados";
 
 /**
  * O CONTRACHEQUE COM A MEMÓRIA DE CÁLCULO (TR 5.12.51, 5.12.53, 5.12.54) — sem imprimir nada.

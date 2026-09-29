@@ -8,7 +8,6 @@ import {
   CLASSE_PAINEL_FORMULARIO,
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
-import { OPCOES_DE_ESFERA_DO_ATO, OPCOES_DE_TIPO_DE_ATO } from "../../../../lib/portas/recursos/folha";
 import {
   criarParametroDoAdiantamentoSalarialAction,
   type EstadoDoParametroDoAdiantamentoSalarial,
@@ -40,11 +39,16 @@ export function FormParametroDoAdiantamentoSalarial({
   abatimento,
   adiantamentosQuePermitemPago,
   contasDoAdiantamento,
+  opcoesDeEsferaDoAto,
+  opcoesDeTipoDeAto,
 }: {
   readonly proventos: readonly Opcao[];
   readonly abatimento: readonly Opcao[];
   readonly adiantamentosQuePermitemPago: readonly string[];
   readonly contasDoAdiantamento: readonly Opcao[];
+  /** Os róis do ato (esfera e tipo), lidos pelo Server Component: a ilha client não importa porta. */
+  readonly opcoesDeEsferaDoAto: readonly Opcao[];
+  readonly opcoesDeTipoDeAto: readonly Opcao[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoParametroDoAdiantamentoSalarial, FormData>(
     criarParametroDoAdiantamentoSalarialAction,
@@ -249,7 +253,7 @@ export function FormParametroDoAdiantamentoSalarial({
             <option value="" disabled>
               Escolha
             </option>
-            {OPCOES_DE_ESFERA_DO_ATO.map((o) => (
+            {opcoesDeEsferaDoAto.map((o) => (
               <option key={o.valor} value={o.valor}>
                 {o.rotulo}
               </option>
@@ -262,7 +266,7 @@ export function FormParametroDoAdiantamentoSalarial({
             <option value="" disabled>
               Escolha
             </option>
-            {OPCOES_DE_TIPO_DE_ATO.map((o) => (
+            {opcoesDeTipoDeAto.map((o) => (
               <option key={o.valor} value={o.valor}>
                 {o.rotulo}
               </option>

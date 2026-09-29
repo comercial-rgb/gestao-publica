@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { atribuirEntidade } from "../../../../lib/portas/arrecadacao";
-import type { TipoDeAtoDeclarado } from "../../../../modules/m01-core-contabil/ato-declarado";
+import type { TipoDeAtoDeclarado } from "../../../../lib/portas/entidades-contabeis";
 
 export interface EstadoDaAtribuicao {
   readonly erro?: string;

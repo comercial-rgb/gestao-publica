@@ -8,7 +8,7 @@ import {
   declararTitular,
   removerFonteDoRolDaConta,
 } from "../../../../lib/portas/entidades-contabeis";
-import type { TipoDeAtoDeclarado } from "../../../../modules/m01-core-contabil/ato-declarado";
+import type { TipoDeAtoDeclarado } from "../../../../lib/portas/entidades-contabeis";
 
 export interface EstadoDoTitular {
   readonly erro?: string;

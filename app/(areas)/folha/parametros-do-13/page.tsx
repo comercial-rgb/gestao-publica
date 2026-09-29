@@ -3,7 +3,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { ListaDeRecurso } from "../../../../components/molde/ListaDeRecurso";
 import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../../lib/molde/consulta";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
-import { PARAMETROS_DO_DECIMO_TERCEIRO } from "../../../../lib/portas/recursos/folha";
+import { OPCOES_DE_ESFERA_DO_ATO, OPCOES_DE_TIPO_DE_ATO, PARAMETROS_DO_DECIMO_TERCEIRO } from "../../../../lib/portas/recursos/folha";
 import {
   listarParametrosDoDecimoTerceiro,
   rubricasParaOParametroDo13,
@@ -48,7 +48,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         // a coluna de marcação nem aparece — mas a prop é obrigatória, e o vazio diz isso.
         somaDaSelecao={{}}
         {...(podeCriar
-          ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} adiantamentosQuePermitemPago={rubricas.adiantamentosQuePermitemPago} /> }
+          ? { formulario: <FormParametroDo13 proventos={rubricas.proventos} base={rubricas.base} abatimento={rubricas.abatimento} adiantamentosQuePermitemPago={rubricas.adiantamentosQuePermitemPago} opcoesDeEsferaDoAto={OPCOES_DE_ESFERA_DO_ATO} opcoesDeTipoDeAto={OPCOES_DE_TIPO_DE_ATO} /> }
           : {
               motivoSemCriar:
                 "Seu perfil não tem permissão para configurar os parâmetros do 13º. Essa permissão é específica e não " +

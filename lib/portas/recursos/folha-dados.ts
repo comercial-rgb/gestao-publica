@@ -11,6 +11,8 @@ import { criterioDoAbatimentoNoCalculo } from "../../../modules/m33-folha/decimo
 import { conferirDeclaracao, resolverMatriculas } from "../../../modules/m33-folha/declaracao-da-selecao.js";
 import type { SelecaoDoCalculo } from "../../../modules/m33-folha/abrangencia.js";
 import { lerMemoriaDoContracheque, type MemoriaLida } from "../../../modules/m33-folha/memoria-do-contracheque.js";
+/** A memória do contracheque lida, re-exportada para a tela (a UI importa a porta, não o domínio). */
+export type { MemoriaLida };
 import {
   certificacaoDaFolha,
   certificarFolha,

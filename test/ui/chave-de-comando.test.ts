@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -16,7 +17,8 @@ import { describe, expect, it } from "vitest";
  * aparecer aqui, antes de aparecer na tela.
  */
 
-const RAIZ = new URL("../../", import.meta.url).pathname;
+// Portável: `.pathname` dá "/C:/..." com acento em %XX no Windows; fileURLToPath dá o caminho do sistema.
+const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 
 function arquivos(dir: string, filtro: (nome: string) => boolean): string[] {
   const saida: string[] = [];

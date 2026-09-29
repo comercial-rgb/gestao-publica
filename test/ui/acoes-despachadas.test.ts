@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BENS_PATRIMONIAIS, CLASSES_DE_BENS } from "../../lib/portas/recursos/acervo";
@@ -19,7 +20,8 @@ import type { DefinicaoDeRecurso } from "../../lib/molde/tipos";
  * é apontado, nomeando a ação.
  */
 
-const RAIZ = new URL("../../", import.meta.url).pathname;
+// Portável: `.pathname` dá "/C:/..." com acento em %XX no Windows; fileURLToPath dá o caminho do sistema.
+const RAIZ = fileURLToPath(new URL("../../", import.meta.url));
 
 interface Par {
   readonly definicao: DefinicaoDeRecurso;

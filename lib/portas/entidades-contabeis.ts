@@ -44,6 +44,9 @@ export interface EntidadeNaTela extends EntidadeNaLista {
 export const TIPOS_DE_ENTIDADE: readonly { readonly codigo: string; readonly rotulo: string }[] =
   CODIGOS_TIPO_MANAD.map((c) => ({ codigo: c, rotulo: TIPO_MANAD[c]! }));
 
+/** O tipo do ato declarado, re-exportado para a tela: a UI importa a porta, não o domínio. */
+export type { TipoDeAtoDeclarado };
+
 export const TIPOS_DE_ATO_NA_TELA: readonly { readonly codigo: TipoDeAtoDeclarado; readonly rotulo: string }[] =
   (Object.keys(TIPOS_DE_ATO) as TipoDeAtoDeclarado[]).map((c) => ({ codigo: c, rotulo: TIPOS_DE_ATO[c] }));
 

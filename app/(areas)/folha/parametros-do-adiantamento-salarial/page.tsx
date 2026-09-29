@@ -3,7 +3,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { ListaDeRecurso } from "../../../../components/molde/ListaDeRecurso";
 import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../../lib/molde/consulta";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
-import { PARAMETROS_DO_ADIANTAMENTO_SALARIAL } from "../../../../lib/portas/recursos/folha";
+import { OPCOES_DE_ESFERA_DO_ATO, OPCOES_DE_TIPO_DE_ATO, PARAMETROS_DO_ADIANTAMENTO_SALARIAL } from "../../../../lib/portas/recursos/folha";
 import {
   contasParaOAdiantamentoSalarial,
   listarParametrosDoAdiantamentoSalarial,
@@ -60,6 +60,8 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
                   abatimento={rubricas.abatimento}
                   adiantamentosQuePermitemPago={rubricas.adiantamentosQuePermitemPago}
                   contasDoAdiantamento={contasDoAdiantamento}
+                  opcoesDeEsferaDoAto={OPCOES_DE_ESFERA_DO_ATO}
+                  opcoesDeTipoDeAto={OPCOES_DE_TIPO_DE_ATO}
                 />
               ),
             }

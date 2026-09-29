@@ -8,6 +8,7 @@ import {
   PortaSemBancoError,
   type UnidadeComDeclaracao,
 } from "../../../../lib/portas/unidades-orcamentarias";
+import { telaExigeLeituraEmAlgumEscopo } from "../../../../lib/portas/leitura";
 import { dataBr } from "../../../../lib/recorte";
 import { FormDeclaracao } from "./FormDeclaracao";
 import { ATOS, NATUREZAS, rotuloDe } from "./rotulos";
@@ -59,6 +60,9 @@ const COLUNAS: readonly ColunaTabela<UnidadeComDeclaracao>[] = [
 ];
 
 export default async function UnidadesOrcamentariasPage(): Promise<React.ReactElement> {
+  // A política de leitura declarada NA TELA (a porta repete o gate): sem CONSULTAR_PLANEJAMENTO em
+  // algum escopo, a página nem abre.
+  await telaExigeLeituraEmAlgumEscopo("CONSULTAR_PLANEJAMENTO");
   const cabecalho = (
     <PageHeader
       titulo="Unidades orçamentárias"

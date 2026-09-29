@@ -6,8 +6,8 @@ import {
   cadastrarEntidade,
   publicarVersaoDaEntidade,
   type AtoDoFormulario,
+  type TipoDeAtoDeclarado,
 } from "../../../../lib/portas/entidades-contabeis";
-import type { TipoDeAtoDeclarado } from "../../../../modules/m01-core-contabil/ato-declarado";
 
 export interface EstadoDaEntidade {
   readonly erro?: string;

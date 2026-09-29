@@ -75,6 +75,9 @@ function semear(script: string, env: Record<string, string> = {}): string {
       ...env,
     },
     stdio: ["ignore", "pipe", "pipe"],
+    // No Windows o `npx` é um `.cmd`, que só se executa por shell (sem ela: `spawnSync npx ENOENT`).
+    // Os argumentos são fixos e sem espaço, então a shell não muda o comando.
+    shell: process.platform === "win32",
   });
 }
 
@@ -150,7 +153,7 @@ describe("banco semeado só por seeds de produção", () => {
       {
         fichaId: ficha.id, numero: "2026NE-PRIMEIRO", tipo: "ORDINARIO",
         valor: "100.00", data: new Date("2026-04-10T12:00:00Z"),
-        credorCpfCnpj: "12345678000199", historico: "primeira escrita da instalação",
+        credorCpfCnpj: "12345678000195", historico: "primeira escrita da instalação",
         categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: identidade,
       },
       roteiroEmpenho(),

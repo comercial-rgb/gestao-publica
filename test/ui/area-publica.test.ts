@@ -39,7 +39,8 @@ const ler = (rel: string): string =>
 function varrer(dir: string): readonly string[] {
   const achados: string[] = [];
   for (const e of readdirSync(join(RAIZ, dir), { withFileTypes: true })) {
-    const p = join(dir, e.name);
+    // Barras normais em todo sistema: os filtros abaixo casam por "/" (no Windows, `join` dá "\\").
+    const p = `${dir}/${e.name}`;
     if (e.isDirectory()) achados.push(...varrer(p));
     else if (/\.(ts|tsx)$/.test(e.name)) achados.push(p);
   }
