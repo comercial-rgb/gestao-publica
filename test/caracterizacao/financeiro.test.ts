@@ -56,7 +56,7 @@ await exigirBanco(prisma);
 const POR = "despesa@cg.pb.gov.br";
 const FICHA = "ficha-carac";
 const FONTE = "fnt-carac";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const CAIXA = "1.1.1.1.2.00.00";
 const FORNECEDOR = "2.1.3.1.1.00.00";

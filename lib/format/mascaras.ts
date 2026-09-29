@@ -2,7 +2,7 @@
  * MÁSCARAS BR — as funções PURAS, testáveis sem React.
  *
  * ⚠️ MÁSCARA É APRESENTAÇÃO. Nada aqui atravessa a fronteira UI→porta. O componente mostra
- * `1.234.567,89` e SUBMETE `1234.56`; mostra `12.345.678/0001-99` e SUBMETE `12345678000199`. As
+ * `1.234.567,89` e SUBMETE `1234.56`; mostra `12.345.678/0001-95` e SUBMETE `12345678000195`. As
  * Server Actions e as portas continuam recebendo exatamente o que recebiam antes da 7.9 — nenhuma
  * action foi tocada, e é assim que se sabe que a máscara não vazou para o domínio.
  *

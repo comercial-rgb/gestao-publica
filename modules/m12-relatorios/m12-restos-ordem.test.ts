@@ -63,8 +63,8 @@ const POR = "m12@cg.pb.gov.br";
 const FONTE = "fnt-500";
 const FICHA_2026 = "ficha-2026";
 const FICHA_2027 = "ficha-2027";
-const CREDOR_A = "12345678000199";
-const CREDOR_B = "98765432000188";
+const CREDOR_A = "12345678000195";
+const CREDOR_B = "98765432000198";
 
 const CAIXA = "1.1.1.1.2.00.00";
 const FORNECEDOR = "2.1.3.1.1.00.00";

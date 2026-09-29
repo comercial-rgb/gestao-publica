@@ -53,8 +53,8 @@ const ANO = new Date().getFullYear();
 const n: Navegador = { base: BASE };
 
 /** Os mesmos da fixture. O estranho existe para a contraparte NÃO identificada. */
-const CNPJ_ENTIDADE = "11222333000144";
-const CNPJ_ESTRANHO = "99888777000166";
+const CNPJ_ENTIDADE = "11222333000181";
+const CNPJ_ESTRANHO = "99888777000100";
 const NATUREZA_A = "71130211";
 const NATUREZA_B = "71130212";
 const FICHA_INTRA = "9101";
@@ -330,7 +330,7 @@ async function main(): Promise<void> {
         (tr.textContent ?? "").replace(/\s+/g, " ").trim()
       )
     );
-    const daEntidade = linhas.find((l) => l.includes("11.222.333/0001-44") || l.includes(CNPJ_ENTIDADE));
+    const daEntidade = linhas.find((l) => l.includes("11.222.333/0001-81") || l.includes(CNPJ_ENTIDADE));
     const doEstranho = linhas.find((l) => l.includes("99.888.777/0001-66") || l.includes(CNPJ_ESTRANHO));
     nota(`linha da entidade: ${String(daEntidade)?.slice(0, 180)}`);
     nota(`linha do estranho: ${String(doEstranho)?.slice(0, 180)}`);

@@ -51,7 +51,7 @@ beforeAll(async () => {
   }
   await dono.orgao.create({ data: { id: "org", codigo: "01", nome: "Prefeitura" } });
   await dono.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "RT/1", modalidade: "CONCORRENCIA", objeto: "Obra", valorLicitado: "10000.00", criadoPor: "SEED" } });
-  await dono.contrato.create({ data: { id: "ctr", numeroContrato: "CT-RT", processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Alfa", valorInicial: "10000.00", vigenciaInicio: new Date(`${dia(-100)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(100)}T15:00:00Z`), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } });
+  await dono.contrato.create({ data: { id: "ctr", numeroContrato: "CT-RT", processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Alfa", valorInicial: "10000.00", vigenciaInicio: new Date(`${dia(-100)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(100)}T15:00:00Z`), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } });
   await dono.obra.create({ data: { id: "obra", identificador: "OBR-RT", descricao: "Obra", tipoObraServico: "PAVIMENTACAO_ASFALTICA", orgaoId: "org", criadoPor: "SEED" } });
 }, 180_000);
 

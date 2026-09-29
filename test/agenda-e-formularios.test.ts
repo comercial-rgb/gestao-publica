@@ -57,7 +57,7 @@ beforeEach(async () => {
   await conta(FISCAL2, TODAS, "86288366757");
   await conta(OUTRO, TODAS, "39053344705");
   await prisma.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "2026/0800", modalidade: "PREGAO_ELETRONICO", objeto: "Serviços com fiscalização", valorLicitado: "1000.00", criadoPor: "SEED" } });
-  await prisma.contrato.create({ data: { id: "ctr", numeroContrato: "CT-U8", processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Serviços Delta", valorInicial: "1000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
+  await prisma.contrato.create({ data: { id: "ctr", numeroContrato: "CT-U8", processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Serviços Delta", valorInicial: "1000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
   await designarNoContrato(prisma, { contratoId: "ctr", papel: "GESTOR", usuarioIdentificador: GESTORA, atoDesignacao: "Portaria G-U8", vigenciaInicio: dia(-30), criadoPor: ADMIN });
   fiscalDesignacao = (await designarNoContrato(prisma, { contratoId: "ctr", papel: "FISCAL", usuarioIdentificador: FISCAL, atoDesignacao: "Portaria F-U8", vigenciaInicio: dia(-30), criadoPor: ADMIN })).designacaoId;
   fiscal2Designacao = (await designarNoContrato(prisma, { contratoId: "ctr", papel: "FISCAL", usuarioIdentificador: FISCAL2, atoDesignacao: "Portaria F2-U8", vigenciaInicio: dia(-30), criadoPor: ADMIN })).designacaoId;

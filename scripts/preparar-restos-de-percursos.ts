@@ -165,7 +165,7 @@ async function main(): Promise<void> {
     const comum = {
       fichaId: ficha.id,
       tipo: "ORDINARIO" as const,
-      credorCpfCnpj: "12345678000199",
+      credorCpfCnpj: "12345678000195",
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS" as const,
       criadoPor: POR,
       ...(sub !== undefined ? { subelementoId: sub } : {}),

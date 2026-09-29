@@ -208,7 +208,7 @@ describe("empenho a partir da ordem de compra", () => {
     await expect(
       empenhar({
         fichaId: FICHA, numero: "2026NE000301", tipo: "ORDINARIO", valor: "10.00",
-        data: new Date("2026-03-11T12:00:00Z"), credorCpfCnpj: "22333444000172",
+        data: new Date("2026-03-11T12:00:00Z"), credorCpfCnpj: "22333444000181",
         historico: "credor errado", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         ordemDeCompraId: ordemId, criadoPor: POR,
       }, R_EMP, deps)

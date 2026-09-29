@@ -218,7 +218,7 @@ describe("M12 — Balanço Orçamentário (Anexo 12)", () => {
     const e = await empenhar(
       {
         fichaId: FICHA, numero: "NE-1", tipo: "ORDINARIO", valor: "9000.00",
-        data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
         criadoPor: POR,
       },

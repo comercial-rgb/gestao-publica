@@ -265,7 +265,7 @@ describe("M03 — crédito por ANULAÇÃO (balanceado)", () => {
     await empenhar(
       {
         fichaId: FICHA_A, numero: "NE1", tipo: "ORDINARIO", valor: "9800.00",
-        data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "empenho", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         criadoPor: CRIADO_POR,
       },
@@ -526,7 +526,7 @@ describe("M03 × M05 — o crédito vira saldo EMPENHÁVEL", () => {
     // B tem 5000. Empenhar 5300 falha ANTES do crédito.
     const empenhoGrande = {
       fichaId: FICHA_B, numero: "NE1", tipo: "ORDINARIO" as const, valor: "5300.00",
-      data: new Date("2026-03-15T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-03-15T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho",
       categoriaOrdemCronologica: "FORNECIMENTO_BENS" as const,
       criadoPor: CRIADO_POR,

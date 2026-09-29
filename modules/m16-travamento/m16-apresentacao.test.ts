@@ -37,7 +37,7 @@ const SVG = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><s
 async function semearEnte(): Promise<void> {
   await prisma.enteConfig.create({
     data: {
-      id: "unico", codigoIbge: "2504009", poderOrgao: "20111", nome: "MUNICIPIO DE TESTE", cnpj: "12345678000199", uf: "PB",
+      id: "unico", codigoIbge: "2504009", poderOrgao: "20111", nome: "MUNICIPIO DE TESTE", cnpj: "12345678000195", uf: "PB",
       nomeOrdenador: "ORDENADOR", cpfOrdenador: "11144477735",
       tribunalCodigo: "TCE-PB", tribunalUf: "PB", planoContasSeed: "pcasp-federal", conferidoPor: "TESTE", conferidoEm: new Date(),
     },
@@ -105,7 +105,7 @@ describe("M16 — apresentação do ente (V6 P0.1)", () => {
     await registrarApresentacaoDoEnte(prisma, { ...BASE, imagem: PNG });
     const vigente = await apresentacaoVigente(prisma);
     const chaves = JSON.stringify(vigente);
-    expect(chaves).not.toContain("12345678000199");
+    expect(chaves).not.toContain("12345678000195");
     expect(chaves).not.toContain("11144477735");
     expect(chaves).not.toContain("imagem\":");
     expect(vigente?.temImagem).toBe(true);

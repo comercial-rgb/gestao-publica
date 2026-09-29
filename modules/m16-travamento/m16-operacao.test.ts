@@ -46,7 +46,7 @@ afterAll(async () => {
 const IDENT = "orcamento@cg.pb.gov.br"; // fixture ADMIN
 const FONTE = "fnt-op";
 const FICHA = "ficha-op";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const R_EMPENHO = roteiroEmpenho();
 
 async function semear(): Promise<void> {

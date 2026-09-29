@@ -114,7 +114,7 @@ export async function empenharDe2026(
   const e = await empenhar(
     {
       fichaId: FICHA, numero, tipo: "ORDINARIO", valor,
-      data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: `empenho ${numero}`,
       categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR,
     },

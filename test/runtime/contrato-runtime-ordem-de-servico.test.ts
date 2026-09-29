@@ -53,7 +53,7 @@ beforeAll(async () => {
     }
   }
   await dono.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "RT/OS", modalidade: "PREGAO_ELETRONICO", objeto: "Serviços", valorLicitado: "2000.00", criadoPor: "SEED" } });
-  await dono.contrato.create({ data: { id: "ctr", numeroContrato: "CT-RT-OS", processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Beta", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
+  await dono.contrato.create({ data: { id: "ctr", numeroContrato: "CT-RT-OS", processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Beta", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
   itemA = (await cadastrarItemDoContrato(app, { contratoId: "ctr", descricao: "Visita técnica", unidade: "visita", quantidade: "10", valorUnitario: "100", criadoPor: ADMIN })).itemId;
   itemB = (await cadastrarItemDoContrato(app, { contratoId: "ctr", descricao: "Hora técnica", unidade: "hora", quantidade: "20", valorUnitario: "50", criadoPor: ADMIN })).itemId;
   await designarNoContrato(app, { contratoId: "ctr", papel: "GESTOR", usuarioIdentificador: GESTORA, atoDesignacao: "Portaria RT-G", vigenciaInicio: dia(-30), criadoPor: ADMIN });

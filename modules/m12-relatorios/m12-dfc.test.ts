@@ -85,7 +85,7 @@ await exigirBanco(prisma);
 const POR = "m12@cg.pb.gov.br";
 const F500 = "fnt-500";
 const F540 = "fnt-540";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const CAIXA = "1.1.1.1.1.00.00";
 const FORNECEDORES = "2.1.3.1.1.00.00";
 const P_INSS = "2.1.8.8.1.01.00";

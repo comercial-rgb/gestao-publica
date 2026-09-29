@@ -6,6 +6,7 @@ import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO,
 import { previaAction, confirmarAction, type EstadoImportacao } from "./actions";
 import { diaCivilBr } from "../../../../packages/datas/index";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { CampoCpfCnpj } from "../../../../components/ui/Campos";
 
 /**
  * IMPORTADOR — ilha client em DOIS ATOS (TR 7.10-7.11): a PRÉVIA lê e valida (nada grava); a
@@ -96,6 +97,13 @@ export function FormImportador(): React.ReactElement {
             <input type="hidden" name="tipo" value={previa.tipo ?? "FOLHA"} />
             <input type="hidden" name="conteudo" value={previa.conteudo ?? ""} />
             <input type="hidden" name="nomeArquivo" value={previa.nomeArquivo ?? ""} />
+            {previa.tipo === "FOLHA" ? (
+              <div className="mb-3 max-w-sm">
+                <label htmlFor="credor-da-folha" className={ROTULO}>CPF/CNPJ do credor dos empenhos da folha</label>
+                <CampoCpfCnpj id="credor-da-folha" name="credor" required className={CAMPO} />
+                <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">Cada linha vira um empenho em nome deste credor. O dígito verificador é conferido.</p>
+              </div>
+            ) : null}
             <button type="submit" disabled={!p.confirmavel || pendenteConf} className={CLASSE_BOTAO_PRIMARIO}>
               {pendenteConf ? "Confirmando…" : "3 · Confirmar importação"}
             </button>

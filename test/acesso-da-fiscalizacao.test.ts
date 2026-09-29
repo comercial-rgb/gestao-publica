@@ -65,7 +65,7 @@ beforeEach(async () => {
   await conta(RECEBEDOR, ["CONSULTAR_LICITACOES"], "86288366757");
   await prisma.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "2026/0300", modalidade: "PREGAO_ELETRONICO", objeto: "Serviços", valorLicitado: "10000.00", criadoPor: "SEED" } });
   for (const [id, numero] of [["ctr-a", "CT-A"], ["ctr-b", "CT-B"]] as const) {
-    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Serviços Beta", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-100)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(100)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
+    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Serviços Beta", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-100)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(100)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
   }
   fiscalA = (await designarNoContrato(prisma, { contratoId: "ctr-a", papel: "FISCAL", usuarioIdentificador: FISCAL, atoDesignacao: "Portaria 31/2026", vigenciaInicio: dia(-30), criadoPor: ADMIN })).designacaoId;
   await registrarOcorrencia(prisma, { contratoId: "ctr-a", data: dia(-2), tipo: "NAO_CONFORMIDADE", descricao: "Relato interno de fiscalização que não é público", encaminhamento: "NENHUM", criadoPor: FISCAL });

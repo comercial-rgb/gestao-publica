@@ -371,7 +371,7 @@ async function cicloDe2026(): Promise<void> {
   const e = await empenhar(
     {
       fichaId: FICHA, numero: "NE-1", tipo: "ORDINARIO", valor: "6000.00",
-      data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "serviços", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: POR,
     },

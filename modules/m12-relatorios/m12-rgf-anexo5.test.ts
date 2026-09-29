@@ -61,7 +61,7 @@ const F500 = "fnt-500";
 const F540 = "fnt-540";
 const FICHA_500 = "ficha-500";
 const FICHA_540 = "ficha-540";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const CORTE = new Date("2026-12-31T23:59:59Z");
 
 const R_EMP = roteiroEmpenho();

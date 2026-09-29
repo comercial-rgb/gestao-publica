@@ -20,7 +20,7 @@ const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
 
 const UG = "999001";
-const CNPJ = "12345678000199"; // CNPJ fictício do ente gerenciador (POC).
+const CNPJ = "12345678000195"; // CNPJ fictício do ente gerenciador (POC).
 const DIA = new Date(Date.UTC(2026, 6, 15));
 // Identidade das fixtures (o `limparBanco` a semeia com ADMIN). O seed NÃO cria usuários (t5).
 const POR = "m05@cg.pb.gov.br";
@@ -171,7 +171,7 @@ describe("massa POC SAGRES — a história encadeada", () => {
   });
 
   it("F1/F2 (banco real) — Pagamentos (14/jul, 08/ago) e ReceitaOrcamentaria (05/jul) saem da massa", async () => {
-    const UG_CNPJ = { codUnidadeGestora: UG, cnpjGerenciadora: "12345678000199" };
+    const UG_CNPJ = { codUnidadeGestora: UG, cnpjGerenciadora: "12345678000195" };
     const pagJul = await gerarPagamentos(prisma, { ...UG_CNPJ, dia: new Date(Date.UTC(2026, 6, 14)) });
     expect(pagJul.registros).toBe(1);
     expect(pagJul.nome).toBe("99900114072026Pagamentos.txt");

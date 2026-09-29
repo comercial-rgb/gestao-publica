@@ -50,8 +50,8 @@ const UG_A = "sol-uo-a";
 const UG_B = "sol-uo-b";
 const FICHA_A = "sol-ficha-a";
 const FICHA_B = "sol-ficha-b";
-const CREDOR = "12345678000199";
-const OUTRO_CREDOR = "98765432000110";
+const CREDOR = "12345678000195";
+const OUTRO_CREDOR = "98765432000198"; // outro CNPJ, com dígito verificador válido (V22: o empenho confere o DV)
 const DATA = new Date("2026-04-10T15:00:00Z");
 
 const CONTAS = [
@@ -111,7 +111,7 @@ async function solicitar(p: { ficha?: string; valor?: string; por?: string; conv
   const r = await solicitarEmpenho(prisma, {
     fichaId: p.ficha ?? FICHA_A,
     numero: `SOL-${seq}`,
-    credorCpfCnpj: "12.345.678/0001-99",
+    credorCpfCnpj: "12.345.678/0001-95",
     valor: p.valor ?? "1000.00",
     tipo: "ORDINARIO",
     categoriaOrdemCronologica: "PRESTACAO_SERVICOS",

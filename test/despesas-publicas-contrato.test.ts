@@ -43,7 +43,7 @@ afterAll(async () => {
 });
 
 const POR = "contabilidade@cg.pb.gov.br";
-const CNPJ = "12345678000199";
+const CNPJ = "12345678000195";
 const CPF = "11144477735";
 const FONTE = "fnt-500";
 const dia = (d: number): string => diaCivil(new Date(Date.now() + d * 86_400_000));
@@ -158,7 +158,7 @@ describe("a consulta pública de despesas não soma as fases", () => {
       "o CPF do credor pessoa física saiu inteiro na consulta pública. Numa página pública, " +
         "'chegou ao navegador' é 'foi publicado'"
     ).toBe(false);
-    expect(bruto, "o CNPJ de quem contrata com o poder público é informação pública").toContain("12.345.678/0001-99");
+    expect(bruto, "o CNPJ de quem contrata com o poder público é informação pública").toContain("12.345.678/0001-95");
 
     const pf = p.linhas.find((x) => x.numero === "2026NE000200")!;
     expect(pf.credorDocumento).toBe("***.444.777-**");
@@ -222,7 +222,7 @@ describe("a consulta pública de despesas não soma as fases", () => {
 
 describe("o documento do credor para o público", () => {
   it("CNPJ inteiro, CPF mascarado, e nada estoura com lixo", () => {
-    expect(documentoPublicavelDoCredor("12345678000199")).toBe("12.345.678/0001-99");
+    expect(documentoPublicavelDoCredor("12345678000195")).toBe("12.345.678/0001-95");
     expect(documentoPublicavelDoCredor("11144477735")).toBe("***.444.777-**");
     // ⚠️ N=2 no CPF: sem o segundo, um retorno constante ("***.444.777-**") passaria.
     expect(documentoPublicavelDoCredor("52998224725")).toBe("***.982.247-**");

@@ -227,7 +227,7 @@ async function entradaDe(
   const e = await empenhar(
     {
       fichaId: FICHA, numero: `NE-${n}`, tipo: "ORDINARIO", valor: total,
-      data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "compra de material", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
       criadoPor: POR,
     },
@@ -802,8 +802,8 @@ describe("V4 (§6) · a entrada da liquidação RELACIONA um recebimento existen
   /** Uma ordem de compra recebida (M11), inserida direto: fornecedor, item do material, recebimento de 100. */
   async function recebimentoDe(quantidade: string): Promise<string> {
     const fornecedor =
-      (await prisma.pessoa.findUnique({ where: { documento: "12345678000199" }, select: { id: true } })) ??
-      (await prisma.pessoa.create({ data: { documento: "12345678000199", tipo: "JURIDICA", criadoPor: POR, versoes: { create: { nome: "Fornecedor de luvas", criadoPor: POR } } }, select: { id: true } }));
+      (await prisma.pessoa.findUnique({ where: { documento: "12345678000195" }, select: { id: true } })) ??
+      (await prisma.pessoa.create({ data: { documento: "12345678000195", tipo: "JURIDICA", criadoPor: POR, versoes: { create: { nome: "Fornecedor de luvas", criadoPor: POR } } }, select: { id: true } }));
     const ordem = await prisma.ordemDeCompra.create({
       data: { numero: `OC-${Date.now()}`, tipo: "ORDINARIA", fornecedorId: fornecedor.id, dataEmissao: new Date("2026-02-01T12:00:00Z"), finalidade: "Luvas para a atenção básica.", criadoPor: POR },
       select: { id: true },
@@ -817,7 +817,7 @@ describe("V4 (§6) · a entrada da liquidação RELACIONA um recebimento existen
   async function liquidarConsumindo(recebimentoDeItemId: string, quantidade: string, n: string, idDoMaterial = materialId): Promise<string> {
     const total = new Decimal(quantidade).times("2.5").toFixed(2);
     const e = await empenhar(
-      { fichaId: FICHA, numero: `NE-R${n}`, tipo: "ORDINARIO", valor: total, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "compra de material", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+      { fichaId: FICHA, numero: `NE-R${n}`, tipo: "ORDINARIO", valor: total, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "compra de material", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
       R_EMPENHO,
       deps
     );

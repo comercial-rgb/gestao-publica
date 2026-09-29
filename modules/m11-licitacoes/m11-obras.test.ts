@@ -102,7 +102,7 @@ const empenhoDe = (
   tipo: "ORDINARIO",
   valor: "100000.00",
   data: new Date("2026-05-10T12:00:00Z"),
-  credorCpfCnpj: "12345678000199",
+  credorCpfCnpj: "12345678000195",
   historico: "execução",
   categoriaOrdemCronologica: "REALIZACAO_OBRAS",
   criadoPor: POR,

@@ -85,7 +85,7 @@ async function cenario(): Promise<void> {
     R_ARR_IPTU, criarM04Deps(prisma)
   );
 
-  const e = await empenhar({ fichaId: "f-pessoal", numero: "NE-P", tipo: "ORDINARIO", valor: "200000.00", data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "pessoal", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMP, deps);
+  const e = await empenhar({ fichaId: "f-pessoal", numero: "NE-P", tipo: "ORDINARIO", valor: "200000.00", data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "pessoal", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMP, deps);
   await liquidar({ empenhoId: e.empenhoId, numero: "NL-P", valor: "200000.00", data: new Date("2026-02-15T12:00:00Z"), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQ_PESSOAL, deps);
 
   const dMob = await prisma.dividaConsolidada.findFirstOrThrow({ where: { tipo: "MOBILIARIA" }, select: { id: true } });

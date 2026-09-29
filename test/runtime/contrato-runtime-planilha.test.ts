@@ -26,7 +26,7 @@ beforeAll(async () => {
   await dono.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: p.id, criadoPor: "SEED" } });
   await dono.obra.create({ data: { id: "obra-rt", identificador: "OBRA-RT", descricao: "Obra do runtime", tipoObraServico: "EDIFICACOES_EM_GERAL", criadoPor: "SEED" } as never });
   await dono.processoLicitatorio.create({ data: { id: "proc-rt", numeroProcesso: "RT/PLAN", modalidade: "CONCORRENCIA", objeto: "Obra", valorLicitado: "1000.00", criadoPor: "SEED" } as never });
-  await dono.contrato.create({ data: { id: "ctr-rt", numeroContrato: "CT-RT-PLAN", processoId: "proc-rt", contratadoDocumento: "12345678000199", contratadoNome: "Construtora", valorInicial: "1000.00", vigenciaInicio: new Date("2026-01-01T15:00:00Z"), vigenciaFimInicial: new Date("2026-12-31T15:00:00Z"), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } as never });
+  await dono.contrato.create({ data: { id: "ctr-rt", numeroContrato: "CT-RT-PLAN", processoId: "proc-rt", contratadoDocumento: "12345678000195", contratadoNome: "Construtora", valorInicial: "1000.00", vigenciaInicio: new Date("2026-01-01T15:00:00Z"), vigenciaFimInicial: new Date("2026-12-31T15:00:00Z"), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } as never });
   await dono.itemDoContrato.create({ data: { id: "ctr-rt-item", contratoId: "ctr-rt", numero: 1, descricao: "Execução da obra", unidade: "serviço", quantidade: "1", valorUnitario: "1000", criadoPor: "SEED" } });
 }, 120_000);
 

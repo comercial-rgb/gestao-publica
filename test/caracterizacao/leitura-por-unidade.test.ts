@@ -71,7 +71,7 @@ await exigirBanco(prisma);
 
 /** O autor das escritas da fixture — identidade já cadastrada pelo `limparBanco`. */
 const POR = "despesa@cg.pb.gov.br";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const EXERCICIO = 2026;
 
 /** As duas unidades do cenário, pelos códigos SAGRES que o `contexto-ug.test.ts` já usa. */

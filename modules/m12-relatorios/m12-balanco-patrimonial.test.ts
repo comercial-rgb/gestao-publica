@@ -341,7 +341,7 @@ async function liquidarDespesa(valor: string, numero: string): Promise<string> {
   const e = await empenhar(
     {
       fichaId: FICHA, numero: `NE-${numero}`, tipo: "ORDINARIO", valor,
-      data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR,
     },
     R_EMPENHO,

@@ -82,6 +82,10 @@ const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00"; // controle orçamentário (C
 // Contas PCASP do caminho (mesmos códigos dos roteiros do M05 + a dotação inicial).
 const CONTAS_PCASP = [
   { codigo: CONTA_BANCOS, nome: "Bancos Conta Movimento", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true, indicadorSuperavit: "F" as const },
+  // A conta B da transferência (a aplicação), que a POC resolve por código mais abaixo. Ela vinha só do plano
+  // oficial; num banco limpo (o dos testes) não existia, e o seed morria no `findUniqueOrThrow`. Nome e
+  // atributos do PCASP oficial carregado no banco local; `skipDuplicates` preserva a versão oficial.
+  { codigo: "1.1.1.1.1.50.00", nome: "APLICAÇÕES FINANCEIRAS DE LIQUIDEZ IMEDIATA - USO GERAL", naturezaSaldo: "DEVEDORA" as const, nivel: 6, analitica: true, indicadorSuperavit: "F" as const },
   // ⚠️ DESCIDA PARA A ANALÍTICA (V11 V6.2), pelo mesmo motivo do roteiro de demonstração:
   // `2.1.3.1.1.00.00` é o nó de CONSOLIDAÇÃO e é SINTÉTICO no plano oficial.
   { codigo: CONTA_FORNECEDORES_POC, nome: "Fornecedores Nao Parcelados a Pagar", naturezaSaldo: "CREDORA" as const, nivel: 7, analitica: true, indicadorSuperavit: "F" as const },
@@ -158,7 +162,7 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
     where: { id: "unico" },
     update: { nomeOrdenador: "ORDENADOR MODELO POC", cpfOrdenador: "11144477735", nomeContador: "CONTADOR MODELO POC", cpfContador: "52998224725", crcContador: "CRC-PB-000001" },
     create: {
-      id: "unico", codigoIbge: "2504009", poderOrgao: "20111", nome: "PREFEITURA MODELO - POC", cnpj: "12345678000199", uf: "PB",
+      id: "unico", codigoIbge: "2504009", poderOrgao: "20111", nome: "PREFEITURA MODELO - POC", cnpj: "12345678000195", uf: "PB",
       nomeOrdenador: "ORDENADOR MODELO POC", cpfOrdenador: "11144477735", nomeContador: "CONTADOR MODELO POC", cpfContador: "52998224725", crcContador: "CRC-PB-000001",
       // O tribunal do ente (multi-ente) — a POC é paraibana, logo TCE-PB. NOT NULL e sem default:
       // é o seed que afirma o tribunal, nunca o schema por omissão.
@@ -324,7 +328,7 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
   // (4) EXECUÇÃO: empenho → liquidação → pagamento (serviços reais, pelo funil).
   const deps = criarM05DepsComAlmoxarifado(prisma);
   const emp = await empenhar(
-    { fichaId: "ficha-poc", numero: "1", tipo: "ORDINARIO", valor: "50000.00", data: D(7, 10), credorCpfCnpj: "12345678000199", historico: "Empenho de servicos - POC", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
+    { fichaId: "ficha-poc", numero: "1", tipo: "ORDINARIO", valor: "50000.00", data: D(7, 10), credorCpfCnpj: "12345678000195", historico: "Empenho de servicos - POC", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
     R_EMPENHO, deps
   );
   const liq = await liquidar(
@@ -372,7 +376,7 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
 
   // (9) SEGUNDO MÊS (agosto) — a cadeia mínima empenho→liquidação→pagamento, mesmos serviços reais.
   const emp2 = await empenhar(
-    { fichaId: "ficha-poc", numero: "2", tipo: "ORDINARIO", valor: "20000.00", data: D(8, 5), credorCpfCnpj: "12345678000199", historico: "Empenho de servicos - POC (agosto)", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
+    { fichaId: "ficha-poc", numero: "2", tipo: "ORDINARIO", valor: "20000.00", data: D(8, 5), credorCpfCnpj: "12345678000195", historico: "Empenho de servicos - POC (agosto)", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
     R_EMPENHO, deps
   );
   const liq2 = await liquidar(
@@ -419,7 +423,7 @@ export async function semearSagresPoc(prisma: PrismaClient, opcoes: OpcoesSeedPo
     create: { codigo: "INSS", descricao: "INSS retido na fonte", contaPassivo: { connect: { codigo: CONTA_CONSIGNACAO_INSS } }, criadoPor: por },
   });
   const emp3 = await empenhar(
-    { fichaId: "ficha-poc", numero: "3", tipo: "ORDINARIO", valor: "10000.00", data: D(9, 10), credorCpfCnpj: "12345678000199", historico: "Empenho de servicos com retencao - POC (setembro)", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
+    { fichaId: "ficha-poc", numero: "3", tipo: "ORDINARIO", valor: "10000.00", data: D(9, 10), credorCpfCnpj: "12345678000195", historico: "Empenho de servicos com retencao - POC (setembro)", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: subEmpenho.id, criadoPor: por },
     R_EMPENHO, deps
   );
   const liq3 = await liquidar(

@@ -52,7 +52,7 @@ export async function confirmarAction(_prev: EstadoImportacao, formData: FormDat
     if (conteudo === "" || nomeArquivo === "") return { erro: "Faça a prévia antes de confirmar." };
     try {
       const r = tipo === "FOLHA"
-        ? await confirmarFolha({ nomeArquivo, conteudo, exercicio: EXERCICIO })
+        ? await confirmarFolha({ nomeArquivo, conteudo, exercicio: EXERCICIO, credorCpfCnpj: String(formData.get("credor") ?? "") })
         : await confirmarTributos({ nomeArquivo, conteudo, exercicio: EXERCICIO });
       revalidatePath("/integracoes/importadores");
       return { sucesso: `Importação confirmada: ${r.linhas} linha(s) e ${r.fatosGerados} registro(s) gerado(s). Identificador ${r.correlationId.slice(0, 8)}.` };

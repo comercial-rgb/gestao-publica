@@ -158,14 +158,14 @@ describe("M11 — a janela de alerta (req. 7) e a separação do req. 9", () => 
 
 describe("M11 — a normalização do documento (a FK lógica da certidão)", () => {
   it("tira a máscara do CNPJ e do CPF", () => {
-    expect(normalizarDocumento("12.345.678/0001-99")).toBe("12345678000199");
+    expect(normalizarDocumento("12.345.678/0001-95")).toBe("12345678000195");
     expect(normalizarDocumento("111.444.777-35")).toBe("11144477735");
   });
 
   it("⚠️ o mascarado e o limpo viram a MESMA chave — é isso que impede duas empresas", () => {
     // Sem esta garantia, a certidão fica pendurada numa grafia e a tela da outra a declara
     // ausente: fornecedor com certidão válida aparecendo como irregular, sem erro nenhum.
-    expect(normalizarDocumento("12.345.678/0001-99")).toBe(normalizarDocumento("12345678000199"));
+    expect(normalizarDocumento("12.345.678/0001-95")).toBe(normalizarDocumento("12345678000195"));
   });
 
   it("nulo/indefinido/vazio devolvem string vazia — quem valida é o chamador", () => {
@@ -176,15 +176,15 @@ describe("M11 — a normalização do documento (a FK lógica da certidão)", ()
 
   it("responde a MESMA pergunta do CHECK do banco: 11 ou 14 dígitos", () => {
     expect(documentoTemFormatoValido("11144477735")).toBe(true);
-    expect(documentoTemFormatoValido("12345678000199")).toBe(true);
+    expect(documentoTemFormatoValido("12345678000195")).toBe(true);
     expect(documentoTemFormatoValido("123")).toBe(false);
     expect(documentoTemFormatoValido("1234567890123")).toBe(false); // 13
-    expect(documentoTemFormatoValido("12.345.678/0001-99")).toBe(false); // mascarado
+    expect(documentoTemFormatoValido("12.345.678/0001-95")).toBe(false); // mascarado
   });
 
   it("distingue CPF de CNPJ pelo comprimento", () => {
     expect(tipoDeDocumento("11144477735")).toBe("CPF");
-    expect(tipoDeDocumento("12345678000199")).toBe("CNPJ");
+    expect(tipoDeDocumento("12345678000195")).toBe("CNPJ");
     expect(tipoDeDocumento("")).toBe("INVALIDO");
   });
 });

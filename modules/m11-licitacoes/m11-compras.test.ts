@@ -118,7 +118,7 @@ async function semear(): Promise<void> {
   }));
 
   fornecedores = [];
-  for (const doc of ["11222333000181", "22333444000172", "33444555000163"]) {
+  for (const doc of ["11222333000181", "22333444000181", "33444555000163"]) {
     const p = await prisma.pessoa.create({
       data: { documento: doc, tipo: "JURIDICA", criadoPor: POR },
       select: { id: true },

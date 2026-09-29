@@ -75,7 +75,7 @@ async function contratoDeTeste(valor = "100000.00"): Promise<string> {
   const { contratoId } = await cadastrarContrato(prisma, {
     numeroContrato: "CT-001/2026",
     processoId,
-    contratadoDocumento: "12345678000199",
+    contratadoDocumento: "12345678000195",
     contratadoNome: "Papelaria Central LTDA",
     valorInicial: valor,
     vigenciaInicio: INICIO,
@@ -171,7 +171,7 @@ describe("M11 — licitações e contratos", () => {
       cadastrarContrato(prisma, {
         numeroContrato: "CT-002/2026",
         processoId,
-        contratadoDocumento: "98765432000188",
+        contratadoDocumento: "98765432000198",
         contratadoNome: "Construtora Borborema",
         valorInicial: "480000.00",
         vigenciaInicio: INICIO,

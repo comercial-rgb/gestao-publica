@@ -38,7 +38,7 @@ function termoCom60Itens() {
   const total = `${Math.floor(totalCentavos / 100)}.${String(totalCentavos % 100).padStart(2, "0")}`;
   const bruto = {
     documento: "TERMO_DE_RECEBIMENTO_DEFINITIVO", ente: "Município de São João do Açaí — PB (sintético)", fundamento: "Lei 14.133/2021, art. 140, I, b",
-    contrato: { numero: "CT-2026/0042", contratado: "Climatização Ação & Cia. Ltda. (sintética)", documentoDoContratado: "12345678000199" },
+    contrato: { numero: "CT-2026/0042", contratado: "Climatização Ação & Cia. Ltda. (sintética)", documentoDoContratado: "12345678000195" },
     ordem: { numero: 3, ano: 2026 }, medicao: { numero: 2, periodo: { inicio: "2026-08-01", fim: "2026-08-31" } }, recebimento: 1, data: "2026-09-10",
     responsavel: { nome: "Conceição Araújo", ato: "Portaria nº 123/2026", papel: "RECEBEDOR_DEFINITIVO" },
     conclusao: "Serviços executados conforme relatórios assinados e verificação in loco.", itens, valor: total, pendencias: ["item 7: 1 visita em controvérsia aguardando decisão"],
@@ -104,7 +104,7 @@ function memoriaCom70Servicos() {
   const totalPlanilha = fmt(centavos("valorNaPlanilha"));
   const bruto = {
     documento: "MEMORIA_DA_MEDICAO", ente: "Município de São João do Açaí — PB (sintético)",
-    contrato: { numero: "CT-2026/0077", contratado: "Construções Ação & Cia. Ltda. (sintética)", documentoDoContratado: "12345678000199" },
+    contrato: { numero: "CT-2026/0077", contratado: "Construções Ação & Cia. Ltda. (sintética)", documentoDoContratado: "12345678000195" },
     ordem: { numero: 4, ano: 2026, finalidade: "Reforma da unidade básica de saúde" }, obra: { identificador: "OBRA-2026-003", descricao: "Reforma da UBS Conceição" },
     planilha: { versao: 2, descricao: "Orçamento revisado", vigenciaInicio: "2026-08-01", dataBaseDosPrecos: "2026-06-01", referenciaDePrecos: "Tabela sintética de orçamento, 06/2026", sha256: "a".repeat(64) },
     medicao: { numero: 3, periodo: { inicio: "2026-08-01", fim: "2026-08-31" }, registradaEm: "2026-09-02" },

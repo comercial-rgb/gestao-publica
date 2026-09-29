@@ -47,7 +47,7 @@ const ADMIN = "contratos.admin@teste.local";
 const GESTORA = "gestora.liq@teste.local";
 const FISCAL = "fiscal.liq@teste.local";
 const RECEBEDOR = "recebedor.liq@teste.local";
-const CNPJ = "12345678000199";
+const CNPJ = "12345678000195";
 const FONTE = "fnt-500";
 const dia = (d: number): string => diaCivil(new Date(Date.now() + d * 86_400_000));
 const HOJE = dia(0);

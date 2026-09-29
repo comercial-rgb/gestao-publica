@@ -36,7 +36,7 @@ import type { M05Deps } from "../m05-despesa/ports.js";
  * ⚠️ TODAS AS CONTAS FEITAS À MÃO, ANTES DO CÓDIGO.
  *
  * ═══ t1 — O CICLO DA DESPESA (ficha 1, fonte 500, elemento 39 — serviços PJ) ═══
- *   empenho    NE-1   10.000,00   2026-02-01   CNPJ 12.345.678/0001-99
+ *   empenho    NE-1   10.000,00   2026-02-01   CNPJ 12.345.678/0001-95
  *   liquidação NL-1    6.000,00   2026-03-01
  *   pagamento  NP-1    2.500,00   2026-04-01
  *   -> TRÊS linhas (o grão é a FASE, 7.3.1). A classificação 7.3.2 é a MESMA nas três
@@ -44,7 +44,7 @@ import type { M05Deps } from "../m05-despesa/ports.js";
  *
  * ═══ t2 — A MÁSCARA (7.3.4 × LGPD) ═══
  *   CPF  12345678909 -> ***.456.789-**   (some o começo e o DV; o miolo fica)
- *   CNPJ 12345678000199 -> 12.345.678/0001-99   (INTEIRO — PJ é pública)
+ *   CNPJ 12345678000195 -> 12.345.678/0001-95   (INTEIRO — PJ é pública)
  *   doc  12345678901234567 (17 dígitos) -> OMITIDO, motivo DOCUMENTO_INVALIDO
  *
  * ═══ t3 — A EXCEÇÃO POR ELEMENTO (ficha 3, elemento 11 — Vencimentos, Pessoal Civil) ═══
@@ -73,7 +73,7 @@ const FICHA_SERVICOS = "ficha-39"; // elemento 39 — Outros Serviços de Tercei
 const FICHA_PF = "ficha-36"; // elemento 36 — Outros Serviços de Terceiros PF
 const FICHA_FOLHA = "ficha-11"; // elemento 11 — Vencimentos, Pessoal Civil
 
-const CNPJ = "12345678000199";
+const CNPJ = "12345678000195";
 const CPF = "12345678909";
 const DOC_QUEBRADO = "12345678901234567"; // 17 dígitos: não é CPF nem CNPJ
 
@@ -294,7 +294,7 @@ describe("M13 — dataset de DESPESA (TR 7.3)", () => {
       expect(f.subfuncaoCodigo).toBe("361");
       expect(f.naturezaDespesaCodigo).toBe("339039");
       expect(f.fonteCodigo).toBe("500");
-      expect(f.beneficiarioDocumento).toBe("12.345.678/0001-99");
+      expect(f.beneficiarioDocumento).toBe("12.345.678/0001-95");
     }
 
     // append-only: nenhuma delas é anulação
@@ -306,13 +306,16 @@ describe("M13 — dataset de DESPESA (TR 7.3)", () => {
   it("t2: CPF mascarado, CNPJ inteiro, documento quebrado OMITIDO com motivo", async () => {
     await empenhoDe(FICHA_SERVICOS, "NE-PJ", "1000.00", CNPJ);
     await empenhoDe(FICHA_PF, "NE-PF", "1000.00", CPF);
-    await empenhoDe(FICHA_PF, "NE-XX", "1000.00", DOC_QUEBRADO);
+    // V22 — o empenho NOVO confere o dígito verificador; o documento quebrado só existe como dado
+    // LEGADO (importação, migração). Simulado: o empenho nasce válido e o documento é gravado direto.
+    const legado = await empenhoDe(FICHA_PF, "NE-XX", "1000.00", CNPJ);
+    await prisma.empenho.update({ where: { id: legado }, data: { credorCpfCnpj: DOC_QUEBRADO } });
 
     const linhas = await datasetDespesa(prisma, { ate: CORTE });
     const por = new Map(linhas.map((l) => [l.numero, l]));
 
     // PJ: inteiro. Quem contrata com o ente aceita o escrutínio.
-    expect(por.get("NE-PJ")!.beneficiarioDocumento).toBe("12.345.678/0001-99");
+    expect(por.get("NE-PJ")!.beneficiarioDocumento).toBe("12.345.678/0001-95");
     expect(por.get("NE-PJ")!.beneficiarioTipo).toBe("CNPJ");
     expect(por.get("NE-PJ")!.beneficiarioOmitidoPor).toBeNull();
 
@@ -484,7 +487,7 @@ describe("M13 — CSV (TR 7.48, RFC 4180)", () => {
     );
     expect(reimportado["descricao"]).toBe(HISTORICO);
     expect(reimportado["valor"]).toBe("10000.00");
-    expect(reimportado["beneficiarioDocumento"]).toBe("12.345.678/0001-99");
+    expect(reimportado["beneficiarioDocumento"]).toBe("12.345.678/0001-95");
     // o campo nulo volta como string vazia (num CSV, vazio É a ausência)
     expect(reimportado["estornoDe"]).toBe("");
   });

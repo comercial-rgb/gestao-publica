@@ -199,7 +199,7 @@ function contrato(
   return cadastrarContrato(prisma, {
     numeroContrato: numero,
     processoId,
-    contratadoDocumento: "12345678000199",
+    contratadoDocumento: "12345678000195",
     contratadoNome: "Fornecedora Central LTDA",
     valorInicial: valor,
     vigenciaInicio: INICIO,
@@ -230,7 +230,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
         {
           fichaId: FICHA_CUSTEIO, contratoId, numero: "NE-A", tipo: "ORDINARIO",
           valor: "60000.00", data: new Date("2026-02-01T12:00:00Z"),
-          credorCpfCnpj: "12345678000199", historico: "concorrente A", criadoPor: POR,
+          credorCpfCnpj: "12345678000195", historico: "concorrente A", criadoPor: POR,
         },
         R_EMPENHO,
         deps
@@ -239,7 +239,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
         {
           fichaId: FICHA_CUSTEIO, contratoId, numero: "NE-B", tipo: "ORDINARIO",
           valor: "60000.00", data: new Date("2026-02-01T12:00:00Z"),
-          credorCpfCnpj: "12345678000199", historico: "concorrente B", criadoPor: POR,
+          credorCpfCnpj: "12345678000195", historico: "concorrente B", criadoPor: POR,
         },
         R_EMPENHO,
         deps
@@ -384,7 +384,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
     const base = {
       fichaId: FICHA_CAPITAL, contratoId, tipo: "ORDINARIO" as const,
       valor: "50000.00", data: new Date("2026-02-01T12:00:00Z"),
-      credorCpfCnpj: "12345678000199", historico: "aquisição de veículo",
+      credorCpfCnpj: "12345678000195", historico: "aquisição de veículo",
       criadoPor: POR,
     };
 
@@ -454,7 +454,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
         fichaId: FICHA_CUSTEIO, contratoId, numero: "NE-CUSTEIO",
         tipo: "ORDINARIO", valor: "1000.00",
         data: new Date("2026-02-01T12:00:00Z"),
-        credorCpfCnpj: "12345678000199", historico: "serviço", criadoPor: POR,
+        credorCpfCnpj: "12345678000195", historico: "serviço", criadoPor: POR,
       },
       R_EMPENHO,
       deps
@@ -521,7 +521,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
         fichaId: FICHA_CUSTEIO, contratoId: a.contratoId, numero: "NE-1",
         tipo: "ORDINARIO", valor: "60000.00",
         data: new Date("2026-06-01T12:00:00Z"),
-        credorCpfCnpj: "12345678000199", historico: "empenho", criadoPor: POR,
+        credorCpfCnpj: "12345678000195", historico: "empenho", criadoPor: POR,
       },
       R_EMPENHO,
       deps

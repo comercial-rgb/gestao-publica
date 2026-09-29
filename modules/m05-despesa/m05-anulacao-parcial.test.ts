@@ -173,7 +173,7 @@ async function empenhaDe(valor: string, n = "1", ficha = FICHA): Promise<string>
   const e = await empenhar(
     {
       fichaId: ficha, numero: `NE-${n}`, tipo: "ORDINARIO", valor,
-      data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
       criadoPor: POR,
     },

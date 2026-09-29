@@ -292,7 +292,7 @@ async function julhoDe2026(): Promise<void> {
   const e = await empenhar(
     {
       fichaId: FICHA, numero: "NE-1", tipo: "ORDINARIO", valor: "6000.00",
-      data: new Date("2026-07-15T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-07-15T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "serviços", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: POR,
     },
@@ -1112,7 +1112,7 @@ async function tresExercicios(): Promise<void> {
   const e25 = await empenhar(
     {
       fichaId: FICHA_2025, numero: "NE-25", tipo: "ORDINARIO", valor: "3000.00",
-      data: new Date("2025-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2025-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "serviços de 2025", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: POR,
     },
@@ -1143,7 +1143,7 @@ async function tresExercicios(): Promise<void> {
   const e26 = await empenhar(
     {
       fichaId: FICHA, numero: "NE-26", tipo: "ORDINARIO", valor: "6000.00",
-      data: new Date("2026-07-15T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-07-15T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "serviços de 2026", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: POR,
     },

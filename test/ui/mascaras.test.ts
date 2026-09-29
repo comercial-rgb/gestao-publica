@@ -89,15 +89,15 @@ describe("desmascararValor — a tela → o domínio", () => {
 
 describe("mascararCpfCnpj — 11 ↔ 14 por comprimento", () => {
   it("CPF completo", () => {
-    expect(mascararCpfCnpj("12345678901")).toBe("123.456.789-01");
+    expect(mascararCpfCnpj("12345678909")).toBe("123.456.789-09");
   });
 
   it("CNPJ completo", () => {
-    expect(mascararCpfCnpj("12345678000199")).toBe("12.345.678/0001-99");
+    expect(mascararCpfCnpj("12345678000195")).toBe("12.345.678/0001-95");
   });
 
   it("vira CNPJ no 12º dígito — a troca é por COMPRIMENTO, ao vivo", () => {
-    expect(mascararCpfCnpj("12345678901")).toBe("123.456.789-01"); // 11 = CPF
+    expect(mascararCpfCnpj("12345678909")).toBe("123.456.789-09"); // 11 = CPF
     expect(mascararCpfCnpj("123456789012")).toBe("12.345.678/9012"); // 12 = já é CNPJ
   });
 
@@ -108,12 +108,12 @@ describe("mascararCpfCnpj — 11 ↔ 14 por comprimento", () => {
   });
 
   it("ignora o que já vem pontuado (colar de uma planilha não duplica máscara)", () => {
-    expect(mascararCpfCnpj("123.456.789-01")).toBe("123.456.789-01");
-    expect(mascararCpfCnpj("12.345.678/0001-99")).toBe("12.345.678/0001-99");
+    expect(mascararCpfCnpj("123.456.789-09")).toBe("123.456.789-09");
+    expect(mascararCpfCnpj("12.345.678/0001-95")).toBe("12.345.678/0001-95");
   });
 
   it("corta no 14º dígito — não existe documento maior", () => {
-    expect(mascararCpfCnpj("123456780001999999")).toBe("12.345.678/0001-99");
+    expect(mascararCpfCnpj("123456780001959999")).toBe("12.345.678/0001-95");
   });
 
   it("não valida dígito verificador (máscara é FORMA, não verdade)", () => {
@@ -152,7 +152,7 @@ describe("mascararTelefone / mascararCep", () => {
 
 describe("soDigitos", () => {
   it("tira tudo que não é dígito", () => {
-    expect(soDigitos("123.456.789-01")).toBe("12345678901");
+    expect(soDigitos("123.456.789-09")).toBe("12345678909");
     expect(soDigitos("(83) 99988-7766")).toBe("83999887766");
     expect(soDigitos("")).toBe("");
   });

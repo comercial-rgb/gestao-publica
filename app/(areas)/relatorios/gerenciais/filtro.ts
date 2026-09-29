@@ -31,7 +31,7 @@ function primeiro(v: string | string[] | undefined): string | undefined {
  *
  * ⚠️ O CREDOR É NORMALIZADO PARA **SÓ DÍGITOS** AQUI, NA BORDA. A coluna
  * `Empenho.credorCpfCnpj` guarda o documento cru, e o filtro é casamento EXATO — um
- * "12.345.678/0001-99" colado de um e-mail não casaria com "12345678000199" e a tela
+ * "12.345.678/0001-95" colado de um e-mail não casaria com "12345678000195" e a tela
  * responderia "sem empenhos", que é falso. `soDigitos` é a mesma função que a máscara da
  * UI usa: uma só definição de "o que é o documento".
  */
@@ -44,7 +44,7 @@ export function recorteGerencialDe(sp: Params): RecorteGerencial {
   };
 }
 
-/** "credor 12345678000199 · fonte 500" — o que dizer ao leitor sobre o que ele NÃO está vendo. */
+/** "credor 12345678000195 · fonte 500" — o que dizer ao leitor sobre o que ele NÃO está vendo. */
 export function descreverFiltroGerencial(r: RecorteGerencial): readonly string[] {
   return [
     r.credorCpfCnpj !== undefined ? `credor ${r.credorCpfCnpj}` : null,

@@ -32,7 +32,7 @@ await exigirBanco(prisma);
 const IDENT = "orcamento@cg.pb.gov.br"; // fixture ADMIN — pode tudo do censo
 const SENHA = "SenhaForte#2026";
 const FONTE = "fnt-500";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const R_EMPENHO = roteiroEmpenho();
 const R_ARRECADACAO = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS", disponibilidade: "1.1.1.1.1.00.00", variacaoAumentativa: "4.1.1.2.1.01.00" });

@@ -69,7 +69,7 @@ describe("gerador SAGRES × banco real — Dotacao", () => {
 });
 
 describe("gerador SAGRES × banco real — CadastroContaBancaria + SaldoMensal (a tripla e o SUM)", () => {
-  const CNPJ = "12345678000199";
+  const CNPJ = "12345678000195";
   async function semearConta(): Promise<void> {
     await limparBanco(prisma);
     await prisma.fonteRecurso.create({ data: { id: "fnt-500", codigo: "500", descricao: "Ordinarios", codigoTce: "500" } });

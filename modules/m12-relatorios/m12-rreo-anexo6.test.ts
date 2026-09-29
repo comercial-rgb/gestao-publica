@@ -109,7 +109,7 @@ await exigirBanco(prisma);
 const POR = "orcamento@cg.pb.gov.br";
 const F500 = "fnt-500";
 const F540 = "fnt-540";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 /**
  * ⚠️ UMA FILA POR FLUXO — ver o cabeçalho. Cada par (fonte, categoria) é usado por UM fluxo só.

@@ -212,7 +212,7 @@ describe("M08 3b — A FILA DO ART. 141 ATRAVESSA EXERCÍCIOS", () => {
       {
         fichaId: "ficha-2027", numero: "NE-2027", tipo: "ORDINARIO",
         valor: "500.00", data: new Date("2027-05-01T12:00:00Z"),
-        credorCpfCnpj: "98765432000188", historico: "empenho corrente",
+        credorCpfCnpj: "98765432000198", historico: "empenho corrente",
         categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR,
       },
       R_EMPENHO,

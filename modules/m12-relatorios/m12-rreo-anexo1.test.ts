@@ -112,7 +112,7 @@ async function arrecadar(natureza: string, valor: string, data: string, guia: st
 
 async function empenhar1(numero: string, valor: string, data: string): Promise<string> {
   const e = await empenhar(
-    { fichaId: "ficha-1", numero, tipo: "ORDINARIO", valor, data: new Date(data), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+    { fichaId: "ficha-1", numero, tipo: "ORDINARIO", valor, data: new Date(data), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
     R_EMPENHO, deps
   );
   return e.empenhoId;

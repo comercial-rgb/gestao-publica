@@ -134,7 +134,7 @@ async function contratoDe(
   const { contratoId } = await cadastrarContrato(prisma, {
     numeroContrato: numero,
     processoId,
-    contratadoDocumento: "12345678000199",
+    contratadoDocumento: "12345678000195",
     contratadoNome: "Manutec Serviços LTDA",
     valorInicial: valor,
     vigenciaInicio: INICIO,
@@ -159,7 +159,7 @@ function empenhoDe(
     tipo: "ORDINARIO" as const,
     valor,
     data: DATA_EMPENHO,
-    credorCpfCnpj: "12345678000199",
+    credorCpfCnpj: "12345678000195",
     historico: "empenho contra contrato",
     criadoPor: POR,
     ...extras,

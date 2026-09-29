@@ -96,7 +96,7 @@ describe("M04 V11 V9 — a entidade titular da receita", () => {
     entidadeA = (
       await cadastrarEntidadeContabil(
         prisma,
-        { codigo: "02", nome: NOME_A, cnpj: "12345678000199", tipoManad: "08", ...ATO_A, criadoPor: POR },
+        { codigo: "02", nome: NOME_A, cnpj: "12345678000195", tipoManad: "08", ...ATO_A, criadoPor: POR },
         HOJE
       )
     ).entidadeId;
@@ -265,7 +265,7 @@ describe("M04 V11 V9 — a entidade titular da receita", () => {
       {
         entidadeId: entidadeA,
         nome: "Fundação Municipal de Saúde de Campina Grande",
-        cnpj: "12345678000199",
+        cnpj: "12345678000195",
         tipoManad: "08",
         atoTipo: "LEI",
         atoNumero: "9.999",

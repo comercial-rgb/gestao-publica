@@ -25,7 +25,7 @@ const EMPENHOS_POC: readonly Record<string, unknown>[] = [
     competencia: "2026-07-10",
     valor: 50000.5, // ⚠️ DIVERGÊNCIA PROPOSITAL — o local é 50000.00
     historico: "Empenho de servicos - POC",
-    cpfCnpjFornecedor: "12345678000199",
+    cpfCnpjFornecedor: "12345678000195",
     numeroObra: "00000000",
     cpfOrdenador: "11144477735",
     co: { codigo: "1001", descricao: "Acompanhamento POC" },

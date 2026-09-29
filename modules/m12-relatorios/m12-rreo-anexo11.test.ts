@@ -112,7 +112,7 @@ async function montarOuro(): Promise<void> {
 
   // aplicação: despesa de capital (fonte 500 = alienação)
   await criarFichaDeTeste(prisma, { id: "ficha-1", exercicio: 2026, numero: 1, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-04", subfuncaoId: "sub-122", programaId: "prg", acaoId: "aca", naturezaDespesaId: "nd-inv", fonteId: "fnt-500", valorDotado: "200000.00" });
-  const e = await empenhar({ fichaId: "ficha-1", numero: "NE-1", tipo: "ORDINARIO", valor: "80000.00", data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMP, deps);
+  const e = await empenhar({ fichaId: "ficha-1", numero: "NE-1", tipo: "ORDINARIO", valor: "80000.00", data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMP, deps);
   const l = await liquidar({ empenhoId: e.empenhoId, numero: "NL-1", valor: "60000.00", data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQ, deps);
   await pagar({ liquidacaoId: l.liquidacaoId, numero: "NP-1", valor: "40000.00", data: new Date("2026-02-20T12:00:00Z"), contaBancaria: "CC-001", fonteId: "fnt-500", historico: "p", criadoPor: POR }, R_PAG, deps);
 }

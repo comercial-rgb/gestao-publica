@@ -88,7 +88,7 @@ function empenhoBase(numero: string, valor: string) {
     tipo: "ORDINARIO" as const,
     valor,
     data: new Date("2026-04-10T12:00:00Z"),
-    credorCpfCnpj: "12345678000199",
+    credorCpfCnpj: "12345678000195",
     historico: `Empenho ${numero}`,
     // M06 (art. 141): obrigatória — define a fila do pagamento.
     categoriaOrdemCronologica: "FORNECIMENTO_BENS" as const,
@@ -194,6 +194,21 @@ describe("M05 — reserva, empenho e saldo", () => {
     ).toBe(0);
     expect(await prisma.movimentoDotacao.count({ where: { tipo: "EMPENHO" } })).toBe(0);
     expect(await reconciliarFicha(FICHA_ID, deps)).toEqual([]);
+  });
+
+  // V22 — o dígito verificador do credor é conferido no empenho NOVO. N=2: CNPJ e CPF com o dígito
+  // errado recusam com o motivo; os mesmos com o dígito certo passam (a borda é o dígito, não o formato).
+  it("REJEITA credor com dígito verificador inválido (CNPJ e CPF) — nada grava; com o dígito certo empenha", async () => {
+    for (const errado of ["12345678000199", "123.456.789-01"]) {
+      await expect(
+        empenhar({ ...empenhoBase(`2026NE-DV-${errado.length}`, "100.00"), credorCpfCnpj: errado }, ROTEIRO, deps)
+      ).rejects.toThrow(/CPF\/CNPJ do credor com dígito verificador inválido/);
+    }
+    expect(await prisma.empenho.count()).toBe(0);
+    expect(await prisma.lancamentoContabil.count({ where: { origemTipo: "EMPENHO" } })).toBe(0);
+    await empenhar({ ...empenhoBase("2026NE-DV-A", "100.00"), credorCpfCnpj: "12.345.678/0001-95" }, ROTEIRO, deps);
+    await empenhar({ ...empenhoBase("2026NE-DV-B", "100.00"), credorCpfCnpj: "123.456.789-09" }, ROTEIRO, deps);
+    expect((await prisma.empenho.findMany({ select: { credorCpfCnpj: true }, orderBy: { numero: "asc" } })).map((e) => e.credorCpfCnpj)).toEqual(["12345678000195", "12345678909"]);
   });
 
   it("ROTEIRO DESBALANCEADO é barrado pelo ledger — nada grava", async () => {

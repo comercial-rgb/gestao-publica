@@ -102,7 +102,7 @@ async function semear(): Promise<void> {
   await prisma.contrato.create({
     data: {
       id: "ctr-1", numeroContrato: "CT-2026-001", processoId: "proc-1",
-      contratadoDocumento: "12345678000199", contratadoNome: "Construtora Alfa",
+      contratadoDocumento: "12345678000195", contratadoNome: "Construtora Alfa",
       valorInicial: "500000.00",
       vigenciaInicio: new Date("2026-01-01T12:00:00Z"),
       vigenciaFimInicial: new Date("2026-12-31T12:00:00Z"),
@@ -130,7 +130,7 @@ async function empenhoDeObra(numero: string, valor: string): Promise<string> {
     {
       fichaId: FICHA_OBRA, numero, tipo: "GLOBAL", valor,
       data: new Date("2026-01-20T12:00:00Z"),
-      credorCpfCnpj: "12345678000199", historico: "Execução de obra",
+      credorCpfCnpj: "12345678000195", historico: "Execução de obra",
       categoriaOrdemCronologica: "REALIZACAO_OBRAS", obraId: "obra-1",
       criadoPor: POR,
     },
@@ -300,7 +300,7 @@ describe("M11 — a medição de obra", () => {
     const { empenhoId } = await empenhar(
       {
         fichaId: FICHA_CUSTEIO, numero: "2026NE000099", tipo: "ORDINARIO", valor: "10000.00",
-        data: new Date("2026-01-20T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-01-20T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "Serviço de limpeza", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
         criadoPor: POR,
       },

@@ -91,7 +91,7 @@ async function semear(): Promise<void> {
 async function despesaPessoal(ano: number, orgaoId: string, uoId: string, ndId: string, valor: string, dataEmp: string, dataLiq: string): Promise<void> {
   const fichaId = `ficha-${++seq}`;
   await criarFichaDeTeste(prisma, { id: fichaId, exercicio: ano, numero: seq, orgaoId, unidadeOrcId: uoId, funcaoId: "fun-04", subfuncaoId: "sub-122", programaId: "prg", acaoId: "aca", naturezaDespesaId: ndId, fonteId: "fnt-500", valorDotado: "1000000.00" });
-  const e = await empenhar({ fichaId, numero: `NE-${seq}`, tipo: "ORDINARIO", valor, data: new Date(dataEmp), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMP, deps);
+  const e = await empenhar({ fichaId, numero: `NE-${seq}`, tipo: "ORDINARIO", valor, data: new Date(dataEmp), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMP, deps);
   await liquidar({ empenhoId: e.empenhoId, numero: `NL-${seq}`, valor, data: new Date(dataLiq), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQ, deps);
 }
 

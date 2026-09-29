@@ -53,7 +53,7 @@ beforeEach(async () => {
   await prisma.obra.create({ data: { id: "obra", identificador: "OBRA-PLAN-01", descricao: "Unidade de saúde sintética", tipoObraServico: "EDIFICACOES_EM_GERAL", criadoPor: "SEED" } as never });
   await prisma.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "2026/0900", modalidade: "CONCORRENCIA", objeto: "Obra sintética", valorLicitado: "6000.00", criadoPor: "SEED" } as never });
   for (const [id, numero] of [["ctr", "CT-OBRA-1"], ["ctr2", "CT-OBRA-2"]] as const) {
-    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Construtora Sintética", valorInicial: "6000.00", vigenciaInicio: new Date("2026-01-01T15:00:00Z"), vigenciaFimInicial: new Date("2026-12-31T15:00:00Z"), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } as never });
+    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Construtora Sintética", valorInicial: "6000.00", vigenciaInicio: new Date("2026-01-01T15:00:00Z"), vigenciaFimInicial: new Date("2026-12-31T15:00:00Z"), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } as never });
     await prisma.itemDoContrato.create({ data: { id: `${id}-item`, contratoId: id, numero: 1, descricao: "Execução da obra conforme planilha", unidade: "serviço", quantidade: "1", valorUnitario: "6000", criadoPor: "SEED" } });
   }
 }, 120_000);

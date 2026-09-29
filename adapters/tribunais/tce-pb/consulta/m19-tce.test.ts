@@ -48,7 +48,7 @@ describe("F3 — comparação dados locais × TCE (lê, não recalcula)", () => 
     codCategoriaEconomica: "3", codNaturezaDespesa: "3", codModalidadeDespesa: "90", codElementoDespesa: "39",
     codSubelemento: "040", modalidadeLicitacao: "9", numLicitacao: null, numEmpenho: "1",
     tipoEmpenho: "ORDINARIO", data: new Date(Date.UTC(2026, 6, 10)), valor: toMoney("50000.00"),
-    historico: "x", complementacaoHistorico: null, credorCpfCnpj: "12345678000199",
+    historico: "x", complementacaoHistorico: null, credorCpfCnpj: "12345678000195",
     naturezaContratacao: "PRESTACAO_SERVICOS", numObra: null, exercicioFonteRecurso: 1, codFonteRecurso: "500",
     cpfOrdenador: "11144477735", co: "1001",
   });

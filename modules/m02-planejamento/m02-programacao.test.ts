@@ -120,7 +120,7 @@ async function emp(fichaId: string, numero: string, valor: string, data: string)
   const e = await empenhar(
     {
       fichaId, numero, tipo: "ORDINARIO", valor, data: new Date(data),
-      credorCpfCnpj: "12345678000199", historico: "empenho",
+      credorCpfCnpj: "12345678000195", historico: "empenho",
       categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR,
     },
     R_EMPENHO,

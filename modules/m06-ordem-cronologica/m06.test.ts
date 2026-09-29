@@ -265,7 +265,7 @@ export async function empenharELiquidar(
       tipo: "ORDINARIO",
       valor: opts.valor,
       data: new Date("2026-01-02T12:00:00Z"),
-      credorCpfCnpj: "12345678000199",
+      credorCpfCnpj: "12345678000195",
       historico: `empenho ${opts.numero}`,
       categoriaOrdemCronologica: opts.categoria,
       criadoPor: POR,

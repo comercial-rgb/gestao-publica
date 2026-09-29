@@ -224,7 +224,7 @@ async function main(): Promise<void> {
       const camposDoEmpenho = [
         { sel: 'select[name="fichaId"]', valor: ficha.valor, tipo: "select" as const },
         { sel: 'input[name="numero"]', valor: `NE-P${SUF}` },
-        { sel: '[data-mascara="cpf-cnpj"]', valor: "11222333000144" },
+        { sel: '[data-mascara="cpf-cnpj"]', valor: "11222333000181" },
         { sel: '[data-mascara="valor"]', valor: VALOR_DO_EMPENHO },
         { sel: 'input[name="data"]', valor: DIA_DO_EMPENHO, tipo: "data" as const },
         { sel: 'select[name="categoria"]', valor: "PRESTACAO_SERVICOS", tipo: "select" as const },
@@ -277,7 +277,7 @@ async function main(): Promise<void> {
         const r6 = await preencherEEnviar(page, "empenhar", [
           { sel: 'select[name="fichaId"]', valor: fichaDeNovo?.valor ?? ficha.valor, tipo: "select" },
           { sel: 'input[name="numero"]', valor: `NE-P${SUF}B` },
-          { sel: '[data-mascara="cpf-cnpj"]', valor: "11222333000144" },
+          { sel: '[data-mascara="cpf-cnpj"]', valor: "11222333000181" },
           { sel: '[data-mascara="valor"]', valor: VALOR_DO_EMPENHO },
           { sel: 'input[name="data"]', valor: DIA_DO_EMPENHO, tipo: "data" },
           { sel: 'select[name="categoria"]', valor: "PRESTACAO_SERVICOS", tipo: "select" },

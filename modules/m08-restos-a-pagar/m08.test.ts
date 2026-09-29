@@ -209,7 +209,7 @@ describe("M08 — guards fail-closed", () => {
       empenhar(
         {
           fichaId, numero: "NE1", tipo: "ORDINARIO", valor: "100.00",
-          data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+          data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
           historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
           criadoPor: POR,
         },
@@ -291,7 +291,7 @@ describe("M08 — guards fail-closed", () => {
     await empenhar(
       {
         fichaId, numero: "NE1", tipo: "ORDINARIO", valor: "500.00",
-        data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         criadoPor: POR,
       },

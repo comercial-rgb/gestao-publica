@@ -70,7 +70,7 @@ await exigirBanco(prisma);
 const POR = "orcamento@cg.pb.gov.br"; // usuário de fixtures (ADMIN — pode tudo do censo)
 const FONTE_FUNDEB = "540";
 const FICHA = "ficha-fundeb";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 // As naturezas de receita do FUNDEB (os 4 papéis do bloco 1).
 const N_RETORNO = "17510151";

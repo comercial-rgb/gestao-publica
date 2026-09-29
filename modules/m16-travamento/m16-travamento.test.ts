@@ -334,7 +334,7 @@ describe("M16 — travamento de competência (TR 4.52/4.53/4.54)", () => {
     const e = await empenhar(
       {
         fichaId: FICHA, numero: "NE-1", tipo: "ORDINARIO", valor: "6000.00",
-        data: new Date("2026-12-10T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-12-10T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "serviços de dezembro", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
         criadoPor: ALICE,
       },

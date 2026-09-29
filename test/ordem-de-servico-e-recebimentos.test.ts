@@ -70,7 +70,7 @@ beforeEach(async () => {
   await conta(OUTRO, TODAS, "39053344705");
   await prisma.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "2026/0500", modalidade: "PREGAO_ELETRONICO", objeto: "Serviços técnicos mensuráveis", valorLicitado: "4000.00", criadoPor: "SEED" } });
   for (const [id, numero] of [["ctr-a", "CT-A"], ["ctr-b", "CT-B"]] as const) {
-    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Serviços Técnicos Beta", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
+    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Serviços Técnicos Beta", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
     it_[id] = {
       a: (await cadastrarItemDoContrato(prisma, { contratoId: id, descricao: "Visita técnica", unidade: "visita", quantidade: "10", valorUnitario: "100", criadoPor: ADMIN })).itemId,
       b: (await cadastrarItemDoContrato(prisma, { contratoId: id, descricao: "Hora técnica", unidade: "hora", quantidade: "20", valorUnitario: "50", criadoPor: ADMIN })).itemId,
@@ -120,7 +120,7 @@ describe("U1 — a ordem de serviço", () => {
     expect(x.ordens[0]).toMatchObject({ numero: 1, situacao: "EMITIDA", valores: { previsto: "1100.00", autorizado: "1100.00", medido: "0.00", recebido: "0.00", liquidado: "0.00" }, sha256: e.sha256 });
     const emissao = await prisma.emissaoDaOrdemDeServico.findUniqueOrThrow({ where: { ordemId: r.ordemId }, select: { manifesto: true, sha256: true } });
     expect(manifestoCanonico(emissao.manifesto).sha256).toBe(emissao.sha256);
-    expect(emissao.manifesto).toMatchObject({ contrato: { contratado: "Serviços Técnicos Beta", documentoDoContratado: "12345678000199" }, total: "1100.00" });
+    expect(emissao.manifesto).toMatchObject({ contrato: { contratado: "Serviços Técnicos Beta", documentoDoContratado: "12345678000195" }, total: "1100.00" });
     await expect(emitirOrdemDeServico(prisma, { ordemId: r.ordemId, inicioAutorizado: dia(-15), criadoPor: GESTORA })).rejects.toThrow(/ORDEM-JA-EMITIDA/);
   });
 
@@ -166,7 +166,7 @@ describe("U1 — a ordem de serviço", () => {
   });
 
   it("AC07: contrato vencido não emite nova ordem; a medição do que foi executado na vigência é tratada depois do fim", async () => {
-    await prisma.contrato.create({ data: { id: "ctr-venc", numeroContrato: "CT-V", processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Serviços Técnicos Beta", valorInicial: "1000.00", vigenciaInicio: new Date(`${dia(-90)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(-2)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
+    await prisma.contrato.create({ data: { id: "ctr-venc", numeroContrato: "CT-V", processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Serviços Técnicos Beta", valorInicial: "1000.00", vigenciaInicio: new Date(`${dia(-90)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(-2)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
     const item = (await cadastrarItemDoContrato(prisma, { contratoId: "ctr-venc", descricao: "Visita técnica", unidade: "visita", quantidade: "10", valorUnitario: "100", criadoPor: ADMIN })).itemId;
     const g = (await designarNoContrato(prisma, { contratoId: "ctr-venc", papel: "GESTOR", usuarioIdentificador: GESTORA, atoDesignacao: "Portaria G-V", vigenciaInicio: dia(-60), criadoPor: ADMIN })).designacaoId;
     const f = (await designarNoContrato(prisma, { contratoId: "ctr-venc", papel: "FISCAL", usuarioIdentificador: FISCAL, atoDesignacao: "Portaria F-V", vigenciaInicio: dia(-60), criadoPor: ADMIN })).designacaoId;

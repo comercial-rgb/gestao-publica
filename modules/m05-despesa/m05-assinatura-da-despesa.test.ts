@@ -58,7 +58,7 @@ const SIG_2 = "bob@cg.pb.gov.br";
 
 const FICHA = "ficha-assin";
 const FONTE = "fnt-assin";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const CONTA = "CC-ASSIN";
 
 const CAIXA = "1.1.1.1.2.00.00";

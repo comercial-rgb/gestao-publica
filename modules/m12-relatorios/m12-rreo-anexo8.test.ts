@@ -166,7 +166,7 @@ async function despesaEducacao(naturezaDespesaId: string, empenhado: string, liq
     naturezaDespesaId, fonteId: "fnt-540", valorDotado: "1000000.00",
   });
   const e = await empenhar(
-    { fichaId, numero: `NE-${++seqD}`, tipo: "ORDINARIO", valor: empenhado, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+    { fichaId, numero: `NE-${++seqD}`, tipo: "ORDINARIO", valor: empenhado, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
     R_EMP, deps
   );
   if (liquidado !== "0.00") {
@@ -332,7 +332,7 @@ describe("M12 — RREO Anexo 8 (MDE, CF art. 212)", () => {
       naturezaDespesaId, fonteId, valorDotado: "100000.00",
     });
     await empenhar(
-      { fichaId, numero: `NEX-${++seqD}`, tipo: "ORDINARIO", valor: empenhado, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "LOCACAO", criadoPor: POR },
+      { fichaId, numero: `NEX-${++seqD}`, tipo: "ORDINARIO", valor: empenhado, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "LOCACAO", criadoPor: POR },
       R_EMP, deps
     );
   }

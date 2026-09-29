@@ -48,7 +48,7 @@ const SENHA = "SenhaForte#2026";
 const FONTE = "fnt-500";
 const FICHA_SERVICO = "ficha-39";
 const FICHA_MATERIAL = "ficha-30";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const R_EMPENHO = roteiroEmpenho();
 const R_LIQ_SERVICO = roteiroLiquidacao({

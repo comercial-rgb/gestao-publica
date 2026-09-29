@@ -154,7 +154,7 @@ async function despesaDe(valor: string, numero: string): Promise<string> {
   const e = await empenhar(
     {
       fichaId: FICHA, numero: `NE-${numero}`, tipo: "ORDINARIO", valor,
-      data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: `empenho ${numero}`,
       categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR,
     },
@@ -404,7 +404,7 @@ describe("a apropriacao do custo de uma liquidacao", () => {
     expect(linha.liquidacaoNumero).toBe("NL-C05");
     expect(linha.liquidacaoValor.toFixed(2)).toBe("1000.00");
     expect(linha.empenhoNumero).toBe("NE-C05");
-    expect(linha.credor).toBe("12345678000199");
+    expect(linha.credor).toBe("12345678000195");
     expect(linha.criterio).toBe(CRITERIO_60_40.chave);
     expect(linha.criterioVersao).toBe(1);
     expect(linha.criterioAto).toBe(CRITERIO_60_40.atoRef);

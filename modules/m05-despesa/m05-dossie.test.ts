@@ -188,7 +188,7 @@ beforeAll(async () => {
   const e = await empenhar(
     {
       fichaId: FICHA_ID, numero: "2026NE0007", tipo: "ORDINARIO", valor: EMPENHO,
-      data: new Date("2026-04-10T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-04-10T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho do dossiê", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: CRIADO_POR,
     },
@@ -411,7 +411,7 @@ describe("dossiê do empenho — as recusas", () => {
     const outro = await empenhar(
       {
         fichaId: FICHA_ID, numero: "2026NE0008", tipo: "ORDINARIO", valor: "50.00",
-        data: new Date("2026-07-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-07-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "empenho que será anulado inteiro",
         categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: CRIADO_POR,
       },

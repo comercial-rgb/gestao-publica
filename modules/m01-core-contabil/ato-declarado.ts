@@ -119,7 +119,7 @@ function normalizar(texto: string): string {
     .trim();
 }
 
-/** Só os dígitos — é assim que "12.345.678/0001-99" casa com "12345678000199". */
+/** Só os dígitos — é assim que "12.345.678/0001-95" casa com "12345678000195". */
 function digitos(texto: string): string {
   return texto.replace(/\D+/gu, "");
 }

@@ -62,7 +62,7 @@ await exigirBanco(prisma);
 const POR = "orcamento@cg.pb.gov.br"; // usuário de fixtures (ADMIN)
 const F_FUNDEB = "540";
 const F_VAAT = "541";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const N_RETORNO = "17510151";
 const N_VAAT = "17530151";

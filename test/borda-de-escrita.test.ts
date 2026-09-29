@@ -252,7 +252,7 @@ describe("teste 13 — repetir a mesma chave não duplica o fato", () => {
 
   const empenhoDe = (valor: string) => ({
     fichaId: FICHA, numero: "2026NE-CHAVE", tipo: "ORDINARIO" as const, valor,
-    data: new Date("2026-04-10T12:00:00Z"), credorCpfCnpj: "12345678000199",
+    data: new Date("2026-04-10T12:00:00Z"), credorCpfCnpj: "12345678000195",
     historico: "empenho da chave repetida",
     categoriaOrdemCronologica: "PRESTACAO_SERVICOS" as const, criadoPor: POR,
   });

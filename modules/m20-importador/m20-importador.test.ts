@@ -65,7 +65,7 @@ const paramsFolha = (conteudo: string, nome = "folha-poc-2026-11.csv") => ({
   nomeArquivo: nome, conteudo, exercicio: 2026,
   dataEmpenho: new Date(Date.UTC(2026, 10, 5, 12)), dataLiquidacao: new Date(Date.UTC(2026, 10, 6, 12)), dataPagamento: new Date(Date.UTC(2026, 10, 10, 12)),
   contaBancaria: "CC-POC-A", contaDisponibilidade: CONTA_BANCOS,
-  contaConsignacaoPorTipo: CONTAS_CONSIG, credorCpfCnpj: "12345678000199", criadoPor: POR,
+  contaConsignacaoPorTipo: CONTAS_CONSIG, credorCpfCnpj: "12345678000195", criadoPor: POR,
 });
 
 describe("M20 — importador de folha e tributos", () => {

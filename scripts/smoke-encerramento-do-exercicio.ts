@@ -199,7 +199,7 @@ async function main(): Promise<void> {
       const r4 = await preencherEEnviar(page, "empenhar", [
         { sel: 'select[name="fichaId"]', valor: fichaId, tipo: "select" },
         { sel: 'input[name="numero"]', valor: `NE-POS-${String(Date.now()).slice(-4)}` },
-        { sel: '[data-mascara="cpf-cnpj"]', valor: "11222333000144" },
+        { sel: '[data-mascara="cpf-cnpj"]', valor: "11222333000181" },
         { sel: '[data-mascara="valor"]', valor: "100,00" },
         { sel: 'input[name="data"]', valor: `${String(ANO)}-12-20`, tipo: "data" },
         { sel: 'select[name="categoria"]', valor: "PRESTACAO_SERVICOS", tipo: "select" },

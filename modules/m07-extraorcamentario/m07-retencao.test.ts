@@ -161,7 +161,7 @@ async function empenharELiquidar(deps: M05Deps, valor = "1000.00"): Promise<stri
   const e = await empenhar(
     {
       fichaId: FICHA, numero: "NE-1", tipo: "ORDINARIO", valor,
-      data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: POR,
     },

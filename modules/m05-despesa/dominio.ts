@@ -1,5 +1,5 @@
 import { diaCivil } from "../../packages/datas/index.js";
-import { normalizarDocumento } from "../../packages/documento/index.js";
+import { documentoTemDigitoValido, normalizarDocumento } from "../../packages/documento/index.js";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
 import {
@@ -357,10 +357,17 @@ export const zEmpenharInput = z
     tipo: zTipoEmpenho,
     valor: zValorPositivo,
     data: z.coerce.date(),
-    // V4 (§7): normalizado pelo pacote (sem máscara, maiúsculas — o CNPJ pode ser alfanumérico). O FORMATO
-    // não é exigido aqui de propósito: o empenho antigo com documento quebrado é dado legado que o portal
-    // (M13) OMITE com motivo — recusar aqui esconderia o caso que o M13 prova. Quem confere o DV é o M19.
-    credorCpfCnpj: z.string().transform(normalizarDocumento).pipe(z.string().min(11, "CPF/CNPJ inválido")),
+    // V4 (§7): normalizado pelo pacote (sem máscara, maiúsculas — o CNPJ pode ser alfanumérico).
+    // ⚠️ V22 — E O DÍGITO VERIFICADOR É CONFERIDO AQUI, no empenho NOVO. Antes a regra dizia que o DV
+    // não se exigia porque o empenho antigo com documento quebrado é dado legado que o portal (M13)
+    // omite com motivo. O legado continua existindo e continua omitido — mas ele chega por importação
+    // ou migração, não por este caso de uso; um empenho emitido hoje com dígito errado vira credor que
+    // ninguém identifica, no SAGRES, no MANAD e no portal. Esta entrada só serve à emissão.
+    credorCpfCnpj: z
+      .string()
+      .transform(normalizarDocumento)
+      .pipe(z.string().min(11, "CPF/CNPJ inválido"))
+      .refine(documentoTemDigitoValido, "CPF/CNPJ do credor com dígito verificador inválido. Confira o documento."),
     historico: z.string().min(1),
     /**
      * M06 (art. 141): define em qual fila o pagamento entra.

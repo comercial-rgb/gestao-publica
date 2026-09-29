@@ -39,7 +39,7 @@ export interface CampoMascaradoProps {
   /** O `name` do input HIDDEN — é ele que atravessa a fronteira, com o valor cru. */
   readonly name: string;
   readonly required?: boolean | undefined;
-  /** Valor CRU inicial (ex.: "1234.56", "12345678000199"). */
+  /** Valor CRU inicial (ex.: "1234.56", "12345678000195"). */
   readonly defaultValue?: string | undefined;
   readonly placeholder?: string | undefined;
   readonly className?: string | undefined;
@@ -137,7 +137,7 @@ export function CampoValor({
  * ⚠️ SUBMETER SÓ DÍGITOS NÃO É ESTÉTICA, É INTEGRIDADE. O domínio distingue pessoa física de
  * jurídica pelo COMPRIMENTO (11 × 14) — `m13-transparencia/dominio.ts:47-63` — e chama "um CPF com
  * pontuação que ninguém normalizou" de DADO QUEBRADO, que ele se recusa a publicar. Se a máscara
- * vazasse, `123.456.789-01` teria 14 caracteres e seria lido como CNPJ. Por isso o hidden.
+ * vazasse, `123.456.789-09` teria 14 caracteres e seria lido como CNPJ. Por isso o hidden.
  *
  * ⚠️ NÃO VALIDA DÍGITO VERIFICADOR, e nem deve: a máscara é sobre FORMA. (O domínio hoje também
  * não valida — `zEmpenharInput` exige só `min(11)`. Se um dia validar, valida lá.)

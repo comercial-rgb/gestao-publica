@@ -181,7 +181,7 @@ describe("documento fiscal recebido", () => {
 
   it("t5 · emitente ≠ fornecedor da ordem recusa", async () => {
     const outro = await prisma.pessoa.create({
-      data: { documento: "22333444000172", tipo: "JURIDICA", criadoPor: POR },
+      data: { documento: "22333444000181", tipo: "JURIDICA", criadoPor: POR },
       select: { id: true },
     });
     await expect(

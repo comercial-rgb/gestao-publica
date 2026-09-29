@@ -106,7 +106,7 @@ beforeEach(async () => {
   await conta(SO_NA_UG, TODAS, "71428793860", "u7-uo");
   await prisma.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "2026/0700", modalidade: "PREGAO_ELETRONICO", objeto: "Serviços técnicos de engenharia na obra", valorLicitado: "4000.00", criadoPor: "SEED" } });
   for (const [id, numero, obra] of [["ctr-a", "CT-U7-A", "obra-a"], ["ctr-b", "CT-U7-B", "obra-b"]] as const) {
-    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Engenharia Técnica Gama", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } });
+    await prisma.contrato.create({ data: { id, numeroContrato: numero, processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Engenharia Técnica Gama", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "REALIZACAO_OBRAS", criadoPor: "SEED" } });
     it_[id] = {
       a: (await cadastrarItemDoContrato(prisma, { contratoId: id, descricao: "Visita técnica", unidade: "visita", quantidade: "10", valorUnitario: "100", criadoPor: ADMIN })).itemId,
       b: (await cadastrarItemDoContrato(prisma, { contratoId: id, descricao: "Hora técnica", unidade: "hora", quantidade: "20", valorUnitario: "50", criadoPor: ADMIN })).itemId,

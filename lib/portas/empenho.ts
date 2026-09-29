@@ -76,7 +76,7 @@ export async function listarEmpenhosDaExecucao(p: {
    *
    * ⚠️ NÃO É BUSCA POR NOME, e não pode ser: o schema não tem entidade Credor. O
    * `Empenho` guarda a string do documento e nada mais. Quem passa um documento
-   * mascarado ("12.345.678/0001-99") não acha nada — a normalização é da BORDA, e é
+   * mascarado ("12.345.678/0001-95") não acha nada — a normalização é da BORDA, e é
    * lá que ela está (`soDigitos`, em lib/format/mascaras).
    */
   readonly credorCpfCnpj?: string | undefined;

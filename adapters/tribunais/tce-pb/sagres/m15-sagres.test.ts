@@ -344,7 +344,7 @@ describe("golden byte a byte — Empenhos (§4.8)", () => {
     valor: toMoney("50000.00"),
     historico: "Aquisicao de material de consumo",
     complementacaoHistorico: null,
-    credorCpfCnpj: "12345678000199",
+    credorCpfCnpj: "12345678000195",
     naturezaContratacao: "FORNECIMENTO_BENS",
     numObra: null,
     exercicioFonteRecurso: 1,
@@ -374,7 +374,7 @@ describe("golden byte a byte — Empenhos (§4.8)", () => {
     "0000000050000,00", // valor 71-86
     "Aquisicao de material de consumo".padEnd(255, " "), // historico 87-341
     " ".repeat(255), // complementacaoHistorico (null→espaços) 342-596
-    "12345678000199", // cpfCnpjFornecedor 597-610
+    "12345678000195", // cpfCnpjFornecedor 597-610
     "1", //       NaturezaContratacao FORNECIMENTO_BENS→1  611
     "00000000", //numObra (null→zeros) 612-619
     "1", //       exercicioFonteRecurso 620
@@ -400,7 +400,7 @@ describe("golden byte a byte — CadastroContaBancaria (§4.23)", () => {
     numeroAgencia: "12340", // agência 1234 + dígito 0
     descricao: "Conta Movimento POC",
     tipo: "1",
-    cnpjGerencia: "12345678000199",
+    cnpjGerencia: "12345678000195",
   };
   const esperado = [
     "999001", //                             1-6
@@ -410,7 +410,7 @@ describe("golden byte a byte — CadastroContaBancaria (§4.23)", () => {
     "12340".padEnd(6, " "), //               24-29
     "Conta Movimento POC".padEnd(60, " "), //30-89
     "1", //                                  90
-    "12345678000199", //                     91-104
+    "12345678000195", //                     91-104
   ].join("");
   it("serializa exatamente o registro esperado (104 posições)", () => {
     const linha = serializarRegistro(LAYOUT_CADASTRO_CONTA, fato);
@@ -428,7 +428,7 @@ describe("golden byte a byte — SaldoMensal (§4.26)", () => {
     banco: "001",
     valor: toMoney("5000.00"),
     tipo: "1",
-    cnpjGerencia: "12345678000199",
+    cnpjGerencia: "12345678000195",
   };
   const esperado = [
     "999001", //                    1-6
@@ -437,7 +437,7 @@ describe("golden byte a byte — SaldoMensal (§4.26)", () => {
     "001", //                       26-28
     "0000000005000,00", //          29-44
     "1", //                         45
-    "12345678000199", //            46-59
+    "12345678000195", //            46-59
   ].join("");
   it("serializa exatamente o registro esperado (59 posições)", () => {
     const linha = serializarRegistro(LAYOUT_SALDO_MENSAL, fato);
@@ -491,7 +491,7 @@ describe("golden byte a byte — Pagamentos (§4.12)", () => {
     exercicioFonteRecurso: 1,
     codFonteRecurso: "500",
     tipoContaBancaria: "1",
-    cnpjGerencia: "12345678000199",
+    cnpjGerencia: "12345678000195",
   };
   const esperado = [
     "999001", //                     1-6
@@ -512,7 +512,7 @@ describe("golden byte a byte — Pagamentos (§4.12)", () => {
     "1", //                          115
     "500", //                        116-118
     "1", //                          119
-    "12345678000199", //             120-133
+    "12345678000195", //             120-133
   ].join("");
   it("serializa exatamente o registro esperado (133 posições)", () => {
     const linha = serializarRegistro(LAYOUT_PAGAMENTOS, fato);
@@ -537,7 +537,7 @@ describe("golden byte a byte — ReceitaOrcamentaria (§4.16)", () => {
     codBanco: "001",
     numeroAgencia: "12340",
     tipoContaBancaria: "1",
-    cnpjGerencia: "12345678000199",
+    cnpjGerencia: "12345678000195",
   };
   const esperado = [
     "999001", //                     1-6
@@ -554,7 +554,7 @@ describe("golden byte a byte — ReceitaOrcamentaria (§4.16)", () => {
     "001", //                        69-71
     "12340".padEnd(6, " "), //       72-77
     "1", //                          78
-    "12345678000199", //             79-92
+    "12345678000195", //             79-92
   ].join("");
   it("serializa exatamente o registro esperado (92 posições)", () => {
     const linha = serializarRegistro(LAYOUT_RECEITA_ORCAMENTARIA, fato);
@@ -676,7 +676,7 @@ describe("golden byte a byte — DespesaExtra (§4.20)", () => {
     tipoConsignacaoCodigo: "ISS",
     exercicio: 2026,
     codFonteRecursoPagamento: "500",
-    cnpjGerencia: "12345678000199",
+    cnpjGerencia: "12345678000195",
   };
   // Montado à mão, campo a campo, a partir do layout §4.20 (largura 637).
   const esperado = [
@@ -700,7 +700,7 @@ describe("golden byte a byte — DespesaExtra (§4.20)", () => {
     "      ", //                                            607-612 codUGReceitaExtra (não exigido → espaços)
     "    ", //                                              613-616 exercicioReceitaExtra (espaços)
     "       ", //                                           617-623 numReceitaExtra (espaços)
-    "12345678000199", //                                    624-637 cnpjGerenciaContaBancaria
+    "12345678000195", //                                    624-637 cnpjGerenciaContaBancaria
   ].join("");
 
   it("serializa exatamente o registro esperado (637 posições)", () => {

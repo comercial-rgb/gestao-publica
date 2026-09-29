@@ -43,7 +43,7 @@ export function FormPessoa(): React.ReactElement {
           <CampoCpfCnpj
             name="documento"
             required
-            placeholder="12.345.678/0001-99"
+            placeholder="12.345.678/0001-95"
             className={CAMPO}
           />
           <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">

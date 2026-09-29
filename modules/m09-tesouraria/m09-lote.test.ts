@@ -60,7 +60,7 @@ const TESOUREIRO = "tesouraria@cg.pb.gov.br";
 const ORDENADOR = "m08@cg.pb.gov.br";
 const FICHA = "ficha-lote";
 const FONTE = "fnt-lote";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const CONTA = "CC-LOTE";
 
 const CAIXA = "1.1.1.1.2.00.00";

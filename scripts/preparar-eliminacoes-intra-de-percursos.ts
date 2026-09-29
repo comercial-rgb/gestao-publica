@@ -47,7 +47,7 @@ const POR = process.env["SEED_IDENTIDADE"] ?? "admin@cg.pb.gov.br";
 const ANO = new Date().getFullYear();
 
 /** O CNPJ da entidade da fixture — e o credor "estranho" que o percurso usa para o contraste. */
-export const CNPJ_DA_ENTIDADE = "11222333000144";
+export const CNPJ_DA_ENTIDADE = "11222333000181";
 const NUMERO_DA_FICHA = 9101;
 
 async function main(): Promise<void> {

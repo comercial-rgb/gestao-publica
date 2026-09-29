@@ -53,9 +53,9 @@ const ATIVO_INTRA = "1.1.2.3.2.00.00";
 const PASSIVO_INTRA = "2.1.1.2.2.00.00";
 
 /** O CNPJ do fundo — a contraparte que CASA com entidade cadastrada. */
-const CNPJ_FUNDO = "11222333000144";
+const CNPJ_FUNDO = "11222333000181";
 /** Um credor que NÃO é entidade cadastrada — a contraparte que não se identifica. */
-const CNPJ_ESTRANHO = "99888777000166";
+const CNPJ_ESTRANHO = "99888777000100";
 
 const CONTAS = [
   // âncoras e analíticas do orçamentário (roteiros)

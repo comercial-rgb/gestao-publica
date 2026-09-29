@@ -104,7 +104,7 @@ export default function PaginaFumaca(): React.ReactElement {
             </div>
             <div className="md:col-span-2">
               <label className={CLASSE_ROTULO} htmlFor="f_cnpj">CNPJ do contratado</label>
-              <CampoCpfCnpj id="f_cnpj" name="f_cnpj" className="h-11 w-full rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 text-sm" defaultValue="12345678000199" />
+              <CampoCpfCnpj id="f_cnpj" name="f_cnpj" className="h-11 w-full rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 text-sm" defaultValue="12345678000195" />
             </div>
             <CampoNumero name="f_dias" rotulo="Dias de alerta" largura={1} defaultValue="90" min={1} ajuda="Lei 14.133, art. 107" />
             <CampoSelect

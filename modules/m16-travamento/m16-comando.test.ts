@@ -47,7 +47,7 @@ const IDENT = "orcamento@cg.pb.gov.br"; // fixture ADMIN
 const POR = IDENT;
 const FONTE = "fnt-cmd";
 const FICHA = "ficha-cmd";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const R_EMPENHO = roteiroEmpenho();
 const AGORA = new Date("2026-03-10T12:00:00Z");
 

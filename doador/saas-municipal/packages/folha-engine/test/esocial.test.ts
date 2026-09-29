@@ -28,7 +28,7 @@ const TEST_SCHEMA = `tenant_test_esoc_${Math.random().toString(36).slice(2, 8)}`
 const COMP = new Date('2026-05-01T00:00:00Z')
 
 const EMPREGADOR = { cnpj: '12345678000190', razaoSocial: 'Municipio Teste' }
-const TRABALHADOR = { cpf: '12345678901', nome: 'Joao Silva', dataNascimento: '1980-05-15' }
+const TRABALHADOR = { cpf: '12345678909', nome: 'Joao Silva', dataNascimento: '1980-05-15' }
 
 const RUBRICA_VENC: RubricaParaCalcular = {
   rubricaId: 'r-venc',
@@ -151,7 +151,7 @@ describe('eSocial -- builder de XML S-1200/S-1202', () => {
     expect(evento.xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(evento.xml).toContain('evtRemun')
     expect(evento.xml).toContain('<perApur>2026-05</perApur>')
-    expect(evento.xml).toContain('<cpfTrab>12345678901</cpfTrab>')
+    expect(evento.xml).toContain('<cpfTrab>12345678909</cpfTrab>')
     expect(evento.xml).toContain('<codCateg>101</codCateg>')
     expect(evento.idEvento).toMatch(/^ID\d{14}/)
   })

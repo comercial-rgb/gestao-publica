@@ -231,7 +231,7 @@ async function empenharELiquidar(
   const e = await empenhar(
     {
       fichaId, numero: `NE-${n}`, tipo: "ORDINARIO", valor,
-      data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "material de consumo", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
       criadoPor,
     },
@@ -419,7 +419,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     const e = await empenhar(
       {
         fichaId: FICHA_SAUDE, numero: "NE-1", tipo: "ORDINARIO", valor: "1000.00",
-        data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "compra", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         criadoPor: "emp.saude@teste.gov",
       },
@@ -441,7 +441,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       empenhar(
         {
           fichaId: FICHA_EDUC, numero: "NE-2", tipo: "ORDINARIO", valor: "1000.00",
-          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
           historico: "compra", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
           criadoPor: "emp.saude@teste.gov",
         },
@@ -471,7 +471,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     const e2 = await empenhar(
       {
         fichaId: FICHA_SAUDE, numero: "NE-RP2", tipo: "ORDINARIO", valor: "500.00",
-        data: new Date("2026-03-02T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-03-02T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "a inscrever", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         criadoPor: ADMIN,
       },
@@ -528,7 +528,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       { acao: "LIQUIDAR", ug: UO_EDUC },
     ]);
     const eSaude = await empenhar(
-      { fichaId: FICHA_SAUDE, numero: "NE-ALM", tipo: "ORDINARIO", valor: "1000.00", data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "material de consumo", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN },
+      { fichaId: FICHA_SAUDE, numero: "NE-ALM", tipo: "ORDINARIO", valor: "1000.00", data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "material de consumo", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN },
       R_EMPENHO,
       deps
     );
@@ -575,7 +575,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
     });
     const c = await cadastrarContrato(prisma, {
       numeroContrato: "CT-1", processoId: proc.processoId,
-      contratadoDocumento: "12345678000199", contratadoNome: "Fornecedor",
+      contratadoDocumento: "12345678000195", contratadoNome: "Fornecedor",
       valorInicial: "10000.00",
       vigenciaInicio: new Date("2026-03-01T12:00:00Z"),
       vigenciaFimInicial: new Date("2026-12-31T12:00:00Z"),
@@ -811,7 +811,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       empenhar(
         {
           fichaId: FICHA_SAUDE, numero: "NE-X", tipo: "ORDINARIO", valor: "10.00",
-          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
           historico: "tentativa", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
           criadoPor: "novato@cg.pb.gov.br",
         },
@@ -823,7 +823,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       empenhar(
         {
           fichaId: FICHA_SAUDE, numero: "NE-X", tipo: "ORDINARIO", valor: "10.00",
-          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
           historico: "tentativa", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
           criadoPor: "novato@cg.pb.gov.br",
         },
@@ -887,7 +887,7 @@ describe("M16 bloco 3 — o ROLLOUT da autorização (TR 4.56 · 6.4 · 6.5)", (
       /curta demais/
     );
     // 11 = um a menos que o mínimo. A borda do limite é onde o bug mora.
-    expect(() => exigirSenhaDoAmbiente({ SEED_ADMIN_SENHA: "12345678901" })).toThrow(
+    expect(() => exigirSenhaDoAmbiente({ SEED_ADMIN_SENHA: "12345678909" })).toThrow(
       /curta demais: 11 caractere/
     );
 

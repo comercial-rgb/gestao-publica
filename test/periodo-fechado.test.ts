@@ -77,7 +77,7 @@ const paramsFolha = () => ({
   contaBancaria: "CC-POC-A",
   contaDisponibilidade: CONTA_BANCOS,
   contaConsignacaoPorTipo: { INSS: "2.1.8.8.1.01.00", ISS: "2.1.8.8.1.02.00" },
-  credorCpfCnpj: "12345678000199",
+  credorCpfCnpj: "12345678000195",
   criadoPor: POR,
 });
 
@@ -121,7 +121,7 @@ describe("período fechado — as três rotas", () => {
         {
           fichaId: ficha.id, numero: "2026NE-FECHADO", tipo: "ORDINARIO",
           valor: "100.00", data: DATA_NA_COMPETENCIA,
-          credorCpfCnpj: "12345678000199", historico: "empenho em mês fechado",
+          credorCpfCnpj: "12345678000195", historico: "empenho em mês fechado",
           categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
         },
         ROTEIROS.empenho,
@@ -236,7 +236,7 @@ describe("período fechado — as três rotas", () => {
       {
         fichaId: ficha.id, numero: "2026NE-DEZEMBRO", tipo: "ORDINARIO",
         valor: "100.00", data: new Date(Date.UTC(2026, 11, 3, 12)),
-        credorCpfCnpj: "12345678000199", historico: "empenho em mês ABERTO",
+        credorCpfCnpj: "12345678000195", historico: "empenho em mês ABERTO",
         categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
       },
       ROTEIROS.empenho,
@@ -261,7 +261,7 @@ describe("período fechado — as três rotas", () => {
       {
         fichaId: ficha.id, numero: "2026NE-REABERTO", tipo: "ORDINARIO",
         valor: "100.00", data: DATA_NA_COMPETENCIA,
-        credorCpfCnpj: "12345678000199", historico: "empenho após reabertura",
+        credorCpfCnpj: "12345678000195", historico: "empenho após reabertura",
         categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
       },
       ROTEIROS.empenho,

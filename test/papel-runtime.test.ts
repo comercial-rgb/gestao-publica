@@ -300,7 +300,7 @@ describe("papel de runtime — a despesa atravessa o sistema", () => {
         tipo: "ORDINARIO",
         valor: EMPENHO,
         data: new Date("2026-04-10T12:00:00Z"),
-        credorCpfCnpj: "12345678000199",
+        credorCpfCnpj: "12345678000195",
         historico: "empenho do cenário de aceite",
         categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         criadoPor: CRIADO_POR,

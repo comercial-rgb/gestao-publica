@@ -59,7 +59,7 @@ const FONTE_500 = "fnt-500";
 const FONTE_540 = "fnt-540";
 const FICHA_500 = "ficha-500";
 const FICHA_540 = "ficha-540";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const R_EMPENHO = roteiroEmpenho();
 const R_LIQUIDACAO = roteiroLiquidacao({

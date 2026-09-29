@@ -143,7 +143,7 @@ type Categoria = "FORNECIMENTO_BENS" | "LOCACAO" | "PRESTACAO_SERVICOS" | "REALI
 async function empenhar1(fichaId: string, valor: string, ano: number, categoria: Categoria = "REALIZACAO_OBRAS"): Promise<string> {
   const n = `NE-${++seq}`;
   const e = await empenhar(
-    { fichaId, numero: n, tipo: "ORDINARIO", valor, data: dataDe(ano), credorCpfCnpj: "12345678000199", historico: n, categoriaOrdemCronologica: categoria, criadoPor: POR },
+    { fichaId, numero: n, tipo: "ORDINARIO", valor, data: dataDe(ano), credorCpfCnpj: "12345678000195", historico: n, categoriaOrdemCronologica: categoria, criadoPor: POR },
     R_EMP, deps
   );
   return e.empenhoId;

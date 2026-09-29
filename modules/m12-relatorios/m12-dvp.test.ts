@@ -298,7 +298,7 @@ describe("Anexo 15 — DVP", () => {
     const e = await empenhar(
       {
         fichaId: FICHA, numero: "NE-1", tipo: "ORDINARIO", valor: "2000.00",
-        data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
       },
       R_EMPENHO,

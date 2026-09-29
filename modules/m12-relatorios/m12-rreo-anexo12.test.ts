@@ -163,7 +163,7 @@ async function despesaSaude(naturezaDespesaId: string, fonteId: string, empenhad
     naturezaDespesaId, fonteId, valorDotado: "500000.00",
   });
   const e = await empenhar(
-    { fichaId, numero: `NE-${++seqDoc}`, tipo: "ORDINARIO", valor: empenhado, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+    { fichaId, numero: `NE-${++seqDoc}`, tipo: "ORDINARIO", valor: empenhado, data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
     R_EMP, deps
   );
   if (liquidado !== "0.00") {

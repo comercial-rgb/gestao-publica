@@ -29,7 +29,7 @@ export const EMPENHO_GOLDEN: Readonly<Record<string, unknown>> = {
   nu_Contrato: "CT-2026-0007",
   nm_Credor: "FORNECEDOR MODELO LTDA",
   dt_AnoMes: "202601",
-  nu_CGC_Credor: "12345678000199",
+  nu_CGC_Credor: "12345678000195",
   tp_Pessoa: "2",
   cd_Orgao: "99",
   cd_Dispensa: "",

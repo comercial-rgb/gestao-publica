@@ -114,7 +114,7 @@ const empenho = (numero: string, valor: string, contratoId?: string) => ({
   tipo: "ORDINARIO" as const,
   valor,
   data: DATA,
-  credorCpfCnpj: "12345678000199",
+  credorCpfCnpj: "12345678000195",
   historico: `empenho ${numero}`,
   categoriaOrdemCronologica: "PRESTACAO_SERVICOS" as const,
   criadoPor: POR,
@@ -286,7 +286,7 @@ describe("M05 — concorrência no saldo da ficha", () => {
       const { contratoId } = await cadastrarContrato(prisma, {
         numeroContrato: `CT-${i}/2026`,
         processoId,
-        contratadoDocumento: "12345678000199",
+        contratadoDocumento: "12345678000195",
         contratadoNome: "Manutec LTDA",
         valorInicial: "80000.00",
         vigenciaInicio: new Date("2026-01-01T00:00:00Z"),

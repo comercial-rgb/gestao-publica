@@ -52,7 +52,7 @@ beforeEach(async () => {
   await conta(FISCAL, ["REGISTRAR_MEDICAO_DE_OBRA"], "52998224725");
   await conta(OUTRO, ["EMITIR_ORDEM_DE_SERVICO_DO_CONTRATO", "REGISTRAR_MEDICAO_DE_OBRA"]);
   await prisma.processoLicitatorio.create({ data: { id: "proc", numeroProcesso: "2026/0700", modalidade: "PREGAO_ELETRONICO", objeto: "Serviços técnicos mensuráveis", valorLicitado: "4000.00", criadoPor: "SEED" } });
-  await prisma.contrato.create({ data: { id: "ctr", numeroContrato: "CT-AD", processoId: "proc", contratadoDocumento: "12345678000199", contratadoNome: "Serviços Técnicos Gama", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
+  await prisma.contrato.create({ data: { id: "ctr", numeroContrato: "CT-AD", processoId: "proc", contratadoDocumento: "12345678000195", contratadoNome: "Serviços Técnicos Gama", valorInicial: "2000.00", vigenciaInicio: new Date(`${dia(-60)}T15:00:00Z`), vigenciaFimInicial: new Date(`${dia(60)}T15:00:00Z`), categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: "SEED" } });
   itemA = (await cadastrarItemDoContrato(prisma, { contratoId: "ctr", descricao: "Visita técnica", unidade: "visita", quantidade: "10", valorUnitario: "100", criadoPor: ADMIN })).itemId;
   itemB = (await cadastrarItemDoContrato(prisma, { contratoId: "ctr", descricao: "Hora técnica", unidade: "hora", quantidade: "20", valorUnitario: "50", criadoPor: ADMIN })).itemId;
   await designarNoContrato(prisma, { contratoId: "ctr", papel: "GESTOR", usuarioIdentificador: GESTORA, atoDesignacao: "Portaria G-AD", vigenciaInicio: dia(-40), criadoPor: ADMIN });

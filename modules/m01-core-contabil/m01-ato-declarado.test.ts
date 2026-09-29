@@ -24,7 +24,7 @@ const HOJE = new Date("2026-09-23T12:00:00Z");
 
 /** A entidade do cenário — uma autarquia com nome acentuado e CNPJ, de propósito. */
 const NOME = "Fundação Municipal de Saúde";
-const CNPJ = "12345678000199";
+const CNPJ = "12345678000195";
 
 const ANCORA_ENTIDADE: readonly AncoradouroDoAto[] = [
   { rotulo: `o nome da entidade ("${NOME}")`, termos: [NOME] },
@@ -159,7 +159,7 @@ describe("M01 — a régua do ato declarado", () => {
         {
           ...BOM,
           atoCitacao:
-            "A entidade inscrita no CNPJ 12.345.678/0001-99 passa a operar conta própria " +
+            "A entidade inscrita no CNPJ 12.345.678/0001-95 passa a operar conta própria " +
             "para os recursos que lhe são vinculados.",
         },
         { hoje: HOJE, ancoradouros: ANCORA_ENTIDADE }

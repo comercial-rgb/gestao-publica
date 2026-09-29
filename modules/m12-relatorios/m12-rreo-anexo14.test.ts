@@ -66,7 +66,7 @@ async function cenario(): Promise<void> {
     { exercicio: 2026, naturezaReceita: "11130111", fonte: "500", valor: "800000.00", dataArrecadacao: new Date("2026-01-10T12:00:00Z"), numeroReceita: "IPTU-1", criadoPor: POR },
     R_ARR, criarM04Deps(prisma)
   );
-  const e = await empenhar({ fichaId: "f1", numero: "NE-1", tipo: "ORDINARIO", valor: "300000.00", data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000199", historico: "s", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR }, R_EMP, deps);
+  const e = await empenhar({ fichaId: "f1", numero: "NE-1", tipo: "ORDINARIO", valor: "300000.00", data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "s", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR }, R_EMP, deps);
   const l = await liquidar({ empenhoId: e.empenhoId, numero: "NL-1", valor: "250000.00", data: new Date("2026-01-20T12:00:00Z"), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQ, deps);
   await pagar({ liquidacaoId: l.liquidacaoId, numero: "NP-1", valor: "200000.00", data: new Date("2026-02-10T12:00:00Z"), contaBancaria: "CC-001", fonteId: "fnt-500", historico: "p", criadoPor: POR }, R_PAG, deps);
 }

@@ -16,7 +16,7 @@
  * não há model `Fornecedor` neste repositório. FK lógica não é verificada pelo banco: o que a
  * mantém honesta é os dois lados gravarem a MESMA string.
  *
- * Se um CNPJ entrar como "12.345.678/0001-99" no contrato e "12345678000199" na certidão, eles
+ * Se um CNPJ entrar como "12.345.678/0001-95" no contrato e "12345678000195" na certidão, eles
  * viram DUAS empresas. A certidão fica pendurada numa, e a tela da outra a declara ausente — um
  * fornecedor com certidão válida aparecendo como irregular, sem erro, sem log, sem nada que
  * denuncie. É o defeito que só se descobre quando o Tribunal pergunta.

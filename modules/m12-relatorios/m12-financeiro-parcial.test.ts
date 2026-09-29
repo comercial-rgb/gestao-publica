@@ -165,7 +165,7 @@ describe("M12 — Balanço Financeiro (Anexo 13) com o exercício ABERTO", () =>
       empenhar(
         {
           fichaId: FICHA, numero, tipo: "ORDINARIO", valor,
-          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000199",
+          data: new Date("2026-03-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
           historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
           criadoPor: POR,
         },

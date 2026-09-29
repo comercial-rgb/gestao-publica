@@ -342,7 +342,7 @@ export function FormEmpenho({
               ⚠️ O `minLength={11}` SAIU com a máscara, e não foi um afrouxamento. Quem mede o
               comprimento é o domínio, sobre os DÍGITOS que o hidden submete (`zEmpenharInput`).
             */}
-            <CampoCpfCnpj key={`manual-${credor.versao}`} name="credor" required defaultValue={credor.doc} placeholder="12.345.678/0001-99" className={CAMPO} />
+            <CampoCpfCnpj key={`manual-${credor.versao}`} name="credor" required defaultValue={credor.doc} placeholder="12.345.678/0001-95" className={CAMPO} />
             <button type="button" onClick={() => setCredorManual(false)} className="mt-1 text-[11px] font-medium text-[color:var(--color-primary)] hover:underline">
               Buscar no cadastro de credores
             </button>

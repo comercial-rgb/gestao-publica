@@ -148,7 +148,7 @@ async function pagamento(opts: {
   const e = await empenhar(
     {
       fichaId: FICHA, numero: `NE-${opts.numero}`, tipo: "ORDINARIO", valor: opts.valor,
-      data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
     },
     R_EMPENHO,

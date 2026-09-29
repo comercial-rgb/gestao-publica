@@ -60,7 +60,13 @@ export async function previewTributos(nomeArquivo: string, conteudo: string) {
 }
 
 // ── CONFIRMAÇÃO (escrita autenticada; os fatos nascem pelos serviços reais) ─────────
-export async function confirmarFolha(p: { readonly nomeArquivo: string; readonly conteudo: string; readonly exercicio: number }) {
+/**
+ * ⚠️ O CREDOR DOS EMPENHOS DA FOLHA VEM DA TELA (V22). Antes era um CNPJ fictício fixo aqui, com
+ * dígito verificador inválido; o empenho passou a conferir o dígito, e um credor escrito no código
+ * não é de ninguém. O arquivo de folha não traz documento, e a convenção do ente (o próprio ente,
+ * um credor da folha cadastrado) é decisão dele — por isso é informada na confirmação.
+ */
+export async function confirmarFolha(p: { readonly nomeArquivo: string; readonly conteudo: string; readonly exercicio: number; readonly credorCpfCnpj: string }) {
   return comEscritaAutenticada("IMPORTAR_FOLHA", (criadoPor) =>
     confirmarImportacaoFolha(
       cliente(),
@@ -68,7 +74,7 @@ export async function confirmarFolha(p: { readonly nomeArquivo: string; readonly
         nomeArquivo: p.nomeArquivo, conteudo: p.conteudo, exercicio: p.exercicio,
         dataEmpenho: new Date(), dataLiquidacao: new Date(), dataPagamento: new Date(),
         contaBancaria: "CC-POC-A", contaDisponibilidade: CONTA_BANCOS,
-        contaConsignacaoPorTipo: CONTAS_CONSIGNACAO, credorCpfCnpj: "12345678000199", criadoPor,
+        contaConsignacaoPorTipo: CONTAS_CONSIGNACAO, credorCpfCnpj: p.credorCpfCnpj, criadoPor,
       },
       ROTEIROS,
       criarM05DepsComAlmoxarifado(cliente())

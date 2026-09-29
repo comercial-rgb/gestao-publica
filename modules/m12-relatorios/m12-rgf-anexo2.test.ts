@@ -67,7 +67,7 @@ await exigirBanco(prisma);
 
 const POR = "orcamento@cg.pb.gov.br";
 const FONTE = "500";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const R_ARREC = roteiroArrecadacao({ naturezaDaFonte: "ORDINARIOS",
   disponibilidade: "1.1.1.1.1.00.00",

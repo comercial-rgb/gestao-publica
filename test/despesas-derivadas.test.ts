@@ -34,7 +34,7 @@ await exigirBanco(prisma);
 afterAll(async () => prisma.$disconnect());
 
 const POR = "contabilidade@cg.pb.gov.br";
-const CNPJ = "12345678000199";
+const CNPJ = "12345678000195";
 const FONTE = "fnt-500";
 const dia = (d: number): string => diaCivil(new Date(Date.now() + d * 86_400_000));
 

@@ -57,7 +57,7 @@ afterAll(async () => {
 });
 
 const POR = "despesa@cg.pb.gov.br";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 const EXERCICIO = 2026;
 const COD_SAUDE = "01004";
 const COD_EDUCACAO = "01003";

@@ -99,7 +99,7 @@ async function semear(): Promise<void> {
 }
 
 async function emp(fichaId: string, numero: string, valor: string, data: string): Promise<string> {
-  const e = await empenhar({ fichaId, numero, tipo: "ORDINARIO", valor, data: new Date(data), credorCpfCnpj: "12345678000199", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMPENHO, deps);
+  const e = await empenhar({ fichaId, numero, tipo: "ORDINARIO", valor, data: new Date(data), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMPENHO, deps);
   return e.empenhoId;
 }
 async function liq(empenhoId: string, numero: string, valor: string, data: string): Promise<void> {

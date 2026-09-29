@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
-import { normalizarDocumento } from "../../packages/documento/index.js";
+import { documentoTemDigitoValido, normalizarDocumento } from "../../packages/documento/index.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { exigirExercicioDaFichaAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
@@ -83,7 +83,12 @@ export const zSolicitarEmpenhoInput = z
   .object({
     fichaId: z.string().min(1),
     numero: z.string().trim().min(1),
-    credorCpfCnpj: z.string().transform(normalizarDocumento).pipe(z.string().min(11, "CPF/CNPJ inválido")),
+    // A mesma régua do empenho (V22): a solicitação vira empenho, e o dígito errado seria recusado lá.
+    credorCpfCnpj: z
+      .string()
+      .transform(normalizarDocumento)
+      .pipe(z.string().min(11, "CPF/CNPJ inválido"))
+      .refine(documentoTemDigitoValido, "CPF/CNPJ do credor com dígito verificador inválido. Confira o documento."),
     valor: zValorPositivo,
     tipo: zTipoEmpenho,
     categoriaOrdemCronologica: zCategoriaOrdemCronologica.optional(),

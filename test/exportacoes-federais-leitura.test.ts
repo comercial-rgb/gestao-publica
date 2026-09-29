@@ -140,7 +140,7 @@ async function semearExecucao(): Promise<void> {
         tipo: "ORDINARIO",
         valor,
         data: DIA_DE_BORDA(EXERCICIO, 2, 1),
-        credorCpfCnpj: "12345678000199",
+        credorCpfCnpj: "12345678000195",
         historico: `empenho ${numero}`,
         categoriaOrdemCronologica: "FORNECIMENTO_BENS",
         criadoPor: "despesa@cg.pb.gov.br",

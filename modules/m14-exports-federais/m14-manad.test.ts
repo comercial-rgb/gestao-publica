@@ -49,7 +49,7 @@ import type { M05Deps } from "../m05-despesa/ports.js";
  *   ficha 1: órgão 01 · unidade 01001 · função 12 · subfunção 361 · programa 0012
  *            ação 2001 · natureza 339039 · fonte 500 · LOA 2.000.000
  *
- *   15/07  empenho NE-1        6.000,00   credor 12345678000199 (PJ)
+ *   15/07  empenho NE-1        6.000,00   credor 12345678000195 (PJ)
  *   20/07  anulação parcial    1.000,00   ANE-1   -> empenhado líquido 5.000,00
  *   25/07  liquidação NL-1     5.000,00
  *   30/07  pagamento NP-1      2.500,00   (parcial)
@@ -65,8 +65,8 @@ import type { M05Deps } from "../m05-despesa/ports.js";
  *   COD_CTA_DESP|COD_REC_VINC|COD_CONT_REC|NM_EMP|DT_EMP|VL_EMP|IND_DEB_CRED|COD_CREDOR|
  *   HIST_EMP
  *
- *   L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|15072026|6000,00|D|12345678000199|servicos de TI
- *   L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|20072026|1000,00|C|12345678000199|reducao de escopo
+ *   L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|15072026|6000,00|D|12345678000195|servicos de TI
+ *   L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|20072026|1000,00|C|12345678000195|reducao de escopo
  *
  *   ⚠️ COD_SUBPROGR e COD_CONT_REC saem VAZIOS (||) — 3.1.9. O subprograma foi EXTINTO
  *     pela Portaria STN 42/1999; a conta corrente do recurso vinculado não é modelada.
@@ -95,7 +95,7 @@ const FONTE = "fnt-500";
 const FICHA = "ficha-1";
 const IBGE = "2504009";
 const CNPJ_ENTE = "08993917000146";
-const CREDOR_PJ = "12345678000199";
+const CREDOR_PJ = "12345678000195";
 
 const CAIXA = "1.1.1.1.2.00.00";
 const FORNECEDOR = "2.1.3.1.1.00.00";
@@ -302,8 +302,8 @@ describe("M14 — MANAD (TR 7.36)", () => {
 
     // ⚠️ AS DUAS LINHAS, LITERAIS — pipes, vírgulas, campos vazios e tudo.
     expect(textoDe(manad, "L050")).toEqual([
-      "L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|15072026|6000,00|D|12345678000199|servicos de TI",
-      "L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|20072026|1000,00|C|12345678000199|reducao de escopo",
+      "L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|15072026|6000,00|D|12345678000195|servicos de TI",
+      "L050|01|01001|12|361|0012||2001|339039|500||NE-1/2026.1|20072026|1000,00|C|12345678000195|reducao de escopo",
     ]);
 
     // L100 e L150 — o NM_EMP é o MESMO, e é ele que costura os três registros.
@@ -631,14 +631,20 @@ describe("M14 — MANAD (TR 7.36)", () => {
 
   // ═══════════════════════════════════════════════════════════════════════════
   // t6c (V22) — o documento com dígito verificador inválido vai como está no empenho (fato), mas
-  // NÃO em silêncio: a pendência o nomeia. O CREDOR_PJ da fixture (12345678000199) não confere.
+  // NÃO em silêncio: a pendência o nomeia. Desde a V22 o empenho NOVO recusa o dígito errado, então o
+  // caso só existe como dado LEGADO (importação, migração) — simulado aqui gravando direto no banco.
+  // N=2: com o documento válido da fixture não há pendência; com o legado, há, nomeando-o.
   // ═══════════════════════════════════════════════════════════════════════════
-  it("t6c: CPF/CNPJ com dígito verificador inválido vira pendência nomeada", async () => {
+  it("t6c: CPF/CNPJ com dígito verificador inválido (dado legado) vira pendência nomeada; o válido não", async () => {
     await ciclo2026();
+    const semLegado = await gerarManad(prisma, PERIODO_2026);
+    expect(semLegado.pendencias.find((x) => x.registro === "L750" && /dígito verificador/.test(x.motivo))).toBeUndefined();
+    const LEGADO = "12345678000199"; // dígito verificador errado (o certo é 95)
+    await prisma.empenho.updateMany({ where: { credorCpfCnpj: CREDOR_PJ }, data: { credorCpfCnpj: LEGADO } });
     const manad = await gerarManad(prisma, PERIODO_2026);
     const p = manad.pendencias.find((x) => x.registro === "L750" && /dígito verificador/.test(x.motivo));
     expect(p?.quantidade).toBe(1);
-    expect(p?.motivo).toMatch(new RegExp(`dígito verificador inválido nos empenhos: ${CREDOR_PJ}\\.`));
+    expect(p?.motivo).toMatch(new RegExp(`dígito verificador inválido nos empenhos: ${LEGADO}\\.`));
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -685,7 +691,7 @@ describe("M14 — MANAD (TR 7.36)", () => {
 //   obra OB-2026-001 · PAVIMENTACAO_ASFALTICA (tipo 05) · CEI 123456789012
 //   empenho NE-OB 100.000,00 na ficha de obra (elemento 51, natureza 449051)
 //
-//   L800|2026|449051|12345678000199|NE-OB/2026.9|05|123456789012|Pavimentação da Av. Brasil
+//   L800|2026|449051|12345678000195|NE-OB/2026.9|05|123456789012|Pavimentação da Av. Brasil
 //
 //   Campos: REG|EXERCICIO|COD_CTA_DESP|COD_FORNECEDOR|NM_EMP|TIP_OBRA_SERVICO|CEI|DESC
 
@@ -889,7 +895,7 @@ describe("M14 — MANAD: cancelamento de RP e obras (L800)", () => {
 
     // ⚠️ A LINHA DO L800 — o registro que a AFPS vem procurar no MANAD.
     expect(textoDe(manad, "L800")).toEqual([
-      "L800|2026|449051|12345678000199|NE-OB/2026.9|05|123456789012|Pavimentação da Av. Brasil",
+      "L800|2026|449051|12345678000195|NE-OB/2026.9|05|123456789012|Pavimentação da Av. Brasil",
     ]);
     // Com CEI, ZERO pendência de L800.
     expect(manad.pendencias.some((p) => p.registro === "L800")).toBe(false);
@@ -902,7 +908,7 @@ describe("M14 — MANAD: cancelamento de RP e obras (L800)", () => {
     // matrícula — derrubar a geração obrigaria o ente a INVENTAR um CEI, e um CEI
     // inventado num arquivo da Receita é infinitamente pior que um campo vazio.
     expect(textoDe(semCei, "L800")).toEqual([
-      "L800|2026|449051|12345678000199|NE-OB/2026.9|05||Pavimentação da Av. Brasil",
+      "L800|2026|449051|12345678000195|NE-OB/2026.9|05||Pavimentação da Av. Brasil",
     ]);
     // A contagem de campos continua EXATA: REG + 7 campos.
     const linha = linhasDe(semCei, "L800")[0]!;

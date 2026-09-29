@@ -8,7 +8,7 @@
  * FIAÇÃO — e a fiação é exatamente onde esta frente pode falhar em silêncio: o padrão é um input
  * VISÍVEL sem `name` (mascarado) mais um HIDDEN com `name` (cru). Se alguém puser o `name` no
  * visível, tudo continua parecendo certo na tela e o domínio passa a receber `"1.234,56"`, que o
- * `zMoney` recusa — ou pior, `"123.456.789-01"`, que tem 14 caracteres e o M13 leria como CNPJ.
+ * `zMoney` recusa — ou pior, `"123.456.789-09"`, que tem 14 caracteres e o M13 leria como CNPJ.
  * Só um `FormData` de verdade prova que não é isso que acontece. Por isso o DOM entrou na 7.9.
  *
  * O ambiente é pedido POR ARQUIVO (o docblock acima) — o default da suíte segue `node`.
@@ -121,27 +121,27 @@ describe("CampoCpfCnpj — 11 ↔ 14 na tela, só dígitos na fronteira", () => 
     const form = comForm(<CampoCpfCnpj name="credor" />);
     const input = campoVisivel("cpf-cnpj");
 
-    fireEvent.change(input, { target: { value: "12345678901" } });
+    fireEvent.change(input, { target: { value: "12345678909" } });
 
-    expect(input.value).toBe("123.456.789-01");
-    expect(submeter(form)).toEqual({ credor: "12345678901" });
+    expect(input.value).toBe("123.456.789-09");
+    expect(submeter(form)).toEqual({ credor: "12345678909" });
   });
 
   it("CNPJ: exibe pontuado, submete 14 dígitos", () => {
     const form = comForm(<CampoCpfCnpj name="credor" />);
     const input = campoVisivel("cpf-cnpj");
 
-    fireEvent.change(input, { target: { value: "12345678000199" } });
+    fireEvent.change(input, { target: { value: "12345678000195" } });
 
-    expect(input.value).toBe("12.345.678/0001-99");
-    expect(submeter(form)).toEqual({ credor: "12345678000199" });
+    expect(input.value).toBe("12.345.678/0001-95");
+    expect(submeter(form)).toEqual({ credor: "12345678000195" });
   });
 
   it("⚠️ O COMPRIMENTO SUBMETIDO É O QUE O M13 USA PARA DIZER PF DE PJ", () => {
     // m13-transparencia/dominio.ts:47-63 distingue por 11 × 14 e chama CPF pontuado de DADO
-    // QUEBRADO. Se a máscara vazasse, "123.456.789-01" teria 14 e viraria um CNPJ.
+    // QUEBRADO. Se a máscara vazasse, "123.456.789-09" teria 14 e viraria um CNPJ.
     const form = comForm(<CampoCpfCnpj name="credor" />);
-    fireEvent.change(campoVisivel("cpf-cnpj"), { target: { value: "123.456.789-01" } });
+    fireEvent.change(campoVisivel("cpf-cnpj"), { target: { value: "123.456.789-09" } });
 
     const cru = submeter(form)["credor"]!;
     expect(cru, "11 = pessoa física").toHaveLength(11);

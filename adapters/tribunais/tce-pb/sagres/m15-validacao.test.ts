@@ -23,7 +23,7 @@ const empenho = (over: Partial<EmpenhoFato> = {}): EmpenhoFato => ({
   codCategoriaEconomica: "3", codNaturezaDespesa: "3", codModalidadeDespesa: "90", codElementoDespesa: "39",
   codSubelemento: "040", modalidadeLicitacao: "9", numLicitacao: null, numEmpenho: "12",
   tipoEmpenho: "ORDINARIO", data: new Date(Date.UTC(2026, 6, 10)), valor: toMoney("50000.00"),
-  historico: "Material", complementacaoHistorico: null, credorCpfCnpj: "12345678000199",
+  historico: "Material", complementacaoHistorico: null, credorCpfCnpj: "12345678000195",
   naturezaContratacao: "FORNECIMENTO_BENS", numObra: null, exercicioFonteRecurso: 1, codFonteRecurso: "500",
   cpfOrdenador: "11122233344", co: "1001", ...over,
 });

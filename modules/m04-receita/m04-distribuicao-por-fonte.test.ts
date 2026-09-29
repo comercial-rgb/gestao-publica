@@ -495,7 +495,7 @@ describe("M04 V16/C30 — a arrecadacao repartida entre fontes", () => {
 
     const fatos = await lerFatosReceitaOrcamentaria(prisma, {
       codUnidadeGestora: "000001",
-      cnpjGerenciadora: "12345678000199",
+      cnpjGerenciadora: "12345678000195",
       codContaArrecadadora: "CC-001",
       dia: DATA,
     });

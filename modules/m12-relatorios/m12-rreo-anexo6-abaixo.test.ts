@@ -64,7 +64,7 @@ await exigirBanco(prisma);
 
 const POR = "orcamento@cg.pb.gov.br";
 const F500 = "fnt-500";
-const CREDOR = "12345678000199";
+const CREDOR = "12345678000195";
 
 const R_EMP = roteiroEmpenho();
 const R_LIQ_39 = roteiroLiquidacao({ codElemento: "39", obrigacaoAPagar: "2.1.3.1.1.00.00" });

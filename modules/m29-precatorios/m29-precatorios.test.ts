@@ -114,7 +114,7 @@ async function precatorio(p: {
     numeroProcesso: p.numero,
     tribunal: "TJSC",
     beneficiarioNome: `Beneficiário ${p.numero}`,
-    beneficiarioDocumento: "12345678901",
+    beneficiarioDocumento: "12345678909",
     natureza: p.natureza,
     preferencia: p.preferencia ?? "NENHUMA",
     diaApresentacao: p.diaApresentacao,
@@ -140,7 +140,7 @@ async function pagarPrecatorio(
   const { empenhoId } = await empenhar(
     {
       fichaId: FICHA, numero: `2026NE${n}`, tipo: "ORDINARIO", valor,
-      data: new Date("2026-03-10T12:00:00Z"), credorCpfCnpj: "12345678901",
+      data: new Date("2026-03-10T12:00:00Z"), credorCpfCnpj: "12345678909",
       historico: "Precatório judicial", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
       criadoPor: POR,
     },

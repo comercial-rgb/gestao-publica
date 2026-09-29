@@ -178,7 +178,7 @@ async function umPagamento(valor: string, numero = "NP-1"): Promise<string> {
   const e = await empenhar(
     {
       fichaId: FICHA, numero: `NE-${numero}`, tipo: "ORDINARIO", valor,
-      data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000199",
+      data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
     },
     R_EMPENHO,
@@ -616,7 +616,7 @@ describe("M09 — vínculo de conciliação", () => {
     const e = await empenhar(
       {
         fichaId: FICHA, numero: "NE-R", tipo: "ORDINARIO", valor: "6000.00",
-        data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000199",
+        data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: "12345678000195",
         historico: "empenho", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR,
       },
       R_EMPENHO,
