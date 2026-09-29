@@ -7,6 +7,7 @@ import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
+import type { DisponibilidadeDoRegistro } from "../../molde/tipos.js";
 import type { DetalheLido, PaginaDoMolde } from "./dados";
 
 export { PortaSemBancoError };
@@ -126,6 +127,21 @@ export async function verLeiOrcamentaria(id: string): Promise<DetalheLido | null
             },
           ]),
     ],
+  };
+}
+
+/** O que o detalhe oferece: "registrar a lei aprovada" só enquanto não houver lei registrada. */
+export async function disponibilidadeDaLeiOrcamentaria(id: string): Promise<DisponibilidadeDoRegistro | null> {
+  const x = await cliente().leiOrcamentariaAnual.findUnique({ where: { id }, select: { aprovacao: { select: { id: true, numeroDaLei: true } } } });
+  if (x === null) return null;
+  return {
+    versao: x.aprovacao?.id ?? "sem-aprovacao",
+    porAcao: {
+      "registrar-aprovacao":
+        x.aprovacao === null
+          ? { apresentacao: "disponivel" }
+          : { apresentacao: "nao-aplicavel", motivo: `A lei que aprovou este projeto já está registrada (${x.aprovacao.numeroDaLei}).` },
+    },
   };
 }
 

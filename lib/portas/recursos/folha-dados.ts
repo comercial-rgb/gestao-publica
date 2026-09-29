@@ -1,6 +1,6 @@
 import { formatarMoeda } from "../../format/moeda";
 import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
-import { Decimal, toMoney, sumMoney } from "../../../packages/contracts/index.js";
+import { Decimal, emProsa, toMoney, sumMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
 import { NATUREZA_DO_TIPO_DE_FOLHA, situacaoDaFolha, vigenteNaCompetencia, type SituacaoDaFolha } from "../../../modules/m33-folha/dominio.js";
@@ -784,16 +784,18 @@ export async function verTabela(id: string): Promise<DetalheLido | null> {
   }
   const irrf = await prisma.tabelaIrrf.findUnique({ where: { id }, select: { competenciaInicio: true, competenciaFim: true, deducaoPorDependente: true, descontoSimplificado: true, isencaoMaior65: true, redutorBase: true, redutorFator: true, redutorRendaMaxima: true, redutorRendaDaFaixaIsenta: true, redutorMaximoNaFaixaIsenta: true, fundamentacaoLegal: true, criadoEm: true, criadoPor: true, faixas: { orderBy: { ordem: "asc" }, select: { ordem: true, ate: true, aliquota: true, parcelaADeduzir: true } } } });
   if (irrf !== null) {
+    // Valores em reais no formato da tela (1.903,98), não o decimal cru do banco (1903.98).
+    const brl = (v: Parameters<typeof toMoney>[0]): string => emProsa(toMoney(v).toFixed(2));
     return {
       titulo: `IRRF — desde ${irrf.competenciaInicio}`, subtitulo: irrf.fundamentacaoLegal, selos: [{ texto: "IRRF", tom: "neutro" }],
       dados: [
         { rotulo: "Vigência", valor: `${irrf.competenciaInicio} → ${irrf.competenciaFim ?? "aberta"}` },
         { rotulo: "Dedução por dependente", valor: toMoney(irrf.deducaoPorDependente).toFixed(2), tipo: "dinheiro" },
-        { rotulo: "Desconto simplificado", valor: irrf.descontoSimplificado === null ? "não se aplica" : toMoney(irrf.descontoSimplificado).toFixed(2) },
-        { rotulo: "Parcela isenta (65 anos ou mais)", valor: irrf.isencaoMaior65 === null ? "não há" : toMoney(irrf.isencaoMaior65).toFixed(2) },
-        { rotulo: "Redutor", valor: irrf.redutorBase === null ? "não se aplica" : `max(0, ${toMoney(irrf.redutorBase).toFixed(2)} − ${new Decimal(irrf.redutorFator ?? 0).toFixed(8)} × renda), zerado acima de ${toMoney(irrf.redutorRendaMaxima ?? 0).toFixed(2)}` },
-        { rotulo: "Redutor até a renda em que o imposto zera", valor: irrf.redutorRendaDaFaixaIsenta === null || irrf.redutorMaximoNaFaixaIsenta === null ? "não informado — vale só a fórmula acima" : `até ${toMoney(irrf.redutorRendaDaFaixaIsenta).toFixed(2)} de renda, redução de até ${toMoney(irrf.redutorMaximoNaFaixaIsenta).toFixed(2)}, limitada ao imposto` },
-        ...irrf.faixas.map((f) => ({ rotulo: `Faixa ${f.ordem}`, valor: `${f.ate === null ? "acima da anterior, sem limite" : `até ${toMoney(f.ate).toFixed(2)}`} · ${pct(f.aliquota)} · parcela a deduzir ${toMoney(f.parcelaADeduzir).toFixed(2)}` })),
+        { rotulo: "Desconto simplificado", valor: irrf.descontoSimplificado === null ? "não se aplica" : brl(irrf.descontoSimplificado) },
+        { rotulo: "Parcela isenta (65 anos ou mais)", valor: irrf.isencaoMaior65 === null ? "não há" : brl(irrf.isencaoMaior65) },
+        { rotulo: "Redutor", valor: irrf.redutorBase === null ? "não se aplica" : `${brl(irrf.redutorBase)} − ${new Decimal(irrf.redutorFator ?? 0).toFixed(6).replace(".", ",")} × renda (nunca negativo), zerado acima de ${brl(irrf.redutorRendaMaxima ?? 0)} de renda` },
+        { rotulo: "Redutor até a renda em que o imposto zera", valor: irrf.redutorRendaDaFaixaIsenta === null || irrf.redutorMaximoNaFaixaIsenta === null ? "não informado — vale só a fórmula acima" : `até ${brl(irrf.redutorRendaDaFaixaIsenta)} de renda, redução de até ${brl(irrf.redutorMaximoNaFaixaIsenta)}, limitada ao imposto` },
+        ...irrf.faixas.map((f) => ({ rotulo: `Faixa ${f.ordem}`, valor: `${f.ate === null ? "acima da anterior, sem limite" : `até ${brl(f.ate)}`} · ${pct(f.aliquota)} · parcela a deduzir ${brl(f.parcelaADeduzir)}` })),
         { rotulo: "Fundamentação legal", valor: irrf.fundamentacaoLegal },
         { rotulo: "Cadastrada em", valor: `${diaCivilBr(irrf.criadoEm)} por ${irrf.criadoPor}` },
       ],

@@ -67,6 +67,9 @@ export const LEIS_ORCAMENTARIAS: DefinicaoDeRecurso = definirRecurso({
       ],
     },
   ],
+  // A aprovação é registrada uma vez: com a lei já registrada, a ação deixa de ser oferecida (o
+  // serviço recusa de qualquer forma — a tela só não oferece o que não cabe).
+  acoesPorEstado: true,
   permissoes: { criar: "CADASTRAR_LOA", anexar: "ANEXAR_ARQUIVO" },
   abas: ["dados", "historico", "anexos", "relacionados"],
   donoDoAnexo: "leiOrcamentariaAnualId",

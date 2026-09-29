@@ -7,7 +7,7 @@ import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { EXTENSOES_ACEITAS, lerAnexosDaLeiOrcamentaria, TAMANHO_MAXIMO_BYTES } from "../../../../../lib/portas/documentos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { LEIS_ORCAMENTARIAS } from "../../../../../lib/portas/recursos/leis-orcamentarias";
-import { verLeiOrcamentaria } from "../../../../../lib/portas/recursos/leis-orcamentarias-dados";
+import { disponibilidadeDaLeiOrcamentaria, verLeiOrcamentaria } from "../../../../../lib/portas/recursos/leis-orcamentarias-dados";
 import { FormAnexo } from "../../../documentos/FormAnexo";
 import { acaoDasLeisOrcamentariasAction } from "../actions";
 
@@ -28,9 +28,10 @@ export default async function Detalhe({
   await exigirLeitura("CONSULTAR_PLANEJAMENTO");
   const { id } = await params;
   const consulta = lerConsulta(LEIS_ORCAMENTARIAS, await searchParams);
-  const [detalhe, permitidas] = await Promise.all([
+  const [detalhe, permitidas, disponibilidade] = await Promise.all([
     verLeiOrcamentaria(id),
     acoesPermitidas([...LEIS_ORCAMENTARIAS.acoes.map((a) => a.acaoDoCenso), "ANEXAR_ARQUIVO"]),
+    disponibilidadeDaLeiOrcamentaria(id).catch(() => null),
   ]);
   if (detalhe === null) notFound();
   const abaDeAnexos =
@@ -73,6 +74,7 @@ export default async function Detalhe({
           registroId={id}
           action={acaoDasLeisOrcamentariasAction}
           modo="acoes"
+          disponibilidade={disponibilidade}
         />
       }
     />
