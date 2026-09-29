@@ -1,0 +1,313 @@
+Tutorial – SIOPE 2024
+                             MINISTÉRIO DA EDUCAÇÃO
+                             FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                             Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Sumário
+
+1. Arquivo Instalador ..................................................................................................................................3
+2. Criar Declaração .................................................................................................................................. 17
+3. Verificando as críticas ................................................................................ Erro! Indicador não definido.
+4. Abrir Declaração...................................................................................................................................30
+5. Cópia de Segurança XML ...................................................................................................................... 32
+6. Central de Atendimento Siope .............................................................................................................. 34
+
+                                                                                                                                              2
+
+  SIOPE 2024
+1. Arquivo Instalador
+
+Para baixar o arquivo instalador, acesse o Portal do FNDE através do endereço: https://www.gov.br/fnde.
+Desça a barra de rolagem até chegar na seção SISTEMAS, conforme abaixo:
+
+                                      SIOPE 2024
+                          MINISTÉRIO DA EDUCAÇÃO
+                          FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                          Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Clique na opção “Siope”:
+
+                                                                                                                                                                                                               4
+
+SIOPE 2024
+MINISTÉRIO DA EDUCAÇÃO
+FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Na página que você será direcionado, desça a barra de rolagem e clique no botão  , conforme abaixo:
+
+                                                                                                                                                                                                               5
+
+SIOPE 2024
+                                                              MINISTÉRIO DA EDUCAÇÃO
+                                                              FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                              Diretoria de Gestão de Fundos e Benefícios - Digef
+Na página direcionada, desça a barra de rolagem até a seção “DOWNLOADS”, e clique no link abaixo, conforme a imagem a seguir:
+
+                                                                                                                                                                                                                 6
+
+  SIOPE 2024
+                                                              MINISTÉRIO DA EDUCAÇÃO
+                                                              FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                              Diretoria de Gestão de Fundos e Benefícios - Digef
+Na página seguinte, clique no primeiro arquivo “Instalador do Sistema”. Considere apenas o primeiro link do quadro, conforme indicado pela seta:
+
+                                                                                                                                                                                                                 7
+
+  SIOPE 2024
+                                                              MINISTÉRIO DA EDUCAÇÃO
+                                                              FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                              Diretoria de Gestão de Fundos e Benefícios - Digef
+Ao fazer isso, o seu sistema operacional fará o download automático do arquivo ou, caso não esteja configurado para realização de download automático,
+aparecerá uma janela para “Salvar como” o arquivo:
+
+                                                                                                                                                                                                                 8
+
+  SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Em seguida, abra a pasta onde foi salvo o arquivo instalador. Antes de clicar sobre o arquivo “Siope_2024_Anual-24.0.0.0.exe.exe”, certifique-se de que a sua
+   conta possui o perfil de Administrador. Caso contrário, você não conseguirá prosseguir com a instalação.
+
+                                                                                                                                                                                                               9
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Pode ocorrer de a proteção do seu computador, que monitora programas suspeitos, emita um aviso para evitar que softwares perigosos sejam instalados
+   acidentalmente. Se você estiver certo de que mandou executar o arquivo correto, clique no texto “Mais informações” conforme abaixo.
+
+                                                                                                                                                                                                             10
+
+SIOPE 2024
+                                                              MINISTÉRIO DA EDUCAÇÃO
+                                                              FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                              Diretoria de Gestão de Fundos e Benefícios - Digef
+A seguir, clique no botão “Executar assim mesmo”
+
+                                                                                                                                                                                                                11
+
+  SIOPE 2024
+                                                              MINISTÉRIO DA EDUCAÇÃO
+                                                              FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                              Diretoria de Gestão de Fundos e Benefícios - Digef
+Ao executar o arquivo instalador, será apresentado uma janela solicitando a indicação do local onde a aplicação do Siope será instalada.
+Evite instalar o Siope nas pastas do sistema operacional. Instale em um diretório na raiz (drive c:) do seu computador.
+
+                                                                                                                                                                                                                12
+
+  SIOPE 2024
+                                   MINISTÉRIO DA EDUCAÇÃO
+                                   FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                   Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Em seguida, clique em “Avançar>”:
+
+                                                                                                                                                                                                             13
+
+SIOPE 2024
+                                  MINISTÉRIO DA EDUCAÇÃO
+                                  FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                  Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Clique em “Avançar >” novamente:
+
+                                                                                                                                                                                                             14
+
+SIOPE 2024
+                                    MINISTÉRIO DA EDUCAÇÃO
+                                    FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                    Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Agora, clique no botão “Instalar”:
+
+                                                                                                                                                                                                             15
+
+SIOPE 2024
+                                MINISTÉRIO DA EDUCAÇÃO
+                                FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Por fim, clique em “Concluir”:
+
+   Pronto! Agora você está com o Siope 2024 devidamente instalado.
+   Caso ocorra algum problema na instalação, entre em contato com o suporte técnico, conforme orientações no capítulo 6.
+
+                                                                                                                                                                                                             16
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+
+ 2. Criar Declaração
+
+   Ao abrir o sistema Siope, aparecerá uma janela solicitando a atualização dos Metadados. Clique em “Sim”.
+
+                                                                                                                                                                                                             17
+
+SIOPE 2024
+                                                              MINISTÉRIO DA EDUCAÇÃO
+                                                              FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                              Diretoria de Gestão de Fundos e Benefícios - Digef
+     Em seguida, aparecerá uma janela pedindo que informe o ano e a esfera administrativa:
+
+Após escolher as opções correspondentes ao seu ente federado, clique no botão
+                                                                                                                                                                                                                18
+
+  SIOPE 2024
+MINISTÉRIO DA EDUCAÇÃO
+FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Agora, informe a UF e o Município e em seguida clique no botão  .
+
+                                                                                                                                                                                                             19
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Aguarde o Sistema carregar os Metadados:
+
+                                                                                                                                                                                                             20
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Preencha os campos da guia “Dados Gerais”:
+
+                                                                                                                                                                                                             21
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Preencha os dados da guia “Receita Total”, conforme o seu município.
+
+                                                                                                                                                                                                             22
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Preencha os dados da guia Despesas com Manutenção e Desenvolvimento do Ensino (MDE):
+
+                                                                                                                                                                                                             23
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+       Preencha os dados da guia Despesas Custeadas com Receitas do Fundeb Recebidas no Exercício:
+
+                                                                                                                                                                                                             24
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+       Verifique as Despesas no Demonstrativo da Função Educação:
+
+                                                                                                                                                                                                             25
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   Preencha os dados da guia “Remuneração dos Profissionais da Educação”:
+
+                                                                                                                                                                                                             26
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+
+                                                                                                                                                                                                             27
+
+SIOPE 2024
+                                 MINISTÉRIO DA EDUCAÇÃO
+                                 FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                 Diretoria de Gestão de Fundos e Benefícios - Digef
+
+3. Verificando as críticas       , conforme imagem abaixo.
+
+No frame lateral acesse a opção
+
+                                                                                                                                                                                                             28
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+
+                                                                                                                                                                                                             29
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+
+ 4. Abrir Declaração
+
+   Para abrir as declarações já gravadas no Siope 2024, clique na guia “Abrir Declaração” e selecione o arquivo desejado.
+   Para abrir os dados dê um duplo clique na linha correspondente ao período desejado ou selecione a linha e em seguida clique no botão
+
+                                                                                                                                                                                                             30
+
+SIOPE 2024
+MINISTÉRIO DA EDUCAÇÃO
+FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+Diretoria de Gestão de Fundos e Benefícios - Digef
+
+Para abrir um arquivo xml, acesse o frame lateral à direita e clique no botão  .
+Os arquivos xml devem estar gravados na subpasta “Arquivos_2024” do diretório onde foi instalado o Siope.
+Em seguida, na imagem abaixo selecione o período desejado.
+
+                                                                                                                                                                                                             31
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+
+ 5. Cópia de Segurança XML
+
+   Para facilitar o atendimento técnico das demandas registradas no Fale Conosco do Siope, o sistema disponibiliza a funcionalidade “Cópia de Segurança XML”.
+   Para criar, acesse a opção “Criar cópia de segurança XML” no menu Arquivo ou no frame ao lado esquerdo da Declaração.
+
+                                                                                                                                                                                                             32
+
+SIOPE 2024
+                                                            MINISTÉRIO DA EDUCAÇÃO
+                                                            FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                                                            Diretoria de Gestão de Fundos e Benefícios - Digef
+   O arquivo xml será gravado na pasta indicada na tela anterior. Anexe esse arquivo na demanda aberta no fale conosco do Siope.
+
+                                                                                                                                                                                                             33
+
+SIOPE 2024
+                           MINISTÉRIO DA EDUCAÇÃO
+                           FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                           Diretoria de Gestão de Fundos e Benefícios - Digef
+
+ 6. Central de Atendimento Siope
+
+           Para assistência técnica acerca do sistema Siope, entre em contato por meio do Fale Conosco do
+       Siope, disponível em https://www.fnde.gov.br/siopefaleconosco/index.php/publico
+
+                                                                                                                                          34
+
+SIOPE 2024
+                           MINISTÉRIO DA EDUCAÇÃO
+                           FUNDO NACIONAL DE DESENVOLVIMENTO DA EDUCAÇÃO
+                           Diretoria de Gestão de Fundos e Benefícios - Digef
+
+                                                                                                                                          35
+
+SIOPE 2024
+
