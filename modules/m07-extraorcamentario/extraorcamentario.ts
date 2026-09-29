@@ -16,6 +16,7 @@ import {
 } from "../../packages/ledger/index.js";
 import {
   comporPartidas,
+  exigirMotivoDoEstornoExtra,
   tipoDoEstorno,
   totaisPorConsignatario,
   zEstornarMovimentoExtraInput,
@@ -507,6 +508,10 @@ export async function estornarMovimentoExtra(
   input: EstornarMovimentoExtraInput
 ): Promise<{ readonly movimentoId: string; readonly lancamentoId: string }> {
   const dados = zEstornarMovimentoExtraInput.parse(input);
+  // V23 — o motivo vai ao Tribunal de Contas (SAGRES EstornoReceitaExtra §4.21 e EstornoDespesaExtra
+  // §4.22: obrigatório, 255, sem aspas). Conferido antes de tudo; descobrir no dia da remessa deixaria
+  // um estorno que não se exporta.
+  exigirMotivoDoEstornoExtra(dados.motivo);
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.estornarMovimentoExtra, "ENTE");

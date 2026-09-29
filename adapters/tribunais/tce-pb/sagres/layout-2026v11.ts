@@ -855,6 +855,69 @@ export const LAYOUT_DESPESA_EXTRA: LayoutArquivo<DespesaExtraFato> = {
   campos: camposDespesaExtra,
 };
 
+// ── ESTORNORETENCAO (§4.15, Diário, V23) — a retenção desfeita junto com a anulação do pagamento. ──
+// Chave: UG + ano + UO + numEmpenho + numPagamento + tipoRetencao + numero. O m07 não numera o
+// movimento: o `numero` é DERIVADO no exercício (ver `numeracaoNoExercicio` no gerador).
+export interface EstornoRetencaoFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  /** A parcela do pagamento de onde a retenção veio (o pagamento ANULADO). */
+  readonly numPagamento: string;
+  readonly tipoConsignacaoCodigo: string;
+  readonly numero: string;
+  readonly valor: Money;
+}
+
+const camposEstornoRetencao: readonly CampoLayout<EstornoRetencaoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "mov.pagamento.liquidacao.empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "mov.pagamento.liquidacao.empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numPagamento", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "mov.pagamento.numero (a parcela anulada)", extrair: (f) => f.numPagamento },
+  { nome: "tipoRetencao", posInicial: 30, posFinal: 30, tipo: "NUMERICO", obrigatorio: true, origem: "mov.tipoConsignacao.codigo → §5.24 (o mesmo de-para da Retencao)", extrair: (f) => tipoRetencaoDe(f.tipoConsignacaoCodigo) },
+  { nome: "numero", posInicial: 31, posFinal: 37, tipo: "NUMERICO", obrigatorio: true, origem: "derivado: ordem de gravação no exercício", extrair: (f) => f.numero },
+  { nome: "valor", posInicial: 38, posFinal: 53, tipo: "VALOR", obrigatorio: true, origem: "mov.valor", extrair: (f) => f.valor },
+  { nome: "reservado", posInicial: 54, posFinal: 59, tipo: "RESERVADO", obrigatorio: false, origem: "RESERVADO AO TCE = ZEROS" },
+];
+
+export const LAYOUT_ESTORNO_RETENCAO: LayoutArquivo<EstornoRetencaoFato> = {
+  entidade: "EstornoRetencao",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornoRetencao,
+};
+
+// ── ESTORNODESPESAEXTRA (§4.22, Diário, V23) — o estorno do dispêndio extraorçamentário. ─────────
+// Chave: UG + numDespesaExtra + numero. `numDespesaExtra` é o MESMO número que a DespesaExtra deu ao
+// dispêndio estornado (a mesma numeração derivada).
+export interface EstornoDespesaExtraFato {
+  readonly codUnidadeGestora: string;
+  readonly numDespesaExtra: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: Money;
+  readonly motivo: string;
+}
+
+const camposEstornoDespesaExtra: readonly CampoLayout<EstornoDespesaExtraFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numDespesaExtra", posInicial: 7, posFinal: 13, tipo: "NUMERICO", obrigatorio: true, origem: "o número da DespesaExtra estornada (numeração derivada)", extrair: (f) => f.numDespesaExtra },
+  { nome: "numero", posInicial: 14, posFinal: 20, tipo: "NUMERICO", obrigatorio: true, origem: "derivado: ordem de gravação no exercício", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 21, posFinal: 28, tipo: "DATA", obrigatorio: true, origem: "estorno.data", extrair: (f) => f.data },
+  { nome: "valor", posInicial: 29, posFinal: 44, tipo: "VALOR", obrigatorio: true, origem: "estorno.valor", extrair: (f) => f.valor },
+  { nome: "motivo", posInicial: 45, posFinal: 299, tipo: "ALFA", obrigatorio: true, origem: "MovimentoExtraorcamentario.motivo (conferido na entrada, V23)", extrair: (f) => f.motivo },
+  { nome: "reservado", posInicial: 300, posFinal: 305, tipo: "RESERVADO", obrigatorio: false, origem: "RESERVADO = ZEROS" },
+];
+
+export const LAYOUT_ESTORNO_DESPESA_EXTRA: LayoutArquivo<EstornoDespesaExtraFato> = {
+  entidade: "EstornoDespesaExtra",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornoDespesaExtra,
+};
+
 /** Todos os layouts desta versão, para a auto-validação em lote e a matriz. */
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
@@ -872,4 +935,6 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_DESPESA_EXTRA,
+  LAYOUT_ESTORNO_RETENCAO,
+  LAYOUT_ESTORNO_DESPESA_EXTRA,
 ] as const;

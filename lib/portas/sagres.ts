@@ -11,6 +11,8 @@ import {
   gerarEstornoPagamento,
   gerarEstornos,
   gerarEstornoLiquidacao,
+  gerarEstornoRetencao,
+  gerarEstornoDespesaExtra,
   gerarConciliacaoBancariaOuRecusa,
   gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
@@ -26,6 +28,8 @@ import {
   lerFatosEstornoPagamento,
   lerFatosEstornos,
   lerFatosEstornoLiquidacao,
+  lerFatosEstornoRetencao,
+  lerFatosEstornoDespesaExtra,
   lerFatosReceitaOrcamentaria,
   lerFatosRetencao,
   lerFatosSaldoMensal,
@@ -43,6 +47,8 @@ import {
   LAYOUT_ESTORNO_PAGAMENTO,
   LAYOUT_ESTORNOS,
   LAYOUT_ESTORNO_LIQUIDACAO,
+  LAYOUT_ESTORNO_RETENCAO,
+  LAYOUT_ESTORNO_DESPESA_EXTRA,
   LAYOUT_CONCILIACAO_BANCARIA,
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_RECEITA_ORCAMENTARIA,
@@ -206,7 +212,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const exercicio = anoCivil(mesRef);
 
   // (1) LER OS FATOS (uma vez) — para validar antes de serializar.
-  const [dotacao, empenhos, liquidacoes, pagamentos, estornosDePagamento, estornosDeEmpenho, estornosDeLiquidacao, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
+  const [dotacao, empenhos, liquidacoes, pagamentos, estornosDePagamento, estornosDeEmpenho, estornosDeLiquidacao, estornosDeRetencao, estornosDeDespesaExtra, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
     lerFatosDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio }),
     lerFatosEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
@@ -214,6 +220,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     lerFatosEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosEstornos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosEstornoLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
+    lerFatosEstornoRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
+    lerFatosEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     lerFatosCadastroConta(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora }),
     lerFatosSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -242,6 +250,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     ...validarObrigatorios(LAYOUT_ESTORNO_PAGAMENTO, estornosDePagamento),
     ...validarObrigatorios(LAYOUT_ESTORNOS, estornosDeEmpenho),
     ...validarObrigatorios(LAYOUT_ESTORNO_LIQUIDACAO, estornosDeLiquidacao),
+    ...validarObrigatorios(LAYOUT_ESTORNO_RETENCAO, estornosDeRetencao),
+    ...validarObrigatorios(LAYOUT_ESTORNO_DESPESA_EXTRA, estornosDeDespesaExtra),
     ...validarObrigatorios(LAYOUT_RECEITA_ORCAMENTARIA, receitas),
     ...validarObrigatorios(LAYOUT_CADASTRO_CONTA, cadastro),
     ...validarObrigatorios(LAYOUT_SALDO_MENSAL, saldos),
@@ -253,7 +263,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   ];
 
   // (3) SERIALIZAR os arquivos + montar o pacote/manifesto.
-  const [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra] = await Promise.all([
+  const [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio, competencia: mesRef }),
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
@@ -261,6 +271,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornoLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
+    gerarEstornoRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
+    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -268,7 +280,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : [])];
+  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : [])];
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -288,6 +300,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     { g: aEstornoPagamento, l: LAYOUT_ESTORNO_PAGAMENTO },
     { g: aEstornos, l: LAYOUT_ESTORNOS },
     { g: aEstornoLiquidacao, l: LAYOUT_ESTORNO_LIQUIDACAO },
+    { g: aEstornoRetencao, l: LAYOUT_ESTORNO_RETENCAO },
+    { g: aEstornoDespesaExtra, l: LAYOUT_ESTORNO_DESPESA_EXTRA },
     ...("arquivo" in conciliacao ? [{ g: conciliacao.arquivo, l: LAYOUT_CONCILIACAO_BANCARIA }] : []),
     ...("arquivo" in unidades ? [{ g: unidades.arquivo, l: LAYOUT_UNIDADE_ORCAMENTARIA }] : []),
     { g: aReceita, l: LAYOUT_RECEITA_ORCAMENTARIA },
@@ -339,6 +353,8 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
     gerarEstornoPagamento(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornoLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
+    gerarEstornoRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
+    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
@@ -374,7 +390,7 @@ export interface ResumoMovimento {
   readonly retencoes: number;
   /** Despesa extra: dispêndio extraorçamentário — o recolhimento da consignação (§4.20). */
   readonly despesasExtra: number;
-  /** V23 — anulações de empenho, liquidação e pagamento (§4.9, §4.11, §4.13). */
+  /** V23 — anulações de empenho, liquidação e pagamento, e estornos de retenção e de despesa extra (§4.9, §4.11, §4.13, §4.15, §4.22). */
   readonly estornos: number;
   /** A soma de todos os acima — 0 significa "dia/mês sem movimento", e a tela precisa dizer isso. */
   readonly total: number;
@@ -508,7 +524,7 @@ export async function lerPeriodosComMovimento(): Promise<PeriodosComMovimento> {
  */
 export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>): Promise<PeriodosComMovimento> {
   const anulacao = { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] };
-  const [empenhos, liquidacoes, pagamentos, receitas, transferencias, retencoes, despesasExtra, fichas, anEmp, anLiq, anPag] = await Promise.all([
+  const [empenhos, liquidacoes, pagamentos, receitas, transferencias, retencoes, despesasExtra, fichas, anEmp, anLiq, anPag, estExtra] = await Promise.all([
     prisma.empenho.findMany({ where: { estornoDeId: null, anulacaoParcialDeId: null }, select: { data: true } }),
     prisma.liquidacao.findMany({ where: { estornoDeId: null, anulacaoParcialDeId: null }, select: { data: true } }),
     // Estorno e anulação parcial NÃO são pagamento — mesmo filtro de `lerFatosPagamentos`.
@@ -521,6 +537,7 @@ export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>)
     prisma.empenho.findMany({ where: anulacao, select: { data: true } }),
     prisma.liquidacao.findMany({ where: anulacao, select: { data: true } }),
     prisma.pagamento.findMany({ where: anulacao, select: { data: true } }),
+    prisma.movimentoExtraorcamentario.findMany({ where: { OR: [{ tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null } }, { tipo: "ESTORNO_DISPENDIO" }] }, select: { data: true } }),
   ]);
 
   const porDia = new Map<string, Contagem>();
@@ -543,7 +560,7 @@ export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>)
   acumular(transferencias.map((l) => l.data), "transferencias");
   acumular(retencoes.map((l) => l.data), "retencoes");
   acumular(despesasExtra.map((l) => l.data), "despesasExtra");
-  acumular([...anEmp, ...anLiq, ...anPag].map((l) => l.data), "estornos");
+  acumular([...anEmp, ...anLiq, ...anPag, ...estExtra].map((l) => l.data), "estornos");
 
   // Ordem cronológica: a Comissão lê a massa como uma linha do tempo, não como um Map.
   const chavesOrdenadas = [...porDia.keys()].sort();

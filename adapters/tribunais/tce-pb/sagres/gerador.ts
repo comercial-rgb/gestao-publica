@@ -28,6 +28,8 @@ import {
   tipoConciliacaoDe,
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
+  LAYOUT_ESTORNO_RETENCAO,
+  LAYOUT_ESTORNO_DESPESA_EXTRA,
   LAYOUT_SALDO_MENSAL,
   MODALIDADE_SEM_LICITACAO,
   SITUACAO_CONTA_ATIVA,
@@ -46,6 +48,8 @@ import {
   type ConciliacaoBancariaFato,
   type ReceitaOrcamentariaFato,
   type RetencaoFato,
+  type EstornoRetencaoFato,
+  type EstornoDespesaExtraFato,
   type SaldoMensalFato,
 } from "./layout-2026v11.js";
 
@@ -744,6 +748,111 @@ export async function gerarEstornoLiquidacao(
   return empacotar(LAYOUT_ESTORNO_LIQUIDACAO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoLiquidacao", competencia: params.dia }), fatos);
 }
 
+// ── ESTORNORETENCAO (§4.15, Diário, V23) — o ESTORNO_INGRESSO de uma retenção (pagamento anulado). ──
+export async function lerFatosEstornoRetencao(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoRetencaoFato[]> {
+  const numeros = await numeracaoNoExercicio(prisma, { tipo: "ESTORNO_INGRESSO", comPagamento: true }, params.dia.getUTCFullYear());
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null }, data: { gte, lt } },
+    include: {
+      tipoConsignacao: true,
+      pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } },
+    },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return movs.map((m) => {
+    const numero = numeros.get(m.id);
+    if (m.pagamento === null || numero === undefined) {
+      throw new Error(`SAGRES/EstornoRetencao — o estorno ${m.id} não aponta o pagamento de origem, ou ficou fora da numeração.`);
+    }
+    const ficha = m.pagamento.liquidacao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: m.pagamento.liquidacao.empenho.numero,
+      numPagamento: m.pagamento.numero,
+      tipoConsignacaoCodigo: m.tipoConsignacao.codigo,
+      numero,
+      valor: money(m.valor),
+    };
+  });
+}
+
+export async function gerarEstornoRetencao(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosEstornoRetencao(prisma, params);
+  return empacotar(LAYOUT_ESTORNO_RETENCAO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoRetencao", competencia: params.dia }), fatos);
+}
+
+// ── ESTORNODESPESAEXTRA (§4.22, Diário, V23) — o ESTORNO_DISPENDIO. ────────────────────────────
+export async function lerFatosEstornoDespesaExtra(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoDespesaExtraFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "ESTORNO_DISPENDIO", data: { gte, lt } },
+    include: { estornoDe: { select: { id: true, data: true } } },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  if (movs.length === 0) return [];
+  const numerosDosEstornos = await numeracaoNoExercicio(prisma, { tipo: "ESTORNO_DISPENDIO" }, params.dia.getUTCFullYear());
+  // O dispêndio estornado pode ser de outro exercício (estorno em janeiro do recolhimento de dezembro):
+  // o número dele é o do exercício DELE.
+  const cacheDosDispendios = new Map<number, ReadonlyMap<string, string>>();
+  const fatos: EstornoDespesaExtraFato[] = [];
+  for (const m of movs) {
+    if (m.estornoDe === null) throw new Error(`SAGRES/EstornoDespesaExtra — o estorno ${m.id} não aponta o dispêndio estornado.`);
+    const ano = m.estornoDe.data.getUTCFullYear();
+    let dispendios = cacheDosDispendios.get(ano);
+    if (dispendios === undefined) {
+      dispendios = await numeracaoNoExercicio(prisma, { tipo: "DISPENDIO" }, ano);
+      cacheDosDispendios.set(ano, dispendios);
+    }
+    const numDespesaExtra = dispendios.get(m.estornoDe.id);
+    const numero = numerosDosEstornos.get(m.id);
+    if (numDespesaExtra === undefined || numero === undefined) {
+      throw new Error(`SAGRES/EstornoDespesaExtra — o estorno ${m.id} ou o dispêndio que ele desfaz ficou fora da numeração.`);
+    }
+    fatos.push({
+      codUnidadeGestora: params.codUnidadeGestora,
+      numDespesaExtra,
+      numero,
+      data: m.data,
+      valor: money(m.valor),
+      motivo: motivoExportavelExtra(m.id, m.motivo),
+    });
+  }
+  return fatos;
+}
+
+/** O motivo do estorno extra (255 no leiaute §4.21/§4.22), pela regra da entrada. O legado fora dela é recusado. */
+function motivoExportavelExtra(id: string, motivo: string | null): string {
+  const m = (motivo ?? "").trim();
+  if (m === "" || m.length > 255 || /[\u0000-\u001f]/.test(m) || m.includes("'") || m.includes('"')) {
+    throw new Error(
+      `SAGRES/EstornoDespesaExtra — o motivo do estorno ${id} está vazio, passa de 255 caracteres, tem ` +
+        `quebra de linha ou aspas (gravado antes de o sistema conferir). O leiaute não aceita, e o texto não ` +
+        `se inventa. Nada foi gerado.`
+    );
+  }
+  return m;
+}
+
+export async function gerarEstornoDespesaExtra(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<ArquivoGerado> {
+  const fatos = await lerFatosEstornoDespesaExtra(prisma, params);
+  return empacotar(LAYOUT_ESTORNO_DESPESA_EXTRA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoDespesaExtra", competencia: params.dia }), fatos);
+}
+
 // ── RECEITAORCAMENTARIA (Diária) — Origem: ReceitaArrecadada + natureza/fonte/co. ───────────────
 // A CONTA ARRECADADORA é PARÂMETRO de exportação (designação da UG) — o modelo não amarra receita a
 // conta ("a receita é do ENTE", art. 167). Fail-closed nomeando se a conta designada não existir.
@@ -865,13 +974,36 @@ export async function gerarRetencao(
   return empacotar(LAYOUT_RETENCAO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Retencao", competencia: params.dia }), fatos);
 }
 
+/**
+ * NUMERAÇÃO DERIVADA DOS MOVIMENTOS EXTRAORÇAMENTÁRIOS (DespesaExtra §4.20, EstornoRetencao §4.15,
+ * EstornoDespesaExtra §4.22). O m07 não numera o movimento, e o leiaute põe `numero` na chave junto
+ * com o exercício: numera-se 1..N no EXERCÍCIO (pela data do fato) e só então se filtra o dia.
+ *
+ * ⚠️ V23 — A ORDEM É A DE GRAVAÇÃO (criadoEm, id), NÃO A DA DATA. Numerar pela data renumeraria os
+ * dispêndios já exportados sempre que alguém lançasse depois um fato com data anterior — o número que
+ * o tribunal recebeu ontem passaria a apontar outro movimento. A tabela é append-only: a ordem de
+ * gravação de um conjunto já gravado nunca muda, e o fato novo sempre entra depois.
+ */
+async function numeracaoNoExercicio(
+  prisma: PrismaClient,
+  where: { readonly tipo: "DISPENDIO" | "ESTORNO_INGRESSO" | "ESTORNO_DISPENDIO"; readonly comPagamento?: boolean },
+  exercicio: number
+): Promise<ReadonlyMap<string, string>> {
+  const doExercicio = await prisma.movimentoExtraorcamentario.findMany({
+    where: {
+      tipo: where.tipo,
+      data: { gte: new Date(Date.UTC(exercicio, 0, 1)), lt: new Date(Date.UTC(exercicio + 1, 0, 1)) },
+      ...(where.comPagamento === true ? { pagamentoId: { not: null } } : {}),
+    },
+    select: { id: true },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return new Map(doExercicio.map((m, i) => [m.id, String(i + 1)]));
+}
+
 // ── DESPESAEXTRA (Diária) — Origem: MovimentoExtraorcamentario DISPENDIO. ───────────────────────
-//
-// NUMERAÇÃO: o §4.20 tem `numero` na CHAVE junto com `exercicio` — o número precisa ser único no
-// EXERCÍCIO, não no dia. Por isso a leitura varre o exercício inteiro, numera 1..N na ordem
-// determinística (data, id) e SÓ ENTÃO filtra o dia pedido: o mesmo dispêndio recebe sempre o mesmo
-// número, seja qual for o dia exportado. Numerar dentro do dia daria números repetidos no exercício.
-// O m07 não tem coluna de numeração própria — a derivação é determinística e vai nomeada na matriz.
+// NUMERAÇÃO: `numeracaoNoExercicio` (acima) — a mesma que o EstornoDespesaExtra usa para apontar o
+// dispêndio estornado.
 export async function lerFatosDespesaExtra(
   prisma: PrismaClient,
   params: {
@@ -888,23 +1020,22 @@ export async function lerFatosDespesaExtra(
         `${FONTES_RECURSO_EXTRA_SAGRES.join(", ")} (padrão STN).`
     );
   }
-  const exercicio = params.dia.getUTCFullYear();
-  const gteAno = new Date(Date.UTC(exercicio, 0, 1));
-  const ltAno = new Date(Date.UTC(exercicio + 1, 0, 1));
-  const doExercicio = await prisma.movimentoExtraorcamentario.findMany({
-    where: { tipo: "DISPENDIO", data: { gte: gteAno, lt: ltAno } },
+  const numeros = await numeracaoNoExercicio(prisma, { tipo: "DISPENDIO" }, params.dia.getUTCFullYear());
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const doDia = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "DISPENDIO", data: { gte, lt } },
     include: {
       tipoConsignacao: true,
       contaBancaria: { include: { fonte: true } },
       lancamento: { include: { partidas: { include: { conta: true } } } },
     },
-    orderBy: [{ data: "asc" }, { id: "asc" }],
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
   });
 
-  const { gte, lt } = intervaloDoDia(params.dia);
   const fatos: DespesaExtraFato[] = [];
-  doExercicio.forEach((m, i) => {
-    if (m.data < gte || m.data >= lt) return; // numera no exercício, exporta só o dia.
+  doDia.forEach((m) => {
+    const numero = numeros.get(m.id);
+    if (numero === undefined) throw new Error(`SAGRES/DespesaExtra — o dispêndio ${m.id} ficou fora da numeração do exercício.`);
     const t = exigirTripla(m.contaBancaria);
     // A conta contábil da despesa extra é a do DÉBITO patrimonial (baixa do passivo de consignação).
     const debito = m.lancamento.partidas.find((p) => p.tipo === "DEBITO" && p.subsistema === "PATRIMONIAL");
@@ -916,7 +1047,7 @@ export async function lerFatosDespesaExtra(
     }
     fatos.push({
       codUnidadeGestora: params.codUnidadeGestora,
-      numero: String(i + 1),
+      numero,
       codContaContabil: debito.conta.codigo.replaceAll(".", ""), // PCASP "2.1.8.8.1.02.00" → 9 dígitos.
       data: m.data,
       exercicioFonteRecurso: EXERCICIO_FONTE_ATUAL,

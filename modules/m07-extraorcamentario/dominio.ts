@@ -236,6 +236,22 @@ export const zRegistrarDispendioExtraInput = z.object({
   alocacoes: z.array(zParcelaDoRecolhimento).optional(),
 });
 
+/** V23 — o motivo do estorno extraorçamentário cabe no leiaute do tribunal (255, uma linha, sem aspas). */
+export function exigirMotivoDoEstornoExtra(motivo: string): string {
+  const m = motivo.trim();
+  if (m.length > 255) {
+    throw new Error(
+      `O motivo tem ${String(m.length)} caracteres; a prestação de contas ao Tribunal de Contas aceita até 255. ` +
+        `Resuma o motivo. Nada foi gravado.`
+    );
+  }
+  if (/[\u0000-\u001f]/.test(m)) throw new Error("Escreva o motivo numa linha só, sem quebra de linha. Nada foi gravado.");
+  if (m.includes("'") || m.includes('"')) {
+    throw new Error("O motivo não pode ter aspas nem apóstrofo (o arquivo do Tribunal de Contas não aceita). Nada foi gravado.");
+  }
+  return m;
+}
+
 export const zEstornarMovimentoExtraInput = z.object({
   movimentoId: z.string().min(1),
   data: z.coerce.date(),

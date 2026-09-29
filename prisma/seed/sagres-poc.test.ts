@@ -3,7 +3,11 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { semearSagresPoc } from "./sagres-poc.js";
-import { gerarDespesaExtra, gerarDotacao, gerarEmpenhos, gerarLiquidacao, gerarMovimentacaoEntreContas, gerarPagamentos, gerarReceitaOrcamentaria, gerarRetencao, lerFatosEmpenhos } from "../../adapters/tribunais/tce-pb/sagres/index.js";
+import { gerarDespesaExtra, gerarDotacao, gerarEmpenhos, gerarEstornoDespesaExtra, gerarEstornoRetencao, gerarLiquidacao, gerarMovimentacaoEntreContas, gerarPagamentos, gerarReceitaOrcamentaria, gerarRetencao, lerFatosEmpenhos, lerFatosEstornoPagamento } from "../../adapters/tribunais/tce-pb/sagres/index.js";
+import { estornarMovimentoExtra, registrarDispendioExtra } from "../../modules/m07-extraorcamentario/extraorcamentario.js";
+import { roteiroDispendioExtra } from "../../modules/m07-extraorcamentario/dominio.js";
+import { anularPagamento } from "../../modules/m05-despesa/servico-bloco2.js";
+import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox.js";
 import { empenhoParaCaptura, montarEnvelope, validarEnvelopeCaptura } from "../../adapters/tribunais/tce-pb/captura/index.js";
 import { listarDecretos } from "../../modules/m03-creditos/consultas.js";
 import { listarSaldosExtra, listarRetencoes, listarDispendios } from "../../modules/m07-extraorcamentario/consultas.js";
@@ -230,5 +234,89 @@ describe("massa POC SAGRES — a história encadeada", () => {
     expect(await prisma.receitaArrecadada.count()).toBe(1);
     expect(await prisma.contaBancaria.count()).toBe(2);
     expect(await prisma.transferenciaEntreContas.count()).toBe(1);
+  });
+});
+
+/**
+ * V23 — OS ESTORNOS EXTRAORÇAMENTÁRIOS NO SAGRES (EstornoRetencao §4.15, EstornoDespesaExtra §4.22).
+ *
+ * Sobre a massa: ISS 500 retido no pagamento 3 (14/09) e recolhimento de 300 em 20/09 (DespesaExtra nº 1).
+ *   · estornar o recolhimento em 21/09 → EstornoDespesaExtra: numDespesaExtra 1, numero 1, o motivo;
+ *   · anular o pagamento 3 em 22/09   → a retenção volta: EstornoRetencao do empenho 3, parcela 3,
+ *     tipo 1 (ISS), numero 1, 500,00.
+ * E a numeração: um dispêndio lançado DEPOIS com data ANTERIOR (15/09) não renumera o de 20/09.
+ */
+describe("V23 — estornos extraorçamentários no SAGRES", () => {
+  beforeEach(async () => {
+    await limparBanco(prisma);
+    await semearSagresPoc(prisma, { criadoPor: POR });
+  });
+
+  const D = (mes: number, dia: number): Date => new Date(Date.UTC(2026, mes - 1, dia, 12, 0, 0));
+
+  async function ids(): Promise<{ tipoIss: string; fonte: string; recolhimento: string; pag3: string }> {
+    const tipoIss = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "ISS" }, select: { id: true } });
+    const rec = await prisma.movimentoExtraorcamentario.findFirstOrThrow({ where: { tipo: "DISPENDIO" }, select: { id: true, fonteId: true } });
+    const pag3 = await prisma.pagamento.findFirstOrThrow({ where: { numero: "3", estornoDeId: null }, select: { id: true } });
+    return { tipoIss: tipoIss.id, fonte: rec.fonteId!, recolhimento: rec.id, pag3: pag3.id };
+  }
+
+  it("estornar o recolhimento e anular o pagamento: os dois arquivos saem nas posições, apontando a origem", async () => {
+    const { recolhimento, pag3 } = await ids();
+    await estornarMovimentoExtra(prisma, { movimentoId: recolhimento, data: D(9, 21), motivo: "Guia recolhida em duplicidade no banco", criadoPor: POR });
+    await anularPagamento({ pagamentoId: pag3, numero: "4", data: D(9, 22), historico: "Pagamento ao credor errado", criadoPor: POR }, criarM05DepsComAlmoxarifado(prisma));
+
+    const ed = await gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: UG, dia: D(9, 21) });
+    expect(ed.nome).toBe("99900121092026EstornoDespesaExtra.txt");
+    const l1 = ed.conteudo.toString("utf8").split("\r\n").filter((x) => x !== "");
+    expect(l1).toHaveLength(1);
+    const a = l1[0]!;
+    expect(a.length).toBe(305);
+    expect(a.slice(6, 13)).toBe("0000001"); //          numDespesaExtra 7-13 — o nº que a DespesaExtra deu ao recolhimento
+    expect(a.slice(13, 20)).toBe("0000001"); //         numero 14-20
+    expect(a.slice(20, 28)).toBe("21092026"); //        data 21-28
+    expect(a.slice(28, 44)).toBe("0000000000300,00"); // valor 29-44
+    expect(a.slice(44, 299).trimEnd()).toBe("Guia recolhida em duplicidade no banco");
+    const dx = await gerarDespesaExtra(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ, codFonteRecursoExtra: "869", dia: D(9, 20) });
+    expect(dx.conteudo.toString("utf8").slice(6, 13)).toBe("0000001");
+
+    const er = await gerarEstornoRetencao(prisma, { codUnidadeGestora: UG, dia: D(9, 22) });
+    const l2 = er.conteudo.toString("utf8").split("\r\n").filter((x) => x !== "");
+    expect(l2).toHaveLength(1);
+    const b = l2[0]!;
+    expect(b.length).toBe(59);
+    expect(b.slice(6, 10)).toBe("2026");
+    expect(b.slice(15, 22)).toBe("0000003"); //         numEmpenho 16-22
+    expect(b.slice(22, 29)).toBe("0000003"); //         numPagamento 23-29 — a parcela ANULADA
+    expect(b.slice(29, 30)).toBe("1"); //               tipoRetencao 30 — ISS
+    expect(b.slice(30, 37)).toBe("0000001"); //         numero 31-37
+    expect(b.slice(37, 53)).toBe("0000000000500,00"); // valor 38-53
+    // O pagamento anulado também sai no EstornoPagamento do mesmo dia.
+    expect((await lerFatosEstornoPagamento(prisma, { codUnidadeGestora: UG, dia: D(9, 22) })).map((f) => f.numPagamento)).toEqual(["3"]);
+  });
+
+  it("a numeração segue a ordem de gravação: o dispêndio lançado depois com data anterior NÃO renumera o já exportado", async () => {
+    const { tipoIss, fonte } = await ids();
+    await registrarDispendioExtra(
+      prisma,
+      { tipoConsignacaoId: tipoIss, credorConsignatario: "Municipio de Campina Grande", contaBancaria: "CC-POC-A", fonteId: fonte, valor: "100.00", data: D(9, 15), historico: "Recolhimento lancado depois", criadoPor: POR },
+      roteiroDispendioExtra({ consignacaoAPagar: "2.1.8.8.1.02.00", disponibilidade: "1.1.1.1.1.19.00" })
+    );
+    const numeroEm = async (mes: number, dia: number): Promise<string> =>
+      (await gerarDespesaExtra(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ, codFonteRecursoExtra: "869", dia: D(mes, dia) })).conteudo.toString("utf8").slice(6, 13);
+    expect(await numeroEm(9, 20)).toBe("0000001"); // o de 20/09 continua sendo o 1 — foi o que o tribunal recebeu
+    expect(await numeroEm(9, 15)).toBe("0000002");
+  });
+
+  it("o motivo do estorno extra que o arquivo não aceita é recusado na entrada — nada é gravado", async () => {
+    const { recolhimento } = await ids();
+    const antes = await prisma.movimentoExtraorcamentario.count();
+    await expect(
+      estornarMovimentoExtra(prisma, { movimentoId: recolhimento, data: D(9, 21), motivo: 'Pedido do "tesoureiro" da prefeitura', criadoPor: POR })
+    ).rejects.toThrow(/aspas nem apóstrofo/);
+    await expect(
+      estornarMovimentoExtra(prisma, { movimentoId: recolhimento, data: D(9, 21), motivo: "m".repeat(256), criadoPor: POR })
+    ).rejects.toThrow(/256 caracteres.*até 255/);
+    expect(await prisma.movimentoExtraorcamentario.count()).toBe(antes);
   });
 });

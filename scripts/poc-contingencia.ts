@@ -33,6 +33,8 @@ import {
   gerarEstornoPagamento,
   gerarEstornos,
   gerarEstornoLiquidacao,
+  gerarEstornoRetencao,
+  gerarEstornoDespesaExtra,
   gerarConciliacaoBancariaOuRecusa,
   gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
@@ -143,6 +145,8 @@ async function periodosComMovimento(prisma: PrismaClient): Promise<{ dias: strin
   // V23 — a anulação de pagamento também é dia com arquivo (EstornoPagamento §4.13). As de empenho e de
   // liquidação já entram pelas duas linhas acima, que não filtram (Estornos §4.9, EstornoLiquidacao §4.11).
   juntar(await prisma.pagamento.findMany({ where: { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] }, select: { data: true } }), "data");
+  // V23 — os estornos extraorçamentários (EstornoRetencao §4.15 e EstornoDespesaExtra §4.22).
+  juntar(await prisma.movimentoExtraorcamentario.findMany({ where: { OR: [{ tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null } }, { tipo: "ESTORNO_DISPENDIO" }] }, select: { data: true } }), "data");
   juntar(await prisma.receitaArrecadada.findMany({ select: { dataArrecadacao: true } }), "dataArrecadacao");
   juntar(await prisma.transferenciaEntreContas.findMany({ select: { data: true } }), "data");
   juntar(await prisma.movimentoExtraorcamentario.findMany({ where: { tipo: "INGRESSO", pagamentoId: { not: null } }, select: { data: true } }), "data");
@@ -180,6 +184,8 @@ async function gerarSagresDiario(prisma: PrismaClient, dia: string): Promise<num
     gerarEstornoPagamento(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarEstornos(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarEstornoLiquidacao(prisma, { codUnidadeGestora: ug, dia: d }),
+    gerarEstornoRetencao(prisma, { codUnidadeGestora: ug, dia: d }),
+    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, codContaArrecadadora: POC_SAGRES.codContaArrecadadora, dia: d }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, dia: d }),
     gerarMovimentacaoEntreContas(prisma, { codUnidadeGestora: ug, dia: d }),
