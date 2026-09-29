@@ -136,7 +136,7 @@ async function percorrer(navegador: Awaited<ReturnType<typeof puppeteer.launch>>
   afirmar(await escolherNoSeletor(p, "Campanha publicitária", "vacina", "CP-001/2026"), 'digitar "vacina" lista a campanha CP-001/2026 e ela é escolhida');
 
   console.log("5. emitir e ver na lista");
-  const numero = `2026NE9${String(Date.now()).slice(-5)}`;
+  const numero = `9${String(Date.now()).slice(-6)}`; // numérico de 7 dígitos: é o que o SAGRES aceita
   await p.type('input[name="numero"]', numero);
   await p.$eval('input[name="data"]', (i) => {
     const el = i as HTMLInputElement;
@@ -254,7 +254,7 @@ async function percorrer(navegador: Awaited<ReturnType<typeof puppeteer.launch>>
     await new Promise((r) => setTimeout(r, 500));
   }
   const formDaAnulacao = `::-p-xpath(${linha}//details[@open]//form)`;
-  await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="numero"])`))?.type(`2026NA9${String(Date.now()).slice(-5)}`);
+  await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="numero"])`))?.type(`8${String(Date.now()).slice(-6)}`);
   await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="motivo"])`))?.type("estorno do empenho emitido pelo percurso de teste");
   await (await p.$(`${formDaAnulacao.slice(0, -1)}//input[@name="data"])`))?.evaluate((i) => {
     const el = i as HTMLInputElement;

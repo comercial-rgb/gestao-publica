@@ -136,6 +136,13 @@ conformidade externa.
   modelo (`Orgao` tem 2, `UnidadeOrcamentaria` 5, `EnteConfig` traz IBGE/CNPJ).
 - **numEmpenho/numLiquidacao** são `Numérico` no SAGRES; o modelo guarda `String` — a numeração da UG
   precisa ser numérica (a massa POC usa numeração numérica).
+  - V22 (2026-09-28): os formulários de empenho, liquidação, pagamento e anulação passaram a sugerir
+    número só com dígitos (antes o exemplo era `2026NE000001`, que este leiaute recusa). A regra NÃO é
+    imposta no domínio.
+  - **Pendência `FOLHA-NUMERO-DE-EMPENHO-FORA-DO-SAGRES`:** o empenho e a liquidação da folha nascem com
+    número gerado pelo M33 (`FP/2026-08/DEMO-0001`, `FE/2026-08/ENC-RGPS-PATR-E1`), e o pacote diário
+    do dia da folha é RECUSADO nomeando o campo. Resolver pede decisão de numeração (sequência numérica
+    por UG e exercício, compartilhada com o empenho digitado), não ajuste de formato.
 
 ## S2 — validação, pacote e tela
 

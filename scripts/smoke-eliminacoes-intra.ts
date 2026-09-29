@@ -331,7 +331,7 @@ async function main(): Promise<void> {
       )
     );
     const daEntidade = linhas.find((l) => l.includes("11.222.333/0001-81") || l.includes(CNPJ_ENTIDADE));
-    const doEstranho = linhas.find((l) => l.includes("99.888.777/0001-66") || l.includes(CNPJ_ESTRANHO));
+    const doEstranho = linhas.find((l) => l.includes("99.888.777/0001-00") || l.includes(CNPJ_ESTRANHO));
     nota(`linha da entidade: ${String(daEntidade)?.slice(0, 180)}`);
     nota(`linha do estranho: ${String(doEstranho)?.slice(0, 180)}`);
     conferir(

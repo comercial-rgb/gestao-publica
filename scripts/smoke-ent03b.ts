@@ -523,7 +523,7 @@ async function main(): Promise<void> {
     const rCons = await preencherEEnviar(page, "criar-consorcios", [
       { sel: 'input[name="identificador"]', valor: CIS },
       { sel: 'input[name="denominacao"]', valor: `Consorcio do smoke ${SUF}` },
-      { sel: 'input[data-mascara="cpf-cnpj"]', valor: "12345678000188" },
+      { sel: 'input[data-mascara="cpf-cnpj"]', valor: "12345678000195" },
       { sel: 'input[name="areaDeAtuacao"]', valor: "Saude" },
       { sel: 'input[name="protocoloDeIntencoes"]', valor: "Protocolo de 12/03/2019" },
       { sel: 'input[name="leiRatificadora"]', valor: "Lei Municipal 7.200/2019" },

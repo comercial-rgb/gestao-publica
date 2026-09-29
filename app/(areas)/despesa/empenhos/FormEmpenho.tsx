@@ -332,7 +332,8 @@ export function FormEmpenho({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nº da nota</span>
-          <input name="numero" required placeholder="2026NE000001" className={CAMPO} />
+          <input name="numero" required inputMode="numeric" placeholder="0000001" className={CAMPO} />
+          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só números, até 7 dígitos: é assim que o SAGRES recebe.</span>
         </label>
 
         {credorManual ? (

@@ -74,8 +74,8 @@ const PODER_DOS_ORGAOS = [
 
 async function main(): Promise<void> {
   const url = process.env["DATABASE_URL"] ?? "";
-  if (!/\/gestao_publica_local(\?|$)/.test(url)) {
-    throw new Error("Recusado: este script só parametriza o banco gestao_publica_local. Nada foi feito.");
+  if (!/\/gestao_publica_(local|apresentacao)(\?|$)/.test(url)) {
+    throw new Error("Recusado: este script só parametriza os bancos de demonstração (gestao_publica_local ou gestao_publica_apresentacao). Nada foi feito.");
   }
   const prisma = criarPrismaClient(url);
   try {

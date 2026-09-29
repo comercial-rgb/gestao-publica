@@ -41,7 +41,8 @@ import { meioDiaCivil } from "../../packages/datas/index.js";
  * Uso: npx tsx scripts/demonstracao/semear-execucao-da-despesa.ts
  */
 
-const BANCO_PERMITIDO = "gestao_publica_local";
+// Só os dois bancos de demonstração: o local (onde a apresentação foi montada) e o da apresentação.
+const BANCOS_PERMITIDOS: readonly string[] = ["gestao_publica_local", "gestao_publica_apresentacao"];
 const AUTOR = "admin@cg.pb.gov.br";
 
 function exigirBancoPermitido(): string {
@@ -55,9 +56,9 @@ function exigirBancoPermitido(): string {
   } catch {
     throw new Error("DATABASE_URL ilegível. Nada foi gravado.");
   }
-  if (nome !== BANCO_PERMITIDO) {
+  if (!BANCOS_PERMITIDOS.includes(nome)) {
     throw new Error(
-      `Recusado: este script só semeia o banco "${BANCO_PERMITIDO}", e o DATABASE_URL aponta ` +
+      `Recusado: este script só semeia o banco "${BANCOS_PERMITIDOS.join(" ou ")}", e o DATABASE_URL aponta ` +
         `para "${nome}". Nada foi gravado.`
     );
   }

@@ -89,6 +89,7 @@
     "permissoes:atualizar": "tsx scripts/aplicar-atualizacao-de-permissoes.ts",
     "roteiros:versionar": "tsx scripts/versionar-roteiros-existentes.ts",
     "seed:roteiros-demo": "tsx prisma/seed/roteiros-demo.ts",
+    "demonstracao:preparar": "tsx scripts/demonstracao/preparar-demonstracao-da-contabilidade.ts",
     "percursos:preparar": "tsx scripts/trinco-de-maquina.ts 'preparar banco de percursos' -- npx tsx scripts/preparar-banco-de-percursos.ts",
     "percursos:servir": "tsx scripts/servir-percursos.ts",
     "tipos:conferir": "node scripts/conferencia-de-tipos.mjs conferir",

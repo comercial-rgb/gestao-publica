@@ -73,7 +73,8 @@ import { meioDiaCivil } from "../../packages/datas/index.js";
  * Uso: npx tsx scripts/demonstracao/semear-demonstrativos.ts
  */
 
-const BANCO_PERMITIDO = "gestao_publica_local";
+// Só os dois bancos de demonstração: o local (onde a apresentação foi montada) e o da apresentação.
+const BANCOS_PERMITIDOS: readonly string[] = ["gestao_publica_local", "gestao_publica_apresentacao"];
 const AUTOR = "admin@cg.pb.gov.br";
 const EXERCICIO = 2026;
 
@@ -86,9 +87,9 @@ function exigirBancoPermitido(): string {
   } catch {
     throw new Error("DATABASE_URL ilegível. Nada foi gravado.");
   }
-  if (nome !== BANCO_PERMITIDO) {
+  if (!BANCOS_PERMITIDOS.includes(nome)) {
     throw new Error(
-      `Recusado: este script só semeia o banco "${BANCO_PERMITIDO}", e o DATABASE_URL aponta ` +
+      `Recusado: este script só semeia o banco "${BANCOS_PERMITIDOS.join(" ou ")}", e o DATABASE_URL aponta ` +
         `para "${nome}". Nada foi gravado.`
     );
   }
@@ -447,11 +448,18 @@ async function main(): Promise<void> {
     });
 
     // ══ 5. ARRECADAÇÃO E EXECUÇÃO — em ordem de data (a fila do art. 141 é por data) ══
+    // ⚠️ A CONTA DO EXTRATO (CC-POC-A), e não a CC-500-01: as duas mapeiam a mesma contábil
+    // 1.1.1.1.1.19.00 e o razão não guarda a conta bancária, então o movimento feito pela CC-500-01
+    // entrava no saldo contábil da conciliação da CC-POC-A sem aparecer como pendência dela — e a
+    // conciliação recusava ("não fecha"). Pela conta do extrato, o que não está no extrato aparece
+    // nomeado como registro do sistema ainda não compensado. Ver CONTAS-BANCARIAS-COM-MESMA-CONTABIL
+    // no MODULO.md do M09.
+    const CONTA_DO_EXTRATO = "CC-POC-A";
     const conta = await prisma.contaBancaria.findUnique({
-      where: { codigo: "CC-500-01" },
+      where: { codigo: CONTA_DO_EXTRATO },
       select: { codigo: true, contaContabil: { select: { codigo: true } } },
     });
-    if (conta?.contaContabil === null || conta === null) throw new Error("Conta CC-500-01 sem conta contábil mapeada.");
+    if (conta?.contaContabil === null || conta === null) throw new Error(`Conta ${CONTA_DO_EXTRATO} sem conta contábil mapeada.`);
     const disponibilidade = conta.contaContabil.codigo;
     const m04 = criarM04Deps(prisma);
     const m05Empenho = criarM05DepsComContratos(prisma);
@@ -486,24 +494,24 @@ async function main(): Promise<void> {
       { tipo: "guia", data: "2026-07-10", numero: "GUIA-ISS-2026-07", valor: "11980.20", natureza: "11180231", imposto: "ISSQN" },
       { tipo: "guia", data: "2026-09-15", numero: "GUIA-ISS-2026-09", valor: "13402.90", natureza: "11180231", imposto: "ISSQN" },
       // Educação — ficha 101
-      { tipo: "empenho", data: "2026-03-10", ficha: 101, numero: "2026NE000101", modalidade: "ORDINARIO", valor: "32000.00", credor: CREDOR.construtora, historico: "Manutenção predial preventiva das escolas municipais - 1º semestre de 2026" },
-      { tipo: "liquidacao", data: "2026-04-15", ficha: 101, empenho: "2026NE000101", numero: "2026NL000101", valor: "32000.00", nf: "1187", historico: "Serviços de manutenção predial das escolas executados e atestados - NF 1187" },
-      { tipo: "pagamento", data: "2026-04-24", ficha: 101, empenho: "2026NE000101", liquidacao: "2026NL000101", numero: "2026OB000101", valor: "32000.00", historico: "Pagamento da NF 1187 - manutenção predial das escolas" },
-      { tipo: "empenho", data: "2026-05-05", ficha: 101, numero: "2026NE000102", modalidade: "ORDINARIO", valor: "18750.00", credor: CREDOR.grafica, historico: "Impressão de material didático complementar para o ensino fundamental" },
-      { tipo: "liquidacao", data: "2026-05-28", ficha: 101, empenho: "2026NE000102", numero: "2026NL000102", valor: "18750.00", nf: "5521", historico: "Material didático impresso entregue às escolas - NF 5521" },
-      { tipo: "pagamento", data: "2026-06-05", ficha: 101, empenho: "2026NE000102", liquidacao: "2026NL000102", numero: "2026OB000102", valor: "18750.00", historico: "Pagamento da NF 5521 - material didático impresso" },
-      { tipo: "empenho", data: "2026-07-01", ficha: 101, numero: "2026NE000103", modalidade: "GLOBAL", valor: "36000.00", credor: CREDOR.construtora, historico: "Reparos em unidades escolares - 2º semestre de 2026" },
-      { tipo: "liquidacao", data: "2026-08-14", ficha: 101, empenho: "2026NE000103", numero: "2026NL000103", valor: "18000.00", nf: "1243", historico: "1ª medição dos reparos nas unidades escolares - NF 1243" },
-      { tipo: "pagamento", data: "2026-08-24", ficha: 101, empenho: "2026NE000103", liquidacao: "2026NL000103", numero: "2026OB000103", valor: "18000.00", historico: "Pagamento da NF 1243 - reparos nas unidades escolares" },
+      { tipo: "empenho", data: "2026-03-10", ficha: 101, numero: "101", modalidade: "ORDINARIO", valor: "32000.00", credor: CREDOR.construtora, historico: "Manutenção predial preventiva das escolas municipais - 1º semestre de 2026" },
+      { tipo: "liquidacao", data: "2026-04-15", ficha: 101, empenho: "101", numero: "101", valor: "32000.00", nf: "1187", historico: "Serviços de manutenção predial das escolas executados e atestados - NF 1187" },
+      { tipo: "pagamento", data: "2026-04-24", ficha: 101, empenho: "101", liquidacao: "101", numero: "101", valor: "32000.00", historico: "Pagamento da NF 1187 - manutenção predial das escolas" },
+      { tipo: "empenho", data: "2026-05-05", ficha: 101, numero: "102", modalidade: "ORDINARIO", valor: "18750.00", credor: CREDOR.grafica, historico: "Impressão de material didático complementar para o ensino fundamental" },
+      { tipo: "liquidacao", data: "2026-05-28", ficha: 101, empenho: "102", numero: "102", valor: "18750.00", nf: "5521", historico: "Material didático impresso entregue às escolas - NF 5521" },
+      { tipo: "pagamento", data: "2026-06-05", ficha: 101, empenho: "102", liquidacao: "102", numero: "102", valor: "18750.00", historico: "Pagamento da NF 5521 - material didático impresso" },
+      { tipo: "empenho", data: "2026-07-01", ficha: 101, numero: "103", modalidade: "GLOBAL", valor: "36000.00", credor: CREDOR.construtora, historico: "Reparos em unidades escolares - 2º semestre de 2026" },
+      { tipo: "liquidacao", data: "2026-08-14", ficha: 101, empenho: "103", numero: "103", valor: "18000.00", nf: "1243", historico: "1ª medição dos reparos nas unidades escolares - NF 1243" },
+      { tipo: "pagamento", data: "2026-08-24", ficha: 101, empenho: "103", liquidacao: "103", numero: "103", valor: "18000.00", historico: "Pagamento da NF 1243 - reparos nas unidades escolares" },
       // Saúde — ficha 102
-      { tipo: "empenho", data: "2026-03-12", ficha: 102, numero: "2026NE000201", modalidade: "ESTIMATIVO", valor: "30000.00", credor: CREDOR.clinica, historico: "Exames laboratoriais complementares para as unidades básicas de saúde - 2026" },
-      { tipo: "liquidacao", data: "2026-04-20", ficha: 102, empenho: "2026NE000201", numero: "2026NL000201", valor: "11400.00", nf: "3310", historico: "Exames realizados em março e abril - NF 3310" },
-      { tipo: "pagamento", data: "2026-04-29", ficha: 102, empenho: "2026NE000201", liquidacao: "2026NL000201", numero: "2026OB000201", valor: "11400.00", historico: "Pagamento da NF 3310 - exames laboratoriais" },
-      { tipo: "liquidacao", data: "2026-06-18", ficha: 102, empenho: "2026NE000201", numero: "2026NL000202", valor: "9975.00", nf: "3398", historico: "Exames realizados em maio e junho - NF 3398" },
-      { tipo: "pagamento", data: "2026-06-26", ficha: 102, empenho: "2026NE000201", liquidacao: "2026NL000202", numero: "2026OB000202", valor: "9975.00", historico: "Pagamento da NF 3398 - exames laboratoriais" },
-      { tipo: "empenho", data: "2026-07-06", ficha: 102, numero: "2026NE000202", modalidade: "ORDINARIO", valor: "16500.00", credor: CREDOR.clinica, historico: "Consultas especializadas em cardiologia e ortopedia para a atenção básica" },
-      { tipo: "liquidacao", data: "2026-08-20", ficha: 102, empenho: "2026NE000202", numero: "2026NL000203", valor: "16500.00", nf: "3452", historico: "Consultas especializadas realizadas em julho e agosto - NF 3452" },
-      { tipo: "pagamento", data: "2026-09-01", ficha: 102, empenho: "2026NE000202", liquidacao: "2026NL000203", numero: "2026OB000203", valor: "16500.00", historico: "Pagamento da NF 3452 - consultas especializadas" },
+      { tipo: "empenho", data: "2026-03-12", ficha: 102, numero: "201", modalidade: "ESTIMATIVO", valor: "30000.00", credor: CREDOR.clinica, historico: "Exames laboratoriais complementares para as unidades básicas de saúde - 2026" },
+      { tipo: "liquidacao", data: "2026-04-20", ficha: 102, empenho: "201", numero: "201", valor: "11400.00", nf: "3310", historico: "Exames realizados em março e abril - NF 3310" },
+      { tipo: "pagamento", data: "2026-04-29", ficha: 102, empenho: "201", liquidacao: "201", numero: "201", valor: "11400.00", historico: "Pagamento da NF 3310 - exames laboratoriais" },
+      { tipo: "liquidacao", data: "2026-06-18", ficha: 102, empenho: "201", numero: "202", valor: "9975.00", nf: "3398", historico: "Exames realizados em maio e junho - NF 3398" },
+      { tipo: "pagamento", data: "2026-06-26", ficha: 102, empenho: "201", liquidacao: "202", numero: "202", valor: "9975.00", historico: "Pagamento da NF 3398 - exames laboratoriais" },
+      { tipo: "empenho", data: "2026-07-06", ficha: 102, numero: "202", modalidade: "ORDINARIO", valor: "16500.00", credor: CREDOR.clinica, historico: "Consultas especializadas em cardiologia e ortopedia para a atenção básica" },
+      { tipo: "liquidacao", data: "2026-08-20", ficha: 102, empenho: "202", numero: "203", valor: "16500.00", nf: "3452", historico: "Consultas especializadas realizadas em julho e agosto - NF 3452" },
+      { tipo: "pagamento", data: "2026-09-01", ficha: 102, empenho: "202", liquidacao: "203", numero: "203", valor: "16500.00", historico: "Pagamento da NF 3452 - consultas especializadas" },
     ];
     const ORDEM_NO_DIA = { guia: 0, empenho: 1, liquidacao: 2, pagamento: 3 } as const;
     const ordenados = [...EVENTOS].sort((a, b) => a.data.localeCompare(b.data) || ORDEM_NO_DIA[a.tipo] - ORDEM_NO_DIA[b.tipo]);

@@ -49,8 +49,8 @@ const R_LIQUIDACAO = roteiroLiquidacao({
 
 /** As duas pendências. Credores DISTINTOS: a fila é por credor, e um só credor esconderia isso. */
 const PENDENCIAS = [
-  { numero: "10", valor: "8000.00", dataEmpenho: D(9, 22), dataLiquidacao: D(9, 24), credor: "98765432000188", descricao: "Manutencao predial - POC" },
-  { numero: "11", valor: "4500.00", dataEmpenho: D(9, 25), dataLiquidacao: D(9, 28), credor: "11222333000144", descricao: "Material de expediente - POC" },
+  { numero: "10", valor: "8000.00", dataEmpenho: D(9, 22), dataLiquidacao: D(9, 24), credor: "98765432000198", descricao: "Manutencao predial - POC" },
+  { numero: "11", valor: "4500.00", dataEmpenho: D(9, 25), dataLiquidacao: D(9, 28), credor: "11222333000181", descricao: "Material de expediente - POC" },
 ] as const;
 
 export async function semearFilaPoc(prisma: PrismaClient, criadoPor = ADMIN_PADRAO): Promise<void> {

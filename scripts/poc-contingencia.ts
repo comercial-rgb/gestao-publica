@@ -107,6 +107,20 @@ function gravar(caminhoRelativo: string, conteudo: Buffer | string, descricao: s
   artefatos.push({ caminho: caminhoRelativo.replaceAll("\\", "/"), bytes: buf.length, sha256: sha256De(buf), descricao });
 }
 
+/**
+ * A RECUSA DE UM PERÍODO VIRA ARTEFATO, e o pacote segue para os outros. O gerador do SAGRES recusa
+ * dado fora do leiaute (ex.: número de empenho que não é numérico de 7 dígitos) — e a recusa está
+ * certa. Parar tudo na primeira deixava a pasta inteira velha por causa de um dia; engolir a recusa
+ * deixava o dia sem prova. O arquivo RECUSA.txt diz o período e o motivo, e o manifesto a lista.
+ */
+const recusas: { readonly periodo: string; readonly motivo: string }[] = [];
+function registrarRecusa(pasta: string, periodo: string, erro: unknown): string {
+  const motivo = erro instanceof Error ? erro.message : String(erro);
+  gravar(join(pasta, "RECUSA.txt"), `Período ${periodo}: o pacote NÃO foi gerado.\r\nMotivo: ${motivo}\r\n`, `Recusa do período ${periodo}, com o motivo.`);
+  recusas.push({ periodo, motivo });
+  return motivo;
+}
+
 const iso = (d: Date): string => d.toISOString().slice(0, 10);
 const diaUtc = (s: string): Date => new Date(`${s}T00:00:00Z`);
 
@@ -298,16 +312,24 @@ async function main(): Promise<void> {
     // ── SAGRES diário, dia a dia ──
     const resumoDias: string[] = [];
     for (const dia of dias) {
-      const registros = await gerarSagresDiario(prisma, dia);
+      let sagres: string;
+      try {
+        sagres = `${await gerarSagresDiario(prisma, dia)} registro(s)`;
+      } catch (e) {
+        sagres = `RECUSADO — ${registrarRecusa(join("sagres", "diario", dia), dia, e).slice(0, 140)}`;
+      }
       const cap = await gerarCaptura(prisma, dia);
-      resumoDias.push(`  · ${dia} — SAGRES diário: ${registros} registro(s) | Captura: ${cap.elementos} elemento(s), ${cap.violacoes} violação(ões), estado ${cap.estado}`);
+      resumoDias.push(`  · ${dia} — SAGRES diário: ${sagres} | Captura: ${cap.elementos} elemento(s), ${cap.violacoes} violação(ões), estado ${cap.estado}`);
     }
 
     // ── SAGRES mensal, mês a mês ──
     const resumoMeses: string[] = [];
     for (const mes of meses) {
-      const registros = await gerarSagresMensal(prisma, mes);
-      resumoMeses.push(`  · ${mes} — SAGRES mensal: ${registros} registro(s)`);
+      try {
+        resumoMeses.push(`  · ${mes} — SAGRES mensal: ${await gerarSagresMensal(prisma, mes)} registro(s)`);
+      } catch (e) {
+        resumoMeses.push(`  · ${mes} — SAGRES mensal: RECUSADO — ${registrarRecusa(join("sagres", "mensal", mes), mes, e).slice(0, 140)}`);
+      }
     }
 
     // ── PDFs e CSVs, por exercício ──
@@ -328,6 +350,7 @@ async function main(): Promise<void> {
       layoutSagres: "2026 v1.1 (12/12/2025)",
       unidadeGestora: POC_SAGRES.codUnidadeGestora,
       periodos: { dias, meses, exercicios },
+      recusas,
       totalArtefatos: artefatos.length,
       artefatos: [...artefatos].sort((a, b) => a.caminho.localeCompare(b.caminho)),
     };
@@ -341,6 +364,7 @@ async function main(): Promise<void> {
     resumoMeses.forEach((l) => console.log(l));
     console.log("\n── DOCUMENTOS ──");
     resumoDocs.forEach((l) => console.log(l));
+    if (recusas.length > 0) console.log(`\n⚠ ${recusas.length} período(s) recusado(s) pelo leiaute, cada um com RECUSA.txt: ${recusas.map((r) => r.periodo).join(", ")}`);
     console.log(`\n✓ ${artefatos.length} artefato(s) em ${RAIZ}/, cada um com SHA-256 em MANIFEST-CONTINGENCIA.json`);
     console.log(`✓ manifesto: ${sha256De(Buffer.from(manifestoJson, "utf8")).slice(0, 16)}…`);
   } finally {

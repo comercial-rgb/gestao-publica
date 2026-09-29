@@ -377,7 +377,7 @@ async function main(): Promise<void> {
     const rDA = await preencherEEnviar(page, "criar-divida-ativa", [
       { sel: 'input[name="identificador"]', valor: idDA },
       { sel: 'input[name="devedorNome"]', valor: "Contribuinte Smoke Ltda" },
-      { sel: '[data-mascara="cpf-cnpj"]', valor: "44555666000177" },
+      { sel: '[data-mascara="cpf-cnpj"]', valor: "44555666000181" },
       { sel: 'select[name="origem"]', valor: "TRIBUTARIA", tipo: "select" },
       { sel: 'select[name="contaContabilId"]', valor: contaAtivo, tipo: "select" },
     ]);

@@ -280,3 +280,75 @@ instrumentos, `900962d` telas e percursos, e o deste.
 **Continua pendente, com motivo:** FAP real do ente (dado do ente; a demonstração usa 1,0000, declarado); a
 natureza 319013 das contribuições patronais (confirmar com a contabilidade); push e conciliação com a linha
 do Mac (só com pedido).
+
+## O pedido da rodada 6, como veio (2026-09-28)
+
+> "o sistema no modulo contabilidade esta pronto para apresentarmos ?"
+>
+> "quero que deixe o sistema pronto, codigo, telas, linhas, condigo, nao precisa subir nada agora, queor
+> tudo pronto para iniciarmos localmente e executarmos as funcoes"
+
+## Checkpoint 6 — 2026-09-28, pronto para iniciar localmente
+
+Regime: **superfície** (dados de demonstração, telas, instrumentos) e **profundidade** só na leitura dos
+defeitos (tesouraria e SAGRES), que ficaram nomeados e NÃO foram alterados no domínio.
+
+- **Banco da apresentação refeito do zero** com a versão atual (247 migrations): o antigo foi PRESERVADO
+  renomeado (`gestao_publica_apresentacao_v21_2026_09_28`), nada apagado. A demonstração da contabilidade,
+  que só existia no banco local (misturada com o que os percursos gravaram), passou a ser reproduzível:
+  `npm run demonstracao:preparar`, onze passos em ordem de dependência. Os cadastros que no local tinham
+  sido digitados pela tela (8 naturezas de receita, contador e empresa do MANAD) ganharam script pelo mesmo
+  serviço da tela. Cópia intocada: `gestao_publica_apresentacao_modelo`.
+- **Defeitos achados pelo banco limpo, corrigidos:**
+  1. o seed da fila (`poc-fila`) e três percursos usavam CNPJ com dígito inválido — a regra da rodada 5
+     os recusava; varredura por propriedade (todo CPF/CNPJ literal em seeds e scripts), não por lista;
+  2. o Balanço Patrimonial e a DVP recusavam: faltava a classificação F/P da demonstração
+     (`m12-indicador-superavit-demo`, que já existia e não estava na sequência);
+  3. a conciliação recusava ("não fecha"): os dados da V22 movimentavam a CC-500-01, que divide a contábil
+     1.1.1.1.1.19.00 com a conta do extrato. Passaram a movimentar a conta do extrato; o que não está no
+     extrato aparece nomeado como pendência. **A falha de 6 itens do `poc:conferir` no banco local não era
+     "falta de massa", como eu tinha dito — era isto.**
+  4. o SAGRES recusava os dias dos dados da V22: números `2026NE000101`/`2026NL…`/`2026OB…` (o leiaute
+     reserva 7 dígitos numéricos). Dados renumerados; os quatro formulários (empenho, liquidação, pagamento,
+     anulação) deixaram de sugerir `2026NE000001` e dizem "só números, até 7 dígitos";
+  5. o pacote de contingência parava inteiro na primeira recusa; agora grava `RECUSA.txt` com o motivo no
+     período recusado e segue (o manifesto lista as recusas).
+- **Nomeado, não corrigido (decisão):** `FOLHA-NUMERO-DE-EMPENHO-FORA-DO-SAGRES` (o dia 31/08, da folha, é
+  recusado pelo SAGRES — MODULO do adaptador); `CONTAS-BANCARIAS-COM-MESMA-CONTABIL` não é só seed: o plano
+  oficial tem uma analítica de movimento e a partida não guarda a conta bancária (MODULO do M09);
+  `CONCILIACAO-VINCULO-DEPOIS-DO-CORTE` — vínculo feito depois do fim do extrato não aparece no painel, e
+  não há tela para vincular (MODULO do M09).
+
+**Medições (build de produção novo, banco `gestao_publica_apresentacao` na 3010):**
+
+| Comando | Resultado |
+|---|---|
+| `tipos:conferir` + `next build` | APROVADO, build 0 |
+| `typecheck:scripts` (heap 14 GB; com 5,3 GB estoura) | **0 erros** — primeira medição completa desde a V21 |
+| `poc-conferir` | **89/89, PODE COMEÇAR, sem aviso** (massa 18, rotas 37, conteúdo 30, contingência 4) |
+| `conferir-telas-da-apresentacao` | **48/48** |
+| `conferir-acoes-das-telas` (4 grupos em paralelo) | **48/48 telas, 160 ações, 0 falhas** |
+| `poc-contingencia` | 560 artefatos; 1 período recusado com motivo (2026-08-31, folha) |
+| percursos que GRAVAM, numa cópia (`gestao_publica_ensaio`, 3011, apagada depois) | despesa **35/35**, LOA **15/15**, tabelas da folha **6/6** |
+| `test/ui` | 262/262 (um estouro de tempo com o build rodando junto; o arquivo passa sozinho) |
+
+Não rodados: `portao`, `test:tudo`, `test:fuso`. Nada no ar ao fechar (3010 e 3011 desligadas).
+
+## Como iniciar a demonstração localmente (Windows, pasta única)
+
+O banco `gestao_publica_apresentacao` está pronto e conferido. A cópia `gestao_publica_apresentacao_modelo`
+é o mesmo estado, intocado, para voltar a ele depois de uma apresentação em que se gravou pela tela.
+
+1. Docker Desktop aberto e o contêiner `pg-gestao-publica-win` ligado (`docker start pg-gestao-publica-win`).
+2. Servir (Git Bash, na pasta do projeto):
+   `PERCURSO_BANCO=gestao_publica_apresentacao PERCURSO_COMO_RUNTIME=1 PERCURSO_PORTA=3010 AMBIENTE_DE_EXECUCAO=demonstracao npx tsx scripts/servir-percursos.ts`
+3. Abrir `http://localhost:3010` e entrar com `admin@cg.pb.gov.br` (a senha é a `SEED_ADMIN_SENHA` do `.env`).
+4. Antes de começar, conferir (somente leitura):
+   `DATABASE_URL=<o do .env com o banco gestao_publica_apresentacao> npx tsx scripts/poc-conferir.ts --base=http://localhost:3010`
+   — tem de dizer "PODE COMEÇAR".
+5. Voltar ao estado conferido depois de gravar pela tela (com o servidor parado):
+   `docker exec pg-gestao-publica-win psql -U gestao -d postgres -c "drop database gestao_publica_apresentacao" -c "create database gestao_publica_apresentacao template gestao_publica_apresentacao_modelo"`
+
+**Refazer do zero** (≈ 3 min): `scripts/preparar-banco-de-percursos.ts` (a massa da POC; exige
+`DATABASE_URL_PERCURSOS`, `LICENCA_NUMERO` e `LICENCA_CLIENTE`) e depois `npm run demonstracao:preparar` com
+`DATABASE_URL` no mesmo banco — onze passos em ordem de dependência, idempotentes.
