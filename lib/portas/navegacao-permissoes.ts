@@ -146,6 +146,7 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   JUSTIFICAR_PENDENCIA: "financeiro",
   // M18 — SAGRES Captura 2.0
   SUBMETER_CAPTURA: "integracoes",
+  IMPORTAR_PLANO_DO_TRIBUNAL: "integracoes",
   // M20 — importadores de arquivo externo (folha/tributário)
   IMPORTAR_FOLHA: "integracoes",
   IMPORTAR_TRIBUTOS: "integracoes",

@@ -162,6 +162,11 @@ model MovimentoExtraorcamentario {
   historico String
   motivo    String?
 
+  /// V23 — o CPF/CNPJ de quem entregou o dinheiro, no ingresso AVULSO (caução, depósito): o SAGRES
+  /// o exige (ReceitaExtra §4.19, cpfCnpjFornecedor). Na retenção ele vem do credor do empenho e fica
+  /// nulo aqui. Nulo nos ingressos gravados antes — o gerador recusa nomeando, não inventa documento.
+  documentoDoContribuinte String?
+
   criadoEm  DateTime @default(now())
   criadoPor String
 

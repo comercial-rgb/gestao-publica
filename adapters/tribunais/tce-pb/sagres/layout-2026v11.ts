@@ -819,6 +819,8 @@ export interface DespesaExtraFato {
   readonly exercicio: number; //              ano de mov.data
   readonly codFonteRecursoPagamento: string; // mov.contaBancaria.fonte.codigo (a fonte REAL que paga)
   readonly cnpjGerencia: string; //           parâmetro export (CNPJ gerenciador)
+  /** V23 — o vínculo com a ReceitaExtra, quando o plano do Tribunal exige; senão, espaços. */
+  readonly receitaExtra?: { readonly codUnidadeGestora: string; readonly exercicio: number; readonly numero: string } | null;
 }
 
 const camposDespesaExtra: readonly CampoLayout<DespesaExtraFato>[] = [
@@ -841,10 +843,11 @@ const camposDespesaExtra: readonly CampoLayout<DespesaExtraFato>[] = [
   { nome: "codFonteRecursoPagamento", posInicial: 600, posFinal: 602, tipo: "NUMERICO", obrigatorio: true, origem: "mov.contaBancaria.fonte.codigo (fonte real)", extrair: (f) => f.codFonteRecursoPagamento },
   // GAP 2 — o dispêndio extra não carrega CO no modelo. Sem origem → ZEROS (nomeado).
   { nome: "co", posInicial: 603, posFinal: 606, tipo: "NUMERICO", obrigatorio: true, origem: "GAP: dispêndio extra não tem CO no modelo → zeros", extrair: () => null },
-  // Vínculo com ReceitaExtra NÃO exigido nesta POC → ESPAÇOS (ASCII 32), como o layout manda.
-  { nome: "codUnidadeGestoraReceitaExtra", posInicial: 607, posFinal: 612, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra não exigido → espaços", extrair: () => null },
-  { nome: "exercicioReceitaExtra", posInicial: 613, posFinal: 616, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra não exigido → espaços", extrair: () => null },
-  { nome: "numReceitaExtra", posInicial: 617, posFinal: 623, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra não exigido → espaços", extrair: () => null },
+  // V23 — o vínculo com a ReceitaExtra: preenchido quando a conta EXIGE no plano do Tribunal; senão
+  // ESPAÇOS (ASCII 32), como o layout manda.
+  { nome: "codUnidadeGestoraReceitaExtra", posInicial: 607, posFinal: 612, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra (quando a conta exige) ou espaços", extrair: (f) => numeroOuEspacos(f.receitaExtra?.codUnidadeGestora ?? null, 6, "codUnidadeGestoraReceitaExtra") },
+  { nome: "exercicioReceitaExtra", posInicial: 613, posFinal: 616, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra ou espaços", extrair: (f) => numeroOuEspacos(f.receitaExtra?.exercicio ?? null, 4, "exercicioReceitaExtra") },
+  { nome: "numReceitaExtra", posInicial: 617, posFinal: 623, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra ou espaços", extrair: (f) => numeroOuEspacos(f.receitaExtra?.numero ?? null, 7, "numReceitaExtra") },
   { nome: "cnpjGerenciaContaBancaria", posInicial: 624, posFinal: 637, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj (parâmetro export)", extrair: (f) => f.cnpjGerencia },
 ];
 
@@ -918,6 +921,120 @@ export const LAYOUT_ESTORNO_DESPESA_EXTRA: LayoutArquivo<EstornoDespesaExtraFato
   campos: camposEstornoDespesaExtra,
 };
 
+// ── RECEITAEXTRA (§4.19, Diária, V23) — o INGRESSO extraorçamentário (retenção ou avulso). ──────────
+// §5.8 CodigoReceitaExtra: 10000014 Consignações, 10000015 Débitos de Tesouraria, 10000016 Depósitos,
+// 10000017 Outras Operações. O de-para segue o da DespesaExtra (§5.3): CAUCAO → Depósitos; os tipos de
+// retenção/consignação → Consignações; tipo sem de-para da §5.24 FALHA NOMEANDO.
+export const CODIGO_RECEITA_EXTRA_CONSIGNACOES = "10000014";
+export const CODIGO_RECEITA_EXTRA_DEPOSITOS = "10000016";
+export function codigoReceitaExtraDe(codigoTipoConsignacao: string): string {
+  tipoRetencaoDe(codigoTipoConsignacao);
+  return codigoTipoConsignacao === "CAUCAO" ? CODIGO_RECEITA_EXTRA_DEPOSITOS : CODIGO_RECEITA_EXTRA_CONSIGNACOES;
+}
+
+/**
+ * Campo numérico que, quando o vínculo NÃO é exigido, sai em ESPAÇOS (ASCII 32) — o leiaute manda
+ * (§4.19, §4.20). Declarado ALFA para o serializador; o valor, quando existe, vem já com zeros à
+ * esquerda e só com dígitos — conferido aqui, nunca truncado.
+ */
+function numeroOuEspacos(valor: string | number | null, largura: number, campo: string): string | null {
+  if (valor === null) return null;
+  const s = String(valor);
+  if (!/^\d+$/.test(s) || s.length > largura) {
+    throw new Error(`SAGRES — o vínculo ${campo} tem "${s}", que não é número de até ${String(largura)} dígitos.`);
+  }
+  return s.padStart(largura, "0");
+}
+
+export interface VinculoComRetencao {
+  readonly codUnidadeGestora: string;
+  readonly codUnidadeOrcamentaria: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly numEmpenho: string;
+  readonly numPagamento: string;
+  readonly tipoConsignacaoCodigo: string;
+}
+
+export interface ReceitaExtraFato {
+  readonly codUnidadeGestora: string;
+  readonly numero: string;
+  readonly codContaContabil: string;
+  readonly data: Date;
+  readonly cpfCnpjContribuinte: string;
+  readonly exercicioFonteRecurso: number;
+  readonly codFonteRecursoExtra: string;
+  readonly numeroConta: string;
+  readonly numeroAgencia: string;
+  readonly codBanco: string;
+  readonly tipoContaBancaria: string;
+  readonly valor: Money;
+  readonly historico: string;
+  readonly tipoConsignacaoCodigo: string;
+  readonly exercicio: number;
+  /** Só quando a conta EXIGE retenção no plano do Tribunal; senão, espaços. */
+  readonly retencao: VinculoComRetencao | null;
+  readonly cnpjGerencia: string;
+}
+
+const camposReceitaExtra: readonly CampoLayout<ReceitaExtraFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numero", posInicial: 7, posFinal: 13, tipo: "NUMERICO", obrigatorio: true, origem: "derivado: ordem de gravação dos ingressos no exercício", extrair: (f) => f.numero },
+  { nome: "codContaContabil", posInicial: 14, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "partida CRÉDITO patrimonial do passivo → ContaPcasp.codigo (sem pontos)", extrair: (f) => f.codContaContabil },
+  { nome: "data", posInicial: 23, posFinal: 30, tipo: "DATA", obrigatorio: true, origem: "mov.data", extrair: (f) => f.data },
+  { nome: "cpfCnpjFornecedor", posInicial: 31, posFinal: 44, tipo: "DOCUMENTO", obrigatorio: true, origem: "retenção: credor do empenho; avulso: mov.documentoDoContribuinte (V23)", extrair: (f) => f.cpfCnpjContribuinte },
+  { nome: "exercicioFonteRecurso", posInicial: 45, posFinal: 45, tipo: "NUMERICO", obrigatorio: true, origem: "1 = Atual", extrair: (f) => f.exercicioFonteRecurso },
+  { nome: "codFonteRecurso", posInicial: 46, posFinal: 48, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (860/861/862/869 — STN)", extrair: (f) => f.codFonteRecursoExtra },
+  { nome: "numContaBancaria", posInicial: 49, posFinal: 61, tipo: "ALFA", obrigatorio: false, origem: "mov.contaBancaria.conta+digito", extrair: (f) => f.numeroConta },
+  { nome: "numAgencia", posInicial: 62, posFinal: 67, tipo: "ALFA", obrigatorio: false, origem: "mov.contaBancaria.agencia+digito", extrair: (f) => f.numeroAgencia },
+  { nome: "codBanco", posInicial: 68, posFinal: 70, tipo: "NUMERICO", obrigatorio: false, origem: "mov.contaBancaria.banco (FEBRABAN)", extrair: (f) => f.codBanco },
+  { nome: "tipoContaBancaria", posInicial: 71, posFinal: 71, tipo: "NUMERICO", obrigatorio: false, origem: "§5.31 (1 = Conta Corrente)", extrair: (f) => f.tipoContaBancaria },
+  { nome: "valor", posInicial: 72, posFinal: 87, tipo: "VALOR", obrigatorio: true, origem: "mov.valor", extrair: (f) => f.valor },
+  { nome: "historico", posInicial: 88, posFinal: 587, tipo: "ALFA", obrigatorio: true, origem: "mov.historico", extrair: (f) => f.historico },
+  { nome: "codReceitaExtra", posInicial: 588, posFinal: 595, tipo: "NUMERICO", obrigatorio: true, origem: "mov.tipoConsignacao.codigo → §5.8 (de-para)", extrair: (f) => codigoReceitaExtraDe(f.tipoConsignacaoCodigo) },
+  { nome: "exercicio", posInicial: 596, posFinal: 599, tipo: "NUMERICO", obrigatorio: true, origem: "ano de mov.data", extrair: (f) => f.exercicio },
+  { nome: "codUnidadeGestoraRetencao", posInicial: 600, posFinal: 605, tipo: "ALFA", obrigatorio: false, origem: "vínculo com a Retencao (quando a conta exige) ou espaços", extrair: (f) => numeroOuEspacos(f.retencao?.codUnidadeGestora ?? null, 6, "codUnidadeGestoraRetencao") },
+  { nome: "codUnidadeOrcamentariaRetencao", posInicial: 606, posFinal: 610, tipo: "ALFA", obrigatorio: false, origem: "vínculo com a Retencao ou espaços", extrair: (f) => numeroOuEspacos(f.retencao?.codUnidadeOrcamentaria ?? null, 5, "codUnidadeOrcamentariaRetencao") },
+  { nome: "anoEmissaoEmpenho", posInicial: 611, posFinal: 614, tipo: "ALFA", obrigatorio: false, origem: "vínculo com a Retencao ou espaços", extrair: (f) => numeroOuEspacos(f.retencao?.anoEmissaoEmpenho ?? null, 4, "anoEmissaoEmpenho") },
+  { nome: "numEmpenho", posInicial: 615, posFinal: 621, tipo: "ALFA", obrigatorio: false, origem: "vínculo com a Retencao ou espaços", extrair: (f) => numeroOuEspacos(f.retencao?.numEmpenho ?? null, 7, "numEmpenho") },
+  { nome: "numPagamento", posInicial: 622, posFinal: 628, tipo: "ALFA", obrigatorio: false, origem: "vínculo com a Retencao ou espaços", extrair: (f) => numeroOuEspacos(f.retencao?.numPagamento ?? null, 7, "numPagamento") },
+  { nome: "tipoRetencao", posInicial: 629, posFinal: 629, tipo: "ALFA", obrigatorio: false, origem: "vínculo com a Retencao (§5.24) ou espaços", extrair: (f) => (f.retencao === null ? null : tipoRetencaoDe(f.retencao.tipoConsignacaoCodigo)) },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 630, posFinal: 643, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj (parâmetro export)", extrair: (f) => f.cnpjGerencia },
+];
+
+export const LAYOUT_RECEITA_EXTRA: LayoutArquivo<ReceitaExtraFato> = {
+  entidade: "ReceitaExtra",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposReceitaExtra,
+};
+
+// ── ESTORNORECEITAEXTRA (§4.21, Diária, V23) — o ESTORNO_INGRESSO. ─────────────────────────────
+export interface EstornoReceitaExtraFato {
+  readonly codUnidadeGestora: string;
+  readonly numReceitaExtra: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: Money;
+  readonly motivo: string;
+}
+
+const camposEstornoReceitaExtra: readonly CampoLayout<EstornoReceitaExtraFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numReceitaExtra", posInicial: 7, posFinal: 13, tipo: "NUMERICO", obrigatorio: true, origem: "o número da ReceitaExtra estornada (numeração derivada)", extrair: (f) => f.numReceitaExtra },
+  { nome: "numero", posInicial: 14, posFinal: 20, tipo: "NUMERICO", obrigatorio: true, origem: "derivado: ordem de gravação no exercício", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 21, posFinal: 28, tipo: "DATA", obrigatorio: true, origem: "estorno.data", extrair: (f) => f.data },
+  { nome: "valor", posInicial: 29, posFinal: 44, tipo: "VALOR", obrigatorio: true, origem: "estorno.valor", extrair: (f) => f.valor },
+  { nome: "motivo", posInicial: 45, posFinal: 299, tipo: "ALFA", obrigatorio: true, origem: "MovimentoExtraorcamentario.motivo", extrair: (f) => f.motivo },
+  { nome: "reservado", posInicial: 300, posFinal: 305, tipo: "RESERVADO", obrigatorio: false, origem: "RESERVADO = ZEROS" },
+];
+
+export const LAYOUT_ESTORNO_RECEITA_EXTRA: LayoutArquivo<EstornoReceitaExtraFato> = {
+  entidade: "EstornoReceitaExtra",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposEstornoReceitaExtra,
+};
+
 /** Todos os layouts desta versão, para a auto-validação em lote e a matriz. */
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
@@ -937,4 +1054,6 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_DESPESA_EXTRA,
   LAYOUT_ESTORNO_RETENCAO,
   LAYOUT_ESTORNO_DESPESA_EXTRA,
+  LAYOUT_RECEITA_EXTRA,
+  LAYOUT_ESTORNO_RECEITA_EXTRA,
 ] as const;

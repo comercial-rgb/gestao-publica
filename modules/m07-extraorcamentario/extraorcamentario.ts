@@ -3,6 +3,7 @@ import { diaCivil } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
+import { documentoTemDigitoValido, normalizarDocumento } from "../../packages/documento/index.js";
 import { travar } from "../../packages/locks/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -205,6 +206,14 @@ export async function registrarIngressoExtra(
   roteiro: RoteiroContabil
 ): Promise<{ readonly movimentoId: string; readonly lancamentoId: string }> {
   const dados = zRegistrarIngressoExtraInput.parse(input);
+  // V23 — o documento de quem entregou o valor vai ao Tribunal de Contas; conferido antes de gravar.
+  let documento: string | null = null;
+  if (dados.documentoDoContribuinte !== undefined) {
+    documento = normalizarDocumento(dados.documentoDoContribuinte);
+    if (!documentoTemDigitoValido(documento)) {
+      throw new Error(`O CPF/CNPJ "${dados.documentoDoContribuinte}" não é válido (dígito verificador). Nada foi gravado.`);
+    }
+  }
 
   return prisma.$transaction(async (tx) => {
     // SEM UG: o extraorçamentário é dinheiro de TERCEIRO em trânsito pelo caixa do ente (consignação,
@@ -253,6 +262,7 @@ export async function registrarIngressoExtra(
         data: dados.data,
         lancamentoId,
         historico: dados.historico,
+        documentoDoContribuinte: documento,
         criadoPor: dados.criadoPor,
       },
       select: { id: true },

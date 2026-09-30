@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../../../prisma/generated/client/client.js
 import { Decimal, toMoney } from "../../../../packages/contracts/index.js";
 import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
+import { planoVigenteDoTribunal, type PlanoVigente } from "./plano-do-tribunal.js";
 import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
 import {
   conciliacaoBancaria,
@@ -30,6 +31,8 @@ import {
   LAYOUT_RETENCAO,
   LAYOUT_ESTORNO_RETENCAO,
   LAYOUT_ESTORNO_DESPESA_EXTRA,
+  LAYOUT_RECEITA_EXTRA,
+  LAYOUT_ESTORNO_RECEITA_EXTRA,
   LAYOUT_SALDO_MENSAL,
   MODALIDADE_SEM_LICITACAO,
   SITUACAO_CONTA_ATIVA,
@@ -50,6 +53,8 @@ import {
   type RetencaoFato,
   type EstornoRetencaoFato,
   type EstornoDespesaExtraFato,
+  type ReceitaExtraFato,
+  type EstornoReceitaExtraFato,
   type SaldoMensalFato,
 } from "./layout-2026v11.js";
 
@@ -833,11 +838,11 @@ export async function lerFatosEstornoDespesaExtra(
 }
 
 /** O motivo do estorno extra (255 no leiaute §4.21/§4.22), pela regra da entrada. O legado fora dela é recusado. */
-function motivoExportavelExtra(id: string, motivo: string | null): string {
+function motivoExportavelExtra(id: string, motivo: string | null, arquivo = "EstornoDespesaExtra"): string {
   const m = (motivo ?? "").trim();
   if (m === "" || m.length > 255 || /[\u0000-\u001f]/.test(m) || m.includes("'") || m.includes('"')) {
     throw new Error(
-      `SAGRES/EstornoDespesaExtra — o motivo do estorno ${id} está vazio, passa de 255 caracteres, tem ` +
+      `SAGRES/${arquivo} — o motivo do estorno ${id} está vazio, passa de 255 caracteres, tem ` +
         `quebra de linha ou aspas (gravado antes de o sistema conferir). O leiaute não aceita, e o texto não ` +
         `se inventa. Nada foi gerado.`
     );
@@ -851,6 +856,166 @@ export async function gerarEstornoDespesaExtra(
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosEstornoDespesaExtra(prisma, params);
   return empacotar(LAYOUT_ESTORNO_DESPESA_EXTRA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoDespesaExtra", competencia: params.dia }), fatos);
+}
+
+// ── RECEITAEXTRA (§4.19, Diária, V23) — o INGRESSO extraorçamentário: a retenção e o avulso. ─────
+//
+// ⚠️ O ARQUIVO OU A RECUSA NOMEADA (o regime da conciliação e da unidade): a receita extra depende do
+// PLANO DO TRIBUNAL importado para o exercício (quais contas exigem o vínculo com a retenção). Sem ele,
+// ou com um ingresso que não se descreve inteiro, o arquivo fica FORA do pacote e a prévia diz por
+// quê — o pacote do dia não cai por causa dele, e nada é omitido em silêncio.
+export type ReceitaExtraOuRecusa =
+  | { readonly arquivo: ArquivoGerado; readonly fatos: readonly ReceitaExtraFato[] }
+  | { readonly recusa: string };
+
+/** A conta do PASSIVO que o ingresso creditou (9 dígitos) — ou o erro que diz por que não se sabe. */
+function contaDoIngresso(m: {
+  id: string;
+  valor: { toFixed(c: number): string };
+  tipoConsignacao: { codigo: string; contaPassivo: { codigo: string } | null };
+  lancamento: { numeroControle: string; partidas: readonly { tipo: string; subsistema: string; valor: { toFixed(c: number): string }; conta: { codigo: string } }[] };
+}): string {
+  const candidatas = [
+    ...new Set(
+      m.lancamento.partidas
+        .filter((p) => p.tipo === "CREDITO" && p.subsistema === "PATRIMONIAL" && p.conta.codigo.startsWith("2") && p.valor.toFixed(2) === m.valor.toFixed(2))
+        .map((p) => p.conta.codigo)
+    ),
+  ];
+  if (candidatas.length === 1) return candidatas[0]!.replaceAll(".", "");
+  const doTipo = m.tipoConsignacao.contaPassivo?.codigo;
+  if (doTipo !== undefined && candidatas.includes(doTipo)) return doTipo.replaceAll(".", "");
+  throw new Error(
+    `o ingresso ${m.id} (lançamento ${m.lancamento.numeroControle}) não permite saber qual conta do passivo ele ` +
+      `creditou (${String(candidatas.length)} candidata(s)).`
+  );
+}
+
+export async function gerarReceitaExtraOuRecusa(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly codFonteRecursoExtra: string; readonly dia: Date }
+): Promise<ReceitaExtraOuRecusa> {
+  const nome = nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "ReceitaExtra", competencia: params.dia });
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "INGRESSO", data: { gte, lt } },
+    include: {
+      tipoConsignacao: { select: { codigo: true, contaPassivo: { select: { codigo: true } } } },
+      contaBancaria: true,
+      lancamento: { include: { partidas: { include: { conta: true } } } },
+      pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } },
+    },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  if (movs.length === 0) return { arquivo: empacotar(LAYOUT_RECEITA_EXTRA, nome, []), fatos: [] };
+  if (!(FONTES_RECURSO_EXTRA_SAGRES as readonly string[]).includes(params.codFonteRecursoExtra)) {
+    return { recusa: `A fonte de recurso "${params.codFonteRecursoExtra}" não é uma das admitidas para movimentação extraorçamentária (${FONTES_RECURSO_EXTRA_SAGRES.join(", ")}).` };
+  }
+  const exercicio = params.dia.getUTCFullYear();
+  const plano = await planoVigenteDoTribunal(prisma, exercicio);
+  if (plano === null) {
+    return {
+      recusa:
+        `O plano de contas do Tribunal para ${String(exercicio)} não foi importado: sem ele não se sabe quais contas exigem ` +
+        `o vínculo da receita extra com a retenção.`,
+    };
+  }
+  try {
+    const numeros = await numeracaoNoExercicio(prisma, { tipo: "INGRESSO" }, exercicio);
+    const fatos = movs.map((m): ReceitaExtraFato => {
+      const numero = numeros.get(m.id);
+      if (numero === undefined) throw new Error(`o ingresso ${m.id} ficou fora da numeração do exercício.`);
+      const codConta = contaDoIngresso(m);
+      const exig = plano.contas.get(codConta);
+      if (exig === undefined) throw new Error(`a conta ${codConta} não está no plano do Tribunal importado para ${String(exercicio)} (tabela de ${String(plano.anoDaTabela)}).`);
+      const empenho = m.pagamento?.liquidacao.empenho ?? null;
+      const documento = empenho !== null ? empenho.credorCpfCnpj : m.documentoDoContribuinte;
+      if (documento === null || documento.trim() === "") {
+        throw new Error(`o ingresso ${numero} (${m.credorConsignatario}) foi gravado sem o CPF/CNPJ de quem entregou o valor, e o campo é obrigatório.`);
+      }
+      if (exig.exigeRetencao && (m.pagamento === null || empenho === null)) {
+        throw new Error(`a conta ${codConta} exige o vínculo com a retenção, e o ingresso ${numero} não nasceu de um pagamento.`);
+      }
+      const t = exigirTripla(m.contaBancaria);
+      return {
+        codUnidadeGestora: params.codUnidadeGestora,
+        numero,
+        codContaContabil: codConta,
+        data: m.data,
+        cpfCnpjContribuinte: documento,
+        exercicioFonteRecurso: EXERCICIO_FONTE_ATUAL,
+        codFonteRecursoExtra: params.codFonteRecursoExtra,
+        numeroConta: comDigito(t.conta, m.contaBancaria.digitoConta),
+        numeroAgencia: comDigito(t.agencia, m.contaBancaria.digitoAgencia),
+        codBanco: t.banco,
+        tipoContaBancaria: TIPO_CONTA_CORRENTE,
+        valor: money(m.valor),
+        historico: m.historico,
+        tipoConsignacaoCodigo: m.tipoConsignacao.codigo,
+        exercicio: m.data.getUTCFullYear(),
+        retencao:
+          exig.exigeRetencao && m.pagamento !== null && empenho !== null
+            ? {
+                codUnidadeGestora: params.codUnidadeGestora,
+                codUnidadeOrcamentaria: empenho.ficha.unidadeOrc.codigo,
+                anoEmissaoEmpenho: empenho.ficha.exercicio,
+                numEmpenho: empenho.numero,
+                numPagamento: m.pagamento.numero,
+                tipoConsignacaoCodigo: m.tipoConsignacao.codigo,
+              }
+            : null,
+        cnpjGerencia: params.cnpjGerenciadora,
+      };
+    });
+    return { arquivo: empacotar(LAYOUT_RECEITA_EXTRA, nome, fatos), fatos };
+  } catch (e) {
+    return { recusa: `Receita extra de ${params.dia.toISOString().slice(0, 10)}: ${(e as Error).message}` };
+  }
+}
+
+// ── ESTORNORECEITAEXTRA (§4.21, Diária, V23) — o ESTORNO_INGRESSO (retenção desfeita ou avulso). ───
+// No mesmo regime: ele aponta a ReceitaExtra estornada, que só existe se o plano do exercício DELA foi
+// importado — sem isso, apontaria um número que o tribunal nunca recebeu.
+export type EstornoReceitaExtraOuRecusa =
+  | { readonly arquivo: ArquivoGerado; readonly fatos: readonly EstornoReceitaExtraFato[] }
+  | { readonly recusa: string };
+
+export async function gerarEstornoReceitaExtraOuRecusa(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoReceitaExtraOuRecusa> {
+  const nome = nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoReceitaExtra", competencia: params.dia });
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "ESTORNO_INGRESSO", data: { gte, lt } },
+    include: { estornoDe: { select: { id: true, data: true } } },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  if (movs.length === 0) return { arquivo: empacotar(LAYOUT_ESTORNO_RECEITA_EXTRA, nome, []), fatos: [] };
+  try {
+    const numeros = await numeracaoNoExercicio(prisma, { tipo: "ESTORNO_INGRESSO" }, params.dia.getUTCFullYear());
+    const planos = new Map<number, PlanoVigente | null>();
+    const receitas = new Map<number, ReadonlyMap<string, string>>();
+    const fatos: EstornoReceitaExtraFato[] = [];
+    for (const m of movs) {
+      if (m.estornoDe === null) throw new Error(`o estorno ${m.id} não aponta o ingresso estornado.`);
+      const ano = m.estornoDe.data.getUTCFullYear();
+      if (!planos.has(ano)) planos.set(ano, await planoVigenteDoTribunal(prisma, ano));
+      if (planos.get(ano) === null) throw new Error(`o plano de contas do Tribunal para ${String(ano)} não foi importado, e a receita extra estornada é desse exercício.`);
+      let nums = receitas.get(ano);
+      if (nums === undefined) {
+        nums = await numeracaoNoExercicio(prisma, { tipo: "INGRESSO" }, ano);
+        receitas.set(ano, nums);
+      }
+      const numReceitaExtra = nums.get(m.estornoDe.id);
+      const numero = numeros.get(m.id);
+      if (numReceitaExtra === undefined || numero === undefined) throw new Error(`o estorno ${m.id} ou o ingresso que ele desfaz ficou fora da numeração.`);
+      fatos.push({ codUnidadeGestora: params.codUnidadeGestora, numReceitaExtra, numero, data: m.data, valor: money(m.valor), motivo: motivoExportavelExtra(m.id, m.motivo, "EstornoReceitaExtra") });
+    }
+    return { arquivo: empacotar(LAYOUT_ESTORNO_RECEITA_EXTRA, nome, fatos), fatos };
+  } catch (e) {
+    return { recusa: `Estorno de receita extra de ${params.dia.toISOString().slice(0, 10)}: ${(e as Error).message}` };
+  }
 }
 
 // ── RECEITAORCAMENTARIA (Diária) — Origem: ReceitaArrecadada + natureza/fonte/co. ───────────────
@@ -986,7 +1151,7 @@ export async function gerarRetencao(
  */
 async function numeracaoNoExercicio(
   prisma: PrismaClient,
-  where: { readonly tipo: "DISPENDIO" | "ESTORNO_INGRESSO" | "ESTORNO_DISPENDIO"; readonly comPagamento?: boolean },
+  where: { readonly tipo: "INGRESSO" | "DISPENDIO" | "ESTORNO_INGRESSO" | "ESTORNO_DISPENDIO"; readonly comPagamento?: boolean },
   exercicio: number
 ): Promise<ReadonlyMap<string, string>> {
   const doExercicio = await prisma.movimentoExtraorcamentario.findMany({
@@ -1013,6 +1178,10 @@ export async function lerFatosDespesaExtra(
     readonly dia: Date;
   }
 ): Promise<DespesaExtraFato[]> {
+  // V23 — o plano do Tribunal diz se a conta da despesa extra EXIGE o vínculo com a receita extra.
+  // Sem plano importado para o exercício o vínculo sai em espaços, e a prévia avisa (`lib/portas/sagres`).
+  const plano = await planoVigenteDoTribunal(prisma, params.dia.getUTCFullYear());
+  const numerosDasReceitas = new Map<number, ReadonlyMap<string, string>>();
   if (!(FONTES_RECURSO_EXTRA_SAGRES as readonly string[]).includes(params.codFonteRecursoExtra)) {
     throw new Error(
       `SAGRES/DespesaExtra §4.20 — a fonte de recurso "${params.codFonteRecursoExtra}" (parâmetro de ` +
@@ -1028,12 +1197,13 @@ export async function lerFatosDespesaExtra(
       tipoConsignacao: true,
       contaBancaria: { include: { fonte: true } },
       lancamento: { include: { partidas: { include: { conta: true } } } },
+      alocacoesFeitas: { select: { ingresso: { select: { id: true, data: true } } } },
     },
     orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
   });
 
   const fatos: DespesaExtraFato[] = [];
-  doDia.forEach((m) => {
+  for (const m of doDia) {
     const numero = numeros.get(m.id);
     if (numero === undefined) throw new Error(`SAGRES/DespesaExtra — o dispêndio ${m.id} ficou fora da numeração do exercício.`);
     const t = exigirTripla(m.contaBancaria);
@@ -1045,10 +1215,34 @@ export async function lerFatosDespesaExtra(
           `partida de DÉBITO patrimonial. O §4.20 exige a conta contábil da despesa extra.`
       );
     }
+    const codConta = debito.conta.codigo.replaceAll(".", ""); // PCASP "2.1.8.8.1.02.00" → 9 dígitos.
+    let receitaExtra: DespesaExtraFato["receitaExtra"] = null;
+    if (plano !== null && plano.contas.get(codConta)?.exigeReceitaExtra === true) {
+      // "Não poderá existir uma despesa extra para várias receitas extraorçamentárias" (§4.20): o
+      // recolhimento tem de dizer QUAL retenção quita, e uma só.
+      if (m.alocacoesFeitas.length !== 1) {
+        throw new Error(
+          `SAGRES/DespesaExtra — o recolhimento ${numero} (${m.valor.toFixed(2)}) está na conta ${codConta}, que o plano ` +
+            `do Tribunal manda relacionar a UMA receita extra, e ele compõe ${String(m.alocacoesFeitas.length)} retenção(ões). ` +
+            `Registre um recolhimento por retenção. Nada foi gerado.`
+        );
+      }
+      const ingresso = m.alocacoesFeitas[0]!.ingresso;
+      const ano = ingresso.data.getUTCFullYear();
+      let nums = numerosDasReceitas.get(ano);
+      if (nums === undefined) {
+        nums = await numeracaoNoExercicio(prisma, { tipo: "INGRESSO" }, ano);
+        numerosDasReceitas.set(ano, nums);
+      }
+      const n = nums.get(ingresso.id);
+      if (n === undefined) throw new Error(`SAGRES/DespesaExtra — a receita extra do recolhimento ${numero} ficou fora da numeração.`);
+      receitaExtra = { codUnidadeGestora: params.codUnidadeGestora, exercicio: ano, numero: n };
+    }
     fatos.push({
       codUnidadeGestora: params.codUnidadeGestora,
       numero,
-      codContaContabil: debito.conta.codigo.replaceAll(".", ""), // PCASP "2.1.8.8.1.02.00" → 9 dígitos.
+      receitaExtra,
+      codContaContabil: codConta,
       data: m.data,
       exercicioFonteRecurso: EXERCICIO_FONTE_ATUAL,
       codFonteRecursoExtra: params.codFonteRecursoExtra,
@@ -1063,7 +1257,7 @@ export async function lerFatosDespesaExtra(
       codFonteRecursoPagamento: m.contaBancaria.fonte.codigo,
       cnpjGerencia: params.cnpjGerenciadora,
     });
-  });
+  }
   return fatos;
 }
 

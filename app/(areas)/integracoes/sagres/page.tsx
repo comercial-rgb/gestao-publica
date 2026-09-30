@@ -13,6 +13,9 @@ import {
 } from "../../../../lib/portas/sagres";
 import { POC_SAGRES } from "../../../../lib/portas/sagres-poc";
 import { SeletorCompetencia } from "./SeletorCompetencia";
+import { FormPlanoDoTribunal } from "./FormPlanoDoTribunal";
+import { lerPlanoDoTribunal, type ResumoDoPlanoDoTribunal } from "../../../../lib/portas/sagres";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { diaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
@@ -107,19 +110,65 @@ function BannerHonesto(): React.ReactElement {
  * silenciosa é buraco.
  */
 const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: string; readonly exporta: boolean; readonly nota: string }[] = [
+  // V23 — as 58 tabelas do leiaute 2026 v1.1 (§4.1 a §4.59; não há §4.47), conferidas contra o índice do leiaute oficial.
+  { entidade: "UnidadeOrcamentaria", secao: "§4.1", exporta: true, nota: "Gerado a partir das unidades orçamentárias e da declaração vigente no fim do mês (responsável, ato e natureza jurídica)." },
+  { entidade: "Programas", secao: "§4.2", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "Acao", secao: "§4.3", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "Dotacao", secao: "§4.4", exporta: true, nota: "Gerado a partir das fichas orçamentárias do exercício." },
-  { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Gerado a partir dos empenhos, com a classificação da ficha." },
-  { entidade: "Liquidacao", secao: "§4.10", exporta: true, nota: "Gerado a partir das liquidações, com o empenho e a ficha." },
+  { entidade: "AtualizacaoOrcamentaria", secao: "§4.5", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "DecretoseOficios", secao: "§4.6", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "ReceitaPrevista", secao: "§4.7", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "Empenhos", secao: "§4.8", exporta: true, nota: "Gerado a partir dos empenhos, com a classificação da ficha. As anulações não entram aqui." },
+  { entidade: "Estornos", secao: "§4.9", exporta: true, nota: "Gerado a partir das anulações de empenho, inteiras e parciais, com o motivo informado na anulação." },
+  { entidade: "Liquidacao", secao: "§4.10", exporta: true, nota: "Gerado a partir das liquidações, com o empenho e a ficha. As anulações não entram aqui." },
+  { entidade: "EstornoLiquidacao", secao: "§4.11", exporta: true, nota: "Gerado a partir das anulações de liquidação, inteiras e parciais, com o motivo informado na anulação." },
   { entidade: "Pagamentos", secao: "§4.12", exporta: true, nota: "Gerado a partir dos pagamentos, com a conta pagadora." },
+  { entidade: "EstornoPagamento", secao: "§4.13", exporta: true, nota: "Gerado a partir das anulações de pagamento, com o motivo informado na anulação." },
   { entidade: "Retencao", secao: "§4.14", exporta: true, nota: "Gerado a partir das retenções efetuadas nos pagamentos, conforme a correspondência do tipo de retenção (§5.24)." },
+  { entidade: "EstornoRetencao", secao: "§4.15", exporta: true, nota: "Gerado a partir das retenções desfeitas pela anulação do pagamento." },
   { entidade: "ReceitaOrcamentaria", secao: "§4.16", exporta: true, nota: "Gerado a partir da receita arrecadada; a conta arrecadadora é informada na geração." },
+  { entidade: "TransfRecebida", secao: "§4.17", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "TransfConcedida", secao: "§4.18", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "ReceitaExtra", secao: "§4.19", exporta: true, nota: "Gerado a partir das retenções e dos ingressos avulsos. Depende do plano de contas do Tribunal importado para o exercício." },
   { entidade: "DespesaExtra", secao: "§4.20", exporta: true, nota: "Gerado a partir dos recolhimentos; a fonte (860/861/862/869) é informada na geração." },
+  { entidade: "EstornoReceitaExtra", secao: "§4.21", exporta: true, nota: "Gerado a partir dos estornos de ingresso, com o motivo informado." },
+  { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: true, nota: "Gerado a partir dos estornos de recolhimento, com o motivo informado." },
   { entidade: "CadastroContaBancaria", secao: "§4.23", exporta: true, nota: "Gerado a partir do cadastro das contas bancárias (banco, agência e conta)." },
+  { entidade: "RelacionamentoCCorrenteFontePagadora", secao: "§4.24", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "SaldoInicial", secao: "§4.25", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "SaldoMensal", secao: "§4.26", exporta: true, nota: "Soma do extrato bancário até o fim do mês." },
-  { entidade: "MovimentacaoEntreContas", secao: "§4.59", exporta: true, nota: "Gerado a partir das transferências entre contas do próprio ente." },
-  { entidade: "EstornoRetencao", secao: "§4.15", exporta: false, nota: "O estorno da retenção é registrado no sistema; a geração deste arquivo ainda não está disponível." },
-  { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: false, nota: "O estorno do recolhimento é registrado no sistema; a geração deste arquivo ainda não está disponível." },
-  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Depende de retenção sobre restos a pagar, inexistente nos dados de demonstração." },
+  { entidade: "ConciliacaoBancaria", secao: "§4.27", exporta: true, nota: "Gerado a partir da conciliação do fim do mês; a conta que não fecha fica fora, com o motivo." },
+  { entidade: "PagamentosRestos", secao: "§4.28", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "EstornoPagamentoRestos", secao: "§4.29", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "CancelamentoRestos", secao: "§4.30", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "LiquidacaoRestos", secao: "§4.31", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "EstornoLiquidacaoRestos", secao: "§4.32", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "EstornoRetencaoRestos", secao: "§4.34", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "Fornecedores", secao: "§4.35", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "Ordenador", secao: "§4.36", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoEmpenhoObra", secao: "§4.37", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoEmpenhoLicitacao", secao: "§4.38", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", secao: "§4.39", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RestosInscritos", secao: "§4.40", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "PloaAcao", secao: "§4.41", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "PloaDotacao", secao: "§4.42", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "PloaPrograma", secao: "§4.43", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "PloaReceitaPrevista", secao: "§4.44", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "PloaUnidadeOrcamentaria", secao: "§4.45", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoEmpenhoNaturezaContratacao", secao: "§4.46", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "ResponsavelSiafic", secao: "§4.48", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "NormasOrcamentarias", secao: "§4.49", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "ProprietarioFrota", secao: "§4.50", exporta: false, nota: "Frota: fora da contabilidade." },
+  { entidade: "LocadorPrestador", secao: "§4.51", exporta: false, nota: "Frota: fora da contabilidade." },
+  { entidade: "Veiculos", secao: "§4.52", exporta: false, nota: "Frota: fora da contabilidade." },
+  { entidade: "Maquinas", secao: "§4.53", exporta: false, nota: "Frota: fora da contabilidade." },
+  { entidade: "SituacaoFrota", secao: "§4.54", exporta: false, nota: "Frota: fora da contabilidade." },
+  { entidade: "Abastecimento", secao: "§4.55", exporta: false, nota: "Frota: fora da contabilidade." },
+  { entidade: "Farmacia", secao: "§4.56", exporta: false, nota: "Farmácia: fora da contabilidade." },
+  { entidade: "EstoqueFarmacia", secao: "§4.57", exporta: false, nota: "Farmácia: fora da contabilidade." },
+  { entidade: "RelacionamentoLiquidacaoPagamento", secao: "§4.58", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "MovimentacaoEntreContasBancarias", secao: "§4.59", exporta: true, nota: "Gerado a partir das transferências entre contas do próprio ente." },
 ];
 
 /** aaaa-mm-dd a partir de um Date UTC — o mesmo formato que a porta e o `<input type="date">` usam. */
@@ -175,7 +224,9 @@ function AvisoSemMovimento({
 }
 
 /** O tipo da violação em português — o enum não vai para a tela. */
-const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES", string> = {
+const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES" | "RECEITA_EXTRA_FORA_DO_PACOTE" | "PLANO_DO_TRIBUNAL_AUSENTE", string> = {
+  RECEITA_EXTRA_FORA_DO_PACOTE: "Receita extra fora do pacote",
+  PLANO_DO_TRIBUNAL_AUSENTE: "Plano do Tribunal não importado",
   OBRIGATORIEDADE: "Campo obrigatório vazio",
   DOMINIO: "Código fora da tabela",
   INTEGRIDADE_REFERENCIAL: "Referência inexistente",
@@ -256,6 +307,11 @@ export default async function SagresPage({
   const hrefDia = (d: string): string => `/integracoes/sagres?dia=${d}&mes=${mesIso}`;
   const hrefMes = (m: string): string => `/integracoes/sagres?dia=${diaIso}&mes=${m}`;
 
+  // V23 — o plano de contas do Tribunal do exercício do dia escolhido, e quem pode importá-lo.
+  const exercicioDoDia = diaValido ? Number(diaIso.slice(0, 4)) : Number(POC_SAGRES.dia.toISOString().slice(0, 4));
+  const plano: ResumoDoPlanoDoTribunal = await lerPlanoDoTribunal(exercicioDoDia);
+  const podeImportarPlano = (await acoesPermitidas(["IMPORTAR_PLANO_DO_TRIBUNAL"])).has("IMPORTAR_PLANO_DO_TRIBUNAL");
+
   return (
     <div className="space-y-6">
       {cabecalho}
@@ -292,6 +348,27 @@ export default async function SagresPage({
             </tbody>
           </table>
         </div>
+      </Card>
+
+      {/* ── V23: O PLANO DE CONTAS DO TRIBUNAL (exigências por conta) ── */}
+      <Card>
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Plano de contas do Tribunal — {plano.exercicio}</h2>
+          <Badge status={plano.vigente !== null ? "ok" : "alerta"}>{plano.vigente !== null ? "importado" : "não importado"}</Badge>
+        </div>
+        {plano.vigente !== null ? (
+          <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+            <div><dt className="inline text-[color:var(--color-ink-2)]">Planilha: </dt><dd className="inline">{plano.vigente.arquivoNome} (tabela de {plano.vigente.anoDaTabela})</dd></div>
+            <div><dt className="inline text-[color:var(--color-ink-2)]">Contas: </dt><dd className="inline">{plano.vigente.contas} · {plano.vigente.exigemRetencao} exigem a retenção · {plano.vigente.exigemReceitaExtra} exigem a receita extra</dd></div>
+            <div className="sm:col-span-2"><dt className="inline text-[color:var(--color-ink-2)]">Por que esta tabela: </dt><dd className="inline">{plano.vigente.fundamento}</dd></div>
+            <div className="sm:col-span-2 break-all text-xs text-[color:var(--color-ink-3)]"><dt className="inline">Código de verificação da planilha: </dt><dd className="inline">{plano.vigente.arquivoSha256}</dd></div>
+          </dl>
+        ) : (
+          <p className="text-sm text-[color:var(--color-ink-2)]">
+            Sem a planilha do exercício, a receita extra fica fora do pacote e o recolhimento sai sem o vínculo conferido.
+          </p>
+        )}
+        {podeImportarPlano ? <div className="mt-3"><FormPlanoDoTribunal exercicio={plano.exercicio} /></div> : null}
       </Card>
 
       {/* ── ESCOLHA DA COMPETÊNCIA ── */}

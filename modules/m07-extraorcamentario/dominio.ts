@@ -199,6 +199,11 @@ export const zRegistrarIngressoExtraInput = z.object({
   data: z.coerce.date(),
   historico: z.string().min(1),
   criadoPor: z.string().min(1),
+  /**
+   * V23 — o CPF/CNPJ de quem entregou o valor (SAGRES ReceitaExtra §4.19). Opcional no domínio (há
+   * chamadores anteriores); a tela o exige. Quando vem, o dígito verificador é conferido.
+   */
+  documentoDoContribuinte: z.string().trim().min(1).optional(),
 });
 
 /**

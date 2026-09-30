@@ -1,0 +1,50 @@
+// ============================================================================
+// M15 — SAGRES (TCE-PB): o PLANO DE CONTAS DO TRIBUNAL, com as exigências por conta.
+//
+// O leiaute 2026 v1.1 (§5.28 PlanoDeContas, §4.19 ReceitaExtra, §4.20 DespesaExtra) manda
+// relacionar a receita extra com a retenção, e a despesa extra com a receita extra, "quando a
+// Conta Contábil exigir, conforme a coluna 'Exige Retenção?'" da planilha que o tribunal publica
+// (colunas `exige_retencao` e `exige_receita_extra`, por `ano_conta`).
+//
+// ⚠️ POR QUE UMA IMPORTAÇÃO DESIGNADA, E NÃO "A PLANILHA DO ANO": o item "PCASP" da seção 2026 da
+// página oficial aponta o `Pcasp_2025.xlsx`, que NÃO tem linhas de 2026 e cujas linhas de 2025 têm
+// todas as exigências em 0 (medido em 29/09/2026; 2022-2024 têm 32/42/42 contas com retenção). Qual
+// tabela vale para o exercício é uma decisão com fundamento, registrada — não um palpite do código.
+// A vigente é a importação mais recente para o exercício. APPEND-ONLY.
+// ============================================================================
+
+model ImportacaoDoPlanoDoTribunal {
+  id String @id @default(cuid())
+
+  /// O exercício da remessa para o qual esta tabela foi designada.
+  exercicio Int
+  /// O `ano_conta` das linhas importadas (pode ser anterior ao exercício, com fundamento).
+  anoDaTabela Int
+  arquivoNome String
+  /// sha256 do arquivo importado — a prova de qual planilha foi lida.
+  arquivoSha256 String
+  /// Por que ESTA tabela vale para o exercício. Obrigatório.
+  fundamento String
+
+  contas ContaDoPlanoDoTribunal[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([exercicio, criadoEm])
+}
+
+model ContaDoPlanoDoTribunal {
+  id String @id @default(cuid())
+
+  importacaoId String
+  importacao   ImportacaoDoPlanoDoTribunal @relation(fields: [importacaoId], references: [id])
+
+  /// O código da conta sem pontos, 9 dígitos, como o SAGRES recebe.
+  codigo            String
+  descricao         String
+  exigeRetencao     Boolean
+  exigeReceitaExtra Boolean
+
+  @@unique([importacaoId, codigo])
+}

@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
+import { comEscritaAutenticada } from "./sessao";
 import {
   gerarCadastroContaBancaria,
   gerarDespesaExtra,
@@ -13,6 +14,10 @@ import {
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
   gerarEstornoDespesaExtra,
+  gerarReceitaExtraOuRecusa,
+  gerarEstornoReceitaExtraOuRecusa,
+  planoVigenteDoTribunal,
+  importarPlanoDoTribunal,
   gerarConciliacaoBancariaOuRecusa,
   gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
@@ -49,6 +54,8 @@ import {
   LAYOUT_ESTORNO_LIQUIDACAO,
   LAYOUT_ESTORNO_RETENCAO,
   LAYOUT_ESTORNO_DESPESA_EXTRA,
+  LAYOUT_RECEITA_EXTRA,
+  LAYOUT_ESTORNO_RECEITA_EXTRA,
   LAYOUT_CONCILIACAO_BANCARIA,
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_RECEITA_ORCAMENTARIA,
@@ -234,6 +241,10 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   // V21 — a UNIDADE ORÇAMENTÁRIA (§4.1), no mesmo regime: o arquivo, ou a recusa nomeada.
   const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: mesRef });
+  // V23 — a RECEITA EXTRA (§4.19) e o estorno dela (§4.21), no mesmo regime.
+  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia });
+  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia });
+  const semPlano = despesasExtra.length > 0 && (await planoVigenteDoTribunal(prisma, anoCivil(p.dia))) === null;
 
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
@@ -243,6 +254,15 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     ...("recusa" in conciliacao
       ? [{ arquivo: "ConciliacaoBancaria", linha: 0, campo: "conta", regra: "CONCILIACAO_NAO_FECHA" as const, detalhe: `${conciliacao.recusa} O arquivo da conciliação fica FORA do pacote até a conta fechar.` }]
       : validarObrigatorios(LAYOUT_CONCILIACAO_BANCARIA, conciliacao.fatos)),
+    ...("recusa" in receitaExtra
+      ? [{ arquivo: "ReceitaExtra", linha: 0, campo: "ingresso", regra: "RECEITA_EXTRA_FORA_DO_PACOTE" as const, detalhe: `${receitaExtra.recusa} O arquivo da receita extra fica FORA do pacote.` }]
+      : validarObrigatorios(LAYOUT_RECEITA_EXTRA, receitaExtra.fatos)),
+    ...("recusa" in estornoReceitaExtra
+      ? [{ arquivo: "EstornoReceitaExtra", linha: 0, campo: "estorno", regra: "RECEITA_EXTRA_FORA_DO_PACOTE" as const, detalhe: `${estornoReceitaExtra.recusa} O arquivo do estorno da receita extra fica FORA do pacote.` }]
+      : validarObrigatorios(LAYOUT_ESTORNO_RECEITA_EXTRA, estornoReceitaExtra.fatos)),
+    ...(semPlano
+      ? [{ arquivo: "DespesaExtra", linha: 0, campo: "receitaExtra", regra: "PLANO_DO_TRIBUNAL_AUSENTE" as const, detalhe: `O plano de contas do Tribunal para ${String(anoCivil(p.dia))} não foi importado: o vínculo da despesa extra com a receita extra saiu em branco sem ser conferido.` }]
+      : []),
     ...validarObrigatorios(LAYOUT_DOTACAO, dotacao),
     ...validarObrigatorios(LAYOUT_EMPENHOS, empenhos),
     ...validarObrigatorios(LAYOUT_LIQUIDACAO, liquidacoes),
@@ -280,7 +300,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : [])];
+  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : [])];
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -304,6 +324,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     { g: aEstornoDespesaExtra, l: LAYOUT_ESTORNO_DESPESA_EXTRA },
     ...("arquivo" in conciliacao ? [{ g: conciliacao.arquivo, l: LAYOUT_CONCILIACAO_BANCARIA }] : []),
     ...("arquivo" in unidades ? [{ g: unidades.arquivo, l: LAYOUT_UNIDADE_ORCAMENTARIA }] : []),
+    ...("arquivo" in receitaExtra ? [{ g: receitaExtra.arquivo, l: LAYOUT_RECEITA_EXTRA }] : []),
+    ...("arquivo" in estornoReceitaExtra ? [{ g: estornoReceitaExtra.arquivo, l: LAYOUT_ESTORNO_RECEITA_EXTRA }] : []),
     { g: aReceita, l: LAYOUT_RECEITA_ORCAMENTARIA },
     { g: aCadastro, l: LAYOUT_CADASTRO_CONTA },
     { g: aSaldo, l: LAYOUT_SALDO_MENSAL },
@@ -367,6 +389,10 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   if ("arquivo" in conciliacao) arquivos.push(conciliacao.arquivo);
   const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: mesRef });
   if ("arquivo" in unidades) arquivos.push(unidades.arquivo);
+  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia });
+  if ("arquivo" in receitaExtra) arquivos.push(receitaExtra.arquivo);
+  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia });
+  if ("arquivo" in estornoReceitaExtra) arquivos.push(estornoReceitaExtra.arquivo);
 
   const pacote = montarPacote(
     { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora },
@@ -390,8 +416,10 @@ export interface ResumoMovimento {
   readonly retencoes: number;
   /** Despesa extra: dispêndio extraorçamentário — o recolhimento da consignação (§4.20). */
   readonly despesasExtra: number;
-  /** V23 — anulações de empenho, liquidação e pagamento, e estornos de retenção e de despesa extra (§4.9, §4.11, §4.13, §4.15, §4.22). */
+  /** V23 — anulações de empenho, liquidação e pagamento, e estornos extraorçamentários (§4.9, §4.11, §4.13, §4.15, §4.21, §4.22). */
   readonly estornos: number;
+  /** V23 — ingresso extraorçamentário AVULSO (caução, depósito): ReceitaExtra §4.19. A retenção já conta em `retencoes`. */
+  readonly receitasExtra: number;
   /** A soma de todos os acima — 0 significa "dia/mês sem movimento", e a tela precisa dizer isso. */
   readonly total: number;
 }
@@ -430,10 +458,11 @@ interface Contagem {
   retencoes: number;
   despesasExtra: number;
   estornos: number;
+  receitasExtra: number;
 }
 
 function contagemZero(): Contagem {
-  return { empenhos: 0, liquidacoes: 0, pagamentos: 0, receitas: 0, transferencias: 0, retencoes: 0, despesasExtra: 0, estornos: 0 };
+  return { empenhos: 0, liquidacoes: 0, pagamentos: 0, receitas: 0, transferencias: 0, retencoes: 0, despesasExtra: 0, estornos: 0, receitasExtra: 0 };
 }
 
 function somar(alvo: Contagem, parcela: Contagem): void {
@@ -445,12 +474,13 @@ function somar(alvo: Contagem, parcela: Contagem): void {
   alvo.retencoes += parcela.retencoes;
   alvo.despesasExtra += parcela.despesasExtra;
   alvo.estornos += parcela.estornos;
+  alvo.receitasExtra += parcela.receitasExtra;
 }
 
 function fecharResumo(c: Contagem): ResumoMovimento {
   return {
     ...c,
-    total: c.empenhos + c.liquidacoes + c.pagamentos + c.receitas + c.transferencias + c.retencoes + c.despesasExtra + c.estornos,
+    total: c.empenhos + c.liquidacoes + c.pagamentos + c.receitas + c.transferencias + c.retencoes + c.despesasExtra + c.estornos + c.receitasExtra,
   };
 }
 
@@ -470,6 +500,7 @@ function rotularResumo(r: ResumoMovimento): string {
   por(r.transferencias, "transferência", "transferências");
   por(r.retencoes, "retenção", "retenções");
   por(r.despesasExtra, "despesa extra", "despesas extra");
+  por(r.receitasExtra, "receita extra", "receitas extra");
   por(r.estornos, "anulação", "anulações");
   return partes.length === 0 ? "sem movimento" : partes.join(" · ");
 }
@@ -524,7 +555,7 @@ export async function lerPeriodosComMovimento(): Promise<PeriodosComMovimento> {
  */
 export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>): Promise<PeriodosComMovimento> {
   const anulacao = { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] };
-  const [empenhos, liquidacoes, pagamentos, receitas, transferencias, retencoes, despesasExtra, fichas, anEmp, anLiq, anPag, estExtra] = await Promise.all([
+  const [empenhos, liquidacoes, pagamentos, receitas, transferencias, retencoes, despesasExtra, fichas, anEmp, anLiq, anPag, estExtra, ingressosAvulsos] = await Promise.all([
     prisma.empenho.findMany({ where: { estornoDeId: null, anulacaoParcialDeId: null }, select: { data: true } }),
     prisma.liquidacao.findMany({ where: { estornoDeId: null, anulacaoParcialDeId: null }, select: { data: true } }),
     // Estorno e anulação parcial NÃO são pagamento — mesmo filtro de `lerFatosPagamentos`.
@@ -537,7 +568,8 @@ export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>)
     prisma.empenho.findMany({ where: anulacao, select: { data: true } }),
     prisma.liquidacao.findMany({ where: anulacao, select: { data: true } }),
     prisma.pagamento.findMany({ where: anulacao, select: { data: true } }),
-    prisma.movimentoExtraorcamentario.findMany({ where: { OR: [{ tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null } }, { tipo: "ESTORNO_DISPENDIO" }] }, select: { data: true } }),
+    prisma.movimentoExtraorcamentario.findMany({ where: { OR: [{ tipo: "ESTORNO_INGRESSO" }, { tipo: "ESTORNO_DISPENDIO" }] }, select: { data: true } }),
+    prisma.movimentoExtraorcamentario.findMany({ where: { tipo: "INGRESSO", pagamentoId: null }, select: { data: true } }),
   ]);
 
   const porDia = new Map<string, Contagem>();
@@ -561,6 +593,7 @@ export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>)
   acumular(retencoes.map((l) => l.data), "retencoes");
   acumular(despesasExtra.map((l) => l.data), "despesasExtra");
   acumular([...anEmp, ...anLiq, ...anPag, ...estExtra].map((l) => l.data), "estornos");
+  acumular(ingressosAvulsos.map((l) => l.data), "receitasExtra");
 
   // Ordem cronológica: a Comissão lê a massa como uma linha do tempo, não como um Map.
   const chavesOrdenadas = [...porDia.keys()].sort();
@@ -589,4 +622,62 @@ export async function periodosComMovimentoDe(prisma: ReturnType<typeof cliente>)
   });
 
   return { dias, meses, exercicios: [...new Set(fichas.map((f) => f.exercicio))].sort((a, b) => a - b) };
+}
+
+/* ────────────────────────────────────────────────────────────────────────────────────────────────
+ * V23 — O PLANO DE CONTAS DO TRIBUNAL (as exigências por conta da receita e da despesa extra)
+ * ──────────────────────────────────────────────────────────────────────────────────────────────*/
+
+export interface ResumoDoPlanoDoTribunal {
+  readonly exercicio: number;
+  readonly vigente: {
+    readonly anoDaTabela: number;
+    readonly arquivoNome: string;
+    readonly arquivoSha256: string;
+    readonly fundamento: string;
+    readonly criadoEm: Date;
+    readonly criadoPor: string;
+    readonly contas: number;
+    readonly exigemRetencao: number;
+    readonly exigemReceitaExtra: number;
+  } | null;
+}
+
+/** A tabela vigente do exercício, resumida para a tela. Leitura. */
+export async function lerPlanoDoTribunal(exercicio: number): Promise<ResumoDoPlanoDoTribunal> {
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
+  const plano = await planoVigenteDoTribunal(cliente(), exercicio);
+  if (plano === null) return { exercicio, vigente: null };
+  const contas = [...plano.contas.values()];
+  return {
+    exercicio,
+    vigente: {
+      anoDaTabela: plano.anoDaTabela,
+      arquivoNome: plano.arquivoNome,
+      arquivoSha256: plano.arquivoSha256,
+      fundamento: plano.fundamento,
+      criadoEm: plano.criadoEm,
+      criadoPor: plano.criadoPor,
+      contas: contas.length,
+      exigemRetencao: contas.filter((c) => c.exigeRetencao).length,
+      exigemReceitaExtra: contas.filter((c) => c.exigeReceitaExtra).length,
+    },
+  };
+}
+
+/** IMPORTA a planilha do Tribunal designada para o exercício. O serviço cobra IMPORTAR_PLANO_DO_TRIBUNAL. */
+export async function importarPlanoDoTribunalPelaTela(input: {
+  readonly exercicio: number;
+  readonly anoDaTabela: number;
+  readonly arquivoNome: string;
+  readonly conteudo: Buffer;
+  readonly fundamento: string;
+}): Promise<string> {
+  const r = await comEscritaAutenticada("IMPORTAR_PLANO_DO_TRIBUNAL", (criadoPor) =>
+    importarPlanoDoTribunal(cliente(), { ...input, criadoPor })
+  );
+  return (
+    `Tabela de ${String(input.anoDaTabela)} importada para ${String(input.exercicio)}: ${String(r.contas)} contas, ` +
+    `${String(r.exigemRetencao)} exigem o vínculo com a retenção e ${String(r.exigemReceitaExtra)} com a receita extra.`
+  );
 }

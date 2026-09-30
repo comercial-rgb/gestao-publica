@@ -35,6 +35,8 @@ import {
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
   gerarEstornoDespesaExtra,
+  gerarReceitaExtraOuRecusa,
+  gerarEstornoReceitaExtraOuRecusa,
   gerarConciliacaoBancariaOuRecusa,
   gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
@@ -147,6 +149,8 @@ async function periodosComMovimento(prisma: PrismaClient): Promise<{ dias: strin
   juntar(await prisma.pagamento.findMany({ where: { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] }, select: { data: true } }), "data");
   // V23 — os estornos extraorçamentários (EstornoRetencao §4.15 e EstornoDespesaExtra §4.22).
   juntar(await prisma.movimentoExtraorcamentario.findMany({ where: { OR: [{ tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null } }, { tipo: "ESTORNO_DISPENDIO" }] }, select: { data: true } }), "data");
+  // V23 — o ingresso avulso e o estorno de ingresso também têm arquivo (ReceitaExtra §4.19, EstornoReceitaExtra §4.21).
+  juntar(await prisma.movimentoExtraorcamentario.findMany({ where: { OR: [{ tipo: "INGRESSO" }, { tipo: "ESTORNO_INGRESSO" }] }, select: { data: true } }), "data");
   juntar(await prisma.receitaArrecadada.findMany({ select: { dataArrecadacao: true } }), "dataArrecadacao");
   juntar(await prisma.transferenciaEntreContas.findMany({ select: { data: true } }), "data");
   juntar(await prisma.movimentoExtraorcamentario.findMany({ where: { tipo: "INGRESSO", pagamentoId: { not: null } }, select: { data: true } }), "data");
@@ -192,6 +196,13 @@ async function gerarSagresDiario(prisma: PrismaClient, dia: string): Promise<num
     gerarRetencao(prisma, { codUnidadeGestora: ug, dia: d }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, codFonteRecursoExtra: POC_SAGRES.codFonteRecursoExtra, dia: d }),
   ]);
+  // V23 — a receita extra e o estorno dela: o arquivo, ou o motivo no console (o pacote não cai por eles).
+  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, codFonteRecursoExtra: POC_SAGRES.codFonteRecursoExtra, dia: d });
+  if ("arquivo" in receitaExtra) arquivos.push(receitaExtra.arquivo);
+  else console.log(`  · ${dia} — ReceitaExtra fora do pacote: ${receitaExtra.recusa.slice(0, 160)}`);
+  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: ug, dia: d });
+  if ("arquivo" in estornoReceitaExtra) arquivos.push(estornoReceitaExtra.arquivo);
+  else console.log(`  · ${dia} — EstornoReceitaExtra fora do pacote: ${estornoReceitaExtra.recusa.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "diario", dia), dia, "DIARIO", arquivos);
 }
 

@@ -39,6 +39,10 @@ export function FormIngresso({
           <span className={ROTULO}>De quem é o valor</span>
           <input id={`${id}-credor`} name="credorConsignatario" required className={CAMPO} />
         </label>
+        <label htmlFor={`${id}-documento`} className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>CPF ou CNPJ de quem entregou</span>
+          <input id={`${id}-documento`} name="documentoDoContribuinte" required inputMode="numeric" placeholder="00.000.000/0000-00" className={CAMPO} />
+        </label>
         <label htmlFor={`${id}-conta`} className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Conta que recebeu</span>
           <select id={`${id}-conta`} name="contaBancaria" required className={CAMPO} defaultValue="">

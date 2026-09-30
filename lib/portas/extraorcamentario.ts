@@ -228,6 +228,8 @@ export async function registrarRecolhimento(input: {
 export async function registrarIngressoManual(input: {
   readonly tipoConsignacaoCodigo: string;
   readonly credorConsignatario: string;
+  /** V23 — obrigatório na tela: o Tribunal de Contas recebe o CPF/CNPJ de quem entregou o valor. */
+  readonly documentoDoContribuinte: string;
   readonly contaBancaria: string;
   readonly valor: string;
   readonly data: string;
@@ -246,7 +248,7 @@ export async function registrarIngressoManual(input: {
   await comEscritaAutenticada("REGISTRAR_INGRESSO_EXTRA", (criadoPor) =>
     registrarIngressoExtra(
       prisma,
-      { tipoConsignacaoId: tipo.id, credorConsignatario: input.credorConsignatario, contaBancaria: input.contaBancaria, fonteId: conta.fonteId, valor, data: meioDiaCivil(input.data), historico: input.historico, criadoPor },
+      { tipoConsignacaoId: tipo.id, credorConsignatario: input.credorConsignatario, documentoDoContribuinte: input.documentoDoContribuinte, contaBancaria: input.contaBancaria, fonteId: conta.fonteId, valor, data: meioDiaCivil(input.data), historico: input.historico, criadoPor },
       roteiroIngressoExtra({ disponibilidade, consignacaoAPagar })
     )
   );

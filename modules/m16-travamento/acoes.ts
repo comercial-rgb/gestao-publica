@@ -141,6 +141,8 @@ export type AcaoDoSistema =
   | "JUSTIFICAR_PENDENCIA"
   // ── M18 — SAGRES Captura 2.0 ──
   | "SUBMETER_CAPTURA"
+  // ── M15 — V23: o plano de contas do Tribunal, designado para o exercício com fundamento ──
+  | "IMPORTAR_PLANO_DO_TRIBUNAL"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
   | "IMPORTAR_FOLHA"
   | "IMPORTAR_TRIBUTOS"
@@ -863,6 +865,7 @@ export type NomeDeServico =
   | "registrarPendenciaManual"
   | "justificarPendencia"
   | "submeterCaptura"
+  | "importarPlanoDoTribunal"
   | "confirmarImportacaoFolha"
   | "confirmarImportacaoTributos"
   | "cadastrarClasseDeMaterial"
@@ -1418,6 +1421,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarPendenciaManual: "REGISTRAR_PENDENCIA_MANUAL",
   justificarPendencia: "JUSTIFICAR_PENDENCIA",
   submeterCaptura: "SUBMETER_CAPTURA",
+  importarPlanoDoTribunal: "IMPORTAR_PLANO_DO_TRIBUNAL",
   confirmarImportacaoFolha: "IMPORTAR_FOLHA",
   confirmarImportacaoTributos: "IMPORTAR_TRIBUTOS",
 
@@ -2611,6 +2615,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerFatosEstornos: "leitura (Prisma → DTO Estornos, a anulação com o empenho anulado — não muta)",
   gerarEstornoLiquidacao: "leitura (gera o TXT SAGRES EstornoLiquidacao §4.11 — não muta)",
   lerFatosEstornoLiquidacao: "leitura (Prisma → DTO EstornoLiquidacao, a anulação com a liquidação anulada — não muta)",
+  planoVigenteDoTribunal: "leitura (a tabela do plano de contas do Tribunal vigente no exercício — não muta)",
+  gerarReceitaExtraOuRecusa: "leitura (o TXT SAGRES ReceitaExtra §4.19, ou a recusa nomeada — não muta)",
+  gerarEstornoReceitaExtraOuRecusa: "leitura (o TXT SAGRES EstornoReceitaExtra §4.21, ou a recusa nomeada — não muta)",
+  lerContasDoPlano: "puro (lê a planilha do Tribunal e confere cabeçalho, códigos e exigências — não toca o banco)",
   gerarEstornoRetencao: "leitura (gera o TXT SAGRES EstornoRetencao §4.15 — não muta)",
   lerFatosEstornoRetencao: "leitura (Prisma → DTO EstornoRetencao, o estorno da retenção do pagamento anulado — não muta)",
   gerarEstornoDespesaExtra: "leitura (gera o TXT SAGRES EstornoDespesaExtra §4.22 — não muta)",

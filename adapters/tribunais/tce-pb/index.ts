@@ -19,6 +19,8 @@ import {
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
   gerarEstornoDespesaExtra,
+  gerarReceitaExtraOuRecusa,
+  gerarEstornoReceitaExtraOuRecusa,
   gerarConciliacaoBancariaOuRecusa,
   gerarUnidadeOrcamentariaOuRecusa,
   gerarReceitaOrcamentaria,
@@ -165,6 +167,11 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
           dia,
         }),
       ]);
+      // V23 — a receita extra (§4.19) e o estorno dela (§4.21) entram quando se descrevem inteiros; a recusa é da prévia.
+      const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora, cnpjGerenciadora, codFonteRecursoExtra: deps.codFonteRecursoExtra, dia });
+      if ("arquivo" in receitaExtra) gerados.push(receitaExtra.arquivo);
+      const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora, dia });
+      if ("arquivo" in estornoReceitaExtra) gerados.push(estornoReceitaExtra.arquivo);
       // V21 — a conciliação (§4.27) entra quando a conta fecha; a recusa é da prévia, não do pacote.
       const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora, cnpjGerenciadora, competencia: mesRef });
       const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora, competencia: mesRef });

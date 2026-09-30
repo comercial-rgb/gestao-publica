@@ -48,6 +48,7 @@ export async function registrarIngressoAction(_prev: EstadoDoEstornoExtra, formD
     const t = (n: string): string => String(formData.get(n) ?? "").trim();
     if (t("tipoConsignacao") === "") return { erro: "Escolha o tipo (caução, depósito, consignação)." };
     if (t("credorConsignatario") === "") return { erro: "Informe de quem é o valor (o terceiro)." };
+    if (t("documentoDoContribuinte") === "") return { erro: "Informe o CPF ou CNPJ de quem entregou o valor." };
     if (t("contaBancaria") === "") return { erro: "Escolha a conta bancária que recebeu." };
     if (t("valor") === "") return { erro: "Informe o valor." };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(t("data"))) return { erro: "Informe a data do ingresso." };
@@ -56,6 +57,7 @@ export async function registrarIngressoAction(_prev: EstadoDoEstornoExtra, formD
       const msg = await registrarIngressoManual({
         tipoConsignacaoCodigo: t("tipoConsignacao"),
         credorConsignatario: t("credorConsignatario"),
+        documentoDoContribuinte: t("documentoDoContribuinte"),
         contaBancaria: t("contaBancaria"),
         valor: t("valor"),
         data: t("data"),
