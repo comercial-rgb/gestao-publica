@@ -35,6 +35,41 @@ data `ddmmaaaa`; campo não exigido = zeros (numérico) / espaços (caractere); 
 copiados: TipoEmpenho §5.17 (1=Ordinário, **2=Estimativo, 3=Global** — a ordem não é alfabética),
 NaturezaContratacao §5.19 (art. 141), TipoNotaFiscal §5.30 (00=Sem NF), Modalidades §6.2 (9=Sem Licitação).
 
+## V23 (2026-09-29) — de 13 para 19 das 58 tabelas, e a reconciliação com o leiaute inteiro
+
+O leiaute 2026 v1.1 tem **58 tabelas** (§4.1 a §4.59, sem §4.47); a cópia local é idêntica à online
+(revisão #4, conferida em 29/09/2026 — não há versão 2026 mais nova). A contagem "13 de 13" abaixo era
+da fatia pedida, não do leiaute. Hoje saem **19**; as outras 39 estão listadas, uma a uma, na matriz da
+tela (`app/(areas)/integracoes/sagres/page.tsx`, `MATRIZ_SAGRES`).
+
+| # | Tabela | O que é, e de onde vem |
+|---|---|---|
+| 4.9 | **Estornos** | A anulação (inteira ou parcial) do EMPENHO. Motivo = o histórico da linha de anulação, conferido na entrada (120, uma linha, sem aspas — regra geral do leiaute para caractere). `despesaLiquidada` = liquidado líquido do empenho na data do estorno > 0 (premissa a confirmar no validador). |
+| 4.11 | **EstornoLiquidacao** | A anulação da LIQUIDAÇÃO. `Liquidacao.motivo` (coluna aditiva, V23): antes o serviço validava e descartava. O leiaute lista uma "reserva" sem posição depois de `valor`: o registro termina em 180, nenhuma posição inventada. |
+| 4.15 | **EstornoRetencao** | O ESTORNO_INGRESSO da retenção, gerado pela anulação do pagamento. |
+| 4.19 | **ReceitaExtra** | O INGRESSO (retenção e avulso). Arquivo OU recusa nomeada: depende do plano de contas do Tribunal importado para o exercício (`plano-do-tribunal.ts`). CPF/CNPJ: credor do empenho na retenção; `documentoDoContribuinte` (coluna aditiva) no avulso, exigido pela tela. |
+| 4.21 | **EstornoReceitaExtra** | O ESTORNO_INGRESSO, apontando o número da receita extra estornada. Mesmo regime de recusa. |
+| 4.22 | **EstornoDespesaExtra** | O ESTORNO_DISPENDIO, apontando o número da despesa extra estornada. Motivo conferido na entrada (255). |
+
+**Defeitos encontrados e corrigidos na V23:** (1) os arquivos Empenhos e Liquidacao incluíam as LINHAS DE
+ANULAÇÃO como documentos novos (o de Pagamentos já filtrava); (2) o EstornoPagamento exportava o registro
+que DESFAZ uma anulação parcial como estorno de parcela — agora o dia é recusado nomeando, nos três níveis,
+porque o leiaute não tem registro para "desfazer anulação"; (3) a numeração derivada dos movimentos
+extraorçamentários seguia a DATA: um fato lançado depois com data anterior renumerava o que o tribunal já
+recebera. Agora segue a ordem de gravação (`numeracaoNoExercicio`).
+
+**O plano de contas do Tribunal (§5.28).** A planilha oficial tem `exige_retencao`/`exige_receita_extra`
+por `ano_conta`. A página de 2026 aponta o `Pcasp_2025.xlsx`: sem linhas de 2026 e com as exigências de
+2025 todas em 0 (2024: 42 exigem retenção, 68 exigem receita extra). Qual ano vale é decisão do ente, com
+fundamento, na tela (ação IMPORTAR_PLANO_DO_TRIBUNAL; atualização de permissões v41). Com o plano, o
+recolhimento numa conta que exige receita extra tem de compor UMA retenção ("não poderá existir uma despesa
+extra para várias receitas") — senão recusa nomeando.
+
+**Gaps que continuam, nomeados:** DespesaExtra manda `cpfCnpjFornecedor` e `co` zerados (obrigatórios; a
+prévia acusa em Obrigatoriedade); a liquidação de restos a pagar sai no arquivo Liquidacao (o leiaute a quer
+em LiquidacaoRestos §4.31, não gerado); as tabelas de restos (§4.28-4.34), PLOA, fornecedores, ordenador e
+relacionamentos não são geradas.
+
 ## Matriz de cobertura — as 13 entidades da vertical slice pedida
 
 Legenda: ✅ implementada (golden + origem) · 🟡 origem parcial (falta campo estruturado) · ⛔ sem origem no modelo.

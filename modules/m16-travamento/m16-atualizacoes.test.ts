@@ -14,6 +14,7 @@ import {
   derivarPublicarRoteiro,
   derivarSolicitacaoDeEmpenho,
   derivarLeiOrcamentariaAnual,
+  derivarPlanoDoTribunal,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -202,6 +203,16 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     expect([...d].sort()).toEqual(["plan CADASTRAR_LOA G", "plan-2 CADASTRAR_LOA G"]);
   });
 
+  it("v41: quem submete ao Tribunal recebe IMPORTAR_PLANO_DO_TRIBUNAL no mesmo escopo; quem já tem ou só consulta não recebe (V23)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "cont", nome: "CONTABILIDADE", permissoes: [{ acao: "SUBMETER_CAPTURA", unidadeOrcId: null }] },
+      { id: "ja", nome: "JA-TEM", permissoes: [{ acao: "SUBMETER_CAPTURA", unidadeOrcId: null }, { acao: "IMPORTAR_PLANO_DO_TRIBUNAL", unidadeOrcId: null }] },
+      { id: "le", nome: "SO-CONSULTA", permissoes: [{ acao: "CONSULTAR_INTEGRACOES", unidadeOrcId: null }] },
+    ];
+    const d = derivarPlanoDoTribunal(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect(d).toEqual(["cont IMPORTAR_PLANO_DO_TRIBUNAL G"]);
+  });
+
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
     const perfis: readonly PerfilComPermissoes[] = [
       {
@@ -385,6 +396,8 @@ describe("instalação limpa e atualização — no banco", () => {
       // V22 — prévia 0 na instalação limpa: CADASTRAR_LOA chegou a ACOES_DO_ENTE pelo bootstrap (o admin
       // tem CADASTRAR_LDO global e já nasce com CADASTRAR_LOA). Fora de TODAS_AS_ACOES, viria 1.
       { versao: 40, previa: 0, aplicada: false },
+      // V23 — prévia 0 na instalação limpa: IMPORTAR_PLANO_DO_TRIBUNAL chegou a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 41, previa: 0, aplicada: false },
     ]);
   });
 

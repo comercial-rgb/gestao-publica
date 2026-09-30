@@ -15,7 +15,7 @@ domínio, quando publicado.
 |---|---|---|---|
 | C01 Escrituração | Contabilidade › Lançamentos | Registrar lançamento manual (data, número, histórico, partidas). Tente primeiro com débito diferente do crédito, e depois com conta sintética (1.1.1.1.1.00.00). | As duas tentativas são recusadas com o motivo. O certo aparece na lista. As operações (empenho, pagamento, arrecadação) também lançam sozinhas. |
 | C02 Identificação patrimonial | Patrimônio › Bens patrimoniais › um bem | Baixar ou alienar. | O lançamento leva ao bem e ao documento. |
-| C03 Correção sem apagar | Contabilidade › Lançamentos | Estornar lançamento manual. | O original continua e o estorno fica ao lado. Vale igual para empenho, liquidação e pagamento (Anular). |
+| C03 Correção sem apagar | Contabilidade › Lançamentos | Estornar lançamento manual. | O original continua e o estorno fica ao lado. Vale igual para empenho, liquidação e pagamento (Anular): o motivo tem de 10 a 120 caracteres, sem aspas, porque vai ao Tribunal de Contas. |
 | C04 Segurança | Administração › Perfis; entrar com um usuário sem a permissão | Tentar uma ação sem a permissão. | O servidor recusa e diz qual ação faltou. |
 | C05 Centros de custo | Contabilidade › Centros de custo | Apropriar parte de uma liquidação. | O teto é o valor da despesa. A composição volta à liquidação. |
 | C06 Convênios e contratos | Transferências › Convênios; Licitações › Contratos | Cadastrar, liberar parcela. | Os empenhos relacionados aparecem no instrumento. |
@@ -62,21 +62,31 @@ domínio, quando publicado.
 
 | Item | Tela | O que fazer | O que conferir |
 |---|---|---|---|
-| C32 Ingresso | Financeiro › Extraorçamentário | **Registrar ingresso** (caução, depósito). | Aparece no saldo a recolher. Não é receita orçamentária. |
+| C32 Ingresso | Financeiro › Extraorçamentário | **Registrar ingresso** (caução, depósito), com o CPF ou CNPJ de quem entregou. | Aparece no saldo a recolher. Não é receita orçamentária. CPF/CNPJ com dígito errado é recusado. |
 | C33, C34 Recolhimento | Financeiro › Retenções a recolher | Recolher, dizendo de quais retenções sai. | Saldo por origem. |
 | C35 Virada do exercício | Contabilidade › Virada dos controles; Despesa › Restos a pagar | Parametrizar e encerrar. | Nada duplicado na virada. |
 | C36 Estorno extra | Financeiro › Extraorçamentário | Estornar o recolhimento. | Reabre só a parcela. |
 | C37 Composição | Financeiro › Extraorçamentário | Consultar. | Retido, recolhido, estornado e a recolher. |
 | C38 Restos a pagar | Despesa › Restos a pagar › uma inscrição | Liquidar, pagar, cancelar. | Sem empenho novo. |
 | — Conciliação bancária | Financeiro › Conciliação bancária | **Vincular** a linha do extrato ao registro do sistema, e desfazer com motivo. | O vínculo aparece mesmo feito depois do fim do extrato. Com duas contas na mesma conta contábil, cada uma fecha com os seus fatos. |
-| C39 SAGRES | Integrações › SAGRES | Escolher o dia ou o mês e gerar. | O pacote baixa. O dia da folha agora passa (números só com dígitos). |
+| C39 SAGRES | Integrações › SAGRES | Escolher o dia ou o mês e gerar. Para a receita extra, importar a planilha do plano de contas do Tribunal (`docs/oficial/tce-pb/Pcasp_2025.xlsx`) dizendo qual ano da tabela vale e por quê. | O pacote baixa. A tabela da tela mostra as 58 tabelas do leiaute: 19 geradas, as outras marcadas como não geradas. As anulações de empenho, liquidação e pagamento saem nos arquivos de estorno, não como documentos novos. Sem a planilha do Tribunal, a receita extra fica fora do pacote e a prévia diz por quê. |
 | C40 Implantação | Ver `docs/operacao/` | Instalar e atualizar. | Atualização automática em `ATUALIZACAO-AUTOMATICA.md`. |
 
 ## O que ainda não está pronto, com motivo
 
-- **SIOPE (C09).** Não há leiaute no repositório. Construir exige o leiaute oficial do FNDE, que não
-  está aqui.
-- **Retenção automática de fornecedor (C27).** Hoje o valor é informado no pagamento. Calcular exige
-  a tabela de retenção por tipo de serviço (as alíquotas do ente e da Receita), que não se inventa.
-- **Três leiautes do SAGRES (C39).** Unidade orçamentária, estorno de pagamento e conciliação têm
-  lacuna de modelo nomeada no módulo do adaptador.
+- **SIOPE (C09).** O leiaute de importação foi obtido (manual do instalador oficial 2026, em
+  `docs/oficial/fnde-siope/`): arquivo CSV com ";", transmissão bimestral. Falta a "Tabela 2" de
+  códigos das planilhas, que o manual cita e não traz; sem ela não se monta o mapeamento das contas. O
+  exportador não foi construído.
+- **Retenção automática de fornecedor (C27).** Hoje o valor é informado no pagamento. As normas foram
+  obtidas (IN RFB 1.234/2012 com o Anexo I, IN RFB 2.110/2022 para o INSS, LC 80/2017 e LC 132/2025 de
+  Esperança para o ISS). Falta construir: o sistema não guarda os dados fiscais do fornecedor (Simples
+  Nacional, regime) nem da operação (item da lista de serviços, local da prestação, materiais).
+- **FAP e natureza 319013.** O FAP não existe no cálculo dos encargos (a alíquota do encargo tem 4 casas,
+  e RAT × FAP pede mais). A 319013 não quebra nada: é decisão de classificação (patronal do RPPS vai em
+  3.1.91.13, intraorçamentária). O pagamento dos encargos pela tela baixa a conta de fornecedores, e não a
+  obrigação de encargos.
+- **SAGRES.** 39 das 58 tabelas não são geradas (lista na própria tela). A tabela de 2026 publicada pelo
+  Tribunal tem as exigências por conta zeradas; a tabela que vale é escolhida na importação, com fundamento.
+  Na despesa extra, o CPF/CNPJ do favorecido e o código de detalhamento da fonte saem zerados e a prévia
+  aponta.

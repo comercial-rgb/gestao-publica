@@ -1277,6 +1277,28 @@ export function derivarLeiOrcamentariaAnual(
   return saida;
 }
 
+/**
+ * V23 — O PLANO DE CONTAS DO TRIBUNAL chegou com IMPORTAR_PLANO_DO_TRIBUNAL.
+ *
+ * Vai a quem já SUBMETE a prestação de contas ao Tribunal (SUBMETER_CAPTURA), no mesmo escopo: é quem
+ * responde pelo que o pacote diz, e a planilha decide o que ele diz sobre a receita e a despesa extra.
+ * Idempotente por construção.
+ */
+export function derivarPlanoDoTribunal(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    for (const origem of perfil.permissoes.filter((p) => p.acao === "SUBMETER_CAPTURA")) {
+      if (perfil.permissoes.some((p) => p.acao === "IMPORTAR_PLANO_DO_TRIBUNAL" && p.unidadeOrcId === origem.unidadeOrcId)) continue;
+      if (saida.some((c) => c.perfilId === perfil.id && c.unidadeOrcId === origem.unidadeOrcId)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "IMPORTAR_PLANO_DO_TRIBUNAL", unidadeOrcId: origem.unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -1761,6 +1783,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "concedida a quem ja cadastra a LDO, no mesmo escopo: e o setor que digita as pecas do " +
       "planejamento.",
     derivar: derivarLeiOrcamentariaAnual,
+  },
+  {
+    versao: 41,
+    nome: "plano-de-contas-do-tribunal",
+    descricao:
+      "O plano de contas do Tribunal passou a ser importado (V23): a planilha que diz, conta a conta, quando " +
+      "a receita extra aponta a retencao e o recolhimento aponta a receita extra. Vem com a acao " +
+      "IMPORTAR_PLANO_DO_TRIBUNAL, concedida a quem ja submete a prestacao de contas ao Tribunal, no mesmo escopo.",
+    derivar: derivarPlanoDoTribunal,
   },
 ];
 
