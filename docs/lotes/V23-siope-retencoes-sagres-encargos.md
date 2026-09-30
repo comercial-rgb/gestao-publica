@@ -200,3 +200,56 @@ No fechamento, informe por frente:
 Não declare "fechado" apenas porque existe tela ou teste verde.
 Também não mantenha "bloqueado por fonte" quando a fonte pública foi obtida.
 Continue construindo até esgotar o trabalho executável desta ordem.
+
+
+---
+
+## Pedido complementar, como veio (2026-09-29, no meio da rodada)
+
+> finalize tudo e deixe pronto para apresentar o modulo contabilidade para esperanca
+
+## Checkpoint — 2026-09-29
+
+Regime: profundidade (arquivos de tribunal, estornos, numeração, motivos na entrada); superfície na tela
+do plano do Tribunal e no campo do documento do ingresso. Coordenação: um escritor; o auxiliar pesquisou
+as fontes e inventariou o código. Registro: antes do aviso do limite de dois agentes ele lançou dois
+agentes de busca somente-leitura que não conseguiu parar; refez e conferiu o inventário por conta própria.
+
+**Frente 1 — SAGRES (feita).** As "três entidades ausentes" do relatório anterior (unidade, estorno de
+pagamento, conciliação) já saíam desde a V21: o relatório estava desatualizado. Reconciliado com o leiaute
+inteiro: 58 tabelas, 13 → **19** geradas. Novas: Estornos §4.9, EstornoLiquidacao §4.11, EstornoRetencao
+§4.15, ReceitaExtra §4.19, EstornoReceitaExtra §4.21, EstornoDespesaExtra §4.22. Defeitos corrigidos:
+anulações saíam como documentos novos em Empenhos/Liquidacao; "desfazer anulação" saía como estorno de
+pagamento; numeração extra renumerava o já exportado; upload de 1,3 MB morria com 413 e a tela ficava muda.
+Rotas: `/integracoes/sagres` (prévia, plano do Tribunal, pacote), `/financeiro/extraorcamentario` (ingresso
+com CPF/CNPJ), `/despesa/*` (motivo de 10 a 120 na anulação).
+
+**Frentes 2, 3 e 4 — não construídas nesta rodada** (o usuário pediu para finalizar). Fontes obtidas e
+guardadas em `docs/oficial/` (relatório `V23-RELATORIO-DE-FONTES.md`); inventário do código em
+`scratchpad/fontes/INVENTARIO-CODIGO.md` resumido aqui:
+- Retenção de fornecedor: o valor é digitado; não existem Simples Nacional, regime, CNAE, item da LC 116,
+  local da prestação nem materiais/deduções. M34 não tem ISS. O ente semeado é Campina Grande (POC), não
+  Esperança. A conta do ISS da POC (`2.1.8.8.1.02.00`) é "GARANTIAS" no PCASP oficial.
+- FAP: inexistente; alíquota do encargo `Decimal(7,4)` não comporta RAT×FAP. 319013: decisão de
+  classificação (RPPS patronal = 3.1.91.13), não falha de código; o pagamento dos encargos pela tela baixa
+  fornecedores, e não a obrigação de encargos.
+- SIOPE: leiaute CSV obtido do manual do instalador 2026; falta a "Tabela 2" de códigos.
+
+**Medições (build de produção de `d08299d`, banco `gestao_publica_apresentacao` na 3010):**
+
+| Comando | Resultado |
+|---|---|
+| typecheck app | 0 erros |
+| typecheck backend | 18 erros, TODOS pré-existentes em `lib/portas/leitura.ts` e `exportacoes-federais.ts` (testes de `test/` os puxam) |
+| testes dos consumidores diretos | 40 arquivos, **405/405**; atualizações e censo 22/22 |
+| mutações | 12, todas acusadas e revertidas (filtro de genuínos, "já liquidada", recusa do desfazer, motivo da liquidação, ordem por data, motivo extra, vínculo com retenção, documento, recomposição das linhas quebradas) |
+| `poc-conferir` | **89/89 PODE COMEÇAR** |
+| `conferir-telas-da-apresentacao` | **66/66** |
+| `conferir-acoes-das-telas` nas 5 telas alteradas | 46 ações, 0 falha |
+| percursos numa cópia (3011) | despesa **35/35**, lançamento + conciliação **18/18** (build anterior, mesmo código menos o limite de upload), **SAGRES receita extra 13/13** |
+| `poc-contingencia` | 841 artefatos; ReceitaExtra de 14/09 fora (plano do Tribunal não importado no banco da apresentação — a importação é passo ao vivo do roteiro); UnidadeOrcamentaria fora nos meses (unidades sem declaração, como antes) |
+
+Migrations aplicadas (aditivas) em test, local, apresentação e modelo: `v23_motivo_da_anulacao_de_liquidacao`,
+`v23_plano_do_tribunal_e_contribuinte`, `v23_acao_do_plano_do_tribunal`. Atualização de permissões v41
+aplicada nos três bancos. Não rodados: portão, `test:tudo`, `test:fuso`. Nada enviado ao TCE nem ao FNDE;
+nenhum arquivo passou por validador oficial.
