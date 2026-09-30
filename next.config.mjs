@@ -33,6 +33,11 @@ const nextConfig = {
   // como externo — o Node o resolve de `node_modules` em runtime, do lado do servidor.
   serverExternalPackages: ["puppeteer"],
 
+  // V23 — o limite padrão do corpo de uma server action é 1 MB, e a planilha oficial do plano de contas
+  // do Tribunal (`Pcasp_2025.xlsx`) tem 1,3 MB: a importação morria com 413 e a tela ficava muda. 8 MB
+  // cobre as planilhas e os arquivos anexados pelos formulários sem abrir a porta para qualquer tamanho.
+  experimental: { serverActions: { bodySizeLimit: "8mb" } },
+
   // ═══ ⚠️ A CONFERÊNCIA DE TIPOS DO BUILD, E POR QUE ELA TEM UMA VÁLVULA COM CADEADO ═══
   //
   // O QUE ACONTECEU EM 15/09/2026. Três `next build` seguidos morreram SEM MENSAGEM no passo
