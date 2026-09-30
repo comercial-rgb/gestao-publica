@@ -253,3 +253,18 @@ Migrations aplicadas (aditivas) em test, local, apresentação e modelo: `v23_mo
 `v23_plano_do_tribunal_e_contribuinte`, `v23_acao_do_plano_do_tribunal`. Atualização de permissões v41
 aplicada nos três bancos. Não rodados: portão, `test:tudo`, `test:fuso`. Nada enviado ao TCE nem ao FNDE;
 nenhum arquivo passou por validador oficial.
+
+## Pedido complementar, como veio (2026-09-29)
+
+> Finalize os dois que faltaram e deixe pronto para apresentar
+
+Lido como: repetir no build atual (`d08299d`, código de `cf837e8`) os dois percursos que tinham rodado no
+build anterior. Banco `gestao_publica_ensaio` criado do `gestao_publica_apresentacao_modelo`, papel de runtime
+provisionado, servido na 3011; depois derrubado e apagado. A 3010 não foi tocada.
+
+| Percurso | Resultado |
+|---|---|
+| `percurso-execucao-da-despesa.ts` | **35/35** (saída 0; inclui a anulação com o motivo novo) |
+| `percurso-lancamento-e-conciliacao.ts` | **18/18** (saída 0) |
+
+Com isso os três percursos da rodada estão medidos no mesmo build que serve a apresentação.
