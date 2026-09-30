@@ -9,6 +9,19 @@ domínio, quando publicado.
 > O PDF do edital de Esperança não está nesta máquina. A matriz foi lida dele à mão. Se aparecer
 > um item fora desta lista, ele não foi conferido aqui.
 
+## Manter no ar durante a apresentação
+
+A tarefa agendada `GestaoPublica-Apresentacao` roda `scripts/demonstracao/manter-apresentacao-no-ar.mjs` sem janela
+(`conhost --headless`), por 12 h. A cada 20 s confere o banco e a tela de entrada, e sobe o servidor de novo se cair
+(medido: volta em cerca de 25 s). A cada 5 min impede a suspensão por inatividade, sem alterar a configuração de
+energia. Registro em `%LOCALAPPDATA%\gestao-publica-apresentacao\apresentacao-no-ar.log`.
+
+- Iniciar: `Start-ScheduledTask GestaoPublica-Apresentacao`. Parar: `Stop-ScheduledTask GestaoPublica-Apresentacao`
+  (o servidor continua no ar). Remover depois: `Unregister-ScheduledTask GestaoPublica-Apresentacao`.
+- Não iniciar o supervisor de um terminal ou por janela visível: fechar a janela derruba tudo.
+- Velocidade medida (`scripts/demonstracao/medir-velocidade-das-telas.ts`): mediana 0,3 s por tela; as duas lentas
+  são Roteiros de restos a pagar (5 s) e Plano de contas (3,5 s), que montam listas com milhares de contas.
+
 ## Escrituração e controles gerais
 
 | Item | Tela | O que fazer | O que conferir |
