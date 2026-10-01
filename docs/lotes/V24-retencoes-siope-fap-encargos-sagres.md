@@ -72,3 +72,57 @@ apresentação quando o usuário decidir; o ente da demonstração é Campina Gr
 carregada é a de Esperança (o ISS só calcula com o ente de Esperança); as consignações IRRF/INSS/ISS do
 banco da apresentação apontam contas erradas (GARANTIAS, sintética) e o IRRF não existe — o percurso as
 corrige pela tela; a classificação do IR retido como receita do município (MCASP) não foi conferida.
+
+## Checkpoint 2 — 2026-10-01 (fechamento da rodada)
+
+**5. SAGRES (feito nesta rodada): 19 → 27 das 58 tabelas.** DespesaExtra §4.20 com o CPF/CNPJ de quem recebe
+(exigido no recolhimento) e o CO da ficha que pagou. O grupo de restos a pagar: PagamentosRestos §4.28,
+EstornoPagamentoRestos §4.29, CancelamentoRestos §4.30, LiquidacaoRestos §4.31, EstornoLiquidacaoRestos §4.32,
+RetencaoRestos §4.33, EstornoRetencaoRestos §4.34 e RestosInscritos §4.40 (no balancete de dezembro). Os
+arquivos do exercício (§4.10 a §4.15) deixaram de levar os fatos de restos (antes saíam lá). Recusas
+nomeadas: cancelamento de restos desfeito (o leiaute não tem registro); recolhimento com retenções de CO
+diferente. Sem operação no sistema: anular liquidação de restos (o §4.32 sai sem registros).
+
+**Percursos finais** (build próprio numa worktree em `24cb74e`, servido na 3011 sobre clone limpo do
+`gestao_publica_apresentacao_modelo` com as três migrations, as tabelas carregadas e o ente em 2506004):
+
+| Percurso | Resultado |
+|---|---|
+| retenção calculada (`percurso-retencao-calculada.ts`) | 22/22 |
+| pagamento dos encargos (`percurso-pagamento-de-encargos.ts`) | 5/5 (D 2.1.1.4.3.01.01 1.040,00, nada em fornecedores) |
+| FAP (`percurso-fap.ts`) | 8/8 |
+| SAGRES receita extra (V23, agora "27 de 58") | 13/13 — num clone limpo; rodado DEPOIS do da retenção falha 1 passo, porque aquele troca a conta do ISS (o passo espera a conta antiga da POC) |
+| execução da despesa (V22) | 35/35 |
+| lançamento e conciliação (V22) | 18/18 |
+
+Defeito do próprio percurso achado e corrigido: a conferência no livro comparava "1040,00" com a tela, que
+mostra "1.040,00" — e a afirmação negativa (fornecedores) passava por vacuidade. A worktree e o clone foram
+removidos; a 3010 seguiu servindo a apresentação.
+
+**Medições adicionais:** restos no SAGRES 5/5 com 7 mutações; SAGRES 105/105; typecheck app, rotas,
+backend e scripts sem erro novo; guards de tela 262/262.
+
+**Pendências reais:**
+- **Banco da apresentação:** aplicar as três migrations, `carregar-tabelas-da-retencao`, a atualização do
+  build e as consignações IRRF/INSS/ISS nas contas analíticas. Não foi feito porque a 3010 está servindo;
+  depende do usuário.
+- **SIOPE:** bloqueado pela Tabela 2 do FNDE (ver o checkpoint 1).
+- **Retenção:**
+  - ISS de construção 7.02/7.05: conflito entre a LC 132 e a LC 80.
+  - Pessoa física.
+  - Contribuinte sobre a receita bruta.
+  - Adicional de atividade especial.
+  - Classificação do IR retido como receita do município (MCASP).
+  - Recolhimento que mistura retenção calculada e consignação manual no mesmo pagamento.
+- **FAP:** ente com mais de um CNPJ empregador.
+- **SAGRES:** 31 tabelas ainda não geradas.
+  - PLOA.
+  - Programas e ações.
+  - Fornecedores.
+  - Ordenador.
+  - Relacionamentos.
+  - Transferências.
+  - Saldo inicial.
+  - Receita prevista.
+  - Frota e farmácia, que ficam fora da contabilidade.
+- **Guard de data civil:** `data-civil.test.ts` vermelho com 32 sítios de 27-28/09 (V21/V22).

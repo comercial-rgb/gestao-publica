@@ -13,6 +13,8 @@ import puppeteer, { type Page } from "puppeteer";
 const BASE = process.argv[2] ?? "http://localhost:3011";
 const LIQUIDACAO = process.argv[3] ?? "206";
 const VALOR = process.argv[4] ?? "1040,00";
+// Como o livro de lançamentos mostra o valor: com o separador de milhar.
+const VALOR_NA_TELA = VALOR.replace(/^(\d+)(\d{3}),/, "$1.$2,");
 const OBRIGACAO = process.argv[5] ?? "2.1.1.4.3.01.01";
 const FORNECEDORES = "2.1.3.1.1.01.01";
 const DIA = "2026-09-26";
@@ -89,9 +91,9 @@ async function main(): Promise<void> {
 
     console.log("2. o livro de lançamentos mostra a obrigação de encargos extinta, e não fornecedores");
     const obrigacao = await linhasDoLivro(p, OBRIGACAO);
-    afirmar(obrigacao.includes(VALOR), `a conta ${OBRIGACAO} tem o movimento de ${VALOR} no dia`);
+    afirmar(obrigacao.includes(VALOR_NA_TELA), `a conta ${OBRIGACAO} tem o movimento de ${VALOR_NA_TELA} no dia`);
     const fornecedores = await linhasDoLivro(p, FORNECEDORES);
-    afirmar(!fornecedores.includes(VALOR), `a conta de fornecedores ${FORNECEDORES} não recebeu ${VALOR} no dia`);
+    afirmar(!fornecedores.includes(VALOR_NA_TELA), `a conta de fornecedores ${FORNECEDORES} não recebeu ${VALOR_NA_TELA} no dia`);
     await p.screenshot({ path: "capturas-v24-encargos.png", fullPage: true });
 
     console.log(`\n${String(passos - falhas.length)}/${String(passos)} passos`);
