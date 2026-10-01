@@ -1,0 +1,183 @@
+// ============================================================================
+// M07 — RETENÇÃO NA FONTE CALCULADA (V24): IR, INSS e ISS do fornecedor.
+//
+// Até a V23 o pagamento recebia o VALOR retido digitado pelo operador. Aqui moram as
+// tabelas normativas que permitem CALCULAR — cada linha com a fonte, a vigência e a data
+// de consulta — e a memória de cada cálculo, gravada junto com o pagamento.
+//
+// "Nenhum código no código": alíquota, natureza, rol de serviços e base mínima vêm destas
+// tabelas, carregadas dos textos oficiais em `docs/oficial/` por
+// `scripts/carregar-tabelas-da-retencao.ts`. Sem a tabela, o cálculo recusa nomeando.
+//
+// APPEND-ONLY em tudo: uma regra nova é uma linha nova com `vigenteDesde` novo.
+// ============================================================================
+
+enum TributoRetido {
+  IRRF
+  INSS
+  ISS
+}
+
+/// A natureza do bem ou serviço para o IR que o MUNICÍPIO retém (IN RFB 1.234/2012, art. 3º-A,
+/// incluído pela IN RFB 2.145/2023): aplica-se só a coluna 02 (IR) do Anexo I.
+model NaturezaDaRetencaoDoIR {
+  id            String   @id @default(cuid())
+  /// Coluna 07 do Anexo I (código da receita do DARF federal). Identifica a natureza.
+  codigoReceita String   @db.VarChar(4)
+  /// Coluna 01, literal.
+  natureza      String
+  /// Coluna 02, em FRAÇÃO: 0.012 = 1,2%.
+  aliquota      Decimal  @db.Decimal(9, 6)
+  vigenteDesde  DateTime @db.Date
+  fonte         String
+  consultadoEm  DateTime @db.Date
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([codigoReceita, vigenteDesde])
+}
+
+/// Os serviços sujeitos à retenção previdenciária — rol EXAUSTIVO (IN RFB 2.110/2022, art. 113).
+model ServicoDaRetencaoPrevidenciaria {
+  id                       String   @id @default(cuid())
+  /// "111-I", "112-XIV": artigo e inciso da IN RFB 2.110/2022.
+  codigo                   String
+  artigo                   Int
+  inciso                   String
+  descricao                String
+  /// Art. 112: só quando contratado por CESSÃO de mão de obra. Art. 111: cessão ou empreitada.
+  somenteCessaoDeMaoDeObra Boolean
+  /// Art. 111, III — construção civil (o art. 114, VII livra o órgão público na empreitada total).
+  construcaoCivil          Boolean
+  vigenteDesde             DateTime @db.Date
+  fonte                    String
+  consultadoEm             DateTime @db.Date
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([codigo, vigenteDesde])
+}
+
+/// A alíquota (art. 110) e o mínimo de recolhimento (art. 238, por remissão do art. 115, I).
+model ParametroDaRetencaoPrevidenciaria {
+  id           String   @id @default(cuid())
+  aliquota     Decimal  @db.Decimal(9, 6)
+  valorMinimo  Decimal  @db.Decimal(15, 2)
+  vigenteDesde DateTime @db.Date
+  fonte        String
+  consultadoEm DateTime @db.Date
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([vigenteDesde])
+}
+
+/// A base mínima da retenção previdenciária em percentual do valor bruto (arts. 117 e 118, II).
+model BaseMinimaDaRetencaoPrevidenciaria {
+  id           String   @id @default(cuid())
+  /// "117-I", "118-II-b-1"...
+  codigo       String
+  descricao    String
+  percentual   Decimal  @db.Decimal(9, 6)
+  vigenteDesde DateTime @db.Date
+  fonte        String
+  consultadoEm DateTime @db.Date
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([codigo, vigenteDesde])
+}
+
+enum LocalDeIncidenciaDoISS {
+  ESTABELECIMENTO_DO_PRESTADOR
+  ESTABELECIMENTO_DO_TOMADOR
+  LOCAL_DA_PRESTACAO
+}
+
+/// Um subitem da lista de serviços do ISS DE UM MUNICÍPIO, com a alíquota para empresas e o local
+/// de incidência que a lei municipal marca.
+model ItemDaListaDoISS {
+  id                     String                 @id @default(cuid())
+  municipioIbge          String                 @db.VarChar(7)
+  /// "7.02", sempre com dois dígitos depois do ponto.
+  subitem                String
+  descricao              String
+  aliquota               Decimal                @db.Decimal(9, 6)
+  localDeIncidencia      LocalDeIncidenciaDoISS
+  /// A coluna "Retenção na fonte" do anexo, como publicada (informativa: quem responde pela
+  /// retenção é o artigo da lei, gravado em `fonte`).
+  marcadoRetencaoNaFonte Boolean
+  vigenteDesde           DateTime               @db.Date
+  fonte                  String
+  consultadoEm           DateTime               @db.Date
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([municipioIbge, subitem, vigenteDesde])
+}
+
+/// O PERFIL FISCAL do fornecedor, pelo CPF/CNPJ (é assim que o empenho guarda o credor).
+/// Append-only: o vigente numa data é o de maior `vigenteDesde` até ela (desempate: `criadoEm`).
+model PerfilFiscalDoFornecedor {
+  id           String   @id @default(cuid())
+  documento    String   @db.VarChar(14)
+  vigenteDesde DateTime @db.Date
+
+  /// IN RFB 1.234/2012, art. 4º, XI; IN RFB 2.110/2022, art. 167.
+  optanteSimplesNacional      Boolean
+  /// IN RFB 2.110/2022, art. 166: o optante tributado no Anexo IV da LC 123 sofre a retenção.
+  tributadoNoAnexoIVDoSimples Boolean
+  /// Contribuição previdenciária sobre a receita bruta: a regra desta retenção não está nas
+  /// fontes obtidas, e o cálculo recusa nomeando.
+  contribuiSobreReceitaBruta  Boolean
+  /// O inciso do art. 4º da IN RFB 1.234/2012 que dispensa a retenção do IR, quando declarado
+  /// (nulo = sem dispensa). Os incisos III, IV e XI exigem declaração (art. 6º).
+  dispensaDoIR                String?
+  /// Município do estabelecimento prestador (IBGE), que decide onde o ISS é devido.
+  municipioDoEstabelecimento  String? @db.VarChar(7)
+  /// De onde veio a informação: "consulta ao Portal do Simples em ...", "declaração do Anexo IV...".
+  fundamento                  String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([documento, vigenteDesde])
+}
+
+enum ResultadoDaRetencao {
+  /// Calculado pelas tabelas.
+  RETIDO
+  /// A regra diz que não se retém; o motivo fica em `fundamento`.
+  NAO_RETIDO
+  /// O cálculo não cobre o caso; o operador informou o valor (zero inclusive) com justificativa.
+  INFORMADO
+}
+
+/// A MEMÓRIA de cada tributo avaliado num pagamento — retido ou não. É o "porquê" do valor:
+/// base, alíquota, fundamento e as entradas do cálculo, gravados na mesma transação do pagamento.
+model CalculoDaRetencao {
+  id          String                      @id @default(cuid())
+  pagamentoId String
+  pagamento   Pagamento                   @relation(fields: [pagamentoId], references: [id])
+  tributo     TributoRetido
+  resultado   ResultadoDaRetencao
+  base        Decimal?                    @db.Decimal(15, 2)
+  aliquota    Decimal?                    @db.Decimal(9, 6)
+  valor       Decimal                     @db.Decimal(15, 2)
+  fundamento  String
+  /// As entradas do cálculo (natureza, serviço, subitem, perfil vigente...), para reproduzi-lo.
+  entrada     Json
+  /// O ingresso extraorçamentário que a retenção gerou (nulo quando nada foi retido).
+  movimentoId String?                     @unique
+  movimento   MovimentoExtraorcamentario? @relation(fields: [movimentoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([pagamentoId, tributo])
+}

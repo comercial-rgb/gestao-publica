@@ -509,6 +509,8 @@ model Pagamento {
   /// back-relations M08 / M07 — campos VIRTUAIS, não geram coluna.
   movimentosRestos MovimentoRestosAPagar[]
   retencoes        MovimentoExtraorcamentario[]
+  /// V24 — back-relation VIRTUAL: a memória do cálculo das retenções deste pagamento.
+  calculosDaRetencao CalculoDaRetencao[]
   /// back-relation M10 — a AMORTIZACAO nasce dentro do pagamento e morre com ele.
   movimentosDivida MovimentoDivida[]
   /// ENT03b — o precatório que este pagamento quitou. Campo VIRTUAL.

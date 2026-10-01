@@ -167,6 +167,9 @@ model MovimentoExtraorcamentario {
   /// nulo aqui. Nulo nos ingressos gravados antes — o gerador recusa nomeando, não inventa documento.
   documentoDoContribuinte String?
 
+  /// V24 — back-relation VIRTUAL: a memória do cálculo, quando esta retenção foi calculada.
+  calculoDaRetencao CalculoDaRetencao?
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
