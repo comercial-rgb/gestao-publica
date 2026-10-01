@@ -1,4 +1,4 @@
-import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, formatarMoeda, toMoney, type Money } from "../../packages/contracts/index.js";
 
 /**
  * RETENÇÃO NA FONTE CALCULADA (V24) — IR, INSS e ISS do fornecedor, a partir das tabelas oficiais.
@@ -145,7 +145,7 @@ const IN_2110 = "IN RFB 2.110/2022";
 const LC_80 = "LC municipal 80/2017";
 
 const pct = (d: Decimal): string => `${d.times(100).toDecimalPlaces(4).toString().replace(".", ",")}%`;
-const moeda = (m: Money): string => `R$ ${m.toFixed(2).replace(".", ",")}`;
+const moeda = (m: Money): string => `R$ ${formatarMoeda(m.toFixed(2)).texto}`;
 
 function calcularIR(op: OperacaoDaRetencao, perfil: PerfilFiscal, t: TabelasDaRetencao): Avaliacao {
   const tributo = "IRRF" as const;
