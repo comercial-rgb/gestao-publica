@@ -532,6 +532,11 @@ describe("V26 — o legado: IR do município que ficou na consignação vira rec
   afterAll(async () => prisma.$disconnect());
 
   it("receita não reconhecida: a guia faz D consignação × C VPA, realiza a receita e o controle; o saldo do consignatário zera; o banco não se mexe", async () => {
+    // N=2: a decisão do IR da FOLHA aponta para o mesmo tipo de consignação (IRRF). O legado de um pagamento a
+    // fornecedor tem de ir à natureza do IR de fornecedor, não à do trabalho (defeito achado no percurso da 3011).
+    await prisma.naturezaReceita.create({ data: { codigo: "11130311", descricao: "IRRF - Trabalho - Principal" } });
+    await prisma.contaPcasp.create({ data: conta("c-vpa-ir-pf", "4.1.1.2.1.03.01", "CREDORA") });
+    await classificarRetencaoPropria(prisma, { fato: "IRRF_FOLHA", tipoConsignacaoCodigo: "IRRF", naturezaReceitaCodigo: "11130311", fonteCodigo: "500", contaCreditoCodigo: CRED_IR, contaVpaCodigo: "4.1.1.2.1.03.01", entidadeTitularId: null, vigenteDesde: new Date("2026-01-01T00:00:00Z"), fundamento: "IR do servidor; ordem V26", criadoPor: POR });
     const caixaAntes = await saldoDe(CAIXA);
     const r = await regularizar();
     expect(r.valor).toBe("48.00");

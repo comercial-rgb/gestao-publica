@@ -2160,6 +2160,7 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
+  fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
   irDaFolhaNoPagamento: "leitura (o IR dos servidores a reter no pagamento de uma liquidação de folha, e como: receita ou consignação)",
   irDaFolhaPendente: "leitura (o IR dos contracheques que a liquidação cobre e que ainda não foi retido)",
   exigirIrDaFolhaAindaPendente:

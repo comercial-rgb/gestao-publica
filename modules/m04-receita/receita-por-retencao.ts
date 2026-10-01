@@ -3,7 +3,7 @@ import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
-import { ehTributoDoProprioTesouro } from "../m07-extraorcamentario/retencao-propria.js";
+import { ehTributoDoProprioTesouro, fatosDaOrigemDoPagamento } from "../m07-extraorcamentario/retencao-propria.js";
 import { saldoReconhecidoDe } from "./reconhecimento.js";
 import { exigirIrDaFolhaAindaPendente } from "../m33-folha/ir-da-folha.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
@@ -282,6 +282,7 @@ export async function regularizarConsignacaoPropria(
       credorConsignatario: ing.credorConsignatario,
       contaBancariaId: ing.contaBancariaId,
       data: d.data,
+      fatos: await fatosDaOrigemDoPagamento(tx, ing.pagamentoId),
     });
     if (c === null) {
       throw new Error(

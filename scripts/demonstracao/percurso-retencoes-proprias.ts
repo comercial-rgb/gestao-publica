@@ -142,7 +142,7 @@ async function main(): Promise<void> {
       if (temLinha) {
         await p.select(`${FPG} select[name="retencaoTipo"]`, tipoIr.id);
         await digitar(p, `${FPG} input[name="retencaoCredor"]`, ente.nome);
-        await digitar(p, `${FPG} input[name="retencaoValor"]`, "67,50");
+        await digitar(p, `${FPG} fieldset input[inputmode="decimal"]`, "67,50");
         await quebraDeOrdemSeHouver(p);
         const r = await pagarAgora(p);
         afirmar(r.tipo === "ok", `o pagamento antigo, com IR como consignação, foi registrado antes da decisão (${r.texto.slice(0, 100)})`);
@@ -180,7 +180,7 @@ async function main(): Promise<void> {
     afirmar(!/Sem decisão vigente/.test(await texto(p)), "o aviso de imposto sem decisão sumiu");
 
     console.log("5. recolher o IR do município com saída de banco é recusado");
-    await ir(p, `/financeiro/extraorcamentario/recolher?tipo=${tipoIr.id}&credor=${encodeURIComponent(ente.nome)}`);
+    await ir(p, `/financeiro/extraorcamentario/recolher?tipo=IRRF&credor=${encodeURIComponent(ente.nome)}`);
     const fr = 'form:has(input[name="parcela"])';
     if ((await p.$(fr)) !== null) {
       const conta = await p.$eval(`${fr} select[name="contaBancaria"]`, (s) => Array.from((s as HTMLSelectElement).options).find((o) => o.value !== "")?.value ?? "");
@@ -202,7 +202,9 @@ async function main(): Promise<void> {
       const f = 'tr[data-retencao-antiga] form[data-acao="regularizar-retencao-antiga"]';
       await digitar(p, `${f} input[name="motivo"]`, "IR do municipio retido como consignacao antes da decisao de 2026");
       const r = await enviar(p, f);
-      afirmar(r.tipo === "ok" && /entraram como receita/.test(r.texto), `regularizado (${r.texto.slice(0, 110)})`);
+      afirmar(r.tipo !== "erro", `a regularização não foi recusada (${r.texto.slice(0, 110)})`);
+      const ap = await prisma.apropriacaoDaConsignacaoPropria.findFirst({ select: { valor: true, receitaArrecadada: { select: { numeroReceita: true, naturezaReceita: { select: { codigo: true } } } } } });
+      afirmar(ap !== null && ap.valor.toFixed(2) === "67.50" && ap.receitaArrecadada.naturezaReceita.codigo === "11130341", `virou a guia ${ap?.receitaArrecadada.numeroReceita ?? "?"} de 67,50 no IR de fornecedor (${ap?.receitaArrecadada.naturezaReceita.codigo ?? "?"})`);
       await ir(p, "/financeiro/retencoes-proprias");
       afirmar((await p.$("tr[data-retencao-antiga]")) === null, "depois de recarregar, não há retenção antiga a regularizar");
     } else naoExecutados.push("nenhuma retenção antiga listada (o passo 3 não criou o legado)");

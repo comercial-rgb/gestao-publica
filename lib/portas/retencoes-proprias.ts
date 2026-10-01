@@ -1,6 +1,7 @@
 import {
   classificarRetencaoPropria,
   ehTributoDoProprioTesouro,
+  fatosDaOrigemDoPagamento,
   listarClassificacoesDaRetencaoPropria,
 } from "../../modules/m07-extraorcamentario/retencao-propria.js";
 import { regularizarConsignacaoPropria } from "../../modules/m04-receita/receita-por-retencao.js";
@@ -175,6 +176,7 @@ export async function lerRetencoesAntigasDoMunicipio(): Promise<readonly Retenca
       valor: true,
       tipoConsignacaoId: true,
       contaBancariaId: true,
+      pagamentoId: true,
       tipoConsignacao: { select: { codigo: true } },
       pagamento: { select: { numero: true } },
       alocacoesRecebidas: { select: { valor: true, recolhimento: { select: { estornos: { select: { id: true } } } } } },
@@ -182,7 +184,8 @@ export async function lerRetencoesAntigasDoMunicipio(): Promise<readonly Retenca
   });
   const linhas: RetencaoAntigaNaTela[] = [];
   for (const m of candidatos) {
-    const c = await ehTributoDoProprioTesouro(prisma, { tipoConsignacaoId: m.tipoConsignacaoId, credorConsignatario: ente.nome, contaBancariaId: m.contaBancariaId, data: hoje });
+    const fatos = m.pagamentoId === null ? undefined : await fatosDaOrigemDoPagamento(prisma, m.pagamentoId);
+    const c = await ehTributoDoProprioTesouro(prisma, { tipoConsignacaoId: m.tipoConsignacaoId, credorConsignatario: ente.nome, contaBancariaId: m.contaBancariaId, data: hoje, fatos });
     if (c === null) continue;
     let alocado = toMoney("0.00");
     for (const a of m.alocacoesRecebidas) if (a.recolhimento.estornos.length === 0) alocado = toMoney(alocado.plus(a.valor.toString()));

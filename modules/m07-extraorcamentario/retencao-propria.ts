@@ -243,11 +243,21 @@ export async function classificarRetencaoPropria(
  */
 export async function ehTributoDoProprioTesouro(
   db: Tx,
-  p: { readonly tipoConsignacaoId: string; readonly credorConsignatario: string; readonly contaBancariaId: string; readonly data: Date }
+  p: {
+    readonly tipoConsignacaoId: string;
+    readonly credorConsignatario: string;
+    readonly contaBancariaId: string;
+    readonly data: Date;
+    /**
+     * Os fatos a considerar. O IR da folha e o IR de fornecedor podem apontar para o MESMO tipo de consignação: quem
+     * precisa do fato certo (a regularização, que escolhe a natureza) restringe pela origem do pagamento.
+     */
+    readonly fatos?: readonly FatoDaRetencaoPropria[] | undefined;
+  }
 ): Promise<ClassificacaoVigente | null> {
   const ente = await db.enteConfig.findFirst({ select: { nome: true } });
   if (ente === null || p.credorConsignatario.trim() !== ente.nome.trim()) return null;
-  for (const fato of FATOS_DA_RETENCAO_PROPRIA) {
+  for (const fato of p.fatos ?? FATOS_DA_RETENCAO_PROPRIA) {
     const c = await classificacaoPropriaVigente(db, fato, p.data);
     if (c !== null && c.tipoConsignacaoId === p.tipoConsignacaoId && (await mesmoPerimetro(db, p.contaBancariaId, c))) return c;
   }
@@ -291,4 +301,14 @@ export async function irDaFolhaNoPagamento(
   }
   const ente = await db.enteConfig.findFirst({ select: { nome: true } });
   return { propria: null, consignacao: { tipoConsignacaoId: c.tipoConsignacaoId, credorConsignatario: ente?.nome ?? "Município", valor: ir.total.toFixed(2) } };
+}
+
+/**
+ * Os fatos possíveis de uma retenção feita num pagamento: o da FOLHA, se o pagamento é de uma liquidação de folha; o de
+ * FORNECEDOR, senão. O ISS vale nos dois. É o que impede o IR antigo de um fornecedor de virar receita do IR do trabalho.
+ */
+export async function fatosDaOrigemDoPagamento(db: Tx, pagamentoId: string): Promise<readonly FatoDaRetencaoPropria[]> {
+  const pag = await db.pagamento.findUnique({ where: { id: pagamentoId }, select: { liquidacaoId: true } });
+  const ehFolha = pag !== null && (await db.liquidacaoDaFolha.findUnique({ where: { liquidacaoId: pag.liquidacaoId }, select: { id: true } })) !== null;
+  return ehFolha ? ["IRRF_FOLHA", "ISS"] : ["IRRF_FORNECEDOR_PJ", "ISS"];
 }
