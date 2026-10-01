@@ -7,6 +7,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../../components/ui/Formulario";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
+import { CampoCpfCnpj } from "../../../../../components/ui/Campos";
 import {
   AvisosDosAtos,
   ResultadosDosAtos,
@@ -129,6 +130,10 @@ function Corpo({
           <div>
             <label className={ROTULO} htmlFor={`${uid}-rec-hist`}>Histórico</label>
             <input className={CAMPO} id={`${uid}-rec-hist`} name="historico" type="text" />
+          </div>
+          <div>
+            <label className={ROTULO} htmlFor={`${uid}-rec-doc`}>CPF ou CNPJ de quem recebe</label>
+            <CampoCpfCnpj id={`${uid}-rec-doc`} name="documentoDoFavorecido" placeholder="00.000.000/0000-00" className={CAMPO} />
           </div>
         </div>
 

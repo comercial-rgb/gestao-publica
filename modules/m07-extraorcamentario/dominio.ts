@@ -227,6 +227,8 @@ export const zRegistrarDispendioExtraInput = z.object({
   valor: zValorPositivo,
   data: z.coerce.date(),
   historico: z.string().min(1),
+  /** V24 — o CPF/CNPJ de quem recebe o recolhimento (SAGRES DespesaExtra §4.20); a tela o exige. */
+  documentoDoFavorecido: z.string().trim().min(1).optional(),
   criadoPor: z.string().min(1),
   /**
    * ⚠️ A COMPOSIÇÃO POR ORIGEM (C34), OPCIONAL NO DOMÍNIO E OBRIGATÓRIA NA TELA.

@@ -43,6 +43,7 @@ export async function recolherAction(
     if (t(f, "contaBancaria") === "") return { erro: "Escolha a conta bancária." };
     if (t(f, "data") === "") return { erro: "Informe a data do recolhimento." };
     if (t(f, "historico") === "") return { erro: "Informe o histórico." };
+    if (t(f, "documentoDoFavorecido") === "") return { erro: "Informe o CPF/CNPJ de quem recebe o recolhimento." };
 
     const parcelas = ingressos
       .map((ingressoId, i) => ({ ingressoId, valor: valores[i] ?? "" }))
@@ -62,6 +63,7 @@ export async function recolherAction(
         contaBancaria: t(f, "contaBancaria"),
         data: t(f, "data"),
         historico: t(f, "historico"),
+        documentoDoFavorecido: t(f, "documentoDoFavorecido"),
         parcelas,
       });
       revalidatePath("/financeiro/extraorcamentario");

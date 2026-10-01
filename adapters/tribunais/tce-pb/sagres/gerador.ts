@@ -1197,7 +1197,7 @@ export async function lerFatosDespesaExtra(
       tipoConsignacao: true,
       contaBancaria: { include: { fonte: true } },
       lancamento: { include: { partidas: { include: { conta: true } } } },
-      alocacoesFeitas: { select: { ingresso: { select: { id: true, data: true } } } },
+      alocacoesFeitas: { select: { ingresso: { select: { id: true, data: true, pagamento: { select: { liquidacao: { select: { empenho: { select: { ficha: { select: { co: { select: { codigo: true } } } } } } } } } } } } } },
     },
     orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
   });
@@ -1238,6 +1238,16 @@ export async function lerFatosDespesaExtra(
       if (n === undefined) throw new Error(`SAGRES/DespesaExtra — a receita extra do recolhimento ${numero} ficou fora da numeração.`);
       receitaExtra = { codUnidadeGestora: params.codUnidadeGestora, exercicio: ano, numero: n };
     }
+    // V24 — o CO "representará também o detalhamento da fonte real que se deu o pagamento" (§4.20): o da
+    // ficha do pagamento que reteve. Retenções de fichas com CO diferente num recolhimento só não cabem
+    // num campo — recusa nomeando, em vez de escolher um.
+    const cos = [...new Set(m.alocacoesFeitas.map((a) => a.ingresso.pagamento?.liquidacao.empenho.ficha.co?.codigo).filter((c): c is string => c !== undefined))];
+    if (cos.length > 1) {
+      throw new Error(
+        `SAGRES/DespesaExtra — o recolhimento ${numero} compõe retenções de fichas com CO diferente (${cos.join(", ")}); o campo co ` +
+          `do §4.20 tem um valor só. Registre um recolhimento por CO. Nada foi gerado.`
+      );
+    }
     fatos.push({
       codUnidadeGestora: params.codUnidadeGestora,
       numero,
@@ -1256,6 +1266,8 @@ export async function lerFatosDespesaExtra(
       exercicio: m.data.getUTCFullYear(),
       codFonteRecursoPagamento: m.contaBancaria.fonte.codigo,
       cnpjGerencia: params.cnpjGerenciadora,
+      cpfCnpjFavorecido: m.documentoDoFavorecido,
+      co: cos[0] ?? null,
     });
   }
   return fatos;

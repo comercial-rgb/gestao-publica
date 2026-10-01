@@ -6,7 +6,11 @@ import { semearSagresPoc } from "./sagres-poc.js";
 import { gerarDespesaExtra, gerarDotacao, gerarEmpenhos, gerarEstornoDespesaExtra, gerarEstornoRetencao, gerarLiquidacao, gerarMovimentacaoEntreContas, gerarPagamentos, gerarReceitaOrcamentaria, gerarRetencao, lerFatosEmpenhos, lerFatosEstornoPagamento } from "../../adapters/tribunais/tce-pb/sagres/index.js";
 import { estornarMovimentoExtra, registrarDispendioExtra } from "../../modules/m07-extraorcamentario/extraorcamentario.js";
 import { roteiroDispendioExtra } from "../../modules/m07-extraorcamentario/dominio.js";
-import { anularPagamento } from "../../modules/m05-despesa/servico-bloco2.js";
+import { anularPagamento, liquidar, pagar } from "../../modules/m05-despesa/servico-bloco2.js";
+import { empenhar } from "../../modules/m05-despesa/servico.js";
+import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../../modules/m05-despesa/dominio.js";
+import { registrarMovimentoDotacao } from "../../modules/m05-despesa/dotacao-razao.js";
+import { recalcularCache } from "../../modules/m05-despesa/adapter-prisma.js";
 import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox.js";
 import { empenhoParaCaptura, montarEnvelope, validarEnvelopeCaptura } from "../../adapters/tribunais/tce-pb/captura/index.js";
 import { listarDecretos } from "../../modules/m03-creditos/consultas.js";
@@ -123,7 +127,7 @@ describe("massa POC SAGRES — a história encadeada", () => {
     expect(linha.slice(6, 13)).toBe("0000001"); //                      7-13   numero (1º do exercício)
     expect(linha.slice(13, 22)).toBe("218810200"); //                   14-22  conta 2.1.8.8.1.02.00 (consignação ISS a pagar)
     expect(linha.slice(22, 30)).toBe("20092026"); //                    23-30  data
-    expect(linha.slice(30, 44)).toBe("00000000000000"); //              31-44  cpfCnpj (GAP nomeado → zeros)
+    expect(linha.slice(30, 44)).toBe("00000000000000"); //              31-44  cpfCnpj: recolhimento sem o documento de quem recebe → zeros
     expect(linha.slice(45, 48)).toBe("869"); //                         46-48  fonte STN (parâmetro export)
     expect(linha.slice(48, 61)).toBe("111111".padEnd(13, " ")); //      49-61  conta CC-POC-A + dígito
     expect(linha.slice(71, 87)).toBe("0000000000300,00"); //            72-87  valor recolhido
@@ -319,4 +323,82 @@ describe("V23 — estornos extraorçamentários no SAGRES", () => {
     ).rejects.toThrow(/256 caracteres.*até 255/);
     expect(await prisma.movimentoExtraorcamentario.count()).toBe(antes);
   });
+});
+
+/**
+ * V24 — DESPESAEXTRA (§4.20) COM O BENEFICIÁRIO E O CO. O CPF/CNPJ de quem recebe vem do recolhimento
+ * (exigido pela tela); o CO, da ficha do pagamento que reteve, pelas alocações do recolhimento.
+ */
+describe("V24 — o beneficiário e o CO da despesa extra", () => {
+  beforeEach(async () => {
+    await limparBanco(prisma);
+    await semearSagresPoc(prisma, { criadoPor: POR });
+  }, 120000);
+
+  const D = (mes: number, dia: number): Date => new Date(Date.UTC(2026, mes - 1, dia, 12, 0, 0));
+  const R_DISP = roteiroDispendioExtra({ consignacaoAPagar: "2.1.8.8.1.02.00", disponibilidade: "1.1.1.1.1.19.00" });
+
+  async function coNaFicha(fichaId: string, codigo: string): Promise<void> {
+    const co = await prisma.codigoAcompanhamento.upsert({ where: { codigo }, update: {}, create: { codigo, descricao: `CO ${codigo} (fixture)` } });
+    await prisma.fichaOrcamentaria.update({ where: { id: fichaId }, data: { coId: co.id } });
+  }
+  async function retencaoDoPag3(): Promise<{ tipoIss: string; fonte: string; ingresso: string }> {
+    const tipoIss = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "ISS" }, select: { id: true } });
+    const fonte = await prisma.movimentoExtraorcamentario.findFirstOrThrow({ where: { tipo: "DISPENDIO" }, select: { fonteId: true } });
+    const ingresso = await prisma.movimentoExtraorcamentario.findFirstOrThrow({ where: { tipo: "INGRESSO", pagamento: { numero: "3" } }, select: { id: true } });
+    return { tipoIss: tipoIss.id, fonte: fonte.fonteId!, ingresso: ingresso.id };
+  }
+
+  it("o recolhimento com o CNPJ de quem recebe e composto da retenção do pagamento 3: 31-44 é o CNPJ, 603-606 o CO da ficha", async () => {
+    await coNaFicha("ficha-poc", "1001");
+    const r = await retencaoDoPag3();
+    await registrarDispendioExtra(prisma, { tipoConsignacaoId: r.tipoIss, credorConsignatario: "Municipio de Campina Grande", contaBancaria: "CC-POC-A", fonteId: r.fonte, valor: "150.00", data: D(9, 25), historico: "Recolhimento de ISS com beneficiario", criadoPor: POR, documentoDoFavorecido: "08.993.917/0001-46", alocacoes: [{ ingressoId: r.ingresso, valor: "150.00" }] } as never, R_DISP);
+    const arq = await gerarDespesaExtra(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ, codFonteRecursoExtra: "869", dia: new Date(Date.UTC(2026, 8, 25)) });
+    const linha = arq.conteudo.toString("utf8").replace(/\r\n$/, "");
+    expect(linha).toHaveLength(637);
+    expect(linha.slice(30, 44)).toBe("08993917000146"); // 31-44 cpfCnpjFornecedor (beneficiário)
+    expect(linha.slice(602, 606)).toBe("1001"); //         603-606 co da ficha que pagou
+    // O recolhimento antigo (20/09, sem documento nem alocação) continua com zeros — gap nomeado, não inventado.
+    const antigo = (await gerarDespesaExtra(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ, codFonteRecursoExtra: "869", dia: new Date(Date.UTC(2026, 8, 20)) })).conteudo.toString("utf8");
+    expect(antigo.slice(30, 44)).toBe("00000000000000");
+  });
+
+  it("CNPJ do beneficiário com dígito errado é recusado na entrada — nada é gravado", async () => {
+    const r = await retencaoDoPag3();
+    const antes = await prisma.movimentoExtraorcamentario.count();
+    await expect(registrarDispendioExtra(prisma, { tipoConsignacaoId: r.tipoIss, credorConsignatario: "Municipio de Campina Grande", contaBancaria: "CC-POC-A", fonteId: r.fonte, valor: "10.00", data: D(9, 25), historico: "Recolhimento", criadoPor: POR, documentoDoFavorecido: "08993917000100", alocacoes: [{ ingressoId: r.ingresso, valor: "10.00" }] } as never, R_DISP)).rejects.toThrow(/de quem recebe o recolhimento .* não é válido/);
+    expect(await prisma.movimentoExtraorcamentario.count()).toBe(antes);
+  });
+
+  it("retenções de fichas com CO DIFERENTE num recolhimento só: o arquivo recusa nomeando os dois (N=2); de mesmo CO, sai", async () => {
+    await coNaFicha("ficha-poc", "1001");
+    const r = await retencaoDoPag3();
+    // A segunda retenção vem de OUTRA ficha (CO 2002), por empenho, liquidação e pagamento reais.
+    const base = await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: "ficha-poc" } });
+    const sub = await prisma.empenho.findFirstOrThrow({ where: { numero: "3" }, select: { subelementoId: true, credorCpfCnpj: true } });
+    // Outra AÇÃO: a classificação da ficha é única por exercício, e a segunda ficha precisa de outra.
+    const acao2 = await prisma.acao.create({ data: { id: "aca-v24", codigo: "2999", descricao: "Acao da segunda ficha (fixture V24)", tipo: "ATIVIDADE" } });
+    await prisma.$transaction(async (tx) => {
+      await tx.fichaOrcamentaria.create({ data: { id: "ficha-poc-2", exercicio: 2026, numero: 9002, orgaoId: base.orgaoId, unidadeOrcId: base.unidadeOrcId, funcaoId: base.funcaoId, subfuncaoId: base.subfuncaoId, programaId: base.programaId, acaoId: acao2.id, naturezaDespesaId: base.naturezaDespesaId, fonteId: base.fonteId, exercicioFonte: 1, valorDotado: "5000.00" } });
+      await registrarMovimentoDotacao(tx, { fichaId: "ficha-poc-2", tipo: "DOTACAO_INICIAL", valor: "5000.00", origemTipo: "LOA", origemId: "ficha-poc-2", criadoPor: POR, data: D(1, 1), historico: "Dotacao da segunda ficha (fixture V24)" });
+      await recalcularCache(tx, "ficha-poc-2");
+    });
+    await coNaFicha("ficha-poc-2", "2002");
+    const deps = criarM05DepsComAlmoxarifado(prisma);
+    const R_EMP = roteiroEmpenho({ creditoDisponivel: "6.2.2.1.1.00.00", creditoEmpenhado: "6.2.2.1.3.01.00" });
+    const R_LIQ = roteiroLiquidacao({ variacaoDiminutiva: "3.3.2.1.1.01.00", obrigacaoAPagar: "2.1.3.1.1.01.01", creditoEmpenhado: "6.2.2.1.3.01.00", creditoLiquidado: "6.2.2.1.3.03.00" });
+    const R_PAG = roteiroPagamento({ obrigacaoAPagar: "2.1.3.1.1.01.01", disponibilidade: "1.1.1.1.1.19.00", creditoLiquidado: "6.2.2.1.3.03.00", creditoPago: "6.2.2.1.3.04.00" });
+    const e = await empenhar({ fichaId: "ficha-poc-2", numero: "9", tipo: "ORDINARIO", valor: "1000.00", data: D(9, 15), credorCpfCnpj: sub.credorCpfCnpj, historico: "Empenho da segunda ficha", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", subelementoId: sub.subelementoId!, criadoPor: POR }, R_EMP, deps);
+    const l = await liquidar({ empenhoId: e.empenhoId, numero: "9", valor: "1000.00", data: D(9, 16), responsavelAtesto: "Ordenador POC", historico: "Liquidacao da segunda ficha", criadoPor: POR }, R_LIQ, deps);
+    const pg = await pagar({ liquidacaoId: l.liquidacaoId, numero: "9", valor: "1000.00", data: D(9, 17), contaBancaria: "CC-POC-A", fonteId: r.fonte, historico: "Pagamento da segunda ficha com ISS", criadoPor: POR }, R_PAG, deps, { contaDisponibilidade: "1.1.1.1.1.19.00", retencoes: [{ tipoConsignacaoId: r.tipoIss, credorConsignatario: "Municipio de Campina Grande", valor: "50.00", contaConsignacaoAPagar: "2.1.8.8.1.02.00" }] });
+    const ingresso2 = await prisma.movimentoExtraorcamentario.findFirstOrThrow({ where: { pagamentoId: pg.pagamentoId, tipo: "INGRESSO" }, select: { id: true } });
+
+    await registrarDispendioExtra(prisma, { tipoConsignacaoId: r.tipoIss, credorConsignatario: "Municipio de Campina Grande", contaBancaria: "CC-POC-A", fonteId: r.fonte, valor: "80.00", data: D(9, 26), historico: "Recolhimento de duas fichas", criadoPor: POR, documentoDoFavorecido: "08993917000146", alocacoes: [{ ingressoId: r.ingresso, valor: "30.00" }, { ingressoId: ingresso2.id, valor: "50.00" }] } as never, R_DISP);
+    await expect(gerarDespesaExtra(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ, codFonteRecursoExtra: "869", dia: new Date(Date.UTC(2026, 8, 26)) })).rejects.toThrow(/CO diferente \((1001, 2002|2002, 1001)\)/);
+
+    // Com o mesmo CO nas duas fichas, a mesma composição sai com ele.
+    await coNaFicha("ficha-poc-2", "1001");
+    const ok = (await gerarDespesaExtra(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ, codFonteRecursoExtra: "869", dia: new Date(Date.UTC(2026, 8, 26)) })).conteudo.toString("utf8");
+    expect(ok.slice(602, 606)).toBe("1001");
+  }, 120000);
 });

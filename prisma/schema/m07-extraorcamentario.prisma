@@ -167,6 +167,10 @@ model MovimentoExtraorcamentario {
   /// nulo aqui. Nulo nos ingressos gravados antes — o gerador recusa nomeando, não inventa documento.
   documentoDoContribuinte String?
 
+  /// V24 — o CPF/CNPJ de quem RECEBE o recolhimento (DISPENDIO): o SAGRES o exige (DespesaExtra §4.20,
+  /// cpfCnpjFornecedor, "CPF/CNPJ do Beneficiário"). Nulo nos recolhimentos gravados antes.
+  documentoDoFavorecido String?
+
   /// V24 — back-relation VIRTUAL: a memória do cálculo, quando esta retenção foi calculada.
   calculoDaRetencao CalculoDaRetencao?
 

@@ -819,6 +819,10 @@ export interface DespesaExtraFato {
   readonly exercicio: number; //              ano de mov.data
   readonly codFonteRecursoPagamento: string; // mov.contaBancaria.fonte.codigo (a fonte REAL que paga)
   readonly cnpjGerencia: string; //           parâmetro export (CNPJ gerenciador)
+  /** V24 — CPF/CNPJ do beneficiário (mov.documentoDoFavorecido); nulo nos recolhimentos antigos. */
+  readonly cpfCnpjFavorecido?: string | null;
+  /** V24 — o CO da ficha que pagou a retenção recolhida (pelas alocações do recolhimento). */
+  readonly co?: string | null;
   /** V23 — o vínculo com a ReceitaExtra, quando o plano do Tribunal exige; senão, espaços. */
   readonly receitaExtra?: { readonly codUnidadeGestora: string; readonly exercicio: number; readonly numero: string } | null;
 }
@@ -829,7 +833,7 @@ const camposDespesaExtra: readonly CampoLayout<DespesaExtraFato>[] = [
   { nome: "codContaContabil", posInicial: 14, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "partida DEBITO → ContaPcasp.codigo (sem pontos)", extrair: (f) => f.codContaContabil },
   { nome: "data", posInicial: 23, posFinal: 30, tipo: "DATA", obrigatorio: true, origem: "mov.data", extrair: (f) => f.data },
   // GAP 1 — o m07 guarda o consignatário como NOME, não documento. Sem origem → ZEROS (nomeado).
-  { nome: "cpfCnpjFornecedor", posInicial: 31, posFinal: 44, tipo: "DOCUMENTO", obrigatorio: true, origem: "GAP: m07.credorConsignatario é nome livre, não CPF/CNPJ → zeros", extrair: () => null },
+  { nome: "cpfCnpjFornecedor", posInicial: 31, posFinal: 44, tipo: "DOCUMENTO", obrigatorio: true, origem: "mov.documentoDoFavorecido (V24, exigido pela tela); nulo nos recolhimentos gravados antes → zeros", extrair: (f) => f.cpfCnpjFavorecido ?? null },
   { nome: "exercicioFonteRecurso", posInicial: 45, posFinal: 45, tipo: "NUMERICO", obrigatorio: true, origem: "1 = Atual", extrair: (f) => f.exercicioFonteRecurso },
   { nome: "codFonteRecurso", posInicial: 46, posFinal: 48, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (860/861/862/869 — STN)", extrair: (f) => f.codFonteRecursoExtra },
   { nome: "numContaBancaria", posInicial: 49, posFinal: 61, tipo: "ALFA", obrigatorio: true, origem: "mov.contaBancaria.conta+digito", extrair: (f) => f.numeroConta },
@@ -842,7 +846,7 @@ const camposDespesaExtra: readonly CampoLayout<DespesaExtraFato>[] = [
   { nome: "exercicio", posInicial: 596, posFinal: 599, tipo: "NUMERICO", obrigatorio: true, origem: "ano de mov.data", extrair: (f) => f.exercicio },
   { nome: "codFonteRecursoPagamento", posInicial: 600, posFinal: 602, tipo: "NUMERICO", obrigatorio: true, origem: "mov.contaBancaria.fonte.codigo (fonte real)", extrair: (f) => f.codFonteRecursoPagamento },
   // GAP 2 — o dispêndio extra não carrega CO no modelo. Sem origem → ZEROS (nomeado).
-  { nome: "co", posInicial: 603, posFinal: 606, tipo: "NUMERICO", obrigatorio: true, origem: "GAP: dispêndio extra não tem CO no modelo → zeros", extrair: () => null },
+  { nome: "co", posInicial: 603, posFinal: 606, tipo: "NUMERICO", obrigatorio: true, origem: "ficha.co do pagamento que reteve, pelas alocações do recolhimento (V24); sem alocação → zeros", extrair: (f) => f.co ?? null },
   // V23 — o vínculo com a ReceitaExtra: preenchido quando a conta EXIGE no plano do Tribunal; senão
   // ESPAÇOS (ASCII 32), como o layout manda.
   { nome: "codUnidadeGestoraReceitaExtra", posInicial: 607, posFinal: 612, tipo: "ALFA", obrigatorio: false, origem: "vínculo ReceitaExtra (quando a conta exige) ou espaços", extrair: (f) => numeroOuEspacos(f.receitaExtra?.codUnidadeGestora ?? null, 6, "codUnidadeGestoraReceitaExtra") },

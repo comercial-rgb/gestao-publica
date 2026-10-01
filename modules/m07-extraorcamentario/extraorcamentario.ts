@@ -283,6 +283,14 @@ export async function registrarDispendioExtra(
   roteiro: RoteiroContabil
 ): Promise<{ readonly movimentoId: string; readonly lancamentoId: string }> {
   const dados = zRegistrarDispendioExtraInput.parse(input);
+  // V24 — o documento de quem recebe vai ao Tribunal de Contas; conferido antes de gravar.
+  let favorecido: string | null = null;
+  if (dados.documentoDoFavorecido !== undefined) {
+    favorecido = normalizarDocumento(dados.documentoDoFavorecido);
+    if (!documentoTemDigitoValido(favorecido)) {
+      throw new Error(`O CPF/CNPJ de quem recebe o recolhimento "${dados.documentoDoFavorecido}" não é válido (dígito verificador). Nada foi gravado.`);
+    }
+  }
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.registrarDispendioExtra, "ENTE");
@@ -340,6 +348,7 @@ export async function registrarDispendioExtra(
         // esquecer é o pior dos dois mundos: o guard roda, o dado se perde, e a consulta
         // volta a atribuir tudo à fonte padrão da conta.
         fonteId: dados.fonteId,
+        documentoDoFavorecido: favorecido,
         tipo: "DISPENDIO",
         valor: dados.valor.toFixed(2),
         data: dados.data,

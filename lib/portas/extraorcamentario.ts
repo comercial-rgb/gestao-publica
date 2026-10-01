@@ -159,6 +159,8 @@ export async function registrarRecolhimento(input: {
   readonly contaBancaria: string;
   readonly data: string;
   readonly historico: string;
+  /** V24 — o CPF/CNPJ de quem recebe (SAGRES DespesaExtra §4.20). Obrigatório pela tela. */
+  readonly documentoDoFavorecido: string;
   /** As parcelas: de quais retenções sai cada centavo. Obrigatórias pela tela. */
   readonly parcelas: readonly { readonly ingressoId: string; readonly valor: string }[];
 }): Promise<string> {
@@ -169,6 +171,9 @@ export async function registrarRecolhimento(input: {
   });
   if (tipo === null) throw new Error("O tipo de consignação informado não existe. Nada foi gravado.");
 
+  if (input.documentoDoFavorecido.trim() === "") {
+    throw new Error("Informe o CPF/CNPJ de quem recebe o recolhimento: o Tribunal de Contas o exige no arquivo da despesa extra. Nada foi gravado.");
+  }
   const parcelas = input.parcelas.filter((p) => p.valor.trim() !== "");
   if (parcelas.length === 0) {
     throw new Error(
@@ -207,6 +212,7 @@ export async function registrarRecolhimento(input: {
         historico: input.historico,
         criadoPor,
         alocacoes: valores,
+        documentoDoFavorecido: input.documentoDoFavorecido,
       } as never,
       roteiroDispendioExtra({ consignacaoAPagar, disponibilidade })
     )
