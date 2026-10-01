@@ -13,6 +13,7 @@ import {
   lerConferenciaDaComposicao, lerContasParaRecolhimento, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
   type TipoConsignacaoNaLista, type SaldoConsignatarioNaLista, type RetencaoNaLista, type DispendioNaLista,
 } from "../../../../lib/portas/extraorcamentario";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
@@ -25,8 +26,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 export const dynamic = "force-dynamic";
 
 /** Dinheiro em reais na tela — o formato interno (`0.00`) nunca chega a quem lê. */
-const brl = (v: string): string =>
-  Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const brl = (v: string): string => formatarMoeda(v).texto;
 
 export default async function ExtraorcamentarioPage({
   searchParams,

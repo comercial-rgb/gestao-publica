@@ -9,6 +9,7 @@ import {
   type Percentual,
 } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { diaCivilBr } from "../../packages/datas/index.js";
 import {
   ratearPorPercentual,
   somaDasPartes,
@@ -227,7 +228,7 @@ export async function apropriarCustoDaLiquidacao(
     if (criterio === null) {
       throw new Error(
         `CRITÉRIO DE RATEIO NÃO VIGENTE: nenhuma versão de "${d.criterioChave}" vigia em ` +
-          `${d.competencia.toISOString().slice(0, 10)}. Publique a versão antes de apropriar — o ` +
+          `${diaCivilBr(d.competencia)}. Publique a versão antes de apropriar — o ` +
           `sistema não escolhe critério por conta própria.`
       );
     }

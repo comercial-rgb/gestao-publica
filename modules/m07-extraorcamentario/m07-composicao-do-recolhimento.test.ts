@@ -311,4 +311,24 @@ describe("C37 — retido, recolhido, estornado e a recolher", () => {
     const inss = c.obrigacoes.find((o) => o.tipoCodigo === "INSS");
     expect(inss?.recolhidoSemComposicao).toBe("0.00");
   });
+  // ⚠️ O EXERCÍCIO DA RETENÇÃO É O DO ENTE. Lido por `getUTCFullYear`, a retenção de 31/12 às 22:00
+  // virava 2027 na tela da guia (já é 01/01 em Greenwich) e ia para o grupo do ano errado.
+  it("t13 a retencao de 31/12 as 22:00 e do exercicio que termina, nao do seguinte", async () => {
+    const r = await registrarIngressoExtra(
+      prisma,
+      {
+        tipoConsignacaoId: tInss,
+        credorConsignatario: INSS,
+        contaBancaria: "CC-001",
+        fonteId: fonte500,
+        valor: "80.00",
+        data: DIA_DE_BORDA(2026, 12, 31),
+        historico: "retencao da noite de 31/12",
+        criadoPor: POR,
+      } as never,
+      R_IN
+    );
+    const lista = await retencoesComSaldo(prisma, { tipoConsignacaoId: tInss, credorConsignatario: INSS });
+    expect(lista.find((x) => x.movimentoId === r.movimentoId)?.exercicio).toBe(2026);
+  });
 });

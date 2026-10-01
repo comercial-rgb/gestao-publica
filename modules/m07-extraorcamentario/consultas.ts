@@ -2,7 +2,7 @@ import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js"
 import { vigenciaDoTipoDeConsignacao } from "./dominio.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { totaisPorConsignatario, SINAL_MOVIMENTO_EXTRA } from "./dominio.js";
-import { janelaCivilDoAno } from "../../packages/datas/index.js";
+import { anoCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 
 /** O client OU uma transação dele — ver a nota do M04 (`consultas.ts`). */
 type Tx = Omit<
@@ -444,7 +444,7 @@ export async function retencoesComSaldo(
     return {
       movimentoId: i.id,
       data: i.data,
-      exercicio: i.data.getUTCFullYear(),
+      exercicio: anoCivil(i.data),
       valor: bruto.toFixed(2),
       alocado: alocado.toFixed(2),
       aRecolher: estornada ? "0.00" : bruto.minus(alocado).toFixed(2),

@@ -10,6 +10,7 @@ import {
   lerRetencoesComSaldo,
 } from "../../../../../lib/portas/extraorcamentario";
 import { diaCivilBr } from "../../../../../packages/datas/index";
+import { formatarMoeda } from "../../../../../lib/format/moeda";
 import { FormDoRecolhimento } from "./FormDoRecolhimento";
 
 /**
@@ -71,7 +72,7 @@ export default async function Page({
                     </p>
                     <p className="text-sm text-[color:var(--color-ink-2)]">
                       Consignatário {o.consignatario} · a recolher{" "}
-                      {Number(o.aRecolher).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      {formatarMoeda(o.aRecolher).texto}
                     </p>
                   </div>
                   <Link
@@ -126,9 +127,9 @@ export default async function Page({
               <tr className="border-b border-[color:var(--color-border)]" key={r.movimentoId}>
                 <td className="py-2">{r.exercicio}</td>
                 <td className="py-2">{diaCivilBr(r.data)}</td>
-                <td className="py-2 text-right">{Number(r.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                <td className="py-2 text-right">{Number(r.alocado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                <td className="py-2 text-right">{Number(r.aRecolher).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                <td className="py-2 text-right">{formatarMoeda(r.valor).texto}</td>
+                <td className="py-2 text-right">{formatarMoeda(r.alocado).texto}</td>
+                <td className="py-2 text-right">{formatarMoeda(r.aRecolher).texto}</td>
                 <td className="py-2">
                   {r.estornada ? <Badge status="neutro">Estornada</Badge> : null}
                   {!r.estornada && Number(r.aRecolher) === 0 ? <Badge status="ok">Recolhida</Badge> : null}

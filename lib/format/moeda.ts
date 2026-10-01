@@ -49,3 +49,25 @@ export function somarValoresDigitados(valores: readonly string[]): string {
   const abs = centavos < 0n ? -centavos : centavos;
   return `${sinal}${abs / 100n}.${String(abs % 100n).padStart(2, "0")}`;
 }
+
+/**
+ * O VALOR COMO A PESSOA DIGITA (`1.234,56`, `1234,56` ou `1234.56`) EM STRING DECIMAL (`1234.56`),
+ * para entrar em `somarValoresDigitados`. Vazio vira "0"; o que não se lê como valor vira "" —
+ * e `somarValoresDigitados` ignora o "", sem estourar no meio da digitação.
+ *
+ * ⚠️ TEXTUAL, sem `Number`: os dois formulários de parcelas somavam em ponto flutuante e
+ * imprimiam a soma por `toLocaleString`, e a conferência "igual ao total" dependia de
+ * `0.1 + 0.2` dar exatamente `0.3`.
+ */
+export function valorDigitadoEmDecimal(bruto: string): string {
+  const t = bruto.trim();
+  if (t === "") return "0";
+  const decimal = t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t;
+  return /^-?\d+(\.\d+)?$/.test(decimal) ? decimal : "";
+}
+
+/** A diferença `a - b` entre duas strings decimais, pela mesma soma em centavos inteiros. */
+export function subtrairValores(a: string, b: string): string {
+  const negado = b.startsWith("-") ? b.slice(1) : `-${b}`;
+  return somarValoresDigitados([a, negado]);
+}

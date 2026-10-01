@@ -1,5 +1,5 @@
 import { serializarPercentual, toMoney, toPercentual, type Money } from "../../packages/contracts/index.js";
-import { janelaCivilDoAno } from "../../packages/datas/index.js";
+import { anoCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 
 /**
@@ -49,7 +49,7 @@ function janela(p: {
   readonly ate?: Date;
 }): { readonly de: Date; readonly ate: Date } {
   if (p.de !== undefined && p.ate !== undefined) return { de: p.de, ate: p.ate };
-  const ano = p.exercicio ?? new Date().getFullYear();
+  const ano = p.exercicio ?? anoCivil(new Date());
   const j = janelaCivilDoAno(ano);
   return { de: j.inicio, ate: j.fim };
 }

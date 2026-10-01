@@ -8,6 +8,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../../components/ui/Formulario";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
+import { formatarMoeda } from "../../../../../lib/format/moeda";
 import {
   AvisosDosAtos,
   ResultadosDosAtos,
@@ -41,10 +42,7 @@ import {
  * era da tela, não do percurso.
  */
 function reais(valor: string): string {
-  return Number(valor).toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatarMoeda(valor).texto;
 }
 
 export interface ContaParaPagar {

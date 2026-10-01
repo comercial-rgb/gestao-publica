@@ -13,6 +13,12 @@ import {
   ResultadosDosAtos,
   useResultadoDoAto,
 } from "../../../../../components/ui/ResultadosDosAtos";
+import {
+  formatarMoeda,
+  somarValoresDigitados,
+  subtrairValores,
+  valorDigitadoEmDecimal,
+} from "../../../../../lib/format/moeda";
 import { distribuirAction, type EstadoDaGuiaDistribuida } from "./actions";
 
 /**
@@ -42,25 +48,15 @@ export interface FontePrevistaDaTela {
   readonly exercicioFonte: 1 | 2;
   readonly valorPrevisto: string;
 }
+
 export interface ContaDaTela {
   readonly codigo: string;
   readonly descricao: string;
   readonly fontes: readonly FonteDaTela[];
 }
 
-function reais(valor: string | number): string {
-  return Number(valor).toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
-/** O que a pessoa digitou, em número — aceita 1.234,56 e 1234.56. */
-function numero(bruto: string): number {
-  const t = bruto.trim();
-  if (t === "") return 0;
-  const n = Number(t.includes(",") ? t.replace(/\./g, "").replace(",", ".") : t);
-  return Number.isFinite(n) ? n : 0;
+function reais(valor: string): string {
+  return formatarMoeda(valor).texto;
 }
 
 export function FormGuiaDistribuida(props: {
@@ -120,9 +116,9 @@ function Corpo({
     setSeq((n) => n + 1);
   }
 
-  const somaDasPrevistas = Object.values(parcelas).reduce((t, v) => t + numero(v), 0);
-  const soma = somaDasPrevistas + numero(outroValor);
-  const diferenca = numero(total) - soma;
+  const soma = somarValoresDigitados([...Object.values(parcelas), outroValor].map(valorDigitadoEmDecimal));
+  const totalDigitado = somarValoresDigitados([valorDigitadoEmDecimal(total)]);
+  const diferenca = subtrairValores(totalDigitado, soma);
 
   return (
     <>
@@ -270,13 +266,13 @@ function Corpo({
         <p className="text-sm font-medium">
           Soma das parcelas: {reais(soma)}
           {" · "}
-          {numero(total) === 0
+          {totalDigitado === "0.00"
             ? "informe o total do depósito"
-            : diferenca === 0
+            : diferenca === "0.00"
               ? "igual ao total"
-              : diferenca > 0
+              : !diferenca.startsWith("-")
                 ? `faltam ${reais(diferenca)} para atingir o total`
-                : `excede o total em ${reais(-diferenca)}`}
+                : `excede o total em ${reais(diferenca.slice(1))}`}
         </p>
 
         <div>

@@ -1,5 +1,5 @@
 import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
-import { diaCivil } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
@@ -493,7 +493,7 @@ async function alocarRecolhimento(
     if (parcela.valor.greaterThan(disponivel)) {
       throw new Error(
         `A parcela de ${parcela.valor.toFixed(2)} excede o que a retenção de ` +
-          `${ing.data.toISOString().slice(0, 10)} ainda tem a recolher (${disponivel.toFixed(2)}). ` +
+          `${diaCivilBr(ing.data)} ainda tem a recolher (${disponivel.toFixed(2)}). ` +
           `Nada foi gravado.`
       );
     }

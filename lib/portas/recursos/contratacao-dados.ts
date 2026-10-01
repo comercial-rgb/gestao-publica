@@ -2,7 +2,7 @@ import { diaCivil, diaCivilBr, meioDiaCivil } from "../../../packages/datas/inde
 import { toMoney, type Money } from "../../../packages/contracts/index.js";
 import { normalizarDocumento, formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
-import { MODALIDADES } from "../../../modules/m11-licitacoes/dominio.js";
+import { MODALIDADES, vigenciaDoFormulario } from "../../../modules/m11-licitacoes/dominio.js";
 import {
   cadastrarContrato,
   cadastrarProcesso,
@@ -269,8 +269,7 @@ export async function acaoDoProcesso(acao: string, processoId: string, c: Campos
           contratadoDocumento: normalizarDocumento(t(c, "contratadoDocumento")),
           contratadoNome: t(c, "contratadoNome"),
           valorInicial: t(c, "valorInicial"),
-          vigenciaInicio: dia(c, "vigenciaInicio"),
-          vigenciaFimInicial: dia(c, "vigenciaFimInicial"),
+          ...vigenciaDoFormulario(t(c, "vigenciaInicio"), t(c, "vigenciaFimInicial")),
           categoriaOrdemCronologica: t(c, "categoriaOrdemCronologica") as "FORNECIMENTO_BENS" | "LOCACAO" | "PRESTACAO_SERVICOS" | "REALIZACAO_OBRAS",
           criadoPor,
         })

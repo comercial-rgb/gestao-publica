@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
-import { diferencaEmDiasCivis, somarDiasCivis } from "../../packages/datas/index.js";
+import {
+  diferencaEmDiasCivis,
+  fimDoDiaCivil,
+  inicioDoDiaCivil,
+  somarDiasCivis,
+} from "../../packages/datas/index.js";
 
 /**
  * M11 — DOMÍNIO PURO de licitações e contratos (Lei 14.133/2021).
@@ -258,6 +263,18 @@ export function vigenciaFim(
   // instante do dia (23:59:59), e somar 86.400.000 ms atravessando a virada do horário de
   // verão desloca a hora civil em 60 minutos — o que muda o DIA em que o contrato vence.
   return somarDiasCivis(vigenciaFimInicial, dias);
+}
+
+/**
+ * AS DATAS DE VIGÊNCIA DIGITADAS ("AAAA-MM-DD") COMO `estaVigente` AS ESPERA: o início no primeiro
+ * instante do dia civil e o fim no último. A tela gravava as duas ao meio-dia, e com isso um empenho
+ * da manhã do primeiro dia e um da tarde do último dia caíam fora da vigência.
+ */
+export function vigenciaDoFormulario(
+  inicio: string,
+  fim: string
+): { readonly vigenciaInicio: Date; readonly vigenciaFimInicial: Date } {
+  return { vigenciaInicio: inicioDoDiaCivil(inicio), vigenciaFimInicial: fimDoDiaCivil(fim) };
 }
 
 /**

@@ -2,7 +2,7 @@ import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
-import { diaCivilBr } from "../../../../packages/datas/index";
+import { anoCivil, diaCivilBr } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import {
   lerEncerramentosDeControles,
@@ -57,7 +57,7 @@ export default async function Page({
     />
   );
 
-  const anoAtual = new Date().getFullYear();
+  const anoAtual = anoCivil(new Date());
   const exercicios = [anoAtual + 1, anoAtual, anoAtual - 1, anoAtual - 2];
   const doUrl = Number.parseInt(umString(sp["exercicio"]), 10);
   const exercicio = exercicios.includes(doUrl) ? doUrl : anoAtual;

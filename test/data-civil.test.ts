@@ -79,6 +79,12 @@ const EXCECOES: Readonly<Record<string, string>> = {
   "packages/ofx/parser.ts": "o OFX declara o próprio fuso; normaliza na fronteira",
   "modules/m14-exports-federais/manad/dominio.ts": "leiaute da Receita",
   "modules/m14-exports-federais/manad/gerador.ts": "leiaute da Receita",
+  // O cadastro dos responsáveis do MANAD e o recorte do exercício entregue ao gerador: as datas vão
+  // ao arquivo (DT_INI/DT_FIN, AAAAMMDD) e o gerador as lê por `getUTC*`. Meia-noite UTC é a âncora
+  // do leiaute, e a ida e a volta usam a mesma; nada aqui compara com o relógio do ente.
+  "modules/m01-core-contabil/responsaveis-do-manad.ts": "leiaute da Receita (datas do cadastro dos responsáveis do MANAD)",
+  "lib/portas/responsaveis-do-manad.ts": "leiaute da Receita (devolve à tela a data do cadastro do MANAD na mesma âncora)",
+  "lib/portas/exportacoes-federais.ts": "leiaute da Receita (exercício do MANAD, registro 0000)",
   "modules/m17-banco-bb/normalizar.ts": "leiaute do banco",
   "modules/m17-banco-bb/cliente-bb.ts": "leiaute do banco",
   "modules/m17-banco-bb/fixtures-poc.ts": "fixture do leiaute do banco",

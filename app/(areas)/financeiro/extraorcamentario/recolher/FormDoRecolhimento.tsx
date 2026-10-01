@@ -13,6 +13,7 @@ import {
   ResultadosDosAtos,
   useResultadoDoAto,
 } from "../../../../../components/ui/ResultadosDosAtos";
+import { formatarMoeda, somarValoresDigitados, valorDigitadoEmDecimal } from "../../../../../lib/format/moeda";
 import { recolherAction, type EstadoDoRecolhimento } from "./actions";
 
 /**
@@ -41,7 +42,7 @@ export interface ContaParaRecolher {
 }
 
 function reais(valor: string): string {
-  return Number(valor).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatarMoeda(valor).texto;
 }
 
 export function FormDoRecolhimento({
@@ -96,11 +97,7 @@ function Corpo({
   }
 
   // A soma das parcelas, para conferir antes de enviar. Formato brasileiro na entrada.
-  let soma = 0;
-  for (const v of Object.values(parcelas)) {
-    const n = Number(v.trim().includes(",") ? v.replace(/\./g, "").replace(",", ".") : v);
-    if (Number.isFinite(n)) soma += n;
-  }
+  const soma = somarValoresDigitados(Object.values(parcelas).map(valorDigitadoEmDecimal));
 
   const disponiveis = retencoes.filter((r) => !r.estornada && Number(r.aRecolher) > 0);
 
@@ -169,7 +166,7 @@ function Corpo({
             ))
           )}
           <p className="mt-1 text-sm font-medium">
-            Soma das parcelas: {soma.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            Soma das parcelas: {reais(soma)}
           </p>
         </fieldset>
 

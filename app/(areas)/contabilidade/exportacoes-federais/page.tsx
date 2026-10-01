@@ -24,6 +24,7 @@ import {
   type ResumoDoManad,
 } from "../../../../lib/portas/exportacoes-federais";
 import { anoCivil, competenciaCivil } from "../../../../packages/datas/index";
+import { inteiroBr, umaCasaBr } from "../../../../lib/format/quantidade";
 
 /**
  * ARQUIVOS PARA A STN E A RECEITA — a Matriz de Saldos Contábeis (SICONFI) e o MANAD.
@@ -89,7 +90,7 @@ function querystring(p: Readonly<Record<string, string | number>>): string {
 
 function formatarBytes(n: number): string {
   if (n < 1024) return `${String(n)} bytes`;
-  return `${(n / 1024).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} KB`;
+  return `${umaCasaBr(n / 1024)} KB`;
 }
 
 export default async function Pagina({
@@ -292,7 +293,7 @@ function ResumoMsc({ r, href }: { readonly r: ResumoDaMsc; readonly href: string
               Matriz {r.tipo === "ENCERRAMENTO" ? "de encerramento" : "mensal"} · {referencia}
             </p>
             <p className="mt-2 text-xl font-semibold tabular text-[color:var(--color-ink)]" data-papel="linhas-msc">
-              {r.linhas.toLocaleString("pt-BR")} linhas · {r.contas.toLocaleString("pt-BR")} contas
+              {inteiroBr(r.linhas)} linhas · {inteiroBr(r.contas)} contas
             </p>
             <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
               Instituição {r.instituicao} · período {r.periodo}
@@ -304,7 +305,7 @@ function ResumoMsc({ r, href }: { readonly r: ResumoDaMsc; readonly href: string
           {r.porTipoDeValor.map((t) => (
             <div key={t.rotulo}>
               <dt className="text-xs text-[color:var(--color-ink-2)]">{t.rotulo}</dt>
-              <dd className="text-sm font-semibold tabular">{t.linhas.toLocaleString("pt-BR")} linhas</dd>
+              <dd className="text-sm font-semibold tabular">{inteiroBr(t.linhas)} linhas</dd>
             </div>
           ))}
         </dl>
@@ -367,7 +368,7 @@ function ResumoMsc({ r, href }: { readonly r: ResumoDaMsc; readonly href: string
                     <td className="py-1 pr-4 tabular">{p.conta}</td>
                     <td className="py-1 pr-4">{p.informacao}</td>
                     <td className="py-1 text-right tabular">
-                      {p.lancamentos === 0 ? "cadastro da conta" : p.lancamentos.toLocaleString("pt-BR")}
+                      {p.lancamentos === 0 ? "cadastro da conta" : inteiroBr(p.lancamentos)}
                     </td>
                   </tr>
                 ))}
@@ -397,7 +398,7 @@ function ResumoManad({ r, href }: { readonly r: ResumoDoManad; readonly href: st
               Exercício de {String(r.exercicio)} · 1º de janeiro a 31 de dezembro
             </p>
             <p className="mt-2 text-xl font-semibold tabular text-[color:var(--color-ink)]" data-papel="linhas-manad">
-              {r.linhas.toLocaleString("pt-BR")} linhas · {formatarBytes(r.bytes)}
+              {inteiroBr(r.linhas)} linhas · {formatarBytes(r.bytes)}
             </p>
           </div>
           <BotaoBaixar href={href} rotulo={`Baixar ${r.nomeDoArquivo}`} />
@@ -408,7 +409,7 @@ function ResumoManad({ r, href }: { readonly r: ResumoDoManad; readonly href: st
               <dt className="text-xs text-[color:var(--color-ink-2)]">
                 Bloco {b.bloco} · {ROTULO_DO_BLOCO[b.bloco] ?? "outros registros"}
               </dt>
-              <dd className="text-sm font-semibold tabular">{b.linhas.toLocaleString("pt-BR")} linhas</dd>
+              <dd className="text-sm font-semibold tabular">{inteiroBr(b.linhas)} linhas</dd>
             </div>
           ))}
         </dl>
@@ -426,7 +427,7 @@ function ResumoManad({ r, href }: { readonly r: ResumoDoManad; readonly href: st
             {r.pendencias.map((p) => (
               <li key={`${p.registro}|${p.descricao}`}>
                 <strong>Registro {p.registro}</strong>
-                {p.quantidade !== null ? ` (${p.quantidade.toLocaleString("pt-BR")})` : ""}: {p.descricao}
+                {p.quantidade !== null ? ` (${inteiroBr(p.quantidade)})` : ""}: {p.descricao}
               </li>
             ))}
           </ul>

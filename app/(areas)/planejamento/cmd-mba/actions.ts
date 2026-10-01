@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { anoCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import {
@@ -34,7 +35,7 @@ function dataCivilDoFormulario(bruto: string): Date | null {
 
 function exercicioDoFormulario(formData: FormData): number {
   const n = Number.parseInt(String(formData.get("exercicio") ?? ""), 10);
-  return Number.isNaN(n) ? new Date().getFullYear() : n;
+  return Number.isNaN(n) ? anoCivil(new Date()) : n;
 }
 
 /** PROPÕE a versão 1 do cronograma (CMD) ou das metas (MBA) a partir da previsão da LOA. */

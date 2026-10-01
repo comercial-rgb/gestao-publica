@@ -5,7 +5,7 @@ import { homologadoEm, situacaoDoProcesso, vigenciaFimDoContrato } from "../../m
 import { empenhadoLiquidoDaOrdem, empenhadoLiquidoDoConvenio, TIPO_EMPENHO_DA_ORDEM, valorDaOrdem } from "../../modules/m05-despesa/adapter-prisma";
 import { situacaoDaSolicitacao } from "../../modules/m05-despesa/solicitacao-de-empenho";
 import { empenhadoLiquidoDaCampanha } from "../../modules/m05-despesa/campanha-publicitaria";
-import { diaCivilBr } from "../../packages/datas/index";
+import { diaCivil, diaCivilBr } from "../../packages/datas/index";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import { cliente } from "./cliente";
 import type { Identidade } from "./sessao";
@@ -180,11 +180,13 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
       for (const c of r.linhas) {
         if (situacaoDoProcesso(await homologadoEm(prisma, c.processo.id)) !== "HOMOLOGADO") continue;
         const fim = await vigenciaFimDoContrato(prisma, c.id);
-        if (fim.getTime() < hoje.getTime()) continue;
+        // O contrato vale o último dia inteiro: compara-se dia civil com dia civil. Instante contra
+        // instante, o contrato gravado ao meio-dia sumia das opções na tarde do último dia.
+        if (diaCivil(fim) < diaCivil(hoje)) continue;
         opcoes.push({
           valor: c.id,
           rotulo: `${c.numeroContrato} — ${c.contratadoNome}`,
-          detalhe: `processo ${c.processo.numeroProcesso} · ${reais(c.valorInicial.toFixed(2))} · vigente até ${fim.toLocaleDateString("pt-BR", { timeZone: "UTC" })}`,
+          detalhe: `processo ${c.processo.numeroProcesso} · ${reais(c.valorInicial.toFixed(2))} · vigente até ${diaCivilBr(fim)}`,
           dados: {
             numero: c.numeroContrato,
             credorDocumento: c.contratadoDocumento,
