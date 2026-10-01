@@ -27,6 +27,7 @@ import {
   cadastrarGrupoDosEncargos,
   cadastrarVersaoDoEncargo,
   certificarEncargosDaFolha,
+  registrarEstabelecimentoDaLotacao,
   encargosDaFolha,
   liquidarEncargosDaFolha,
   retratoDosEncargos,
@@ -232,6 +233,34 @@ describe("(2) a apuração sobre a folha fechada", () => {
     expect(com.completa).toBe(true);
     // 3500 × 0,02 × 1,2345 = 86,415 → 86,42; 2300 × 0,02469 = 56,787 → 56,79
     expect(com.porComponente.find((p) => p.codigo === "RGPS-RAT")?.total).toBe("143.21");
+  });
+
+  it("V25 — a lotação com estabelecimento próprio leva o FAP DELE, e não o do ente; o registro só vale da competência de início em diante", async () => {
+    await versaoAprovada(compPatr, "0.20");
+    const { versaoId } = await cadastrarVersaoDoEncargo(prisma, { componenteId: compRat, competenciaInicio: "2026-01", aliquota: "0.02", aplicaFap: true, fundamentacaoLegal: "Lei 8.212/1991, art. 22, II; Lei 10.666/2003, art. 10", sintetica: false, rubricaIds: [rubricaVenc, rubricaHext], criadoPor: RH });
+    await aprovarVersaoDoEncargo(prisma, { versaoId, criadoPor: APROVADOR });
+    const fapDe = async (cnpj: string, fator: string) => {
+      const { fatorId } = await cadastrarFatorAcidentario(prisma, { cnpj, ano: 2026, fator, fonte: "Consulta ao FAP 2026 em 10/01/2026", criadoPor: RH });
+      await aprovarFatorAcidentario(prisma, { fatorId, criadoPor: APROVADOR });
+    };
+    await fapDe("08993917000146", "1.2345");
+    await fapDe("11222333000181", "0.5000");
+    const seduc = (await prisma.lotacao.findUniqueOrThrow({ where: { codigo: "SEDUC" }, select: { id: true } })).id;
+    const ratDa = async (apuracaoId: string) =>
+      ((await prisma.apuracaoDeEncargos.findUniqueOrThrow({ where: { id: apuracaoId }, select: { memoria: true } })).memoria as { itens: { componente: string; estabelecimento?: string; valor?: string }[] }).itens.filter((i) => i.componente === "RGPS-RAT");
+
+    // Registro a partir de JUNHO: a folha de maio continua no CNPJ do ente.
+    await registrarEstabelecimentoDaLotacao(prisma, { lotacaoId: seduc, cnpj: "11222333000181", competenciaInicio: "2026-06", fundamento: "Fundo Municipal de Educação, cadastro no eSocial", criadoPor: RH });
+    const maio = await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    expect((await ratDa(maio.apuracaoId)).map((i) => i.estabelecimento)).toEqual(["08993917000146", "08993917000146"]);
+    expect(maio.porComponente.find((p) => p.codigo === "RGPS-RAT")?.total).toBe("143.21");
+
+    // A partir de MAIO: os dois vínculos da SEDUC passam ao fundo, com FAP 0,5.
+    await registrarEstabelecimentoDaLotacao(prisma, { lotacaoId: seduc, cnpj: "11222333000181", competenciaInicio: "2026-05", fundamento: "Fundo Municipal de Educação, cadastro no eSocial", criadoPor: RH });
+    const fundo = await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    expect((await ratDa(fundo.apuracaoId)).map((i) => i.estabelecimento)).toEqual(["11222333000181", "11222333000181"]);
+    // 3500 × 0,02 × 0,5 = 35,00; 2300 × 0,01 = 23,00
+    expect(fundo.porComponente.find((p) => p.codigo === "RGPS-RAT")?.total).toBe("58.00");
   });
 
   it("PARÂMETRO AUSENTE: a apuração é gravada INCOMPLETA, e o atesto e o empenho recusam com o motivo", async () => {

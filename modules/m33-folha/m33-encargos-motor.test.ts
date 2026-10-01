@@ -3,6 +3,7 @@ import { Decimal, toMoney } from "../../packages/contracts/index.js";
 import {
   apurarEncargos,
   diferencaAEmpenhar,
+  estabelecimentoNaCompetencia,
   elegibilidadeParaApropriarEncargos,
   elegibilidadeParaCertificarEncargos,
   elegibilidadeParaLiquidarEncargos,
@@ -10,6 +11,7 @@ import {
   type ComponenteParaApurar,
   type ContrachequeParaApurar,
   type EstadoDosEncargos,
+  type FapParaApurar,
   type VersaoParaApurar,
 } from "./encargos.js";
 
@@ -177,13 +179,19 @@ describe("os predicados dos atos sobre os encargos", () => {
 });
 
 describe("V24 — o FAP sobre o RAT (Lei 10.666/2003, art. 10; Decreto 3.048/1999, art. 202-A)", () => {
+  const ENTE = "12345678000195";
   const RAT_COM_FAP = [versao({ id: "vp-1", componenteId: "c-patr", aliquota: "0.20" }), versao({ id: "vr-fap", componenteId: "c-rat", aliquota: "0.02", aplicaFap: true }), versao({ id: "vs-1", componenteId: "c-rpps", aliquota: "0.11", rubricasIncidentes: ["r-venc"] })];
-  const com = (fap?: Parameters<typeof apurarEncargos>[0]["fap"], versoes: readonly VersaoParaApurar[] = RAT_COM_FAP) =>
-    apurarEncargos({ competencia: "2026-05", calculo: { numero: 1, sha256: "a".repeat(64) }, contracheques: CC, componentes: [PATR, RAT, RPPS], versoes, ...(fap === undefined ? {} : { fap }) });
+  const noEnte = CC.map((c) => ({ ...c, estabelecimento: ENTE }));
+  const com = (
+    faps?: Readonly<Record<string, FapParaApurar>>,
+    versoes: readonly VersaoParaApurar[] = RAT_COM_FAP,
+    contracheques: readonly ContrachequeParaApurar[] = noEnte
+  ) =>
+    apurarEncargos({ competencia: "2026-05", calculo: { numero: 1, sha256: "a".repeat(64) }, contracheques, componentes: [PATR, RAT, RPPS], versoes, ...(faps === undefined ? {} : { faps }) });
   const item = (r: ReturnType<typeof com>, m: string) => r.itens.find((i) => i.matricula === m && i.componente === "RGPS-RAT");
 
   it("RAT 2% × FAP 1,2345 = 2,469%: MAT-A 3.500,00 → 86,42; MAT-B 2.000,03 → 49,38 (N=2)", () => {
-    const r = com({ fator: new Decimal("1.2345"), fonte: "consulta ao FAP 2026" });
+    const r = com({ [ENTE]: { fator: new Decimal("1.2345"), fonte: "consulta ao FAP 2026" } });
     // 3500 × 0,02 × 1,2345 = 3500 × 0,02469 = 86,415 → meio-par: 86,42
     expect(item(r, "MAT-A")?.valor).toBe("86.42");
     // 2000,03 × 0,02469 = 49,3807407 → 49,38
@@ -191,6 +199,7 @@ describe("V24 — o FAP sobre o RAT (Lei 10.666/2003, art. 10; Decreto 3.048/199
     expect(item(r, "MAT-A")?.aliquota).toBe("0.0200");
     expect(item(r, "MAT-A")?.fap).toBe("1.2345");
     expect(item(r, "MAT-A")?.aliquotaAjustada).toBe("0.024690");
+    expect(item(r, "MAT-A")?.estabelecimento).toBe(ENTE);
     expect(item(r, "MAT-A")?.fundamentacao).toMatch(/FAP 1\.2345 \(consulta ao FAP 2026\)/);
     expect(r.completa).toBe(true);
   });
@@ -198,18 +207,97 @@ describe("V24 — o FAP sobre o RAT (Lei 10.666/2003, art. 10; Decreto 3.048/199
   it("sem FAP, o RAT que o aplica fica AUSENTE com o motivo — e a apuração não se completa; os outros componentes seguem", () => {
     const sem = com();
     expect(item(sem, "MAT-A")?.situacao).toBe("PARAMETRO_AUSENTE");
-    expect(item(sem, "MAT-A")?.motivo).toBe("FAP: não informado");
+    expect(item(sem, "MAT-A")?.motivo).toBe(`FAP: não informado para o CNPJ ${ENTE}`);
     expect(sem.completa).toBe(false);
     expect(sem.itens.find((i) => i.matricula === "MAT-A" && i.componente === "RGPS-PATRONAL")?.valor).toBe("700.00");
-    const motivo = com({ motivo: "nenhum FAP aprovado para o CNPJ 12345678000195 em 2026" });
-    expect(item(motivo, "MAT-B")?.motivo).toBe("FAP: nenhum FAP aprovado para o CNPJ 12345678000195 em 2026");
+    const motivo = com({ [ENTE]: { motivo: `nenhum FAP aprovado para o CNPJ ${ENTE} em 2026` } });
+    expect(item(motivo, "MAT-B")?.motivo).toBe(`FAP: nenhum FAP aprovado para o CNPJ ${ENTE} em 2026`);
   });
 
   it("a versão que não aplica o FAP calcula igual com ou sem ele — e a memória (sha256) não muda", () => {
     const antes = apurar();
-    const comFap = com({ fator: new Decimal("1.5000"), fonte: "x" }, VERSOES);
+    const comFap = com({ [ENTE]: { fator: new Decimal("1.5000"), fonte: "x" } }, VERSOES);
     expect(item(comFap, "MAT-A")?.valor).toBe("52.50");
     expect(item(comFap, "MAT-A")?.fap).toBeUndefined();
+    expect(item(comFap, "MAT-A")?.estabelecimento).toBeUndefined();
     expect(comFap.sha256).toBe(antes.sha256);
+  });
+});
+
+describe("V25 — o FAP por estabelecimento (CNPJ completo)", () => {
+  const ENTE = "12345678000195";
+  const FUNDO = "11222333000181";
+  const RAT_COM_FAP = [versao({ id: "vp-1", componenteId: "c-patr", aliquota: "0.20" }), versao({ id: "vr-fap", componenteId: "c-rat", aliquota: "0.02", aplicaFap: true }), versao({ id: "vs-1", componenteId: "c-rpps", aliquota: "0.11", rubricasIncidentes: ["r-venc"] })];
+  // MAT-A no fundo, MAT-B no ente: dois estabelecimentos, dois FAPs.
+  const dois = CC.map((c) => ({ ...c, estabelecimento: c.matricula === "MAT-A" ? FUNDO : ENTE }));
+  const apurarCom = (faps: Readonly<Record<string, FapParaApurar>>, contracheques: readonly ContrachequeParaApurar[] = dois) =>
+    apurarEncargos({ competencia: "2026-05", calculo: { numero: 1, sha256: "a".repeat(64) }, contracheques, componentes: [PATR, RAT, RPPS], versoes: RAT_COM_FAP, faps });
+  const rat = (r: ReturnType<typeof apurarCom>, m: string) => r.itens.find((i) => i.matricula === m && i.componente === "RGPS-RAT");
+
+  it("cada vínculo leva o FAP do seu estabelecimento: MAT-A no fundo (0,5000) → 35,00; MAT-B no ente (1,2345) → 49,38", () => {
+    const r = apurarCom({ [FUNDO]: { fator: new Decimal("0.5000"), fonte: "FAP do fundo 2026" }, [ENTE]: { fator: new Decimal("1.2345"), fonte: "FAP do ente 2026" } });
+    // 3500 × 0,02 × 0,5 = 35,00
+    expect(rat(r, "MAT-A")?.valor).toBe("35.00");
+    expect(rat(r, "MAT-A")?.estabelecimento).toBe(FUNDO);
+    expect(rat(r, "MAT-A")?.fundamentacao).toMatch(/FAP do fundo 2026/);
+    expect(rat(r, "MAT-B")?.valor).toBe("49.38");
+    expect(rat(r, "MAT-B")?.estabelecimento).toBe(ENTE);
+    expect(r.completa).toBe(true);
+  });
+
+  it("falta o FAP de um estabelecimento: só os vínculos dele ficam ausentes, com o CNPJ no motivo", () => {
+    const r = apurarCom({ [ENTE]: { fator: new Decimal("1.2345"), fonte: "FAP do ente 2026" } });
+    expect(rat(r, "MAT-A")?.situacao).toBe("PARAMETRO_AUSENTE");
+    expect(rat(r, "MAT-A")?.motivo).toBe(`FAP: não informado para o CNPJ ${FUNDO}`);
+    expect(rat(r, "MAT-B")?.valor).toBe("49.38");
+    expect(r.completa).toBe(false);
+  });
+
+  it("vínculo sem estabelecimento (nem lotação nem ente com CNPJ) fica ausente com esse motivo", () => {
+    const r = apurarCom({ [ENTE]: { fator: new Decimal("1.0000"), fonte: "x" } }, CC.map((c) => ({ ...c, estabelecimento: null })));
+    expect(rat(r, "MAT-A")?.motivo).toBe("FAP: o vínculo não tem estabelecimento (nem a lotação nem o ente têm CNPJ)");
+  });
+});
+
+describe("V25 — o estabelecimento de uma lotação numa competência", () => {
+  const ENTE = "12345678000195";
+  const FUNDO = "11222333000181";
+  const UPA = "44555666000177";
+  // Saúde (raiz) → Atenção básica → UBS Centro; Administração (raiz) sem registro.
+  const lotacoes = [
+    { id: "saude", paiId: null },
+    { id: "basica", paiId: "saude" },
+    { id: "ubs", paiId: "basica" },
+    { id: "adm", paiId: null },
+  ];
+  const registros = [
+    { lotacaoId: "saude", cnpj: FUNDO, competenciaInicio: "2026-01" },
+    { lotacaoId: "ubs", cnpj: UPA, competenciaInicio: "2026-06" },
+    { lotacaoId: "ubs", cnpj: FUNDO, competenciaInicio: "2026-09" },
+  ];
+  const na = (lotacaoId: string | null, competencia: string, cnpjDoEnte: string | null = ENTE) =>
+    estabelecimentoNaCompetencia({ lotacaoId, competencia, lotacoes, registros, cnpjDoEnte });
+
+  it("a lotação sem registro herda o da lotação acima", () => {
+    expect(na("basica", "2026-05")).toBe(FUNDO);
+    expect(na("ubs", "2026-05")).toBe(FUNDO);
+  });
+
+  it("o registro vale da competência de início em diante, e o mais recente até a competência decide (N=2)", () => {
+    expect(na("ubs", "2026-06")).toBe(UPA);
+    expect(na("ubs", "2026-08")).toBe(UPA);
+    expect(na("ubs", "2026-09")).toBe(FUNDO);
+  });
+
+  it("antes do primeiro registro da cadeia, e fora dela, vale o CNPJ do ente; sem ele, nenhum", () => {
+    expect(na("saude", "2025-12")).toBe(ENTE);
+    expect(na("adm", "2026-05")).toBe(ENTE);
+    expect(na(null, "2026-05")).toBe(ENTE);
+    expect(na("adm", "2026-05", null)).toBeNull();
+  });
+
+  it("uma cadeia com ciclo não trava: cai no CNPJ do ente", () => {
+    const ciclo = [{ id: "x", paiId: "y" }, { id: "y", paiId: "x" }];
+    expect(estabelecimentoNaCompetencia({ lotacaoId: "x", competencia: "2026-05", lotacoes: ciclo, registros: [], cnpjDoEnte: ENTE })).toBe(ENTE);
   });
 });

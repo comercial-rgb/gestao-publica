@@ -8,7 +8,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../../components/ui/Formulario";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
-import { aprovarFapAction, registrarFapAction, type EstadoDoFap } from "./actions";
+import { aprovarFapAction, registrarEstabelecimentoAction, registrarFapAction, type EstadoDoFap } from "./actions";
 
 function Resultado({ estado }: { readonly estado: EstadoDoFap }): React.ReactElement | null {
   if (estado.erro !== undefined) {
@@ -28,7 +28,7 @@ function Resultado({ estado }: { readonly estado: EstadoDoFap }): React.ReactEle
   return null;
 }
 
-/** Cadastro do FAP do ano. O CNPJ vem preenchido com o do ente, que é o que a apuração consulta. */
+/** Cadastro do FAP do ano. O CNPJ vem preenchido com o do ente; para um estabelecimento com CNPJ próprio, troque-o. */
 export function FormCadastrarFap({ cnpjDoEnte }: { readonly cnpjDoEnte: string | null }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoFap, FormData>(registrarFapAction, {});
   const campo = "text-xs text-[color:var(--color-ink-2)]";
@@ -60,6 +60,53 @@ export function FormCadastrarFap({ cnpjDoEnte }: { readonly cnpjDoEnte: string |
       <Resultado estado={estado} />
       <button type="submit" disabled={pendente} className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`}>
         {pendente ? "Cadastrando…" : "Cadastrar FAP"}
+      </button>
+    </form>
+  );
+}
+
+/** V25 — o estabelecimento (CNPJ) de uma lotação, a partir de uma competência. */
+export function FormEstabelecimentoDaLotacao({ lotacoes }: { readonly lotacoes: readonly { readonly id: string; readonly rotulo: string }[] }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDoFap, FormData>(registrarEstabelecimentoAction, {});
+  const campo = "text-xs text-[color:var(--color-ink-2)]";
+  return (
+    <form action={action} data-acao="registrar-estabelecimento" className={CLASSE_PAINEL_FORMULARIO}>
+      <ChaveDeComando />
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Estabelecimento de uma lotação</h2>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+        O FAP é de cada estabelecimento (CNPJ completo). Quando uma lotação pertence a um fundo ou órgão com CNPJ próprio, registre aqui: quem
+        está nela e nas lotações abaixo dela passa a usar o FAP desse CNPJ. Lotação sem registro usa o CNPJ do ente.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className={`${campo} sm:col-span-2`}>
+          <span className={ROTULO}>Lotação</span>
+          <select name="lotacaoId" required defaultValue="" className={CAMPO}>
+            <option value="" disabled>
+              Escolha a lotação
+            </option>
+            {lotacoes.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.rotulo}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className={campo}>
+          <span className={ROTULO}>CNPJ do estabelecimento</span>
+          <input name="cnpj" required inputMode="numeric" placeholder="00.000.000/0000-00" className={CAMPO} />
+        </label>
+        <label className={campo}>
+          <span className={ROTULO}>A partir da competência</span>
+          <input name="competenciaInicio" required type="month" className={CAMPO} />
+        </label>
+        <label className={`${campo} sm:col-span-2 lg:col-span-4`}>
+          <span className={ROTULO}>O que liga a lotação a esse CNPJ</span>
+          <input name="fundamento" required minLength={10} placeholder="Fundo Municipal de Saúde, cadastro do estabelecimento no eSocial" className={CAMPO} />
+        </label>
+      </div>
+      <Resultado estado={estado} />
+      <button type="submit" disabled={pendente} className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`}>
+        {pendente ? "Registrando…" : "Registrar estabelecimento"}
       </button>
     </form>
   );

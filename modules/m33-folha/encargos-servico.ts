@@ -5,7 +5,9 @@ import { ACAO_DO_SERVICO, type AcaoDoSistema } from "../m16-travamento/acoes.js"
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { AtoInelegivelError, Decimal, emProsa, exigirElegivel, sumMoney, toMoney, type Money } from "../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
-import { diaCivil } from "../../packages/datas/index.js";
+import { diaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
+import { lotacaoVigenteEm, type EventoDoVinculo } from "../m32-pessoal/dominio.js";
+import { documentoTemDigitoValido, tipoDeDocumento } from "../../packages/documento/index.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { identidadeDaChave, reservarNumero } from "../m05-despesa/numerador.js";
 import { anularEmpenhoParcial, anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
@@ -17,6 +19,7 @@ import { zCompetencia } from "./dominio.js";
 import { situacaoDaCertificacao, designacaoVigenteEm, type SituacaoDaCertificacao } from "./certificacao.js";
 import {
   apurarEncargos,
+  estabelecimentoNaCompetencia,
   diferencaAEmpenhar,
   elegibilidadeParaAjustarEncargos,
   planoDoGrupo,
@@ -186,6 +189,40 @@ export async function cadastrarFatorAcidentario(prisma: PrismaClient, input: Cad
   });
 }
 
+// V25 — o estabelecimento (CNPJ) de uma lotação, a partir de uma competência. O FAP é por estabelecimento.
+export const zRegistrarEstabelecimentoDaLotacaoInput = z.object({
+  lotacaoId: z.string().min(1),
+  cnpj: z.string().trim().regex(/^\d{14}$/, "CNPJ com 14 dígitos, sem máscara"),
+  competenciaInicio: zCompetencia,
+  fundamento: z.string().trim().min(10, "diga o que liga a lotação ao CNPJ: o cadastro do estabelecimento no eSocial ou a lei do fundo"),
+  criadoPor: z.string().min(1),
+});
+export type RegistrarEstabelecimentoDaLotacaoInput = z.input<typeof zRegistrarEstabelecimentoDaLotacaoInput>;
+
+export async function registrarEstabelecimentoDaLotacao(prisma: PrismaClient, input: RegistrarEstabelecimentoDaLotacaoInput): Promise<{ readonly registroId: string }> {
+  const d = zRegistrarEstabelecimentoDaLotacaoInput.parse(input);
+  if (!documentoTemDigitoValido(d.cnpj) || tipoDeDocumento(d.cnpj) !== "CNPJ") {
+    throw new Error(`CNPJ-INVALIDO: ${d.cnpj} não confere nos dígitos verificadores. Nada foi gravado.`);
+  }
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarEstabelecimentoDaLotacao, "ENTE");
+      const lotacao = await tx.lotacao.findUnique({ where: { id: d.lotacaoId }, select: { id: true } });
+      if (lotacao === null) throw new Error(`A lotação ${d.lotacaoId} não existe. Nada foi gravado.`);
+      const r = await tx.estabelecimentoDaLotacao.create({
+        data: { lotacaoId: d.lotacaoId, cnpj: d.cnpj, competenciaInicio: d.competenciaInicio, fundamento: d.fundamento, criadoPor: d.criadoPor },
+        select: { id: true },
+      });
+      return { registroId: r.id };
+    });
+  } catch (e) {
+    if (typeof e === "object" && e !== null && (e as { code?: string }).code === "P2002") {
+      throw new Error(`ESTABELECIMENTO-JA-REGISTRADO: esta lotação já tem um estabelecimento a partir de ${d.competenciaInicio}. Para mudar, registre a partir de outra competência. Nada foi gravado.`);
+    }
+    throw e;
+  }
+}
+
 export const zAprovarFatorAcidentarioInput = z.object({ fatorId: z.string().min(1), criadoPor: z.string().min(1) });
 export type AprovarFatorAcidentarioInput = z.input<typeof zAprovarFatorAcidentarioInput>;
 
@@ -204,11 +241,8 @@ export async function aprovarFatorAcidentario(prisma: PrismaClient, input: Aprov
   });
 }
 
-/** O FAP aprovado mais recente do CNPJ do ente no ano — ou o motivo de não haver. */
-export async function fapVigente(tx: Tx, ano: number): Promise<FapParaApurar> {
-  const ente = await tx.enteConfig.findFirst({ select: { cnpj: true } });
-  const cnpj = ente?.cnpj ?? null;
-  if (cnpj === null) return { motivo: "o CNPJ do ente não está configurado" };
+/** O FAP aprovado mais recente de um CNPJ (estabelecimento) no ano — ou o motivo de não haver. */
+export async function fapVigente(tx: Tx, cnpj: string, ano: number): Promise<FapParaApurar> {
   const f = await tx.fatorAcidentarioDePrevencao.findFirst({
     where: { cnpj, ano, aprovacao: { isNot: null } },
     orderBy: { criadoEm: "desc" },
@@ -216,6 +250,42 @@ export async function fapVigente(tx: Tx, ano: number): Promise<FapParaApurar> {
   });
   if (f === null) return { motivo: `nenhum FAP aprovado para o CNPJ ${cnpj} em ${ano}` };
   return { fator: new Decimal(f.fator.toString()), fonte: f.fonte };
+}
+
+/**
+ * V25 — O ESTABELECIMENTO DE CADA CONTRACHEQUE E O FAP DE CADA ESTABELECIMENTO. A lotação é a vigente
+ * no último instante da competência (a mesma régua do evento do vínculo); o CNPJ vem da cadeia de
+ * lotações e, sem registro nela, do ente.
+ */
+async function comEstabelecimentos<C extends { readonly vinculoId: string }>(
+  tx: Tx,
+  competencia: string,
+  contracheques: readonly C[]
+): Promise<{ readonly contracheques: readonly (C & { readonly estabelecimento: string | null })[]; readonly faps: Readonly<Record<string, FapParaApurar>> }> {
+  const fim = janelaCivilDoMes(competencia).fim;
+  const [ente, lotacoes, registros, eventos] = await Promise.all([
+    tx.enteConfig.findFirst({ select: { cnpj: true } }),
+    tx.lotacao.findMany({ select: { id: true, paiId: true } }),
+    tx.estabelecimentoDaLotacao.findMany({ select: { lotacaoId: true, cnpj: true, competenciaInicio: true } }),
+    tx.historicoVinculo.findMany({
+      where: { vinculoId: { in: contracheques.map((c) => c.vinculoId) } },
+      select: { vinculoId: true, data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true },
+    }),
+  ]);
+  const cnpjDoEnte = ente?.cnpj ?? null;
+  const com = contracheques.map((c) => {
+    const doVinculo = eventos
+      .filter((e) => e.vinculoId === c.vinculoId)
+      .map((e): EventoDoVinculo => ({ data: e.data, criadoEm: e.criadoEm, tipo: e.tipo as EventoDoVinculo["tipo"], cargoId: e.cargoId, lotacaoId: e.lotacaoId, salarioBase: null }));
+    const lotacaoId = lotacaoVigenteEm(doVinculo, fim);
+    return { ...c, estabelecimento: estabelecimentoNaCompetencia({ lotacaoId, competencia, lotacoes, registros, cnpjDoEnte }) };
+  });
+  const ano = Number(competencia.slice(0, 4));
+  const faps: Record<string, FapParaApurar> = {};
+  for (const cnpj of [...new Set(com.map((c) => c.estabelecimento).filter((x): x is string => x !== null))].sort()) {
+    faps[cnpj] = await fapVigente(tx, cnpj, ano);
+  }
+  return { contracheques: com, faps };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -273,9 +343,11 @@ export async function apurarEncargosDaFolha(prisma: PrismaClient, input: ApurarE
       exigirElegivel(elegibilidadeParaApurarEncargos({ competencia: folha.competencia, fechada: folha.fechamento !== null, apuracao: null, certificacao: null, gruposPendentesDeEmpenho: 0, componentesSemGrupo: [], empenhosDaApuracao: 0, liquidados: 0 }));
       const fechamento = folha.fechamento as NonNullable<typeof folha.fechamento>;
       const lido = await lerParaApurar(tx, fechamento.calculoId);
-      // V24 — o FAP só é lido quando alguma versão o aplica; as apurações de antes não mudam de memória.
-      const fap = lido.versoes.some((v) => v.aplicaFap) ? await fapVigente(tx, Number(folha.competencia.slice(0, 4))) : undefined;
-      const r = apurarEncargos({ competencia: folha.competencia, calculo: { numero: fechamento.calculo.numero, sha256: fechamento.calculo.sha256 }, ...lido, ...(fap === undefined ? {} : { fap }) });
+      // V24/V25 — o FAP só é lido quando alguma versão o aplica, e então POR ESTABELECIMENTO: cada
+      // contracheque leva o CNPJ da lotação vigente no fim da competência. As apurações sem FAP não
+      // mudam de memória.
+      const comFap = lido.versoes.some((v) => v.aplicaFap) ? await comEstabelecimentos(tx, folha.competencia, lido.contracheques) : undefined;
+      const r = apurarEncargos({ competencia: folha.competencia, calculo: { numero: fechamento.calculo.numero, sha256: fechamento.calculo.sha256 }, ...lido, ...(comFap === undefined ? {} : comFap) });
       if (r.itens.length === 0) {
         throw new Error(`ENCARGOS-SEM-COMPONENTE: não há componente de encargo cadastrado. Nada a apurar em ${folha.competencia} — e isso não prova que o ente não deve encargo nenhum. Nada foi gravado.`);
       }

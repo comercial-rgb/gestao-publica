@@ -4,18 +4,18 @@ import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { lerFaps } from "../../../../../lib/portas/fap";
-import { FormAprovarFap, FormCadastrarFap } from "./FormsDoFap";
+import { FormAprovarFap, FormCadastrarFap, FormEstabelecimentoDaLotacao } from "./FormsDoFap";
 
 /**
  * O FATOR ACIDENTÁRIO DE PREVENÇÃO (V24) — o multiplicador do RAT (Decreto 3.048/1999, art. 202-A). A
- * apuração dos encargos usa o aprovado mais recente do CNPJ do ente no ano da competência, nas versões
- * do RAT marcadas para multiplicar pelo FAP.
+ * apuração dos encargos usa, para cada vínculo, o aprovado mais recente do CNPJ do estabelecimento dele
+ * (V25: o da lotação, ou o do ente) no ano da competência, nas versões do RAT marcadas para o FAP.
  */
 export const dynamic = "force-dynamic";
 
 export default async function PaginaDoFap(): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_FOLHA");
-  const { cnpjDoEnte, faps } = await lerFaps();
+  const { cnpjDoEnte, faps, estabelecimentos, lotacoes } = await lerFaps();
 
   return (
     <div className="space-y-4">
@@ -23,7 +23,7 @@ export default async function PaginaDoFap(): Promise<React.ReactElement> {
 
       {cnpjDoEnte === null ? (
         <p role="alert" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-sm text-[color:var(--color-status-alerta-fg)]">
-          O CNPJ do ente não está configurado: a apuração não sabe de qual CNPJ ler o FAP, e o RAT que o aplica fica sem cálculo.
+          O CNPJ do ente não está configurado: quem está em lotação sem estabelecimento registrado fica com o RAT sem cálculo, porque a apuração não sabe de qual CNPJ ler o FAP.
         </p>
       ) : null}
 
@@ -64,6 +64,38 @@ export default async function PaginaDoFap(): Promise<React.ReactElement> {
       </Card>
 
       <FormCadastrarFap cnpjDoEnte={cnpjDoEnte} />
+
+      <Card>
+        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Lotações com estabelecimento próprio</h2>
+        {estabelecimentos.length === 0 ? (
+          <EstadoVazio titulo="Nenhuma lotação com CNPJ próprio" descricao="Todos os vínculos usam o FAP do CNPJ do ente." />
+        ) : (
+          <table className="w-full text-left text-sm" data-lista="estabelecimentos">
+            <thead>
+              <tr className="text-xs text-[color:var(--color-ink-2)]">
+                <th className="py-1 pr-3">Lotação</th>
+                <th className="py-1 pr-3">CNPJ</th>
+                <th className="py-1 pr-3">Desde</th>
+                <th className="py-1 pr-3">O que liga a lotação ao CNPJ</th>
+                <th className="py-1">Cadastro</th>
+              </tr>
+            </thead>
+            <tbody>
+              {estabelecimentos.map((e) => (
+                <tr key={e.id} data-estabelecimento={e.cnpj} className="border-t border-[color:var(--color-border)] align-top">
+                  <td className="py-1.5 pr-3">{e.lotacao}</td>
+                  <td className="py-1.5 pr-3">{e.cnpj}</td>
+                  <td className="py-1.5 pr-3">{e.desde}</td>
+                  <td className="py-1.5 pr-3 text-xs">{e.fundamento}</td>
+                  <td className="py-1.5 text-xs">{e.cadastro}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      <FormEstabelecimentoDaLotacao lotacoes={lotacoes} />
     </div>
   );
 }

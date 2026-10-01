@@ -426,6 +426,8 @@ model Lotacao {
 
   eventos        HistoricoVinculo[]
   diasCalendario CalendarioRh[]
+  /// V25 — o estabelecimento (CNPJ) desta lotação para o FAP, por competência (M33).
+  estabelecimentos EstabelecimentoDaLotacao[]
 
   @@index([paiId])
   @@index([unidadeOrcId])

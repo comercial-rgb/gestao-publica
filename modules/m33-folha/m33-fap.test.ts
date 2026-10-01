@@ -8,6 +8,7 @@ import {
   cadastrarFatorAcidentario,
   cadastrarVersaoDoEncargo,
   fapVigente,
+  registrarEstabelecimentoDaLotacao,
 } from "./encargos-servico.js";
 
 /**
@@ -52,22 +53,34 @@ describe("V24 — o FAP (Decreto 3.048/1999, art. 202-A)", { timeout: 60000 }, (
   });
 
   it("o vigente é o APROVADO mais recente do CNPJ do ente no ano (N=2); o não aprovado e o de outro ano não contam", async () => {
-    expect(await fapVigente(prisma, 2026)).toEqual({ motivo: `nenhum FAP aprovado para o CNPJ ${CNPJ_ENTE} em 2026` });
+    expect(await fapVigente(prisma, CNPJ_ENTE, 2026)).toEqual({ motivo: `nenhum FAP aprovado para o CNPJ ${CNPJ_ENTE} em 2026` });
     const a = await fap({ fator: "1.1000" });
     await aprovarFatorAcidentario(prisma, { fatorId: a.fatorId, criadoPor: QUEM_APROVA });
     const b = await fap({ fator: "1.2000", fonte: "Recurso deferido, novo FAP publicado" });
     await aprovarFatorAcidentario(prisma, { fatorId: b.fatorId, criadoPor: QUEM_APROVA });
     await fap({ fator: "1.9000", fonte: "Lançado e ainda não conferido" });
     await fap({ fator: "0.7000", ano: 2025 });
-    const v = await fapVigente(prisma, 2026);
+    const v = await fapVigente(prisma, CNPJ_ENTE, 2026);
     expect("fator" in v && v.fator.toFixed(4)).toBe("1.2000");
     await fap({ cnpj: "11222333000181", fator: "0.6000" });
-    expect("fator" in (await fapVigente(prisma, 2026)) && ((await fapVigente(prisma, 2026)) as { fator: { toFixed(n: number): string } }).fator.toFixed(4)).toBe("1.2000");
+    // O de outro CNPJ (outro estabelecimento) não muda o do ente, e o dele, sem aprovação, não vale.
+    const w = await fapVigente(prisma, CNPJ_ENTE, 2026);
+    expect("fator" in w && w.fator.toFixed(4)).toBe("1.2000");
+    expect(await fapVigente(prisma, "11222333000181", 2026)).toEqual({ motivo: "nenhum FAP aprovado para o CNPJ 11222333000181 em 2026" });
   });
 
-  it("sem CNPJ do ente, o motivo é esse", async () => {
-    await semear(null);
-    expect(await fapVigente(prisma, 2026)).toEqual({ motivo: "o CNPJ do ente não está configurado" });
+  it("V25 — o estabelecimento da lotação: CNPJ com dígito válido, lotação existente, um por competência", async () => {
+    await prisma.lotacao.create({ data: { id: "lot-saude", codigo: "SAUDE", nome: "Secretaria de Saúde", criadoPor: "SEED" } });
+    const reg = (o: Partial<Parameters<typeof registrarEstabelecimentoDaLotacao>[1]> = {}) =>
+      registrarEstabelecimentoDaLotacao(prisma, { lotacaoId: "lot-saude", cnpj: "11222333000181", competenciaInicio: "2026-01", fundamento: "Fundo Municipal de Saúde, cadastro no eSocial", criadoPor: QUEM_CADASTRA, ...o });
+    await expect(reg({ cnpj: "11222333000182" })).rejects.toThrow(/CNPJ-INVALIDO/);
+    await expect(reg({ lotacaoId: "nao-existe" })).rejects.toThrow(/não existe/);
+    await expect(reg({ criadoPor: "ninguem@cg.pb.gov.br" })).rejects.toThrow();
+    expect(await prisma.estabelecimentoDaLotacao.count()).toBe(0);
+    await reg();
+    await expect(reg({ cnpj: "12345678000195" })).rejects.toThrow(/ESTABELECIMENTO-JA-REGISTRADO/);
+    await reg({ cnpj: "12345678000195", competenciaInicio: "2026-07" });
+    expect(await prisma.estabelecimentoDaLotacao.count()).toBe(2);
   });
 
   it("a versão que aplica o FAP tem de ser do RAT do regime geral, com alíquota de 1, 2 ou 3%", async () => {

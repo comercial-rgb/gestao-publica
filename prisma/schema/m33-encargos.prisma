@@ -384,3 +384,29 @@ model AprovacaoDoFatorAcidentario {
   criadoEm  DateTime @default(now())
   criadoPor String
 }
+
+/// V25 — O ESTABELECIMENTO (CNPJ completo) a que uma lotação pertence, a partir de uma competência. O FAP
+/// é atribuído por estabelecimento (Portaria MPS/MF 10/2025, art. 1º, II; Decreto 3.048/1999, art. 202-A:
+/// "individualizada pelo seu CNPJ"), e um ente com fundo de CNPJ próprio tem mais de um. A lotação sem
+/// registro herda o da lotação acima; sem nenhum na cadeia, vale o CNPJ do ente.
+///
+/// Append-only, e não coluna da lotação: a lotação que muda de estabelecimento tem as folhas antigas
+/// recalculadas com o CNPJ da época.
+model EstabelecimentoDaLotacao {
+  id String @id @default(cuid())
+
+  lotacaoId String
+  lotacao   Lotacao @relation(fields: [lotacaoId], references: [id])
+
+  cnpj              String @db.VarChar(14)
+  /// "AAAA-MM": vale desta competência em diante, até o registro seguinte da mesma lotação.
+  competenciaInicio String @db.VarChar(7)
+  /// O ato ou documento que liga a lotação ao estabelecimento (o cadastro no eSocial, a lei do fundo).
+  fundamento        String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([lotacaoId, competenciaInicio])
+  @@index([cnpj])
+}

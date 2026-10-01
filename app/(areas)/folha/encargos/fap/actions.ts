@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
-import { aprovarFap, registrarFap } from "../../../../../lib/portas/fap";
+import { aprovarFap, registrarEstabelecimento, registrarFap } from "../../../../../lib/portas/fap";
 
 /** V24 — cadastro e aprovação do FAP. Nenhuma regra aqui: o M33 recusa e a mensagem sobe como veio. */
 export interface EstadoDoFap {
@@ -20,6 +20,25 @@ export async function registrarFapAction(_prev: EstadoDoFap, f: FormData): Promi
       return { sucesso: `FAP de ${ano} cadastrado, aguardando a aprovação de outra pessoa. Até lá, não entra na apuração.` };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível cadastrar o FAP." };
+    }
+  });
+}
+
+/** V25 — o estabelecimento (CNPJ) de uma lotação, a partir de uma competência. */
+export async function registrarEstabelecimentoAction(_prev: EstadoDoFap, f: FormData): Promise<EstadoDoFap> {
+  return comComandoDoFormulario(f, async () => {
+    const competenciaInicio = String(f.get("competenciaInicio") ?? "").trim();
+    try {
+      await registrarEstabelecimento({
+        lotacaoId: String(f.get("lotacaoId") ?? ""),
+        cnpj: String(f.get("cnpj") ?? "").replace(/\D/g, ""),
+        competenciaInicio,
+        fundamento: String(f.get("fundamento") ?? ""),
+      });
+      revalidatePath("/folha/encargos/fap");
+      return { sucesso: "Estabelecimento registrado. As apurações a partir dessa competência usam o FAP deste CNPJ para quem está na lotação e nas lotações abaixo dela." };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o estabelecimento." };
     }
   });
 }

@@ -1,0 +1,63 @@
+Fonte: Secretaria do Tesouro Nacional, Manual de Contabilidade Aplicada ao Setor Publico, 11a edicao (Portaria Conjunta STN/SOF 26/2024), valida a partir de 2025.
+URL: https://cdn.tesouro.gov.br/sistemas-internos/apex/producao/sistemas/thot/arquivos/publicacoes/51045_2434252/MCASP%20-%2011%C2%AA%20Edi%C3%A7%C3%A3o.pdf
+Pagina de publicacao: https://www.tesourotransparente.gov.br/publicacoes/manual-de-contabilidade-aplicada-ao-setor-publico-mcasp/2025/26
+sha256 do PDF: 2a520efe8575b2dd647fd2351c6b6d6bddeb2dbfd866a0f475bf3d88b218c065
+Baixado em: 2026-10-01
+Trechos literais extraidos por pdftotext -layout (o PDF tem 623 paginas e 7 MB; nao versionado).
+
+=== Parte I, 3.6.2 (p. 63) ===
+                3.6.2. Imposto de Renda Retido na Fonte
+
+              A Constituição Federal, nos arts. 157, inciso I e 158, inciso I, determina que pertençam aos
+       Estados, Distrito Federal e aos Municípios o imposto de renda e os proventos de qualquer natureza,
+       incidentes na fonte, pagos por eles, suas autarquias e pelas fundações que instituírem e mantiverem.
+
+              Os valores descritos no parágrafo anterior deverão ser contabilizados como receita tributária.
+       Para isso, utiliza-se a natureza de receita 1.1.1.3.03.1.0 - Imposto sobre a Renda - Retido na Fonte -
+       Trabalho. Desse modo, a contabilidade espelha o fato efetivamente ocorrido: mesmo correspondendo
+       à arrecadação de um tributo de competência da União, tais recursos não transitam por ela, ficando
+       diretamente com o ente arrecadador. Desse modo, não há de se falar em registro de uma receita de
+       transferência nos Estados, DF e Municípios, uma vez que não ocorre a efetiva transferência do valor
+       pela União.
+
+                3.6.3. Redutor Financeiro - FPM
+
+=== Parte III, 6.2.6 (p. 514-515) ===
+       responsável pelo efetivo pagamento ao beneficiário do precatório efetuar a retenção e o
+       recolhimento dos tributos incidentes sobre o pagamento do precatório, observando os parâmetros
+       indicados na guia, alvará, mandado ou ordem bancária, quando for o caso. Estabelece ainda que a
+       instituição financeira fornecerá ao tribunal banco de dados, individualizando, por beneficiário, os
+       recolhimentos realizados durante o mês, até o décimo dia útil do mês seguinte ao do recolhimento
+       e que este deverá repassar às respectivas entidades devedoras as informações recebidas da
+       instituição financeira até o último dia útil do mês de recebimento.
+
+              Em relação ao Imposto de Renda, deve-se observar o inciso I do art. 157 e o inciso I do art.
+       158 da CF/1988, que dispõem que pertence aos estados, Distrito Federal e municípios o Imposto
+       de Renda Retido na Fonte (IRRF) sobre os rendimentos por eles pagos.
+
+              Dessa forma, quando forem efetuadas as retenções pelo Tribunal de Justiça, estas deverão
+       ser informadas ao ente público devedor do precatório para que este reconheça a receita
+       orçamentária decorrente do IRRF incidente sobre os precatórios pagos.
+
+              Lançamentos no ente devedor:
+
+              Retenção do IRRF (caso o ente ainda não tenha reconhecido o direito anteriormente).
+
+              Natureza da informação: patrimonial
+              D 1.1.2.1.x.xx.xx Créditos Tributários a Receber
+              C 4.1.1.2.x.xx.xx VPA - Impostos sobre patrimônio e a renda
+
+              Arrecadação do IRRF.
+
+              Natureza da informação: patrimonial
+              D 1.1.1.1.x.xx.xx Caixa e equivalentes de caixa em moeda nacional (F)
+              C 1.1.2.1.x.xx.xx Créditos Tributários a Receber
+
+              Natureza da informação: orçamentária
+              D 6.2.1.1.x.xx.xx Receita a realizar
+              C 6.2.1.2.x.xx.xx Receita realizada
+
+              Natureza da informação: controle
+              D 7.2.1.1.x.xx.xx Controle da disponibilidade de recursos
+              C 8.2.1.1.1.xx.xx Disponibilidade por destinação de Recursos
+

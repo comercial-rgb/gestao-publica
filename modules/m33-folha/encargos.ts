@@ -56,14 +56,43 @@ export interface VersaoParaApurar {
   readonly aplicaFap?: boolean;
 }
 
-/** V24 — o FAP aprovado do CNPJ do ente no ano da competência, ou o motivo de não haver. */
+/** V24 — o FAP aprovado de um CNPJ no ano da competência, ou o motivo de não haver. */
 export type FapParaApurar = { readonly fator: Decimal; readonly fonte: string } | { readonly motivo: string };
+
+/**
+ * V25 — O ESTABELECIMENTO (CNPJ) DE UMA LOTAÇÃO NUMA COMPETÊNCIA. O FAP é por estabelecimento, e o ente
+ * com fundo de CNPJ próprio tem mais de um. Sobe a árvore de lotações: vale o registro mais recente com
+ * início até a competência na própria lotação; sem ele, o da lotação acima; sem nenhum na cadeia, o CNPJ
+ * do ente (`null` se nem ele existe).
+ */
+export function estabelecimentoNaCompetencia(e: {
+  readonly lotacaoId: string | null;
+  readonly competencia: string;
+  readonly lotacoes: readonly { readonly id: string; readonly paiId: string | null }[];
+  readonly registros: readonly { readonly lotacaoId: string; readonly cnpj: string; readonly competenciaInicio: string }[];
+  readonly cnpjDoEnte: string | null;
+}): string | null {
+  const pai = new Map(e.lotacoes.map((l) => [l.id, l.paiId]));
+  const vistos = new Set<string>();
+  let atual = e.lotacaoId;
+  while (atual !== null && !vistos.has(atual)) {
+    vistos.add(atual);
+    const daLotacao = e.registros
+      .filter((r) => r.lotacaoId === atual && r.competenciaInicio <= e.competencia)
+      .sort((a, b) => (a.competenciaInicio < b.competenciaInicio ? 1 : -1))[0];
+    if (daLotacao !== undefined) return daLotacao.cnpj;
+    atual = pai.get(atual) ?? null;
+  }
+  return e.cnpjDoEnte;
+}
 
 export interface ContrachequeParaApurar {
   readonly vinculoId: string;
   readonly matricula: string;
   readonly regime: RegimeDoEncargo;
   readonly linhas: readonly { readonly rubricaId: string; readonly codigo: string; readonly tipo: "PROVENTO" | "DESCONTO"; readonly valor: Money }[];
+  /** V25 — o CNPJ do estabelecimento do vínculo na competência (ver `estabelecimentoNaCompetencia`). */
+  readonly estabelecimento?: string | null;
 }
 
 export interface ItemDaApuracao {
@@ -85,6 +114,8 @@ export interface ItemDaApuracao {
   readonly sintetica?: boolean;
   /** V24 — o FAP aplicado e a alíquota ajustada (RAT × FAP), quando a versão o aplica. */
   readonly fap?: string;
+  /** V25 — o CNPJ do estabelecimento cujo FAP foi aplicado. */
+  readonly estabelecimento?: string;
   readonly aliquotaAjustada?: string;
 }
 
@@ -134,8 +165,8 @@ export function apurarEncargos(e: {
   readonly contracheques: readonly ContrachequeParaApurar[];
   readonly componentes: readonly ComponenteParaApurar[];
   readonly versoes: readonly VersaoParaApurar[];
-  /** V24 — exigido só quando alguma versão vigente aplica o FAP. */
-  readonly fap?: FapParaApurar;
+  /** V25 — o FAP de cada estabelecimento (CNPJ); exigido só quando alguma versão vigente aplica o FAP. */
+  readonly faps?: Readonly<Record<string, FapParaApurar>>;
 }): ApuracaoCalculada {
   const componentes = [...e.componentes].sort((a, b) => a.codigo.localeCompare(b.codigo));
   const contracheques = [...e.contracheques].sort((a, b) => a.matricula.localeCompare(b.matricula));
@@ -161,13 +192,20 @@ export function apurarEncargos(e: {
       // V24 — RAT × FAP. Sem FAP aprovado, o item fica AUSENTE: a alíquota sem o fator não é a devida.
       let aliquotaEfetiva = v.versao.aliquota;
       let fapAplicado: { readonly fator: Decimal; readonly fonte: string } | null = null;
+      let estabelecimento: string | null = null;
       if (v.versao.aplicaFap === true) {
-        if (e.fap === undefined || "motivo" in e.fap) {
-          itens.push({ ...base, situacao: "PARAMETRO_AUSENTE", motivo: `FAP: ${e.fap === undefined ? "não informado" : e.fap.motivo}` });
+        estabelecimento = c.estabelecimento ?? null;
+        if (estabelecimento === null) {
+          itens.push({ ...base, situacao: "PARAMETRO_AUSENTE", motivo: "FAP: o vínculo não tem estabelecimento (nem a lotação nem o ente têm CNPJ)" });
           continue;
         }
-        fapAplicado = e.fap;
-        aliquotaEfetiva = v.versao.aliquota.times(e.fap.fator);
+        const fap = e.faps?.[estabelecimento];
+        if (fap === undefined || "motivo" in fap) {
+          itens.push({ ...base, situacao: "PARAMETRO_AUSENTE", motivo: `FAP: ${fap === undefined ? `não informado para o CNPJ ${estabelecimento}` : fap.motivo}` });
+          continue;
+        }
+        fapAplicado = fap;
+        aliquotaEfetiva = v.versao.aliquota.times(fap.fator);
       }
       const valor = toMoney(baseFinal.times(aliquotaEfetiva));
       itens.push({
@@ -183,7 +221,7 @@ export function apurarEncargos(e: {
         rubricasNaBase: naBase.map((l) => ({ codigo: l.codigo, valor: m(l.valor) })),
         fundamentacao: fapAplicado === null ? v.versao.fundamentacaoLegal : `${v.versao.fundamentacaoLegal}; FAP ${fapAplicado.fator.toFixed(4)} (${fapAplicado.fonte})`,
         sintetica: v.versao.sintetica,
-        ...(fapAplicado === null ? {} : { fap: fapAplicado.fator.toFixed(4), aliquotaAjustada: aliquotaEfetiva.toFixed(6) }),
+        ...(fapAplicado === null || estabelecimento === null ? {} : { fap: fapAplicado.fator.toFixed(4), aliquotaAjustada: aliquotaEfetiva.toFixed(6), estabelecimento }),
       });
     }
   }

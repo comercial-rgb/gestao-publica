@@ -1315,3 +1315,13 @@ A pendência continua aberta abaixo, agora com a decisão **posta** em vez de de
   rodar o percurso deixaria um passo vermelho sem defeito nenhum.
 - `CONTRACHEQUE-EM-PDF` (5.12.64) — P4. O `RESUMO-DA-FOLHA` ganhou CSV/PDF em V6.2 (por regime ×
   lotação); a quebra por natureza de despesa continua pendente.
+
+## FAP por estabelecimento (V24, V25)
+
+O RAT de uma versão marcada `aplicaFap` é multiplicado pelo FAP aprovado do CNPJ do **estabelecimento**
+do vínculo no ano da competência (Decreto 3.048/1999, art. 202-A; Portaria MPS/MF 10/2025: FAP por
+estabelecimento, CNPJ completo). O estabelecimento vem da lotação vigente no fim da competência:
+`EstabelecimentoDaLotacao` (append-only, por competência de início) na própria lotação ou na mais próxima
+acima dela; sem registro na cadeia, o CNPJ do ente. Sem FAP aprovado para aquele CNPJ, o item fica
+`PARAMETRO_AUSENTE` com o CNPJ no motivo, e só os vínculos daquele estabelecimento. Tela:
+`/folha/encargos/fap` (cadastro e aprovação do FAP de cada CNPJ; lotações com estabelecimento próprio).

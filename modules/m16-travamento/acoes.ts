@@ -1065,6 +1065,7 @@ export type NomeDeServico =
   | "aprovarVersaoDoEncargo"
   | "cadastrarFatorAcidentario"
   | "aprovarFatorAcidentario"
+  | "registrarEstabelecimentoDaLotacao"
   | "apurarEncargosDaFolha"
   | "certificarEncargosDaFolha"
   | "devolverEncargosDaFolha"
@@ -1705,6 +1706,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V24 — o FAP é parâmetro do encargo: cadastra quem cadastra a versão, aprova outra pessoa.
   cadastrarFatorAcidentario: "CADASTRAR_ENCARGO_DA_FOLHA",
   aprovarFatorAcidentario: "APROVAR_ENCARGO_DA_FOLHA",
+  registrarEstabelecimentoDaLotacao: "CADASTRAR_ENCARGO_DA_FOLHA",
   apurarEncargosDaFolha: "APURAR_ENCARGOS_DA_FOLHA",
   certificarEncargosDaFolha: "CERTIFICAR_ENCARGOS_DA_FOLHA",
   devolverEncargosDaFolha: "CERTIFICAR_ENCARGOS_DA_FOLHA",
@@ -2636,6 +2638,24 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerFatosReceitaOrcamentaria: "leitura (Prisma → DTO ReceitaOrcamentaria, conta arrecadadora é param export — não muta)",
   gerarRetencao: "leitura (gera o TXT SAGRES Retencao §4.14 do M07 — não muta)",
   lerFatosRetencao: "leitura (Prisma → DTO Retencao: ingresso extra com pagamentoId — não muta)",
+  // V24 — o grupo dos restos a pagar do SAGRES; classificados na V25 (o censo ficou vermelho na V24).
+  lerFatosPagamentosRestos: "leitura (Prisma → DTO PagamentosRestos §4.28: pagamentos de restos a pagar — não muta)",
+  lerFatosEstornoPagamentoRestos: "leitura (Prisma → DTO EstornoPagamentoRestos §4.29 — não muta)",
+  lerFatosCancelamentoRestos: "leitura (Prisma → DTO CancelamentoRestos §4.30 — não muta)",
+  lerFatosLiquidacaoRestos: "leitura (Prisma → DTO LiquidacaoRestos §4.31: liquidação de restos não processados — não muta)",
+  lerFatosEstornoLiquidacaoRestos: "leitura (Prisma → DTO EstornoLiquidacaoRestos §4.32 — não muta)",
+  lerFatosRetencaoRestos: "leitura (Prisma → DTO RetencaoRestos §4.33: retenções em pagamento de restos — não muta)",
+  lerFatosEstornoRetencaoRestos: "leitura (Prisma → DTO EstornoRetencaoRestos §4.34 — não muta)",
+  lerFatosRestosInscritos: "leitura (Prisma → DTO RestosInscritos §4.40: inscrições do exercício — não muta)",
+  gerarPagamentosRestos: "leitura (gera o TXT SAGRES PagamentosRestos §4.28 — não muta)",
+  gerarEstornoPagamentoRestos: "leitura (gera o TXT SAGRES EstornoPagamentoRestos §4.29 — não muta)",
+  gerarCancelamentoRestos: "leitura (gera o TXT SAGRES CancelamentoRestos §4.30 — não muta)",
+  gerarLiquidacaoRestos: "leitura (gera o TXT SAGRES LiquidacaoRestos §4.31 — não muta)",
+  gerarEstornoLiquidacaoRestos: "leitura (gera o TXT SAGRES EstornoLiquidacaoRestos §4.32 — não muta)",
+  gerarRetencaoRestos: "leitura (gera o TXT SAGRES RetencaoRestos §4.33 — não muta)",
+  gerarEstornoRetencaoRestos: "leitura (gera o TXT SAGRES EstornoRetencaoRestos §4.34 — não muta)",
+  gerarRestosInscritos: "leitura (gera o TXT SAGRES RestosInscritos §4.40 — não muta)",
+  gerarArquivosDeRestos: "leitura (gera os arquivos SAGRES do grupo dos restos a pagar da competência — não muta)",
   gerarDespesaExtra: "leitura (gera o TXT SAGRES DespesaExtra §4.20 do M07 — não muta)",
   lerFatosDespesaExtra: "leitura (Prisma → DTO DespesaExtra: dispêndio extra, numeração derivada no exercício — não muta)",
   //
