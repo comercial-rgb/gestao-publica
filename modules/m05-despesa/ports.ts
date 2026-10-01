@@ -386,6 +386,11 @@ export interface LiquidacaoResumo {
   readonly lancamentoId: string;
   readonly estornoDeId: string | null;
   readonly estornos: readonly string[];
+  /**
+   * V24 — a(s) conta(s) de OBRIGAÇÃO que a liquidação creditou (perna patrimonial credora da classe 2).
+   * É ela que o pagamento extingue — e não uma conta escolhida por quem paga.
+   */
+  readonly obrigacoes: readonly string[];
 }
 
 export interface PagamentoResumo {

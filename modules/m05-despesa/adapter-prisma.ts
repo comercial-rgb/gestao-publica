@@ -2550,6 +2550,7 @@ export function criarDespesaRepositoryPrisma(
           estornoDeId: true,
           estornos: { select: { id: true } },
           empenho: { select: { fichaId: true } },
+          lancamento: { select: { partidas: { where: { tipo: "CREDITO", subsistema: "PATRIMONIAL", conta: { codigo: { startsWith: "2." } } }, select: { conta: { select: { codigo: true } } } } } },
         },
       });
       if (l === null) return null;
@@ -2561,6 +2562,7 @@ export function criarDespesaRepositoryPrisma(
         lancamentoId: l.lancamentoId,
         estornoDeId: l.estornoDeId,
         estornos: l.estornos.map((x) => x.id),
+        obrigacoes: [...new Set(l.lancamento.partidas.map((p) => p.conta.codigo))],
       };
     },
 

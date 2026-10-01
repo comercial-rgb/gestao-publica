@@ -315,6 +315,8 @@ export async function registrarPagamento(input: {
   const retencoesManuais = await comporRetencoes(input.retencoes ?? [], contaContabilDaConta);
 
   return comEscritaAutenticada("PAGAR", async (criadoPor) => {
+    const deps = criarM05Deps(cliente());
+    const obrigacaoDaLiquidacao = (await deps.despesa.buscarLiquidacao(input.liquidacaoId))?.obrigacoes ?? [];
     // V24 — calculadas DENTRO da autorização: quem não pode pagar não chega a calcular.
     const operacao = input.operacaoFiscal;
     const retencoes: RetencoesDoPagamento | undefined =
@@ -347,10 +349,12 @@ export async function registrarPagamento(input: {
           : {}),
       },
       roteiroPagamento({
-        obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR,
+        // V24 — a obrigação que ESTA liquidação creditou (salário, encargo, fornecedor), e não sempre
+        // fornecedores. Sem obrigação única, o `pagar` recusa nomeando; o fornecedor fica só de reserva.
+        obrigacaoAPagar: obrigacaoDaLiquidacao[0] ?? CONTA_FORNECEDORES_A_PAGAR,
         disponibilidade: contaContabilDaConta,
       }),
-      criarM05Deps(cliente()),
+      deps,
       // ⚠️ `undefined`, e não `{retencoes: []}`, quando não há retenção: é o que faz o
       // motor do M07 devolver EXATAMENTE as partidas de antes. Um objeto vazio passaria
       // pelo caminho composto para chegar ao mesmo lugar — e "chegar ao mesmo lugar" é

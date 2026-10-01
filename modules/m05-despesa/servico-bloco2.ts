@@ -129,6 +129,25 @@ export async function liquidar(
  * SEM `retencoes` (ausente ou vazio): caminho IDÊNTICO ao de sempre, partida por
  * partida.
  */
+/**
+ * V24 — a perna da OBRIGAÇÃO do roteiro do pagamento (débito patrimonial na classe 2) tem de ser a conta
+ * que a liquidação creditou. Fail-closed: liquidação sem obrigação única, ou roteiro sem a perna, recusa.
+ */
+export function exigirObrigacaoDaLiquidacao(roteiro: RoteiroContabil, obrigacoesDaLiquidacao: readonly string[]): void {
+  if (obrigacoesDaLiquidacao.length !== 1) {
+    throw new Error(
+      `OBRIGACAO-DA-LIQUIDACAO-INDEFINIDA: a liquidação creditou ${obrigacoesDaLiquidacao.length === 0 ? "nenhuma conta de obrigação" : `${obrigacoesDaLiquidacao.length} contas de obrigação (${obrigacoesDaLiquidacao.join(", ")})`}; o pagamento não sabe qual extinguir. Nada foi gravado.`
+    );
+  }
+  const debito = roteiro.filter((p) => p.tipo === "DEBITO" && p.subsistema === "PATRIMONIAL" && p.conta.startsWith("2."));
+  const esperada = obrigacoesDaLiquidacao[0] as string;
+  if (debito.length !== 1 || debito[0]?.conta !== esperada) {
+    throw new Error(
+      `OBRIGACAO-DIVERGENTE: a liquidação registrou a obrigação em ${esperada}, e o pagamento debitaria ${debito.map((p) => p.conta).join(", ") || "nenhuma conta de obrigação"}. O pagamento extingue a obrigação da liquidação, não outra. Nada foi gravado.`
+    );
+  }
+}
+
 export async function pagar(
   input: PagarInput,
   roteiro: RoteiroContabil,
@@ -154,6 +173,9 @@ export async function pagar(
   if (liquidacao === null) {
     throw new Error(`Liquidação ${dados.liquidacaoId} não encontrada.`);
   }
+  // V24 — o pagamento extingue a obrigação que ESTA liquidação fez nascer: salário a pagar, encargo a
+  // recolher, fornecedor. Debitar outra deixaria a obrigação de verdade aberta para sempre no balanço.
+  exigirObrigacaoDaLiquidacao(roteiro, liquidacao.obrigacoes);
 
   // Motor puro do M07 (fail-closed) — sem retenção, devolve exatamente as mesmas
   // partidas que `comporPartidas(valor, roteiro)` devolvia.

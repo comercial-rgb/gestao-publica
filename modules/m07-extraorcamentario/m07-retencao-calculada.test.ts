@@ -7,7 +7,7 @@ import { criarFichasDeTeste } from "../../test/ficha-teste.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
-import { anularPagamento, liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
+import { anularPagamento, exigirObrigacaoDaLiquidacao, liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import {
   avaliarRetencoesDoPagamento,
@@ -193,6 +193,34 @@ describe("V24 — pagar() com retenção calculada", { timeout: 60000 }, () => {
     const estornos = await prisma.movimentoExtraorcamentario.count({ where: { tipo: "ESTORNO_INGRESSO" } });
     expect(estornos).toBe(3);
     expect(await prisma.calculoDaRetencao.count({ where: { pagamentoId: r.pagamentoId } })).toBe(3);
+  });
+});
+
+describe("V24 — o pagamento extingue a obrigação que a liquidação criou", { timeout: 60000 }, () => {
+  afterAll(async () => prisma.$disconnect());
+
+  it("regra pura: obrigação única e igual à do roteiro passa; divergente, ausente ou dupla recusa nomeando", () => {
+    expect(() => exigirObrigacaoDaLiquidacao(R_PAGAMENTO, [FORNECEDOR])).not.toThrow();
+    expect(() => exigirObrigacaoDaLiquidacao(R_PAGAMENTO, [P_INSS])).toThrow(new RegExp(`OBRIGACAO-DIVERGENTE: a liquidação registrou a obrigação em ${P_INSS.replace(/\./g, "\\.")}, e o pagamento debitaria ${FORNECEDOR.replace(/\./g, "\\.")}`));
+    expect(() => exigirObrigacaoDaLiquidacao(R_PAGAMENTO, [])).toThrow(/OBRIGACAO-DA-LIQUIDACAO-INDEFINIDA: a liquidação creditou nenhuma conta/);
+    expect(() => exigirObrigacaoDaLiquidacao(R_PAGAMENTO, [FORNECEDOR, P_INSS])).toThrow(/2 contas de obrigação/);
+  });
+
+  it("liquidada como obrigação de encargo, paga pelo roteiro de fornecedor: recusa e nada grava; pelo da obrigação, debita a obrigação (N=2)", async () => {
+    await semear();
+    const deps = criarM05Deps(prisma);
+    const R_LIQ_ENCARGO = roteiroLiquidacao({ variacaoDiminutiva: VPD, obrigacaoAPagar: P_INSS, creditoEmpenhado: C_EMPENHADO, creditoLiquidado: C_LIQUIDADO });
+    const e = await empenhar({ fichaId: FICHA, numero: "NE-2", tipo: "ORDINARIO", valor: "500.00", data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: FORNECEDOR_PJ, historico: "encargo", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR }, R_EMPENHO, deps);
+    const l = await liquidar({ empenhoId: e.empenhoId, numero: "NL-2", valor: "500.00", data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "Fulano", historico: "liquidação do encargo", criadoPor: POR }, R_LIQ_ENCARGO, deps);
+    await expect(pagar({ ...pgto(l.liquidacaoId), valor: "500.00" }, R_PAGAMENTO, deps)).rejects.toThrow(/OBRIGACAO-DIVERGENTE/);
+    expect(await prisma.pagamento.count()).toBe(0);
+    const certo = roteiroPagamento({ obrigacaoAPagar: P_INSS, disponibilidade: CAIXA, creditoLiquidado: C_LIQUIDADO, creditoPago: C_PAGO });
+    const r = await pagar({ ...pgto(l.liquidacaoId), valor: "500.00" }, certo, deps);
+    const partidas = await prisma.partidaContabil.findMany({ where: { lancamentoId: r.lancamentoId, subsistema: "PATRIMONIAL" }, include: { conta: true } });
+    expect(partidas.map((p) => `${p.tipo} ${p.conta.codigo}`).sort()).toEqual([`CREDITO ${CAIXA}`, `DEBITO ${P_INSS}`]);
+    // A liquidação de fornecedor da mesma base continua paga pelo roteiro de fornecedor.
+    const liq = await empenharELiquidar(deps);
+    await expect(pagar(pgto(liq), R_PAGAMENTO, deps)).resolves.toBeDefined();
   });
 });
 

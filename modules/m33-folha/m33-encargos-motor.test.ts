@@ -178,7 +178,7 @@ describe("os predicados dos atos sobre os encargos", () => {
 
 describe("V24 — o FAP sobre o RAT (Lei 10.666/2003, art. 10; Decreto 3.048/1999, art. 202-A)", () => {
   const RAT_COM_FAP = [versao({ id: "vp-1", componenteId: "c-patr", aliquota: "0.20" }), versao({ id: "vr-fap", componenteId: "c-rat", aliquota: "0.02", aplicaFap: true }), versao({ id: "vs-1", componenteId: "c-rpps", aliquota: "0.11", rubricasIncidentes: ["r-venc"] })];
-  const com = (fap?: Parameters<typeof apurarEncargos>[0]["fap"], versoes = RAT_COM_FAP) =>
+  const com = (fap?: Parameters<typeof apurarEncargos>[0]["fap"], versoes: readonly VersaoParaApurar[] = RAT_COM_FAP) =>
     apurarEncargos({ competencia: "2026-05", calculo: { numero: 1, sha256: "a".repeat(64) }, contracheques: CC, componentes: [PATR, RAT, RPPS], versoes, ...(fap === undefined ? {} : { fap }) });
   const item = (r: ReturnType<typeof com>, m: string) => r.itens.find((i) => i.matricula === m && i.componente === "RGPS-RAT");
 
