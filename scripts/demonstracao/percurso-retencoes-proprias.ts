@@ -187,7 +187,8 @@ async function main(): Promise<void> {
       await p.select(`${fr} select[name="contaBancaria"]`, conta);
       await data(p, `${fr} input[name="data"]`, "2026-09-23");
       await digitar(p, `${fr} input[name="historico"]`, "Recolhimento do IR retido");
-      await digitar(p, `${fr} input[name="documentoDoFavorecido"]`, ente.cnpj ?? "");
+      // O favorecido do recolhimento: o CNPJ do ente quando cadastrado; no clone sem ele, um CNPJ válido de demonstração.
+      await digitar(p, `${fr} input[data-mascara="cpf-cnpj"]`, ente.cnpj ?? "11222333000181");
       await digitar(p, `${fr} input[name="parcela"]`, "67,50");
       const r = await enviar(p, fr);
       afirmar(r.tipo === "erro" && /imposto do próprio município/.test(r.texto), `recusado, com o motivo (${r.texto.slice(0, 110)})`);
