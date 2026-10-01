@@ -34,6 +34,8 @@ import {
   gerarEstornos,
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
+  gerarArquivosDeRestos,
+  gerarRestosInscritos,
   gerarEstornoDespesaExtra,
   gerarReceitaExtraOuRecusa,
   gerarEstornoReceitaExtraOuRecusa,
@@ -203,6 +205,10 @@ async function gerarSagresDiario(prisma: PrismaClient, dia: string): Promise<num
   const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: ug, dia: d });
   if ("arquivo" in estornoReceitaExtra) arquivos.push(estornoReceitaExtra.arquivo);
   else console.log(`  · ${dia} — EstornoReceitaExtra fora do pacote: ${estornoReceitaExtra.recusa.slice(0, 160)}`);
+  // V24 — os restos a pagar diários (§4.28–§4.34); os inscritos (§4.40) vão no mensal de dezembro.
+  const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, dia: d, competencia: new Date(Date.UTC(d.getUTCFullYear(), 0, 1)) });
+  arquivos.push(...restos.arquivos.map((r) => r.arquivo));
+  for (const r of restos.recusas) console.log(`  · ${dia} — ${r.arquivo} fora do pacote: ${r.detalhe.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "diario", dia), dia, "DIARIO", arquivos);
 }
 
@@ -222,6 +228,8 @@ async function gerarSagresMensal(prisma: PrismaClient, mes: string): Promise<num
   const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: ug, competencia: fimDoMes });
   if ("arquivo" in unidades) arquivos.push(unidades.arquivo);
   else console.log(`  · ${mes} — UnidadeOrcamentaria fora do pacote: ${unidades.recusa.slice(0, 160)}`);
+  // V24 — os restos inscritos (§4.40) só no balancete de dezembro.
+  if (mm === 12) arquivos.push(await gerarRestosInscritos(prisma, { codUnidadeGestora: ug, competencia: fimDoMes }));
   return gravarPacoteSagres(join("sagres", "mensal", mes), mes, "MENSAL", arquivos);
 }
 

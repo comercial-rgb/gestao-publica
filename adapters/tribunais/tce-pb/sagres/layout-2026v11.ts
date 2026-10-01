@@ -1040,6 +1040,230 @@ export const LAYOUT_ESTORNO_RECEITA_EXTRA: LayoutArquivo<EstornoReceitaExtraFato
 };
 
 /** Todos os layouts desta versão, para a auto-validação em lote e a matriz. */
+// ═══ V24 — O GRUPO DOS RESTOS A PAGAR (§4.28 a §4.34) e os RESTOS INSCRITOS (§4.40) ═══════════════════
+// Origem: o M08 (inscrição e movimentos de RP) e os registros do M05/M07 que ele cria — o pagamento de
+// restos é um `Pagamento` ligado a um `MovimentoRestosAPagar`, e a liquidação de RP não processado é uma
+// `Liquidacao` de empenho de exercício anterior. Esses registros saem AQUI, e não nos arquivos do exercício.
+// `codUnidadeGestoraOrigem`: a UG do empenho que inscreveu o resto — nesta instalação, a própria UG.
+
+/** §4.28 exercicioFonteRecurso: "em geral deve ser igual a 2" (anterior) nos pagamentos de restos. */
+export const EXERCICIO_FONTE_ANTERIOR = 2;
+const TIPO_CONTA_CORRENTE_RESTOS = "1";
+
+export interface PagamentoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: Money;
+  readonly numeroContaDebito: string;
+  readonly numeroAgenciaDebito: string;
+  readonly codBancoDebito: string;
+  readonly codFonteRecurso: string;
+  readonly co: string | null;
+  readonly cnpjGerencia: string;
+}
+const camposPagamentoRestos: readonly CampoLayout<PagamentoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numero", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "pagamento.numero (parcela)", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 30, posFinal: 37, tipo: "DATA", obrigatorio: true, origem: "pagamento.data", extrair: (f) => f.data },
+  { nome: "valor", posInicial: 38, posFinal: 53, tipo: "VALOR", obrigatorio: true, origem: "pagamento.valor", extrair: (f) => f.valor },
+  { nome: "numContaBancaria", posInicial: 54, posFinal: 66, tipo: "ALFA", obrigatorio: true, origem: "contaPagadora.conta+digito", extrair: (f) => f.numeroContaDebito },
+  { nome: "numAgencia", posInicial: 67, posFinal: 72, tipo: "ALFA", obrigatorio: true, origem: "contaPagadora.agencia+digito", extrair: (f) => f.numeroAgenciaDebito },
+  { nome: "codBanco", posInicial: 73, posFinal: 75, tipo: "ALFA", obrigatorio: true, origem: "contaPagadora.banco", extrair: (f) => f.codBancoDebito },
+  { nome: "numCheque", posInicial: 76, posFinal: 81, tipo: "ALFA", obrigatorio: false, origem: "sem origem no modelo → espaços", extrair: () => null },
+  { nome: "numDocDebito", posInicial: 82, posFinal: 92, tipo: "ALFA", obrigatorio: false, origem: "sem origem no modelo → espaços", extrair: () => null },
+  { nome: "codBancoCred", posInicial: 93, posFinal: 95, tipo: "ALFA", obrigatorio: false, origem: "sem origem no modelo → espaços", extrair: () => null },
+  { nome: "numAgenciaCred", posInicial: 96, posFinal: 101, tipo: "ALFA", obrigatorio: false, origem: "sem origem no modelo → espaços", extrair: () => null },
+  { nome: "numContaBancariaCred", posInicial: 102, posFinal: 114, tipo: "ALFA", obrigatorio: false, origem: "sem origem no modelo → espaços", extrair: () => null },
+  { nome: "exercicioFonteRecurso", posInicial: 115, posFinal: 115, tipo: "NUMERICO", obrigatorio: true, origem: "2 = Anterior (§4.28: em geral deve ser igual a 2)", extrair: () => EXERCICIO_FONTE_ANTERIOR },
+  { nome: "codFonteRecurso", posInicial: 116, posFinal: 118, tipo: "NUMERICO", obrigatorio: true, origem: "pagamento.fonte.codigo", extrair: (f) => f.codFonteRecurso },
+  { nome: "tipoContaBancaria", posInicial: 119, posFinal: 119, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (default 1)", extrair: () => TIPO_CONTA_CORRENTE_RESTOS },
+  { nome: "co", posInicial: 120, posFinal: 123, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.co (nulo → zeros)", extrair: (f) => f.co },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 124, posFinal: 137, tipo: "DOCUMENTO", obrigatorio: true, origem: "EnteConfig.cnpj", extrair: (f) => f.cnpjGerencia },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 138, posFinal: 143, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho inscrito (a própria)", extrair: (f) => f.codUnidadeGestora },
+];
+export const LAYOUT_PAGAMENTOS_RESTOS: LayoutArquivo<PagamentoRestosFato> = { entidade: "PagamentosRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposPagamentoRestos };
+
+export interface EstornoPagamentoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numPagamento: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly motivo: string;
+  readonly valor: Money;
+}
+const camposEstornoPagamentoRestos: readonly CampoLayout<EstornoPagamentoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numPagamento", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "o pagamento de restos estornado", extrair: (f) => f.numPagamento },
+  { nome: "numero", posInicial: 30, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "o pagamento de estorno.numero", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 37, posFinal: 44, tipo: "DATA", obrigatorio: true, origem: "estorno.data", extrair: (f) => f.data },
+  { nome: "motivo", posInicial: 45, posFinal: 164, tipo: "ALFA", obrigatorio: true, origem: "MovimentoRestosAPagar.motivo", extrair: (f) => f.motivo },
+  { nome: "despesaLiquidada", posInicial: 165, posFinal: 165, tipo: "ALFA", obrigatorio: true, origem: "S: só se paga resto liquidado", extrair: () => "S" },
+  { nome: "valor", posInicial: 166, posFinal: 181, tipo: "VALOR", obrigatorio: true, origem: "estorno.valor", extrair: (f) => f.valor },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 182, posFinal: 187, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho inscrito (a própria)", extrair: (f) => f.codUnidadeGestora },
+];
+export const LAYOUT_ESTORNO_PAGAMENTO_RESTOS: LayoutArquivo<EstornoPagamentoRestosFato> = { entidade: "EstornoPagamentoRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposEstornoPagamentoRestos };
+
+export interface CancelamentoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: Money;
+  readonly motivo: string;
+  /** PROCESSADO → S; NÃO PROCESSADO → N (cancela-se o saldo ainda não liquidado). */
+  readonly despesaLiquidada: "S" | "N";
+}
+const camposCancelamentoRestos: readonly CampoLayout<CancelamentoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numero", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "derivado: ordem de gravação no exercício", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 30, posFinal: 37, tipo: "DATA", obrigatorio: true, origem: "lancamento.dataTransacao do cancelamento", extrair: (f) => f.data },
+  { nome: "valor", posInicial: 38, posFinal: 53, tipo: "VALOR", obrigatorio: true, origem: "MovimentoRestosAPagar.valor", extrair: (f) => f.valor },
+  { nome: "motivo", posInicial: 54, posFinal: 173, tipo: "ALFA", obrigatorio: true, origem: "MovimentoRestosAPagar.motivo", extrair: (f) => f.motivo },
+  { nome: "despesaLiquidada", posInicial: 174, posFinal: 174, tipo: "ALFA", obrigatorio: true, origem: "inscrição PROCESSADO → S; NAO_PROCESSADO → N", extrair: (f) => f.despesaLiquidada },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 175, posFinal: 180, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho inscrito (a própria)", extrair: (f) => f.codUnidadeGestora },
+];
+export const LAYOUT_CANCELAMENTO_RESTOS: LayoutArquivo<CancelamentoRestosFato> = { entidade: "CancelamentoRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposCancelamentoRestos };
+
+export interface LiquidacaoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly notaFiscal: { readonly tipo: string; readonly chave: string; readonly numero: string; readonly serie: string; readonly data: Date; readonly valor: Money } | null;
+  readonly valor: Money;
+}
+const camposLiquidacaoRestos: readonly CampoLayout<LiquidacaoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numero", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "liquidacao.numero", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 30, posFinal: 37, tipo: "DATA", obrigatorio: true, origem: "liquidacao.data", extrair: (f) => f.data },
+  { nome: "tipoNotaFiscal", posInicial: 38, posFinal: 39, tipo: "NUMERICO", obrigatorio: false, origem: "02 (NF-e) quando há chave", extrair: (f) => f.notaFiscal?.tipo ?? null },
+  { nome: "numChaveNotaFiscal", posInicial: 40, posFinal: 83, tipo: "NUMERICO", obrigatorio: false, origem: "liquidacao.notaFiscalChave", extrair: (f) => f.notaFiscal?.chave ?? null },
+  { nome: "numNotaFiscal", posInicial: 84, posFinal: 98, tipo: "ALFA", obrigatorio: false, origem: "liquidacao.notaFiscalNum", extrair: (f) => f.notaFiscal?.numero ?? null },
+  { nome: "serieNotaFiscal", posInicial: 99, posFinal: 110, tipo: "ALFA", obrigatorio: false, origem: "liquidacao.notaFiscalSerie", extrair: (f) => f.notaFiscal?.serie ?? null },
+  { nome: "dataNotaFiscal", posInicial: 111, posFinal: 118, tipo: "DATA", obrigatorio: false, origem: "liquidacao.notaFiscalData", extrair: (f) => f.notaFiscal?.data ?? null },
+  { nome: "valorNotaFiscal", posInicial: 119, posFinal: 134, tipo: "VALOR", obrigatorio: false, origem: "liquidacao.notaFiscalValor", extrair: (f) => f.notaFiscal?.valor ?? null },
+  { nome: "valor", posInicial: 135, posFinal: 150, tipo: "VALOR", obrigatorio: true, origem: "liquidacao.valor", extrair: (f) => f.valor },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 151, posFinal: 156, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho inscrito (a própria)", extrair: (f) => f.codUnidadeGestora },
+];
+export const LAYOUT_LIQUIDACAO_RESTOS: LayoutArquivo<LiquidacaoRestosFato> = { entidade: "LiquidacaoRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposLiquidacaoRestos };
+
+export interface EstornoLiquidacaoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numLiquidacao: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly motivo: string;
+  readonly valor: Money;
+}
+const camposEstornoLiquidacaoRestos: readonly CampoLayout<EstornoLiquidacaoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numLiquidacao", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "a liquidação de restos anulada", extrair: (f) => f.numLiquidacao },
+  { nome: "numero", posInicial: 30, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "anulação.numero", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 37, posFinal: 44, tipo: "DATA", obrigatorio: true, origem: "anulação.data", extrair: (f) => f.data },
+  { nome: "motivo", posInicial: 45, posFinal: 164, tipo: "ALFA", obrigatorio: true, origem: "Liquidacao.motivo (V23)", extrair: (f) => f.motivo },
+  { nome: "valor", posInicial: 165, posFinal: 180, tipo: "VALOR", obrigatorio: true, origem: "anulação.valor", extrair: (f) => f.valor },
+  { nome: "reservado", posInicial: 181, posFinal: 186, tipo: "RESERVADO", obrigatorio: false, origem: "RESERVADO AO TCE = ZEROS" },
+];
+export const LAYOUT_ESTORNO_LIQUIDACAO_RESTOS: LayoutArquivo<EstornoLiquidacaoRestosFato> = { entidade: "EstornoLiquidacaoRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposEstornoLiquidacaoRestos };
+
+export interface RetencaoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numPagamento: string;
+  readonly valor: Money;
+  readonly tipoConsignacaoCodigo: string;
+}
+const camposRetencaoRestos: readonly CampoLayout<RetencaoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numPagamento", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "o pagamento de restos (parcela)", extrair: (f) => f.numPagamento },
+  { nome: "valor", posInicial: 30, posFinal: 45, tipo: "VALOR", obrigatorio: true, origem: "mov.valor", extrair: (f) => f.valor },
+  { nome: "tipoRetencao", posInicial: 46, posFinal: 46, tipo: "NUMERICO", obrigatorio: true, origem: "mov.tipoConsignacao.codigo → §5.24 (de-para)", extrair: (f) => tipoRetencaoDe(f.tipoConsignacaoCodigo) },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 47, posFinal: 52, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho inscrito (a própria)", extrair: (f) => f.codUnidadeGestora },
+];
+export const LAYOUT_RETENCAO_RESTOS: LayoutArquivo<RetencaoRestosFato> = { entidade: "RetencaoRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposRetencaoRestos };
+
+export interface EstornoRetencaoRestosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numPagamento: string;
+  readonly tipoConsignacaoCodigo: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly motivo: string;
+  readonly valor: Money;
+}
+const camposEstornoRetencaoRestos: readonly CampoLayout<EstornoRetencaoRestosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numPagamento", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "o pagamento de restos de origem", extrair: (f) => f.numPagamento },
+  { nome: "tipoRetencao", posInicial: 30, posFinal: 30, tipo: "NUMERICO", obrigatorio: true, origem: "mov.tipoConsignacao.codigo → §5.24 (de-para)", extrair: (f) => tipoRetencaoDe(f.tipoConsignacaoCodigo) },
+  { nome: "numero", posInicial: 31, posFinal: 37, tipo: "NUMERICO", obrigatorio: true, origem: "derivado: ordem de gravação no exercício", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 38, posFinal: 45, tipo: "DATA", obrigatorio: true, origem: "estorno.data", extrair: (f) => f.data },
+  { nome: "motivo", posInicial: 46, posFinal: 165, tipo: "ALFA", obrigatorio: true, origem: "o motivo da anulação do pagamento de restos", extrair: (f) => f.motivo },
+  { nome: "valor", posInicial: 166, posFinal: 181, tipo: "VALOR", obrigatorio: true, origem: "estorno.valor", extrair: (f) => f.valor },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 182, posFinal: 187, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho inscrito (a própria)", extrair: (f) => f.codUnidadeGestora },
+];
+export const LAYOUT_ESTORNO_RETENCAO_RESTOS: LayoutArquivo<EstornoRetencaoRestosFato> = { entidade: "EstornoRetencaoRestos", periodicidade: "DIARIO", versao: VERSAO, campos: camposEstornoRetencaoRestos };
+
+export interface RestosInscritosFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly valorInscrito: Money;
+  readonly valorProcessado: Money;
+  readonly valorNaoProcessado: Money;
+}
+const camposRestosInscritos: readonly CampoLayout<RestosInscritosFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissaoEmpenho", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "ALFA", obrigatorio: true, origem: "empenho.numero (Caractere 7 no leiaute)", extrair: (f) => f.numEmpenho },
+  { nome: "codUnidadeGestoraOrigem", posInicial: 23, posFinal: 28, tipo: "NUMERICO", obrigatorio: true, origem: "a UG do empenho (a própria)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "valorInscrito", posInicial: 29, posFinal: 44, tipo: "VALOR", obrigatorio: true, origem: "Σ InscricaoRestosAPagar.valorInscrito do empenho", extrair: (f) => f.valorInscrito },
+  { nome: "valorProcessado", posInicial: 45, posFinal: 60, tipo: "VALOR", obrigatorio: true, origem: "inscrição PROCESSADO", extrair: (f) => f.valorProcessado },
+  { nome: "valorNaoProcessado", posInicial: 61, posFinal: 76, tipo: "VALOR", obrigatorio: true, origem: "inscrição NAO_PROCESSADO", extrair: (f) => f.valorNaoProcessado },
+];
+export const LAYOUT_RESTOS_INSCRITOS: LayoutArquivo<RestosInscritosFato> = { entidade: "RestosInscritos", periodicidade: "MENSAL", versao: VERSAO, campos: camposRestosInscritos };
+
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
@@ -1060,4 +1284,12 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_ESTORNO_DESPESA_EXTRA,
   LAYOUT_RECEITA_EXTRA,
   LAYOUT_ESTORNO_RECEITA_EXTRA,
+  LAYOUT_PAGAMENTOS_RESTOS,
+  LAYOUT_ESTORNO_PAGAMENTO_RESTOS,
+  LAYOUT_CANCELAMENTO_RESTOS,
+  LAYOUT_LIQUIDACAO_RESTOS,
+  LAYOUT_ESTORNO_LIQUIDACAO_RESTOS,
+  LAYOUT_RETENCAO_RESTOS,
+  LAYOUT_ESTORNO_RETENCAO_RESTOS,
+  LAYOUT_RESTOS_INSCRITOS,
 ] as const;

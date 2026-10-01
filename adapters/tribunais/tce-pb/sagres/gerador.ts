@@ -56,6 +56,22 @@ import {
   type ReceitaExtraFato,
   type EstornoReceitaExtraFato,
   type SaldoMensalFato,
+  LAYOUT_PAGAMENTOS_RESTOS,
+  LAYOUT_ESTORNO_PAGAMENTO_RESTOS,
+  LAYOUT_CANCELAMENTO_RESTOS,
+  LAYOUT_LIQUIDACAO_RESTOS,
+  LAYOUT_ESTORNO_LIQUIDACAO_RESTOS,
+  LAYOUT_RETENCAO_RESTOS,
+  LAYOUT_ESTORNO_RETENCAO_RESTOS,
+  LAYOUT_RESTOS_INSCRITOS,
+  type PagamentoRestosFato,
+  type EstornoPagamentoRestosFato,
+  type CancelamentoRestosFato,
+  type LiquidacaoRestosFato,
+  type EstornoLiquidacaoRestosFato,
+  type RetencaoRestosFato,
+  type EstornoRetencaoRestosFato,
+  type RestosInscritosFato,
 } from "./layout-2026v11.js";
 
 /**
@@ -204,7 +220,8 @@ export async function lerFatosLiquidacao(
   const { gte, lt } = intervaloDoDia(params.dia);
   // V23 — só LIQUIDAÇÕES genuínas; as anulações vão a EstornoLiquidacao (§4.11).
   const liqs = await prisma.liquidacao.findMany({
-    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
+    // V24 — liquidação de empenho de exercício ANTERIOR é de restos e vai à LiquidacaoRestos (§4.31).
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null, empenho: { ficha: { exercicio: { gte: params.dia.getUTCFullYear() } } } },
     include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } },
     orderBy: [{ empenhoId: "asc" }, { numero: "asc" }],
   });
@@ -436,7 +453,8 @@ export async function lerFatosPagamentos(
   const { gte, lt } = intervaloDoDia(params.dia);
   // Só PAGAMENTOS genuínos: um registro com estorno/anulação-parcial não é pagamento (vai a 4.13/4.x).
   const pagamentos = await prisma.pagamento.findMany({
-    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
+    // V24 — o pagamento de restos (com movimento do M08) vai à PagamentosRestos (§4.28).
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null, movimentosRestos: { none: {} } },
     include: {
       fonte: true,
       liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } },
@@ -572,6 +590,8 @@ export async function lerFatosEstornoPagamento(
     where: {
       data: { gte, lt },
       OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }],
+      // V24 — o estorno de pagamento de restos vai à EstornoPagamentoRestos (§4.29).
+      movimentosRestos: { none: {} },
     },
     include: {
       estornoDe: { select: { numero: true, estornoDeId: true, anulacaoParcialDeId: true } },
@@ -717,7 +737,8 @@ export async function lerFatosEstornoLiquidacao(
 ): Promise<EstornoLiquidacaoFato[]> {
   const { gte, lt } = intervaloDoDia(params.dia);
   const anulacoes = await prisma.liquidacao.findMany({
-    where: { data: { gte, lt }, OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] },
+    // V24 — a anulação de liquidação de restos vai à EstornoLiquidacaoRestos (§4.32).
+    where: { data: { gte, lt }, OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }], empenho: { ficha: { exercicio: { gte: params.dia.getUTCFullYear() } } } },
     include: {
       estornoDe: { select: { numero: true, estornoDeId: true, anulacaoParcialDeId: true } },
       anulacaoParcialDe: { select: { numero: true } },
@@ -761,7 +782,8 @@ export async function lerFatosEstornoRetencao(
   const numeros = await numeracaoNoExercicio(prisma, { tipo: "ESTORNO_INGRESSO", comPagamento: true }, params.dia.getUTCFullYear());
   const { gte, lt } = intervaloDoDia(params.dia);
   const movs = await prisma.movimentoExtraorcamentario.findMany({
-    where: { tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null }, data: { gte, lt } },
+    // V24 — a retenção de restos desfeita vai à EstornoRetencaoRestos (§4.34).
+    where: { tipo: "ESTORNO_INGRESSO", pagamentoId: { not: null }, data: { gte, lt }, pagamento: { movimentosRestos: { none: {} } } },
     include: {
       tipoConsignacao: true,
       pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } },
@@ -1106,7 +1128,8 @@ export async function lerFatosRetencao(
 ): Promise<RetencaoFato[]> {
   const { gte, lt } = intervaloDoDia(params.dia);
   const movs = await prisma.movimentoExtraorcamentario.findMany({
-    where: { tipo: "INGRESSO", pagamentoId: { not: null }, data: { gte, lt } },
+    // V24 — a retenção de pagamento de restos vai à RetencaoRestos (§4.33).
+    where: { tipo: "INGRESSO", pagamentoId: { not: null }, data: { gte, lt }, pagamento: { movimentosRestos: { none: {} } } },
     include: {
       tipoConsignacao: true,
       pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } },
@@ -1284,4 +1307,347 @@ export async function gerarDespesaExtra(
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosDespesaExtra(prisma, params);
   return empacotar(LAYOUT_DESPESA_EXTRA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "DespesaExtra", competencia: params.dia }), fatos);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// V24 — O GRUPO DOS RESTOS A PAGAR (§4.28 a §4.34) e os RESTOS INSCRITOS (§4.40).
+//
+// O que é resto, sem adivinhar pela data: o PAGAMENTO de restos é o `Pagamento` que tem um
+// `MovimentoRestosAPagar` (o M08 cria os dois juntos); a LIQUIDAÇÃO de restos é a de empenho de exercício
+// ANTERIOR ao da liquidação (só o RP não processado se liquida no ano seguinte); a RETENÇÃO de restos é a
+// do pagamento de restos. Os arquivos do exercício (§4.10 a §4.15) deixam esses registros de fora.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+const anoDoDia = (dia: Date): number => dia.getUTCFullYear();
+
+/** §4.28 — os pagamentos de restos do dia. */
+export async function lerFatosPagamentosRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }
+): Promise<PagamentoRestosFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const pagamentos = await prisma.pagamento.findMany({
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null, movimentosRestos: { some: { tipo: "PAGAMENTO" } } },
+    include: { fonte: true, liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true, co: true } } } } } } },
+    orderBy: [{ numero: "asc" }],
+  });
+  const contas = await prisma.contaBancaria.findMany({ where: { codigo: { in: [...new Set(pagamentos.map((p) => p.contaBancaria))] } } });
+  const porCodigo = new Map(contas.map((c) => [c.codigo, c]));
+  return pagamentos.map((p) => {
+    const conta = porCodigo.get(p.contaBancaria);
+    if (conta === undefined) throw new Error(`SAGRES/PagamentosRestos — o pagamento ${p.numero} referencia a conta "${p.contaBancaria}", que não existe.`);
+    const t = exigirTripla(conta);
+    const ficha = p.liquidacao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: p.liquidacao.empenho.numero,
+      numero: p.numero,
+      data: p.data,
+      valor: money(p.valor),
+      numeroContaDebito: comDigito(t.conta, conta.digitoConta),
+      numeroAgenciaDebito: comDigito(t.agencia, conta.digitoAgencia),
+      codBancoDebito: t.banco,
+      codFonteRecurso: p.fonte.codigo,
+      co: ficha.co?.codigo ?? null,
+      cnpjGerencia: params.cnpjGerenciadora,
+    };
+  });
+}
+
+/** §4.29 — as anulações de pagamento de restos do dia (o `Pagamento` de estorno com o movimento do M08). */
+export async function lerFatosEstornoPagamentoRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoPagamentoRestosFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const estornos = await prisma.pagamento.findMany({
+    where: { data: { gte, lt }, estornoDeId: { not: null }, movimentosRestos: { some: { tipo: "ESTORNO_PAGAMENTO" } } },
+    include: {
+      estornoDe: { select: { numero: true } },
+      movimentosRestos: { where: { tipo: "ESTORNO_PAGAMENTO" }, select: { motivo: true } },
+      liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } },
+    },
+    orderBy: [{ numero: "asc" }],
+  });
+  return estornos.map((e) => {
+    if (e.estornoDe === null) throw new Error(`SAGRES/EstornoPagamentoRestos — o estorno ${e.numero} não aponta o pagamento estornado.`);
+    const ficha = e.liquidacao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: e.liquidacao.empenho.numero,
+      numPagamento: e.estornoDe.numero,
+      numero: e.numero,
+      data: e.data,
+      motivo: motivoExportavel("EstornoPagamentoRestos", e.numero, e.movimentosRestos[0]?.motivo ?? null),
+      valor: money(e.valor),
+    };
+  });
+}
+
+/**
+ * §4.30 — os cancelamentos de restos do dia. A data é a do lançamento do cancelamento (o movimento do M08
+ * não tem data própria); o número segue a ordem de gravação no exercício, para não renumerar o já enviado.
+ * O desfazimento de um cancelamento não tem registro no leiaute: o dia é recusado nomeando.
+ */
+export async function lerFatosCancelamentoRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<CancelamentoRestosFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const ano = anoDoDia(params.dia);
+  const desfeitos = await prisma.movimentoRestosAPagar.count({ where: { tipo: "ESTORNO_CANCELAMENTO", lancamento: { dataTransacao: { gte, lt } } } });
+  if (desfeitos > 0) {
+    throw new Error(
+      `SAGRES/CancelamentoRestos — há ${String(desfeitos)} cancelamento(s) de restos DESFEITO(s) neste dia, e o leiaute não tem ` +
+        `registro para desfazer um cancelamento. O arquivo não é gerado; trate o caso com o Tribunal de Contas.`
+    );
+  }
+  const doExercicio = await prisma.movimentoRestosAPagar.findMany({
+    where: { tipo: "CANCELAMENTO", lancamento: { dataTransacao: { gte: new Date(Date.UTC(ano, 0, 1)), lt: new Date(Date.UTC(ano + 1, 0, 1)) } } },
+    select: { id: true },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  const numeros = new Map(doExercicio.map((m, i) => [m.id, String(i + 1)]));
+  const movs = await prisma.movimentoRestosAPagar.findMany({
+    where: { tipo: "CANCELAMENTO", lancamento: { dataTransacao: { gte, lt } } },
+    include: { lancamento: { select: { dataTransacao: true } }, inscricao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return movs.map((m) => {
+    const numero = numeros.get(m.id);
+    if (numero === undefined || m.lancamento === null) throw new Error(`SAGRES/CancelamentoRestos — o cancelamento ${m.id} ficou sem lançamento ou fora da numeração.`);
+    const ficha = m.inscricao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: m.inscricao.empenho.numero,
+      numero,
+      data: m.lancamento.dataTransacao,
+      valor: money(m.valor),
+      motivo: motivoExportavel("CancelamentoRestos", numero, m.motivo),
+      despesaLiquidada: m.inscricao.tipo === "PROCESSADO" ? "S" : "N",
+    };
+  });
+}
+
+/** §4.31 — as liquidações de restos não processados do dia (empenho de exercício anterior). */
+export async function lerFatosLiquidacaoRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<LiquidacaoRestosFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const liqs = await prisma.liquidacao.findMany({
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null, empenho: { ficha: { exercicio: { lt: anoDoDia(params.dia) } } } },
+    include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } },
+    orderBy: [{ empenhoId: "asc" }, { numero: "asc" }],
+  });
+  return liqs.map((l) => ({
+    codUnidadeGestora: params.codUnidadeGestora,
+    anoEmissaoEmpenho: l.empenho.ficha.exercicio,
+    codUnidadeOrcamentaria: l.empenho.ficha.unidadeOrc.codigo,
+    numEmpenho: l.empenho.numero,
+    numero: l.numero,
+    data: l.data,
+    notaFiscal:
+      l.notaFiscalChave !== null && l.notaFiscalData !== null && l.notaFiscalValor !== null
+        ? { tipo: "02", chave: l.notaFiscalChave, numero: l.notaFiscalNum ?? "", serie: l.notaFiscalSerie ?? "", data: l.notaFiscalData, valor: money(l.notaFiscalValor) }
+        : null,
+    valor: money(l.valor),
+  }));
+}
+
+/** §4.32 — as anulações de liquidação de restos do dia. */
+export async function lerFatosEstornoLiquidacaoRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoLiquidacaoRestosFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const anulacoes = await prisma.liquidacao.findMany({
+    where: { data: { gte, lt }, OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }], empenho: { ficha: { exercicio: { lt: anoDoDia(params.dia) } } } },
+    include: {
+      estornoDe: { select: { numero: true, estornoDeId: true, anulacaoParcialDeId: true } },
+      anulacaoParcialDe: { select: { numero: true } },
+      empenho: { include: { ficha: { include: { unidadeOrc: true } } } },
+    },
+    orderBy: [{ empenhoId: "asc" }, { numero: "asc" }],
+  });
+  return anulacoes.map((a) => {
+    const anulado = a.estornoDe ?? a.anulacaoParcialDe;
+    if (anulado === null) throw new Error(`SAGRES/EstornoLiquidacaoRestos — a anulação ${a.numero} não aponta a liquidação anulada.`);
+    if (a.estornoDe !== null && (a.estornoDe.estornoDeId !== null || a.estornoDe.anulacaoParcialDeId !== null)) {
+      throw recusaDoEstornoDeAnulacao("EstornoLiquidacaoRestos", "liquidação de restos", a.numero, anulado.numero);
+    }
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: a.empenho.ficha.exercicio,
+      codUnidadeOrcamentaria: a.empenho.ficha.unidadeOrc.codigo,
+      numEmpenho: a.empenho.numero,
+      numLiquidacao: anulado.numero,
+      numero: a.numero,
+      data: a.data,
+      motivo: motivoExportavel("EstornoLiquidacaoRestos", a.numero, a.motivo),
+      valor: money(a.valor),
+    };
+  });
+}
+
+/** §4.33 — as retenções feitas nos pagamentos de restos do dia. */
+export async function lerFatosRetencaoRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<RetencaoRestosFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "INGRESSO", data: { gte, lt }, pagamento: { movimentosRestos: { some: { tipo: "PAGAMENTO" } } } },
+    include: { tipoConsignacao: true, pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } } },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return movs.map((m) => {
+    if (m.pagamento === null) throw new Error(`SAGRES/RetencaoRestos — a retenção ${m.id} não aponta o pagamento.`);
+    const ficha = m.pagamento.liquidacao.empenho.ficha;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: m.pagamento.liquidacao.empenho.numero,
+      numPagamento: m.pagamento.numero,
+      valor: money(m.valor),
+      tipoConsignacaoCodigo: m.tipoConsignacao.codigo,
+    };
+  });
+}
+
+/**
+ * §4.34 — as retenções de restos desfeitas no dia (o pagamento de restos anulado). A numeração é a mesma
+ * sequência do §4.15 (estornos de ingresso com pagamento): números únicos, e nada do já enviado muda.
+ */
+export async function lerFatosEstornoRetencaoRestos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<EstornoRetencaoRestosFato[]> {
+  const numeros = await numeracaoNoExercicio(prisma, { tipo: "ESTORNO_INGRESSO", comPagamento: true }, anoDoDia(params.dia));
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "ESTORNO_INGRESSO", data: { gte, lt }, pagamento: { movimentosRestos: { some: { tipo: "PAGAMENTO" } } } },
+    include: {
+      tipoConsignacao: true,
+      pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } }, movimentosRestos: { select: { estornos: { select: { motivo: true } } } } } },
+    },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return movs.map((m) => {
+    const numero = numeros.get(m.id);
+    if (m.pagamento === null || numero === undefined) throw new Error(`SAGRES/EstornoRetencaoRestos — o estorno ${m.id} não aponta o pagamento de origem, ou ficou fora da numeração.`);
+    const ficha = m.pagamento.liquidacao.empenho.ficha;
+    // O motivo é o da anulação do pagamento de restos (o movimento ESTORNO_PAGAMENTO do M08).
+    const motivo = m.motivo ?? m.pagamento.movimentosRestos.flatMap((r) => r.estornos.map((e) => e.motivo)).find((x) => x !== null) ?? null;
+    return {
+      codUnidadeGestora: params.codUnidadeGestora,
+      anoEmissaoEmpenho: ficha.exercicio,
+      codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+      numEmpenho: m.pagamento.liquidacao.empenho.numero,
+      numPagamento: m.pagamento.numero,
+      tipoConsignacaoCodigo: m.tipoConsignacao.codigo,
+      numero,
+      data: m.data,
+      motivo: motivoExportavel("EstornoRetencaoRestos", numero, motivo),
+      valor: money(m.valor),
+    };
+  });
+}
+
+/** §4.40 — os restos inscritos no exercício (enviados no balancete de dezembro), por empenho. */
+export async function lerFatosRestosInscritos(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly exercicio: number }
+): Promise<RestosInscritosFato[]> {
+  const inscricoes = await prisma.inscricaoRestosAPagar.findMany({
+    where: { exercicioOrigem: params.exercicio },
+    include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } },
+    orderBy: [{ empenhoId: "asc" }],
+  });
+  const porEmpenho = new Map<string, { fato: Omit<RestosInscritosFato, "valorInscrito" | "valorProcessado" | "valorNaoProcessado">; processado: ReturnType<typeof toMoney>; naoProcessado: ReturnType<typeof toMoney> }>();
+  for (const i of inscricoes) {
+    const atual = porEmpenho.get(i.empenhoId) ?? {
+      fato: { codUnidadeGestora: params.codUnidadeGestora, anoEmissaoEmpenho: i.empenho.ficha.exercicio, codUnidadeOrcamentaria: i.empenho.ficha.unidadeOrc.codigo, numEmpenho: i.empenho.numero },
+      processado: toMoney("0"),
+      naoProcessado: toMoney("0"),
+    };
+    if (i.tipo === "PROCESSADO") atual.processado = money(atual.processado.plus(i.valorInscrito));
+    else atual.naoProcessado = money(atual.naoProcessado.plus(i.valorInscrito));
+    porEmpenho.set(i.empenhoId, atual);
+  }
+  return [...porEmpenho.values()].map((v) => ({ ...v.fato, valorInscrito: money(v.processado.plus(v.naoProcessado)), valorProcessado: v.processado, valorNaoProcessado: v.naoProcessado }));
+}
+
+export async function gerarPagamentosRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_PAGAMENTOS_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "PagamentosRestos", competencia: params.dia }), await lerFatosPagamentosRestos(prisma, params));
+}
+export async function gerarEstornoPagamentoRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_ESTORNO_PAGAMENTO_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoPagamentoRestos", competencia: params.dia }), await lerFatosEstornoPagamentoRestos(prisma, params));
+}
+export async function gerarCancelamentoRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_CANCELAMENTO_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "CancelamentoRestos", competencia: params.dia }), await lerFatosCancelamentoRestos(prisma, params));
+}
+export async function gerarLiquidacaoRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_LIQUIDACAO_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "LiquidacaoRestos", competencia: params.dia }), await lerFatosLiquidacaoRestos(prisma, params));
+}
+export async function gerarEstornoLiquidacaoRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_ESTORNO_LIQUIDACAO_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoLiquidacaoRestos", competencia: params.dia }), await lerFatosEstornoLiquidacaoRestos(prisma, params));
+}
+export async function gerarRetencaoRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_RETENCAO_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "RetencaoRestos", competencia: params.dia }), await lerFatosRetencaoRestos(prisma, params));
+}
+export async function gerarEstornoRetencaoRestos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_ESTORNO_RETENCAO_RESTOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoRetencaoRestos", competencia: params.dia }), await lerFatosEstornoRetencaoRestos(prisma, params));
+}
+/** §4.40 — mensal, aceito no balancete de DEZEMBRO: `competencia` é o mês (dezembro do exercício). */
+export async function gerarRestosInscritos(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoGerado> {
+  const fatos = await lerFatosRestosInscritos(prisma, { codUnidadeGestora: params.codUnidadeGestora, exercicio: params.competencia.getUTCFullYear() });
+  return empacotar(LAYOUT_RESTOS_INSCRITOS, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "RestosInscritos", competencia: params.competencia }), fatos);
+}
+
+/**
+ * V24 — O GRUPO DOS RESTOS num passo só, para os pacotes (prévia, download, contingência): os sete arquivos
+ * diários e, no mês de DEZEMBRO, os RestosInscritos (§4.40: "só serão aceitos no balancete de Dezembro").
+ * O cancelamento desfeito (que o leiaute não representa) vira RECUSA nomeada, e o arquivo fica fora do
+ * pacote — os demais seguem.
+ */
+export async function gerarArquivosDeRestos(
+  prisma: PrismaClient,
+  p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date; readonly competencia: Date }
+): Promise<{ readonly arquivos: readonly { readonly arquivo: ArquivoGerado; readonly layout: LayoutArquivo<never> }[]; readonly recusas: readonly { readonly arquivo: string; readonly detalhe: string }[] }> {
+  const base = { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia };
+  const [pag, estPag, liq, estLiq, ret, estRet] = await Promise.all([
+    gerarPagamentosRestos(prisma, { ...base, cnpjGerenciadora: p.cnpjGerenciadora }),
+    gerarEstornoPagamentoRestos(prisma, base),
+    gerarLiquidacaoRestos(prisma, base),
+    gerarEstornoLiquidacaoRestos(prisma, base),
+    gerarRetencaoRestos(prisma, base),
+    gerarEstornoRetencaoRestos(prisma, base),
+  ]);
+  const arquivos: { arquivo: ArquivoGerado; layout: LayoutArquivo<never> }[] = [
+    { arquivo: pag, layout: LAYOUT_PAGAMENTOS_RESTOS as LayoutArquivo<never> },
+    { arquivo: estPag, layout: LAYOUT_ESTORNO_PAGAMENTO_RESTOS as LayoutArquivo<never> },
+    { arquivo: liq, layout: LAYOUT_LIQUIDACAO_RESTOS as LayoutArquivo<never> },
+    { arquivo: estLiq, layout: LAYOUT_ESTORNO_LIQUIDACAO_RESTOS as LayoutArquivo<never> },
+    { arquivo: ret, layout: LAYOUT_RETENCAO_RESTOS as LayoutArquivo<never> },
+    { arquivo: estRet, layout: LAYOUT_ESTORNO_RETENCAO_RESTOS as LayoutArquivo<never> },
+  ];
+  const recusas: { arquivo: string; detalhe: string }[] = [];
+  try {
+    arquivos.push({ arquivo: await gerarCancelamentoRestos(prisma, base), layout: LAYOUT_CANCELAMENTO_RESTOS as LayoutArquivo<never> });
+  } catch (e) {
+    if (!(e instanceof Error) || !e.message.startsWith("SAGRES/CancelamentoRestos")) throw e;
+    recusas.push({ arquivo: "CancelamentoRestos", detalhe: e.message });
+  }
+  if (p.competencia.getUTCMonth() === 11) {
+    arquivos.push({ arquivo: await gerarRestosInscritos(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: p.competencia }), layout: LAYOUT_RESTOS_INSCRITOS as LayoutArquivo<never> });
+  }
+  return { arquivos, recusas };
 }

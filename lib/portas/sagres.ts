@@ -13,6 +13,7 @@ import {
   gerarEstornos,
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
+  gerarArquivosDeRestos,
   gerarEstornoDespesaExtra,
   gerarReceitaExtraOuRecusa,
   gerarEstornoReceitaExtraOuRecusa,
@@ -65,6 +66,7 @@ import {
   type Manifesto,
   type Violacao,
 } from "../../adapters/tribunais/tce-pb/sagres";
+import type { LayoutArquivo } from "../../adapters/tribunais/tce-pb/sagres/registry";
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
 import { anoCivil, competenciaCivil, diaCivil, janelaCivilDoMes } from "../../packages/datas/index";
@@ -245,9 +247,12 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia });
   const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia });
   const semPlano = despesasExtra.length > 0 && (await planoVigenteDoTribunal(prisma, anoCivil(p.dia))) === null;
+  // V24 — o grupo dos restos a pagar (§4.28 a §4.34; §4.40 em dezembro), com a recusa nomeada quando houver.
+  const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
 
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
+    ...restos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "movimento", regra: "RESTOS_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...("recusa" in unidades
       ? [{ arquivo: "UnidadeOrcamentaria", linha: 0, campo: "unidade", regra: "DADOS_DA_UNIDADE_AUSENTES" as const, detalhe: `${unidades.recusa} O arquivo das unidades fica FORA do pacote até a declaração.` }]
       : validarObrigatorios(LAYOUT_UNIDADE_ORCAMENTARIA, unidades.fatos)),
@@ -300,7 +305,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : [])];
+  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : []), ...restos.arquivos.map((r) => r.arquivo)];
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -332,6 +337,7 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     { g: aMovimentacao, l: LAYOUT_MOVIMENTACAO },
     { g: aRetencao, l: LAYOUT_RETENCAO },
     { g: aDespesaExtra, l: LAYOUT_DESPESA_EXTRA },
+    ...restos.arquivos.map((r) => ({ g: r.arquivo, l: r.layout as LayoutArquivo<unknown> })),
   ];
   const larguraMax = Math.max(...meta.map((m) => m.l.campos.reduce((mx, c) => Math.max(mx, c.posFinal), 0)));
 
@@ -393,6 +399,9 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   if ("arquivo" in receitaExtra) arquivos.push(receitaExtra.arquivo);
   const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia });
   if ("arquivo" in estornoReceitaExtra) arquivos.push(estornoReceitaExtra.arquivo);
+  // V24 — o grupo dos restos: os mesmos arquivos da prévia (a recusa nomeada fica fora, como lá).
+  const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
+  arquivos.push(...restos.arquivos.map((r) => r.arquivo));
 
   const pacote = montarPacote(
     { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora },

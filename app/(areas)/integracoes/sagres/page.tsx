@@ -138,19 +138,19 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "SaldoInicial", secao: "§4.25", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "SaldoMensal", secao: "§4.26", exporta: true, nota: "Soma do extrato bancário até o fim do mês." },
   { entidade: "ConciliacaoBancaria", secao: "§4.27", exporta: true, nota: "Gerado a partir da conciliação do fim do mês; a conta que não fecha fica fora, com o motivo." },
-  { entidade: "PagamentosRestos", secao: "§4.28", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
-  { entidade: "EstornoPagamentoRestos", secao: "§4.29", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
-  { entidade: "CancelamentoRestos", secao: "§4.30", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
-  { entidade: "LiquidacaoRestos", secao: "§4.31", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
-  { entidade: "EstornoLiquidacaoRestos", secao: "§4.32", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
-  { entidade: "RetencaoRestos", secao: "§4.33", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
-  { entidade: "EstornoRetencaoRestos", secao: "§4.34", exporta: false, nota: "Os restos a pagar são registrados; este arquivo ainda não é gerado." },
+  { entidade: "PagamentosRestos", secao: "§4.28", exporta: true, nota: "Gerado a partir dos pagamentos de restos a pagar, com a conta pagadora e o CO da ficha. Saem daqui, e não do arquivo de pagamentos do exercício." },
+  { entidade: "EstornoPagamentoRestos", secao: "§4.29", exporta: true, nota: "Gerado a partir das anulações de pagamento de restos, com o motivo informado." },
+  { entidade: "CancelamentoRestos", secao: "§4.30", exporta: true, nota: "Gerado a partir dos cancelamentos de restos, com o motivo; o cancelamento desfeito não tem registro no leiaute e o arquivo do dia fica fora, com o motivo." },
+  { entidade: "LiquidacaoRestos", secao: "§4.31", exporta: true, nota: "Gerado a partir das liquidações de restos não processados (empenho de exercício anterior). Saem daqui, e não do arquivo de liquidações." },
+  { entidade: "EstornoLiquidacaoRestos", secao: "§4.32", exporta: true, nota: "Gerado a partir das anulações de liquidação de restos. Hoje o sistema não oferece anular liquidação de restos: o arquivo sai sem registros." },
+  { entidade: "RetencaoRestos", secao: "§4.33", exporta: true, nota: "Gerado a partir das retenções feitas nos pagamentos de restos." },
+  { entidade: "EstornoRetencaoRestos", secao: "§4.34", exporta: true, nota: "Gerado a partir das retenções de restos desfeitas pela anulação do pagamento." },
   { entidade: "Fornecedores", secao: "§4.35", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "Ordenador", secao: "§4.36", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "RelacionamentoEmpenhoObra", secao: "§4.37", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "RelacionamentoEmpenhoLicitacao", secao: "§4.38", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", secao: "§4.39", exporta: false, nota: "Ainda não é gerado por este sistema." },
-  { entidade: "RestosInscritos", secao: "§4.40", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RestosInscritos", secao: "§4.40", exporta: true, nota: "Gerado a partir das inscrições de restos a pagar do exercício, por empenho, e enviado no balancete de dezembro." },
   { entidade: "PloaAcao", secao: "§4.41", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "PloaDotacao", secao: "§4.42", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "PloaPrograma", secao: "§4.43", exporta: false, nota: "Ainda não é gerado por este sistema." },
@@ -224,8 +224,9 @@ function AvisoSemMovimento({
 }
 
 /** O tipo da violação em português — o enum não vai para a tela. */
-const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES" | "RECEITA_EXTRA_FORA_DO_PACOTE" | "PLANO_DO_TRIBUNAL_AUSENTE", string> = {
+const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES" | "RECEITA_EXTRA_FORA_DO_PACOTE" | "PLANO_DO_TRIBUNAL_AUSENTE" | "RESTOS_FORA_DO_PACOTE", string> = {
   RECEITA_EXTRA_FORA_DO_PACOTE: "Receita extra fora do pacote",
+  RESTOS_FORA_DO_PACOTE: "Restos a pagar fora do pacote",
   PLANO_DO_TRIBUNAL_AUSENTE: "Plano do Tribunal não importado",
   OBRIGATORIEDADE: "Campo obrigatório vazio",
   DOMINIO: "Código fora da tabela",

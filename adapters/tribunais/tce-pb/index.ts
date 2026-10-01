@@ -18,6 +18,7 @@ import {
   gerarEstornos,
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
+  gerarArquivosDeRestos,
   gerarEstornoDespesaExtra,
   gerarReceitaExtraOuRecusa,
   gerarEstornoReceitaExtraOuRecusa,
@@ -172,6 +173,9 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
       if ("arquivo" in receitaExtra) gerados.push(receitaExtra.arquivo);
       const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora, dia });
       if ("arquivo" in estornoReceitaExtra) gerados.push(estornoReceitaExtra.arquivo);
+      // V24 — o grupo dos restos (§4.28–§4.34; §4.40 em dezembro), a mesma lista da prévia.
+      const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora, cnpjGerenciadora, dia, competencia: mesRef });
+      gerados.push(...restos.arquivos.map((r) => r.arquivo));
       // V21 — a conciliação (§4.27) entra quando a conta fecha; a recusa é da prévia, não do pacote.
       const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora, cnpjGerenciadora, competencia: mesRef });
       const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora, competencia: mesRef });
