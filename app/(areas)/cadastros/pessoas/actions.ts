@@ -7,8 +7,9 @@ import {
   registrarPessoa,
   type PapelDePessoa,
 } from "../../../../lib/portas/pessoas";
-import { meioDiaCivil } from "../../../../packages/datas/index";
+import { inicioDoDiaCivil, meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { registrarPerfilFiscalPelaTela } from "../../../../lib/portas/retencao-calculada";
 
 /**
  * Server Actions do cadastro de pessoas.
@@ -143,6 +144,36 @@ export async function moverPapelAction(
       };
     } catch (erro) {
       return { erro: mensagem(erro) };
+    }
+  });
+}
+
+/**
+ * V24 — o PERFIL FISCAL do fornecedor (Simples, dispensa do IR, município do estabelecimento), que a
+ * retenção calculada lê na data do pagamento. Cada envio é uma versão nova, com data de vigência.
+ */
+export async function registrarPerfilFiscalAction(_prev: EstadoPessoa, formData: FormData): Promise<EstadoPessoa> {
+  return comComandoDoFormulario(formData, async () => {
+    const pessoaId = String(formData.get("pessoaId") ?? "").trim();
+    const documento = String(formData.get("documento") ?? "").trim();
+    const desde = String(formData.get("vigenteDesde") ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde)) return { erro: "Informe a data a partir da qual o perfil vale." };
+    try {
+      await registrarPerfilFiscalPelaTela({
+        documento,
+        // Coluna só de data: o dia escolhido no eixo UTC é o próprio dia, sem fuso.
+        vigenteDesde: inicioDoDiaCivil(desde, "UTC"),
+        optanteSimplesNacional: formData.get("optanteSimplesNacional") === "on",
+        tributadoNoAnexoIVDoSimples: formData.get("tributadoNoAnexoIVDoSimples") === "on",
+        contribuiSobreReceitaBruta: formData.get("contribuiSobreReceitaBruta") === "on",
+        dispensaDoIR: String(formData.get("dispensaDoIR") ?? "").trim() || null,
+        municipioDoEstabelecimento: String(formData.get("municipioDoEstabelecimento") ?? "").trim() || null,
+        fundamento: String(formData.get("fundamento") ?? ""),
+      });
+      revalidatePath(`/cadastros/pessoas/${pessoaId}`);
+      return { sucesso: "Perfil fiscal registrado." };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o perfil fiscal." };
     }
   });
 }

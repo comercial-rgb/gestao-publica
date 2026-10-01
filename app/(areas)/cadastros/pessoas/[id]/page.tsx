@@ -18,6 +18,8 @@ import {
 import { FormAnexo } from "../../../documentos/FormAnexo";
 import { FormAlterarPessoa } from "./FormAlterarPessoa";
 import { FormPapel } from "./FormPapel";
+import { FormPerfilFiscal } from "./FormPerfilFiscal";
+import { lerPerfisFiscais } from "../../../../../lib/portas/retencao-calculada";
 import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
@@ -63,6 +65,7 @@ export default async function DetalheDaPessoaPage({
   let pessoa: Awaited<ReturnType<typeof buscarPessoaDaTela>>;
   let historico: Awaited<ReturnType<typeof historicoDaPessoa>>;
   let anexos: Awaited<ReturnType<typeof lerAnexosDaPessoa>> = [];
+  let perfisFiscais: Awaited<ReturnType<typeof lerPerfisFiscais>> = [];
   try {
     pessoa = await buscarPessoaDaTela(id);
     if (pessoa === null) {
@@ -78,6 +81,7 @@ export default async function DetalheDaPessoaPage({
     }
     historico = await historicoDaPessoa(id);
     anexos = await lerAnexosDaPessoa(id);
+    perfisFiscais = await lerPerfisFiscais(pessoa.documento);
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -144,6 +148,8 @@ export default async function DetalheDaPessoaPage({
       />
 
       <FormPapel pessoaId={pessoa.id} papeisVigentes={[...pessoa.papeis]} />
+
+      <FormPerfilFiscal pessoaId={pessoa.id} documento={pessoa.documento} perfis={perfisFiscais} />
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">

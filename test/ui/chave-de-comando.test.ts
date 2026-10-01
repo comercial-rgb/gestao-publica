@@ -60,6 +60,9 @@ export function balancoDaChave(fonte: string): { readonly formularios: number; r
 const ACOES_SEM_COMANDO: Record<string, string> = {
   "app/login/actions.ts": "entrar: autenticação, não escrita autenticada (o registro do LOGIN é próprio)",
   "app/(areas)/actions.ts": "sairAction: revoga a sessão e limpa o cookie; não passa pelo envelope",
+  "app/(areas)/despesa/pagamentos/previa-actions.ts":
+    "previaRetencoesAction (V24): só LÊ — calcula a prévia das retenções sem gravar nada, sob a leitura da " +
+    "despesa; o pagamento recalcula no servidor e passa pelo envelope em pagarAction.",
   "app/(areas)/integracoes/captura/page.tsx":
     "acaoSimular: a simulação MOCK da captura chama o serviço com exigirSessao, sem o envelope de " +
     "escrita autenticada — não consome a chave. Pendência CAPTURA-SEM-ENVELOPE.",

@@ -25,6 +25,7 @@ import {
 } from "../../../../lib/portas/contexto";
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { FormPagamento, type LiquidacaoPagavel, type OrdemAutorizadaParaTela } from "./FormPagamento";
+import { lerOpcoesDaRetencao, type OpcoesDaRetencao } from "../../../../lib/portas/retencao-calculada";
 import { lerOrdensDePagamento } from "../../../../lib/portas/ordem-pagamento";
 import { listarPagamentosDaExecucao, type PagamentoDaTela } from "../../../../lib/portas/anulacao";
 import { FormAnular } from "../FormAnular";
@@ -82,6 +83,7 @@ export default async function PagamentosPage({
   let pagamentos: readonly PagamentoDaTela[];
   let tiposDeConsignacao: readonly TipoDeConsignacaoDaTela[];
   let ordens: Awaited<ReturnType<typeof lerOrdensDePagamento>>;
+  let opcoesDaRetencao: OpcoesDaRetencao;
   try {
     // ⚠️ O RECORTE AUTORIZADO ALIMENTA DUAS DAS CINCO LEITURAS DESTA TELA, e **não** a
     // fila. `lerFilasDePagamento()` não recebe argumento de propósito: a ordem do art. 141
@@ -89,7 +91,7 @@ export default async function PagamentosPage({
     // criou — cada pedaço com uma "posição 1" própria. Quem tem recorte são os pagamentos
     // JÁ EXECUTADOS e as ordens de pagamento, e essas duas passam a vir autorizadas.
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
-    [filas, contas, pagamentos, tiposDeConsignacao, ordens] = await Promise.all([
+    [filas, contas, pagamentos, tiposDeConsignacao, ordens, opcoesDaRetencao] = await Promise.all([
       lerFilasDePagamento(),
       lerContasBancarias(),
       // ⚠️ Os pagamentos EXECUTADOS (para anular, TR 5.35) — a fila mostra o que falta; esta lista, o
@@ -102,6 +104,8 @@ export default async function PagamentosPage({
       // T07 — só as AUTORIZADAS entram no select: uma ordem preparada ainda não consente
       // com nada, e oferecê-la faria o operador receber a recusa depois de preencher.
       lerOrdensDePagamento({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo }),
+      // V24 — as tabelas oficiais vigentes da retenção calculada (IR, INSS e ISS).
+      lerOpcoesDaRetencao(),
     ]);
   } catch (erro) {
     return (
@@ -151,6 +155,7 @@ export default async function PagamentosPage({
         )}
         contas={contas}
         tiposDeConsignacao={tiposDeConsignacao}
+        opcoesDaRetencao={opcoesDaRetencao}
         ordensAutorizadas={ordens
           .filter((o) => o.estado === "AUTORIZADA")
           .map(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useId, useRef, useState, useTransition } from "react";
 import { CampoValor } from "../../../../components/ui/Campos";
 import {
   CLASSE_AREA_TEXTO,
@@ -10,6 +10,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { pagarAction, type EstadoPagamento } from "./actions";
+import { previaRetencoesAction, type EstadoDaPrevia } from "./previa-actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { formatarDocumento } from "../../../../packages/documento/index";
@@ -83,11 +84,13 @@ export function FormPagamento({
   contas,
   tiposDeConsignacao,
   ordensAutorizadas,
+  opcoesDaRetencao,
 }: {
   readonly liquidacoes: readonly LiquidacaoPagavel[];
   readonly contas: readonly ContaParaPagar[];
   readonly tiposDeConsignacao: readonly TipoDeConsignacaoParaTela[];
   readonly ordensAutorizadas: readonly OrdemAutorizadaParaTela[];
+  readonly opcoesDaRetencao: OpcoesDaRetencaoParaTela;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoPagamento, FormData>(
     pagarAction,
@@ -107,6 +110,8 @@ export function FormPagamento({
    * empenho, depois de gravado.
    */
   const [linhasRetencao, setLinhasRetencao] = useState<number>(0);
+  /** V24 — retenção calculada ligada: IR, INSS e ISS pelas tabelas, no lugar das linhas manuais. */
+  const [calculada, setCalculada] = useState<boolean>(false);
   if (estado.sucesso !== undefined) {
     ref.current?.reset();
   }
@@ -285,11 +290,19 @@ export function FormPagamento({
         </fieldset>
       ) : null}
 
-      <Retencoes
-        tipos={tiposDeConsignacao}
-        linhas={linhasRetencao}
-        aoMudar={setLinhasRetencao}
-      />
+      <fieldset className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
+        <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">IR, INSS e ISS do fornecedor</legend>
+        <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)]">
+          <input type="checkbox" name="retencaoCalculada" checked={calculada} onChange={(e) => setCalculada(e.target.checked)} />
+          <span>
+            Calcular as retenções pelas tabelas oficiais (o fornecedor vem do empenho, e o perfil fiscal dele, do cadastro de pessoas)
+          </span>
+        </label>
+        {calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} /> : null}
+      </fieldset>
+
+      {/* As duas formas não se somam: com o cálculo ligado, as linhas manuais saem do formulário. */}
+      {calculada ? null : <Retencoes tipos={tiposDeConsignacao} linhas={linhasRetencao} aoMudar={setLinhasRetencao} />}
 
       {estado.erro !== undefined ? (
         <p
@@ -326,7 +339,7 @@ export function FormPagamento({
  * despesa. Quem escreve isso na tela evita a pergunta que sempre vem depois ("cadê os
  * 100 reais?") e, pior, a correção manual que ela costuma provocar.
  *
- * ═══ ⚠️ O VALOR É INFORMADO, NÃO CALCULADO ═══
+ * ═══ ⚠️ O VALOR É INFORMADO, NÃO CALCULADO (para IR, INSS e ISS há, desde a V24, o bloco calculado) ═══
  * Alíquota de INSS ou de ISS depende de legislação tributária que este sistema não
  * conhece — regime do prestador, base, retenção mínima, o município de incidência. Um
  * cálculo automático aqui seria dinheiro recolhido a menor com o ente respondendo pela
@@ -358,7 +371,8 @@ function Retencoes({
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
         A obrigação com o credor é quitada pelo <strong>valor bruto</strong>, o banco paga o
         valor líquido e o valor retido passa a ser devido ao <strong>consignatário</strong>.
-        Informe o valor retido; ele <strong>não é calculado</strong> automaticamente.
+        Aqui se informa o valor retido de outras consignações (pensão, empréstimo, caução). Para IR,
+        INSS e ISS do fornecedor, use o cálculo pelas tabelas oficiais, acima.
       </p>
 
       {disponiveis.length === 0 ? (
@@ -429,5 +443,246 @@ function Retencoes({
         </>
       )}
     </fieldset>
+  );
+}
+
+/** As opções da retenção calculada, como a página as passa (declaradas aqui pelo mesmo motivo dos outros tipos). */
+export interface OpcoesDaRetencaoParaTela {
+  readonly naturezasIR: readonly { readonly codigo: string; readonly rotulo: string }[];
+  readonly servicosINSS: readonly { readonly codigo: string; readonly rotulo: string }[];
+  readonly basesMinimas: readonly { readonly codigo: string; readonly rotulo: string }[];
+  readonly itensISS: readonly { readonly subitem: string; readonly rotulo: string }[];
+  readonly municipioDoEnte: string | null;
+  readonly faltas: readonly string[];
+}
+
+/**
+ * V24 — IR, INSS E ISS CALCULADOS PELAS TABELAS OFICIAIS.
+ *
+ * A tela só COLETA os dados da operação e mostra a prévia; quem calcula é o servidor, de novo, no
+ * pagamento (a prévia não vale como valor gravado). O fornecedor e o perfil fiscal dele vêm do
+ * empenho e do cadastro da pessoa, nunca daqui.
+ *
+ * ⚠️ A PRÉVIA NÃO É AÇÃO DO FORMULÁRIO: uma ação de `<form>` limpa os campos ao terminar, e o operador
+ * perderia o que digitou. O botão monta o FormData e chama a função do servidor por fora.
+ */
+function RetencaoCalculada({
+  opcoes,
+  formulario,
+}: {
+  readonly opcoes: OpcoesDaRetencaoParaTela;
+  readonly formulario: React.RefObject<HTMLFormElement | null>;
+}): React.ReactElement {
+  const [previa, setPrevia] = useState<EstadoDaPrevia>({});
+  const [calculando, iniciar] = useTransition();
+  const [enquadramento, setEnquadramento] = useState<string>("VALOR_BRUTO");
+  const idDaLista = useId();
+  const calcular = (): void => {
+    const f = formulario.current;
+    if (f === null) return;
+    const dados = new FormData(f);
+    iniciar(async () => setPrevia(await previaRetencoesAction({}, dados)));
+  };
+  const campo = "text-xs text-[color:var(--color-ink-2)]";
+  const caixa = "rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3";
+  const titulo = "px-1 text-xs font-semibold text-[color:var(--color-ink)]";
+
+  return (
+    <div className="mt-3 grid gap-4">
+      {opcoes.faltas.length > 0 ? (
+        <p role="alert" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-xs text-[color:var(--color-status-alerta-fg)]">
+          Para calcular falta: {opcoes.faltas.join("; ")}. O tributo afetado fica sem cálculo e pede o valor informado.
+        </p>
+      ) : null}
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className={campo}>
+          <span className={ROTULO}>Valor bruto do documento fiscal (R$)</span>
+          <CampoValor name="rcValorDocumento" placeholder="igual ao valor pago" className={CAMPO} />
+        </label>
+        <label className={`${campo} flex items-end gap-2 pb-2`}>
+          <input type="checkbox" name="rcGlosa" />
+          <span>Pagamento com glosa, sem nota fiscal nova</span>
+        </label>
+      </div>
+
+      <fieldset className={caixa}>
+        <legend className={titulo}>Imposto de renda</legend>
+        <label className={campo}>
+          <span className={ROTULO}>Natureza do bem ou serviço (IN RFB 1.234/2012, Anexo I)</span>
+          <select name="rcNaturezaIR" defaultValue="" className={CAMPO}>
+            <option value="">Escolha a natureza…</option>
+            {opcoes.naturezasIR.map((n) => (
+              <option key={n.codigo} value={n.codigo}>
+                {n.rotulo}
+              </option>
+            ))}
+          </select>
+        </label>
+      </fieldset>
+
+      <fieldset className={caixa}>
+        <legend className={titulo}>Retenção previdenciária (INSS)</legend>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className={`${campo} sm:col-span-2`}>
+            <span className={ROTULO}>Serviço (IN RFB 2.110/2022, arts. 111 e 112)</span>
+            <select name="rcInssServico" defaultValue="" className={CAMPO}>
+              <option value="">Não é serviço sujeito à retenção previdenciária</option>
+              {opcoes.servicosINSS.map((s) => (
+                <option key={s.codigo} value={s.codigo}>
+                  {s.rotulo}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={campo}>
+            <span className={ROTULO}>Forma de contratação</span>
+            <select name="rcInssModalidade" defaultValue="" className={CAMPO}>
+              <option value="">Escolha…</option>
+              <option value="CESSAO_DE_MAO_DE_OBRA">Cessão de mão de obra</option>
+              <option value="EMPREITADA_PARCIAL">Empreitada parcial</option>
+              <option value="EMPREITADA_TOTAL">Empreitada total</option>
+            </select>
+          </label>
+          <label className={`${campo} sm:col-span-2`}>
+            <span className={ROTULO}>Materiais e equipamentos</span>
+            <select name="rcInssEnquadramento" value={enquadramento} onChange={(e) => setEnquadramento(e.target.value)} className={CAMPO}>
+              <option value="VALOR_BRUTO">Não há: a base é o valor bruto</option>
+              <option value="MATERIAIS_DISCRIMINADOS">Discriminados no contrato e no documento: deduzir o valor</option>
+              <option value="PREVISTO_SEM_VALOR_NO_CONTRATO">Previstos no contrato sem valor, discriminados no documento</option>
+              <option value="EQUIPAMENTO_INERENTE_SEM_DISCRIMINACAO">Equipamento inerente ao serviço, sem valores no contrato</option>
+            </select>
+          </label>
+          {enquadramento === "MATERIAIS_DISCRIMINADOS" || enquadramento === "PREVISTO_SEM_VALOR_NO_CONTRATO" ? (
+            <label className={campo}>
+              <span className={ROTULO}>Valor dos materiais e equipamentos (R$)</span>
+              <CampoValor name="rcInssMateriais" placeholder="0,00" className={CAMPO} />
+            </label>
+          ) : null}
+          {enquadramento === "PREVISTO_SEM_VALOR_NO_CONTRATO" || enquadramento === "EQUIPAMENTO_INERENTE_SEM_DISCRIMINACAO" ? (
+            <label className={`${campo} sm:col-span-2`}>
+              <span className={ROTULO}>Base mínima</span>
+              <select name="rcInssBaseMinima" defaultValue="" className={CAMPO}>
+                <option value="">Escolha a hipótese…</option>
+                {opcoes.basesMinimas
+                  .filter((b) => b.codigo.startsWith(enquadramento === "PREVISTO_SEM_VALOR_NO_CONTRATO" ? "117" : "118"))
+                  .map((b) => (
+                    <option key={b.codigo} value={b.codigo}>
+                      {b.rotulo}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          ) : null}
+          <label className={campo}>
+            <span className={ROTULO}>Alimentação e vale-transporte no documento (R$)</span>
+            <CampoValor name="rcInssDeducoes" placeholder="0,00" className={CAMPO} />
+          </label>
+          <label className={campo}>
+            <span className={ROTULO}>Dispensa declarada</span>
+            <select name="rcInssDispensa" defaultValue="" className={CAMPO}>
+              <option value="">Nenhuma</option>
+              <option value="II">Sem empregados, serviço pessoal do titular (art. 115, II)</option>
+              <option value="III">Profissão regulamentada ou treinamento, pelos sócios (art. 115, III)</option>
+            </select>
+          </label>
+          <label className={`${campo} sm:col-span-2`}>
+            <span className={ROTULO}>Declaração da dispensa (onde está arquivada)</span>
+            <input name="rcInssDeclaracao" placeholder="declaração de 01/09/2026, processo 123/2026" className={CAMPO} />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className={caixa}>
+        <legend className={titulo}>ISS</legend>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className={`${campo} sm:col-span-2`}>
+            <span className={ROTULO}>Subitem da lista de serviços (digite o número ou parte da descrição)</span>
+            <input name="rcIssSubitem" list={idDaLista} placeholder="vazio = fornecimento de bens, sem ISS" className={CAMPO} />
+            <datalist id={idDaLista}>
+              {opcoes.itensISS.map((i) => (
+                <option key={i.subitem} value={i.rotulo} />
+              ))}
+            </datalist>
+          </label>
+          <label className={campo}>
+            <span className={ROTULO}>Município onde o serviço foi prestado (código IBGE)</span>
+            <input name="rcIssMunicipio" inputMode="numeric" maxLength={7} defaultValue={opcoes.municipioDoEnte ?? ""} className={CAMPO} />
+          </label>
+          <label className={campo}>
+            <span className={ROTULO}>Alíquota do ISS no documento, se optante do Simples (%)</span>
+            <input name="rcIssAliquotaSimples" inputMode="decimal" placeholder="2,01" className={CAMPO} />
+          </label>
+        </div>
+      </fieldset>
+
+      <details className={`${caixa} text-xs`}>
+        <summary className="cursor-pointer font-semibold text-[color:var(--color-ink)]">Valor informado, quando o cálculo não cobre o caso</summary>
+        <p className="mt-2 text-[color:var(--color-ink-2)]">
+          Só vale para o tributo que a prévia mostrar como &quot;Sem cálculo&quot;. Informe o valor (zero, se não houver retenção) e o motivo.
+        </p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+          {(["IRRF", "INSS", "ISS"] as const).map((t) => (
+            <div key={t} className="grid gap-2">
+              <label className={campo}>
+                <span className={ROTULO}>{t}: valor (R$)</span>
+                <CampoValor name={`rcInformado${t}`} placeholder="0,00" className={CAMPO} />
+              </label>
+              <label className={campo}>
+                <span className={ROTULO}>{t}: justificativa</span>
+                <input name={`rcJustificativa${t}`} placeholder="orientação do fisco municipal, ofício" className={CAMPO} />
+              </label>
+            </div>
+          ))}
+        </div>
+      </details>
+
+      <div>
+        <button type="button" onClick={calcular} disabled={calculando} data-acao="calcular-retencoes" className="text-xs font-medium text-[color:var(--color-primary)] hover:underline">
+          {calculando ? "Calculando…" : "Calcular a prévia das retenções"}
+        </button>
+      </div>
+
+      {previa.erro !== undefined ? (
+        <p role="alert" className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">
+          {previa.erro}
+        </p>
+      ) : null}
+      {previa.linhas !== undefined ? (
+        <div role="status" data-previa-das-retencoes="" className={`${caixa} text-xs`}>
+          <p className="mb-2 text-[color:var(--color-ink-2)]">
+            Fornecedor {formatarDocumento(previa.fornecedor ?? "")}:{" "}
+            {previa.perfil === null || previa.perfil === undefined ? "sem perfil fiscal cadastrado" : `perfil fiscal ${previa.perfil}`}. O
+            valor é calculado de novo ao pagar.
+          </p>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="text-[color:var(--color-ink-2)]">
+                <th className="py-1 pr-2">Tributo</th>
+                <th className="py-1 pr-2">Situação</th>
+                <th className="py-1 pr-2">Base</th>
+                <th className="py-1 pr-2">Alíquota</th>
+                <th className="py-1 pr-2">Valor</th>
+                <th className="py-1">Por quê</th>
+              </tr>
+            </thead>
+            <tbody>
+              {previa.linhas.map((l) => (
+                <tr key={l.tributo} data-tributo={l.tributo} className="border-t border-[color:var(--color-border)] align-top">
+                  <td className="py-1 pr-2 font-medium">{l.tributo}</td>
+                  <td className="py-1 pr-2">{l.situacao}</td>
+                  <td className="py-1 pr-2">{l.base === null ? "" : `R$ ${formatarMoeda(l.base).texto}`}</td>
+                  <td className="py-1 pr-2">{l.aliquota ?? ""}</td>
+                  <td className="py-1 pr-2" data-valor={l.valor ?? ""}>
+                    {l.valor === null ? "" : `R$ ${formatarMoeda(l.valor).texto}`}
+                  </td>
+                  <td className="py-1">{l.explicacao}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
   );
 }

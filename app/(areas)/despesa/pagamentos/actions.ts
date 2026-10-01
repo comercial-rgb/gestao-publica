@@ -5,6 +5,7 @@ import { ehHipotese, registrarPagamento } from "../../../../lib/portas/pagamento
 import { desmascararValor } from "../../../../lib/format/mascaras";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
+import { lerOperacaoFiscal } from "./operacao-fiscal";
 
 export interface EstadoPagamento {
   readonly erro?: string;
@@ -45,6 +46,10 @@ export async function pagarAction(
 
     const retencoes = lerRetencoes(formData);
     if (typeof retencoes === "string") return { erro: retencoes };
+    // V24 — com a retenção calculada ligada, os dados fiscais vão no lugar das linhas manuais.
+    const calculada = formData.get("retencaoCalculada") === "on";
+    const operacaoFiscal = calculada ? lerOperacaoFiscal(formData, desmascararValor(valor)) : undefined;
+    if (typeof operacaoFiscal === "string") return { erro: operacaoFiscal };
 
     const hipoteseBruta = String(formData.get("hipotese") ?? "").trim();
     const justificativa = String(formData.get("justificativa") ?? "").trim();
@@ -92,7 +97,8 @@ export async function pagarAction(
           : {}),
         // Lista vazia vira AUSENTE na porta — o caminho sem retenção continua sendo o de
         // sempre, partida por partida.
-        ...(retencoes.length > 0 ? { retencoes } : {}),
+        ...(calculada ? {} : retencoes.length > 0 ? { retencoes } : {}),
+        ...(operacaoFiscal !== undefined ? { operacaoFiscal } : {}),
         ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
       });
       revalidatePath("/despesa/pagamentos");

@@ -19,6 +19,11 @@ import {
 // da MESMA transação. A porta só reúne o que o `pagar()` precisa receber.
 import { listarTiposConsignacao } from "../../modules/m07-extraorcamentario/consultas";
 import type { RetencoesDoPagamento } from "../../modules/m07-extraorcamentario/dominio";
+import {
+  prepararRetencoesCalculadas,
+  type DadosFiscaisDaOperacao,
+} from "../../modules/m07-extraorcamentario/retencao-calculada";
+import { toMoney } from "../../packages/contracts/index";
 
 /**
  * PORTA — PAGAMENTOS: a fila do art. 141 (leitura) e o ato de pagar (escrita).
@@ -261,7 +266,8 @@ export async function registrarPagamento(input: {
    * RETENÇÃO NA FONTE (M07). Lista vazia ou ausente = pagamento SEM retenção, pelo
    * caminho idêntico ao de sempre.
    *
-   * ⚠️ O VALOR VEM DO OPERADOR, NUNCA CALCULADO AQUI. Quanto se retém de INSS ou de ISS
+   * ⚠️ O VALOR VEM DO OPERADOR, NUNCA CALCULADO AQUI (o caminho calculado é `operacaoFiscal`, V24, e
+   * o cálculo é do M07, com as tabelas oficiais). Quanto se retém de INSS ou de ISS
    * é matéria de legislação tributária (alíquota, base, retenção mínima, regime do
    * prestador) que este sistema NÃO conhece — e uma alíquota chutada na borda seria
    * dinheiro recolhido a menor, com o ente respondendo pela diferença. Por isso a tela
@@ -283,6 +289,12 @@ export async function registrarPagamento(input: {
    * transação — entre conferir aqui e gravar lá, outra requisição pode consumi-la.
    */
   readonly ordemDePagamentoId?: string | undefined;
+  /**
+   * V24 — RETENÇÃO CALCULADA: os dados fiscais da operação (natureza do IR, serviço do INSS, subitem
+   * do ISS...). O fornecedor vem do empenho e os valores retidos são CALCULADOS no servidor, dentro da
+   * autorização do pagamento; a memória de cada tributo nasce na mesma transação. Exclui `retencoes`.
+   */
+  readonly operacaoFiscal?: DadosFiscaisDaOperacao | undefined;
 }): Promise<string> {
   // ⚠️ V6 P1.2 — A PERNA DE DISPONIBILIDADE É A CONTA CONTÁBIL DA CONTA BANCÁRIA QUE PAGA, lida
   // do cadastro (fail-closed). Vinha de uma constante (1.1.1.1.2.00.00) enquanto as contas
@@ -297,9 +309,26 @@ export async function registrarPagamento(input: {
     throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; o pagamento não sabe de que conta do razão sai. Parametrize o mapeamento antes. Nada foi gravado.`);
   }
   const contaContabilDaConta = conta.contaContabil.codigo;
-  const retencoes = await comporRetencoes(input.retencoes ?? [], contaContabilDaConta);
+  if (input.operacaoFiscal !== undefined && (input.retencoes ?? []).length > 0) {
+    throw new Error("Escolha entre calcular as retenções de IR, INSS e ISS e informá-las manualmente; as duas juntas não são aceitas. Nada foi gravado.");
+  }
+  const retencoesManuais = await comporRetencoes(input.retencoes ?? [], contaContabilDaConta);
 
   return comEscritaAutenticada("PAGAR", async (criadoPor) => {
+    // V24 — calculadas DENTRO da autorização: quem não pode pagar não chega a calcular.
+    const operacao = input.operacaoFiscal;
+    const retencoes: RetencoesDoPagamento | undefined =
+      operacao === undefined
+        ? retencoesManuais
+        : await (async () => {
+            const p = await prepararRetencoesCalculadas(cliente(), {
+              liquidacaoId: input.liquidacaoId,
+              valorDoPagamento: toMoney(input.valor),
+              data: input.data,
+              operacao,
+            });
+            return { contaDisponibilidade: contaContabilDaConta, retencoes: p.retencoes, calculos: p.calculos };
+          })();
     const r = await pagar(
       {
         liquidacaoId: input.liquidacaoId,
