@@ -1,0 +1,65 @@
+{
+  "descricao": "Fontes das tabelas da retenção na fonte calculada (V24). O carregador confere o sha256 de cada arquivo antes de ler qualquer linha.",
+  "arquivos": [
+    {
+      "arquivo": "receita-federal/in-rfb-1234-anexo-I.txt",
+      "fonte": "IN RFB 1.234/2012, Anexo I (Tabela de Retenção), texto extraído com pdftotext -layout do PDF oficial",
+      "url": "https://normasinternet2.receita.fazenda.gov.br/api/consulta-externa/ato/37200/anexo/41766",
+      "versao": "Anexo I sem alteração no texto multivigente; aplicação a municípios pelo art. 3º-A (IN RFB 2.145/2023)",
+      "dataPublicacao": "2012-01-12",
+      "vigenteDesde": "2023-06-27",
+      "dataDownload": "2026-09-29",
+      "sha256": "10060befc5fd06a0ee450be9bd50984fd1943a97e7b6e5a9f7fb401f2942f06e"
+    },
+    {
+      "arquivo": "receita-federal/in-rfb-2110-2022-compilado.txt",
+      "fonte": "IN RFB 2.110/2022, texto multivigente compilado (arts. 110 a 120 e 238)",
+      "url": "https://normasinternet2.receita.fazenda.gov.br/api/consulta-externa/ato/126687/visao/multivigente",
+      "versao": "alterações até a IN RFB 2.321/2026 (vig. 14/04/2026)",
+      "dataPublicacao": "2022-10-19",
+      "vigenteDesde": "2022-11-01",
+      "dataDownload": "2026-09-29",
+      "sha256": "a95b77f654492ffe1fa5a17c4961aded35497b6d865714d8cf056b373aea380a"
+    },
+    {
+      "arquivo": "esperanca-pb/esperanca-alteracao.txt",
+      "fonte": "LC municipal 132/2025 de Esperança/PB (Quinzenário Oficial nº 206), art. 4º (art. 62, I da LC 80/2017) e art. 11 (Anexo I)",
+      "url": "https://www.esperanca.pb.gov.br/storage/content/publicacoes/quinzenarios/2805/arquivos/69c3f567d8fdbeq5li.pdf",
+      "versao": "LC 132, de 30/12/2025",
+      "dataPublicacao": "2025-12-30",
+      "vigenteDesde": "2025-12-30",
+      "dataDownload": "2026-09-29",
+      "sha256": "d7d00e159508f5f59fe13a06412143137b06d34b24533de55776d8adaacacb72"
+    },
+    {
+      "arquivo": "esperanca-pb/esperanca-lc132-2025-anexoI-descricoes-DERIVADO.csv",
+      "fonte": "Descrições dos subitens do Anexo I da LC 132/2025, extraídas por posição (scripts/fontes/extrair-lista-de-servicos-esperanca.mjs) do PDF de sha256 cac43a9e...",
+      "url": "derivado",
+      "versao": "LC 132, de 30/12/2025",
+      "dataPublicacao": "2025-12-30",
+      "vigenteDesde": "2025-12-30",
+      "dataDownload": "2026-09-30",
+      "sha256": "7ff0361b7454b637e6948a8d2bf3fcc713e809a0c721ce0a849407fcb3eaa7d7"
+    },
+    {
+      "arquivo": "esperanca-pb/esperanca-lc132-2025-anexoI-colunas-DERIVADO.csv",
+      "fonte": "Colunas de domicílio fiscal do Anexo I da LC 132/2025, extraídas pela posição das marcas; conferidas à vista nas páginas 8 e 9 em 30/09/2026",
+      "url": "derivado",
+      "versao": "LC 132, de 30/12/2025",
+      "dataPublicacao": "2025-12-30",
+      "vigenteDesde": "2025-12-30",
+      "dataDownload": "2026-09-29",
+      "sha256": "d86a88823216fdf1811b305c7825470e5ddb17065f32ecc8203750c1c3de9586"
+    },
+    {
+      "arquivo": "ibge/municipios-pb.json",
+      "fonte": "IBGE, API de localidades: municípios da Paraíba (UF 25)",
+      "url": "https://servicodados.ibge.gov.br/api/v1/localidades/estados/25/municipios",
+      "versao": "consulta de 30/09/2026",
+      "dataPublicacao": "2026-09-30",
+      "vigenteDesde": "2026-09-30",
+      "dataDownload": "2026-09-30",
+      "sha256": "c87b860e7e08fb934e225e578a4f5fd5ec68e1050ab0f11c9c59e5e0bf61a51c"
+    }
+  ]
+}
