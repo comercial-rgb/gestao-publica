@@ -102,6 +102,34 @@ async function main(): Promise<void> {
     const linha = await aprovador.$eval(`tr[data-fap-ano="${ANO}"]`, (tr) => tr.textContent ?? "");
     afirmar(/1,2345/.test(linha) && /Em uso na apuração/.test(linha) && /aprovador-encargos@percursos\.local/.test(linha), "a lista mostra o FAP 1,2345 em uso, aprovado por outra pessoa");
 
+    console.log("4. o estabelecimento de uma lotação: CNPJ errado é recusado; o certo aparece na lista");
+    await admin.goto(`${BASE}/folha/encargos/fap`, { waitUntil: "networkidle0", timeout: 180000 });
+    const e = 'form[data-acao="registrar-estabelecimento"]';
+    const lotacao = await admin.$eval(`${e} select[name="lotacaoId"]`, (x) => Array.from((x as HTMLSelectElement).options).find((o) => o.value !== "")?.value ?? "");
+    afirmar(lotacao !== "", "há lotação para escolher");
+    const preencher = async (cnpj: string): Promise<void> => {
+      await admin.select(`${e} select[name="lotacaoId"]`, lotacao);
+      await digitar(admin, `${e} input[name="cnpj"]`, cnpj);
+      await admin.$eval(`${e} input[name="competenciaInicio"]`, (x, v) => {
+        const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+        set.call(x, v);
+        x.dispatchEvent(new Event("input", { bubbles: true }));
+      }, `${ANO}-05`);
+      await digitar(admin, `${e} input[name="fundamento"]`, "Fundo Municipal de Saúde, cadastro do estabelecimento no eSocial");
+      await admin.waitForSelector(`${e} input[name="__chave"][data-chave-de-comando="pronta"]`, { timeout: 30000 });
+      await admin.$eval(`${e} button[type="submit"]`, (x) => (x as HTMLButtonElement).click());
+    };
+    await preencher("11.222.333/0001-82");
+    const errado = await resultado(admin, e);
+    afirmar(errado.tipo === "erro" && /dígitos verificadores/.test(errado.texto), `CNPJ com dígito errado é recusado (${errado.texto.slice(0, 80)})`);
+    await admin.goto(`${BASE}/folha/encargos/fap`, { waitUntil: "networkidle0", timeout: 180000 });
+    await preencher("11.222.333/0001-81");
+    const certo = await resultado(admin, e);
+    afirmar(certo.tipo === "ok" && /Estabelecimento registrado/.test(certo.texto), `estabelecimento registrado (${certo.texto.slice(0, 60)})`);
+    await admin.goto(`${BASE}/folha/encargos/fap`, { waitUntil: "networkidle0", timeout: 180000 });
+    const est = await admin.$eval('tr[data-estabelecimento="11222333000181"]', (tr) => tr.textContent ?? "").catch(() => "");
+    afirmar(est.includes(`05/${ANO}`) && /Fundo Municipal de Saúde/.test(est), `a lista mostra a lotação com o CNPJ, desde 05/${ANO}`);
+
     console.log(`\n${String(passos - falhas.length)}/${String(passos)} passos`);
     if (falhas.length > 0) process.exitCode = 1;
   } finally {
