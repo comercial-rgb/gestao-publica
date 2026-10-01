@@ -19,6 +19,7 @@ import {
   type TabelasDaRetencao,
   type Tributo,
 } from "./calculo-da-retencao.js";
+import { listarTiposConsignacao } from "./consultas.js";
 import type { RetencaoDoPagamentoInput } from "./dominio.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -358,20 +359,14 @@ export async function prepararRetencoesCalculadas(
   const ente = await db.enteConfig.findFirst({ select: { nome: true } });
 
   const retidos = av.avaliacoes.filter((a) => valorRetido(a).greaterThan(0));
-  const tipos = await db.tipoConsignacao.findMany({
-    where: { codigo: { in: retidos.map((a) => CODIGO_DO_TIPO[a.tributo]) } },
-    select: {
-      id: true,
-      codigo: true,
-      ativo: true,
-      contaPassivo: { select: { codigo: true } },
-    },
-  });
+  // A conta é a da DECISÃO VIGENTE do ente (a mesma leitura da tela de pagamento), não a do cadastro
+  // original: trocar a conta pela tela de consignações tem de valer aqui também.
+  const tipos = await listarTiposConsignacao(db);
   const retencoes: RetencaoDoPagamentoInput[] = [];
   const tipoDe = new Map<Tributo, string>();
   for (const a of retidos) {
     const t = tipos.find((x) => x.codigo === CODIGO_DO_TIPO[a.tributo]);
-    if (t === undefined || !t.ativo || t.contaPassivo === null) {
+    if (t === undefined || !t.ativo || t.contaPassivoCodigo === null) {
       throw new Error(
         `O ${a.tributo} foi retido, mas o tipo de consignação ${CODIGO_DO_TIPO[a.tributo]} não está cadastrado, ativo e com conta de passivo. Cadastre em Financeiro › Tipos de consignação. Nada foi gravado.`,
       );
@@ -386,7 +381,7 @@ export async function prepararRetencoesCalculadas(
       tipoConsignacaoId: t.id,
       credorConsignatario: credor,
       valor: valorRetido(a).toFixed(2),
-      contaConsignacaoAPagar: t.contaPassivo.codigo,
+      contaConsignacaoAPagar: t.contaPassivoCodigo,
     });
   }
   const entradaComum = {

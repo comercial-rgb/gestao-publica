@@ -115,7 +115,7 @@ export interface TipoConsignacaoNaLista {
 }
 
 /** Os EVENTOS (tipos de consignação) — o cadastro extensível (INSS/ISS/consignações). */
-export async function listarTiposConsignacao(prisma: PrismaClient): Promise<TipoConsignacaoNaLista[]> {
+export async function listarTiposConsignacao(prisma: Pick<PrismaClient, "tipoConsignacao">): Promise<TipoConsignacaoNaLista[]> {
   const tipos = await prisma.tipoConsignacao.findMany({
     orderBy: [{ codigo: "asc" }],
     include: {

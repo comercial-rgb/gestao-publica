@@ -16,6 +16,7 @@ import {
   registrarPerfilFiscal,
   type DadosFiscaisDaOperacao,
 } from "./retencao-calculada.js";
+import { redefinirContaDaConsignacao } from "./servico-tipos-de-consignacao.js";
 
 /**
  * V24 — a retenção CALCULADA dentro do `pagar()`: o fornecedor vem do empenho, as tabelas do banco
@@ -212,6 +213,22 @@ describe("V24 — recusas que dependem do cadastro", { timeout: 60000 }, () => {
     await expect(perfil({ tributadoNoAnexoIVDoSimples: true })).rejects.toThrow(/Anexo IV/);
     await expect(perfil({ dispensaDoIR: "XXX" })).rejects.toThrow(/I a XXII/);
     expect(await prisma.perfilFiscalDoFornecedor.count()).toBe(0);
+  });
+
+  it("a conta do passivo é a da DECISÃO vigente do ente: trocada pela tela, o pagamento calculado usa a nova", async () => {
+    await semear();
+    const deps = criarM05Deps(prisma);
+    const liq = await empenharELiquidar(deps);
+    await perfil();
+    await prisma.contaPcasp.create({ data: conta("c-inss-nova", "2.1.8.8.1.01.99", "CREDORA") });
+    const inss = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "INSS" } });
+    await redefinirContaDaConsignacao(prisma, { tipoId: inss.id, contaPassivoCodigo: "2.1.8.8.1.01.99", fundamento: "Conta analítica própria do INSS retido de fornecedores", criadoPor: POR });
+    const p = await prepararRetencoesCalculadas(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, operacao: OPERACAO });
+    expect(p.retencoes.find((r) => r.tipoConsignacaoId === inss.id)?.contaConsignacaoAPagar).toBe("2.1.8.8.1.01.99");
+    const r = await pagar(pgto(liq), R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: p.retencoes, calculos: p.calculos });
+    const l = await prisma.lancamentoContabil.findUniqueOrThrow({ where: { id: r.lancamentoId }, include: { partidas: { include: { conta: true } } } });
+    expect(l.partidas.filter((x) => x.conta.codigo === "2.1.8.8.1.01.99").map((x) => x.valor.toFixed(2))).toEqual(["110.00"]);
+    expect(l.partidas.some((x) => x.conta.codigo === P_INSS)).toBe(false);
   });
 
   it("o perfil fiscal exige ALTERAR_PESSOA: quem só cadastra pessoa é recusado nomeando a ação; quem a tem grava", async () => {
