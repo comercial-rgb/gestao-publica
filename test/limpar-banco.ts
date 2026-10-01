@@ -421,6 +421,14 @@ export const TABELAS = [
   "LancamentoExtrato",
   "ExtratoBancario",
   // M07 — extraorçamentário
+  // V24 — retenção calculada: a memória, o perfil fiscal e as tabelas normativas.
+  "CalculoDaRetencao",
+  "PerfilFiscalDoFornecedor",
+  "NaturezaDaRetencaoDoIR",
+  "ServicoDaRetencaoPrevidenciaria",
+  "ParametroDaRetencaoPrevidenciaria",
+  "BaseMinimaDaRetencaoPrevidenciaria",
+  "ItemDaListaDoISS",
   "MovimentoExtraorcamentario",
   "TipoConsignacao",
   // M08 — exercício / restos a pagar

@@ -209,6 +209,10 @@ export async function pagar(
       ...(composto.retencoes.length > 0
         ? { retencoes: composto.retencoes }
         : {}),
+      // V24 — a memória do cálculo vai junto, para nascer na mesma transação.
+      ...(retencoes?.calculos !== undefined
+        ? { calculosDaRetencao: retencoes.calculos }
+        : {}),
     },
     {
       id: lancamentoId,

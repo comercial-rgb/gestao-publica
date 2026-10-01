@@ -56,7 +56,7 @@ const PERFIL: PerfilFiscal = {
   fundamento: "consulta ao Portal do Simples em 30/09/2026",
 };
 
-function op(p: Partial<OperacaoDaRetencao> & { inss?: Partial<OperacaoDaRetencao["inss"]>; iss?: Partial<OperacaoDaRetencao["iss"]> } = {}): OperacaoDaRetencao {
+function op(p: Omit<Partial<OperacaoDaRetencao>, "inss" | "iss"> & { inss?: Partial<OperacaoDaRetencao["inss"]>; iss?: Partial<OperacaoDaRetencao["iss"]> } = {}): OperacaoDaRetencao {
   return {
     documentoDoFornecedor: p.documentoDoFornecedor ?? PJ,
     valorDoPagamento: p.valorDoPagamento ?? toMoney("1000.00"),

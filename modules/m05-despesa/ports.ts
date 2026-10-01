@@ -7,6 +7,7 @@ import type { JustificativaQuebraOrdemInput } from "../m06-ordem-cronologica/dom
 // M05 -> M07 (nunca o inverso): quem paga é que retém. Tipo do DOMÍNIO do M07 —
 // puro, sem Prisma; a port continua sem conhecer banco.
 import type { RetencaoParaPersistir } from "../m07-extraorcamentario/dominio.js";
+import type { CalculoDaRetencaoParaPersistir } from "../m07-extraorcamentario/retencao.js";
 import type {
   ContaRepositoryPort,
   IdPort,
@@ -353,6 +354,8 @@ export interface PagarParams {
    * dentro do `lancamento` (composto). Ausente/vazia = pagamento sem retenção.
    */
   readonly retencoes?: readonly RetencaoParaPersistir[] | undefined;
+  /** V24 — a memória do cálculo das retenções (os três tributos), quando foram calculadas. */
+  readonly calculosDaRetencao?: readonly CalculoDaRetencaoParaPersistir[] | undefined;
 }
 
 export interface AnularLiquidacaoParams {

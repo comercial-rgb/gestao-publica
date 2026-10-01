@@ -1,4 +1,4 @@
-import { toMoney } from "../../packages/contracts/index.js";
+import { toMoney, type Decimal, type Money } from "../../packages/contracts/index.js";
 import type { RetencaoParaPersistir } from "./dominio.js";
 import {
   exigirTipoAtivo,
@@ -214,4 +214,73 @@ export async function estornarRetencoesDoPagamento(
   }
 
   return ids;
+}
+
+/**
+ * V24 — A MEMÓRIA DO CÁLCULO de cada tributo avaliado no pagamento (retido ou não), gravada DENTRO da
+ * transação do pagamento, depois dos movimentos do consignatário.
+ *
+ * ⚠️ A CONFERÊNCIA É AQUI, E NÃO NA BORDA. Cada cálculo que retém tem de casar com UM movimento do
+ * mesmo tipo de consignação e do MESMO valor; e, havendo memória, nenhum movimento pode ficar sem
+ * cálculo. Sem isso, um chamador poderia gravar "INSS retido: 110,00" ao lado de um movimento de 11,00
+ * — a memória diria uma coisa e o razão do consignatário outra, e as duas pareceriam ter procedência.
+ */
+export interface CalculoDaRetencaoParaPersistir {
+  readonly tributo: "IRRF" | "INSS" | "ISS";
+  readonly resultado: "RETIDO" | "NAO_RETIDO" | "INFORMADO";
+  readonly base: Money | null;
+  readonly aliquota: Decimal | null;
+  readonly valor: Money;
+  readonly fundamento: string;
+  /** As entradas do cálculo, para reproduzi-lo. */
+  readonly entrada: Record<string, unknown>;
+  /** O tipo de consignação que recebe a retenção (nulo quando nada é retido). */
+  readonly tipoConsignacaoId: string | null;
+}
+
+export async function registrarCalculosDaRetencao(
+  tx: Tx,
+  p: {
+    readonly pagamentoId: string;
+    readonly criadoPor: string;
+    readonly calculos: readonly CalculoDaRetencaoParaPersistir[];
+    /** Os movimentos que `registrarRetencoesDoPagamento` acabou de criar, com tipo e valor. */
+    readonly movimentos: readonly { readonly id: string; readonly tipoConsignacaoId: string; readonly valor: Money }[];
+  }
+): Promise<void> {
+  const usados = new Set<string>();
+  const vinculo = new Map<string, string | null>();
+  for (const c of p.calculos) {
+    const retem = c.valor.greaterThan(0);
+    if (!retem) {
+      vinculo.set(c.tributo, null);
+      continue;
+    }
+    const mov = p.movimentos.find((m) => !usados.has(m.id) && m.tipoConsignacaoId === c.tipoConsignacaoId && m.valor.equals(c.valor));
+    if (mov === undefined) {
+      throw new Error(`O cálculo do ${c.tributo} (${c.valor.toFixed(2)}) não casa com nenhuma retenção do pagamento. Nada foi gravado.`);
+    }
+    usados.add(mov.id);
+    vinculo.set(c.tributo, mov.id);
+  }
+  const soltos = p.movimentos.filter((m) => !usados.has(m.id));
+  if (soltos.length > 0) {
+    throw new Error(`Há ${soltos.length} retenção(ões) sem o cálculo que as justifica. Nada foi gravado.`);
+  }
+  for (const c of p.calculos) {
+    await tx.calculoDaRetencao.create({
+      data: {
+        pagamentoId: p.pagamentoId,
+        tributo: c.tributo,
+        resultado: c.resultado,
+        base: c.base === null ? null : c.base.toFixed(2),
+        aliquota: c.aliquota === null ? null : c.aliquota.toString(),
+        valor: c.valor.toFixed(2),
+        fundamento: c.fundamento,
+        entrada: c.entrada as object,
+        movimentoId: vinculo.get(c.tributo) ?? null,
+        criadoPor: p.criadoPor,
+      },
+    });
+  }
 }

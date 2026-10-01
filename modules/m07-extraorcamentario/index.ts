@@ -16,10 +16,12 @@ export type { SaldoExtra, Tx } from "./extraorcamentario.js";
 export {
   registrarRetencoesDoPagamento,
   estornarRetencoesDoPagamento,
+  registrarCalculosDaRetencao,
 } from "./retencao.js";
 export type {
   RegistrarRetencoesParams,
   EstornarRetencoesParams,
+  CalculoDaRetencaoParaPersistir,
 } from "./retencao.js";
 
 export {

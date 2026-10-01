@@ -958,6 +958,7 @@ export type NomeDeServico =
   | "destravar"
   | "cadastrarPessoa"
   | "alterarPessoa"
+  | "registrarPerfilFiscal"
   | "moverPapelDePessoa"
   // ── M16 — administração de usuários (7.14) ──
   | "criarUsuario"
@@ -1538,6 +1539,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
 
   cadastrarPessoa: "CADASTRAR_PESSOA",
   alterarPessoa: "ALTERAR_PESSOA",
+  // V24 — o perfil fiscal do fornecedor (Simples, dispensas, município) é dado cadastral da pessoa:
+  // quem altera a pessoa altera o perfil. Uma ação própria separaria o que o ente não separa.
+  registrarPerfilFiscal: "ALTERAR_PESSOA",
   moverPapelDePessoa: "MOVER_PAPEL_DE_PESSOA",
 
   cadastrarLinhaDemonstrativo: "CADASTRAR_LINHA_DEMONSTRATIVO",
@@ -2873,6 +2877,13 @@ export const FORA_DO_CENSO: Record<string, string> = {
   persistirArrecadacaoNaTx: "composável interno",
   criarLancamentoExtra: "composável interno",
   registrarRetencoesDoPagamento: "composável interno (perna do pagar)",
+  // V24 — retenção calculada: leituras (tabelas vigentes, perfil vigente, avaliação) e o preparo
+  // das retenções, que roda sob a autorização PAGAR do pagamento que as usa.
+  perfilFiscalVigente: "leitura (perfil fiscal vigente do fornecedor)",
+  tabelasVigentes: "leitura (tabelas normativas da retenção na data)",
+  avaliarRetencoesDoPagamento: "leitura (prévia do cálculo, nada grava)",
+  prepararRetencoesCalculadas: "composável interno (perna do pagar; autoriza PAGAR)",
+  registrarCalculosDaRetencao: "composável interno (perna do pagar)",
   estornarRetencoesDoPagamento: "composável interno",
   registrarMovimentoDotacao: "composável interno",
   // M05 V21 — o estorno EXATO de um movimento de dotação: chamado DENTRO de `anularRealocacao`, que

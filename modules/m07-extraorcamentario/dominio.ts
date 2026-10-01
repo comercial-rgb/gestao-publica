@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import type { CalculoDaRetencaoParaPersistir } from "./retencao.js";
 import {
   validarLancamento,
   type Partida,
@@ -330,6 +331,11 @@ export interface RetencoesDoPagamento {
    */
   readonly contaDisponibilidade: string;
   readonly retencoes: readonly RetencaoDoPagamentoInput[];
+  /**
+   * V24 — a memória do cálculo (os três tributos, retidos ou não), quando as retenções foram
+   * CALCULADAS. Ausente no caminho manual de antes. Gravada na mesma transação do pagamento.
+   */
+  readonly calculos?: readonly CalculoDaRetencaoParaPersistir[] | undefined;
 }
 
 /**

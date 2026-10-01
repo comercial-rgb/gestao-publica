@@ -31,6 +31,7 @@ import {
 import {
   estornarRetencoesDoPagamento,
   registrarRetencoesDoPagamento,
+  registrarCalculosDaRetencao,
 } from "../m07-extraorcamentario/retencao.js";
 // A derivação de "é despesa de capital?" é do M10 — reusada, nunca recopiada.
 import {
@@ -2278,8 +2279,9 @@ export function criarDespesaRepositoryPrisma(
         // M07 — o razão do consignatário, na MESMA transação. Se qualquer
         // retenção falhar (tipo inativo, por exemplo), o pagamento INTEIRO
         // não existe.
+        let idsDasRetencoes: readonly string[] = [];
         if (p.retencoes !== undefined && p.retencoes.length > 0) {
-          await registrarRetencoesDoPagamento(tx, {
+          idsDasRetencoes = await registrarRetencoesDoPagamento(tx, {
             pagamentoId: pag.id,
             lancamentoId: lancamento.id,
             contaBancariaId: conta.id,
@@ -2287,6 +2289,16 @@ export function criarDespesaRepositoryPrisma(
             historico: lancamento.historico,
             criadoPor: p.criadoPor,
             retencoes: p.retencoes,
+          });
+        }
+        // V24 — a memória do cálculo, casada com os movimentos acabados de criar (mesma ordem).
+        if (p.calculosDaRetencao !== undefined) {
+          const retencoes = p.retencoes ?? [];
+          await registrarCalculosDaRetencao(tx, {
+            pagamentoId: pag.id,
+            criadoPor: p.criadoPor,
+            calculos: p.calculosDaRetencao,
+            movimentos: idsDasRetencoes.map((id, i) => ({ id, tipoConsignacaoId: retencoes[i]!.tipoConsignacaoId, valor: retencoes[i]!.valor })),
           });
         }
 
