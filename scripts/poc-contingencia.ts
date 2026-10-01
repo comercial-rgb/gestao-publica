@@ -35,6 +35,7 @@ import {
   gerarEstornoLiquidacao,
   gerarEstornoRetencao,
   gerarArquivosDeRestos,
+  gerarArquivosDeRelacionamentos,
   gerarRestosInscritos,
   gerarEstornoDespesaExtra,
   gerarReceitaExtraOuRecusa,
@@ -209,6 +210,10 @@ async function gerarSagresDiario(prisma: PrismaClient, dia: string): Promise<num
   const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, dia: d, competencia: new Date(Date.UTC(d.getUTCFullYear(), 0, 1)) });
   arquivos.push(...restos.arquivos.map((r) => r.arquivo));
   for (const r of restos.recusas) console.log(`  · ${dia} — ${r.arquivo} fora do pacote: ${r.detalhe.slice(0, 160)}`);
+  // V25 — os dois diários do grupo (fornecedores e conta × fonte); os três mensais vão no pacote do mês.
+  const relDiarios = await gerarArquivosDeRelacionamentos(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: cnpj, dia: d, competencia: d });
+  arquivos.push(...relDiarios.arquivos.filter((r) => r.layout.periodicidade === "DIARIO").map((r) => r.arquivo));
+  for (const r of relDiarios.recusas) console.log(`  · ${dia} — ${r.arquivo} fora do pacote: ${r.detalhe.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "diario", dia), dia, "DIARIO", arquivos);
 }
 
@@ -230,6 +235,10 @@ async function gerarSagresMensal(prisma: PrismaClient, mes: string): Promise<num
   else console.log(`  · ${mes} — UnidadeOrcamentaria fora do pacote: ${unidades.recusa.slice(0, 160)}`);
   // V24 — os restos inscritos (§4.40) só no balancete de dezembro.
   if (mm === 12) arquivos.push(await gerarRestosInscritos(prisma, { codUnidadeGestora: ug, competencia: fimDoMes }));
+  // V25 — os três relacionamentos mensais (§4.37, §4.46, §4.58).
+  const relMensais = await gerarArquivosDeRelacionamentos(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: POC_SAGRES.cnpjGerenciadora, dia: fimDoMes, competencia: fimDoMes });
+  arquivos.push(...relMensais.arquivos.filter((r) => r.layout.periodicidade === "MENSAL").map((r) => r.arquivo));
+  for (const r of relMensais.recusas) console.log(`  · ${mes} — ${r.arquivo} fora do pacote: ${r.detalhe.slice(0, 160)}`);
   return gravarPacoteSagres(join("sagres", "mensal", mes), mes, "MENSAL", arquivos);
 }
 

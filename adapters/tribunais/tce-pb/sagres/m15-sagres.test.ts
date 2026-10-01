@@ -95,8 +95,8 @@ describe("formatadores de campo (unitário)", () => {
 });
 
 describe("registry — auto-validação das posições", () => {
-  it("os 27 layouts (V24: + os 8 de restos a pagar, §4.28 a §4.34 e §4.40; V21: + EstornoPagamento §4.13, ConciliacaoBancaria §4.27 e UnidadeOrcamentaria §4.1; V23: + Estornos §4.9, EstornoLiquidacao §4.11, EstornoRetencao §4.15, ReceitaExtra §4.19, EstornoReceitaExtra §4.21 e EstornoDespesaExtra §4.22) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
-    expect(LAYOUTS_2026V11).toHaveLength(27);
+  it("os 32 layouts (V25: + fornecedores e os quatro relacionamentos, §4.24, §4.35, §4.37, §4.46 e §4.58; V24: + os 8 de restos a pagar, §4.28 a §4.34 e §4.40; V21: + EstornoPagamento §4.13, ConciliacaoBancaria §4.27 e UnidadeOrcamentaria §4.1; V23: + Estornos §4.9, EstornoLiquidacao §4.11, EstornoRetencao §4.15, ReceitaExtra §4.19, EstornoReceitaExtra §4.21 e EstornoDespesaExtra §4.22) da versão 2026 v1.1 têm posições contíguas a partir de 1", () => {
+    expect(LAYOUTS_2026V11).toHaveLength(32);
     for (const l of LAYOUTS_2026V11) expect(() => validarLayout(l as LayoutArquivo<unknown>)).not.toThrow();
   });
 

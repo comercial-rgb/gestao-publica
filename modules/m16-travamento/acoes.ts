@@ -2638,6 +2638,18 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerFatosReceitaOrcamentaria: "leitura (Prisma → DTO ReceitaOrcamentaria, conta arrecadadora é param export — não muta)",
   gerarRetencao: "leitura (gera o TXT SAGRES Retencao §4.14 do M07 — não muta)",
   lerFatosRetencao: "leitura (Prisma → DTO Retencao: ingresso extra com pagamentoId — não muta)",
+  // V25 — fornecedores e os relacionamentos do SAGRES.
+  lerFatosRelacionamentoContaFonte: "leitura (Prisma → DTO RelacionamentoCCorrenteFontePagadora §4.24: o rol de fontes de cada conta — não muta)",
+  gerarRelacionamentoContaFonte: "leitura (gera o TXT SAGRES RelacionamentoCCorrenteFontePagadora §4.24 — não muta)",
+  lerFatosFornecedores: "leitura (Prisma → DTO Fornecedores §4.35: credores do dia e pessoas renomeadas no dia — não muta)",
+  gerarFornecedores: "leitura (gera o TXT SAGRES Fornecedores §4.35 — não muta)",
+  lerFatosRelacionamentoEmpenhoObra: "leitura (Prisma → DTO RelacionamentoEmpenhoObra §4.37 — não muta)",
+  lerFatosRelacionamentoEmpenhoNatureza: "leitura (Prisma → DTO RelacionamentoEmpenhoNaturezaContratacao §4.46 — não muta)",
+  lerFatosRelacionamentoLiquidacaoPagamento: "leitura (Prisma → DTO RelacionamentoLiquidacaoPagamento §4.58 — não muta)",
+  gerarRelacionamentoEmpenhoObra: "leitura (gera o TXT SAGRES RelacionamentoEmpenhoObra §4.37 — não muta)",
+  gerarRelacionamentoEmpenhoNatureza: "leitura (gera o TXT SAGRES RelacionamentoEmpenhoNaturezaContratacao §4.46 — não muta)",
+  gerarRelacionamentoLiquidacaoPagamento: "leitura (gera o TXT SAGRES RelacionamentoLiquidacaoPagamento §4.58 — não muta)",
+  gerarArquivosDeRelacionamentos: "leitura (gera os arquivos SAGRES de fornecedores e relacionamentos — não muta)",
   // V24 — o grupo dos restos a pagar do SAGRES; classificados na V25 (o censo ficou vermelho na V24).
   lerFatosPagamentosRestos: "leitura (Prisma → DTO PagamentosRestos §4.28: pagamentos de restos a pagar — não muta)",
   lerFatosEstornoPagamentoRestos: "leitura (Prisma → DTO EstornoPagamentoRestos §4.29 — não muta)",

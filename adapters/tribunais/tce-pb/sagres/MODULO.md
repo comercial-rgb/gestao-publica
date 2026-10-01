@@ -227,3 +227,26 @@ ESTRUTURAL não altera e reporta):
 
 **Seed NÃO alterado** — 7 estruturais (o código oficial denota outra conta que a intenção do seed) +
 1 rótulo com ripple no DVP. Divergência de plano de contas é decisão do Winner.
+
+## V25 — fornecedores e relacionamentos (27 → 32 de 58)
+
+| Tabela | Periodicidade | Origem |
+|---|---|---|
+| §4.24 RelacionamentoCCorrenteFontePagadora | diária | o rol de fontes de cada conta (`FonteDaContaBancaria`), ou a fonte padrão quando o rol está vazio — a mesma regra do guard do movimento. Fonte do FUNDEB (540–543) em mais de uma conta: recusa nomeada. |
+| §4.35 Fornecedores | diária | credores dos empenhos do dia e credores cuja pessoa ganhou versão nova no dia; nome da versão vigente no fim do dia. Credor sem cadastro de pessoa: recusa nomeada (o nome é obrigatório e não se inventa). |
+| §4.37 RelacionamentoEmpenhoObra | mensal | empenhos genuínos do mês com obra; a UG da obra é a própria. |
+| §4.46 RelacionamentoEmpenhoNaturezaContratacao | mensal | todos os empenhos genuínos do mês. |
+| §4.58 RelacionamentoLiquidacaoPagamento | mensal | pagamentos genuínos do mês, inclusive os de restos a pagar. |
+
+O número do empenho e o da obra saem **numéricos** nas §4.37 e §4.46, embora a tabela os grafe
+"Caractere": são chaves para o Empenhos (§4.8), onde são numéricos.
+
+`gerarArquivosDeRelacionamentos` gera o grupo; a recusa de um arquivo (regra `RELACIONAMENTO_FORA_DO_PACOTE`)
+deixa só ele fora do pacote. `m15-leiaute-oficial.test.ts` confere **todos** os leiautes contra o HTML
+oficial com um leitor próprio do teste: as 32 tabelas batem em todas as posições.
+
+Ficam para decisão do ente: as tabelas do projeto da LOA (§4.41 a §4.45: o que é o "projeto"), §4.39 (o
+código de agrupamento da folha é o do Tribunal ou o interno?), §4.36 Ordenador e §4.48 ResponsavelSiafic
+(sem cadastro), §4.2/§4.3 Programas e Ação (sem tela de cadastro), §4.7 ReceitaPrevista (subtipo da
+dedução), §4.5/§4.6/§4.49 (ofício e protocolo do TCE não modelados), §4.25 SaldoInicial (definição de
+saldo conciliado), §4.38 (modalidade e número do Tramita), §4.17/§4.18 (transferência entre UGs não existe).

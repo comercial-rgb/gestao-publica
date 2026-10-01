@@ -2,6 +2,7 @@ import type { PrismaClient } from "../../../../prisma/generated/client/client.js
 import { Decimal, toMoney } from "../../../../packages/contracts/index.js";
 import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
+import { versaoVigente } from "../../../../modules/m19-pessoas/dominio.js";
 import { planoVigenteDoTribunal, type PlanoVigente } from "./plano-do-tribunal.js";
 import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
 import {
@@ -56,6 +57,16 @@ import {
   type ReceitaExtraFato,
   type EstornoReceitaExtraFato,
   type SaldoMensalFato,
+  LAYOUT_FORNECEDORES,
+  LAYOUT_RELACIONAMENTO_CONTA_FONTE,
+  LAYOUT_RELACIONAMENTO_EMPENHO_NATUREZA,
+  LAYOUT_RELACIONAMENTO_EMPENHO_OBRA,
+  LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO,
+  type FornecedorFato,
+  type RelacionamentoContaFonteFato,
+  type RelacionamentoEmpenhoNaturezaFato,
+  type RelacionamentoEmpenhoObraFato,
+  type RelacionamentoLiquidacaoPagamentoFato,
   LAYOUT_PAGAMENTOS_RESTOS,
   LAYOUT_ESTORNO_PAGAMENTO_RESTOS,
   LAYOUT_CANCELAMENTO_RESTOS,
@@ -1648,6 +1659,216 @@ export async function gerarArquivosDeRestos(
   }
   if (p.competencia.getUTCMonth() === 11) {
     arquivos.push({ arquivo: await gerarRestosInscritos(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: p.competencia }), layout: LAYOUT_RESTOS_INSCRITOS as LayoutArquivo<never> });
+  }
+  return { arquivos, recusas };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// V25 — RELACIONAMENTOS E FORNECEDORES (§4.24, §4.35, §4.37, §4.46, §4.58)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** O mês do leiaute: do primeiro dia ao primeiro do mês seguinte, no mesmo eixo de `intervaloDoDia`. */
+function intervaloDoMes(competencia: Date): { gte: Date; lt: Date } {
+  const gte = new Date(Date.UTC(competencia.getUTCFullYear(), competencia.getUTCMonth(), 1, 0, 0, 0));
+  const lt = new Date(Date.UTC(competencia.getUTCFullYear(), competencia.getUTCMonth() + 1, 1, 0, 0, 0));
+  return { gte, lt };
+}
+
+/** As fontes do FUNDEB, que o §4.24 proíbe relacionar a mais de uma conta. */
+const FONTES_DO_FUNDEB = new Set(["540", "541", "542", "543"]);
+
+/**
+ * §4.24 — RelacionamentoCCorrenteFontePagadora (diário). O rol de fontes de cada conta, como o guard do
+ * movimento o lê: o rol cadastrado, ou, vazio, a fonte padrão da conta. Recusa nomeando a fonte do
+ * FUNDEB relacionada a mais de uma conta ("além da específica do FUNDEB").
+ */
+export async function lerFatosRelacionamentoContaFonte(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string }
+): Promise<RelacionamentoContaFonteFato[]> {
+  const contas = await prisma.contaBancaria.findMany({
+    orderBy: [{ codigo: "asc" }],
+    include: { fonte: true, fontesPermitidas: { include: { fonte: true } } },
+  });
+  const fatos: RelacionamentoContaFonteFato[] = [];
+  const contasDaFonteDoFundeb = new Map<string, string[]>();
+  for (const c of contas) {
+    const t = exigirTripla(c);
+    const fontes = c.fontesPermitidas.length > 0 ? c.fontesPermitidas.map((r) => r.fonte) : [c.fonte];
+    for (const f of [...fontes].sort((a, b) => a.codigo.localeCompare(b.codigo))) {
+      if (FONTES_DO_FUNDEB.has(f.codigo)) contasDaFonteDoFundeb.set(f.codigo, [...(contasDaFonteDoFundeb.get(f.codigo) ?? []), c.codigo]);
+      fatos.push({
+        codUnidadeGestora: params.codUnidadeGestora,
+        numeroConta: comDigito(t.conta, c.digitoConta),
+        numeroAgencia: comDigito(t.agencia, c.digitoAgencia),
+        banco: t.banco,
+        exercicioFonteRecurso: f.exercicioPadrao,
+        codFonteRecurso: f.codigo,
+        tipo: TIPO_CONTA_CORRENTE,
+        cnpjGerencia: params.cnpjGerenciadora,
+      });
+    }
+  }
+  for (const [fonte, emContas] of contasDaFonteDoFundeb) {
+    if (emContas.length > 1) {
+      throw new Error(
+        `SAGRES/RelacionamentoCCorrenteFontePagadora — a fonte ${fonte} (FUNDEB) está no rol das contas ${emContas.join(", ")}. ` +
+          `O leiaute só admite a conta específica do FUNDEB; retire a fonte das outras em Financeiro › Contas bancárias.`
+      );
+    }
+  }
+  return fatos;
+}
+
+export async function gerarRelacionamentoContaFonte(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_RELACIONAMENTO_CONTA_FONTE, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "RelacionamentoCCorrenteFontePagadora", competencia: params.dia }), await lerFatosRelacionamentoContaFonte(prisma, params));
+}
+
+/**
+ * §4.35 — Fornecedores (diário). Vão os credores dos empenhos emitidos no dia e, porque "as alterações
+ * de nome devem ser encaminhadas neste arquivo", os credores de qualquer empenho cuja pessoa ganhou uma
+ * versão nova no dia. O nome é o da versão vigente no fim do dia. Credor sem cadastro de pessoa é
+ * recusado nomeando: o leiaute exige o nome, e o sistema não o inventa a partir do documento.
+ */
+export async function lerFatosFornecedores(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+): Promise<FornecedorFato[]> {
+  const { gte, lt } = intervaloDoDia(params.dia);
+  const doDia = await prisma.empenho.findMany({
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
+    select: { numero: true, credorCpfCnpj: true },
+  });
+  const renomeadas = await prisma.pessoa.findMany({ where: { versoes: { some: { criadoEm: { gte, lt } } } }, select: { documento: true } });
+  const renomeadasCredoras = renomeadas.length === 0
+    ? []
+    : await prisma.empenho.findMany({ where: { credorCpfCnpj: { in: renomeadas.map((r) => r.documento) } }, select: { numero: true, credorCpfCnpj: true }, distinct: ["credorCpfCnpj"] });
+  const empenhoDoCredor = new Map<string, string>();
+  for (const e of [...doDia, ...renomeadasCredoras]) if (!empenhoDoCredor.has(e.credorCpfCnpj)) empenhoDoCredor.set(e.credorCpfCnpj, e.numero);
+  const documentos = [...empenhoDoCredor.keys()].sort();
+  const pessoas = await prisma.pessoa.findMany({
+    where: { documento: { in: documentos } },
+    select: { documento: true, tipo: true, versoes: { where: { criadoEm: { lt } }, select: { nome: true, criadoEm: true, ativa: true } } },
+  });
+  const porDocumento = new Map(pessoas.map((p) => [p.documento, p]));
+  return documentos.map((doc) => {
+    const p = porDocumento.get(doc);
+    const versao = p === undefined ? null : versaoVigente(p.versoes);
+    if (p === undefined || versao === null) {
+      throw new Error(
+        `SAGRES/Fornecedores — o credor ${doc} do empenho ${empenhoDoCredor.get(doc) ?? ""} não tem cadastro de pessoa com nome. ` +
+          `O leiaute exige o nome; cadastre a pessoa em Cadastros › Pessoas.`
+      );
+    }
+    return { codUnidadeGestora: params.codUnidadeGestora, cpfCnpj: doc, nome: versao.nome, tipoCredor: p.tipo };
+  });
+}
+
+export async function gerarFornecedores(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_FORNECEDORES, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Fornecedores", competencia: params.dia }), await lerFatosFornecedores(prisma, params));
+}
+
+/** Os empenhos genuínos emitidos no mês (a linha de anulação não é empenho novo, como no §4.8). */
+async function empenhosDoMes(prisma: PrismaClient, competencia: Date) {
+  const { gte, lt } = intervaloDoMes(competencia);
+  return prisma.empenho.findMany({
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
+    include: { obra: true, ficha: { include: { unidadeOrc: true } } },
+    orderBy: [{ numero: "asc" }],
+  });
+}
+
+/** §4.37 — RelacionamentoEmpenhoObra (mensal): os empenhos do mês que apontam uma obra. */
+export async function lerFatosRelacionamentoEmpenhoObra(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<RelacionamentoEmpenhoObraFato[]> {
+  return (await empenhosDoMes(prisma, params.competencia))
+    .filter((e) => e.obra !== null)
+    .map((e) => ({
+      codUnidadeGestora: params.codUnidadeGestora,
+      codUnidadeOrcamentaria: e.ficha.unidadeOrc.codigo,
+      numEmpenho: e.numero,
+      codUnidadeGestoraObra: params.codUnidadeGestora,
+      numObra: (e.obra as NonNullable<typeof e.obra>).identificador,
+      anoEmpenho: e.ficha.exercicio,
+    }));
+}
+
+/** §4.46 — RelacionamentoEmpenhoNaturezaContratacao (mensal): "todos os empenhos emitidos no mês". */
+export async function lerFatosRelacionamentoEmpenhoNatureza(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<RelacionamentoEmpenhoNaturezaFato[]> {
+  return (await empenhosDoMes(prisma, params.competencia)).map((e) => ({
+    codUnidadeGestora: params.codUnidadeGestora,
+    codUnidadeOrcamentaria: e.ficha.unidadeOrc.codigo,
+    anoEmissaoEmpenho: e.ficha.exercicio,
+    numEmpenho: e.numero,
+    naturezaContratacao: e.categoriaOrdemCronologica,
+  }));
+}
+
+/**
+ * §4.58 — RelacionamentoLiquidacaoPagamento (mensal): cada pagamento genuíno do mês com a liquidação
+ * que ele paga — inclusive os de restos a pagar, que o leiaute manda incluir.
+ */
+export async function lerFatosRelacionamentoLiquidacaoPagamento(
+  prisma: PrismaClient,
+  params: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<RelacionamentoLiquidacaoPagamentoFato[]> {
+  const { gte, lt } = intervaloDoMes(params.competencia);
+  const pagamentos = await prisma.pagamento.findMany({
+    where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null },
+    include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } },
+    orderBy: [{ numero: "asc" }],
+  });
+  return pagamentos.map((p) => ({
+    codUnidadeGestora: params.codUnidadeGestora,
+    anoEmissao: p.liquidacao.empenho.ficha.exercicio,
+    codUnidadeOrcamentaria: p.liquidacao.empenho.ficha.unidadeOrc.codigo,
+    numEmpenho: p.liquidacao.empenho.numero,
+    numLiquidacao: p.liquidacao.numero,
+    numPagamento: p.numero,
+  }));
+}
+
+export async function gerarRelacionamentoEmpenhoObra(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_RELACIONAMENTO_EMPENHO_OBRA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "RelacionamentoEmpenhoObra", competencia: params.competencia }), await lerFatosRelacionamentoEmpenhoObra(prisma, params));
+}
+export async function gerarRelacionamentoEmpenhoNatureza(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_RELACIONAMENTO_EMPENHO_NATUREZA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "RelacionamentoEmpenhoNaturezaContratacao", competencia: params.competencia }), await lerFatosRelacionamentoEmpenhoNatureza(prisma, params));
+}
+export async function gerarRelacionamentoLiquidacaoPagamento(prisma: PrismaClient, params: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoGerado> {
+  return empacotar(LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "MENSAL", entidade: "RelacionamentoLiquidacaoPagamento", competencia: params.competencia }), await lerFatosRelacionamentoLiquidacaoPagamento(prisma, params));
+}
+
+/**
+ * V25 — O GRUPO DOS RELACIONAMENTOS E FORNECEDORES num passo só, para os pacotes. Os dois diários e os
+ * três mensais (do mês `competencia`). Uma recusa nomeada (FUNDEB em duas contas, credor sem cadastro,
+ * texto maior que o campo) deixa só aquele arquivo fora do pacote; os demais seguem.
+ */
+export async function gerarArquivosDeRelacionamentos(
+  prisma: PrismaClient,
+  p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date; readonly competencia: Date }
+): Promise<{ readonly arquivos: readonly { readonly arquivo: ArquivoGerado; readonly layout: LayoutArquivo<never> }[]; readonly recusas: readonly { readonly arquivo: string; readonly detalhe: string }[] }> {
+  const mensal = { codUnidadeGestora: p.codUnidadeGestora, competencia: p.competencia };
+  const tarefas: readonly { readonly entidade: string; readonly layout: LayoutArquivo<never>; readonly gerar: () => Promise<ArquivoGerado> }[] = [
+    { entidade: "RelacionamentoCCorrenteFontePagadora", layout: LAYOUT_RELACIONAMENTO_CONTA_FONTE as LayoutArquivo<never>, gerar: () => gerarRelacionamentoContaFonte(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }) },
+    { entidade: "Fornecedores", layout: LAYOUT_FORNECEDORES as LayoutArquivo<never>, gerar: () => gerarFornecedores(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
+    { entidade: "RelacionamentoEmpenhoObra", layout: LAYOUT_RELACIONAMENTO_EMPENHO_OBRA as LayoutArquivo<never>, gerar: () => gerarRelacionamentoEmpenhoObra(prisma, mensal) },
+    { entidade: "RelacionamentoEmpenhoNaturezaContratacao", layout: LAYOUT_RELACIONAMENTO_EMPENHO_NATUREZA as LayoutArquivo<never>, gerar: () => gerarRelacionamentoEmpenhoNatureza(prisma, mensal) },
+    { entidade: "RelacionamentoLiquidacaoPagamento", layout: LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO as LayoutArquivo<never>, gerar: () => gerarRelacionamentoLiquidacaoPagamento(prisma, mensal) },
+  ];
+  const arquivos: { arquivo: ArquivoGerado; layout: LayoutArquivo<never> }[] = [];
+  const recusas: { arquivo: string; detalhe: string }[] = [];
+  for (const t of tarefas) {
+    try {
+      arquivos.push({ arquivo: await t.gerar(), layout: t.layout });
+    } catch (e) {
+      if (!(e instanceof Error) || !e.message.startsWith("SAGRES")) throw e;
+      recusas.push({ arquivo: t.entidade, detalhe: e.message });
+    }
   }
   return { arquivos, recusas };
 }

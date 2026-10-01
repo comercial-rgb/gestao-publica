@@ -134,7 +134,7 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "EstornoReceitaExtra", secao: "§4.21", exporta: true, nota: "Gerado a partir dos estornos de ingresso, com o motivo informado." },
   { entidade: "EstornoDespesaExtra", secao: "§4.22", exporta: true, nota: "Gerado a partir dos estornos de recolhimento, com o motivo informado." },
   { entidade: "CadastroContaBancaria", secao: "§4.23", exporta: true, nota: "Gerado a partir do cadastro das contas bancárias (banco, agência e conta)." },
-  { entidade: "RelacionamentoCCorrenteFontePagadora", secao: "§4.24", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoCCorrenteFontePagadora", secao: "§4.24", exporta: true, nota: "Gerado a partir das fontes que cada conta bancária comporta (o rol da conta, ou a fonte padrão dela). Recusa a fonte do FUNDEB em mais de uma conta." },
   { entidade: "SaldoInicial", secao: "§4.25", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "SaldoMensal", secao: "§4.26", exporta: true, nota: "Soma do extrato bancário até o fim do mês." },
   { entidade: "ConciliacaoBancaria", secao: "§4.27", exporta: true, nota: "Gerado a partir da conciliação do fim do mês; a conta que não fecha fica fora, com o motivo." },
@@ -145,9 +145,9 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "EstornoLiquidacaoRestos", secao: "§4.32", exporta: true, nota: "Gerado a partir das anulações de liquidação de restos. Hoje o sistema não oferece anular liquidação de restos: o arquivo sai sem registros." },
   { entidade: "RetencaoRestos", secao: "§4.33", exporta: true, nota: "Gerado a partir das retenções feitas nos pagamentos de restos." },
   { entidade: "EstornoRetencaoRestos", secao: "§4.34", exporta: true, nota: "Gerado a partir das retenções de restos desfeitas pela anulação do pagamento." },
-  { entidade: "Fornecedores", secao: "§4.35", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "Fornecedores", secao: "§4.35", exporta: true, nota: "Gerado a partir dos credores dos empenhos do dia e das pessoas que mudaram de nome no dia, com o nome do cadastro de pessoas. Credor sem cadastro deixa o arquivo fora, nomeando-o." },
   { entidade: "Ordenador", secao: "§4.36", exporta: false, nota: "Ainda não é gerado por este sistema." },
-  { entidade: "RelacionamentoEmpenhoObra", secao: "§4.37", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoEmpenhoObra", secao: "§4.37", exporta: true, nota: "Gerado a partir dos empenhos do mês que apontam uma obra, com o número da obra do cadastro de obras." },
   { entidade: "RelacionamentoEmpenhoLicitacao", secao: "§4.38", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", secao: "§4.39", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "RestosInscritos", secao: "§4.40", exporta: true, nota: "Gerado a partir das inscrições de restos a pagar do exercício, por empenho, e enviado no balancete de dezembro." },
@@ -156,7 +156,7 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "PloaPrograma", secao: "§4.43", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "PloaReceitaPrevista", secao: "§4.44", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "PloaUnidadeOrcamentaria", secao: "§4.45", exporta: false, nota: "Ainda não é gerado por este sistema." },
-  { entidade: "RelacionamentoEmpenhoNaturezaContratacao", secao: "§4.46", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoEmpenhoNaturezaContratacao", secao: "§4.46", exporta: true, nota: "Gerado a partir de todos os empenhos emitidos no mês, com a natureza da contratação de cada um." },
   { entidade: "ResponsavelSiafic", secao: "§4.48", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "NormasOrcamentarias", secao: "§4.49", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "ProprietarioFrota", secao: "§4.50", exporta: false, nota: "Frota: fora da contabilidade." },
@@ -167,7 +167,7 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "Abastecimento", secao: "§4.55", exporta: false, nota: "Frota: fora da contabilidade." },
   { entidade: "Farmacia", secao: "§4.56", exporta: false, nota: "Farmácia: fora da contabilidade." },
   { entidade: "EstoqueFarmacia", secao: "§4.57", exporta: false, nota: "Farmácia: fora da contabilidade." },
-  { entidade: "RelacionamentoLiquidacaoPagamento", secao: "§4.58", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoLiquidacaoPagamento", secao: "§4.58", exporta: true, nota: "Gerado a partir dos pagamentos do mês com a liquidação que cada um paga, inclusive os de restos a pagar." },
   { entidade: "MovimentacaoEntreContasBancarias", secao: "§4.59", exporta: true, nota: "Gerado a partir das transferências entre contas do próprio ente." },
 ];
 
@@ -224,9 +224,10 @@ function AvisoSemMovimento({
 }
 
 /** O tipo da violação em português — o enum não vai para a tela. */
-const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES" | "RECEITA_EXTRA_FORA_DO_PACOTE" | "PLANO_DO_TRIBUNAL_AUSENTE" | "RESTOS_FORA_DO_PACOTE", string> = {
+const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES" | "RECEITA_EXTRA_FORA_DO_PACOTE" | "PLANO_DO_TRIBUNAL_AUSENTE" | "RESTOS_FORA_DO_PACOTE" | "RELACIONAMENTO_FORA_DO_PACOTE", string> = {
   RECEITA_EXTRA_FORA_DO_PACOTE: "Receita extra fora do pacote",
   RESTOS_FORA_DO_PACOTE: "Restos a pagar fora do pacote",
+  RELACIONAMENTO_FORA_DO_PACOTE: "Fornecedores ou relacionamento fora do pacote",
   PLANO_DO_TRIBUNAL_AUSENTE: "Plano do Tribunal não importado",
   OBRIGATORIEDADE: "Campo obrigatório vazio",
   DOMINIO: "Código fora da tabela",

@@ -1264,6 +1264,106 @@ const camposRestosInscritos: readonly CampoLayout<RestosInscritosFato>[] = [
 ];
 export const LAYOUT_RESTOS_INSCRITOS: LayoutArquivo<RestosInscritosFato> = { entidade: "RestosInscritos", periodicidade: "MENSAL", versao: VERSAO, campos: camposRestosInscritos };
 
+// ═══ V25 — RELACIONAMENTOS E FORNECEDORES (§4.24, §4.35, §4.37, §4.46, §4.58) ═══
+//
+// ⚠️ O NÚMERO DO EMPENHO E O DA OBRA SAEM NUMÉRICOS mesmo onde a tabela os grafa "Caractere (7)" e
+// "Caractere (8)" (§4.37 e §4.46): são CHAVES que apontam para o Empenhos (§4.8), onde os dois são
+// "Numérico". Preencher com espaço num arquivo e com zero no outro quebraria a referência que a tabela
+// de relacionamento existe para fazer. As posições são as do leiaute, conferidas contra o HTML oficial
+// por `m15-relacionamentos.test.ts`.
+
+/** §5.16 TipoCredor: 1 Pessoa Física, 2 Pessoa Jurídica. */
+export const TIPO_CREDOR_SAGRES: Record<"FISICA" | "JURIDICA", string> = { FISICA: "1", JURIDICA: "2" };
+
+export interface RelacionamentoContaFonteFato {
+  readonly codUnidadeGestora: string;
+  readonly numeroConta: string;
+  readonly numeroAgencia: string;
+  readonly banco: string;
+  readonly exercicioFonteRecurso: number;
+  readonly codFonteRecurso: string;
+  readonly tipo: string;
+  readonly cnpjGerencia: string;
+}
+const camposRelacionamentoContaFonte: readonly CampoLayout<RelacionamentoContaFonteFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numContaBancaria", posInicial: 7, posFinal: 19, tipo: "ALFA", obrigatorio: true, origem: "conta.conta + conta.digitoConta", extrair: (f) => f.numeroConta },
+  { nome: "numAgencia", posInicial: 20, posFinal: 25, tipo: "ALFA", obrigatorio: true, origem: "conta.agencia + conta.digitoAgencia", extrair: (f) => f.numeroAgencia },
+  { nome: "codBanco", posInicial: 26, posFinal: 28, tipo: "ALFA", obrigatorio: true, origem: "conta.banco", extrair: (f) => f.banco },
+  { nome: "exercicioFonteRecurso", posInicial: 29, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "fonte.exercicioPadrao (1 atual, 2 anterior)", extrair: (f) => f.exercicioFonteRecurso },
+  { nome: "codFonteRecurso", posInicial: 30, posFinal: 32, tipo: "NUMERICO", obrigatorio: true, origem: "o rol de fontes da conta (FonteDaContaBancaria)", extrair: (f) => f.codFonteRecurso },
+  { nome: "tipoContaBancaria", posInicial: 33, posFinal: 33, tipo: "NUMERICO", obrigatorio: true, origem: "1 = conta corrente (como no CadastroContaBancaria)", extrair: (f) => f.tipo },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 34, posFinal: 47, tipo: "DOCUMENTO", obrigatorio: true, origem: "parâmetro export (CNPJ gerenciador)", extrair: (f) => f.cnpjGerencia },
+];
+export const LAYOUT_RELACIONAMENTO_CONTA_FONTE: LayoutArquivo<RelacionamentoContaFonteFato> = { entidade: "RelacionamentoCCorrenteFontePagadora", periodicidade: "DIARIO", versao: VERSAO, campos: camposRelacionamentoContaFonte };
+
+export interface FornecedorFato {
+  readonly codUnidadeGestora: string;
+  readonly cpfCnpj: string;
+  readonly nome: string;
+  readonly tipoCredor: "FISICA" | "JURIDICA";
+}
+const camposFornecedores: readonly CampoLayout<FornecedorFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "cpfCnpj", posInicial: 7, posFinal: 20, tipo: "DOCUMENTO", obrigatorio: true, origem: "pessoa.documento (credor do empenho)", extrair: (f) => f.cpfCnpj },
+  { nome: "nome", posInicial: 21, posFinal: 100, tipo: "ALFA", obrigatorio: true, origem: "o nome da versão vigente da pessoa", extrair: (f) => f.nome },
+  { nome: "tipoCredor", posInicial: 101, posFinal: 101, tipo: "NUMERICO", obrigatorio: true, origem: "pessoa.tipo → §5.16", extrair: (f) => TIPO_CREDOR_SAGRES[f.tipoCredor] },
+  { nome: "reservado", posInicial: 102, posFinal: 107, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_FORNECEDORES: LayoutArquivo<FornecedorFato> = { entidade: "Fornecedores", periodicidade: "DIARIO", versao: VERSAO, campos: camposFornecedores };
+
+export interface RelacionamentoEmpenhoObraFato {
+  readonly codUnidadeGestora: string;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly codUnidadeGestoraObra: string;
+  readonly numObra: string;
+  readonly anoEmpenho: number;
+}
+const camposRelacionamentoEmpenhoObra: readonly CampoLayout<RelacionamentoEmpenhoObraFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codUnidadeOrcamentaria", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 12, posFinal: 18, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero (chave do Empenhos §4.8, numérico lá)", extrair: (f) => f.numEmpenho },
+  { nome: "codUnidadeGestoraObra", posInicial: 19, posFinal: 24, tipo: "NUMERICO", obrigatorio: true, origem: "a própria UG (o sistema não registra obra de outra UG)", extrair: (f) => f.codUnidadeGestoraObra },
+  { nome: "numObra", posInicial: 25, posFinal: 32, tipo: "NUMERICO", obrigatorio: true, origem: "obra.identificador (NNNNAAAA do GeoPB)", extrair: (f) => f.numObra },
+  { nome: "anoEmpenho", posInicial: 33, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmpenho },
+];
+export const LAYOUT_RELACIONAMENTO_EMPENHO_OBRA: LayoutArquivo<RelacionamentoEmpenhoObraFato> = { entidade: "RelacionamentoEmpenhoObra", periodicidade: "MENSAL", versao: VERSAO, campos: camposRelacionamentoEmpenhoObra };
+
+export interface RelacionamentoEmpenhoNaturezaFato {
+  readonly codUnidadeGestora: string;
+  readonly codUnidadeOrcamentaria: string;
+  readonly anoEmissaoEmpenho: number;
+  readonly numEmpenho: string;
+  readonly naturezaContratacao: "FORNECIMENTO_BENS" | "LOCACAO" | "PRESTACAO_SERVICOS" | "REALIZACAO_OBRAS";
+}
+const camposRelacionamentoEmpenhoNatureza: readonly CampoLayout<RelacionamentoEmpenhoNaturezaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codUnidadeOrcamentaria", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "anoEmissaoEmpenho", posInicial: 12, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissaoEmpenho },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero (chave do Empenhos §4.8, numérico lá)", extrair: (f) => f.numEmpenho },
+  { nome: "NaturezaContratacao", posInicial: 23, posFinal: 23, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.categoriaOrdemCronologica → §5.19", extrair: (f) => NATUREZA_CONTRATACAO_SAGRES[f.naturezaContratacao] },
+];
+export const LAYOUT_RELACIONAMENTO_EMPENHO_NATUREZA: LayoutArquivo<RelacionamentoEmpenhoNaturezaFato> = { entidade: "RelacionamentoEmpenhoNaturezaContratacao", periodicidade: "MENSAL", versao: VERSAO, campos: camposRelacionamentoEmpenhoNatureza };
+
+export interface RelacionamentoLiquidacaoPagamentoFato {
+  readonly codUnidadeGestora: string;
+  readonly anoEmissao: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numLiquidacao: string;
+  readonly numPagamento: string;
+}
+const camposRelacionamentoLiquidacaoPagamento: readonly CampoLayout<RelacionamentoLiquidacaoPagamentoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "anoEmissao", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.exercicio", extrair: (f) => f.anoEmissao },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 16, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero", extrair: (f) => f.numEmpenho },
+  { nome: "numLiquidacao", posInicial: 23, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "liquidacao.numero", extrair: (f) => f.numLiquidacao },
+  { nome: "numPagamento", posInicial: 30, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "pagamento.numero (parcela)", extrair: (f) => f.numPagamento },
+];
+export const LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO: LayoutArquivo<RelacionamentoLiquidacaoPagamentoFato> = { entidade: "RelacionamentoLiquidacaoPagamento", periodicidade: "MENSAL", versao: VERSAO, campos: camposRelacionamentoLiquidacaoPagamento };
+
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
@@ -1292,4 +1392,9 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_RETENCAO_RESTOS,
   LAYOUT_ESTORNO_RETENCAO_RESTOS,
   LAYOUT_RESTOS_INSCRITOS,
+  LAYOUT_RELACIONAMENTO_CONTA_FONTE,
+  LAYOUT_FORNECEDORES,
+  LAYOUT_RELACIONAMENTO_EMPENHO_OBRA,
+  LAYOUT_RELACIONAMENTO_EMPENHO_NATUREZA,
+  LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO,
 ] as const;
