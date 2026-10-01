@@ -31,3 +31,21 @@ alíquota ou conta inventada; sem jargão nem emoji em tela; migration aditiva; 
 Regime: profundidade nas quatro frentes (cálculo de encargos, remessa ao tribunal, datas de domínio).
 Achado de instrumento: o censo t5 ficou vermelho na V24 (17 leituras de restos sem classificação) — o
 checkpoint da V24 não o rodou depois do grupo dos restos.
+
+## Fechamento (01/10/2026)
+
+- **Defeito anterior achado conferindo a prévia na 3011:** o pacote MENSAL pedido pela tela saía como o
+  mês seguinte — nome (`…102026…` para setembro) e conteúdo (o saldo somava o extrato até o fim de
+  outubro). A porta ancorava o mês no fim do dia civil e o gerador lê o mês em UTC; desde a ENT03c (11/09).
+  Corrigido com `competenciaDoLeiaute` (`12ee77b`); conferido na tela: dotação, saldo, conciliação e os
+  relacionamentos mensais saem `…092026…`.
+- **Percursos no build da rodada (worktree, 3011, cópia limpa do modelo):** FAP 12/12; SAGRES receita
+  extra 13/13 ("32 de 58"); dinheiro nas telas 8/8 (restos não executado: o banco da apresentação não tem
+  resto inscrito). Os percursos antigos de recolhimento, guia repartida e restos não rodam neste banco
+  (usuário e massa de outro conjunto; o de restos caiu por perfil do Chrome travado) — não contam como prova.
+- **Intermitência registrada, causa não identificada:** a rodada do adaptador SAGRES (15 arquivos, 181
+  testes) falhou duas vezes por espera — `sagres-poc.test.ts` com hook de 10 s; `m15-sagres-gerador.test.ts`
+  com um teste parado 40 min — e passou na terceira (181/181, 229 s). Nenhuma sessão presa no banco de teste
+  quando inspecionado; saída bruta em `~/.gestao-publica-local/v25-sagres-rodada2-intermitente.txt`.
+- 3011 parada, worktree removida (junção desfeita antes; dependências conferidas), banco de ensaio apagado.
+  A 3010 não foi tocada: continua com a versão anterior à V24.
