@@ -90,8 +90,11 @@ async function main(): Promise<void> {
 
     // ── a folha de setembro com IR ──
     const m19 = criarM19Deps(prisma);
-    const ref = await prisma.vinculo.findUnique({ where: { matricula: "DEMO-0001" }, select: { cargoId: true, lotacaoId: true } });
-    if (ref === null) throw new Error("A folha de demonstração de agosto (DEMO-0001) não está no banco: rode semear-folha-da-demonstracao antes.");
+    // O cargo e a lotação da folha de demonstração de agosto (semear-folha-da-demonstracao.ts).
+    const cargo = await prisma.cargo.findFirst({ where: { codigo: "DEMO-AGADM" }, select: { id: true } });
+    const lotacao = await prisma.lotacao.findFirst({ where: { codigo: "DEMO-SEDUC" }, select: { id: true } });
+    if (cargo === null || lotacao === null) throw new Error("A folha de demonstração de agosto não está no banco (cargo DEMO-AGADM, lotação DEMO-SEDUC): rode semear-folha-da-demonstracao antes.");
+    const ref = { cargoId: cargo.id, lotacaoId: lotacao.id };
     await passo(`servidor ${SERVIDOR.matricula} (${SERVIDOR.salario})`, async () => {
       if ((await prisma.vinculo.findUnique({ where: { matricula: SERVIDOR.matricula } })) !== null) return "=";
       let pessoa = await m19.pessoas.buscarPorDocumento(SERVIDOR.cpf);
