@@ -461,6 +461,8 @@ model ContaBancaria {
 
 model Pagamento {
   id           String     @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  retencoesProprias RetencaoPropriaDoPagamento[] @relation("RetencoesPropriasDoPagamento")
   liquidacaoId String
   liquidacao   Liquidacao @relation(fields: [liquidacaoId], references: [id])
 

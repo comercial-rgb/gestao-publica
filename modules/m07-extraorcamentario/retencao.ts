@@ -5,6 +5,7 @@ import {
   totaisDoConsignatario,
   type Tx,
 } from "./extraorcamentario.js";
+import { ehTributoDoProprioTesouro } from "./retencao-propria.js";
 
 /**
  * RETENÇÃO NA FONTE — o lado da persistência, DENTRO da transação do pagamento.
@@ -70,6 +71,20 @@ export async function registrarRetencoesDoPagamento(
           `Reter é fazer nascer uma dívida com o consignatário, e sem saber em que conta ` +
           `ela nasce o passivo iria parar numa conta escolhida por quem chamou. ` +
           `Cadastre a conta antes de reter. Nada foi gravado.`
+      );
+    }
+    // V26 — IR/ISS do próprio Tesouro, no mesmo perímetro, é receita: não nasce como dívida com terceiro.
+    // O caminho calculado já o encaminha como retenção própria; esta é a porta que toda entrada atravessa.
+    const proprio = await ehTributoDoProprioTesouro(tx, {
+      tipoConsignacaoId: tipo.id,
+      credorConsignatario: r.credorConsignatario,
+      contaBancariaId: p.contaBancariaId,
+      data: p.data,
+    });
+    if (proprio !== null) {
+      throw new Error(
+        `${tipo.codigo} retido para ${r.credorConsignatario} é imposto do próprio município: ele entra como receita do ` +
+          `pagamento, não como consignação. Calcule as retenções do pagamento (o sistema reconhece a receita). Nada foi gravado.`
       );
     }
     if (r.contaConsignacaoAPagar !== tipo.contaPassivo) {
@@ -238,6 +253,16 @@ export interface CalculoDaRetencaoParaPersistir {
   readonly tipoConsignacaoId: string | null;
 }
 
+/** Marca, no mapa de vínculos, o tributo que casou com uma retenção própria. */
+const PROPRIA = "__retencao_propria__";
+
+/** V26 — o fato da retenção própria que o cálculo de cada tributo do pagamento de fornecedor produz. */
+const FATO_PROPRIO_DO_TRIBUTO: Readonly<Record<CalculoDaRetencaoParaPersistir["tributo"], string | null>> = {
+  IRRF: "IRRF_FORNECEDOR_PJ",
+  ISS: "ISS",
+  INSS: null,
+};
+
 export async function registrarCalculosDaRetencao(
   tx: Tx,
   p: {
@@ -246,14 +271,28 @@ export async function registrarCalculosDaRetencao(
     readonly calculos: readonly CalculoDaRetencaoParaPersistir[];
     /** Os movimentos que `registrarRetencoesDoPagamento` acabou de criar, com tipo e valor. */
     readonly movimentos: readonly { readonly id: string; readonly tipoConsignacaoId: string; readonly valor: Money }[];
+    /**
+     * V26 — as retenções PRÓPRIAS do Tesouro deste pagamento (IR e ISS do ente). O cálculo que retém o
+     * tributo casa com UMA delas, do mesmo tributo e do mesmo valor, em vez de um movimento de consignação.
+     */
+    readonly proprias?: readonly { readonly fato: string; readonly valor: Money }[] | undefined;
   }
 ): Promise<void> {
   const usados = new Set<string>();
   const vinculo = new Map<string, string | null>();
+  const propriasUsadas = new Set<number>();
+  const proprias = p.proprias ?? [];
   for (const c of p.calculos) {
     const retem = c.valor.greaterThan(0);
     if (!retem) {
       vinculo.set(c.tributo, null);
+      continue;
+    }
+    // O IR retido de PJ e o ISS: a retenção própria do MESMO tributo e do MESMO valor.
+    const i = proprias.findIndex((r, k) => !propriasUsadas.has(k) && r.fato === FATO_PROPRIO_DO_TRIBUTO[c.tributo] && r.valor.equals(c.valor));
+    if (c.tipoConsignacaoId === null && i >= 0) {
+      propriasUsadas.add(i);
+      vinculo.set(c.tributo, PROPRIA);
       continue;
     }
     const mov = p.movimentos.find((m) => !usados.has(m.id) && m.tipoConsignacaoId === c.tipoConsignacaoId && m.valor.equals(c.valor));
@@ -267,7 +306,15 @@ export async function registrarCalculosDaRetencao(
   if (soltos.length > 0) {
     throw new Error(`Há ${soltos.length} retenção(ões) sem o cálculo que as justifica. Nada foi gravado.`);
   }
+  // V26 — a do IR da folha não vem da memória do pagamento de fornecedor; as demais próprias, sim.
+  const propriasSoltas = proprias.filter((r, k) => !propriasUsadas.has(k) && r.fato !== "IRRF_FOLHA");
+  if (propriasSoltas.length > 0) {
+    throw new Error(`Há ${propriasSoltas.length} retenção(ões) de imposto do próprio município sem o cálculo que as justifica. Nada foi gravado.`);
+  }
   for (const c of p.calculos) {
+    // V26 — a memória do tributo retido como receita própria vai com o elo da retenção própria (a trava desta
+    // tabela exige movimento de consignação para "retido"); aqui ficam a consignação e os não retidos.
+    if (vinculo.get(c.tributo) === PROPRIA) continue;
     await tx.calculoDaRetencao.create({
       data: {
         pagamentoId: p.pagamentoId,

@@ -16,6 +16,8 @@
 /// exigiria migração a cada tipo novo.
 model TipoConsignacao {
   id        String  @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  retencoesProprias ClassificacaoDaRetencaoPropria[] @relation("RetencaoPropriaDoTipo")
   codigo    String  @unique
   descricao String
   ativo     Boolean @default(true)

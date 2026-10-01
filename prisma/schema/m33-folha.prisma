@@ -612,6 +612,8 @@ model LinhaDoContracheque {
 /// O grupo de empenho da folha: quais rubricas, em qual ficha, com qual credor.
 model GrupoDeEmpenhoDaFolha {
   id String @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  irRetidoNosPagamentos RetencaoPropriaDoPagamento[] @relation("IrDaFolhaRetidoNoPagamento")
 
   codigo    String @unique
   descricao String

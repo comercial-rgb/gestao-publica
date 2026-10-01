@@ -1136,6 +1136,8 @@ export type NomeDeServico =
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
+  // M07 V26 — a classificação do IR e do ISS retidos pelo próprio Tesouro (receita, não consignação)
+  | "classificarRetencaoPropria"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1820,6 +1822,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   desativarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
+  // ⚠️ V26 — A MESMA AUTORIDADE dos tipos de consignação: dizer que o IR retido é receita do Tesouro (e com
+  // que natureza, destinação e contas) é a decisão contábil sobre o mesmo tipo que hoje vai para o passivo.
+  classificarRetencaoPropria: "GERIR_TIPOS_DE_CONSIGNACAO",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2149,6 +2154,20 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
+  registrarReceitasPorRetencaoNaTx:
+    "PERNA DO PAGAMENTO, não ato do usuário: grava a guia de receita por retenção e o elo DENTRO da transação de " +
+    "`pagar`, que já cobrou PAGAR. Quem paga, retém — a mesma regra da consignação e da amortização.",
+  anularReceitasPorRetencaoNaTx:
+    "PERNA DA ANULAÇÃO DO PAGAMENTO: anula a guia por retenção DENTRO da transação de `anularPagamento`, que já cobrou " +
+    "ANULAR_PAGAMENTO. A guia sozinha não se anula (o M04 recusa).",
+  classificacaoPropriaVigente: "leitura (a decisão vigente do ente para um fato de retenção própria, na data)",
+  listarClassificacoesDaRetencaoPropria: "leitura (as decisões do ente sobre IR e ISS próprios, para a tela)",
+  mesmoPerimetro: "leitura (a conta que paga é do titular do Tesouro da classificação?)",
+  exigirClassificacaoPropria: "leitura com recusa (a classificação vigente, ou o erro que nomeia o cadastro)",
+  ehTributoDoProprioTesouro:
+    "GUARDA, não serviço: lida dentro do ingresso, do dispêndio e da retenção do M07, que já cobraram a ação deles. " +
+    "Diz se um saldo de consignação é imposto do próprio Tesouro no mesmo perímetro.",
   // ── V15/C34/C37 — a composição do recolhimento extraorçamentário (LEITURAS) ──
   //
   // ⚠️ AS TRÊS SÃO PROJEÇÃO DE FATO JÁ GRAVADO, e nenhuma escreve. Elas servem à tela de

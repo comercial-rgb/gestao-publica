@@ -136,6 +136,8 @@ export interface ArrecadacaoPersistida {
   readonly entidadeTitularId: string | null;
   /** V16/C30 — as parcelas por fonte desta guia. Vazio = guia de fonte única. A anulação as HERDA. */
   readonly distribuicao: readonly ParcelaPersistidaDeFonte[];
+  /** V26 — a guia é a receita de uma retenção própria do Tesouro num pagamento. */
+  readonly nascidaDeRetencao: boolean;
 }
 
 /** Confronto arrecadado × previsto. NÃO bloqueia — sinaliza (INVARIANTE 5). */

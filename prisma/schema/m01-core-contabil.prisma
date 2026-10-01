@@ -36,6 +36,9 @@ enum Subsistema {
 
 model ContaPcasp {
   id                 String             @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  creditosDaRetencaoPropria ClassificacaoDaRetencaoPropria[] @relation("CreditoDaRetencaoPropria")
+  vpasDaRetencaoPropria     ClassificacaoDaRetencaoPropria[] @relation("VpaDaRetencaoPropria")
   codigo             String             @unique
   nome               String
   naturezaSaldo      NaturezaSaldo

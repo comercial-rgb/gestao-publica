@@ -51,6 +51,8 @@ enum TipoDeAtoDeclarado {
 /// Corrigir o nome é publicar uma VERSÃO nova; a vigente é a de maior versão.
 model EntidadeContabil {
   id String @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  retencoesProprias ClassificacaoDaRetencaoPropria[] @relation("TesouroDaRetencaoPropria")
 
   /// O código que o ente usa para a entidade nos seus demonstrativos. DADO DO ENTE — o sistema
   /// não o deriva, não o sugere e não o semeia.

@@ -349,6 +349,15 @@ export const ORDEM_DOS_LOCKS = {
    * não trava mais nada depois dela.
    */
   NumeradorDoExercicio: 32,
+  /**
+   * V26 — O NÚMERO DA GUIA DE RECEITA POR RETENÇÃO (M04, `receita-por-retencao.ts`). Duas retenções
+   * próprias em pagamentos simultâneos leriam o mesmo "maior número de receita do exercício" e a
+   * unicidade da guia recusaria a segunda no meio do pagamento. O trinco é por exercício.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: o pagamento grava a receita por retenção como ÚLTIMA perna da
+   * transação, depois da liquidação, da retenção de terceiros, da amortização e do precatório.
+   */
+  NumeradorDaReceita: 33,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

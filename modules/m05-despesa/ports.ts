@@ -8,6 +8,7 @@ import type { JustificativaQuebraOrdemInput } from "../m06-ordem-cronologica/dom
 // puro, sem Prisma; a port continua sem conhecer banco.
 import type { RetencaoParaPersistir } from "../m07-extraorcamentario/dominio.js";
 import type { CalculoDaRetencaoParaPersistir } from "../m07-extraorcamentario/retencao.js";
+import type { RetencaoPropriaParaCompor } from "../m07-extraorcamentario/dominio.js";
 import type {
   ContaRepositoryPort,
   IdPort,
@@ -356,6 +357,11 @@ export interface PagarParams {
   readonly retencoes?: readonly RetencaoParaPersistir[] | undefined;
   /** V24 — a memória do cálculo das retenções (os três tributos), quando foram calculadas. */
   readonly calculosDaRetencao?: readonly CalculoDaRetencaoParaPersistir[] | undefined;
+  /**
+   * V26 — as retenções PRÓPRIAS do Tesouro (IR e ISS do ente): a guia de receita por retenção e o elo nascem
+   * na MESMA transação, como ÚLTIMA perna dela. As pernas do crédito tributário já vêm no `lancamento`.
+   */
+  readonly retencoesProprias?: readonly RetencaoPropriaParaCompor[] | undefined;
 }
 
 export interface AnularLiquidacaoParams {

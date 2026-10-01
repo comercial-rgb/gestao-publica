@@ -234,6 +234,8 @@ model Subelemento {
 /// escolher a coluna, não traduzir.
 model FonteRecurso {
   id              String  @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  retencoesProprias ClassificacaoDaRetencaoPropria[] @relation("FonteDaRetencaoPropria")
   codigo          String  @unique @db.VarChar(3)
   descricao       String
   codigoTce       String
@@ -371,6 +373,8 @@ model FichaOrcamentaria {
 /// Código de receita STN — 8 dígitos.
 model NaturezaReceita {
   id            String  @id @default(cuid())
+  /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
+  retencoesProprias ClassificacaoDaRetencaoPropria[] @relation("NaturezaDaRetencaoPropria")
   codigo        String  @unique @db.VarChar(8)
   descricao     String
   mapeamentoStn String?

@@ -20,7 +20,8 @@ import {
   type Tributo,
 } from "./calculo-da-retencao.js";
 import { listarTiposConsignacao } from "./consultas.js";
-import type { RetencaoDoPagamentoInput } from "./dominio.js";
+import type { FatoDaRetencaoPropria, RetencaoDoPagamentoInput, RetencaoPropriaParaCompor } from "./dominio.js";
+import { exigirClassificacaoPropria, mesmoPerimetro } from "./retencao-propria.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -349,10 +350,13 @@ export async function prepararRetencoesCalculadas(
     readonly valorDoPagamento: Money;
     readonly data: Date;
     readonly operacao: DadosFiscaisDaOperacao;
+    /** V26 — a conta bancária que paga: é o titular dela que diz se o IR/ISS fica no mesmo Tesouro. */
+    readonly contaBancariaId: string;
   },
 ): Promise<{
   readonly retencoes: readonly RetencaoDoPagamentoInput[];
   readonly calculos: readonly CalculoDaRetencaoParaPersistir[];
+  readonly proprias: readonly RetencaoPropriaParaCompor[];
 }> {
   const av = await avaliarRetencoesDoPagamento(db, p);
   exigirRetencoesFechadas(av.avaliacoes, p.valorDoPagamento);
@@ -363,8 +367,31 @@ export async function prepararRetencoesCalculadas(
   // original: trocar a conta pela tela de consignações tem de valer aqui também.
   const tipos = await listarTiposConsignacao(db);
   const retencoes: RetencaoDoPagamentoInput[] = [];
+  const proprias: RetencaoPropriaParaCompor[] = [];
   const tipoDe = new Map<Tributo, string>();
   for (const a of retidos) {
+    // ═══ V26 — O IR E O ISS DO PRÓPRIO MUNICÍPIO SÃO RECEITA, NÃO CONSIGNAÇÃO ═══
+    // O IR retido de PJ (IN RFB 1.234/2012) pertence ao município (CF, art. 158, I); o ISS só é retido
+    // aqui quando o local de incidência é o próprio município. Sem a decisão do ente, RECUSA nomeando.
+    // Conta de OUTRO titular (fundo, autarquia): o imposto é do Tesouro, mas o dinheiro está noutra conta —
+    // segue como consignação ao Tesouro, para o repasse real e conciliável.
+    const fato = FATO_PROPRIO[a.tributo];
+    if (fato !== null) {
+      const c = await exigirClassificacaoPropria(db, fato, p.data);
+      if (await mesmoPerimetro(db, p.contaBancariaId, c)) {
+        proprias.push({
+          fato,
+          classificacaoId: c.id,
+          valor: valorRetido(a),
+          contaCredito: c.contaCredito,
+          contaVpa: c.contaVpa,
+          naturezaReceitaCodigo: c.naturezaReceitaCodigo,
+          fonteCodigo: c.fonteCodigo,
+          entidadeTitularId: c.entidadeTitularId,
+        });
+        continue;
+      }
+    }
     const t = tipos.find((x) => x.codigo === CODIGO_DO_TIPO[a.tributo]);
     if (t === undefined || !t.ativo || t.contaPassivoCodigo === null) {
       throw new Error(
@@ -450,7 +477,14 @@ export async function prepararRetencoesCalculadas(
         throw new Error(`O ${a.tributo} ficou sem cálculo. Nada foi gravado.`);
     }
   });
-  return { retencoes, calculos };
+  return { retencoes, calculos, proprias };
 }
+
+/** V26 — o fato da retenção própria que cada tributo do pagamento de fornecedor produz (o INSS nunca). */
+const FATO_PROPRIO: Readonly<Record<Tributo, FatoDaRetencaoPropria | null>> = {
+  IRRF: "IRRF_FORNECEDOR_PJ",
+  ISS: "ISS",
+  INSS: null,
+};
 
 export { exigirJustificativa };

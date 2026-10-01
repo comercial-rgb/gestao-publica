@@ -338,7 +338,52 @@ export interface RetencoesDoPagamento {
    * CALCULADAS. Ausente no caminho manual de antes. Gravada na mesma transação do pagamento.
    */
   readonly calculos?: readonly CalculoDaRetencaoParaPersistir[] | undefined;
+  /**
+   * V26 — AS RETENÇÕES PRÓPRIAS DO TESOURO (IR e ISS do próprio ente): não são consignação. A perna do
+   * pagamento credita o CRÉDITO TRIBUTÁRIO (1.1.2.1) que a guia de receita por retenção, na mesma
+   * transação, reconhece — o banco sai só pelo líquido. Ausente ou vazio = nenhuma.
+   */
+  readonly proprias?: readonly RetencaoPropriaParaCompor[] | undefined;
 }
+
+/** V26 — os fatos de retenção que podem ser receita própria do Tesouro (CHECK no banco, mesmo rol). */
+export const FATOS_DA_RETENCAO_PROPRIA = ["IRRF_FOLHA", "IRRF_FORNECEDOR_PJ", "ISS"] as const;
+export type FatoDaRetencaoPropria = (typeof FATOS_DA_RETENCAO_PROPRIA)[number];
+
+/** O rótulo do fato, como o servidor municipal o lê. */
+export const ROTULO_DO_FATO_PROPRIO: Readonly<Record<FatoDaRetencaoPropria, string>> = {
+  IRRF_FOLHA: "IR retido na folha de pagamento",
+  IRRF_FORNECEDOR_PJ: "IR retido de fornecedor pessoa jurídica",
+  ISS: "ISS retido de prestador de serviço",
+};
+
+/**
+ * V26 — uma retenção própria, com tudo o que o pagamento e a guia de receita precisam. A classificação
+ * (natureza, destinação, contas, titular) foi lida da DECISÃO VIGENTE do ente; nada aqui vem do navegador.
+ */
+export interface RetencaoPropriaParaCompor {
+  readonly fato: FatoDaRetencaoPropria;
+  readonly classificacaoId: string;
+  readonly valor: Money;
+  /** Conta analítica do crédito tributário a receber (1.1.2.1...): a perna do pagamento. */
+  readonly contaCredito: string;
+  /** Conta analítica da VPA do imposto (4.1.1...): a perna do reconhecimento, na guia. */
+  readonly contaVpa: string;
+  readonly naturezaReceitaCodigo: string;
+  readonly fonteCodigo: string;
+  readonly entidadeTitularId: string | null;
+  /** Folha: o grupo de empenho cujo IR é retido. */
+  readonly grupoDaFolhaId?: string | undefined;
+}
+
+/** A família do crédito tributário a receber no PCASP: a perna do pagamento só pode ir para ela. */
+export const FAMILIA_DO_CREDITO_TRIBUTARIO = "1.1.2.1.";
+/** As famílias da VPA de impostos: sobre a renda (4.1.1.2) e sobre produção e circulação (4.1.1.3). */
+export const FAMILIA_DA_VPA_DO_FATO: Readonly<Record<FatoDaRetencaoPropria, string>> = {
+  IRRF_FOLHA: "4.1.1.2.",
+  IRRF_FORNECEDOR_PJ: "4.1.1.2.",
+  ISS: "4.1.1.3.",
+};
 
 /**
  * O que a persistência precisa de uma retenção.
@@ -376,6 +421,8 @@ export interface PagamentoComposto {
    * execução orçamentária da ficha; ele só transita pelo caixa dela.
    */
   readonly partidasRetencao: readonly Partida[];
+  /** V26 — as pernas do crédito tributário das retenções próprias. SEM ficha, como as do passivo. */
+  readonly partidasProprias: readonly Partida[];
   readonly retencoes: readonly RetencaoDoPagamento[];
   /** O valor do Pagamento e das pernas não-caixa. */
   readonly valorBruto: Money;
@@ -396,15 +443,18 @@ export function comporPagamentoComRetencoes(p: {
   readonly roteiro: RoteiroContabil;
   readonly contaDisponibilidade?: string | undefined;
   readonly retencoes: readonly RetencaoDoPagamentoInput[];
+  readonly proprias?: readonly RetencaoPropriaParaCompor[] | undefined;
 }): PagamentoComposto {
   const zero = toMoney("0.00");
+  const proprias = p.proprias ?? [];
 
   // CAMINHO DE SEMPRE: sem retenção, o roteiro inteiro recebe o bruto.
-  if (p.retencoes.length === 0) {
+  if (p.retencoes.length === 0 && proprias.length === 0) {
     return {
       partidas: comporPartidas(p.valorBruto, p.roteiro),
       partidasPagamento: comporPartidas(p.valorBruto, p.roteiro),
       partidasRetencao: [],
+      partidasProprias: [],
       retencoes: [],
       valorBruto: p.valorBruto,
       totalRetido: zero,
@@ -427,6 +477,24 @@ export function comporPagamentoComRetencoes(p: {
       );
     }
     chaves.add(chave);
+  }
+  const fatos = new Set<string>();
+  for (const r of proprias) {
+    if (fatos.has(r.fato)) {
+      throw new Error(`Retenção própria DUPLICADA no mesmo pagamento (${ROTULO_DO_FATO_PROPRIO[r.fato]}). Some as duas numa só. Nada foi gravado.`);
+    }
+    fatos.add(r.fato);
+    if (!r.valor.greaterThan(0)) {
+      throw new Error(`A retenção própria (${ROTULO_DO_FATO_PROPRIO[r.fato]}) tem de ser maior que zero. Nada foi gravado.`);
+    }
+    // A perna do pagamento extingue o CRÉDITO TRIBUTÁRIO que a guia reconhece — nunca um passivo, nunca o
+    // banco. Uma conta fora da família faria o lançamento fechar e o imposto sumir do lugar dele.
+    if (!r.contaCredito.startsWith(FAMILIA_DO_CREDITO_TRIBUTARIO)) {
+      throw new Error(`A conta ${r.contaCredito} não é de crédito tributário a receber (${FAMILIA_DO_CREDITO_TRIBUTARIO}...): a retenção própria (${ROTULO_DO_FATO_PROPRIO[r.fato]}) não pode sair por ela. Nada foi gravado.`);
+    }
+    if (!r.contaVpa.startsWith(FAMILIA_DA_VPA_DO_FATO[r.fato])) {
+      throw new Error(`A conta ${r.contaVpa} não é da VPA do imposto (${FAMILIA_DA_VPA_DO_FATO[r.fato]}...) para ${ROTULO_DO_FATO_PROPRIO[r.fato]}. Nada foi gravado.`);
+    }
   }
 
   if (p.contaDisponibilidade === undefined) {
@@ -454,8 +522,8 @@ export function comporPagamentoComRetencoes(p: {
     );
   }
 
-  const totalRetido = retencoes.reduce(
-    (acc, r) => toMoney(acc.plus(r.valor)),
+  const totalRetido = [...retencoes.map((r) => toMoney(r.valor)), ...proprias.map((r) => r.valor)].reduce(
+    (acc, v) => toMoney(acc.plus(v)),
     zero
   );
   const valorLiquido = toMoney(p.valorBruto.minus(totalRetido));
@@ -488,16 +556,26 @@ export function comporPagamentoComRetencoes(p: {
     valor: r.valor,
   }));
 
+  // V26 — uma perna por retenção própria, no crédito tributário que a guia de receita reconhece.
+  const partidasProprias: readonly Partida[] = proprias.map((r) => ({
+    conta: r.contaCredito,
+    tipo: "CREDITO",
+    subsistema: "PATRIMONIAL",
+    valor: r.valor,
+  }));
+
   // O JUIZ é o motor do ledger, sobre o lançamento COMPOSTO final.
   const partidas = validarLancamento([
     ...partidasPagamento,
     ...partidasRetencao,
+    ...partidasProprias,
   ]);
 
   return {
     partidas,
     partidasPagamento,
     partidasRetencao,
+    partidasProprias,
     retencoes,
     valorBruto: p.valorBruto,
     totalRetido,

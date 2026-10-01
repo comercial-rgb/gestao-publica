@@ -801,7 +801,7 @@ export async function lerFatosEstornoRetencao(
     },
     orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
   });
-  return movs.map((m) => {
+  const deConsignacao = movs.map((m) => {
     const numero = numeros.get(m.id);
     if (m.pagamento === null || numero === undefined) {
       throw new Error(`SAGRES/EstornoRetencao — o estorno ${m.id} não aponta o pagamento de origem, ou ficou fora da numeração.`);
@@ -818,6 +818,33 @@ export async function lerFatosEstornoRetencao(
       valor: money(m.valor),
     };
   });
+  // V26 — o estorno da retenção própria (a anulação do pagamento desfez a guia por retenção).
+  const proprias = await prisma.retencaoPropriaDoPagamento.findMany({
+    where: { estornoDeId: { not: null }, receitaArrecadada: { dataArrecadacao: { gte, lt } }, pagamento: { movimentosRestos: { none: {} } } },
+    include: {
+      classificacao: { include: { tipoConsignacao: true } },
+      pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } },
+    },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return [
+    ...deConsignacao,
+    ...proprias.map((r) => {
+      const numero = numeros.get(r.id);
+      if (numero === undefined) throw new Error(`SAGRES/EstornoRetencao — o estorno da retenção própria ${r.id} ficou fora da numeração.`);
+      const ficha = r.pagamento.liquidacao.empenho.ficha;
+      return {
+        codUnidadeGestora: params.codUnidadeGestora,
+        anoEmissaoEmpenho: ficha.exercicio,
+        codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+        numEmpenho: r.pagamento.liquidacao.empenho.numero,
+        numPagamento: r.pagamento.numero,
+        tipoConsignacaoCodigo: r.classificacao.tipoConsignacao.codigo,
+        numero,
+        valor: money(r.valor),
+      };
+    }),
+  ];
 }
 
 export async function gerarEstornoRetencao(
@@ -1147,7 +1174,7 @@ export async function lerFatosRetencao(
     },
     orderBy: [{ data: "asc" }, { id: "asc" }],
   });
-  return movs.map((m) => {
+  const deConsignacao = movs.map((m) => {
     // O `where` já exige pagamentoId != null; o Prisma tipa a relação como opcional. Fail-closed.
     if (m.pagamento === null) {
       throw new Error(`SAGRES/Retencao — o movimento ${m.id} tem pagamentoId mas a relação não carregou.`);
@@ -1163,6 +1190,33 @@ export async function lerFatosRetencao(
       tipoConsignacaoCodigo: m.tipoConsignacao.codigo,
     };
   });
+  // ═══ V26 — A RETENÇÃO DO IR E DO ISS DO PRÓPRIO MUNICÍPIO ═══
+  // Continua sendo retenção do pagamento (tipo 1 ISS, tipo 2 IRRF pelo mesmo de-para): o que mudou é que o
+  // valor retido virou RECEITA (§4.16, a guia por retenção) em vez de consignação. São dois aspectos do
+  // mesmo fato, não duas arrecadações. O tipo é o da consignação que a classificação do ente aponta.
+  const proprias = await prisma.retencaoPropriaDoPagamento.findMany({
+    where: { estornoDeId: null, receitaArrecadada: { dataArrecadacao: { gte, lt } }, pagamento: { movimentosRestos: { none: {} } } },
+    include: {
+      classificacao: { include: { tipoConsignacao: true } },
+      pagamento: { include: { liquidacao: { include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } } } } },
+    },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  return [
+    ...deConsignacao,
+    ...proprias.map((r) => {
+      const ficha = r.pagamento.liquidacao.empenho.ficha;
+      return {
+        codUnidadeGestora: params.codUnidadeGestora,
+        anoEmissaoEmpenho: ficha.exercicio,
+        codUnidadeOrcamentaria: ficha.unidadeOrc.codigo,
+        numEmpenho: r.pagamento.liquidacao.empenho.numero,
+        numPagamento: r.pagamento.numero,
+        valor: money(r.valor),
+        tipoConsignacaoCodigo: r.classificacao.tipoConsignacao.codigo,
+      };
+    }),
+  ];
 }
 
 export async function gerarRetencao(
@@ -1188,16 +1242,28 @@ async function numeracaoNoExercicio(
   where: { readonly tipo: "INGRESSO" | "DISPENDIO" | "ESTORNO_INGRESSO" | "ESTORNO_DISPENDIO"; readonly comPagamento?: boolean },
   exercicio: number
 ): Promise<ReadonlyMap<string, string>> {
+  const doAno = { gte: new Date(Date.UTC(exercicio, 0, 1)), lt: new Date(Date.UTC(exercicio + 1, 0, 1)) };
   const doExercicio = await prisma.movimentoExtraorcamentario.findMany({
     where: {
       tipo: where.tipo,
-      data: { gte: new Date(Date.UTC(exercicio, 0, 1)), lt: new Date(Date.UTC(exercicio + 1, 0, 1)) },
+      data: doAno,
       ...(where.comPagamento === true ? { pagamentoId: { not: null } } : {}),
     },
-    select: { id: true },
+    select: { id: true, criadoEm: true },
     orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
   });
-  return new Map(doExercicio.map((m, i) => [m.id, String(i + 1)]));
+  // ⚠️ V26 — O ESTORNO DA RETENÇÃO PRÓPRIA ENTRA NO MESMO ESPAÇO de números dos estornos de retenção de
+  // pagamento (EstornoRetencao e EstornoRetencaoRestos leem este mapa). Entra pela ordem de gravação: como as
+  // duas tabelas são append-only e as linhas novas sempre chegam depois, nenhum número já exportado muda.
+  const proprias =
+    where.tipo === "ESTORNO_INGRESSO" && where.comPagamento === true
+      ? await prisma.retencaoPropriaDoPagamento.findMany({
+          where: { estornoDeId: { not: null }, receitaArrecadada: { dataArrecadacao: doAno } },
+          select: { id: true, criadoEm: true },
+        })
+      : [];
+  const todos = [...doExercicio, ...proprias].sort((a, b) => a.criadoEm.getTime() - b.criadoEm.getTime() || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  return new Map(todos.map((m, i) => [m.id, String(i + 1)]));
 }
 
 // ── DESPESAEXTRA (Diária) — Origem: MovimentoExtraorcamentario DISPENDIO. ───────────────────────

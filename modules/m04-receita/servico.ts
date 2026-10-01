@@ -114,9 +114,17 @@ async function resolverContas(
  * chamador que passe isto está driblando o guard — e o grep de `origem:` mostra
  * exatamente quem.
  */
-export interface OrigemInterna {
-  readonly origem: "OPERACAO_COMPOSTA_M10";
-}
+export type OrigemInterna =
+  | { readonly origem: "OPERACAO_COMPOSTA_M10" }
+  /**
+   * V26 — A RECEITA DE UMA RETENÇÃO PRÓPRIA DO TESOURO, nascida DENTRO da transação do pagamento
+   * (`modules/m04-receita/receita-por-retencao.ts`). Não é ato do usuário: é perna do pagamento, que já
+   * foi autorizado (PAGAR) — "quem paga, retém", a mesma regra da consignação e da amortização. Cobrar
+   * REGISTRAR_ARRECADACAO do tesoureiro aqui partiria o pagamento ao meio por falta de um crachá que o ato
+   * não pede. A entidade titular vem da classificação do ente (não há conta bancária na guia: o dinheiro
+   * retido nunca saiu do caixa que pagou).
+   */
+  | { readonly origem: "RETENCAO_PROPRIA_NO_PAGAMENTO"; readonly entidadeTitularId: string | null };
 
 /**
  * V16/C30 — RESOLVE A DISTRIBUIÇÃO: soma, fontes, previsão da LOA, autorização e coerência.
@@ -284,11 +292,13 @@ export async function registrarArrecadacao(
   // ÚNICA autorização que roda, DENTRO da transação dela: `criarM04DepsNaTx(tx)` monta a porta
   // sobre a tx. Os linkers (`receberNaTx`, `ingressoNaTx`) não são atos do usuário — são
   // pernas do mesmo fato, e autorizá-los de novo seria cobrar duas vezes pela mesma coisa.
-  await deps.autz.exigir(
-    dados.criadoPor,
-    ACAO_DO_SERVICO.registrarArrecadacao,
-    "ENTE"
-  );
+  if (interno?.origem !== "RETENCAO_PROPRIA_NO_PAGAMENTO") {
+    await deps.autz.exigir(
+      dados.criadoPor,
+      ACAO_DO_SERVICO.registrarArrecadacao,
+      "ENTE"
+    );
+  }
 
   // 2. Classificação existe? (fail-closed — nunca cria implicitamente)
   const resolucao = await deps.classificacao.resolver({
@@ -376,6 +386,12 @@ export async function registrarArrecadacao(
     // é, e a consulta mostra exatamente isso. Barrar aqui pararia a arrecadação inteira para
     // cobrar um cadastro; inventar um titular seria pior.
     entidadeTitularId = conta.entidadeTitularId ?? undefined;
+  }
+  if (interno?.origem === "RETENCAO_PROPRIA_NO_PAGAMENTO") {
+    if (dados.contaBancaria !== undefined) {
+      throw new Error("A receita por retenção não declara conta bancária: o valor retido não entrou em conta nenhuma, ele deixou de sair. Nada foi gravado.");
+    }
+    entidadeTitularId = interno.entidadeTitularId ?? undefined;
   }
 
   // ═══ 3b. A ENTRADA LATERAL — TR do M10 (dívida e dívida ativa) ═══
@@ -487,7 +503,9 @@ async function confrontarPrevisao(
  */
 export async function anularArrecadacao(
   input: AnularArrecadacaoInput,
-  deps: M04Deps
+  deps: M04Deps,
+  /** V26 — a anulação do PAGAMENTO desfaz a receita da retenção própria dele, na mesma transação. */
+  interno?: { readonly origem: "ANULACAO_DO_PAGAMENTO" }
 ): Promise<{ readonly receitaId: string; readonly lancamentoId: string }> {
   const dados = zAnularArrecadacaoInput.parse(input);
 
@@ -498,15 +516,25 @@ export async function anularArrecadacao(
   // A cascata roda com ESTA autorização, a do ato original, e não pede outra. Ver t3: exigir
   // uma permissão própria para cada perna partiria a anulação ao meio — o dinheiro desfeito no
   // razão e a dívida do contribuinte ainda baixada. Ele teria "pago" sem ter pago.
-  await deps.autz.exigir(
-    dados.criadoPor,
-    ACAO_DO_SERVICO.anularArrecadacao,
-    "ENTE"
-  );
+  if (interno === undefined) {
+    await deps.autz.exigir(
+      dados.criadoPor,
+      ACAO_DO_SERVICO.anularArrecadacao,
+      "ENTE"
+    );
+  }
 
   const original = await deps.receitas.buscar(dados.receitaId);
   if (original === null) {
     throw new Error(`Receita ${dados.receitaId} não encontrada.`);
+  }
+  // V26 — a receita da retenção própria é perna do pagamento. Anulá-la sozinha deixaria o pagamento dizendo
+  // que reteve um imposto que a receita não tem mais (e o crédito tributário em aberto, sem caixa nenhum).
+  if (original.nascidaDeRetencao && interno === undefined) {
+    throw new Error(
+      `A receita ${original.numeroReceita} é o imposto retido num pagamento: ela só é desfeita junto com ele. ` +
+        `Anule o pagamento, e a receita é anulada na mesma operação. Nada foi gravado.`
+    );
   }
   if (original.tipo === "ANULACAO") {
     throw new Error(

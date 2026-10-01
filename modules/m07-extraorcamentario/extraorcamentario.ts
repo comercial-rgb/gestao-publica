@@ -1,4 +1,5 @@
 import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
+import { ehTributoDoProprioTesouro } from "./retencao-propria.js";
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -234,6 +235,21 @@ export async function registrarIngressoExtra(
     // ⚠️ MESMA REGRA DO DISPÊNDIO, e ela faltava aqui: a fonte tem de estar NO ROL da
     // conta. Receber caução numa conta que não comporta aquela fonte é a mesma mistura de
     // dinheiro vinculado que o dispêndio já barrava na saída.
+    // V26 — imposto do próprio Tesouro não entra como dinheiro de terceiro.
+    if (
+      (await ehTributoDoProprioTesouro(tx, {
+        tipoConsignacaoId: tipo.id,
+        credorConsignatario: dados.credorConsignatario,
+        contaBancariaId: conta.id,
+        data: dados.data,
+      })) !== null
+    ) {
+      throw new Error(
+        `${tipo.codigo} de ${dados.credorConsignatario} é imposto do próprio município: ele entra como receita, não como ` +
+          `dinheiro de terceiro. Nada foi gravado.`
+      );
+    }
+
     await exigirFonteNoRolDaConta(
       tx,
       { id: conta.id },
@@ -310,6 +326,24 @@ export async function registrarDispendioExtra(
     // ⚠️ "NO ROL", e não "igual à da conta" — a conta admite várias fontes desde o
     // ADR de 2026-09-10. A regra mora em `m05-despesa/guard-fonte.ts`, uma vez.
     await exigirFonteNoRolDaConta(tx, { id: conta.id }, dados.fonteId, "dispêndio extraorçamentário");
+
+    // ═══ V26 — O IR E O ISS DO PRÓPRIO TESOURO NÃO SE "RECOLHEM" COM SAÍDA DE BANCO ═══
+    // O saldo é imposto do próprio município retido no mesmo perímetro: tirar dinheiro do caixa para pagá-lo
+    // a si mesmo deixaria a receita sem aparecer e o caixa menor. INSS, ISS de outro município e o repasse
+    // real de outra entidade ao Tesouro passam (ver `ehTributoDoProprioTesouro`).
+    const proprio = await ehTributoDoProprioTesouro(tx, {
+      tipoConsignacaoId: tipo.id,
+      credorConsignatario: dados.credorConsignatario,
+      contaBancariaId: conta.id,
+      data: dados.data,
+    });
+    if (proprio !== null) {
+      throw new Error(
+        `O saldo de ${tipo.codigo} de ${dados.credorConsignatario} é imposto do próprio município, retido nos pagamentos: ` +
+          `ele não é recolhido com saída de dinheiro do banco. Regularize-o como receita em Financeiro › Retenções ` +
+          `do próprio município. Nada foi gravado.`
+      );
+    }
 
     // FAIL-CLOSED: não se repassa mais do que se reteve. O saldo sai do SUM real
     // (com os sinais), DENTRO da transação.

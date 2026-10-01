@@ -186,6 +186,7 @@ export async function pagar(
       ? { contaDisponibilidade: retencoes.contaDisponibilidade }
       : {}),
     retencoes: retencoes?.retencoes ?? [],
+    proprias: retencoes?.proprias ?? [],
   });
 
   const partidasParaPersistir = [
@@ -198,6 +199,11 @@ export async function pagar(
     // não é execução orçamentária da ficha — ele só transita pelo caixa dela.
     ...(composto.partidasRetencao.length > 0
       ? await resolverContas(composto.partidasRetencao, undefined, deps)
+      : []),
+    // V26 — o crédito tributário da retenção própria, também sem ficha: é receita do Tesouro, não execução
+    // da ficha que pagou.
+    ...(composto.partidasProprias.length > 0
+      ? await resolverContas(composto.partidasProprias, undefined, deps)
       : []),
   ];
 
@@ -234,6 +240,10 @@ export async function pagar(
       // V24 — a memória do cálculo vai junto, para nascer na mesma transação.
       ...(retencoes?.calculos !== undefined
         ? { calculosDaRetencao: retencoes.calculos }
+        : {}),
+      // V26 — a receita das retenções próprias nasce na mesma transação.
+      ...((retencoes?.proprias ?? []).length > 0
+        ? { retencoesProprias: retencoes?.proprias }
         : {}),
     },
     {

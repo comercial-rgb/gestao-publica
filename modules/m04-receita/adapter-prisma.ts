@@ -278,6 +278,8 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
           },
           // "já foi anulada?" sai DAQUI — não de um campo mutável.
           estornos: { select: { id: true } },
+          // V26 — a guia que nasceu de uma retenção própria num pagamento só se anula com ele.
+          retencaoPropria: { select: { id: true } },
           lancamento: {
             select: {
               id: true,
@@ -337,6 +339,7 @@ function leiturasDaReceita(prisma: Tx): Omit<ReceitaRepositoryPort, "persistir">
         },
         contaBancariaId: r.contaBancariaId,
         entidadeTitularId: r.entidadeTitularId,
+        nascidaDeRetencao: r.retencaoPropria !== null,
         distribuicao: r.distribuicao.map((d) => ({
           fonteId: d.fonteId,
           exercicioFonte: d.exercicioFonte,

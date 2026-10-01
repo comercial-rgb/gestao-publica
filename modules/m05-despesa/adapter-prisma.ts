@@ -33,6 +33,11 @@ import {
   registrarRetencoesDoPagamento,
   registrarCalculosDaRetencao,
 } from "../m07-extraorcamentario/retencao.js";
+// V26 — a receita das retenções próprias do Tesouro nasce e morre na transação do pagamento.
+import {
+  anularReceitasPorRetencaoNaTx,
+  registrarReceitasPorRetencaoNaTx,
+} from "../m04-receita/receita-por-retencao.js";
 // A derivação de "é despesa de capital?" é do M10 — reusada, nunca recopiada.
 import {
   descricaoDoGrupo,
@@ -1559,6 +1564,7 @@ export function criarDespesaRepositoryPrisma(
             anulacaoParcialDeId: true,
             estornos: { select: { id: true } },
             retencoes: { select: { id: true } },
+            retencoesProprias: { select: { id: true } },
             movimentosDivida: { select: { id: true } },
           },
         });
@@ -1573,7 +1579,7 @@ export function criarDespesaRepositoryPrisma(
         }
 
         // ═══ PORTA FECHADA 1: RETENÇÃO (M07) ═══
-        if (original.retencoes.length > 0) {
+        if (original.retencoes.length > 0 || original.retencoesProprias.length > 0) {
           throw new Error(
             `ANULAÇÃO PARCIAL DE PAGAMENTO COM RETENÇÃO É PROIBIDA ` +
               `(${original.numero}): o lançamento é COMPOSTO — o caixa levou o ` +
@@ -2299,6 +2305,7 @@ export function criarDespesaRepositoryPrisma(
             criadoPor: p.criadoPor,
             calculos: p.calculosDaRetencao,
             movimentos: idsDasRetencoes.map((id, i) => ({ id, tipoConsignacaoId: retencoes[i]!.tipoConsignacaoId, valor: retencoes[i]!.valor })),
+            proprias: (p.retencoesProprias ?? []).map((r) => ({ fato: r.fato, valor: r.valor })),
           });
         }
 
@@ -2360,6 +2367,24 @@ export function criarDespesaRepositoryPrisma(
             ...(p.justificativaOrdemConstitucional !== undefined
               ? { justificativaQuebraDeOrdem: p.justificativaOrdemConstitucional }
               : {}),
+          });
+        }
+
+        // ═══ V26 — A RECEITA DAS RETENÇÕES PRÓPRIAS, ÚLTIMA PERNA DA TRANSAÇÃO ═══
+        // O lançamento acima já creditou o crédito tributário de cada uma; aqui nasce a guia que o
+        // reconhece e arrecada (VPA, receita realizada, controle da disponibilidade) e o elo com o pagamento.
+        // ÚLTIMA porque o número da guia é o posto mais alto da ordem de locks. Se falhar, nada existe.
+        if (p.retencoesProprias !== undefined && p.retencoesProprias.length > 0) {
+          await registrarReceitasPorRetencaoNaTx(tx, {
+            pagamentoId: pag.id,
+            numeroDoPagamento: p.numero,
+            data: p.data,
+            criadoPor: p.criadoPor,
+            // A memória de cada uma vem do cálculo do mesmo tributo (IR de PJ → IRRF, ISS → ISS).
+            proprias: p.retencoesProprias.map((r) => {
+              const c = (p.calculosDaRetencao ?? []).find((x) => (r.fato === "IRRF_FORNECEDOR_PJ" ? x.tributo === "IRRF" : x.tributo === r.fato) && x.valor.equals(r.valor));
+              return c === undefined ? r : { ...r, memoria: { base: c.base, aliquota: c.aliquota, fundamento: c.fundamento, entrada: c.entrada } };
+            }),
           });
         }
 
@@ -2506,6 +2531,14 @@ export function criarDespesaRepositoryPrisma(
           lancamentoEstornoId: lancamento.id,
           data: p.data,
           motivo: `Anulação do pagamento (${p.numero}).`,
+          criadoPor: p.criadoPor,
+        });
+
+        // V26 — a receita da retenção própria morre com o pagamento: a guia é anulada (o lançamento acima
+        // já inverteu a perna do crédito tributário) e o elo ganha a linha de estorno.
+        await anularReceitasPorRetencaoNaTx(tx, {
+          pagamentoOriginalId: original.id,
+          data: p.data,
           criadoPor: p.criadoPor,
         });
 

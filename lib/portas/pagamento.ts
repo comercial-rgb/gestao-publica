@@ -302,7 +302,7 @@ export async function registrarPagamento(input: {
   // outra conta no razão — e a conciliação de X nunca fechava. "Nenhum código no código."
   const conta = await cliente().contaBancaria.findUnique({
     where: { codigo: input.contaBancaria },
-    select: { codigo: true, contaContabil: { select: { codigo: true } } },
+    select: { id: true, codigo: true, contaContabil: { select: { codigo: true } } },
   });
   if (conta === null) throw new Error(`Conta bancária ${input.contaBancaria} não cadastrada. Nada foi gravado.`);
   if (conta.contaContabil === null) {
@@ -328,8 +328,9 @@ export async function registrarPagamento(input: {
               valorDoPagamento: toMoney(input.valor),
               data: input.data,
               operacao,
+              contaBancariaId: conta.id,
             });
-            return { contaDisponibilidade: contaContabilDaConta, retencoes: p.retencoes, calculos: p.calculos };
+            return { contaDisponibilidade: contaContabilDaConta, retencoes: p.retencoes, calculos: p.calculos, proprias: p.proprias };
           })();
     const r = await pagar(
       {

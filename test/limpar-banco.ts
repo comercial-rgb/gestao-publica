@@ -425,6 +425,9 @@ export const TABELAS = [
   "LancamentoExtrato",
   "ExtratoBancario",
   // M07 — extraorçamentário
+  // V26 — a retenção própria do Tesouro (elo pagamento → receita) e a classificação do ente.
+  "RetencaoPropriaDoPagamento",
+  "ClassificacaoDaRetencaoPropria",
   // V24 — retenção calculada: a memória, o perfil fiscal e as tabelas normativas.
   "CalculoDaRetencao",
   "PerfilFiscalDoFornecedor",
