@@ -175,3 +175,41 @@ describe("os predicados dos atos sobre os encargos", () => {
     expect(cod(elegibilidadeParaLiquidarEncargos({ ...empenhada, certificacao: "CERTIFICADA", liquidados: 2 }, { apurou: false, certificou: false, designado: null }))).toBe("NAO_APLICAVEL:ENCARGOS-JA-LIQUIDADOS");
   });
 });
+
+describe("V24 — o FAP sobre o RAT (Lei 10.666/2003, art. 10; Decreto 3.048/1999, art. 202-A)", () => {
+  const RAT_COM_FAP = [versao({ id: "vp-1", componenteId: "c-patr", aliquota: "0.20" }), versao({ id: "vr-fap", componenteId: "c-rat", aliquota: "0.02", aplicaFap: true }), versao({ id: "vs-1", componenteId: "c-rpps", aliquota: "0.11", rubricasIncidentes: ["r-venc"] })];
+  const com = (fap?: Parameters<typeof apurarEncargos>[0]["fap"], versoes = RAT_COM_FAP) =>
+    apurarEncargos({ competencia: "2026-05", calculo: { numero: 1, sha256: "a".repeat(64) }, contracheques: CC, componentes: [PATR, RAT, RPPS], versoes, ...(fap === undefined ? {} : { fap }) });
+  const item = (r: ReturnType<typeof com>, m: string) => r.itens.find((i) => i.matricula === m && i.componente === "RGPS-RAT");
+
+  it("RAT 2% × FAP 1,2345 = 2,469%: MAT-A 3.500,00 → 86,42; MAT-B 2.000,03 → 49,38 (N=2)", () => {
+    const r = com({ fator: new Decimal("1.2345"), fonte: "consulta ao FAP 2026" });
+    // 3500 × 0,02 × 1,2345 = 3500 × 0,02469 = 86,415 → meio-par: 86,42
+    expect(item(r, "MAT-A")?.valor).toBe("86.42");
+    // 2000,03 × 0,02469 = 49,3807407 → 49,38
+    expect(item(r, "MAT-B")?.valor).toBe("49.38");
+    expect(item(r, "MAT-A")?.aliquota).toBe("0.0200");
+    expect(item(r, "MAT-A")?.fap).toBe("1.2345");
+    expect(item(r, "MAT-A")?.aliquotaAjustada).toBe("0.024690");
+    expect(item(r, "MAT-A")?.fundamentacao).toMatch(/FAP 1\.2345 \(consulta ao FAP 2026\)/);
+    expect(r.completa).toBe(true);
+  });
+
+  it("sem FAP, o RAT que o aplica fica AUSENTE com o motivo — e a apuração não se completa; os outros componentes seguem", () => {
+    const sem = com();
+    expect(item(sem, "MAT-A")?.situacao).toBe("PARAMETRO_AUSENTE");
+    expect(item(sem, "MAT-A")?.motivo).toBe("FAP: não informado");
+    expect(sem.completa).toBe(false);
+    expect(sem.itens.find((i) => i.matricula === "MAT-A" && i.componente === "RGPS-PATRONAL")?.valor).toBe("700.00");
+    const motivo = com({ motivo: "nenhum FAP aprovado para o CNPJ 12345678000195 em 2026" });
+    expect(item(motivo, "MAT-B")?.motivo).toBe("FAP: nenhum FAP aprovado para o CNPJ 12345678000195 em 2026");
+  });
+
+  it("a versão que não aplica o FAP calcula igual com ou sem ele — e a memória (sha256) não muda", () => {
+    const antes = apurar();
+    const comFap = com({ fator: new Decimal("1.5000"), fonte: "x" }, VERSOES);
+    expect(item(comFap, "MAT-A")?.valor).toBe("52.50");
+    expect(item(comFap, "MAT-A")?.fap).toBeUndefined();
+    expect(comFap.sha256).toBe(antes.sha256);
+  });
+});

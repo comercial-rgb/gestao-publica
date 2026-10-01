@@ -21,6 +21,8 @@ import {
   apropriarEncargosDaFolha,
   apurarEncargosDaFolha,
   aprovarVersaoDoEncargo,
+  aprovarFatorAcidentario,
+  cadastrarFatorAcidentario,
   cadastrarComponenteDeEncargo,
   cadastrarGrupoDosEncargos,
   cadastrarVersaoDoEncargo,
@@ -214,6 +216,22 @@ describe("(2) a apuração sobre a folha fechada", () => {
     expect(r.complementar).toBe(false);
     // ⚠️ A FOLHA SALARIAL NÃO MUDOU: cálculo, contracheques (sha e líquido) e empenhos salariais.
     expect(await fotografiaDaFolhaSalarial()).toBe(antes);
+  });
+
+  it("V24 — RAT 2% com FAP: sem FAP aprovado a apuração fica incompleta nomeando o CNPJ; aprovado 1,2345, o RAT vira 86,42 + 56,79", async () => {
+    await versaoAprovada(compPatr, "0.20");
+    const { versaoId } = await cadastrarVersaoDoEncargo(prisma, { componenteId: compRat, competenciaInicio: "2026-01", aliquota: "0.02", aplicaFap: true, fundamentacaoLegal: "Lei 8.212/1991, art. 22, II; Lei 10.666/2003, art. 10", sintetica: false, rubricaIds: [rubricaVenc, rubricaHext], criadoPor: RH });
+    await aprovarVersaoDoEncargo(prisma, { versaoId, criadoPor: APROVADOR });
+    const sem = await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    expect(sem.completa).toBe(false);
+    const memoria = (await prisma.apuracaoDeEncargos.findUniqueOrThrow({ where: { id: sem.apuracaoId }, select: { memoria: true } })).memoria as { itens: { componente: string; motivo?: string }[] };
+    expect(memoria.itens.filter((i) => i.componente === "RGPS-RAT").map((i) => i.motivo)).toEqual(["FAP: nenhum FAP aprovado para o CNPJ 08993917000146 em 2026", "FAP: nenhum FAP aprovado para o CNPJ 08993917000146 em 2026"]);
+    const { fatorId } = await cadastrarFatorAcidentario(prisma, { cnpj: "08993917000146", ano: 2026, fator: "1.2345", fonte: "Consulta ao FAP 2026 em 10/01/2026", criadoPor: RH });
+    await aprovarFatorAcidentario(prisma, { fatorId, criadoPor: APROVADOR });
+    const com = await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: RH });
+    expect(com.completa).toBe(true);
+    // 3500 × 0,02 × 1,2345 = 86,415 → 86,42; 2300 × 0,02469 = 56,787 → 56,79
+    expect(com.porComponente.find((p) => p.codigo === "RGPS-RAT")?.total).toBe("143.21");
   });
 
   it("PARÂMETRO AUSENTE: a apuração é gravada INCOMPLETA, e o atesto e o empenho recusam com o motivo", async () => {

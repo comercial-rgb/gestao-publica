@@ -351,6 +351,9 @@ export const TABELAS = [
   "CertificacaoDosEncargos",
   "ApuracaoDeEncargos",
   "ComponenteDoGrupoDeEmpenho",
+  // V24 — o FAP e a aprovação dele.
+  "AprovacaoDoFatorAcidentario",
+  "FatorAcidentarioDePrevencao",
   "AprovacaoDoEncargo",
   "IncidenciaDoEncargo",
   "VersaoDoEncargo",

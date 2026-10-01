@@ -52,7 +52,12 @@ export interface VersaoParaApurar {
   readonly fundamentacaoLegal: string;
   readonly sintetica: boolean;
   readonly aprovada: boolean;
+  /** V24 — a alíquota é a do RAT e o cálculo a multiplica pelo FAP (Decreto 3.048/1999, art. 202-A). */
+  readonly aplicaFap?: boolean;
 }
+
+/** V24 — o FAP aprovado do CNPJ do ente no ano da competência, ou o motivo de não haver. */
+export type FapParaApurar = { readonly fator: Decimal; readonly fonte: string } | { readonly motivo: string };
 
 export interface ContrachequeParaApurar {
   readonly vinculoId: string;
@@ -78,6 +83,9 @@ export interface ItemDaApuracao {
   readonly rubricasNaBase?: readonly { readonly codigo: string; readonly valor: string }[];
   readonly fundamentacao?: string;
   readonly sintetica?: boolean;
+  /** V24 — o FAP aplicado e a alíquota ajustada (RAT × FAP), quando a versão o aplica. */
+  readonly fap?: string;
+  readonly aliquotaAjustada?: string;
 }
 
 export interface ResumoDoComponente {
@@ -126,6 +134,8 @@ export function apurarEncargos(e: {
   readonly contracheques: readonly ContrachequeParaApurar[];
   readonly componentes: readonly ComponenteParaApurar[];
   readonly versoes: readonly VersaoParaApurar[];
+  /** V24 — exigido só quando alguma versão vigente aplica o FAP. */
+  readonly fap?: FapParaApurar;
 }): ApuracaoCalculada {
   const componentes = [...e.componentes].sort((a, b) => a.codigo.localeCompare(b.codigo));
   const contracheques = [...e.contracheques].sort((a, b) => a.matricula.localeCompare(b.matricula));
@@ -148,7 +158,18 @@ export function apurarEncargos(e: {
       const baseIncidente = sumMoney(naBase.map((l) => l.valor));
       const tetoAplicado = v.versao.teto !== null && baseIncidente.gt(v.versao.teto);
       const baseFinal = tetoAplicado && v.versao.teto !== null ? v.versao.teto : baseIncidente;
-      const valor = toMoney(baseFinal.times(v.versao.aliquota));
+      // V24 — RAT × FAP. Sem FAP aprovado, o item fica AUSENTE: a alíquota sem o fator não é a devida.
+      let aliquotaEfetiva = v.versao.aliquota;
+      let fapAplicado: { readonly fator: Decimal; readonly fonte: string } | null = null;
+      if (v.versao.aplicaFap === true) {
+        if (e.fap === undefined || "motivo" in e.fap) {
+          itens.push({ ...base, situacao: "PARAMETRO_AUSENTE", motivo: `FAP: ${e.fap === undefined ? "não informado" : e.fap.motivo}` });
+          continue;
+        }
+        fapAplicado = e.fap;
+        aliquotaEfetiva = v.versao.aliquota.times(e.fap.fator);
+      }
+      const valor = toMoney(baseFinal.times(aliquotaEfetiva));
       itens.push({
         ...base,
         situacao: valor.isZero() ? "ZERO_CALCULADO" : "CALCULADO",
@@ -160,8 +181,9 @@ export function apurarEncargos(e: {
         base: m(baseFinal),
         valor: m(valor),
         rubricasNaBase: naBase.map((l) => ({ codigo: l.codigo, valor: m(l.valor) })),
-        fundamentacao: v.versao.fundamentacaoLegal,
+        fundamentacao: fapAplicado === null ? v.versao.fundamentacaoLegal : `${v.versao.fundamentacaoLegal}; FAP ${fapAplicado.fator.toFixed(4)} (${fapAplicado.fonte})`,
         sintetica: v.versao.sintetica,
+        ...(fapAplicado === null ? {} : { fap: fapAplicado.fator.toFixed(4), aliquotaAjustada: aliquotaEfetiva.toFixed(6) }),
       });
     }
   }

@@ -28,6 +28,7 @@ import {
   type AtorNosEncargos,
   type EstadoDosEncargos,
   type ResumoDoComponente,
+  type FapParaApurar,
 } from "./encargos.js";
 
 /**
@@ -92,6 +93,8 @@ export const zCadastrarVersaoDoEncargoInput = z
     teto: zDinheiroOpcional,
     fundamentacaoLegal: z.string().trim().min(5, "sem fundamento não há parâmetro"),
     sintetica: z.boolean(),
+    /** V24 — a alíquota é a do RAT e o cálculo a multiplica pelo FAP aprovado do ano. */
+    aplicaFap: z.boolean().optional(),
     rubricaIds: z.array(z.string().min(1)).min(1, "a base precisa de ao menos uma rubrica incidente"),
     criadoPor: z.string().min(1),
   })
@@ -102,8 +105,18 @@ export async function cadastrarVersaoDoEncargo(prisma: PrismaClient, input: Cada
   const d = zCadastrarVersaoDoEncargoInput.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarVersaoDoEncargo, "ENTE");
-    const comp = await tx.componenteDeEncargo.findUnique({ where: { id: d.componenteId }, select: { codigo: true } });
+    const comp = await tx.componenteDeEncargo.findUnique({ where: { id: d.componenteId }, select: { codigo: true, tipo: true, regime: true } });
     if (comp === null) throw new Error(`Componente de encargo ${d.componenteId} não existe. Nada foi gravado.`);
+    if (d.aplicaFap === true) {
+      // Lei 10.666/2003, art. 10: o FAP ajusta a alíquota de 1, 2 ou 3% do risco ambiental do trabalho — e
+      // só ela; e o Decreto 3.048/1999 é do regime geral.
+      if (comp.tipo !== "RISCO_AMBIENTAL_DO_TRABALHO" || comp.regime !== "RGPS") {
+        throw new Error(`FAP-FORA-DO-RAT: o FAP só ajusta o risco ambiental do trabalho do regime geral; ${comp.codigo} é ${comp.tipo} do ${comp.regime}. Nada foi gravado.`);
+      }
+      if (!["0.01", "0.02", "0.03"].some((a) => d.aliquota.equals(a))) {
+        throw new Error(`FAP-SOBRE-ALIQUOTA-QUE-NAO-E-RAT: com o FAP, a alíquota informada é a do RAT — 1%, 2% ou 3% (Lei 10.666/2003, art. 10) — e não ${d.aliquota.times(100).toString()}%. Nada foi gravado.`);
+      }
+    }
     const gemea = await tx.versaoDoEncargo.findFirst({ where: { componenteId: d.componenteId, competenciaInicio: d.competenciaInicio }, select: { id: true } });
     if (gemea !== null) {
       throw new Error(`VERSAO-AMBIGUA: o componente ${comp.codigo} já tem versão começando em ${d.competenciaInicio}. Duas com o mesmo início diriam duas verdades; cadastre a correção com início posterior. Nada foi gravado.`);
@@ -117,7 +130,7 @@ export async function cadastrarVersaoDoEncargo(prisma: PrismaClient, input: Cada
     const v = await tx.versaoDoEncargo.create({
       data: {
         componenteId: d.componenteId, competenciaInicio: d.competenciaInicio, competenciaFim: d.competenciaFim ?? null,
-        aliquota: d.aliquota.toFixed(4), teto: d.teto ?? null, fundamentacaoLegal: d.fundamentacaoLegal, sintetica: d.sintetica, criadoPor: d.criadoPor,
+        aliquota: d.aliquota.toFixed(4), teto: d.teto ?? null, fundamentacaoLegal: d.fundamentacaoLegal, sintetica: d.sintetica, aplicaFap: d.aplicaFap ?? false, criadoPor: d.criadoPor,
         incidencias: { create: [...new Set(d.rubricaIds)].map((rubricaId) => ({ rubricaId })) },
       },
       select: { id: true },
@@ -147,6 +160,65 @@ export async function aprovarVersaoDoEncargo(prisma: PrismaClient, input: Aprova
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// V24 — O FAP (Decreto 3.048/1999, art. 202-A): cadastro, aprovação e o vigente do ano
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const zCadastrarFatorAcidentarioInput = z.object({
+  cnpj: z.string().trim().regex(/^\d{14}$/, "CNPJ com 14 dígitos, sem máscara"),
+  ano: z.number().int().min(2010).max(2100),
+  // § 1º: "considerado o critério de truncamento na quarta casa decimal" — no máximo quatro casas.
+  fator: z.string().trim().regex(/^\d\.\d{1,4}$/, "o FAP tem até quatro casas decimais, com ponto: 1.2345"),
+  fonte: z.string().trim().min(10, "diga de onde veio o FAP: a consulta ao FAP do CNPJ, com a data"),
+  criadoPor: z.string().min(1),
+});
+export type CadastrarFatorAcidentarioInput = z.input<typeof zCadastrarFatorAcidentarioInput>;
+
+export async function cadastrarFatorAcidentario(prisma: PrismaClient, input: CadastrarFatorAcidentarioInput): Promise<{ readonly fatorId: string }> {
+  const d = zCadastrarFatorAcidentarioInput.parse(input);
+  const fator = new Decimal(d.fator);
+  if (fator.lt("0.5") || fator.gt("2")) {
+    throw new Error(`FAP-FORA-DO-INTERVALO: o FAP é um multiplicador entre 0,5000 e 2,0000 (Decreto 3.048/1999, art. 202-A, § 1º); ${d.fator} não é. Nada foi gravado.`);
+  }
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarFatorAcidentario, "ENTE");
+    const f = await tx.fatorAcidentarioDePrevencao.create({ data: { cnpj: d.cnpj, ano: d.ano, fator: fator.toFixed(4), fonte: d.fonte, criadoPor: d.criadoPor }, select: { id: true } });
+    return { fatorId: f.id };
+  });
+}
+
+export const zAprovarFatorAcidentarioInput = z.object({ fatorId: z.string().min(1), criadoPor: z.string().min(1) });
+export type AprovarFatorAcidentarioInput = z.input<typeof zAprovarFatorAcidentarioInput>;
+
+export async function aprovarFatorAcidentario(prisma: PrismaClient, input: AprovarFatorAcidentarioInput): Promise<{ readonly aprovacaoId: string }> {
+  const d = zAprovarFatorAcidentarioInput.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.aprovarFatorAcidentario, "ENTE");
+    const f = await tx.fatorAcidentarioDePrevencao.findUnique({ where: { id: d.fatorId }, select: { criadoPor: true, ano: true, aprovacao: { select: { id: true } } } });
+    if (f === null) throw new Error(`FAP ${d.fatorId} não existe. Nada foi gravado.`);
+    if (f.aprovacao !== null) throw new Error(`FAP-JA-APROVADO: o FAP de ${f.ano} já está aprovado. Nada foi gravado.`);
+    if (f.criadoPor === d.criadoPor) {
+      throw new Error(`AUTOAPROVACAO-DO-FAP: ${d.criadoPor} cadastrou este FAP e não pode aprová-lo. Outra pessoa confere o valor e a consulta. Nada foi gravado.`);
+    }
+    const a = await tx.aprovacaoDoFatorAcidentario.create({ data: { fatorId: d.fatorId, criadoPor: d.criadoPor }, select: { id: true } });
+    return { aprovacaoId: a.id };
+  });
+}
+
+/** O FAP aprovado mais recente do CNPJ do ente no ano — ou o motivo de não haver. */
+export async function fapVigente(tx: Tx, ano: number): Promise<FapParaApurar> {
+  const ente = await tx.enteConfig.findFirst({ select: { cnpj: true } });
+  const cnpj = ente?.cnpj ?? null;
+  if (cnpj === null) return { motivo: "o CNPJ do ente não está configurado" };
+  const f = await tx.fatorAcidentarioDePrevencao.findFirst({
+    where: { cnpj, ano, aprovacao: { isNot: null } },
+    orderBy: { criadoEm: "desc" },
+    select: { fator: true, fonte: true },
+  });
+  if (f === null) return { motivo: `nenhum FAP aprovado para o CNPJ ${cnpj} em ${ano}` };
+  return { fator: new Decimal(f.fator.toString()), fonte: f.fonte };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // A APURAÇÃO — o fato numerado sobre o cálculo fechado
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -157,7 +229,7 @@ async function lerParaApurar(tx: Tx, calculoId: string) {
       select: { vinculoId: true, regime: true, vinculo: { select: { matricula: true } }, linhas: { select: { rubricaId: true, tipo: true, valor: true, rubrica: { select: { codigo: true } } } } },
     }),
     tx.componenteDeEncargo.findMany({ select: { id: true, codigo: true, descricao: true, tipo: true, regime: true } }),
-    tx.versaoDoEncargo.findMany({ select: { id: true, componenteId: true, competenciaInicio: true, competenciaFim: true, aliquota: true, teto: true, fundamentacaoLegal: true, sintetica: true, aprovacao: { select: { id: true } } } }),
+    tx.versaoDoEncargo.findMany({ select: { id: true, componenteId: true, competenciaInicio: true, competenciaFim: true, aliquota: true, teto: true, fundamentacaoLegal: true, sintetica: true, aplicaFap: true, aprovacao: { select: { id: true } } } }),
   ]);
   const incidencias = await tx.incidenciaDoEncargo.findMany({ where: { versaoId: { in: versoes.map((v) => v.id) } }, select: { versaoId: true, rubricaId: true } });
   return {
@@ -168,7 +240,7 @@ async function lerParaApurar(tx: Tx, calculoId: string) {
     componentes,
     versoes: versoes.map((v) => ({
       id: v.id, componenteId: v.componenteId, competenciaInicio: v.competenciaInicio, competenciaFim: v.competenciaFim,
-      aliquota: new Decimal(v.aliquota), teto: v.teto === null ? null : toMoney(v.teto), fundamentacaoLegal: v.fundamentacaoLegal, sintetica: v.sintetica,
+      aliquota: new Decimal(v.aliquota), teto: v.teto === null ? null : toMoney(v.teto), fundamentacaoLegal: v.fundamentacaoLegal, sintetica: v.sintetica, aplicaFap: v.aplicaFap,
       aprovada: v.aprovacao !== null, rubricasIncidentes: incidencias.filter((i) => i.versaoId === v.id).map((i) => i.rubricaId),
     })),
   };
@@ -201,7 +273,9 @@ export async function apurarEncargosDaFolha(prisma: PrismaClient, input: ApurarE
       exigirElegivel(elegibilidadeParaApurarEncargos({ competencia: folha.competencia, fechada: folha.fechamento !== null, apuracao: null, certificacao: null, gruposPendentesDeEmpenho: 0, componentesSemGrupo: [], empenhosDaApuracao: 0, liquidados: 0 }));
       const fechamento = folha.fechamento as NonNullable<typeof folha.fechamento>;
       const lido = await lerParaApurar(tx, fechamento.calculoId);
-      const r = apurarEncargos({ competencia: folha.competencia, calculo: { numero: fechamento.calculo.numero, sha256: fechamento.calculo.sha256 }, ...lido });
+      // V24 — o FAP só é lido quando alguma versão o aplica; as apurações de antes não mudam de memória.
+      const fap = lido.versoes.some((v) => v.aplicaFap) ? await fapVigente(tx, Number(folha.competencia.slice(0, 4))) : undefined;
+      const r = apurarEncargos({ competencia: folha.competencia, calculo: { numero: fechamento.calculo.numero, sha256: fechamento.calculo.sha256 }, ...lido, ...(fap === undefined ? {} : { fap }) });
       if (r.itens.length === 0) {
         throw new Error(`ENCARGOS-SEM-COMPONENTE: não há componente de encargo cadastrado. Nada a apurar em ${folha.competencia} — e isso não prova que o ente não deve encargo nenhum. Nada foi gravado.`);
       }

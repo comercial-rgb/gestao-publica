@@ -1063,6 +1063,8 @@ export type NomeDeServico =
   | "cadastrarComponenteDeEncargo"
   | "cadastrarVersaoDoEncargo"
   | "aprovarVersaoDoEncargo"
+  | "cadastrarFatorAcidentario"
+  | "aprovarFatorAcidentario"
   | "apurarEncargosDaFolha"
   | "certificarEncargosDaFolha"
   | "devolverEncargosDaFolha"
@@ -1700,6 +1702,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarComponenteDeEncargo: "CADASTRAR_ENCARGO_DA_FOLHA",
   cadastrarVersaoDoEncargo: "CADASTRAR_ENCARGO_DA_FOLHA",
   aprovarVersaoDoEncargo: "APROVAR_ENCARGO_DA_FOLHA",
+  // V24 — o FAP é parâmetro do encargo: cadastra quem cadastra a versão, aprova outra pessoa.
+  cadastrarFatorAcidentario: "CADASTRAR_ENCARGO_DA_FOLHA",
+  aprovarFatorAcidentario: "APROVAR_ENCARGO_DA_FOLHA",
   apurarEncargosDaFolha: "APURAR_ENCARGOS_DA_FOLHA",
   certificarEncargosDaFolha: "CERTIFICAR_ENCARGOS_DA_FOLHA",
   devolverEncargosDaFolha: "CERTIFICAR_ENCARGOS_DA_FOLHA",
@@ -2884,6 +2889,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   avaliarRetencoesDoPagamento: "leitura (prévia do cálculo, nada grava)",
   prepararRetencoesCalculadas: "composável interno (perna do pagar; autoriza PAGAR)",
   registrarCalculosDaRetencao: "composável interno (perna do pagar)",
+  fapVigente: "leitura (o FAP aprovado do ano, dentro da apuração que a autoriza)",
   estornarRetencoesDoPagamento: "composável interno",
   registrarMovimentoDotacao: "composável interno",
   // M05 V21 — o estorno EXATO de um movimento de dotação: chamado DENTRO de `anularRealocacao`, que

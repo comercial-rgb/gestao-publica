@@ -66,6 +66,11 @@ model VersaoDoEncargo {
   /// tem validade normativa. Existe para ambiente de demonstração — não para esconder o que é.
   sintetica Boolean
 
+  /// V24 — a alíquota é a do RAT (1, 2 ou 3%, Lei 10.666/2003, art. 10) e o cálculo a multiplica pelo FAP
+  /// aprovado do CNPJ do ente no ano da competência (Decreto 3.048/1999, art. 202-A). FALSO nas versões
+  /// anteriores: nelas a alíquota já foi informada ajustada, e continuam calculando igual.
+  aplicaFap Boolean @default(false)
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -344,6 +349,37 @@ model CancelamentoDaGuia {
   guia   GuiaDeRecolhimento @relation(fields: [guiaId], references: [id])
 
   motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// V24 — O FATOR ACIDENTÁRIO DE PREVENÇÃO de um CNPJ num ano (Decreto 3.048/1999, art. 202-A): multiplicador
+/// entre 0,5000 e 2,0000, com quatro casas (truncado na quarta, § 1º), publicado anualmente e consultado
+/// pelo ente. Append-only; o vigente do ano é o APROVADO mais recente.
+model FatorAcidentarioDePrevencao {
+  id String @id @default(cuid())
+
+  cnpj  String  @db.VarChar(14)
+  ano   Int
+  fator Decimal @db.Decimal(5, 4)
+  /// De onde veio o valor: a consulta ao FAP do CNPJ, com a data, e o ato que o publicou.
+  fonte String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  aprovacao AprovacaoDoFatorAcidentario?
+
+  @@index([cnpj, ano])
+}
+
+/// A aprovação do FAP — de outra pessoa que não a que cadastrou, como a das versões do encargo.
+model AprovacaoDoFatorAcidentario {
+  id String @id @default(cuid())
+
+  fatorId String                      @unique
+  fator   FatorAcidentarioDePrevencao @relation(fields: [fatorId], references: [id])
 
   criadoEm  DateTime @default(now())
   criadoPor String
