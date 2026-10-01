@@ -58,6 +58,10 @@ export function FormVersaoDoEncargo({ componenteId, rubricas, action }: {
           <input type="checkbox" name="sintetica" value="sim" className="h-4 w-4" />
           <span>Versão sintética para teste (sem validade normativa)</span>
         </label>
+        <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <input type="checkbox" name="aplicaFap" value="sim" className="h-4 w-4" />
+          <span>Multiplicar pelo FAP do ano (a alíquota informada é a do RAT: 1, 2 ou 3%)</span>
+        </label>
       </div>
       <fieldset data-secao="base" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Rubricas de provento que compõem a base</legend>

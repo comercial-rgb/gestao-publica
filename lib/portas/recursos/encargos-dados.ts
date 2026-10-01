@@ -41,7 +41,7 @@ const pct = (d: Decimal | string): string => `${new Decimal(d).times(100).toFixe
 const SELECAO = {
   id: true, codigo: true, descricao: true, tipo: true, regime: true, criadoEm: true, criadoPor: true,
   grupoDeEmpenho: { select: { grupo: { select: { codigo: true } } } },
-  versoes: { orderBy: { competenciaInicio: "desc" as const }, select: { id: true, competenciaInicio: true, competenciaFim: true, aliquota: true, teto: true, fundamentacaoLegal: true, sintetica: true, criadoEm: true, criadoPor: true, aprovacao: { select: { id: true, criadoEm: true, criadoPor: true, motivo: true } }, incidencias: { select: { rubrica: { select: { codigo: true } } } } } },
+  versoes: { orderBy: { competenciaInicio: "desc" as const }, select: { id: true, competenciaInicio: true, competenciaFim: true, aliquota: true, teto: true, fundamentacaoLegal: true, sintetica: true, aplicaFap: true, criadoEm: true, criadoPor: true, aprovacao: { select: { id: true, criadoEm: true, criadoPor: true, motivo: true } }, incidencias: { select: { rubrica: { select: { codigo: true } } } } } },
 };
 
 export async function listarComponentesDeEncargo(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
@@ -76,7 +76,7 @@ export async function verComponenteDeEncargo(id: string): Promise<(DetalheLido &
     { rotulo: "Grupo de empenho", valor: k.grupoDeEmpenho?.grupo.codigo ?? "", nota: "Sem grupo de empenho, a apuração é feita, mas o empenho do componente não é realizado." },
     ...k.versoes.map((v) => ({
       rotulo: `Versão desde ${v.competenciaInicio}${v.competenciaFim === null ? "" : ` até ${v.competenciaFim}`}`,
-      valor: `${pct(v.aliquota)} sobre ${v.incidencias.map((i) => i.rubrica.codigo).sort().join(" + ")}${v.teto === null ? "" : `, teto ${toMoney(v.teto).toFixed(2)}`} — ${v.aprovacao === null ? "aguardando aprovação" : "aprovada"}${v.sintetica ? " — versão sintética de demonstração, sem validade normativa" : ""}`,
+      valor: `${pct(v.aliquota)}${v.aplicaFap ? " × FAP do ano" : ""} sobre ${v.incidencias.map((i) => i.rubrica.codigo).sort().join(" + ")}${v.teto === null ? "" : `, teto ${toMoney(v.teto).toFixed(2)}`} — ${v.aprovacao === null ? "aguardando aprovação" : "aprovada"}${v.sintetica ? " — versão sintética de demonstração, sem validade normativa" : ""}`,
       nota: `Fundamento: ${v.fundamentacaoLegal}`,
       tipo: "longo" as const,
     })),
@@ -149,6 +149,7 @@ export async function criarVersaoDoEncargo(componenteId: string, c: Campos, rubr
       ...(t(c, "teto") !== "" ? { teto: t(c, "teto").replace(/\./g, "").replace(",", ".") } : {}),
       fundamentacaoLegal: t(c, "fundamentacaoLegal"),
       sintetica: t(c, "sintetica") === "sim",
+      aplicaFap: t(c, "aplicaFap") === "sim",
       rubricaIds: [...rubricaIds],
       criadoPor,
     })

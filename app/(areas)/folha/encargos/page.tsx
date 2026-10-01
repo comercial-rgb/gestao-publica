@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { FormsDoRecurso } from "../../../../components/molde/FormsDoRecurso";
@@ -21,6 +22,14 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
   try {
     const [pagina, permitidas] = await Promise.all([listarComponentesDeEncargo(consulta), acoesPermitidas(["CADASTRAR_ENCARGO_DA_FOLHA"])]);
     return (
+      <div className="space-y-4">
+      <p className="text-xs text-[color:var(--color-ink-2)]">
+        O RAT pode ser multiplicado pelo{" "}
+        <Link href="/folha/encargos/fap" className="underline underline-offset-2">
+          Fator Acidentário de Prevenção (FAP) do ano
+        </Link>
+        : cadastre e aprove o FAP antes de apurar.
+      </p>
       <ListaDeRecurso
         definicao={ENCARGOS_DA_FOLHA}
         linhas={pagina.linhas}
@@ -34,6 +43,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, [])}
         formulario={<FormsDoRecurso definicao={ENCARGOS_DA_FOLHA} permitidas={[...permitidas]} opcoes={{}} action={encargosAction} modo="criar" />}
       />
+      </div>
     );
   } catch (e) {
     if (e instanceof PortaSemBancoError) {
