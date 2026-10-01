@@ -1138,6 +1138,8 @@ export type NomeDeServico =
   | "desativarTipoDeConsignacao"
   // M07 V26 — a classificação do IR e do ISS retidos pelo próprio Tesouro (receita, não consignação)
   | "classificarRetencaoPropria"
+  // M04 V26 — a regularização do legado: o IR/ISS do próprio Tesouro que ficou na consignação vira receita
+  | "regularizarConsignacaoPropria"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1825,6 +1827,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // ⚠️ V26 — A MESMA AUTORIDADE dos tipos de consignação: dizer que o IR retido é receita do Tesouro (e com
   // que natureza, destinação e contas) é a decisão contábil sobre o mesmo tipo que hoje vai para o passivo.
   classificarRetencaoPropria: "GERIR_TIPOS_DE_CONSIGNACAO",
+  // ⚠️ V26 — REGISTRAR_ARRECADACAO: regularizar é registrar a receita que deixou de ser registrada (a guia nasce
+  // aqui); a baixa da consignação é a outra perna do mesmo fato, sem saída de dinheiro.
+  regularizarConsignacaoPropria: "REGISTRAR_ARRECADACAO",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2155,6 +2160,10 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
+  irDaFolhaNoPagamento: "leitura (o IR dos servidores a reter no pagamento de uma liquidação de folha, e como: receita ou consignação)",
+  irDaFolhaPendente: "leitura (o IR dos contracheques que a liquidação cobre e que ainda não foi retido)",
+  exigirIrDaFolhaAindaPendente:
+    "GUARDA, não serviço: lida dentro da transação do pagamento, que já cobrou PAGAR, sob a trava do número da guia.",
   registrarReceitasPorRetencaoNaTx:
     "PERNA DO PAGAMENTO, não ato do usuário: grava a guia de receita por retenção e o elo DENTRO da transação de " +
     "`pagar`, que já cobrou PAGAR. Quem paga, retém — a mesma regra da consignação e da amortização.",

@@ -38,6 +38,7 @@ import {
   anularReceitasPorRetencaoNaTx,
   registrarReceitasPorRetencaoNaTx,
 } from "../m04-receita/receita-por-retencao.js";
+import { irDaFolhaPendente } from "../m33-folha/ir-da-folha.js";
 // A derivação de "é despesa de capital?" é do M10 — reusada, nunca recopiada.
 import {
   descricaoDoGrupo,
@@ -2368,6 +2369,21 @@ export function criarDespesaRepositoryPrisma(
               ? { justificativaQuebraDeOrdem: p.justificativaOrdemConstitucional }
               : {}),
           });
+        }
+
+        // ═══ V26 — A FOLHA NÃO SE PAGA SEM O IR DO SERVIDOR ═══
+        // O pagamento da liquidação de uma folha cujo IR ainda não foi retido tem de retê-lo: como receita do
+        // município (mesmo caixa) ou como consignação ao município (conta de outra entidade). Pagar o bruto sem
+        // reter faria o servidor receber o IR, e a receita nunca existiria.
+        const irPendente = await irDaFolhaPendente(tx, p.liquidacaoId);
+        if (irPendente !== null && irPendente.total.greaterThan(0)) {
+          const retidoComoReceita = (p.retencoesProprias ?? []).some((r) => r.fato === "IRRF_FOLHA");
+          const retidoComoConsignacao = (p.retencoes ?? []).length > 0;
+          if (!retidoComoReceita && !retidoComoConsignacao) {
+            throw new Error(
+              `Esta é a liquidação de uma folha com ${irPendente.total.toFixed(2)} de IR dos servidores ainda não retido: o pagamento tem de reter o IR. Pague pela tela de pagamentos, que o calcula. Nada foi gravado.`
+            );
+          }
         }
 
         // ═══ V26 — A RECEITA DAS RETENÇÕES PRÓPRIAS, ÚLTIMA PERNA DA TRANSAÇÃO ═══

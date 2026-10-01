@@ -55,7 +55,8 @@ model ClassificacaoDaRetencaoPropria {
   criadoEm  DateTime @default(now())
   criadoPor String
 
-  retencoes RetencaoPropriaDoPagamento[]
+  retencoes    RetencaoPropriaDoPagamento[]
+  apropriacoes ApropriacaoDaConsignacaoPropria[] @relation("ApropriacaoPelaClassificacao")
 
   @@index([fato, vigenteDesde])
 }
@@ -92,6 +93,8 @@ model RetencaoPropriaDoPagamento {
   grupoDaFolhaId String?
   grupoDaFolha   GrupoDeEmpenhoDaFolha? @relation("IrDaFolhaRetidoNoPagamento", fields: [grupoDaFolhaId], references: [id])
 
+  contrachequesDaFolha IrDoContrachequeRetido[] @relation("ContrachequesDaRetencao")
+
   estornoDeId String?                      @unique
   estornoDe   RetencaoPropriaDoPagamento?  @relation("EstornoDaRetencaoPropria", fields: [estornoDeId], references: [id])
   estornos    RetencaoPropriaDoPagamento[] @relation("EstornoDaRetencaoPropria")
@@ -101,4 +104,60 @@ model RetencaoPropriaDoPagamento {
 
   @@index([pagamentoId])
   @@index([grupoDaFolhaId])
+}
+
+/// V26 — A REGULARIZAÇÃO DO LEGADO: uma retenção antiga de IR/ISS do próprio Tesouro, que nasceu como consignação,
+/// é baixada contra a receita. Identificada (uma por retenção de origem: a unicidade é a idempotência) e sem apagar
+/// nada: a retenção original continua lá, e o movimento de apropriação e a guia apontam para ela.
+///
+/// Dois caminhos, conforme a receita já tenha ou não sido reconhecida:
+/// - sem reconhecimento: a guia faz D consignação × C VPA (mais a receita realizada e o controle);
+/// - com reconhecimento identificado: D consignação × C crédito tributário, e o vínculo baixa o reconhecimento
+///   (a VPA já nasceu nele e não se repete).
+model ApropriacaoDaConsignacaoPropria {
+  id String @id @default(cuid())
+
+  /// O INGRESSO de retenção (de pagamento) que estava na consignação.
+  ingressoId String                     @unique
+  ingresso   MovimentoExtraorcamentario @relation("IngressoApropriado", fields: [ingressoId], references: [id])
+
+  /// O movimento APROPRIACAO_COMO_RECEITA que baixa o saldo do consignatário.
+  movimentoId String                     @unique
+  movimento   MovimentoExtraorcamentario @relation("MovimentoDeApropriacao", fields: [movimentoId], references: [id])
+
+  classificacaoId String
+  classificacao   ClassificacaoDaRetencaoPropria @relation("ApropriacaoPelaClassificacao", fields: [classificacaoId], references: [id])
+
+  receitaArrecadadaId String            @unique
+  receitaArrecadada   ReceitaArrecadada @relation("ReceitaDaApropriacao", fields: [receitaArrecadadaId], references: [id])
+
+  /// O reconhecimento que a guia baixou, quando a receita já tinha sido reconhecida.
+  reconhecimentoId String?
+
+  valor  Decimal @db.Decimal(18, 2)
+  motivo String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// V26 — O IR DE UM CONTRACHEQUE, RETIDO NUM PAGAMENTO DA FOLHA. Calcular ou fechar a folha não comprova pagamento: o
+/// IR do servidor vira receita no pagamento que cobre aquele contracheque, e este elo diz qual. Vivo = a retenção
+/// própria dele não foi estornada; anulado o pagamento, o IR do contracheque volta a ser retido no próximo.
+model IrDoContrachequeRetido {
+  id String @id @default(cuid())
+
+  contrachequeId String
+  contracheque   Contracheque @relation("IrDoContrachequeRetido", fields: [contrachequeId], references: [id])
+
+  retencaoPropriaId String
+  retencaoPropria   RetencaoPropriaDoPagamento @relation("ContrachequesDaRetencao", fields: [retencaoPropriaId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([contrachequeId, retencaoPropriaId])
+  @@index([retencaoPropriaId])
 }

@@ -5,7 +5,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // conciliação, e recopiá-la aqui seria criar a segunda verdade sobre o mesmo
 // cheque. Importar é o preço de não ter duas.
 import { somaLiquidaEstornaveis } from "../m08-restos-a-pagar/dominio.js";
-import { tetoConciliavelDoPagamento } from "../m09-tesouraria/dominio.js";
+import { comRetencoesProprias, tetoConciliavelDoPagamento } from "../m09-tesouraria/dominio.js";
 import type { LinhaEstornavel } from "../../packages/estornaveis/index.js";
 import { statusDoEmpenho, type CategoriaOrdemCronologica, type StatusEmpenho } from "./dominio.js";
 
@@ -457,6 +457,7 @@ export async function despesaPorFonte(
       estornoDeId: true,
       anulacaoParcialDeId: true,
       retencoes: { select: { tipo: true, valor: true } },
+      retencoesProprias: { select: { valor: true, estornoDeId: true } },
     },
   });
 
@@ -491,10 +492,13 @@ export async function despesaPorFonte(
         bruto,
         liquido: tetoConciliavelDoPagamento(
           bruto,
-          x.retencoes.map((r) => ({
-            tipo: r.tipo,
-            valor: toMoney(r.valor.toFixed(2)),
-          }))
+          comRetencoesProprias(
+            x.retencoes.map((r) => ({
+              tipo: r.tipo,
+              valor: toMoney(r.valor.toFixed(2)),
+            })),
+            x.retencoesProprias.map((r) => ({ valor: toMoney(r.valor.toFixed(2)), estornoDeId: r.estornoDeId }))
+          )
         ),
       };
     });

@@ -268,8 +268,10 @@ export interface ComposicaoDaObrigacao {
   readonly recolhido: string;
   /** Σ dos ESTORNO_DISPENDIO, bruto. */
   readonly estornoDeRecolhimento: string;
-  /** (retido − estorno de retenção) − (recolhido − estorno de recolhimento). Derivado. */
+  /** (retido − estorno de retenção) − (recolhido − estorno de recolhimento) − apropriado. Derivado. */
   readonly aRecolher: string;
+  /** V26 — Σ das baixas contra a receita (imposto do próprio Tesouro), sem saída de dinheiro. */
+  readonly apropriadoComoReceita: string;
   /**
    * ⚠️ O QUE FOI RECOLHIDO SEM DIZER DE ONDE. Recolhimentos vivos sem nenhuma parcela de
    * composição. Não é erro: há movimentos anteriores à composição existir. É pendência VISÍVEL,
@@ -315,6 +317,8 @@ export async function conferirComposicaoExtra(
     recolhido: Decimal;
     estornoDeRecolhimento: Decimal;
     recolhidoSemComposicao: Decimal;
+    /** V26 — baixado contra a receita (imposto do próprio Tesouro), sem saída de dinheiro. */
+    apropriado: Decimal;
   }
   const acc = new Map<string, Acc>();
   const zero = (): Decimal => new Decimal(0);
@@ -332,6 +336,7 @@ export async function conferirComposicaoExtra(
         recolhido: zero(),
         estornoDeRecolhimento: zero(),
         recolhidoSemComposicao: zero(),
+        apropriado: zero(),
       };
     const v = new Decimal(m.valor);
     if (m.tipo === "INGRESSO") cur.retido = cur.retido.plus(v);
@@ -342,7 +347,8 @@ export async function conferirComposicaoExtra(
       if (m.estornos.length === 0 && m.alocacoesFeitas.length === 0) {
         cur.recolhidoSemComposicao = cur.recolhidoSemComposicao.plus(v);
       }
-    } else cur.estornoDeRecolhimento = cur.estornoDeRecolhimento.plus(v);
+    } else if (m.tipo === "APROPRIACAO_COMO_RECEITA") cur.apropriado = cur.apropriado.plus(v);
+    else cur.estornoDeRecolhimento = cur.estornoDeRecolhimento.plus(v);
     acc.set(k, cur);
   }
 
@@ -358,7 +364,9 @@ export async function conferirComposicaoExtra(
       aRecolher: a.retido
         .minus(a.estornoDeRetencao)
         .minus(a.recolhido.minus(a.estornoDeRecolhimento))
+        .minus(a.apropriado)
         .toFixed(2),
+      apropriadoComoReceita: a.apropriado.toFixed(2),
       recolhidoSemComposicao: a.recolhidoSemComposicao.toFixed(2),
     }))
     .sort((x, y) =>
@@ -379,6 +387,7 @@ export async function conferirComposicaoExtra(
     if (m.tipo === "INGRESSO") global = global.plus(v);
     else if (m.tipo === "ESTORNO_INGRESSO") global = global.minus(v);
     else if (m.tipo === "DISPENDIO") global = global.minus(v);
+    else if (m.tipo === "APROPRIACAO_COMO_RECEITA") global = global.minus(v);
     else global = global.plus(v);
   }
 

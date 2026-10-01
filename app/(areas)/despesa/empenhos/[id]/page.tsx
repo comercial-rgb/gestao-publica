@@ -102,6 +102,7 @@ const ROTULO_MOVIMENTO_EXTRA: Record<string, string> = {
   ESTORNO_INGRESSO: "Retenção estornada",
   DISPENDIO: "Repassado",
   ESTORNO_DISPENDIO: "Repasse estornado",
+  APROPRIACAO_COMO_RECEITA: "Regularizado como receita do município",
 };
 
 export default async function DetalheDoEmpenhoPage({

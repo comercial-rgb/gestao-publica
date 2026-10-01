@@ -17,12 +17,16 @@ import {
   type DadosFiscaisDaOperacao,
 } from "./retencao-calculada.js";
 import { redefinirContaDaConsignacao } from "./servico-tipos-de-consignacao.js";
-import { classificarRetencaoPropria } from "./retencao-propria.js";
+import { classificacaoPropriaVigente, classificarRetencaoPropria } from "./retencao-propria.js";
 import { registrarDispendioExtra } from "./extraorcamentario.js";
 import { roteiroDispendioExtra } from "./dominio.js";
 import { anularArrecadacao } from "../m04-receita/servico.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { anularPagamentoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { regularizarConsignacaoPropria } from "../m04-receita/receita-por-retencao.js";
+import { reconhecerReceita, saldoReconhecidoDe } from "../m04-receita/reconhecimento.js";
+import { parsearNaturezaReceita } from "../m04-receita/natureza.js";
+import { conferirComposicaoExtra, retencoesComSaldo } from "./consultas.js";
 import { lerFatosEstornoRetencao, lerFatosReceitaOrcamentaria, lerFatosRetencao } from "../../adapters/tribunais/tce-pb/sagres/gerador.js";
 
 /**
@@ -475,6 +479,14 @@ describe("V26 — IR e ISS retidos pelo próprio município viram receita no pag
     expect(est.map((x) => [x.tipoConsignacaoCodigo, x.valor.toFixed(2), x.numero]).sort()).toEqual([["INSS", "110.00", "1"], ["IRRF", "48.00", "2"], ["ISS", "50.00", "3"]]);
   });
 
+  it("a vigência é pelo dia civil do ente: 28/02 às 23h30 em Esperança (01/03 em UTC) usa a decisão de fevereiro, não a de 01/03 (N=2)", async () => {
+    await prisma.naturezaReceita.create({ data: { codigo: "11130311", descricao: "IRRF - Trabalho - Principal" } });
+    await classificarRetencaoPropria(prisma, { fato: "IRRF_FORNECEDOR_PJ", tipoConsignacaoCodigo: "IRRF", naturezaReceitaCodigo: "11130311", fonteCodigo: "500", contaCreditoCodigo: CRED_IR, contaVpaCodigo: VPA_IR_PJ, entidadeTitularId: null, vigenteDesde: new Date("2026-03-01T00:00:00Z"), fundamento: "Decisão nova a partir de março", criadoPor: POR });
+    const naNoite = await classificacaoPropriaVigente(prisma, "IRRF_FORNECEDOR_PJ", new Date("2026-03-01T02:30:00Z"));
+    const naManha = await classificacaoPropriaVigente(prisma, "IRRF_FORNECEDOR_PJ", new Date("2026-03-01T11:00:00Z"));
+    expect([naNoite?.naturezaReceitaCodigo, naManha?.naturezaReceitaCodigo]).toEqual(["11130341", "11130311"]);
+  });
+
   it("a classificação recusa natureza que não é de principal, conta sintética e conta fora da família", async () => {
     await prisma.naturezaReceita.create({ data: { codigo: "11130342", descricao: "IRRF - Outros Rendimentos - Multas e Juros" } });
     await prisma.contaPcasp.create({ data: { id: "c-sint", codigo: "1.1.2.1.1.01.00", nome: "Impostos", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false } });
@@ -485,5 +497,96 @@ describe("V26 — IR e ISS retidos pelo próprio município viram receita no pag
     await expect(classificarRetencaoPropria(prisma, { ...base, contaCreditoCodigo: P_IR })).rejects.toThrow(/não é da família 1\.1\.2\.1\./);
     await expect(classificarRetencaoPropria(prisma, { ...base, contaVpaCodigo: VPA_ISS })).rejects.toThrow(/não é da família 4\.1\.1\.2\./);
     expect(await prisma.classificacaoDaRetencaoPropria.count()).toBe(2);
+  });
+});
+
+describe("V26 — o legado: IR do município que ficou na consignação vira receita, sem saída de banco", { timeout: 120000 }, () => {
+  let deps: M05Deps;
+  let ingressoIr: string;
+  let ingressoInss: string;
+  const ESPERANCA_NOME = "PREFEITURA MUNICIPAL DE ESPERANCA";
+  const regularizar = (o: Partial<Parameters<typeof regularizarConsignacaoPropria>[1]> = {}) =>
+    regularizarConsignacaoPropria(prisma, { ingressoId: ingressoIr, data: new Date("2026-03-20T12:00:00Z"), motivo: "IR do município retido como consignação antes da decisão", reconhecimentoId: null, criadoPor: POR, ...o });
+
+  beforeEach(async () => {
+    deps = criarM05Deps(prisma);
+    await semear();
+    const liq = await empenharELiquidar(deps);
+    // O LEGADO: antes da decisão do ente, o IR do município era retido como consignação, com o credor = o município.
+    const classificacoes = await prisma.classificacaoDaRetencaoPropria.findMany();
+    await prisma.classificacaoDaRetencaoPropria.deleteMany({});
+    const [ir, inss] = await Promise.all([prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "IRRF" } }), prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "INSS" } })]);
+    const r = await pagar(pgto(liq), R_PAGAMENTO, deps, {
+      contaDisponibilidade: CAIXA,
+      retencoes: [
+        { tipoConsignacaoId: ir.id, credorConsignatario: ESPERANCA_NOME, valor: "48.00", contaConsignacaoAPagar: P_IR },
+        { tipoConsignacaoId: inss.id, credorConsignatario: "Previdência Social", valor: "110.00", contaConsignacaoAPagar: P_INSS },
+      ],
+    });
+    const movs = await prisma.movimentoExtraorcamentario.findMany({ where: { pagamentoId: r.pagamentoId }, include: { tipoConsignacao: true } });
+    ingressoIr = movs.find((m) => m.tipoConsignacao.codigo === "IRRF")!.id;
+    ingressoInss = movs.find((m) => m.tipoConsignacao.codigo === "INSS")!.id;
+    // A decisão chega depois (mesma vigência de antes).
+    await prisma.classificacaoDaRetencaoPropria.createMany({ data: classificacoes });
+  }, 120000);
+  afterAll(async () => prisma.$disconnect());
+
+  it("receita não reconhecida: a guia faz D consignação × C VPA, realiza a receita e o controle; o saldo do consignatário zera; o banco não se mexe", async () => {
+    const caixaAntes = await saldoDe(CAIXA);
+    const r = await regularizar();
+    expect(r.valor).toBe("48.00");
+    const guia = await prisma.receitaArrecadada.findUniqueOrThrow({ where: { id: r.receitaId }, include: { naturezaReceita: true } });
+    expect([guia.naturezaReceita.codigo, guia.valor.toFixed(2), guia.contaBancariaId]).toEqual(["11130341", "48.00", null]);
+    expect(await partidasDe(guia.lancamentoId)).toEqual(
+      [`DEBITO ${P_IR} 48.00`, `CREDITO ${VPA_IR_PJ} 48.00`, "DEBITO 6.2.1.1.0.00.00 48.00", "CREDITO 6.2.1.2.0.00.00 48.00", "DEBITO 7.2.1.1.1.00.00 48.00", "CREDITO 8.2.1.1.1.01.00 48.00"].sort()
+    );
+    expect(await saldoDe(P_IR)).toBe("0.00");
+    expect(await saldoDe(CAIXA)).toBe(caixaAntes);
+    const saldo = await retencoesComSaldo(prisma, { tipoConsignacaoId: (await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "IRRF" } })).id, credorConsignatario: ESPERANCA_NOME });
+    expect(saldo.map((s) => [s.valor, s.aRecolher])).toEqual([["48.00", "0.00"]]);
+    // A conferência da composição continua fechando (o tipo novo é contado, não ignorado).
+    const conf = await conferirComposicaoExtra(prisma);
+    expect(conf.confere).toBe(true);
+    expect(conf.obrigacoes.find((o) => o.tipoCodigo === "IRRF")!.aRecolher).toBe("0.00");
+    // Idempotente: a segunda tentativa nomeia a guia da primeira.
+    await expect(regularizar()).rejects.toThrow(new RegExp(`já foi regularizada \\(guia de receita ${r.numeroReceita}\\)`));
+    expect(await prisma.receitaArrecadada.count()).toBe(1);
+  });
+
+  it("parte já recolhida antes da decisão (N=2): regulariza só o que resta", async () => {
+    // Antes da decisão, 20,00 foram "recolhidos" (o legado que a ordem manda não reescrever).
+    const classificacoes = await prisma.classificacaoDaRetencaoPropria.findMany();
+    await prisma.classificacaoDaRetencaoPropria.deleteMany({});
+    const ir = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "IRRF" } });
+    await registrarDispendioExtra(prisma, { tipoConsignacaoId: ir.id, credorConsignatario: ESPERANCA_NOME, contaBancaria: "CC-001", fonteId: FONTE_500, valor: "20.00", data: new Date("2026-03-10T12:00:00Z"), historico: "Recolhimento antigo", criadoPor: POR, alocacoes: [{ ingressoId: ingressoIr, valor: "20.00" }] }, roteiroDispendioExtra({ consignacaoAPagar: P_IR, disponibilidade: CAIXA }));
+    await prisma.classificacaoDaRetencaoPropria.createMany({ data: classificacoes });
+    const r = await regularizar();
+    expect(r.valor).toBe("28.00");
+    expect(await saldoDe(P_IR)).toBe("0.00");
+  });
+
+  it("receita já reconhecida: a guia baixa o crédito do reconhecimento e a VPA não se repete", async () => {
+    const origem = parsearNaturezaReceita("11130341").origem;
+    await prisma.roteiroReconhecimento.create({ data: { origem, contaCreditoAReceberId: "c-cred-ir", contaVpaId: "c-vpa-ir", contaVpdId: "c-vpd", criadoPor: POR } });
+    const rec = await reconhecerReceita(prisma, { naturezaCodigo: "11130341", fonteId: FONTE_500, dataFatoGerador: new Date("2026-03-01T12:00:00Z"), valor: "48.00", historico: "IR retido no pagamento NP-1", criadoPor: POR });
+    const r = await regularizar({ reconhecimentoId: rec.reconhecimentoId });
+    const guia = await prisma.receitaArrecadada.findUniqueOrThrow({ where: { id: r.receitaId } });
+    expect((await partidasDe(guia.lancamentoId)).filter((x) => !x.includes(" 6.") && !x.includes(" 7.") && !x.includes(" 8."))).toEqual([`CREDITO ${CRED_IR} 48.00`, `DEBITO ${P_IR} 48.00`]);
+    expect(await saldoDe(VPA_IR_PJ)).toBe("-48.00");
+    expect(await saldoDe(CRED_IR)).toBe("0.00");
+    expect(await saldoDe(P_IR)).toBe("0.00");
+    expect((await saldoReconhecidoDe(prisma, rec.reconhecimentoId)).toFixed(2)).toBe("0.00");
+  });
+
+  it("recusas: o INSS é de terceiro; reconhecimento de outra natureza; motivo curto — e nada é gravado", async () => {
+    await expect(regularizar({ ingressoId: ingressoInss })).rejects.toThrow(/não é imposto do próprio município no mesmo caixa/);
+    await prisma.naturezaReceita.create({ data: { codigo: "11130311", descricao: "IRRF - Trabalho - Principal" } });
+    const origem = parsearNaturezaReceita("11130311").origem;
+    await prisma.roteiroReconhecimento.create({ data: { origem, contaCreditoAReceberId: "c-cred-ir", contaVpaId: "c-vpa-ir", contaVpdId: "c-vpd", criadoPor: POR } });
+    const rec = await reconhecerReceita(prisma, { naturezaCodigo: "11130311", fonteId: FONTE_500, dataFatoGerador: new Date("2026-03-01T12:00:00Z"), valor: "48.00", historico: "IR da folha", criadoPor: POR });
+    await expect(regularizar({ reconhecimentoId: rec.reconhecimentoId })).rejects.toThrow(/é da natureza 11130311, e a decisão do município para este imposto é 11130341/);
+    await expect(regularizar({ motivo: "curto" })).rejects.toThrow(/pelo menos 10 caracteres/);
+    expect(await prisma.apropriacaoDaConsignacaoPropria.count()).toBe(0);
+    expect(await prisma.receitaArrecadada.count()).toBe(0);
   });
 });

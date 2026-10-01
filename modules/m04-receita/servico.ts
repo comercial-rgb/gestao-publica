@@ -124,7 +124,13 @@ export type OrigemInterna =
    * não pede. A entidade titular vem da classificação do ente (não há conta bancária na guia: o dinheiro
    * retido nunca saiu do caixa que pagou).
    */
-  | { readonly origem: "RETENCAO_PROPRIA_NO_PAGAMENTO"; readonly entidadeTitularId: string | null };
+  | { readonly origem: "RETENCAO_PROPRIA_NO_PAGAMENTO"; readonly entidadeTitularId: string | null }
+  /**
+   * V26 — A REGULARIZAÇÃO DO LEGADO (`regularizarConsignacaoPropria`): a guia que baixa, contra a receita, o IR/ISS
+   * do próprio Tesouro que ficou na consignação. A autorização (REGISTRAR_ARRECADACAO) já foi cobrada pelo serviço,
+   * dentro da mesma transação; sem conta bancária, porque nenhum dinheiro entra.
+   */
+  | { readonly origem: "REGULARIZACAO_DE_CONSIGNACAO_PROPRIA"; readonly entidadeTitularId: string | null };
 
 /**
  * V16/C30 — RESOLVE A DISTRIBUIÇÃO: soma, fontes, previsão da LOA, autorização e coerência.
@@ -292,7 +298,7 @@ export async function registrarArrecadacao(
   // ÚNICA autorização que roda, DENTRO da transação dela: `criarM04DepsNaTx(tx)` monta a porta
   // sobre a tx. Os linkers (`receberNaTx`, `ingressoNaTx`) não são atos do usuário — são
   // pernas do mesmo fato, e autorizá-los de novo seria cobrar duas vezes pela mesma coisa.
-  if (interno?.origem !== "RETENCAO_PROPRIA_NO_PAGAMENTO") {
+  if (interno?.origem !== "RETENCAO_PROPRIA_NO_PAGAMENTO" && interno?.origem !== "REGULARIZACAO_DE_CONSIGNACAO_PROPRIA") {
     await deps.autz.exigir(
       dados.criadoPor,
       ACAO_DO_SERVICO.registrarArrecadacao,
@@ -387,7 +393,7 @@ export async function registrarArrecadacao(
     // cobrar um cadastro; inventar um titular seria pior.
     entidadeTitularId = conta.entidadeTitularId ?? undefined;
   }
-  if (interno?.origem === "RETENCAO_PROPRIA_NO_PAGAMENTO") {
+  if (interno?.origem === "RETENCAO_PROPRIA_NO_PAGAMENTO" || interno?.origem === "REGULARIZACAO_DE_CONSIGNACAO_PROPRIA") {
     if (dados.contaBancaria !== undefined) {
       throw new Error("A receita por retenção não declara conta bancária: o valor retido não entrou em conta nenhuma, ele deixou de sair. Nada foi gravado.");
     }

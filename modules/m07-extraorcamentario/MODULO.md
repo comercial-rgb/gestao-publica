@@ -237,3 +237,90 @@ o que a `8.2.1.1.3.02` mostraria.
 
 `8.2.1.1.3.02` **fica fora do seed** enquanto ninguém lançar nela: uma conta no plano
 que nenhum roteiro toca é um convite a lançar nela por engano.
+
+---
+
+## V26 — O IR e o ISS retidos pelo próprio Tesouro são receita, não consignação
+
+Ordem V26, item 1 (`docs/lotes/V26-decisoes-da-v25.md`). Fonte: MCASP 11ª ed., Parte I 3.6.2 e Parte III 6.2.6
+(`docs/oficial/stn-sof/mcasp-11-irrf-trechos.txt`); naturezas do ementário STN 2026
+(`docs/oficial/stn-sof/ementario-2026/`). **Desenho fundamentado no manual, não homologação do TCE-PB**: não foi
+localizada determinação pública do Tribunal tornando esta cadeia exclusiva.
+
+### O que acontece no pagamento (cadeia A)
+
+| Lançamento | Pernas | Valor |
+|---|---|---|
+| Pagamento (M05, composto) | D obrigação da liquidação · C banco · C 1.1.2.1 crédito tributário (uma perna por imposto próprio) · C consignação (INSS e terceiros) | bruto · líquido · R · terceiros |
+| | D 6.2.2.1.3.03 · C 6.2.2.1.3.04 (e a DDR 8.2.1.1.3 → 8.2.1.1.4) | bruto |
+| Guia por retenção (M04, mesma transação) | D 1.1.2.1 · C 4.1.1.2 (IR) ou 4.1.1.3 (ISS) | R |
+| | D 6.2.1.1 · C 6.2.1.2 | R |
+| | D 7.2.1.1.x (natureza da destinação) · C 8.2.1.1.1.01 | R |
+
+O crédito tributário nasce e morre no mesmo ato; a VPA nasce uma vez; o banco não tem débito fictício. A guia
+(`ReceitaArrecadada`) não declara conta bancária, porque o dinheiro retido não entrou em conta nenhuma: deixou de
+sair. Ela entra na execução da receita por natureza e fonte; o caixa e a conciliação (M09) só somam guia com conta,
+e o teto conciliável do pagamento desconta a retenção própria (`comRetencoesProprias`).
+
+### A decisão do ente (`ClassificacaoDaRetencaoPropria`, tela `/financeiro/retencoes-proprias`)
+
+Por FATO, não por documento do credor: `IRRF_FOLHA` (rendimento do trabalho), `IRRF_FORNECEDOR_PJ` (aquisição de bens
+e serviços de PJ, IN RFB 1.234/2012), `ISS`. Cada uma diz natureza do PRINCIPAL (último dígito 1), destinação
+(fonte da receita, nunca a da despesa paga), conta analítica do crédito (família 1.1.2.1), conta analítica da VPA
+(4.1.1.2 para IR, 4.1.1.3 para ISS) e a entidade do Tesouro. Append-only; vigência pelo dia civil do ente.
+**Sem decisão vigente, o pagamento que retém o imposto é recusado nomeando a tela.**
+
+### Perímetro
+
+Conta que paga com o MESMO titular do Tesouro (ou ente sem entidades declaradas): receita no ato. Conta de OUTRA
+entidade (fundo, autarquia): o imposto é do Tesouro, mas o dinheiro está em outro caixa — fica como consignação ao
+município, para o repasse real e conciliável. É o titular vigente da conta (`DeclaracaoDeTitularDaConta`) que decide.
+
+### Travas no servidor (`ehTributoDoProprioTesouro`)
+
+Recusados quando o tipo é o da classificação vigente, o credor é o próprio ente e a conta é do Tesouro:
+- reter como consignação (`registrarRetencoesDoPagamento`, a porta que toda entrada atravessa);
+- ingressar como dinheiro de terceiro (`registrarIngressoExtra`);
+- recolher com saída de banco (`registrarDispendioExtra`).
+Passam: INSS e demais terceiros, ISS devido a outro município (outro credor), repasse de outra entidade.
+
+### Anulação
+
+`anularPagamento` anula as guias por retenção na mesma transação (`anularReceitasPorRetencaoNaTx`). A guia sozinha não
+se anula (o M04 recusa); a anulação parcial de pagamento com retenção própria continua proibida, como a com
+consignação.
+
+### O legado (`regularizarConsignacaoPropria`, M04)
+
+Retenção antiga de IR/ISS do próprio Tesouro que ficou na consignação: baixada contra a receita, uma por retenção de
+origem (idempotente), sem apagar nada. Movimento novo `APROPRIACAO_COMO_RECEITA` (sinal −1; não é caixa, não é
+conciliável; no Balanço Financeiro e na DFC conta como dispêndio extra sem caixa, anulando a receita do mesmo valor).
+- Receita não reconhecida: guia D consignação × C VPA + receita realizada + controle.
+- Receita já reconhecida (reconhecimento informado, mesma natureza, saldo suficiente): D consignação × C crédito do
+  reconhecimento, e o vínculo o baixa; a VPA não se repete.
+A conta da consignação é a que o cadastro do tipo dizia quando a retenção foi gravada, conferida contra o lançamento.
+
+### O IR da folha (`modules/m33-folha/ir-da-folha.ts`)
+
+Retido UMA vez por contracheque, no primeiro pagamento daquela folha que cobre o servidor (cálculo do fechamento).
+`IrDoContrachequeRetido` liga contracheque → retenção própria → guia. Pagar a liquidação de uma folha com IR pendente
+sem retê-lo é recusado. Anulado o pagamento, o IR volta a pendente. A conferência final roda sob a trava do número da
+guia (posto 33), que serializa toda receita por retenção do exercício.
+
+### SAGRES
+
+§4.14 (Retencao) e §4.15 (EstornoRetencao) incluem as retenções próprias pelo tipo de consignação da classificação; a
+numeração dos estornos é um espaço só. §4.16 traz a guia por retenção. São aspectos do mesmo fato, não duas
+arrecadações.
+
+### Pendências (nomeadas)
+
+- `REGULARIZACAO-NO-SAGRES`: a baixa do legado contra a receita aparece no §4.16 (a guia), mas a baixa da consignação
+  não tem registro próprio no leiaute (não é DespesaExtra: não houve pagamento). Representação a confirmar com o TCE-PB.
+- `RETENCAO-PROPRIA-EM-RESTOS`: pagamento de restos a pagar ainda não retém IR/ISS como receita; a entrada manual
+  recusa reter como consignação o imposto do próprio Tesouro, então o pagamento de RP com IR próprio é recusado até
+  o M08 compor a retenção própria.
+- `CONTRIBUICAO-DO-SERVIDOR-NO-PAGAMENTO`: o pagamento da folha retém o IR, mas não a contribuição previdenciária do
+  servidor (já era assim antes da V26).
+- `LOA-ESPERANCA-IRPF-11130101`: a LOA 2026 de Esperança prevê o IR em 11130101; a execução vai a 11130311/11130341.
+  O orçamento publicado não é alterado nem rateado; a regularização do enquadramento é do ente.

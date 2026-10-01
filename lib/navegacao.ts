@@ -218,6 +218,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
  */
 export const FINANCEIRO: readonly RelatorioNav[] = [
   { href: "/financeiro/consignacoes", numero: "Consignações", rotulo: "Consignações", descricao: "Contas contábeis das consignações e retenções na fonte, por tipo." },
+  { href: "/financeiro/retencoes-proprias", numero: "Retenções do município", rotulo: "Retenções do próprio município", descricao: "IR e ISS retidos nos pagamentos, que entram como receita do município." },
   { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Retenções, consignações e demais ingressos e dispêndios extraorçamentários." },
   { href: "/financeiro/extraorcamentario/recolher", numero: "Recolher consignações", rotulo: "Recolher consignações", descricao: "Recolhimento das retenções do exercício e de exercícios anteriores." },
   { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Conciliação entre o extrato bancário e os lançamentos contábeis." },

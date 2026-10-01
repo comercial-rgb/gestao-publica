@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { diaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { normalizarCodigoNaturezaReceita } from "../m04-receita/ementario.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -9,8 +10,10 @@ import {
   FATOS_DA_RETENCAO_PROPRIA,
   ROTULO_DO_FATO_PROPRIO,
   type FatoDaRetencaoPropria,
+  type RetencaoPropriaParaCompor,
 } from "./dominio.js";
 import type { Tx } from "./extraorcamentario.js";
+import { irDaFolhaPendente } from "../m33-folha/ir-da-folha.js";
 
 /**
  * V26 — O IR E O ISS RETIDOS PELO PRÓPRIO TESOURO: a decisão do ente e as regras que todo pagamento atravessa.
@@ -85,14 +88,20 @@ function projetar(l: Linha): ClassificacaoVigente {
   };
 }
 
-/** A classificação vigente do fato na data: a de maior `vigenteDesde` até ela; empate, a gravada por último. */
+/**
+ * A classificação vigente do fato na data: a de maior `vigenteDesde` até ela; empate, a gravada por último.
+ *
+ * ⚠️ PELO DIA CIVIL DO ENTE. `vigenteDesde` é uma data (meia-noite UTC no banco) e o pagamento é um instante: às
+ * 21h30 de 28/02 em Esperança já é 01/03 em UTC, e a comparação crua aplicaria uma decisão que só vale de 01/03.
+ */
 export async function classificacaoPropriaVigente(
   db: Tx,
   fato: FatoDaRetencaoPropria,
   data: Date
 ): Promise<ClassificacaoVigente | null> {
+  const ate = new Date(`${diaCivil(data)}T00:00:00.000Z`);
   const l = await db.classificacaoDaRetencaoPropria.findFirst({
-    where: { fato, vigenteDesde: { lte: data } },
+    where: { fato, vigenteDesde: { lte: ate } },
     orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }],
     select: SELECAO,
   });
@@ -243,4 +252,43 @@ export async function ehTributoDoProprioTesouro(
     if (c !== null && c.tipoConsignacaoId === p.tipoConsignacaoId && (await mesmoPerimetro(db, p.contaBancariaId, c))) return c;
   }
   return null;
+}
+
+// ── V26 — o IR da folha no pagamento ─────────────────────────────────────────────────────────────────
+
+/**
+ * O que o pagamento de uma liquidação de FOLHA retém do IR dos servidores: a retenção própria (mesmo caixa do
+ * Tesouro) ou, se a conta que paga é de outra entidade, a consignação ao município para o repasse real. Nulo quando a
+ * liquidação não é de folha ou não há IR pendente. Sem decisão vigente para o IR da folha, recusa nomeando o cadastro.
+ */
+export async function irDaFolhaNoPagamento(
+  db: Tx,
+  p: { readonly liquidacaoId: string; readonly data: Date; readonly contaBancariaId: string }
+): Promise<
+  | { readonly propria: RetencaoPropriaParaCompor; readonly consignacao: null }
+  | { readonly propria: null; readonly consignacao: { readonly tipoConsignacaoId: string; readonly credorConsignatario: string; readonly valor: string } }
+  | null
+> {
+  const ir = await irDaFolhaPendente(db, p.liquidacaoId);
+  if (ir === null || !ir.total.greaterThan(0)) return null;
+  const c = await exigirClassificacaoPropria(db, "IRRF_FOLHA", p.data);
+  if (await mesmoPerimetro(db, p.contaBancariaId, c)) {
+    return {
+      propria: {
+        fato: "IRRF_FOLHA",
+        classificacaoId: c.id,
+        valor: ir.total,
+        contaCredito: c.contaCredito,
+        contaVpa: c.contaVpa,
+        naturezaReceitaCodigo: c.naturezaReceitaCodigo,
+        fonteCodigo: c.fonteCodigo,
+        entidadeTitularId: c.entidadeTitularId,
+        grupoDaFolhaId: ir.grupoDaFolhaId,
+        contrachequesDaFolha: ir.contracheques,
+      },
+      consignacao: null,
+    };
+  }
+  const ente = await db.enteConfig.findFirst({ select: { nome: true } });
+  return { propria: null, consignacao: { tipoConsignacaoId: c.tipoConsignacaoId, credorConsignatario: ente?.nome ?? "Município", valor: ir.total.toFixed(2) } };
 }

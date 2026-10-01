@@ -421,6 +421,11 @@ export async function lerDepositos(
       case "ESTORNO_DISPENDIO":
         pagos = toMoney(pagos.minus(v));
         break;
+      // V26 — o imposto do próprio Tesouro que estava como consignação foi baixado contra a receita: sai dos
+      // depósitos como "pago" sem caixa, porque a receita orçamentária do mesmo valor entrou do outro lado.
+      case "APROPRIACAO_COMO_RECEITA":
+        pagos = toMoney(pagos.plus(v));
+        break;
     }
   }
   return { recebidos, pagos };

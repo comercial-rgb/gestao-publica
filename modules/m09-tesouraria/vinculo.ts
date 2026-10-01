@@ -6,6 +6,7 @@ import {
   SENTIDO_MOVIMENTO_BANCARIO,
   exigirCapacidade,
   exigirNaturezasCompativeis,
+  comRetencoesProprias,
   tetoConciliavelDoPagamento,
   vinculoLiquido,
   zEstornarVinculoInput,
@@ -118,6 +119,7 @@ async function carregarPagamento(
       estornoDeId: true,
       estornos: { select: { id: true } },
       retencoes: { select: { tipo: true, valor: true } },
+      retencoesProprias: { select: { valor: true, estornoDeId: true } },
     },
   });
   if (p === null) throw new Error(`Pagamento ${id} não encontrado.`);
@@ -146,7 +148,10 @@ async function carregarPagamento(
   // como diferença no relatório — ao mesmo tempo.
   const liquido = tetoConciliavelDoPagamento(
     toMoney(p.valor.toFixed(2)),
-    p.retencoes.map((r) => ({ tipo: r.tipo, valor: toMoney(r.valor.toFixed(2)) }))
+    comRetencoesProprias(
+      p.retencoes.map((r) => ({ tipo: r.tipo, valor: toMoney(r.valor.toFixed(2)) })),
+      p.retencoesProprias.map((r) => ({ valor: toMoney(r.valor.toFixed(2)), estornoDeId: r.estornoDeId }))
+    )
   );
 
   const conta = await tx.contaBancaria.findUnique({
@@ -245,6 +250,9 @@ async function carregarMovimentoExtra(
   }
 
   // (d) ESTORNO NÃO É CONCILIÁVEL — porta fechada por design.
+  if (m.tipo === "APROPRIACAO_COMO_RECEITA") {
+    throw new Error(`Movimento ${id} é a baixa do imposto do próprio município contra a receita: não passou pelo banco e não é conciliável.`);
+  }
   if (m.tipo === "ESTORNO_INGRESSO" || m.tipo === "ESTORNO_DISPENDIO") {
     throw new Error(
       `Movimento ${id} é um ${m.tipo}: estorno não é conciliável. Concilie o ` +

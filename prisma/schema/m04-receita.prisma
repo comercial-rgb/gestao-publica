@@ -38,6 +38,7 @@ model ReceitaArrecadada {
   id        String @id @default(cuid())
   /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
   retencaoPropria RetencaoPropriaDoPagamento? @relation("ReceitaDaRetencaoPropria")
+  apropriacao     ApropriacaoDaConsignacaoPropria? @relation("ReceitaDaApropriacao")
   exercicio Int
 
   naturezaReceitaId String

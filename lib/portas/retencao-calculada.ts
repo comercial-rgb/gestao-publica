@@ -90,7 +90,8 @@ export async function previaDasRetencoes(input: {
     linhas: av.avaliacoes.map((a) => {
       switch (a.resultado) {
         case "RETIDO":
-          return { tributo: a.tributo, situacao: "Retido", base: a.base.toFixed(2), aliquota: pctBr(a.aliquota.toString()), valor: a.valor.toFixed(2), explicacao: a.fundamento };
+          // V26 — o IR e o ISS retidos são do próprio município: a pessoa vê, antes de pagar, que entram como receita.
+          return { tributo: a.tributo, situacao: "Retido", base: a.base.toFixed(2), aliquota: pctBr(a.aliquota.toString()), valor: a.valor.toFixed(2), explicacao: a.tributo === "INSS" ? a.fundamento : `${a.fundamento} Imposto do município: entra como receita no próprio pagamento (se a conta for de outra entidade, fica retido para repasse ao município).` };
         case "NAO_RETIDO":
           return { tributo: a.tributo, situacao: "Não retido", base: null, aliquota: null, valor: "0.00", explicacao: a.fundamento };
         case "INFORMADO":

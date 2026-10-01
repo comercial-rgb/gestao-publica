@@ -523,6 +523,8 @@ model FechamentoDaFolha {
 /// O contracheque de um vínculo num cálculo: linhas, totais e a MEMÓRIA canônica com o sha256.
 model Contracheque {
   id String @id @default(cuid())
+  /// V26 — o IR deste contracheque retido num pagamento (m07-retencao-propria.prisma).
+  irRetido IrDoContrachequeRetido[] @relation("IrDoContrachequeRetido")
 
   calculoId String
   calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])

@@ -3,6 +3,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   saldoDosFatosDeCaixa,
   SENTIDO_MOVIMENTO_BANCARIO,
+  comRetencoesProprias,
   tetoConciliavelDoPagamento,
   type SentidoInterno,
   type TipoInternoConciliacao,
@@ -110,6 +111,7 @@ export async function fatosDeCaixaDaConta(
       valor: true,
       data: true,
       retencoes: { select: { tipo: true, valor: true } },
+      retencoesProprias: { select: { valor: true, estornoDeId: true } },
     },
   });
   for (const p of pagamentos) {
@@ -120,7 +122,10 @@ export async function fatosDeCaixaDaConta(
       descricao: `Pagamento ${p.numero}`,
       teto: tetoConciliavelDoPagamento(
         toMoney(p.valor.toFixed(2)),
-        p.retencoes.map((r) => ({ tipo: r.tipo, valor: toMoney(r.valor.toFixed(2)) }))
+        comRetencoesProprias(
+          p.retencoes.map((r) => ({ tipo: r.tipo, valor: toMoney(r.valor.toFixed(2)) })),
+          p.retencoesProprias.map((r) => ({ valor: toMoney(r.valor.toFixed(2)), estornoDeId: r.estornoDeId }))
+        )
       ),
       sentido: "SAIDA",
     });

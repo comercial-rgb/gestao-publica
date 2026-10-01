@@ -23,6 +23,7 @@ import {
   prepararRetencoesCalculadas,
   type DadosFiscaisDaOperacao,
 } from "../../modules/m07-extraorcamentario/retencao-calculada";
+import { irDaFolhaNoPagamento } from "../../modules/m07-extraorcamentario/retencao-propria";
 import { toMoney } from "../../packages/contracts/index";
 
 /**
@@ -332,6 +333,21 @@ export async function registrarPagamento(input: {
             });
             return { contaDisponibilidade: contaContabilDaConta, retencoes: p.retencoes, calculos: p.calculos, proprias: p.proprias };
           })();
+    // V26 — a liquidação de folha: o IR dos servidores ainda não retido entra no pagamento.
+    const irDaFolha = await irDaFolhaNoPagamento(cliente(), { liquidacaoId: input.liquidacaoId, data: input.data, contaBancariaId: conta.id });
+    const consignacaoDaFolha = irDaFolha?.consignacao ?? null;
+    const comFolha: RetencoesDoPagamento | undefined =
+      irDaFolha === null
+        ? retencoes
+        : {
+            contaDisponibilidade: contaContabilDaConta,
+            retencoes: [
+              ...(retencoes?.retencoes ?? []),
+              ...(consignacaoDaFolha === null ? [] : ((await comporRetencoes([consignacaoDaFolha], contaContabilDaConta))?.retencoes ?? [])),
+            ],
+            ...(retencoes?.calculos !== undefined ? { calculos: retencoes.calculos } : {}),
+            proprias: [...(retencoes?.proprias ?? []), ...(irDaFolha.propria === null ? [] : [irDaFolha.propria])],
+          };
     const r = await pagar(
       {
         liquidacaoId: input.liquidacaoId,
@@ -360,7 +376,7 @@ export async function registrarPagamento(input: {
       // motor do M07 devolver EXATAMENTE as partidas de antes. Um objeto vazio passaria
       // pelo caminho composto para chegar ao mesmo lugar — e "chegar ao mesmo lugar" é
       // uma promessa que só um teste sustenta, não uma que se assuma.
-      retencoes
+      comFolha
     );
     return r.pagamentoId;
   });

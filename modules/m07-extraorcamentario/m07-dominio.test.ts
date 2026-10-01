@@ -41,8 +41,10 @@ describe("M07 — SINAL_MOVIMENTO_EXTRA (a fonte única do sinal)", () => {
     );
   });
 
-  it("o Record cobre os QUATRO tipos — um tipo novo quebra o typecheck", () => {
+  it("o Record cobre os CINCO tipos — um tipo novo quebra o typecheck (V26: a apropriação como receita, sinal −1)", () => {
+    expect(SINAL_MOVIMENTO_EXTRA.APROPRIACAO_COMO_RECEITA).toBe(-1);
     expect(Object.keys(SINAL_MOVIMENTO_EXTRA).sort()).toEqual([
+      "APROPRIACAO_COMO_RECEITA",
       "DISPENDIO",
       "ESTORNO_DISPENDIO",
       "ESTORNO_INGRESSO",

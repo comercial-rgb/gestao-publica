@@ -199,6 +199,18 @@ export function comSinalDoSentido(
  *
  * O sinal de cada retenção vem do `SINAL_MOVIMENTO_EXTRA` (M07), reusado.
  */
+/**
+ * V26 — AS RETENÇÕES PRÓPRIAS DO TESOURO (IR e ISS do ente) também saem do teto: o banco viu só o líquido. Elas não
+ * são movimento do M07 (são receita, não consignação), então entram aqui com o MESMO sinal das retenções: a linha
+ * viva como INGRESSO, a do estorno como ESTORNO_INGRESSO.
+ */
+export function comRetencoesProprias(
+  retencoes: readonly { readonly tipo: TipoMovimentoExtra; readonly valor: Money }[],
+  proprias: readonly { readonly valor: Money; readonly estornoDeId: string | null }[]
+): readonly { readonly tipo: TipoMovimentoExtra; readonly valor: Money }[] {
+  return [...retencoes, ...proprias.map((r) => ({ tipo: (r.estornoDeId === null ? "INGRESSO" : "ESTORNO_INGRESSO") as TipoMovimentoExtra, valor: r.valor }))];
+}
+
 export function tetoConciliavelDoPagamento(
   bruto: Money,
   retencoes: readonly { readonly tipo: TipoMovimentoExtra; readonly valor: Money }[]

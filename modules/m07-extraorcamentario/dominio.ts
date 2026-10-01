@@ -19,7 +19,9 @@ export type TipoMovimentoExtra =
   | "INGRESSO"
   | "DISPENDIO"
   | "ESTORNO_INGRESSO"
-  | "ESTORNO_DISPENDIO";
+  | "ESTORNO_DISPENDIO"
+  /** V26 — o saldo de IR/ISS do próprio Tesouro baixado contra a receita, sem saída de banco. */
+  | "APROPRIACAO_COMO_RECEITA";
 
 /**
  * ⚠️ A FONTE ÚNICA DO SINAL. Toda soma de movimentos DEVE passar por aqui.
@@ -42,6 +44,8 @@ export const SINAL_MOVIMENTO_EXTRA: Record<TipoMovimentoExtra, 1 | -1> = {
   ESTORNO_INGRESSO: -1,
   /** Desfaz o dispêndio: o passivo volta a crescer. */
   ESTORNO_DISPENDIO: 1,
+  /** V26 — o imposto do próprio Tesouro sai do passivo para a receita: o passivo DIMINUI, sem dinheiro sair. */
+  APROPRIACAO_COMO_RECEITA: -1,
 };
 
 export interface MovimentoExtra {
@@ -58,6 +62,8 @@ export interface TotaisExtra {
   readonly ingressoLiquido: Money;
   /** dispendio − estornoDispendio. O que de fato saiu. */
   readonly dispendioLiquido: Money;
+  /** V26 — o que foi baixado contra a receita (imposto do próprio Tesouro), sem saída de dinheiro. */
+  readonly apropriadoComoReceita: Money;
   /**
    * O SALDO devido ao consignatário = ingressoLiquido − dispendioLiquido.
    * É quanto o ente ainda tem de dinheiro que NÃO é dele.
@@ -78,6 +84,7 @@ export function totaisPorConsignatario(
     DISPENDIO: zero,
     ESTORNO_INGRESSO: zero,
     ESTORNO_DISPENDIO: zero,
+    APROPRIACAO_COMO_RECEITA: zero,
   };
 
   for (const m of movimentos) {
@@ -98,7 +105,8 @@ export function totaisPorConsignatario(
     estornoDispendio: por.ESTORNO_DISPENDIO,
     ingressoLiquido,
     dispendioLiquido,
-    saldo: toMoney(ingressoLiquido.minus(dispendioLiquido)),
+    apropriadoComoReceita: por.APROPRIACAO_COMO_RECEITA,
+    saldo: toMoney(ingressoLiquido.minus(dispendioLiquido).minus(por.APROPRIACAO_COMO_RECEITA)),
   };
 }
 
@@ -108,6 +116,11 @@ export function tipoDoEstorno(
 ): "ESTORNO_INGRESSO" | "ESTORNO_DISPENDIO" {
   if (tipo === "INGRESSO") return "ESTORNO_INGRESSO";
   if (tipo === "DISPENDIO") return "ESTORNO_DISPENDIO";
+  if (tipo === "APROPRIACAO_COMO_RECEITA") {
+    throw new Error(
+      "A baixa do imposto do próprio município contra a receita não se estorna por aqui: ela tem uma guia de receita junto. Nada foi gravado."
+    );
+  }
   throw new Error(
     `Movimento do tipo ${tipo} JÁ É um estorno — um estorno não se estorna.`
   );
@@ -374,6 +387,8 @@ export interface RetencaoPropriaParaCompor {
   readonly entidadeTitularId: string | null;
   /** Folha: o grupo de empenho cujo IR é retido. */
   readonly grupoDaFolhaId?: string | undefined;
+  /** Folha: os contracheques cujo IR este pagamento retém (um por servidor, uma vez). */
+  readonly contrachequesDaFolha?: readonly { readonly contrachequeId: string; readonly valor: Money }[] | undefined;
 }
 
 /** A família do crédito tributário a receber no PCASP: a perna do pagamento só pode ir para ela. */
