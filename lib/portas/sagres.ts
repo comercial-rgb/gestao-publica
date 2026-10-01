@@ -63,6 +63,7 @@ import {
   LAYOUT_RECEITA_ORCAMENTARIA,
   LAYOUT_RETENCAO,
   LAYOUT_SALDO_MENSAL,
+  competenciaDoLeiaute,
   type ArquivoGerado,
   type Manifesto,
   type Violacao,
@@ -70,7 +71,7 @@ import {
 import type { LayoutArquivo } from "../../adapters/tribunais/tce-pb/sagres/registry";
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
-import { anoCivil, competenciaCivil, diaCivil, janelaCivilDoMes } from "../../packages/datas/index";
+import { anoCivil, competenciaCivil, diaCivil } from "../../packages/datas/index";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -188,7 +189,9 @@ export interface ParamsSagres {
  */
 function competenciaMensalDe(p: ParamsSagres): Date {
   const base = p.mes ?? p.dia;
-  return janelaCivilDoMes(competenciaCivil(base)).fim;
+  // O MÊS é o do calendário do ente; a ÂNCORA é a do leiaute (ver `competenciaDoLeiaute`). O último
+  // instante civil do mês já é o mês seguinte em UTC, e o gerador lê o mês em UTC.
+  return competenciaDoLeiaute(competenciaCivil(base));
 }
 
 function reguaDe(largura: number): { dezenas: string; unidades: string } {

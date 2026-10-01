@@ -20,7 +20,7 @@ export {
   type ValorBruto,
 } from "./registry.js";
 
-export { nomeArquivo, type NomeArquivoInput } from "./nomenclatura.js";
+export { competenciaDoLeiaute, nomeArquivo, type NomeArquivoInput } from "./nomenclatura.js";
 
 export {
   descreverViolacao,

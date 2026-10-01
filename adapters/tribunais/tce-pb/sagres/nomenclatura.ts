@@ -50,3 +50,17 @@ export function nomeArquivo(input: NomeArquivoInput): string {
   }
   return `${codUnidadeGestora}${dataParte}${entidade}.txt`;
 }
+
+/**
+ * V25 — A COMPETÊNCIA MENSAL NO EIXO DO LEIAUTE: o último dia do mês civil "AAAA-MM", à meia-noite UTC.
+ *
+ * ⚠️ O GERADOR LÊ O MÊS POR `getUTC*` (nome do arquivo, janela do mês, saldo até o fim do mês). A porta da
+ * tela entregava o último INSTANTE civil do mês (30/09 23:59:59 em Brasília = 01/10 02:59 UTC), e todo
+ * arquivo mensal pedido para setembro saía nomeado e calculado como OUTUBRO — dotação, saldo, conciliação.
+ * O adaptador do tribunal já usava esta âncora; a porta passa a usar a mesma.
+ */
+export function competenciaDoLeiaute(competenciaCivil: string): Date {
+  const m = /^(\d{4})-(\d{2})$/.exec(competenciaCivil);
+  if (m === null) throw new Error(`Competência "${competenciaCivil}" inválida — o formato é AAAA-MM.`);
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]), 0));
+}
