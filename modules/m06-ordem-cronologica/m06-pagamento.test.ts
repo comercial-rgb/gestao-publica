@@ -5,7 +5,7 @@ import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroPagamento } from "../m05-despesa/dominio.js";
 import { pagar } from "../m05-despesa/servico-bloco2.js";
 import { criarOrdemCronologicaPrisma } from "./adapter-prisma.js";
-import { empenharELiquidar, semearM06 } from "./m06.test.js";
+import { empenharELiquidar, semearM06 } from "./fixture-m06.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import type { JustificativaQuebraOrdemInput } from "./dominio.js";
 

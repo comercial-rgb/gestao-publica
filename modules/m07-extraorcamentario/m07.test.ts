@@ -14,6 +14,7 @@ import {
   saldoExtraorcamentario,
 } from "./extraorcamentario.js";
 import { DIA_DE_BORDA } from "../../test/instantes.js";
+import { CAIXA, CONTAS, FONTE_500, FONTE_540, PASSIVO, POR, R_IN, R_OUT, T_CAUCAO, T_INATIVO, T_INSS, semearM07 } from "./fixture-m07.js";
 
 /**
  * M07 bloco 2 — ingresso, dispêndio e estorno avulsos.
@@ -28,65 +29,6 @@ const prisma = criarPrismaDeTeste();
 // inteiramente PULADA o Vitest reporta como PASSANDO (exit 0). Ver test/banco.ts.
 await exigirBanco(prisma);
 
-const POR = "m07@cg.pb.gov.br";
-const FONTE_500 = "fnt-500";
-const FONTE_540 = "fnt-540";
-
-/** Contas por PARÂMETRO (padrão do projeto — nada inventado). */
-const CAIXA = "1.1.1.1.2.00.00";
-const PASSIVO = "2.1.8.8.1.01.00";
-const R_IN = roteiroIngressoExtra({
-  disponibilidade: CAIXA,
-  consignacaoAPagar: PASSIVO,
-});
-const R_OUT = roteiroDispendioExtra({
-  consignacaoAPagar: PASSIVO,
-  disponibilidade: CAIXA,
-});
-
-const CONTAS = [
-  { id: "c-caixa", codigo: CAIXA, nome: "Bancos", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
-  { id: "c-passivo", codigo: PASSIVO, nome: "Consignações a pagar", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
-  { id: "c-sintetica", codigo: "2.1.8.0.0.00.00", nome: "Demais obrigações", naturezaSaldo: "CREDORA" as const, nivel: 3, analitica: false },
-];
-
-/** ids dos tipos, resolvidos no seed. */
-let T_CAUCAO: string;
-let T_INSS: string;
-let T_INATIVO: string;
-
-export async function semearM07(): Promise<void> {
-  await limparBanco(prisma);
-
-  await prisma.contaPcasp.createMany({ data: CONTAS });
-  await prisma.fonteRecurso.createMany({
-    data: [
-      { id: FONTE_500, codigo: "500", descricao: "Livre", codigoTce: "500" },
-      { id: FONTE_540, codigo: "540", descricao: "FUNDEB", codigoTce: "540" },
-    ],
-  });
-  await prisma.contaBancaria.createMany({
-    data: [
-      { id: "cb1", codigo: "CC-001", descricao: "Livre", fonteId: FONTE_500 },
-      { id: "cb2", codigo: "CC-002", descricao: "FUNDEB", fonteId: FONTE_540 },
-    ],
-  });
-
-  const caucao = await prisma.tipoConsignacao.create({
-    data: { codigo: "CAUCAO", descricao: "Caução", criadoPor: "TESTE" },
-  });
-  const inss = await prisma.tipoConsignacao.create({
-    data: { codigo: "INSS", descricao: "INSS", criadoPor: "TESTE" },
-  });
-  const inativo = await prisma.tipoConsignacao.create({
-    data: { codigo: "ANTIGO", descricao: "Tipo desativado", ativo: false, criadoPor: "TESTE" },
-  });
-  T_CAUCAO = caucao.id;
-  T_INSS = inss.id;
-  T_INATIVO = inativo.id;
-}
-
-export { T_CAUCAO, T_INSS, CAIXA, PASSIVO, R_IN, R_OUT, FONTE_500, POR, CONTAS };
 
 async function movimentosDotacao() {
   return prisma.movimentoDotacao.findMany({

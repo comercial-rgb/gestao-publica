@@ -18,7 +18,7 @@ import {
 // ⚠️ A FIXTURE É A DO PRÓPRIO M07, e reusá-la é regra aprendida nesta rodada: compor sobre uma
 // fixture alheia exige NÃO reaproveitar os códigos dela com outro significado. Aqui nada é
 // redefinido — os ids dos tipos são RESOLVIDOS por consulta, não supostos.
-import { semearM07 } from "./m07.test.js";
+import { semearM07 } from "./fixture-m07.js";
 
 /**
  * ═══ A COMPOSIÇÃO DO RECOLHIMENTO POR ORIGEM (C34) E OS QUATRO NÚMEROS (C37) ═══
