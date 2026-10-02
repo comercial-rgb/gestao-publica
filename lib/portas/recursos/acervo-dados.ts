@@ -13,6 +13,7 @@ import {
   alienarBem,
   baixarBem,
   registrarEntradaAvulsa,
+  adquirirBem,
   registrarImpairment,
   registrarReavaliacao,
   valorBrutoDoBem,
@@ -620,6 +621,20 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
     // e o núcleo recusaria com uma mensagem sobre levantamento por classe — correta, e
     // inútil para quem está baixando um armário. Bem inexistente estoura ANTES de qualquer
     // escrita, nomeando o que faltou.
+    // V28 — a compra liquidada vira valor do bem. Teto cumulativo, trava e a conferência de que a
+    // aquisição reclassifica o que a liquidação lançou ficam no núcleo (`adquirirBem`).
+    case "incorporar-pela-liquidacao":
+      await comEscritaAutenticada("ADQUIRIR_BEM", async (criadoPor) =>
+        adquirirBem(cliente(), {
+          classeDeBensId: await classeDoBem(bemId),
+          bemId,
+          liquidacaoId: t(c, "liquidacaoId"),
+          valor: t(c, "valor"),
+          dataMovimento: dia(c, "dataMovimento"),
+          criadoPor,
+        })
+      );
+      return;
     case "registrar-entrada-de-valor":
       await comEscritaAutenticada("REGISTRAR_ENTRADA_AVULSA", async (criadoPor) =>
         registrarEntradaAvulsa(cliente(), {

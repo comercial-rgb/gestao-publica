@@ -506,6 +506,16 @@ export async function adquirirBem(
   });
 }
 
+/**
+ * V28 — QUANTO DE UMA LIQUIDAÇÃO AINDA PODE VIRAR BEM: o líquido dela menos o já incorporado. É a
+ * mesma conta que o teto de `adquirirBem` confere dentro da trava; a tela a usa só para oferecer.
+ */
+export async function saldoAIncorporarDaLiquidacao(tx: Tx, liquidacaoId: string): Promise<Money> {
+  const liquido = await liquidoDaLiquidacaoNaTx(tx, liquidacaoId);
+  const incorporado = await incorporadoDaLiquidacaoNaTx(tx, liquidacaoId);
+  return toMoney(liquido.minus(incorporado));
+}
+
 /** O líquido de UMA liquidação: o valor menos as anulações parciais vivas (zero se anulada). */
 async function liquidoDaLiquidacaoNaTx(tx: Tx, id: string): Promise<Money> {
   const linhas = await tx.liquidacao.findMany({

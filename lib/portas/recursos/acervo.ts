@@ -283,6 +283,28 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
     // seletor permitiria escolher classe diferente da do bem, e o núcleo recusaria com uma
     // mensagem sobre levantamento por classe — tecnicamente correta, e inútil para quem
     // está baixando um armário.
+    // V28 — A AQUISIÇÃO PELA LIQUIDAÇÃO DA COMPRA. É o caminho do bem comprado: a despesa de capital já
+    // foi liquidada (e a liquidação já pôs o valor no ativo, na conta declarada para o elemento); aqui
+    // o bem recebe esse valor, reclassificado para a conta dele. Crachá próprio (`ADQUIRIR_BEM`, no
+    // censo desde o ENT05): incorporar uma compra não é o mesmo que avaliar um bem que já existia.
+    {
+      nome: "incorporar-pela-liquidacao",
+      rotulo: "Incorporar pela liquidação da compra",
+      acaoDoCenso: "ADQUIRIR_BEM",
+      aviso:
+        "O bem recebe o valor da despesa de capital já liquidada, até o saldo ainda não incorporado da " +
+        "liquidação. Gera lançamento contábil que transfere o valor para a conta do bem; a obrigação com o " +
+        "fornecedor já nasceu na liquidação e não se repete.",
+      campos: [
+        {
+          nome: "liquidacaoId", rotulo: "Liquidação da compra", tipo: "referencia", catalogo: "liquidacoes-de-capital",
+          obrigatorio: true, largura: 4,
+          ajuda: "Liquidações de despesa de capital com valor ainda não incorporado ao patrimônio.",
+        },
+        { nome: "valor", rotulo: "Valor a incorporar (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "dataMovimento", rotulo: "Data da incorporação", tipo: "data", obrigatorio: true, largura: 1 },
+      ],
+    },
     {
       nome: "registrar-entrada-de-valor",
       rotulo: "Registrar entrada de valor",

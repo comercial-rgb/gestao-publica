@@ -2912,6 +2912,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   contaDaLiquidacaoVigente: "leitura (a conta que a liquidação de UM elemento debita: rol fixo ou declaração do ente)",
   exigirContaDaLiquidacao: "guard (fail-closed antes da liquidação: elemento sem conta recusa nomeando onde declarar)",
   listarContasDaLiquidacao: "leitura (as contas de liquidação vigentes, uma linha por elemento)",
+  saldoAIncorporarDaLiquidacao: "leitura (o líquido de uma liquidação menos o já incorporado ao patrimônio; o teto de adquirirBem confere o mesmo dentro da trava)",
   rgfAnexo2: "leitura (RGF Anexo 2 — dívida consolidada líquida sobre a RCL ajustada, LRF art. 55 I b)",
   anexo6: "leitura (RREO Anexo 6 — resultado primário e nominal ACIMA DA LINHA, LRF art. 53 III)",
   anexo6AbaixoDaLinha:

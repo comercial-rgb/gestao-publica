@@ -5,6 +5,7 @@ import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import type { Prisma } from "../../prisma/generated/client/client.js";
 import { cliente } from "./cliente";
 import { saldoReconhecidoDe } from "../../modules/m04-receita/reconhecimento.js";
+import { saldoAIncorporarDaLiquidacao } from "../../modules/m10-patrimonial/patrimonio.js";
 import { formatarMoeda } from "../../packages/contracts/moeda";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
@@ -162,6 +163,46 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       });
       const r = pagina(linhas, p);
       return { opcoes: r.linhas.map((c) => ({ valor: c.codigo, rotulo: `${c.codigo} — ${c.nome}` })), temMais: r.temMais };
+    },
+  },
+  /**
+   * V28 — as LIQUIDAÇÕES DE CAPITAL que ainda têm valor a incorporar ao patrimônio. Só as vivas
+   * (nem anuladas nem anulação), de natureza do grupo 4 ou 5, com saldo positivo — o mesmo saldo que
+   * o teto de `adquirirBem` confere dentro da trava.
+   */
+  "liquidacoes-de-capital": {
+    leitura: "CONSULTAR_PATRIMONIO",
+    async buscar(_s, p) {
+      const linhas = await cliente().liquidacao.findMany({
+        where: {
+          estornoDeId: null,
+          anulacaoParcialDeId: null,
+          estornos: { none: {} },
+          empenho: { ficha: { naturezaDespesa: { codNatureza: { in: ["4", "5"] } } } },
+          ...(p.valor !== undefined
+            ? { id: p.valor }
+            : p.q === "" ? {} : { OR: [{ numero: contem(p.q) }, { empenho: { numero: contem(p.q) } }, { empenho: { credorCpfCnpj: { startsWith: p.q.replace(/\D/g, "") || p.q } } }] }),
+        },
+        orderBy: [{ data: "desc" }, { id: "asc" }],
+        skip: skip(p), take,
+        select: {
+          id: true, numero: true, data: true,
+          empenho: { select: { numero: true, credorCpfCnpj: true, ficha: { select: { naturezaDespesa: { select: { codigoCompleto: true, descricao: true } } } } } },
+        },
+      });
+      const r = pagina(linhas, p);
+      const comSaldo = await Promise.all(r.linhas.map(async (l) => ({ l, saldo: await saldoAIncorporarDaLiquidacao(cliente(), l.id) })));
+      return {
+        opcoes: comSaldo
+          .filter((x) => p.valor !== undefined || x.saldo.greaterThan(0))
+          .map(({ l, saldo }) => ({
+            valor: l.id,
+            rotulo: `${l.numero} — empenho ${l.empenho.numero} — ${l.empenho.ficha.naturezaDespesa.codigoCompleto} ${l.empenho.ficha.naturezaDespesa.descricao}`,
+            detalhe: `credor ${formatarDocumento(l.empenho.credorCpfCnpj)} · a incorporar R$ ${formatarMoeda(saldo.toFixed(2)).texto}`,
+            dados: { valor: saldo.toFixed(2) },
+          })),
+        temMais: r.temMais,
+      };
     },
   },
   /**

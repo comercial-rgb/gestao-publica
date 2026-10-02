@@ -11,6 +11,7 @@ import { empenhar } from "../m05-despesa/servico.js";
 import { anularLiquidacao, liquidar } from "../m05-despesa/servico-bloco2.js";
 import {
   adquirirBem,
+  saldoAIncorporarDaLiquidacao,
   baixarBem,
   estornarMovimentoPatrimonial,
   registrarEntradaAvulsa,
@@ -316,6 +317,8 @@ describe("M10 — patrimônio: classes, bens e movimentos", () => {
     const liq = await umaLiquidacao("ficha-capital", "NL-4B", "150000.00");
     const outra = await umaLiquidacao("ficha-capital", "NL-4C", "20000.00");
     await adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "100000.00", bemId: BEM_1, dataMovimento: DATA, criadoPor: POR });
+    // o saldo que a tela oferece é o mesmo que o teto confere
+    expect((await saldoAIncorporarDaLiquidacao(prisma, liq)).toFixed(2)).toBe("50000.00");
     await adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "50000.00", bemId: BEM_2, dataMovimento: DATA, criadoPor: POR });
     // À mão: 150.000 liquidados, 150.000 incorporados, cabem 0,00.
     await expect(
