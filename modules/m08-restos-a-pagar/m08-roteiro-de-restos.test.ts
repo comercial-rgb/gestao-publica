@@ -11,7 +11,7 @@ import {
 // estrangeira, e inventar um id fura a integridade — foi exatamente o que a primeira corrida
 // deste arquivo acusou (`Liquidacao_empenhoId_fkey`). Reusar a que existe também garante que a
 // liquidação de origem seja um fato construído pelo domínio, não uma linha fabricada.
-import { empenharDe2026, semearM08 } from "./m08-encerramento.test.js";
+import { empenharDe2026, semearM08 } from "./fixture-m08.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 
 /**

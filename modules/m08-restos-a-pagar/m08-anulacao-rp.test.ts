@@ -24,7 +24,7 @@ import {
   semearM08,
   FONTE,
   POR,
-} from "./m08-encerramento.test.js";
+} from "./fixture-m08.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 
 /**

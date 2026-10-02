@@ -6,7 +6,7 @@ import { criarPrismaDeTeste, exigirBanco } from "../../../../test/banco.js";
 import { criarFichaDeTeste } from "../../../../test/ficha-teste.js";
 import { meioDiaCivil } from "../../../../packages/datas/index.js";
 import { criarM05Deps } from "../../../../modules/m05-despesa/adapter-prisma.js";
-import { empenharDe2026, semearM08, POR } from "../../../../modules/m08-restos-a-pagar/m08-encerramento.test.js";
+import { empenharDe2026, semearM08, POR } from "../../../../modules/m08-restos-a-pagar/fixture-m08.js";
 import { declararDadosDaAcao, declararDadosDoPrograma } from "../../../../modules/m02-planejamento/declaracao-do-programa.js";
 import { declararResponsavelSiafic, designarOrdenador, encerrarDesignacaoDeOrdenador, ordenadorNaData } from "../../../../modules/m05-despesa/ordenador.js";
 import { OBJETIVO_MILENIO_2026 } from "./dominios-2026v11.js";

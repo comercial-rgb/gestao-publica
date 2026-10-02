@@ -19,7 +19,7 @@ import {
   POR,
   R_LIQUIDACAO,
   R_PAGAMENTO,
-} from "./m08-encerramento.test.js";
+} from "./fixture-m08.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import type { JustificativaQuebraOrdemInput } from "../m06-ordem-cronologica/dominio.js";
 

@@ -165,7 +165,7 @@ async function main(): Promise<void> {
     await valor(p, `${FS} input[name="desde"]`, DIA);
     await digitar(p, `${FS} input[name="motivo"]`, "Ordem de serviço 9 (demonstração)");
     const rs = await enviar(p, FS);
-    afirmar(rs.tipo === "erro" && /já tem situação começando em 01\/10\/2026/.test(rs.texto), `duas situações no mesmo dia são recusadas com o motivo (${rs.texto.slice(0, 60)})`);
+    afirmar(rs.tipo === "erro" && /A máquina RET01 já tem situação começando em 01\/10\/2026/.test(rs.texto), `duas situações no mesmo dia são recusadas com o motivo (${rs.texto.slice(0, 60)})`);
     await p.screenshot({ path: join(PASTA, "v27-frota.png"), fullPage: true });
 
     console.log("4. a farmácia pública e o estoque do mês (digitado e por arquivo)");
@@ -235,7 +235,10 @@ async function main(): Promise<void> {
     await digitar(p, `${FP} input[name="protocoloTce"]`, "000999/25");
     await digitar(p, `${FP} input[name="fundamento"]`, "Comprovante de envio de demonstração");
     const rp = await enviar(p, FP);
-    afirmar(rp.tipo === "ok" && (await prisma.protocoloDaNormaNoTce.count({ where: { normaId: norma?.id ?? "" } })) === 1, `o protocolo chegou depois, como fato próprio (${rp.texto.slice(0, 40)})`);
+    // Com o protocolo gravado, o formulário some da linha (a lei deixa de estar pendente): confere-se o efeito.
+    await ir(p, "/planejamento/creditos-adicionais/normas-no-tribunal");
+    const linhaDaNorma = await p.$eval('tr[data-norma="999/2025"]', (tr) => (tr as HTMLElement).innerText);
+    afirmar(rp.tipo !== "erro" && (await prisma.protocoloDaNormaNoTce.count({ where: { normaId: norma?.id ?? "" } })) === 1 && linhaDaNorma.includes("000999/25") && (await p.$('[data-norma-sem-protocolo="999/2025"]')) === null, `o protocolo chegou depois, como fato próprio, e a lei deixou de estar pendente (${rp.tipo})`);
     await p.screenshot({ path: join(PASTA, "v27-normas.png"), fullPage: true });
 
     console.log("6. a licitação escolhida na lista do Tribunal (Tramita)");

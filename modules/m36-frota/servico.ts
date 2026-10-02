@@ -207,15 +207,24 @@ export async function publicarVersaoDaMaquina(prisma: PrismaClient, input: z.inp
 
 const zAlvo = z.object({ veiculoId: z.string().min(1).optional(), maquinaId: z.string().min(1).optional() }).refine((a) => (a.veiculoId === undefined) !== (a.maquinaId === undefined), "Escolha um veículo ou uma máquina.");
 
-async function nomeDoBem(tx: Tx, alvo: { readonly veiculoId?: string | undefined; readonly maquinaId?: string | undefined }): Promise<{ readonly nome: string; readonly filtro: { readonly veiculoId: string } | { readonly maquinaId: string } }> {
+/** O bem com o artigo e a concordância (o veículo / a máquina), para as mensagens ao operador. */
+interface BemNomeado {
+  readonly O: string;
+  readonly o: string;
+  readonly do: string;
+  readonly baixado: string;
+  readonly filtro: { readonly veiculoId: string } | { readonly maquinaId: string };
+}
+
+async function nomeDoBem(tx: Tx, alvo: { readonly veiculoId?: string | undefined; readonly maquinaId?: string | undefined }): Promise<BemNomeado> {
   if (alvo.veiculoId !== undefined) {
     const v = await tx.veiculoDaFrota.findUnique({ where: { id: alvo.veiculoId }, select: { placa: true } });
     if (v === null) throw new Error("Veículo não encontrado. Nada foi gravado.");
-    return { nome: `veículo ${v.placa}`, filtro: { veiculoId: alvo.veiculoId } };
+    return { O: `O veículo ${v.placa}`, o: `o veículo ${v.placa}`, do: `do veículo ${v.placa}`, baixado: "baixado", filtro: { veiculoId: alvo.veiculoId } };
   }
   const m = await tx.maquinaDaFrota.findUnique({ where: { id: alvo.maquinaId ?? "" }, select: { codigo: true } });
   if (m === null) throw new Error("Máquina não encontrada. Nada foi gravado.");
-  return { nome: `máquina ${m.codigo}`, filtro: { maquinaId: alvo.maquinaId ?? "" } };
+  return { O: `A máquina ${m.codigo}`, o: `a máquina ${m.codigo}`, do: `da máquina ${m.codigo}`, baixado: "baixada", filtro: { maquinaId: alvo.maquinaId ?? "" } };
 }
 
 export const zRegistrarSituacaoDaFrota = z.object({
@@ -237,24 +246,24 @@ export async function registrarSituacaoDaFrota(prisma: PrismaClient, input: z.in
     const vivas = await mudancasVivas(tx, bem.filtro);
     const primeira = vivas[0];
     if (primeira === undefined || d.desde < primeira.dia) {
-      throw new Error(`O ${bem.nome} só passou a ser da frota em ${primeira === undefined ? "data não registrada" : primeira.dia.split("-").reverse().join("/")}: a situação não pode começar antes. Nada foi gravado.`);
+      throw new Error(`${bem.O} só passou a ser da frota em ${primeira === undefined ? "data não registrada" : primeira.dia.split("-").reverse().join("/")}: a situação não pode começar antes. Nada foi gravado.`);
     }
     if (vivas.some((m) => m.dia === d.desde)) {
-      throw new Error(`O ${bem.nome} já tem situação começando em ${d.desde.split("-").reverse().join("/")}. Anule-a antes de registrar outra no mesmo dia. Nada foi gravado.`);
+      throw new Error(`${bem.O} já tem situação começando em ${d.desde.split("-").reverse().join("/")}. Anule-a antes de registrar outra no mesmo dia. Nada foi gravado.`);
     }
     if (vivas.some((m) => m.dia > d.desde)) {
-      throw new Error(`O ${bem.nome} tem situação registrada depois de ${d.desde.split("-").reverse().join("/")}. Anule as posteriores antes de registrar uma anterior. Nada foi gravado.`);
+      throw new Error(`${bem.O} tem situação registrada depois de ${d.desde.split("-").reverse().join("/")}. Anule as posteriores antes de registrar uma anterior. Nada foi gravado.`);
     }
     const atual = situacaoNoDia(vivas, d.desde);
-    if (atual === "BAIXADA") throw new Error(`O ${bem.nome} está baixado. Se a baixa foi engano, anule-a. Nada foi gravado.`);
+    if (atual === "BAIXADA") throw new Error(`${bem.O} está ${bem.baixado}. Se a baixa foi engano, anule-a. Nada foi gravado.`);
     if (d.situacao === "BAIXADA") {
       // Baixado não abastece: a baixa não pode começar antes de um abastecimento já registrado.
       const depois = await tx.abastecimentoDaFrota.findMany({ where: { ...bem.filtro, anulacao: null, data: { gte: meioDiaCivil(d.desde) } }, orderBy: { data: "asc" }, select: { data: true, documento: true } });
       if (depois.length > 0) {
-        throw new Error(`O ${bem.nome} tem abastecimento registrado a partir de ${d.desde.split("-").reverse().join("/")} (${depois.map((a) => `${diaCivilBr(a.data)}, ${a.documento}`).join("; ")}). Anule-o se foi engano, ou informe a baixa a partir do dia seguinte ao último abastecimento. Nada foi gravado.`);
+        throw new Error(`${bem.O} tem abastecimento registrado a partir de ${d.desde.split("-").reverse().join("/")} (${depois.map((a) => `${diaCivilBr(a.data)}, ${a.documento}`).join("; ")}). Anule-o se foi engano, ou informe a baixa a partir do dia seguinte ao último abastecimento. Nada foi gravado.`);
       }
     }
-    if (atual === d.situacao) throw new Error(`O ${bem.nome} já está ${ROTULO_SITUACAO[d.situacao].toLowerCase()}. Nada foi gravado.`);
+    if (atual === d.situacao) throw new Error(`${bem.O} já está ${ROTULO_SITUACAO[d.situacao].toLowerCase()}. Nada foi gravado.`);
     const c = await tx.mudancaDeSituacaoDaFrota.create({ data: { ...bem.filtro, situacao: d.situacao, desde: meioDiaCivil(d.desde), motivo: d.motivo, criadoPor: d.criadoPor }, select: { id: true } });
     return { id: c.id };
   });
@@ -273,8 +282,8 @@ export async function anularSituacaoDaFrota(prisma: PrismaClient, input: z.input
     const vivas = await mudancasVivas(tx, bem.filtro);
     const alvo = vivas.find((m) => m.id === d.id);
     if (alvo === undefined) throw new Error("Esta situação já foi anulada. Nada foi gravado.");
-    if (vivas[0]?.id === d.id) throw new Error(`Esta é a situação com que o ${bem.nome} entrou na frota: corrija-a publicando uma versão do cadastro e registrando a situação certa. Nada foi gravado.`);
-    if (vivas.some((m) => m.dia > alvo.dia)) throw new Error(`Há situação do ${bem.nome} depois desta: anule a mais recente primeiro. Nada foi gravado.`);
+    if (vivas[0]?.id === d.id) throw new Error(`Esta é a situação com que ${bem.o} entrou na frota: corrija-a publicando uma versão do cadastro e registrando a situação certa. Nada foi gravado.`);
+    if (vivas.some((m) => m.dia > alvo.dia)) throw new Error(`Há situação ${bem.do} depois desta: anule a mais recente primeiro. Nada foi gravado.`);
     await tx.anulacaoDeSituacaoDaFrota.create({ data: { mudancaId: d.id, motivo: d.motivo, criadoPor: d.criadoPor } });
   });
 }
@@ -301,8 +310,8 @@ export async function registrarAbastecimento(prisma: PrismaClient, input: z.inpu
     const bem = await nomeDoBem(tx, d);
     const situacao = situacaoNoDia(await mudancasVivas(tx, bem.filtro), d.data);
     // O leiaute não admite abastecimento de bem fora do arquivo de situação; e baixado não abastece.
-    if (situacao === null) throw new Error(`O ${bem.nome} não estava na frota em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
-    if (situacao === "BAIXADA") throw new Error(`O ${bem.nome} estava baixado em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
+    if (situacao === null) throw new Error(`${bem.O} não estava na frota em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
+    if (situacao === "BAIXADA") throw new Error(`${bem.O} estava ${bem.baixado} em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
     const c = await tx.abastecimentoDaFrota.create({ data: { ...bem.filtro, data: meioDiaCivil(d.data), combustivel: d.combustivel, quantidade, documento: d.documento, criadoPor: d.criadoPor }, select: { id: true } });
     return { id: c.id };
   });

@@ -11,7 +11,7 @@ import {
   liquidarRestosAPagar,
   pagarRestosAPagar,
 } from "../../../../modules/m08-restos-a-pagar/restos.js";
-import { empenharDe2026, liquidarDe2026, semearM08, FONTE, POR } from "../../../../modules/m08-restos-a-pagar/m08-encerramento.test.js";
+import { empenharDe2026, liquidarDe2026, semearM08, FONTE, POR } from "../../../../modules/m08-restos-a-pagar/fixture-m08.js";
 import {
   gerarCancelamentoRestos,
   gerarEstornoPagamento,

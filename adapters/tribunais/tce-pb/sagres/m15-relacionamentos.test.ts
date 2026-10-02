@@ -5,7 +5,7 @@ import { criarM05Deps } from "../../../../modules/m05-despesa/adapter-prisma.js"
 import { encerrarExercicioComRestos } from "../../../../modules/m08-restos-a-pagar/encerramento.js";
 import { roteiroPagamentoRestos } from "../../../../modules/m08-restos-a-pagar/dominio.js";
 import { anularPagamentoRestosAPagar, pagarRestosAPagar } from "../../../../modules/m08-restos-a-pagar/restos.js";
-import { empenharDe2026, liquidarDe2026, semearM08, FONTE, POR } from "../../../../modules/m08-restos-a-pagar/m08-encerramento.test.js";
+import { empenharDe2026, liquidarDe2026, semearM08, FONTE, POR } from "../../../../modules/m08-restos-a-pagar/fixture-m08.js";
 import {
   gerarArquivosDeRelacionamentos,
   gerarFornecedores,
