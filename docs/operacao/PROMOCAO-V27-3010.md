@@ -90,6 +90,18 @@ histórico) e inclui o que a V26 já trazia.
 
 ### Se o operador levar também a V28 (informado pela sessão da V28, não ensaiado aqui)
 
+**Desde 02/10/2026 a V28 está na branch `apresentacao/contabilidade`**, por avanço rápido sobre `1150d7c`. Por isso o
+ensaio medido acima vale só para o commit candidato da V27 (`f82f7ff`), sem a V28.
+
+Para promover a partir da ponta da branch, o roteiro precisa ser ensaiado de novo numa cópia do banco antes da janela:
+- as 21 migrations da V27 e as 3 da V28 (o banco vai de 251 para 275);
+- o papel de runtime;
+- `prisma/seed/m04-contas-da-receita.ts`;
+- o seed da folha da demonstração;
+- depois, conferir uma guia de IPTU (VPA 4.1.1.2.1.02.00) e o pagamento da folha de setembro retendo a PREV.
+
+Ver `ESTADO-EXECUCAO.md`, na seção V28, "Para levar à 3010".
+
 - Os contracheques passam a recusar a natureza da receita sem a VPA declarada. `prisma/seed/m04-contas-da-receita.ts`
   (na V28) declara as seis naturezas em uso e tem de rodar no banco da apresentação.
 - A declaração do PREV → INSS e a troca da conta do INSS da folha estão no seed da folha de demonstração da V28.
