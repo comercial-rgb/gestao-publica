@@ -276,9 +276,38 @@ describe("M10 — patrimônio: classes, bens e movimentos", () => {
         classeDeBensId: CLASSE, liquidacaoId: liq, valor: "150000.01",
         dataMovimento: DATA, criadoPor: POR,
       })
-    ).rejects.toThrow(/excede a liquidação/);
+    ).rejects.toThrow(/AQUISIÇÃO ACIMA DO LIQUIDADO/);
 
     expect(await prisma.movimentoPatrimonial.count()).toBe(0);
+  });
+
+  // t4b — V28
+  it("t4b: o teto é CUMULATIVO por liquidação (N=2 aquisições parciais), e outra liquidação tem o seu", async () => {
+    const liq = await umaLiquidacao("ficha-capital", "NL-4B", "150000.00");
+    const outra = await umaLiquidacao("ficha-capital", "NL-4C", "20000.00");
+    await adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "100000.00", bemId: BEM_1, dataMovimento: DATA, criadoPor: POR });
+    await adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "50000.00", bemId: BEM_2, dataMovimento: DATA, criadoPor: POR });
+    // À mão: 150.000 liquidados, 150.000 incorporados, cabem 0,00.
+    await expect(
+      adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "0.01", dataMovimento: DATA, criadoPor: POR })
+    ).rejects.toThrow(/AQUISIÇÃO ACIMA DO LIQUIDADO[\s\S]*já incorporou 150000\.00[\s\S]*só cabem mais 0\.00/);
+    expect(await prisma.movimentoPatrimonial.count({ where: { liquidacaoId: liq } })).toBe(2);
+    // a outra liquidação não herda o consumo da primeira
+    await adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: outra, valor: "20000.00", dataMovimento: DATA, criadoPor: POR });
+    expect((await valorContabilDaClasse(prisma, CLASSE)).toFixed(2)).toBe("170000.00");
+  });
+
+  // t4c — V28
+  it("t4c: duas aquisições SIMULTÂNEAS que juntas passam do liquidado — exatamente uma grava", async () => {
+    const liq = await umaLiquidacao("ficha-capital", "NL-4D", "150000.00");
+    const r = await Promise.allSettled([
+      adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "100000.00", bemId: BEM_1, dataMovimento: DATA, criadoPor: POR }),
+      adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "100000.00", bemId: BEM_2, dataMovimento: DATA, criadoPor: POR }),
+    ]);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    const recusa = r.find((x) => x.status === "rejected") as PromiseRejectedResult;
+    expect(String(recusa.reason)).toMatch(/AQUISIÇÃO ACIMA DO LIQUIDADO/);
+    expect(await prisma.movimentoPatrimonial.count({ where: { liquidacaoId: liq } })).toBe(1);
   });
 
   // t5

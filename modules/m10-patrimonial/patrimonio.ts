@@ -7,6 +7,8 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { randomUUID } from "node:crypto";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
+import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
   gerarEstorno,
@@ -451,13 +453,22 @@ export async function adquirirBem(
       );
     }
 
-    // O valor incorporado não pode exceder o que foi liquidado.
-    const liquidado = toMoney(liq.valor.toFixed(2));
-    if (dados.valor.greaterThan(liquidado)) {
+    // ⚠️ V28 — O TETO É CUMULATIVO, E É CONFERIDO DENTRO DA TRAVA DA LIQUIDAÇÃO. Antes, só o
+    // valor DESTA chamada era comparado com o liquidado: duas incorporações de 150.000,00 sobre uma
+    // liquidação de 150.000,00 passavam as duas, e o imobilizado nascia em dobro. Agora o que já
+    // foi incorporado (aquisições vivas, descontados os estornos) mais o novo não passa do LÍQUIDO
+    // da liquidação (descontadas as anulações parciais). A trava serializa duas telas ao mesmo
+    // tempo sobre a mesma liquidação: a segunda lê a soma depois de a primeira gravar.
+    await travar(tx, "Liquidacao", [liq.id]);
+    const liquidado = await liquidoDaLiquidacaoNaTx(tx, liq.id);
+    const jaIncorporado = await incorporadoDaLiquidacaoNaTx(tx, liq.id);
+    const cabe = toMoney(liquidado.minus(jaIncorporado));
+    if (dados.valor.greaterThan(cabe)) {
       throw new Error(
-        `Aquisição de ${dados.valor.toFixed(2)} excede a liquidação ` +
-          `${liq.numero} (${liquidado.toFixed(2)}). Não se incorpora ao ` +
-          `patrimônio mais do que a despesa reconhecida.`
+        `AQUISIÇÃO ACIMA DO LIQUIDADO: a liquidação ${liq.numero} vale ${liquidado.toFixed(2)} ` +
+          `(descontadas as anulações), já incorporou ${jaIncorporado.toFixed(2)} ao patrimônio e ` +
+          `só cabem mais ${cabe.toFixed(2)}; esta aquisição pede ${dados.valor.toFixed(2)}. Não se ` +
+          `incorpora ao patrimônio mais do que a despesa reconhecida. Nada foi gravado.`
       );
     }
 
@@ -472,6 +483,34 @@ export async function adquirirBem(
       historico: `Aquisição de bem — liquidação ${liq.numero}`,
     });
   });
+}
+
+/** O líquido de UMA liquidação: o valor menos as anulações parciais vivas (zero se anulada). */
+async function liquidoDaLiquidacaoNaTx(tx: Tx, id: string): Promise<Money> {
+  const linhas = await tx.liquidacao.findMany({
+    where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }] },
+    select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+  });
+  return somaLiquidaEstornaveis(
+    linhas.map((l) => ({ id: l.id, valor: toMoney(l.valor.toFixed(2)), estornoDeId: l.estornoDeId, anulacaoParcialDeId: l.anulacaoParcialDeId }))
+  );
+}
+
+/** O que a liquidação JÁ incorporou ao patrimônio: as aquisições vivas, descontados os estornos. */
+async function incorporadoDaLiquidacaoNaTx(tx: Tx, liquidacaoId: string): Promise<Money> {
+  const aquisicoes = await tx.movimentoPatrimonial.findMany({
+    where: { liquidacaoId, tipo: "AQUISICAO", estornoDeId: null },
+    select: { id: true, valor: true },
+  });
+  if (aquisicoes.length === 0) return toMoney("0.00");
+  const estornos = await tx.movimentoPatrimonial.findMany({
+    where: { estornoDeId: { in: aquisicoes.map((a) => a.id) } },
+    select: { id: true, valor: true, estornoDeId: true },
+  });
+  return somaLiquidaEstornaveis([
+    ...aquisicoes.map((a) => ({ id: a.id, valor: toMoney(a.valor.toFixed(2)), estornoDeId: null })),
+    ...estornos.map((e) => ({ id: e.id, valor: toMoney(e.valor.toFixed(2)), estornoDeId: e.estornoDeId })),
+  ]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
