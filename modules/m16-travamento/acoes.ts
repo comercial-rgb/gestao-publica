@@ -1137,6 +1137,7 @@ export type NomeDeServico =
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
+  | "declararContaDaReceita"
   // M04 V22 — o ementário da receita (cadastro das naturezas de receita do ente)
   | "cadastrarNaturezaReceita"
   // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
@@ -1855,6 +1856,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   declararNaturezaDaFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
+  declararContaDaReceita: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a consignação que retém cada rubrica de desconto da folha: quem gere os tipos de consignação decide.
   declararConsignacaoDaRubrica: "GERIR_TIPOS_DE_CONSIGNACAO",
   // ⚠️ V22 — E A QUINTA É A MESMA AUTORIDADE. Cadastrar uma natureza de receita no ementário diz
@@ -2921,6 +2924,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   consignacaoVigenteDaRubrica: "leitura (a consignação declarada para uma rubrica de desconto)",
   descontosDaFolhaPendentes: "leitura (os descontos dos contracheques que a liquidação cobre e que nenhum pagamento vivo reteve; recusa nomeando rubrica sem consignação)",
   exigirERegistrarDescontosDaFolhaNaTx: "composável interno (a perna do pagamento que confere e grava os descontos retidos; a autorização é a do PAGAR)",
+  contaDaReceitaVigente: "leitura (a VPA declarada que cobre uma natureza de receita, pelo prefixo mais longo)",
+  exigirContaDaReceita: "guard (fail-closed antes da arrecadação: natureza sem VPA declarada recusa nomeando onde declarar)",
+  listarContasDaReceita: "leitura (as declarações de VPA vigentes, uma por prefixo)",
   saldoAIncorporarDaLiquidacao: "leitura (o líquido de uma liquidação menos o já incorporado ao patrimônio; o teto de adquirirBem confere o mesmo dentro da trava)",
   rgfAnexo2: "leitura (RGF Anexo 2 — dívida consolidada líquida sobre a RCL ajustada, LRF art. 55 I b)",
   anexo6: "leitura (RREO Anexo 6 — resultado primário e nominal ACIMA DA LINHA, LRF art. 53 III)",

@@ -534,6 +534,7 @@ export const TABELAS = [
   "ContaDaLiquidacaoPorElemento",
   "DescontoDoContrachequeRetido",
   "ConsignacaoDaRubrica",
+  "ContaDaReceitaPorNatureza",
   "DeParaReceitaAlienacao",
   "DeParaFonteAlienacao",
   "ContratoPPP",

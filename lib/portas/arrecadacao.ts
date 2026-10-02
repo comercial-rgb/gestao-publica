@@ -12,6 +12,7 @@ import type { AtoDoFormulario } from "./entidades-contabeis";
 import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma";
 import { registrarArrecadacao } from "../../modules/m04-receita/servico";
 import { arrecadarQuitandoReconhecimento } from "../../modules/m04-receita/arrecadacao-vinculada";
+import { exigirContaDaReceita } from "../../modules/m04-receita/conta-da-receita";
 import {
   roteiroArrecadacao,
   roteiroArrecadacaoDistribuida,
@@ -98,9 +99,10 @@ export async function lerArrecadacoes(p: {
  * mesmo dinheiro. Pendência PCASP-COMPLETO.
  */
 // ⚠️ A CONTA DE DISPONIBILIDADE NÃO É MAIS CONSTANTE (V6 P1.2): ela é a conta contábil da CONTA
-// BANCÁRIA que a guia declara — vem do cadastro, fail-closed. A VPA continua constante aqui
-// (pendência `VPA-CONSTANTE-NA-PORTA`: o roteiro por natureza de receita ainda não vem de tabela).
-const CONTA_VPA = "4.1.1.2.1.01.00";
+// BANCÁRIA que a guia declara — vem do cadastro, fail-closed.
+// ⚠️ V28 — E A VPA TAMBÉM: ela vinha de uma constante ("4.1.1.2.1.01.00", que no plano do TCE-PB é a VPA do
+// ITR) e agora sai da declaração do ente por natureza de receita (`exigirContaDaReceita`, M04), lida antes
+// de gravar. Fecha `VPA-CONSTANTE-NA-PORTA`.
 
 /** As contas bancárias que uma guia pode declarar — com a fonte e a conta contábil (a que tem). */
 export interface ContaBancariaParaGuia {
@@ -179,11 +181,13 @@ export async function registrarGuia(input: {
       });
       return q.receitaId;
     }
+    // A VPA só existe na guia comum (na que quita crédito lançado a receita já foi reconhecida); lida ainda antes de gravar.
+    const vpa = await exigirContaDaReceita(cliente(), input.naturezaReceita);
     const r = await registrarArrecadacao(
       daGuia,
       roteiroArrecadacao({
         disponibilidade: conta.contaContabil.codigo,
-        variacaoAumentativa: CONTA_VPA,
+        variacaoAumentativa: vpa.contaVpaCodigo,
         // ⚠️ V11 V9.3 — A PERNA DE CLASSE 7 SAI DA DECLARAÇÃO DO ENTE, e a recusa vem ANTES de
         // qualquer escrita. `exigirNaturezaDaFonte` nomeia a fonte que falta classificar; o que
         // ela NUNCA faz é supor uma natureza para a guia passar.
@@ -267,6 +271,7 @@ export async function registrarGuiaDistribuida(input: {
       });
     }
 
+    const vpa = await exigirContaDaReceita(cliente(), input.naturezaReceita);
     const r = await registrarArrecadacao(
       {
         exercicio: input.exercicio,
@@ -284,7 +289,7 @@ export async function registrarGuiaDistribuida(input: {
       },
       roteiroArrecadacaoDistribuida({
         disponibilidade: conta.contaContabil.codigo,
-        variacaoAumentativa: CONTA_VPA,
+        variacaoAumentativa: vpa.contaVpaCodigo,
         // Uma perna de classe 7 por NATUREZA, não por fonte: o PCASP particiona 7.2.1.1 por
         // natureza, e duas fontes vinculadas debitam a mesma conta.
         porNaturezaDaFonte: consolidarPorNatureza(

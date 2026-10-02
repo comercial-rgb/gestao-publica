@@ -170,6 +170,8 @@ rodar("roteiro de encerramento (conta de resultados acumulados)", "npx", [
   "prisma/seed/roteiro-encerramento.ts",
 ]);
 rodar("tipos de consignação (M07)", "npx", ["tsx", "prisma/seed/m07-tipos-consignacao.ts"]);
+// V28 — a VPA da arrecadação por natureza (a guia recusa natureza sem declaração): o ponto de partida pelo nome no plano.
+rodar("contas da receita por natureza (M04)", "npx", ["tsx", "prisma/seed/m04-contas-da-receita.ts"]);
 rodar("exercício 2026", "npx", ["tsx", "prisma/seed/m08-exercicio.ts", "2026"]);
 // ⚠️ O BOOTSTRAP RECUSA BANCO POVOADO — na reexecução ele falha nomeando, e isso é o
 // comportamento certo; aqui a recusa é tolerada porque o admin já existe.

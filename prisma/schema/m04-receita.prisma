@@ -197,3 +197,26 @@ model FonteDaArrecadacao {
   @@unique([receitaArrecadadaId, fonteId, exercicioFonte])
   @@index([fonteId])
 }
+
+/// V28 — A VPA QUE A ARRECADAÇÃO CREDITA, por natureza de receita, declarada pelo ente.
+/// A guia da tela creditava sempre a mesma conta fixa no código (que no plano do TCE-PB é a VPA do
+/// ITR); IPTU, ITBI, ISS e taxas saíam todos como o mesmo imposto na DVP. A declaração é por PREFIXO
+/// da natureza (2 a 8 dígitos) e vale a de prefixo mais longo: o ente pode declarar "1118" para os
+/// impostos sobre o patrimônio e "11180111" só para o IPTU. APPEND-ONLY e versionada por prefixo.
+model ContaDaReceitaPorNatureza {
+  id String @id @default(cuid())
+
+  naturezaPrefixo String @db.VarChar(8)
+
+  /// Código da conta analítica de VPA (classe 4) do plano carregado, conferido na declaração.
+  contaVpaCodigo String @db.VarChar(20)
+
+  fundamento String
+
+  versao    Int
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([naturezaPrefixo, versao])
+  @@index([naturezaPrefixo, versao])
+}

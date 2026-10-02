@@ -252,6 +252,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   // tela a arrecadação era impossível em instalação nova.
   { href: "/contabilidade/natureza-das-fontes", numero: "Natureza das fontes", rotulo: "Natureza das fontes", descricao: "Natureza de cada fonte de recurso e a conta de controle da disponibilidade correspondente." },
   { href: "/contabilidade/contas-da-liquidacao", numero: "Contas da liquidação", rotulo: "Contas da liquidação por elemento", descricao: "Em que cada elemento de despesa se transforma ao ser liquidado: despesa, bem do imobilizado, intangível ou baixa de obrigação." },
+  { href: "/contabilidade/contas-da-receita", numero: "Contas da receita", rotulo: "Contas da receita por natureza", descricao: "Em que conta da variação patrimonial cada natureza de receita arrecadada entra." },
   { href: "/contabilidade/plano-de-contas", numero: "Plano de contas", rotulo: "Plano de Contas PCASP", descricao: "Plano de Contas Aplicado ao Setor Público, com natureza do saldo e classificação." },
   { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "Lançamentos em partidas dobradas, com número de controle, histórico e documento de origem." },
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa

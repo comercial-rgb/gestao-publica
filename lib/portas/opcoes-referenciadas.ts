@@ -86,7 +86,7 @@ const onde = (w: { q: string; valor?: string }, campoTexto: string): Record<stri
   w.valor !== undefined ? { codigo: w.valor } : w.q === "" ? {} : { OR: [{ codigo: { startsWith: w.q } }, { [campoTexto]: contem(w.q) }] };
 
 /** O mesmo recorte de classe que `declararContaDaLiquidacao` confere (M01). */
-const PREFIXO_DO_EFEITO_NA_BUSCA: Readonly<Record<string, string>> = { VPD: "3.", IMOBILIZADO: "1.2.3.", INTANGIVEL: "1.2.4.", BAIXA_DE_PASSIVO: "2." };
+const PREFIXO_DO_EFEITO_NA_BUSCA: Readonly<Record<string, string>> = { VPD: "3.", IMOBILIZADO: "1.2.3.", INTANGIVEL: "1.2.4.", BAIXA_DE_PASSIVO: "2.", VPA: "4." };
 
 export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
   ...CATALOGOS_DA_EXECUCAO,
