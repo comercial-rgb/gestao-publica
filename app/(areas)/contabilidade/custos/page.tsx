@@ -10,9 +10,10 @@ import {
   lerCriteriosDeRateio,
   lerCustoPorCentro,
   lerLiquidacoesApropriaveis,
+  lerLiquidacoesDeFolhaSemCusto,
   PortaSemBancoError,
 } from "../../../../lib/portas/custos";
-import { FormApropriacaoDeCusto, FormCriterioDeRateio } from "./FormsDoCusto";
+import { FormApropriacaoDeCusto, FormCriterioDeRateio, FormCustoDaFolha } from "./FormsDoCusto";
 import { SeletorDoCusto } from "./SeletorDoCusto";
 
 /**
@@ -79,12 +80,14 @@ export default async function Page({
   let criterios: Awaited<ReturnType<typeof lerCriteriosDeRateio>>;
   let centros: Awaited<ReturnType<typeof lerCentrosDeCusto>>;
   let liquidacoes: Awaited<ReturnType<typeof lerLiquidacoesApropriaveis>>;
+  let daFolha: Awaited<ReturnType<typeof lerLiquidacoesDeFolhaSemCusto>>;
   try {
-    [custo, criterios, centros, liquidacoes] = await Promise.all([
+    [custo, criterios, centros, liquidacoes, daFolha] = await Promise.all([
       lerCustoPorCentro({ exercicio }),
       lerCriteriosDeRateio(),
       lerCentrosDeCusto(),
       lerLiquidacoesApropriaveis({ exercicio }),
+      lerLiquidacoesDeFolhaSemCusto({ exercicio }),
     ]);
   } catch (erro) {
     return (
@@ -363,6 +366,8 @@ export default async function Page({
           centros={centros.map((c) => ({ id: c.id, codigo: c.codigo, nome: c.nome }))}
         />
       )}
+
+      {daFolha.length > 0 ? <FormCustoDaFolha liquidacoes={daFolha} /> : null}
 
       {chavesVigentes.length === 0 || liquidacoes.length === 0 ? (
         <EstadoVazio

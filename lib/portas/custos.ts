@@ -1,4 +1,5 @@
 import { cliente, PortaSemBancoError } from "./cliente";
+import { apropriarCustoDaFolha } from "../../modules/m12-relatorios/custos-da-folha";
 import { comEscritaAutenticada } from "./sessao";
 import {
   centrosDeCusto,
@@ -209,6 +210,46 @@ export async function lerLiquidacoesApropriaveis(p: {
     });
   }
   return saida;
+}
+
+/** V28 — as liquidações de FOLHA do exercício ainda sem custo apropriado (vivas, inteiras). */
+export interface LiquidacaoDeFolhaParaTela {
+  readonly id: string;
+  readonly rotulo: string;
+}
+
+export async function lerLiquidacoesDeFolhaSemCusto(p: { readonly exercicio: number }): Promise<readonly LiquidacaoDeFolhaParaTela[]> {
+  const linhas = await cliente().liquidacao.findMany({
+    where: {
+      estornoDeId: null,
+      anulacaoParcialDeId: null,
+      estornos: { none: {} },
+      apropriacoesDeCusto: { none: {} },
+      liquidacaoDaFolha: { isNot: null },
+      empenho: { ficha: { exercicio: p.exercicio } },
+    },
+    orderBy: [{ data: "desc" }, { numero: "asc" }],
+    take: 200,
+    select: {
+      id: true, numero: true, valor: true,
+      liquidacaoDaFolha: { select: { empenhoDaFolha: { select: { grupo: { select: { codigo: true } }, vinculo: { select: { matricula: true } }, apropriacao: { select: { folha: { select: { competencia: true } } } } } } } },
+    },
+  });
+  return linhas.map((l) => {
+    const e = l.liquidacaoDaFolha!.empenhoDaFolha;
+    return {
+      id: l.id,
+      rotulo: `${l.numero} — folha ${e.apropriacao.folha.competencia} — grupo ${e.grupo.codigo}${e.vinculo !== null ? ` — matrícula ${e.vinculo.matricula}` : ""} — R$ ${l.valor.toFixed(2)}`,
+    };
+  });
+}
+
+/** V28 — APROPRIAR o custo de uma liquidação de folha pelo centro de cada vínculo (`APROPRIAR_CUSTO`). */
+export async function apropriarCustoDaFolhaNaTela(liquidacaoId: string): Promise<{ readonly valor: string; readonly centros: number; readonly novo: boolean }> {
+  return comEscritaAutenticada("APROPRIAR_CUSTO", async (criadoPor) => {
+    const r = await apropriarCustoDaFolha(cliente(), { liquidacaoId, criadoPor });
+    return { valor: r.valor.toFixed(2), centros: r.partes.length, novo: r.novo };
+  });
 }
 
 /** PUBLICAR uma versão do critério — ESCRITA AUTENTICADA (`PARAMETRIZAR_RATEIO_DE_CUSTO`). */

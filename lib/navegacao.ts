@@ -323,6 +323,7 @@ export const FOLHA: readonly RelatorioNav[] = [
   { href: "/folha/parametros-do-13", numero: "13º", rotulo: "Parâmetros do 13º", descricao: "Regras de cálculo do 13º salário por exercício, com o ato normativo de referência." },
   { href: "/folha/parametros-do-adiantamento-salarial", numero: "Vale", rotulo: "Parâmetros do adiantamento salarial", descricao: "Regras do adiantamento salarial por competência, com o ato normativo de referência." },
   { href: "/folha/grupos-de-empenho", numero: "Grupos de empenho", rotulo: "Grupos de empenho", descricao: "Agrupamento das rubricas da folha por ficha orçamentária para empenho." },
+  { href: "/folha/descontos-retidos", numero: "Descontos retidos", rotulo: "Descontos retidos no pagamento", descricao: "A quem cada desconto do contracheque é devido: previdência, pensão, consignado, retidos no pagamento da folha." },
   { href: "/folha/encargos", numero: "Encargos", rotulo: "Encargos do empregador", descricao: "Encargos patronais por regime previdenciário, com alíquotas e vigências." },
   { href: "/folha/designacoes", numero: "Designações", rotulo: "Designações para o atesto", descricao: "Servidores designados para atestar a folha, com o ato e a vigência." },
   { href: "/folha/esocial", numero: "eSocial", rotulo: "Consistência para o eSocial", descricao: "Verificação dos dados cadastrais exigidos pelo eSocial." },

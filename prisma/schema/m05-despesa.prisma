@@ -468,6 +468,8 @@ model Pagamento {
   id           String     @id @default(cuid())
   /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
   retencoesProprias RetencaoPropriaDoPagamento[] @relation("RetencoesPropriasDoPagamento")
+  /// V28 — os descontos dos contracheques que este pagamento reteve.
+  descontosDaFolhaRetidos DescontoDoContrachequeRetido[]
   liquidacaoId String
   liquidacao   Liquidacao @relation(fields: [liquidacaoId], references: [id])
 

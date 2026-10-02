@@ -23,6 +23,9 @@ import {
   liquidarEncargosDaFolha,
 } from "../../modules/m33-folha/encargos-servico.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
+import { listarTiposConsignacao } from "../../modules/m07-extraorcamentario/consultas.js";
+import { redefinirContaDaConsignacao } from "../../modules/m07-extraorcamentario/servico-tipos-de-consignacao.js";
+import { consignacaoVigenteDaRubrica, declararConsignacaoDaRubrica } from "../../modules/m33-folha/descontos-da-folha.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 
 /**
@@ -123,6 +126,8 @@ const FONTE_IRRF =
 const FONTE_RGPS =
   "Portaria Interministerial MPS/MF nº 13, de 9 de janeiro de 2026 — tabela de contribuição do segurado empregado, " +
   "https://www.gov.br/inss/pt-br/direitos-e-deveres/inscricao-e-contribuicao/tabela-de-contribuicao-mensal";
+/** V28 — a conta analítica da contribuição do segurado ao RGPS no PCASP do TCE-PB 2025. */
+const CONTA_INSS_DO_SERVIDOR = "2.1.8.8.1.01.02";
 const FONTE_ESTATUTO = "Estatuto dos servidores do município — dado de demonstração";
 
 function exigirBancoPermitido(): string {
@@ -288,6 +293,35 @@ async function main(): Promise<void> {
       });
       idDaRubrica.set(r.codigo, id);
     }
+
+    // ── 2b. V28 — a contribuição do servidor retida no pagamento e devida ao INSS ──
+    // Sem esta declaração o pagamento da folha é recusado (o banco pagaria ao servidor o que é do INSS).
+    // A conta do tipo INSS do seed (2.1.8.8.1.01.00) é SINTÉTICA no PCASP do TCE-PB 2025; a analítica da
+    // contribuição do segurado ao RGPS é 2.1.8.8.1.01.02 — trocada por decisão versionada, com o plano por fundamento.
+    await passo("Retenção da contribuição do servidor (PREV → INSS)", async () => {
+      const inss = await prisma.tipoConsignacao.findUnique({ where: { codigo: "INSS" }, select: { id: true } });
+      if (inss === null) throw new Error("O tipo de consignação INSS não existe neste banco; rode o seed das consignações antes.");
+      const vigente = (await listarTiposConsignacao(prisma)).find((t) => t.id === inss.id);
+      if (vigente?.contaPassivoCodigo !== CONTA_INSS_DO_SERVIDOR) {
+        await redefinirContaDaConsignacao(prisma, {
+          tipoId: inss.id,
+          contaPassivoCodigo: CONTA_INSS_DO_SERVIDOR,
+          fundamento: "PCASP do TCE-PB 2025 (docs/oficial/tce-pb/Pcasp_2025.xlsx): 2.1.8.8.1.01.02 Contribuição ao RGPS; a 2.1.8.8.1.01.00 é sintética.",
+          criadoPor: AUTOR,
+        });
+      }
+      const rubricaPrev = idDaRubrica.get("PREV")!;
+      const ja = await consignacaoVigenteDaRubrica(prisma, rubricaPrev);
+      if (ja !== null) return { estado: "existente", valor: ja.versao };
+      const r = await declararConsignacaoDaRubrica(prisma, {
+        rubricaId: rubricaPrev,
+        tipoConsignacaoId: inss.id,
+        credorConsignatario: "Instituto Nacional do Seguro Social - INSS",
+        fundamento: `Contribuição do segurado ao RGPS, retida pelo ente e recolhida ao INSS — ${FONTE_RGPS}`,
+        criadoPor: AUTOR,
+      });
+      return { estado: "criado", valor: r.versao };
+    });
 
     // ── 3. cargo, lotação, servidores e vínculos (N=2) ──
     const cargoId = await passo("Cargo DEMO-AGADM", async () => {

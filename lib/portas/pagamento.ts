@@ -23,6 +23,7 @@ import {
   prepararRetencoesCalculadas,
   type DadosFiscaisDaOperacao,
 } from "../../modules/m07-extraorcamentario/retencao-calculada";
+import { descontosDaFolhaPendentes } from "../../modules/m33-folha/descontos-da-folha";
 import { irDaFolhaNoPagamento } from "../../modules/m07-extraorcamentario/retencao-propria";
 import { toMoney } from "../../packages/contracts/index";
 
@@ -336,17 +337,26 @@ export async function registrarPagamento(input: {
     // V26 — a liquidação de folha: o IR dos servidores ainda não retido entra no pagamento.
     const irDaFolha = await irDaFolhaNoPagamento(cliente(), { liquidacaoId: input.liquidacaoId, data: input.data, contaBancariaId: conta.id });
     const consignacaoDaFolha = irDaFolha?.consignacao ?? null;
+    // V28 — os demais descontos dos servidores (previdência, pensão, consignado) que nenhum pagamento vivo
+    // reteve, pela consignação declarada de cada rubrica. Um (tipo, credor) que o operador já informou não
+    // é somado de novo; o `pagar` confere, na transação, que o retido cobre o devido.
+    const descontos = await descontosDaFolhaPendentes(cliente(), input.liquidacaoId);
+    const informadas = new Set((input.retencoes ?? []).map((r) => `${r.tipoConsignacaoId}|${r.credorConsignatario.trim()}`));
+    const descontosAReter = (descontos?.porConsignacao ?? [])
+      .filter((d) => !informadas.has(`${d.tipoConsignacaoId}|${d.credorConsignatario.trim()}`))
+      .map((d) => ({ tipoConsignacaoId: d.tipoConsignacaoId, credorConsignatario: d.credorConsignatario, valor: d.valor.toFixed(2) }));
+    const daFolha = [...(consignacaoDaFolha === null ? [] : [consignacaoDaFolha]), ...descontosAReter];
     const comFolha: RetencoesDoPagamento | undefined =
-      irDaFolha === null
+      irDaFolha === null && daFolha.length === 0
         ? retencoes
         : {
             contaDisponibilidade: contaContabilDaConta,
             retencoes: [
               ...(retencoes?.retencoes ?? []),
-              ...(consignacaoDaFolha === null ? [] : ((await comporRetencoes([consignacaoDaFolha], contaContabilDaConta))?.retencoes ?? [])),
+              ...(daFolha.length === 0 ? [] : ((await comporRetencoes(daFolha, contaContabilDaConta))?.retencoes ?? [])),
             ],
             ...(retencoes?.calculos !== undefined ? { calculos: retencoes.calculos } : {}),
-            proprias: [...(retencoes?.proprias ?? []), ...(irDaFolha.propria === null ? [] : [irDaFolha.propria])],
+            proprias: [...(retencoes?.proprias ?? []), ...(irDaFolha?.propria == null ? [] : [irDaFolha.propria])],
           };
     const r = await pagar(
       {

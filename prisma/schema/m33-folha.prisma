@@ -232,6 +232,9 @@ model Rubrica {
   lancamentos LancamentoDaFolha[]
   linhas      LinhaDoContracheque[]
   grupoDeEmpenho RubricaDoGrupoDeEmpenho?
+  /// V28 — a consignação que retém este desconto no pagamento, e os descontos já retidos.
+  consignacoes      ConsignacaoDaRubrica[]
+  descontosRetidos  DescontoDoContrachequeRetido[]
   /// V6.2 — as versões de encargo em que esta rubrica compõe a base.
   incidenciasDeEncargo IncidenciaDoEncargo[]
   /// V11 V1.1 — as versões vigentes por competência. A VERSÃO é a autoridade do cálculo; as
@@ -525,6 +528,8 @@ model Contracheque {
   id String @id @default(cuid())
   /// V26 — o IR deste contracheque retido num pagamento (m07-retencao-propria.prisma).
   irRetido IrDoContrachequeRetido[] @relation("IrDoContrachequeRetido")
+  /// V28 — os descontos deste contracheque já retidos num pagamento (além do IR).
+  descontosRetidos DescontoDoContrachequeRetido[]
 
   calculoId String
   calculo   CalculoDaFolha @relation(fields: [calculoId], references: [id])
@@ -742,4 +747,58 @@ model EmpenhoDaFolha {
   @@index([apropriacaoId])
   @@index([grupoId])
   @@index([vinculoId])
+}
+
+/// V28 — QUE CONSIGNAÇÃO RETÉM CADA RUBRICA DE DESCONTO NO PAGAMENTO DA FOLHA, declarado pelo ente.
+/// O IR tem cadeia própria (receita do município) e os abatimentos de adiantamento não são devidos a
+/// terceiro; os demais descontos (previdência do servidor, pensão, empréstimo, sindicato) são dinheiro
+/// do servidor que o ente segura e repassa — e sem esta declaração o pagamento os entregava ao servidor.
+/// APPEND-ONLY e versionada por rubrica: a vigente é a maior versão.
+model ConsignacaoDaRubrica {
+  id String @id @default(cuid())
+
+  rubricaId String
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  tipoConsignacaoId String
+  tipoConsignacao   TipoConsignacao @relation(fields: [tipoConsignacaoId], references: [id])
+
+  /// A quem o valor retido é devido (INSS, instituto de previdência, banco, sindicato...).
+  credorConsignatario String
+
+  fundamento String
+
+  versao    Int
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([rubricaId, versao])
+  @@index([tipoConsignacaoId])
+}
+
+/// V28 — O DESCONTO DE UM CONTRACHEQUE RETIDO NUM PAGAMENTO. Retido UMA vez: no primeiro pagamento
+/// da folha que cobre o servidor (como o IR). Anulado o pagamento, o desconto volta a ser retido no
+/// próximo, numa GERAÇÃO nova — e é a unicidade (contracheque, rubrica, geração) que impede dois
+/// pagamentos simultâneos de reterem o mesmo desconto.
+model DescontoDoContrachequeRetido {
+  id String @id @default(cuid())
+
+  contrachequeId String
+  contracheque   Contracheque @relation(fields: [contrachequeId], references: [id])
+
+  rubricaId String
+  rubrica   Rubrica @relation(fields: [rubricaId], references: [id])
+
+  pagamentoId String
+  pagamento   Pagamento @relation(fields: [pagamentoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+
+  geracao Int
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([contrachequeId, rubricaId, geracao])
+  @@index([pagamentoId])
 }

@@ -532,6 +532,8 @@ export const TABELAS = [
   // V11 V9.3 — a natureza da fonte para o controle da disponibilidade (PCASP 7.2.1.1).
   "DeParaFonteNaturezaDdr",
   "ContaDaLiquidacaoPorElemento",
+  "DescontoDoContrachequeRetido",
+  "ConsignacaoDaRubrica",
   "DeParaReceitaAlienacao",
   "DeParaFonteAlienacao",
   "ContratoPPP",

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
-import { apropriarCusto, publicarCriterio } from "../../../../lib/portas/custos";
+import { apropriarCusto, apropriarCustoDaFolhaNaTela, publicarCriterio } from "../../../../lib/portas/custos";
 
 /**
  * SERVER ACTIONS DO CUSTO POR CENTRO (V19/C05).
@@ -125,6 +125,25 @@ export async function apropriarCustoAction(
       };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível apropriar o custo.") };
+    }
+  });
+}
+
+/** V28 — o custo da folha liquidada pelo centro de custo de cada vínculo. */
+export async function apropriarCustoDaFolhaAction(_prev: EstadoDoCusto, formData: FormData): Promise<EstadoDoCusto> {
+  return comComandoDoFormulario(formData, async () => {
+    const liquidacaoId = String(formData.get("liquidacaoId") ?? "").trim();
+    if (liquidacaoId === "") return { erro: "Escolha a liquidação da folha." };
+    try {
+      const r = await apropriarCustoDaFolhaNaTela(liquidacaoId);
+      revalidatePath("/contabilidade/custos");
+      return {
+        sucesso: r.novo
+          ? `Custo da folha apropriado: R$ ${r.valor} em ${String(r.centros)} centro(s) de custo, conforme o centro de cada servidor na competência.`
+          : `Esta liquidação da folha já estava apropriada (R$ ${r.valor} em ${String(r.centros)} centro(s)). Nada foi gravado de novo.`,
+      };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível apropriar o custo da folha. Nada foi gravado.") };
     }
   });
 }

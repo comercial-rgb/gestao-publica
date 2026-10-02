@@ -39,6 +39,7 @@ import {
   registrarReceitasPorRetencaoNaTx,
 } from "../m04-receita/receita-por-retencao.js";
 import { irDaFolhaPendente } from "../m33-folha/ir-da-folha.js";
+import { exigirERegistrarDescontosDaFolhaNaTx } from "../m33-folha/descontos-da-folha.js";
 // A derivação de "é despesa de capital?" é do M10 — reusada, nunca recopiada.
 import {
   descricaoDoGrupo,
@@ -2385,6 +2386,17 @@ export function criarDespesaRepositoryPrisma(
             );
           }
         }
+
+        // ═══ V28 — A FOLHA NÃO SE PAGA SEM OS DESCONTOS DOS SERVIDORES ═══
+        // Previdência do servidor, pensão, consignado: dinheiro do servidor que o ente segura e repassa. O pagamento
+        // da liquidação de folha tem de retê-los, por consignação declarada para cada rubrica; senão o banco pagaria
+        // ao servidor o que é do instituto. Os elos (contracheque, rubrica, geração) nascem aqui, na mesma transação.
+        await exigirERegistrarDescontosDaFolhaNaTx(tx, {
+          liquidacaoId: p.liquidacaoId,
+          pagamentoId: pag.id,
+          retidas: p.retencoes ?? [],
+          criadoPor: p.criadoPor,
+        });
 
         // ═══ V26 — A RECEITA DAS RETENÇÕES PRÓPRIAS, ÚLTIMA PERNA DA TRANSAÇÃO ═══
         // O lançamento acima já creditou o crédito tributário de cada uma; aqui nasce a guia que o

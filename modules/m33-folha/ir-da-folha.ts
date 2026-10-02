@@ -34,6 +34,23 @@ async function contrachequesJaRetidos(db: Tx, ids: readonly string[]): Promise<R
 }
 
 /**
+ * V28 — QUAIS CONTRACHEQUES UMA LIQUIDAÇÃO DE FOLHA COBRE: os do vínculo (grupo por servidor) ou os que têm provento
+ * de alguma rubrica do grupo (grupo único). É a MESMA pergunta para o IR e para os demais descontos, e por isso uma
+ * resposta só — escrever a conta de novo noutro lugar é o defeito que o MODULO do M33 já pagou duas vezes.
+ */
+export function filtroDosContrachequesCobertos(
+  calculoId: string,
+  e: { readonly vinculoId: string | null; readonly grupo: { readonly porServidor: boolean; readonly rubricas: readonly { readonly rubricaId: string }[] } }
+) {
+  return {
+    calculoId,
+    ...(e.grupo.porServidor
+      ? { vinculoId: e.vinculoId ?? "__nenhum__" }
+      : { linhas: { some: { tipo: "PROVENTO" as const, rubricaId: { in: e.grupo.rubricas.map((r) => r.rubricaId) } } } }),
+  };
+}
+
+/**
  * O IR dos contracheques que ESTA liquidação cobre e que ainda não foi retido. Nulo quando a liquidação não é de folha.
  */
 export async function irDaFolhaPendente(db: Tx, liquidacaoId: string): Promise<IrDaFolhaPendente | null> {
@@ -56,14 +73,8 @@ export async function irDaFolhaPendente(db: Tx, liquidacaoId: string): Promise<I
   if (calculoId === undefined) {
     throw new Error("A folha desta liquidação não está fechada: o IR do servidor sai do cálculo do fechamento. Nada foi gravado.");
   }
-  const rubricasDoGrupo = e.grupo.rubricas.map((r) => r.rubricaId);
   const contracheques = await db.contracheque.findMany({
-    where: {
-      calculoId,
-      ...(e.grupo.porServidor
-        ? { vinculoId: e.vinculoId ?? "__nenhum__" }
-        : { linhas: { some: { tipo: "PROVENTO", rubricaId: { in: rubricasDoGrupo } } } }),
-    },
+    where: filtroDosContrachequesCobertos(calculoId, e),
     select: {
       id: true,
       linhas: { where: { tipo: "DESCONTO", rubrica: { natureza: "IMPOSTO_DE_RENDA" } }, select: { valor: true } },

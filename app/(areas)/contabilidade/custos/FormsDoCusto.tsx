@@ -11,6 +11,7 @@ import {
 } from "../../../../components/ui/Formulario";
 import {
   apropriarCustoAction,
+  apropriarCustoDaFolhaAction,
   publicarCriterioAction,
   type EstadoDoCusto,
 } from "./actions";
@@ -261,6 +262,42 @@ export function FormApropriacaoDeCusto({
 
         <button className={BOTAO} disabled={pendente} type="submit">
           {pendente ? "Apropriando…" : "Apropriar o custo"}
+        </button>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * V28 — O CUSTO DA FOLHA PELO CENTRO DE CADA VÍNCULO. Sem critério percentual: a repartição sai do
+ * contracheque do fechamento e do centro de custo de cada servidor na competência.
+ */
+export function FormCustoDaFolha({ liquidacoes }: { readonly liquidacoes: readonly { readonly id: string; readonly rotulo: string }[] }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDoCusto, FormData>(apropriarCustoDaFolhaAction, {});
+  return (
+    <details className={PAINEL} data-forma="custo-da-folha">
+      <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">Apropriar o custo da folha pelo centro de cada servidor</summary>
+      <form action={action} className="mt-4 space-y-4" data-acao="apropriar-custo-da-folha">
+        <ChaveDeComando />
+        <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
+          O valor da liquidação é repartido pelos servidores que ela paga, conforme o contracheque da folha fechada, e cada
+          parte vai ao centro de custo do servidor no último dia da competência. <strong>Sem novo lançamento contábil.</strong>{" "}
+          Servidor sem centro de custo na competência impede a apropriação, que diz qual matrícula falta.
+        </div>
+        <label className="block">
+          <span className={ROTULO}>Liquidação da folha</span>
+          <select name="liquidacaoId" required defaultValue="" className={CAMPO}>
+            <option value="">Escolha a liquidação…</option>
+            {liquidacoes.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.rotulo}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Resultado estado={estado} acao="apropriar-custo-da-folha" />
+        <button type="submit" disabled={pendente} className={BOTAO}>
+          {pendente ? "Apropriando…" : "Apropriar o custo da folha"}
         </button>
       </form>
     </details>

@@ -45,6 +45,8 @@ model TipoConsignacao {
   contaPassivo   ContaPcasp? @relation("PassivoDaConsignacao", fields: [contaPassivoId], references: [id])
 
   movimentos MovimentoExtraorcamentario[]
+  /// V28 — as rubricas de desconto da folha retidas como este tipo.
+  rubricasDaFolha ConsignacaoDaRubrica[]
   decisoes   DecisaoDoTipoDeConsignacao[] @relation("DecisoesDoTipoDeConsignacao")
 
   criadoEm  DateTime @default(now())
