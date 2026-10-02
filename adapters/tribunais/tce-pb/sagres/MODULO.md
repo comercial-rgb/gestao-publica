@@ -251,7 +251,7 @@ código de agrupamento da folha é o do Tribunal ou o interno?), §4.36 Ordenado
 dedução), §4.5/§4.6/§4.49 (ofício e protocolo do TCE não modelados), §4.25 SaldoInicial (definição de
 saldo conciliado), §4.38 (modalidade e número do Tramita), §4.17/§4.18 (transferência entre UGs não existe).
 
-## V26 — o que dependia de decisão (32 → 45 de 58)
+## V26 — o que dependia de decisão (32 → 50 de 58; as cinco do projeto da LOA, §4.41 a §4.45, entraram no fim da V26)
 
 As decisões vieram da ordem `docs/lotes/V26-decisoes-da-v25.md`. Todas as tabelas novas estão em
 `gerador-v26.ts` (grupo `gerarArquivosDaV26`; a recusa de um arquivo, regra `CADASTRO_FORA_DO_PACOTE`, deixa só
@@ -286,3 +286,28 @@ valores guardados; reconstruí-lo da LOA aprovada é proibido pela ordem); o of�
 localizada para Esperança); a realocação no §4.5 (12/13); o recorte de TODOS os arquivos por UG (o razão não tem
 a dimensão da entidade: com mais de uma UG escriturada aqui, só as transferências e o agrupamento da folha são
 recortados por UG).
+
+## V27 — frota, farmácia, realocação e o pacote de conferência (50 → 58 de 58 com gerador)
+
+- §4.50 a §4.55 (frota) e §4.56/§4.57 (farmácia pública): `gerador-frota-farmacia.ts`, com os dados de M36 e M37.
+  - Cadastro (dono, locador, veículo, máquina) no mês do registro, ou no do início se for depois.
+  - Situação de todo bem, todo mês: a do dia 1 e cada mudança.
+  - Abastecimento somado por combustível, com o registro zerado no combustível principal.
+  - Farmácias ativas no fim do mês e o último informe de estoque.
+  - Os 8 leiautes conferem com o HTML oficial (58/58).
+- §4.5 tipos 12/13 e §4.6: o ato de realocação (M03, desde a V21) passou a ir ao Tribunal.
+  - A perna que cede é a origem (12), a que recebe é o destino (13).
+  - O decreto vai com o PDF anexado ao ato.
+  - O desfazimento no dia deixa o arquivo fora, nomeando o ato.
+  - Ofício (14/15) **não**: a Lei 613/2025 de Esperança autoriza a realocação só "mediante Decreto". Memória em
+    `docs/operacao/OFICIOS-14-15-E-REALOCACAO-ESPERANCA.md`.
+- §4.49: a lei registrada antes do comprovante do Tribunal (com o PDF, sem protocolo) é nomeada até o protocolo
+  chegar (`ProtocoloDaNormaNoTce`).
+- §4.38/§4.8: o número da licitação pode vir da lista dos dados abertos do Tribunal.
+  - O processo escolhe a licitação compatível e grava as 9 posições (NNNNNAAAA), a UG, a modalidade e o protocolo
+    "Doc. N/AA".
+  - O número digitado como o Tribunal publica (NNNNN/AAAA) também é aceito.
+- **Pacote de conferência:** com qualquer pendência na prévia, o download sai `conferencia-incompleto_…zip`, com
+  `incompleto: true` e a lista `foraDoPacote` no manifesto. Sem pendência, o pacote de sempre.
+- **"58 de 58" é cobertura de GERADOR, não remessa real.** As tabelas da frota e da farmácia dependem do cadastro do
+  ente. O veículo depende ainda do número do modelo, da tabela do Tribunal que não está nos documentos obtidos.

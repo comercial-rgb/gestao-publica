@@ -1,5 +1,7 @@
 # Promoção da V26 na apresentação (porta 3010) — procedimento e reversão
 
+> **Substituído pela V27:** o roteiro vigente é `PROMOCAO-V27-3010.md`. Este fica como histórico do ensaio da V26.
+
 **Situação:** preparado e ensaiado numa cópia; **não executado** na 3010. A ordem V26 (item 3) manda não trocar
 nem reiniciar a 3010 sem janela definida pelo operador.
 
