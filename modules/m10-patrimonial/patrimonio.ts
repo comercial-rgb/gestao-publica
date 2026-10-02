@@ -381,6 +381,8 @@ export async function adquirirBem(
         valor: true,
         estornoDeId: true,
         estornos: { select: { id: true } },
+        // V28 — a perna patrimonial DEVEDORA da liquidação: o que a despesa virou quando foi liquidada.
+        lancamento: { select: { partidas: { where: { subsistema: "PATRIMONIAL", tipo: "DEBITO" }, select: { conta: { select: { codigo: true } } } } } },
         empenho: {
           select: {
             numero: true,
@@ -450,6 +452,25 @@ export async function adquirirBem(
           `incorporação está sendo feita na classe ${dados.classeDeBensId}. O que ` +
           `foi contratado e o que entrou no patrimônio têm de ser a mesma coisa — ` +
           `corrija a classe (do empenho, ou desta aquisição).`
+      );
+    }
+
+    // ⚠️ V28 — A INCORPORAÇÃO RECLASSIFICA O QUE A LIQUIDAÇÃO JÁ LANÇOU; NÃO RECONHECE DE NOVO.
+    // A liquidação já fez D (o que a despesa virou) / C fornecedores. Se a aquisição creditasse
+    // fornecedores outra vez, o passivo nasceria em dobro; se a liquidação tivesse lançado VPD, o
+    // bem existiria duas vezes no resultado e no ativo. A única forma coerente é a aquisição tirar o
+    // valor da conta que a liquidação debitou (a conta declarada para o elemento) e pô-lo na conta
+    // do bem. Por isso a perna CREDORA do roteiro de aquisição tem de ser exatamente essa conta —
+    // e a recusa diz as duas, para o contador acertar o roteiro ou a conta do elemento.
+    const debitadasNaLiquidacao = [...new Set(liq.lancamento.partidas.map((p) => p.conta.codigo))];
+    const roteiroDaAquisicao = await roteiroDoTipo(tx, "AQUISICAO");
+    if (debitadasNaLiquidacao.length !== 1 || debitadasNaLiquidacao[0] !== roteiroDaAquisicao.contaCredito) {
+      throw new Error(
+        `AQUISIÇÃO RECONHECERIA A COMPRA DUAS VEZES: a liquidação ${liq.numero} debitou ` +
+          `${debitadasNaLiquidacao.join(", ") || "nenhuma conta patrimonial"}, e o roteiro de aquisição credita ` +
+          `${roteiroDaAquisicao.contaCredito}. A incorporação tem de retirar o valor da conta em que a liquidação o ` +
+          `pôs. Ajuste o roteiro de aquisição (Patrimônio) ou a conta da liquidação do elemento ` +
+          `(Contabilidade > Contas da liquidação por elemento). Nada foi gravado.`
       );
     }
 

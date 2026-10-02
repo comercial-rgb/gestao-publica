@@ -5,6 +5,7 @@ import { toMoney } from "../../packages/contracts/index.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
+import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { anularLiquidacao, liquidar } from "../m05-despesa/servico-bloco2.js";
@@ -41,6 +42,8 @@ const BEM_2 = "bem-2";
 
 // Fixtures do PCASP.
 const IMOBILIZADO = "1.2.3.1.1.01.00"; // Bens móveis — veículos
+// V28 — a conta que a liquidação do elemento 52 debita (fixture): o bem ainda não tombado.
+const A_INCORPORAR = "1.2.3.1.1.99.00";
 const FORNECEDOR = "2.1.3.1.1.00.00";
 const VPA_INCORP = "4.5.9.1.1.00.00"; // VPA — incorporação de ativos
 const VPD_BAIXA = "3.6.1.1.1.00.00"; // VPD — baixa/alienação de ativos
@@ -50,6 +53,7 @@ const C_EMPENHADO = "6.2.2.1.3.01.00";
 const C_LIQUIDADO = "6.2.2.1.3.03.00";
 
 const CONTAS = [
+  { id: "c-a-incorporar", codigo: A_INCORPORAR, nome: "Bens a incorporar", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
   { id: "c-imob", codigo: IMOBILIZADO, nome: "Veículos", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
   { id: "c-forn", codigo: FORNECEDOR, nome: "Fornecedores", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
   { id: "c-vpa", codigo: VPA_INCORP, nome: "VPA incorporação", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
@@ -63,6 +67,15 @@ const CONTAS = [
 const R_EMPENHO = roteiroEmpenho({ creditoDisponivel: C_DISPONIVEL, creditoEmpenhado: C_EMPENHADO });
 const R_LIQUIDACAO = roteiroLiquidacao({
   variacaoDiminutiva: VPD_CORRENTE, obrigacaoAPagar: FORNECEDOR,
+  creditoEmpenhado: C_EMPENHADO, creditoLiquidado: C_LIQUIDADO,
+});
+
+/**
+ * V28 — a liquidação de CAPITAL debita o ativo (a conta declarada para o elemento 52), não VPD: é o
+ * que torna a incorporação uma reclassificação e não um segundo reconhecimento.
+ */
+const R_LIQUIDACAO_CAPITAL = roteiroLiquidacao({
+  variacaoDiminutiva: A_INCORPORAR, obrigacaoAPagar: FORNECEDOR,
   creditoEmpenhado: C_EMPENHADO, creditoLiquidado: C_LIQUIDADO,
 });
 
@@ -134,8 +147,9 @@ async function semear(): Promise<void> {
   // CUSTO_SUBSEQUENTE fica DE FORA de propósito: é o teste t10.
   await prisma.roteiroPatrimonial.createMany({
     data: [
-      // D imobilizado / C fornecedores (o bem entra; a obrigação existe)
-      { tipo: "AQUISICAO", contaDebitoId: "c-imob", contaCreditoId: "c-forn", criadoPor: POR },
+      // V28 — D imobilizado / C bens a incorporar: a incorporação RECLASSIFICA o que a liquidação
+      // pôs no ativo. A obrigação com o fornecedor nasceu uma vez só, na liquidação.
+      { tipo: "AQUISICAO", contaDebitoId: "c-imob", contaCreditoId: "c-a-incorporar", criadoPor: POR },
       // D imobilizado / C VPA (o patrimônio aumenta sem contrapartida financeira)
       { tipo: "AVALIACAO_INICIAL", contaDebitoId: "c-imob", contaCreditoId: "c-vpa", criadoPor: POR },
       { tipo: "DOACAO_RECEBIDA", contaDebitoId: "c-imob", contaCreditoId: "c-vpa", criadoPor: POR },
@@ -150,7 +164,8 @@ async function semear(): Promise<void> {
 async function umaLiquidacao(
   fichaId: string,
   numero: string,
-  valor: string
+  valor: string,
+  roteiro?: ReturnType<typeof roteiroLiquidacao>
 ): Promise<string> {
   const e = await empenhar(
     {
@@ -167,7 +182,7 @@ async function umaLiquidacao(
       data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "Fulano",
       historico: "liquidação", criadoPor: POR,
     },
-    R_LIQUIDACAO,
+    roteiro ?? (fichaId === "ficha-capital" ? R_LIQUIDACAO_CAPITAL : R_LIQUIDACAO),
     deps
   );
   return l.liquidacaoId;
@@ -216,15 +231,30 @@ describe("M10 — patrimônio: classes, bens e movimentos", () => {
     expect(mov.liquidacaoId).toBe(liq);
     expect(mov.bemId).toBe(BEM_1);
 
-    // o lançamento: D imobilizado / C fornecedores, PATRIMONIAL, balanceado
+    // o lançamento: D imobilizado / C bens a incorporar, PATRIMONIAL, balanceado
     const papel = new Map(mov.lancamento.partidas.map((p) => [p.conta.codigo, p.tipo]));
     expect(papel.get(IMOBILIZADO)).toBe("DEBITO");
-    expect(papel.get(FORNECEDOR)).toBe("CREDITO");
+    expect(papel.get(A_INCORPORAR)).toBe("CREDITO");
+    // V28 — os DOIS atos somados (liquidação + aquisição), contra a conta à mão: o bem existe uma
+    // vez no ativo, o fornecedor uma vez no passivo, e nada ficou em VPD nem em trânsito.
+    expect((await saldoDasContas(prisma, [IMOBILIZADO], null)).toFixed(2)).toBe("150000.00");
+    expect((await saldoDasContas(prisma, [A_INCORPORAR], null)).toFixed(2)).toBe("0.00");
+    expect((await saldoDasContas(prisma, [FORNECEDOR], null)).negated().toFixed(2)).toBe("150000.00");
+    expect((await saldoDasContas(prisma, [VPD_CORRENTE], null)).toFixed(2)).toBe("0.00");
     await conferirBalanceamento(r.lancamentoId);
 
     // e o valor contábil sai do SUM, nunca de coluna
     expect((await valorContabilDaClasse(prisma, CLASSE)).toFixed(2)).toBe("150000.00");
     expect((await valorContabilDoBem(prisma, BEM_1)).toFixed(2)).toBe("150000.00");
+  });
+
+  // t1c — V28
+  it("t1c: liquidação de capital que lançou VPD não incorpora — a recusa nomeia as duas contas e nada é gravado", async () => {
+    const liq = await umaLiquidacao("ficha-capital", "NL-1C", "150000.00", R_LIQUIDACAO);
+    await expect(
+      adquirirBem(prisma, { classeDeBensId: CLASSE, liquidacaoId: liq, valor: "150000.00", bemId: BEM_1, dataMovimento: DATA, criadoPor: POR })
+    ).rejects.toThrow(/RECONHECERIA A COMPRA DUAS VEZES[\s\S]*debitou 3\.3\.2\.1\.1\.01\.00[\s\S]*credita 1\.2\.3\.1\.1\.99\.00/);
+    expect(await prisma.movimentoPatrimonial.count()).toBe(0);
   });
 
   // t2
