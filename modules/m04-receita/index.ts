@@ -76,5 +76,5 @@ export type {
   SaldoAArrecadar,
   VinculoDeReconhecimento,
 } from "./reconhecimento.js";
-export { arrecadarComVinculo } from "./arrecadacao-vinculada.js";
+export { arrecadarComVinculo, arrecadarQuitandoReconhecimento } from "./arrecadacao-vinculada.js";
 export type { ArrecadarComVinculoInput } from "./arrecadacao-vinculada.js";

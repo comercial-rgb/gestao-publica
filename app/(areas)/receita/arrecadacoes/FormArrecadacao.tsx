@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useRef } from "react";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 import { CampoValor } from "../../../../components/ui/Campos";
 import {
   CLASSE_BOTAO_PRIMARIO,
@@ -143,6 +144,16 @@ export function FormArrecadacao({
           <span className={ROTULO}>Data de arrecadação</span>
           <input name="data" type="date" required className={CAMPO} />
         </label>
+
+        <CampoReferenciado
+          name="reconhecimentoId"
+          rotulo="Crédito lançado que esta guia quita (opcional)"
+          catalogo="creditos-a-receber"
+          contexto={["natureza", "fonte"]}
+          placeholder="Digite parte do histórico ou do contribuinte"
+          ajuda="Escolha quando a guia paga um crédito já lançado, como o IPTU constituído. A receita já foi reconhecida no lançamento; a guia baixa o crédito a receber em vez de reconhecê-la de novo."
+          largura={3}
+        />
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nº da guia</span>

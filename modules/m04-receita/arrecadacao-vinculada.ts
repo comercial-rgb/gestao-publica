@@ -7,6 +7,11 @@ import {
   type RoteiroContabil,
 } from "./dominio.js";
 import { registrarArrecadacao } from "./servico.js";
+import { parsearNaturezaReceita } from "./natureza.js";
+import { roteiroArrecadacao as roteiroDaGuiaComum } from "../m01-core-contabil/roteiros.js";
+import type { NaturezaDaFonteDdr } from "../m01-core-contabil/roteiros.js";
+import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { autorizarNo } from "../m16-travamento/escopo.js";
 import {
   vincularReconhecimentoNaTx,
   type VinculoDeReconhecimento,
@@ -107,5 +112,94 @@ export async function arrecadarComVinculo(
     );
 
     return { receitaId: r.receitaId, lancamentoId: r.lancamentoId, vinculoIds };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// A GUIA DA TELA QUITANDO UM CRÉDITO JÁ RECONHECIDO (V28)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ArrecadarQuitandoReconhecimentoInput {
+  readonly arrecadacao: RegistrarArrecadacaoInput;
+  /** A conta contábil da conta bancária que recebeu — do cadastro, como na guia comum. */
+  readonly disponibilidade: string;
+  /** A natureza de controle da fonte (classe 7), do cadastro do ente, como na guia comum. */
+  readonly naturezaDaFonte: NaturezaDaFonteDdr;
+  /** O crédito que esta guia quita, pelo valor inteiro da guia. */
+  readonly reconhecimentoId: string;
+}
+
+/**
+ * ARRECADA pela tela e BAIXA o crédito reconhecido que a guia quita — um fato, uma transação.
+ *
+ * ⚠️ POR QUE EXISTE AO LADO DE `arrecadarComVinculo`. A guia da tela creditava sempre uma VPA:
+ * se o crédito do IPTU já tinha sido constituído (D crédito a receber × C VPA), pagar a guia
+ * lançava a VPA DE NOVO e deixava o crédito a receber aberto para sempre. A composta antiga faz
+ * a troca certa, mas monta o roteiro sem a perna de classe 7 que a guia da tela grava desde a
+ * V11 (a natureza da fonte). Aqui a guia é a MESMA da tela — mesmo roteiro do M01, mesmas cinco
+ * pernas —, e só a contrapartida patrimonial muda: o crédito a receber da origem, lido do
+ * `RoteiroReconhecimento` que o debitou, nunca escolhido no código.
+ *
+ * ⚠️ AS CONFERÊNCIAS VÊM ANTES DE GRAVAR: o reconhecimento existe e está vivo, é da mesma
+ * natureza e da mesma fonte da guia, e a origem tem roteiro. O saldo é conferido DENTRO da trava
+ * por `vincularReconhecimentoNaTx` — duas guias concorrentes não baixam o mesmo saldo.
+ */
+export async function arrecadarQuitandoReconhecimento(
+  prisma: PrismaClient,
+  input: ArrecadarQuitandoReconhecimentoInput
+): Promise<{ readonly receitaId: string; readonly lancamentoId: string; readonly vinculoId: string }> {
+  await autorizarNo(prisma, input.arrecadacao.criadoPor, ACAO_DO_SERVICO.arrecadarQuitandoReconhecimento, "ENTE");
+
+  const rec = await prisma.receitaReconhecida.findUnique({
+    where: { id: input.reconhecimentoId },
+    select: {
+      id: true, naturezaCodigo: true, contribuinteRef: true, historico: true,
+      estornoDeId: true, estornos: { select: { id: true } },
+      fonte: { select: { codigo: true } },
+    },
+  });
+  if (rec === null) {
+    throw new Error(`O crédito reconhecido indicado não existe. Escolha o crédito na lista de créditos a receber. Nada foi gravado.`);
+  }
+  if (rec.estornoDeId !== null || rec.estornos.length > 0) {
+    throw new Error(`O crédito "${rec.historico}" foi estornado e não pode ser quitado. Nada foi gravado.`);
+  }
+  if (rec.naturezaCodigo !== input.arrecadacao.naturezaReceita) {
+    throw new Error(
+      `A guia é da natureza ${input.arrecadacao.naturezaReceita} e o crédito "${rec.historico}" é da natureza ` +
+        `${rec.naturezaCodigo}. A guia só quita crédito da mesma natureza. Nada foi gravado.`
+    );
+  }
+  if (rec.fonte.codigo !== input.arrecadacao.fonte) {
+    throw new Error(
+      `A guia é da fonte ${input.arrecadacao.fonte} e o crédito "${rec.historico}" é da fonte ${rec.fonte.codigo}. ` +
+        `A guia só quita crédito da mesma fonte. Nada foi gravado.`
+    );
+  }
+  const origem = parsearNaturezaReceita(rec.naturezaCodigo).origem;
+  const roteiro = await prisma.roteiroReconhecimento.findUnique({
+    where: { origem },
+    select: { contaCreditoAReceber: { select: { codigo: true } } },
+  });
+  if (roteiro === null) {
+    throw new Error(
+      `A origem ${origem} não tem roteiro de reconhecimento, então não se sabe qual crédito a receber baixar. ` +
+        `Cadastre o roteiro da origem em Contabilidade. Nada foi gravado.`
+    );
+  }
+
+  const roteiroDaGuia = roteiroDaGuiaComum({
+    disponibilidade: input.disponibilidade,
+    // ⚠️ A PERNA QUE TORNA O ATO PERMUTATIVO: o crédito a receber, e não a VPA.
+    variacaoAumentativa: roteiro.contaCreditoAReceber.codigo,
+    naturezaDaFonte: input.naturezaDaFonte,
+  });
+
+  return prisma.$transaction(async (tx) => {
+    const r = await registrarArrecadacao(input.arrecadacao, roteiroDaGuia, criarM04DepsNaTx(tx));
+    const [vinculoId] = await vincularReconhecimentoNaTx(tx, r.receitaId, [
+      { reconhecimentoId: rec.id, valor: toMoney(String(input.arrecadacao.valor)).toFixed(2) },
+    ]);
+    return { receitaId: r.receitaId, lancamentoId: r.lancamentoId, vinculoId: vinculoId! };
   });
 }

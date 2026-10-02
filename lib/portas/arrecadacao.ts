@@ -11,6 +11,7 @@ import { atribuirEntidadeAArrecadacao } from "../../modules/m04-receita/atribuic
 import type { AtoDoFormulario } from "./entidades-contabeis";
 import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma";
 import { registrarArrecadacao } from "../../modules/m04-receita/servico";
+import { arrecadarQuitandoReconhecimento } from "../../modules/m04-receita/arrecadacao-vinculada";
 import {
   roteiroArrecadacao,
   roteiroArrecadacaoDistribuida,
@@ -137,6 +138,11 @@ export async function registrarGuia(input: {
   readonly numeroReceita: string;
   /** V6 P1.2 — o CÓDIGO da conta bancária que recebeu o dinheiro. Obrigatório pela tela. */
   readonly contaBancaria: string;
+  /**
+   * V28 — o crédito JÁ LANÇADO que esta guia quita. Presente, a contrapartida é o crédito a
+   * receber da origem, e a VPA não se repete; ausente, é a guia comum (receita sem lançamento).
+   */
+  readonly reconhecimentoId?: string | undefined;
 }): Promise<string> {
   return comEscritaAutenticada("REGISTRAR_ARRECADACAO", async (criadoPor) => {
     // A perna de disponibilidade É a conta contábil da conta bancária declarada — do cadastro.
@@ -152,19 +158,29 @@ export async function registrarGuia(input: {
     if (conta.contaContabil === null) {
       throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; a guia não sabe em que conta do razão o dinheiro entrou. Parametrize o mapeamento antes. Nada foi gravado.`);
     }
+    const daGuia = {
+      exercicio: input.exercicio,
+      naturezaReceita: input.naturezaReceita,
+      fonte: input.fonte,
+      ...(input.co !== undefined && input.co !== "" ? { co: input.co } : {}),
+      exercicioFonte: input.exercicioFonte,
+      valor: input.valor,
+      dataArrecadacao: input.dataArrecadacao,
+      numeroReceita: input.numeroReceita,
+      contaBancaria: conta.codigo,
+      criadoPor,
+    };
+    if (input.reconhecimentoId !== undefined && input.reconhecimentoId !== "") {
+      const q = await arrecadarQuitandoReconhecimento(cliente(), {
+        arrecadacao: daGuia,
+        disponibilidade: conta.contaContabil.codigo,
+        naturezaDaFonte: natureza.natureza,
+        reconhecimentoId: input.reconhecimentoId,
+      });
+      return q.receitaId;
+    }
     const r = await registrarArrecadacao(
-      {
-        exercicio: input.exercicio,
-        naturezaReceita: input.naturezaReceita,
-        fonte: input.fonte,
-        ...(input.co !== undefined && input.co !== "" ? { co: input.co } : {}),
-        exercicioFonte: input.exercicioFonte,
-        valor: input.valor,
-        dataArrecadacao: input.dataArrecadacao,
-        numeroReceita: input.numeroReceita,
-        contaBancaria: conta.codigo,
-        criadoPor,
-      },
+      daGuia,
       roteiroArrecadacao({
         disponibilidade: conta.contaContabil.codigo,
         variacaoAumentativa: CONTA_VPA,

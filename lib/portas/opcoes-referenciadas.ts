@@ -4,6 +4,8 @@ import { formatarDocumento } from "../../packages/documento/index.js";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import type { Prisma } from "../../prisma/generated/client/client.js";
 import { cliente } from "./cliente";
+import { saldoReconhecidoDe } from "../../modules/m04-receita/reconhecimento.js";
+import { formatarMoeda } from "../../packages/contracts/moeda";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
 import type { Identidade } from "./sessao";
@@ -130,6 +132,43 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
    * V6.2 P3 — a PESSOA representada: busca por documento (dígitos) ou nome da versão vigente. O valor é
    * o id interno, que o caso de uso resolve de novo.
    */
+  /**
+   * V28 — o CRÉDITO JÁ LANÇADO que uma guia quita: só os vivos com saldo, recortados pela natureza e
+   * pela fonte que a guia já declara. O saldo é o mesmo que a quitação confere dentro da trava.
+   */
+  "creditos-a-receber": {
+    leitura: "CONSULTAR_RECEITA",
+    async buscar(_s, p) {
+      const natureza = p.contexto["natureza"] ?? "";
+      const fonte = p.contexto["fonte"] ?? "";
+      const linhas = await cliente().receitaReconhecida.findMany({
+        where: {
+          estornoDeId: null,
+          estornos: { none: {} },
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(/^d{8}$/.test(natureza) ? { naturezaCodigo: natureza } : {}),
+          ...(/^d{3}$/.test(fonte) ? { fonte: { codigo: fonte } } : {}),
+          ...(p.q === "" ? {} : { OR: [{ historico: contem(p.q) }, { contribuinteRef: contem(p.q) }] }),
+        },
+        orderBy: [{ dataFatoGerador: "asc" }, { id: "asc" }],
+        skip: skip(p), take,
+        select: { id: true, historico: true, contribuinteRef: true, naturezaCodigo: true, dataFatoGerador: true, fonte: { select: { codigo: true } } },
+      });
+      const r = pagina(linhas, p);
+      const comSaldo = await Promise.all(r.linhas.map(async (l) => ({ l, saldo: await saldoReconhecidoDe(cliente(), l.id) })));
+      return {
+        opcoes: comSaldo
+          .filter((x) => p.valor !== undefined || x.saldo.greaterThan(0))
+          .map(({ l, saldo }) => ({
+            valor: l.id,
+            rotulo: `${l.historico}${l.contribuinteRef !== null ? ` — ${l.contribuinteRef}` : ""}`,
+            detalhe: `natureza ${l.naturezaCodigo} · fonte ${l.fonte.codigo} · saldo a receber R$ ${formatarMoeda(saldo.toFixed(2)).texto}`,
+            dados: { saldo: saldo.toFixed(2) },
+          })),
+        temMais: r.temMais,
+      };
+    },
+  },
   pessoas: {
     leitura: "CONSULTAR_CADASTROS",
     async buscar(_s, p) {
