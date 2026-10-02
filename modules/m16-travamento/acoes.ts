@@ -1134,6 +1134,7 @@ export type NomeDeServico =
   | "publicarPoliticaDaDotacaoAdicional"
   | "publicarRoteiroDaDotacaoPorFonte"
   | "declararNaturezaDaFonte"
+  | "declararContaDaLiquidacao"
   // M04 V22 — o ementário da receita (cadastro das naturezas de receita do ente)
   | "cadastrarNaturezaReceita"
   // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
@@ -1850,6 +1851,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // movimento entra, exatamente como as três acima. Um crachá próprio aqui seria o quarto para a
   // mesma decisão contábil.
   declararNaturezaDaFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
+  declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // ⚠️ V22 — E A QUINTA É A MESMA AUTORIDADE. Cadastrar uma natureza de receita no ementário diz
   // em que classificação orçamentária a arrecadação entra e, pelos de-paras dos demonstrativos,
   // em que linha da base de impostos ela soma: é parametrizar a classificação do orçamento, como
@@ -2905,6 +2908,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   saldoDdrPorFonte: "leitura (os 4 baldes da DDR por fonte — o controle de DISPONIBILIDADE, insumo do RGF Anexo 5)",
   naturezaVigenteDaFonte: "leitura (a natureza declarada de UMA fonte — o discriminador da perna de classe 7 da arrecadacao)",
   listarNaturezasDeclaradas: "leitura (as naturezas de fonte vigentes, uma linha por fonte)",
+  // V28 — a conta da liquidação por elemento (M01).
+  contaDaLiquidacaoVigente: "leitura (a conta que a liquidação de UM elemento debita: rol fixo ou declaração do ente)",
+  exigirContaDaLiquidacao: "guard (fail-closed antes da liquidação: elemento sem conta recusa nomeando onde declarar)",
+  listarContasDaLiquidacao: "leitura (as contas de liquidação vigentes, uma linha por elemento)",
   rgfAnexo2: "leitura (RGF Anexo 2 — dívida consolidada líquida sobre a RCL ajustada, LRF art. 55 I b)",
   anexo6: "leitura (RREO Anexo 6 — resultado primário e nominal ACIMA DA LINHA, LRF art. 53 III)",
   anexo6AbaixoDaLinha:

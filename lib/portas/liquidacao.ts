@@ -14,6 +14,7 @@ import { liquidar } from "../../modules/m05-despesa/servico-bloco2";
 // decide se a liquidação é de material é o adapter, dentro da transação, pela mesma régua.
 // Deixá-los importados manteria nesta porta a aparência de uma decisão que ela não toma mais.
 import { CONTA_FORNECEDORES_A_PAGAR, elementoDebitaEstoque, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros";
+import { exigirContaDaLiquidacao } from "../../modules/m01-core-contabil/conta-da-liquidacao";
 
 /**
  * PORTA — LIQUIDAÇÕES (TR 5.21).
@@ -160,6 +161,9 @@ export async function registrarLiquidacao(input: {
   // propriedade `readonly` do tipo original — o objeto resultante fica com a lista imutável
   // e o schema do domínio, que recebe array mutável, recusa. Tirá-la daqui resolve na raiz.
   const { entradasDeMaterial, ...resto } = input;
+  // V28 — a conta da perna patrimonial: o rol fixo do M01 ou a declaração do ente para o elemento,
+  // fail-closed ANTES de qualquer escrita (a recusa diz onde declarar).
+  const contaDaLiquidacao = await exigirContaDaLiquidacao(prisma, natureza.codElemento);
 
   return comEscritaAutenticada("LIQUIDAR", async (criadoPor) => {
     const r = await liquidar(
@@ -177,6 +181,7 @@ export async function registrarLiquidacao(input: {
       roteiroLiquidacao({
         codElemento: natureza.codElemento,
         obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR,
+        contaDebitada: contaDaLiquidacao.contaCodigo,
       }),
       criarM05DepsComAlmoxarifado(prisma)
     );

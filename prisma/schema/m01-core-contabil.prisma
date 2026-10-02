@@ -359,3 +359,40 @@ model DeParaFonteNaturezaDdr {
   @@index([fonteCodigo, versao])
   @@index([natureza])
 }
+
+/// V28 — o que a liquidação de um ELEMENTO de despesa vira no patrimônio, declarado pelo ente.
+/// Os elementos 30, 39 e 71 têm regra fixa no M01 (`CONTRAPARTIDA_DA_LIQUIDACAO`); os demais
+/// recusavam a liquidação. Esta tabela é a decisão do contador para eles, com fundamento.
+enum EfeitoDaLiquidacao {
+  /// A despesa reduz o patrimônio: a conta debitada é uma VPD (classe 3).
+  VPD
+  /// A despesa vira bem do imobilizado (1.2.3): a incorporação do bem reclassifica, não repete.
+  IMOBILIZADO
+  /// A despesa vira ativo intangível (1.2.4).
+  INTANGIVEL
+  /// A despesa amortiza uma obrigação (classe 2).
+  BAIXA_DE_PASSIVO
+}
+
+/// APPEND-ONLY e versionada por elemento, como `DeParaFonteNaturezaDdr`: a vigente é a maior
+/// versão, e a anterior continua dizendo o que valeu.
+model ContaDaLiquidacaoPorElemento {
+  id String @id @default(cuid())
+
+  /// Elemento de despesa, dois dígitos (Portaria Interministerial 163/2001, Anexo II).
+  elemento String @db.VarChar(2)
+
+  efeito EfeitoDaLiquidacao
+
+  /// Código da conta analítica do PCASP debitada pela liquidação, conferido na declaração.
+  contaCodigo String @db.VarChar(20)
+
+  fundamento String
+
+  versao    Int
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([elemento, versao])
+  @@index([elemento, versao])
+}

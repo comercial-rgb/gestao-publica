@@ -534,10 +534,16 @@ export function roteiroEmpenho(): RoteiroContabil {
 export function roteiroLiquidacao(p: {
   readonly codElemento: string;
   readonly obrigacaoAPagar: string;
+  /**
+   * V28 — a conta que o ENTE declarou para um elemento fora do rol fixo
+   * (`ContaDaLiquidacaoPorElemento`, lida por `exigirContaDaLiquidacao`). Ausente, vale o rol
+   * fixo, que recusa nomeando o elemento sem regra.
+   */
+  readonly contaDebitada?: string | undefined;
 }): RoteiroContabil {
   return [
     {
-      conta: contrapartidaDaLiquidacao(p.codElemento),
+      conta: p.contaDebitada ?? contrapartidaDaLiquidacao(p.codElemento),
       tipo: "DEBITO",
       subsistema: "PATRIMONIAL",
     },

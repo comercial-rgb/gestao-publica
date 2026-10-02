@@ -84,6 +84,9 @@ function porCodigo(
 const onde = (w: { q: string; valor?: string }, campoTexto: string): Record<string, unknown> =>
   w.valor !== undefined ? { codigo: w.valor } : w.q === "" ? {} : { OR: [{ codigo: { startsWith: w.q } }, { [campoTexto]: contem(w.q) }] };
 
+/** O mesmo recorte de classe que `declararContaDaLiquidacao` confere (M01). */
+const PREFIXO_DO_EFEITO_NA_BUSCA: Readonly<Record<string, string>> = { VPD: "3.", IMOBILIZADO: "1.2.3.", INTANGIVEL: "1.2.4.", BAIXA_DE_PASSIVO: "2." };
+
 export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
   ...CATALOGOS_DA_EXECUCAO,
   /**
@@ -132,6 +135,35 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
    * V6.2 P3 — a PESSOA representada: busca por documento (dígitos) ou nome da versão vigente. O valor é
    * o id interno, que o caso de uso resolve de novo.
    */
+  /**
+   * V28 — as contas ANALÍTICAS do plano, recortadas pela classe que o efeito escolhido exige
+   * (contexto `efeito`). O recorte é o mesmo que a declaração confere no servidor; aqui ele só
+   * evita oferecer o que seria recusado.
+   */
+  "contas-analiticas": {
+    leitura: "CONSULTAR_CONTABILIDADE",
+    async buscar(_s, p) {
+      const prefixo = PREFIXO_DO_EFEITO_NA_BUSCA[p.contexto["efeito"] ?? ""];
+      const linhas = await cliente().contaPcasp.findMany({
+        where: {
+          analitica: true,
+          ...(p.valor !== undefined
+            ? { codigo: p.valor }
+            : {
+                AND: [
+                  ...(prefixo !== undefined ? [{ codigo: { startsWith: prefixo } }] : []),
+                  ...(p.q === "" ? [] : [{ OR: [{ codigo: { startsWith: p.q } }, { nome: contem(p.q) }] }]),
+                ],
+              }),
+        },
+        orderBy: { codigo: "asc" },
+        skip: skip(p), take,
+        select: { codigo: true, nome: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((c) => ({ valor: c.codigo, rotulo: `${c.codigo} — ${c.nome}` })), temMais: r.temMais };
+    },
+  },
   /**
    * V28 — o CRÉDITO JÁ LANÇADO que uma guia quita: só os vivos com saldo, recortados pela natureza e
    * pela fonte que a guia já declara. O saldo é o mesmo que a quitação confere dentro da trava.

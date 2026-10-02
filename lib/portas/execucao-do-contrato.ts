@@ -1,6 +1,7 @@
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import { CONTA_FORNECEDORES_A_PAGAR, roteiroLiquidacao, elementoDebitaEstoque } from "../../modules/m01-core-contabil/roteiros";
+import { exigirContaDaLiquidacao } from "../../modules/m01-core-contabil/conta-da-liquidacao";
 import { naturezaDoEmpenho } from "../../modules/m05-despesa/consultas";
 import { alcanceNoContrato, type AlcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05.js";
@@ -283,8 +284,9 @@ export async function liquidarParcelaNaTela(c: Campos): Promise<string> {
   const prisma = cliente();
   const natureza = await naturezaDoEmpenho(prisma, empenhoId);
   if (natureza === null) throw new Error("Empenho não encontrado. Nada foi gravado.");
+  const contaDaLiquidacao = await exigirContaDaLiquidacao(prisma, natureza.codElemento);
   const r = await comEscritaAutenticada("LIQUIDAR", (criadoPor) =>
-    liquidarParcelasDoContrato(prisma, { empenhoId, documentoFiscalId: t(c, "documentoFiscalId"), data: t(c, "data"), parcelas, criadoPor }, roteiroLiquidacao({ codElemento: natureza.codElemento, obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR }), criarM05DepsComContratos(prisma))
+    liquidarParcelasDoContrato(prisma, { empenhoId, documentoFiscalId: t(c, "documentoFiscalId"), data: t(c, "data"), parcelas, criadoPor }, roteiroLiquidacao({ codElemento: natureza.codElemento, obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: contaDaLiquidacao.contaCodigo }), criarM05DepsComContratos(prisma))
   );
   return r.jaExistia
     ? `Esta liquidação já estava gravada (${r.numero}, R$ ${brl(r.valor)}): nada foi lançado de novo.`
