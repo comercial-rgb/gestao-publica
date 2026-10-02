@@ -40,6 +40,13 @@ describe("a aritmética, e ela é Decimal", () => {
     expect(avaliarFormula("valorContabil", BEM).toFixed(2)).toBe("7500.00");
   });
 
+  it("o percentual residual entra com as seis casas dele, e não com as duas do dinheiro (N=2)", () => {
+    // À mão: 10.000 × 0,125 = 1.250,00 e 10.000 × 0,033333 = 333,33. Com duas casas seriam
+    // 1.200,00 (0,12) e 300,00 (0,03).
+    expect(avaliarFormula("valorBruto * percentualResidual", { ...BEM, percentualResidual: new Decimal("0.125000") }).toFixed(2)).toBe("1250.00");
+    expect(avaliarFormula("valorBruto * percentualResidual", { ...BEM, percentualResidual: new Decimal("0.033333") }).toFixed(2)).toBe("333.33");
+  });
+
   it("uma fórmula de avaliação de verdade — valor residual pela vida remanescente", () => {
     // valorBruto × residual + (valorBruto − valorBruto × residual) ×
     //   (vidaUtil − idade) / vidaUtil

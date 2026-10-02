@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import { toMoney, toPercentual, zPercentual, type Money, type Percentual } from "../../packages/contracts/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
@@ -38,7 +38,7 @@ export interface ParametroVigente {
   readonly numero: number | null;
   readonly metodo: MetodoAtualizacao;
   readonly vidaUtilMeses: number;
-  readonly percentualResidual: Money;
+  readonly percentualResidual: Percentual;
   readonly ativo: boolean;
   readonly origem: "VERSAO" | "LEGADO";
   /** V4: a primeira competência a que a versão se aplica; `null` = desde o início. */
@@ -69,7 +69,7 @@ export async function parametroVigenteEm(tx: Tx, classeDeBensId: string, compete
     numero: v.numero,
     metodo: v.metodo as MetodoAtualizacao,
     vidaUtilMeses: v.vidaUtilMeses,
-    percentualResidual: toMoney(v.percentualResidual.toFixed(6)),
+    percentualResidual: toPercentual(v.percentualResidual.toFixed(6)),
     ativo: v.ativo,
     origem: "VERSAO",
     vigenteDesde: v.vigenteDesde,
@@ -89,7 +89,7 @@ export async function parametroVigente(tx: Tx, classeDeBensId: string): Promise<
       numero: v.numero,
       metodo: v.metodo as MetodoAtualizacao,
       vidaUtilMeses: v.vidaUtilMeses,
-      percentualResidual: toMoney(v.percentualResidual.toFixed(6)),
+      percentualResidual: toPercentual(v.percentualResidual.toFixed(6)),
       ativo: v.ativo,
       origem: "VERSAO",
       vigenteDesde: v.vigenteDesde,
@@ -105,7 +105,7 @@ export async function parametroVigente(tx: Tx, classeDeBensId: string): Promise<
     numero: null,
     metodo: legado.metodo as MetodoAtualizacao,
     vidaUtilMeses: legado.vidaUtilMeses,
-    percentualResidual: toMoney(legado.percentualResidual.toFixed(6)),
+    percentualResidual: toPercentual(legado.percentualResidual.toFixed(6)),
     ativo: legado.ativo,
     origem: "LEGADO",
     vigenteDesde: null,
@@ -169,7 +169,7 @@ export const zDefinirParametroDeAtualizacaoInput = z.object({
   /** Em MESES, inteiro > 0. */
   vidaUtilMeses: z.coerce.number().int(),
   /** Fração em [0, 1) — "0.100000" é 10%. Decimal, nunca float. */
-  percentualResidual: zMoney,
+  percentualResidual: zPercentual,
   /** `false` encerra a atualização da classe a partir desta versão. */
   ativo: z.boolean().default(true),
   motivo: z.string().trim().min(8, "O motivo é obrigatório — quem ler o histórico não terá a quem perguntar."),

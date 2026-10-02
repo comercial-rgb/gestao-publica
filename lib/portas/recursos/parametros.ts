@@ -33,9 +33,9 @@ const CAMPOS_DA_VERSAO: readonly CampoDoMolde[] = [
   },
   { nome: "vidaUtilMeses", rotulo: "Vida útil (meses)", tipo: "inteiro", obrigatorio: true, largura: 1, minimo: 1, maximo: 1200 },
   {
-    nome: "percentualResidual", rotulo: "Valor residual (%)", tipo: "inteiro", obrigatorio: true, largura: 1,
-    minimo: 0, maximo: 99,
-    ajuda: "Percentual do valor que não é depreciado. Ex.: 10 = 10%.",
+    nome: "percentualResidual", rotulo: "Valor residual (%)", tipo: "texto", obrigatorio: true, largura: 1,
+    placeholder: "10",
+    ajuda: "Percentual do valor que não é depreciado, entre 0 e 99,9999. Ex.: 10 = 10%; 12,5 = 12,5%.",
   },
   {
     nome: "vigenteDesde", rotulo: "Vigente desde a competência (AAAA-MM)", tipo: "texto", largura: 2,

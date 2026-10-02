@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import { toMoney, zMoney, type Money, type Percentual } from "../../packages/contracts/index.js";
 import {
   validarLancamento,
   type Partida,
@@ -353,8 +353,8 @@ export function aplicadoNaCompetencia(
 
 export interface ParametrosDaClasse {
   readonly vidaUtilMeses: number;
-  /** Fração (0 ≤ p < 1). Decimal(9,6) — nunca float. */
-  readonly percentualResidual: Money;
+  /** Fração (0 ≤ p < 1). Decimal(9,6) — seis casas, nunca as duas do dinheiro (12,5% é 0,125). */
+  readonly percentualResidual: Percentual;
 }
 
 export interface CalculoDaParcela {

@@ -1,4 +1,4 @@
-import { Decimal, toMoney, type Money } from "../../packages/contracts/index.js";
+import { Decimal, type Money, type Percentual } from "../../packages/contracts/index.js";
 
 /**
  * ═══ A FÓRMULA DE AVALIAÇÃO PATRIMONIAL (TR 5.19.42) ═══
@@ -51,8 +51,8 @@ export interface GrandezasDoBem {
   readonly idadeMeses: Money;
   /** Vida útil parametrizada da classe, em meses. */
   readonly vidaUtilMeses: Money;
-  /** Fração residual parametrizada da classe (0 a 1). */
-  readonly percentualResidual: Money;
+  /** Fração residual parametrizada da classe (0 a 1), com as seis casas do percentual. */
+  readonly percentualResidual: Percentual;
 }
 
 export const NOMES_DAS_GRANDEZAS: readonly (keyof GrandezasDoBem)[] = [
@@ -233,7 +233,9 @@ export function avaliarFormula(
     }
     if (t.t === "grandeza") {
       pos += 1;
-      return toMoney(grandezas[t.v]);
+      // A grandeza entra com a precisão que tem: o dinheiro já vem com duas casas, e o
+      // percentual residual com seis. Passá-la por `toMoney` achatava 12,5% em 12%.
+      return new Decimal(grandezas[t.v]);
     }
     if (t.t === "abre") {
       pos += 1;

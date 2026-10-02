@@ -1,5 +1,5 @@
 import { diaCivilBr } from "../../../packages/datas/index.js";
-import { toMoney, type Money } from "../../../packages/contracts/index.js";
+import { toPercentual, type Percentual } from "../../../packages/contracts/index.js";
 import {
   definirParametroDeAtualizacao,
   parametroVigente,
@@ -37,15 +37,26 @@ const ROTULO_DO_METODO: Readonly<Record<string, string>> = Object.fromEntries(
 );
 
 /** "0.100000" -> "10%" ; "0.125000" -> "12,5%". */
-export function residualEmPorcento(fracao: Money | string): string {
-  const pct = toMoney(typeof fracao === "string" ? fracao : fracao.toFixed(6)).times(100);
-  const texto = pct.toFixed(2).replace(/\.?0+$/, "").replace(".", ",");
+export function residualEmPorcento(fracao: Percentual | string): string {
+  // Seis casas na fração são quatro no porcento: 0,033333 é 3,3333%. Passar por `toMoney`
+  // achatava 0,125 em 0,12 e a tela dizia 12% de um parâmetro de 12,5%.
+  const pct = toPercentual(typeof fracao === "string" ? fracao : fracao.toFixed(6)).times(100);
+  const texto = pct.toFixed(4).replace(/\.?0+$/, "").replace(".", ",");
   return `${texto === "" ? "0" : texto}%`;
 }
 
-/** "10" (porcento, inteiro do formulário) -> "0.100000" (fração de seis casas). */
-function fracaoDoPorcento(porcento: string): string {
-  return toMoney(porcento === "" ? "0" : porcento).dividedBy(100).toFixed(6);
+/**
+ * "10" -> "0.100000"; "12,5" -> "0.125000" (fração de seis casas, então até quatro no porcento).
+ * O que não for número entre 0 e 99,9999 é recusado com o motivo, e não arredondado em silêncio.
+ */
+export function fracaoDoPorcento(porcento: string): string {
+  const normal = porcento === "" ? "0" : porcento.replace(",", ".");
+  if (!/^\d{1,2}(\.\d{1,4})?$/.test(normal)) {
+    throw new Error(
+      `Valor residual "${porcento}" inválido: informe o percentual entre 0 e 99,9999, com até quatro casas decimais (ex.: 10 ou 12,5).`
+    );
+  }
+  return toPercentual(normal).dividedBy(100).toFixed(6);
 }
 
 type LinhaComposta = {

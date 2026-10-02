@@ -885,7 +885,7 @@ reescrever a régua pela qual ele próprio é medido.
   coexistem num só fato ou em dois não está tomada.
 - **`DEPRECIACAO-SEM-CENTRO`** — a parcela de depreciação do M10 não vira custo de centro, embora o
   bem tenha localização física em um setor.
-- **`PERCENTUAL-RESIDUAL-LIDO-COM-DUAS-CASAS`** — achado ao construir C05: `parametros.ts` e
+- ~~**`PERCENTUAL-RESIDUAL-LIDO-COM-DUAS-CASAS`**~~ **RESOLVIDA na V28** (leitura, entrada, avaliador de fórmula e tela com seis casas; teste N=2 com 12,5% e 3,3333% e prova por mutação em `m10-parametros-versoes.test.ts` t7 e `m10-formula-avaliacao.test.ts`). Achado ao construir C05: `parametros.ts` e
   `gestao-do-bem.ts` do M10 leem `percentualResidual` (`Decimal(9,6)`) com `toMoney(...toFixed(6))`,
   e `toMoney` arredonda a DUAS casas. Um residual de 0,05 não sofre; um de 0,033333 viraria 0,03.
   A correção é `toPercentual` (`packages/contracts/percentual.ts`), e ela não foi feita aqui porque

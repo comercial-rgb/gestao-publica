@@ -186,4 +186,27 @@ describe("o parâmetro versionado, a prévia e a memória", () => {
     expect(await prisma.versaoDeParametroDeAtualizacao.count()).toBe(0);
     await expect(definirParametroDeAtualizacao(prisma, { ...V1, classeDeBensId: "nao-existe" })).rejects.toThrow(/CLASSE INEXISTENTE/);
   });
+it("t7: residual com casas além das duas do dinheiro — 12,5% e 3,3333% (N=2 classes), contra a conta feita à mão", async () => {
+    // À mão, base 12.000 e vida 24:
+    //   12,5%    → residual 12.000 × 0,125    = 1.500,00 ; parcela (12.000 − 1.500)/24 = 437,50
+    //   3,3333%  → residual 12.000 × 0,033333 =   399,996 → 400,00 ; parcela 11.600/24 = 483,33
+    // Lido com duas casas (o defeito), seriam 0,12 → 1.440,00/440,00 e 0,03 → 360,00/485,00.
+    await definirParametroDeAtualizacao(prisma, { ...V1, percentualResidual: "0.125000" });
+    await definirParametroDeAtualizacao(prisma, { ...V1, classeDeBensId: CLASSE_LEGADA, percentualResidual: "0.033333", motivo: "Residual de um terço de dez por cento, fixture." });
+    expect((await parametroVigente(prisma, CLASSE))?.percentualResidual.toFixed(6)).toBe("0.125000");
+    expect((await parametroVigente(prisma, CLASSE_LEGADA))?.percentualResidual.toFixed(6)).toBe("0.033333");
+
+    const a = await preverCompetencia(prisma, { classeDeBensId: CLASSE, competencia: "2026-03" });
+    expect(a.calculo?.valorResidual.toFixed(2)).toBe("1500.00");
+    expect(a.calculo?.parcelaCheia.toFixed(2)).toBe("437.50");
+    const b = await preverCompetencia(prisma, { classeDeBensId: CLASSE_LEGADA, competencia: "2026-03" });
+    expect(b.calculo?.valorResidual.toFixed(2)).toBe("400.00");
+    expect(b.calculo?.parcelaCheia.toFixed(2)).toBe("483.33");
+
+    const r = await atualizarCompetencia(prisma, { classeDeBensId: CLASSE, competencia: "2026-03", criadoPor: POR });
+    expect(r.valorDaParcela.toFixed(2)).toBe("437.50");
+    const memoria = await prisma.memoriaDeAtualizacao.findUniqueOrThrow({ where: { movimentoId: r.movimentoId } });
+    expect(memoria.percentualResidual.toFixed(6)).toBe("0.125000");
+    expect(memoria.valorResidual.toFixed(2)).toBe("1500.00");
+  });
 });

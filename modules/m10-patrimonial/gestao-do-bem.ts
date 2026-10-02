@@ -3,7 +3,7 @@ import { comporTermo, MODELO_DO_TERMO, sha256DoDocumento } from "./termo-documen
 import { randomUUID } from "node:crypto";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
-import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { toMoney, toPercentual, type Money } from "../../packages/contracts/index.js";
 import {
   diaCivil,
   diferencaEmDiasCivis,
@@ -1338,7 +1338,7 @@ export async function avaliarBemPorFormula(
       )
     ),
     vidaUtilMeses: toMoney(String(parametro.vidaUtilMeses)),
-    percentualResidual: toMoney(parametro.percentualResidual.toFixed(6)),
+    percentualResidual: toPercentual(parametro.percentualResidual.toFixed(6)),
   });
 
   return { valor, expressao: formula.expressao };
