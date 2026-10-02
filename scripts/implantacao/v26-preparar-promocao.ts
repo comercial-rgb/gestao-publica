@@ -68,7 +68,11 @@ async function main(): Promise<void> {
     }
 
     // 3. Os vínculos das consignações.
-    const contaVigente = async (tipoId: string): Promise<string | null> => (await decisaoVigente(prisma, tipoId))?.contaPassivoCodigo ?? null;
+    // O tipo anterior ao histórico de decisões guarda a conta no próprio cadastro: é ela a vigente até a primeira decisão.
+    const contaVigente = async (tipoId: string): Promise<string | null> =>
+      (await decisaoVigente(prisma, tipoId))?.contaPassivoCodigo ??
+      (await prisma.tipoConsignacao.findUnique({ where: { id: tipoId }, select: { contaPassivo: { select: { codigo: true } } } }))?.contaPassivo?.codigo ??
+      null;
     for (const v of [
       { codigo: "ISS", descricao: "ISS retido na fonte", conta: "2.1.8.8.1.01.08", motivo: `${PCASP}: 2.1.8.8.1.01.08 ISS, analítica; a conta anterior era Garantias (2.1.8.8.1.02.00), que não é de consignação de imposto` },
       { codigo: "INSS", descricao: "INSS retido na fonte", conta: "2.1.8.8.1.01.02", motivo: `${PCASP}: 2.1.8.8.1.01.02 Contribuição ao RGPS, analítica; a conta anterior (2.1.8.8.1.01.00) é sintética` },
