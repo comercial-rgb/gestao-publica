@@ -68,3 +68,20 @@ describe("F3 — determinismo (mesma massa = mesmo byte = mesmo hash)", () => {
     expect(zip[3]).toBe(0x04);
   });
 });
+
+describe("V27 — pacote com pendência é de conferência, não a remessa pronta", () => {
+  it("sem pendência: nome e manifesto de sempre; com pendência: o nome diz conferência e o manifesto lista o que ficou fora", () => {
+    const pronto = montarPacote(meta, arquivos());
+    expect(pronto.nome).toBe("sagres_999001_2026-07-15_diario.zip");
+    expect(pronto.manifesto).not.toHaveProperty("incompleto");
+    const vazio = montarPacote({ ...meta, pendencias: [] }, arquivos());
+    expect(vazio.nome).toBe(pronto.nome);
+    const pendencias = [{ arquivo: "Veiculos", detalhe: "campo cadastro: veículo sem o número do modelo: QWE9876." }];
+    const conferencia = montarPacote({ ...meta, pendencias }, arquivos());
+    expect(conferencia.nome).toBe("conferencia-incompleto_sagres_999001_2026-07-15_diario.zip");
+    expect(conferencia.manifesto.incompleto).toBe(true);
+    expect(conferencia.manifesto.foraDoPacote).toEqual(pendencias);
+    // Os arquivos e o hash do conteúdo são os mesmos: só a natureza do pacote muda.
+    expect(conferencia.manifesto.hashPacote).toBe(pronto.manifesto.hashPacote);
+  });
+});

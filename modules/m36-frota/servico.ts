@@ -103,7 +103,7 @@ export async function cadastrarVeiculo(prisma: PrismaClient, input: CadastrarVei
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cadastrarVeiculo, "ENTE");
     await exigirUgOperada(tx, d.ugId, d.vigenteDesde);
     const ja = await tx.veiculoDaFrota.findUnique({ where: { placa }, select: { ug: { select: { codigoTce: true } } } });
-    if (ja !== null) throw new Error(`O veículo de placa ${placa} já está cadastrado (unidade gestora ${ja.ug.codigoTce}). Para mudar dono, locador ou dados, publique uma versão nova. Nada foi gravado.`);
+    if (ja !== null) throw new Error(`O veículo de placa ${placa} já está cadastrado na unidade gestora ${ja.ug.codigoTce}. Para mudar dono, locador ou dados, publique uma versão dele. Passar o veículo para outra unidade gestora ainda não está disponível. Nada foi gravado.`);
     const proprietarioId = await pessoaPeloDocumento(tx, d.proprietarioDocumento, "proprietário");
     const locadorId = await pessoaPeloDocumento(tx, d.locadorDocumento, "locador");
     const desde = meioDiaCivil(d.vigenteDesde);
@@ -247,6 +247,13 @@ export async function registrarSituacaoDaFrota(prisma: PrismaClient, input: z.in
     }
     const atual = situacaoNoDia(vivas, d.desde);
     if (atual === "BAIXADA") throw new Error(`O ${bem.nome} está baixado. Se a baixa foi engano, anule-a. Nada foi gravado.`);
+    if (d.situacao === "BAIXADA") {
+      // Baixado não abastece: a baixa não pode começar antes de um abastecimento já registrado.
+      const depois = await tx.abastecimentoDaFrota.findMany({ where: { ...bem.filtro, anulacao: null, data: { gte: meioDiaCivil(d.desde) } }, orderBy: { data: "asc" }, select: { data: true, documento: true } });
+      if (depois.length > 0) {
+        throw new Error(`O ${bem.nome} tem abastecimento registrado a partir de ${d.desde.split("-").reverse().join("/")} (${depois.map((a) => `${diaCivilBr(a.data)}, ${a.documento}`).join("; ")}). Anule-o se foi engano, ou informe a baixa a partir do dia seguinte ao último abastecimento. Nada foi gravado.`);
+      }
+    }
     if (atual === d.situacao) throw new Error(`O ${bem.nome} já está ${ROTULO_SITUACAO[d.situacao].toLowerCase()}. Nada foi gravado.`);
     const c = await tx.mudancaDeSituacaoDaFrota.create({ data: { ...bem.filtro, situacao: d.situacao, desde: meioDiaCivil(d.desde), motivo: d.motivo, criadoPor: d.criadoPor }, select: { id: true } });
     return { id: c.id };

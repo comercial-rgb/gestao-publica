@@ -507,11 +507,18 @@ export default async function SagresPage({
                   href={hrefDownload}
                   className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]"
                 >
-                  Baixar pacote (.zip com manifesto)
+                  {preview.violacoes.length === 0 ? "Baixar pacote (.zip com manifesto)" : "Baixar para conferência (incompleto)"}
                 </a>
               </span>
             </div>
             <p className="mt-2 break-all text-xs text-[color:var(--color-ink-3)]">Código de verificação do pacote: {preview.manifesto.hashPacote}</p>
+            {preview.violacoes.length > 0 ? (
+              <p className="mt-1 text-xs text-[color:var(--color-status-erro-fg)]" data-teste="pacote-de-conferencia">
+                Há {preview.violacoes.length} pendência(s) nas validações abaixo: o pacote baixado é para conferência, com o nome
+                começando por "conferencia-incompleto" e a lista do que ficou fora no manifesto. Ele não é a remessa pronta.
+                Resolva as pendências e baixe de novo.
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
               O arquivo baixado corresponde exatamente à competência exibida. Os arquivos mensais levam{" "}
               {preview.competenciaMensal} no nome, mesmo quando o dia escolhido pertence a outro mês.

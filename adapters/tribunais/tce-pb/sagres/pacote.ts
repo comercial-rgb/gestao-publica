@@ -127,6 +127,9 @@ export interface Manifesto {
   readonly hashPacote: string;
   /** DIRETIVA §7: o manifesto prova integridade LOCAL, nunca aceitação externa. */
   readonly natureza: "FORMATO_OFICIAL_GERADO_E_VALIDADO_LOCALMENTE";
+  /** V27 — presente só quando a prévia tem pendência: o pacote é de CONFERÊNCIA, não a remessa pronta. */
+  readonly incompleto?: true;
+  readonly foraDoPacote?: readonly { readonly arquivo: string; readonly detalhe: string }[];
 }
 
 export interface MetaPacote {
@@ -134,6 +137,8 @@ export interface MetaPacote {
   readonly periodicidade: string;
   readonly competencia: string;
   readonly codUnidadeGestora: string;
+  /** V27 — as pendências da prévia (arquivo fora, campo obrigatório vazio). Com alguma, o pacote é de conferência. */
+  readonly pendencias?: readonly { readonly arquivo: string; readonly detalhe: string }[];
 }
 
 export function montarManifesto(meta: MetaPacote, arquivos: readonly ArquivoGerado[]): Manifesto {
@@ -149,6 +154,7 @@ export function montarManifesto(meta: MetaPacote, arquivos: readonly ArquivoGera
     arquivos: lista,
     hashPacote,
     natureza: "FORMATO_OFICIAL_GERADO_E_VALIDADO_LOCALMENTE",
+    ...(meta.pendencias !== undefined && meta.pendencias.length > 0 ? { incompleto: true as const, foraDoPacote: meta.pendencias } : {}),
   };
 }
 
@@ -168,7 +174,8 @@ export function montarPacote(meta: MetaPacote, arquivos: readonly ArquivoGerado[
   ];
   const sufixo = meta.periodicidade === "MENSAL" ? "mensal" : meta.periodicidade === "ANUAL" ? "anual" : "diario";
   return {
-    nome: `sagres_${meta.codUnidadeGestora}_${meta.competencia}_${sufixo}.zip`,
+    // V27 — com pendência, o nome diz que é conferência: o pacote não se confunde com a remessa pronta.
+    nome: `${manifesto.incompleto === true ? "conferencia-incompleto_" : ""}sagres_${meta.codUnidadeGestora}_${meta.competencia}_${sufixo}.zip`,
     zip: ziparDeterministico(entradas),
     manifesto,
   };

@@ -37,7 +37,7 @@ saem. Derivado: sha256 `32027bab275c90db03d98095dd56495cb2ed4f3ee7f95e268075d73b
 
 - `numero_licitacao` vem como `NNNNN/AAAA`. O §4.38 do leiaute pede o "Número da Licitação" com 9 posições (origem
   Tramita): os 5 dígitos e o ano, sem a barra.
-- `numero_protocolo_tce` vem como `Doc. NNNNN/AA` ou `Doc. NNNNNN/AA` (113 e 17 casos). É o protocolo do documento no
+- `numero_protocolo_tce` vem como `Doc. NNNNN/AA` ou `Doc. NNNNNN/AA` (113 e 17 casos; 125 do ano 26 e 5 do ano 25). É o protocolo do documento no
   Tramita, prova da correspondência; não é o número da licitação nem o identificador do PNCP.
 
 ## O que não foi obtido

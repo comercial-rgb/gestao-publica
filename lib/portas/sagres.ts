@@ -430,8 +430,12 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   arquivos.push(...frota.arquivos.map((r) => r.arquivo));
 
+  // V27 — as pendências da MESMA prévia que a tela mostrou: com alguma, o pacote é de conferência (nome e manifesto
+  // dizem isso) e não a remessa pronta. A preparação e a consulta continuam; o que falta fica nomeado.
+  const previa = await montarPreviewSagres(p);
+  const pendencias = previa.violacoes.map((v) => ({ arquivo: v.arquivo, detalhe: `${v.linha > 0 ? `linha ${String(v.linha)}, ` : ""}campo ${v.campo}: ${v.detalhe}` }));
   const pacote = montarPacote(
-    { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora },
+    { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora, pendencias },
     arquivos
   );
   return { nome: pacote.nome, zip: pacote.zip, hashPacote: pacote.manifesto.hashPacote };

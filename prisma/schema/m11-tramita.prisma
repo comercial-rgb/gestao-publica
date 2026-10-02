@@ -22,8 +22,44 @@ model IdentificacaoNoTramita {
   /// De onde vem (consulta ao Tramita, comprovante de cadastro) — ou o motivo da correção.
   fundamento        String
 
+  /// V27 — o protocolo do documento da licitação no Tramita ("Doc. NNNNN/AA"), a prova da correspondência, e o registro
+  /// dos dados abertos do Tribunal de onde a identificação foi tirada (nulo quando digitada).
+  protocoloNoTribunal   String?               @db.VarChar(16)
+  licitacaoNoTribunalId String?
+  licitacaoNoTribunal   LicitacaoNoTribunal?  @relation(fields: [licitacaoNoTribunalId], references: [id])
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
   @@index([processoId, criadoEm])
+}
+
+// ============================================================================
+// V27 — AS LICITAÇÕES COMO O TRIBUNAL AS PUBLICA (dados abertos do TCE-PB, licitacoes-AAAA.csv por município).
+//
+// A lista de referência para identificar o processo no Tramita sem redigitar: UG, número da licitação ("NNNNN/AAAA"),
+// protocolo do documento ("Doc. NNNNN/AA") e modalidade como texto do Tribunal. O operador ESCOLHE a licitação do
+// processo; nada se casa sozinho pelo número do processo interno. Append-only por arquivo (o SHA-256 identifica a
+// importação; o mesmo arquivo não entra duas vezes).
+// ============================================================================
+
+model LicitacaoNoTribunal {
+  id String @id @default(cuid())
+
+  arquivoHash       String  @db.VarChar(64)
+  codUnidadeGestora String  @db.VarChar(6)
+  numeroLicitacao   String  @db.VarChar(10)
+  protocoloTce      String  @db.VarChar(16)
+  ano               Int
+  modalidadeTexto   String
+  /// O código da tabela §6.2 que corresponde ao texto, quando a correspondência é conhecida; nulo se não.
+  modalidadeSagres  String? @db.VarChar(2)
+
+  identificacoes IdentificacaoNoTramita[]
+
+  importadoEm  DateTime @default(now())
+  importadoPor String
+
+  @@unique([arquivoHash, codUnidadeGestora, numeroLicitacao, modalidadeTexto])
+  @@index([codUnidadeGestora, numeroLicitacao])
 }

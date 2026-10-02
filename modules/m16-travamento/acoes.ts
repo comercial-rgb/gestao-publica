@@ -1172,6 +1172,7 @@ export type NomeDeServico =
   | "cadastrarFarmacia"
   | "publicarVersaoDaFarmacia"
   | "informarEstoqueDaFarmacia"
+  | "importarLicitacoesDoTribunal"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1894,6 +1895,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarFarmacia: "CADASTRAR_FARMACIA",
   publicarVersaoDaFarmacia: "CADASTRAR_FARMACIA",
   informarEstoqueDaFarmacia: "INFORMAR_ESTOQUE_DA_FARMACIA",
+  // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
+  importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2224,6 +2227,10 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
+  lerLicitacoesDoTribunal: "puro (lê o CSV de licitações dos dados abertos do Tribunal e confere formato — não toca o banco)",
+  numeroDaLicitacaoNoLeiaute: "puro (NNNNN/AAAA para as 9 posições do leiaute)",
+  licitacoesCandidatas: "leitura (as licitações importadas do Tribunal compatíveis com a modalidade do processo — não muta)",
+  identificarPelaLicitacaoDoTribunal: "composável (monta a identificação a partir do registro importado e chama identificarNoTramita, que cobra CADASTRAR_PROCESSO antes de gravar)",
   lerInformeDeEstoque: "puro (lê o arquivo de estoque da farmácia e confere cada linha — não toca o banco)",
   gerarArquivosDaFrotaEFarmacia: "leitura (os TXT SAGRES §4.50 a §4.57, ou a recusa nomeada por arquivo — não muta)",
   lerFatosProprietarioFrota: "leitura (os donos dos bens cadastrados ou alterados no mês, para o §4.50 — não muta)",

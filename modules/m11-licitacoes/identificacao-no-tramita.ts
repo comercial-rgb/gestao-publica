@@ -4,6 +4,7 @@ import type { Tx } from "../m01-core-contabil/adapter-prisma.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { MODALIDADES_DO_TRIBUNAL, MODALIDADES_PERMITIDAS } from "./modalidades-do-tribunal.js";
+import { numeroDaLicitacaoNoLeiaute } from "./licitacoes-do-tribunal.js";
 
 /**
  * V26 — A LICITAÇÃO COMO ESTÁ NO TRAMITA DO TCE-PB (ver `prisma/schema/m11-tramita.prisma`). O número é o de lá: o
@@ -12,20 +13,49 @@ import { MODALIDADES_DO_TRIBUNAL, MODALIDADES_PERMITIDAS } from "./modalidades-d
 
 export const zIdentificarNoTramita = z.object({
   processoId: z.string().min(1),
+  // V27 — o número como o Tribunal o publica ("00001/2026") vira as 9 posições do leiaute ("000012026").
   numeroNoTramita: z
     .string()
     .trim()
-    .min(1, "Informe o número da licitação no Tramita.")
-    .max(9, "O número da licitação no Tramita tem até 9 posições.")
-    .refine((n) => /^[0-9A-Za-z/.-]+$/.test(n), "Use o número como cadastrado no Tramita, sem espaços."),
+    .transform((n) => (/^\d{1,5}\/\d{4}$/.test(n) ? numeroDaLicitacaoNoLeiaute(n) : n))
+    .pipe(
+      z
+        .string()
+        .min(1, "Informe o número da licitação no Tramita.")
+        .max(9, "O número da licitação no Tramita tem até 9 posições (ou informe como o Tribunal publica: NNNNN/AAAA).")
+        .refine((n) => /^[0-9A-Za-z/.-]+$/.test(n), "Use o número como cadastrado no Tramita, sem espaços.")
+    ),
   codUnidadeGestora: z.string().trim().regex(/^\d{6}$/, "A unidade gestora do Tramita tem 6 dígitos."),
   modalidadeSagres: z.string().trim().refine((m) => m in MODALIDADES_DO_TRIBUNAL, "Escolha a modalidade da tabela do Tribunal."),
   fundamento: z.string().trim().min(10, "Diga de onde vem o número (consulta ao Tramita, comprovante de cadastro)."),
+  /** V27 — o protocolo do documento no Tramita ("Doc. NNNNN/AA"), quando conhecido. */
+  protocoloNoTribunal: z.string().trim().regex(/^Doc\. \d{1,8}\/\d{2}$/, 'O protocolo do Tramita tem a forma "Doc. 12345/26".').nullable().optional(),
   criadoPor: z.string().min(1),
 });
 export type IdentificarNoTramitaInput = z.input<typeof zIdentificarNoTramita>;
 
-export async function identificarNoTramita(prisma: PrismaClient, input: IdentificarNoTramitaInput): Promise<{ readonly id: string }> {
+/**
+ * V27 — a identificação a partir da licitação dos dados abertos do Tribunal: o número, a UG, a modalidade e o
+ * protocolo vêm do registro importado (`licitacoes-do-tribunal.ts`), não da digitação. O fundamento cita o arquivo.
+ */
+export async function identificarPelaLicitacaoDoTribunal(prisma: PrismaClient, input: { readonly processoId: string; readonly licitacaoNoTribunalId: string; readonly criadoPor: string }): Promise<{ readonly id: string; readonly numero: string }> {
+  const l = await prisma.licitacaoNoTribunal.findUnique({ where: { id: input.licitacaoNoTribunalId }, select: { codUnidadeGestora: true, numeroLicitacao: true, protocoloTce: true, modalidadeTexto: true, modalidadeSagres: true, arquivoHash: true, importadoEm: true } });
+  if (l === null) throw new Error("A licitação escolhida não está na lista importada do Tribunal. Nada foi gravado.");
+  if (l.modalidadeSagres === null) throw new Error(`A modalidade "${l.modalidadeTexto}" do arquivo do Tribunal não tem correspondência conhecida na tabela do leiaute. Informe a licitação pelo formulário manual. Nada foi gravado.`);
+  const r = await identificarNoTramita(prisma, {
+    processoId: input.processoId,
+    numeroNoTramita: l.numeroLicitacao,
+    codUnidadeGestora: l.codUnidadeGestora,
+    modalidadeSagres: l.modalidadeSagres,
+    protocoloNoTribunal: l.protocoloTce,
+    fundamento: `Dados abertos do TCE-PB (licitações), arquivo SHA-256 ${l.arquivoHash.slice(0, 16)}…, licitação ${l.numeroLicitacao} da UG ${l.codUnidadeGestora}, protocolo ${l.protocoloTce}`,
+    criadoPor: input.criadoPor,
+    licitacaoNoTribunalId: input.licitacaoNoTribunalId,
+  });
+  return { id: r.id, numero: l.numeroLicitacao };
+}
+
+export async function identificarNoTramita(prisma: PrismaClient, input: IdentificarNoTramitaInput & { readonly licitacaoNoTribunalId?: string }): Promise<{ readonly id: string }> {
   const d = zIdentificarNoTramita.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.identificarNoTramita, "ENTE");
@@ -39,7 +69,7 @@ export async function identificarNoTramita(prisma: PrismaClient, input: Identifi
       );
     }
     const c = await tx.identificacaoNoTramita.create({
-      data: { processoId: d.processoId, numeroNoTramita: d.numeroNoTramita, codUnidadeGestora: d.codUnidadeGestora, modalidadeSagres: d.modalidadeSagres, fundamento: d.fundamento, criadoPor: d.criadoPor },
+      data: { processoId: d.processoId, numeroNoTramita: d.numeroNoTramita, codUnidadeGestora: d.codUnidadeGestora, modalidadeSagres: d.modalidadeSagres, fundamento: d.fundamento, criadoPor: d.criadoPor, protocoloNoTribunal: d.protocoloNoTribunal ?? null, licitacaoNoTribunalId: input.licitacaoNoTribunalId ?? null },
       select: { id: true },
     });
     return { id: c.id };

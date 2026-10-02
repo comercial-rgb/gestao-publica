@@ -434,6 +434,7 @@ export const TABELAS = [
   "DeclaracaoDoResponsavelSiafic",
   "DetalheDaReceitaPrevista",
   "IdentificacaoNoTramita",
+  "LicitacaoNoTribunal",
   "NormaOrcamentariaNoTce",
   "AgrupamentoDaFolhaNaLiquidacao",
   "DotacaoDoProjetoDaLoa",

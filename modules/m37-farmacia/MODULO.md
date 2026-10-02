@@ -20,8 +20,9 @@ que a prestação de contas exige.
 ## Ações
 
 `CADASTRAR_FARMACIA` e `INFORMAR_ESTOQUE_DA_FARMACIA`; a atualização de permissões v42 as concede a quem já tem
-`REGISTRAR_ENTRADA_ALMOXARIFADO`, no mesmo escopo. Leitura: `CONSULTAR_PATRIMONIO`. Tela: Patrimônio › Farmácias
-públicas.
+`REGISTRAR_ENTRADA_ALMOXARIFADO` global. Leitura: `CONSULTAR_PATRIMONIO`. Tela: Patrimônio › Farmácias públicas
+(arquivo, ou os produtos digitados um por linha; o que se informa é a posição do mês inteiro). Farmácia encerrada no
+fim do mês não recebe informe.
 
 ## SAGRES
 

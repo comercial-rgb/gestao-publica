@@ -1304,7 +1304,8 @@ export function derivarPlanoDoTribunal(
  *
  * CADASTRAR_FROTA e REGISTRAR_ABASTECIMENTO vão a quem já CADASTRA BEM (o setor do patrimônio guarda o veículo e a
  * máquina); CADASTRAR_FARMACIA e INFORMAR_ESTOQUE_DA_FARMACIA vão a quem já registra entrada no ALMOXARIFADO (o
- * setor que responde por estoque). Sempre no mesmo escopo. Idempotente por construção.
+ * setor que responde por estoque). Só a partir da permissão GLOBAL: os atos da frota e da farmácia são do ente (o
+ * serviço cobra a permissão global), e uma concessão por unidade daria um crachá que nunca abre nada. Idempotente.
  */
 export function derivarFrotaEFarmacia(
   perfis: readonly PerfilComPermissoes[],
@@ -1317,7 +1318,7 @@ export function derivarFrotaEFarmacia(
   const saida: ConcessaoDerivada[] = [];
   for (const perfil of perfis) {
     for (const regra of regras) {
-      for (const origem of perfil.permissoes.filter((p) => p.acao === regra.origem)) {
+      for (const origem of perfil.permissoes.filter((p) => p.acao === regra.origem && p.unidadeOrcId === null)) {
         for (const acao of regra.novas) {
           if (perfil.permissoes.some((p) => p.acao === acao && p.unidadeOrcId === origem.unidadeOrcId)) continue;
           if (saida.some((c) => c.perfilId === perfil.id && c.acao === acao && c.unidadeOrcId === origem.unidadeOrcId)) continue;
@@ -1830,7 +1831,7 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "A frota e a farmacia publica passaram a ser cadastradas (V27) para a prestacao de contas ao Tribunal: veiculos, " +
       "maquinas, situacao e abastecimento; farmacias e o estoque do mes. CADASTRAR_FROTA e REGISTRAR_ABASTECIMENTO vao a " +
       "quem ja cadastra bem; CADASTRAR_FARMACIA e INFORMAR_ESTOQUE_DA_FARMACIA, a quem ja registra entrada no " +
-      "almoxarifado. Sempre no mesmo escopo.",
+      "almoxarifado. So a partir da permissao global (os atos sao do ente).",
     derivar: derivarFrotaEFarmacia,
   },
 ];

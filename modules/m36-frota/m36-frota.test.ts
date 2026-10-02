@@ -16,6 +16,7 @@ import {
 import { cadastrarFarmacia, informarEstoqueDaFarmacia, publicarVersaoDaFarmacia } from "../m37-farmacia/servico.js";
 import { lerInformeDeEstoque } from "../m37-farmacia/dominio.js";
 import { situacoesDoMes } from "./dominio.js";
+import { derivarFrotaEFarmacia } from "../m16-travamento/atualizacoes-de-permissoes.js";
 import { gerarArquivosDaFrotaEFarmacia } from "../../adapters/tribunais/tce-pb/sagres/gerador-frota-farmacia.js";
 
 /**
@@ -103,6 +104,12 @@ describe("V27 — o cadastro da frota", () => {
   });
 });
 
+/** O cadastro vai no mês do registro: a fixture registra cada versão no dia em que ela começa (como na operação). */
+async function registradoNoDiaDoInicio(): Promise<void> {
+  await prisma.$executeRawUnsafe('UPDATE "VersaoDoVeiculo" SET "criadoEm" = "vigenteDesde"');
+  await prisma.$executeRawUnsafe('UPDATE "VersaoDaMaquina" SET "criadoEm" = "vigenteDesde"');
+}
+
 describe("V27 — os arquivos da frota no SAGRES (§4.50 a §4.55), montados à mão", () => {
   async function montarMarco(): Promise<void> {
     const v1 = await proprio("ABC1234", "2026-02-10");
@@ -117,6 +124,7 @@ describe("V27 — os arquivos da frota no SAGRES (§4.50 a §4.55), montados à 
     // Máquina própria baixada desde fevereiro: situação sim, abastecimento não.
     const m = await cadastrarMaquina(prisma, { ugId, codigo: "retro1", anoFabricacao: 2015, descricao: "Retroescavadeira", tipoFrota: "PROPRIO", combustivelPrincipal: "DIESEL", vigenteDesde: "2026-01-10", situacaoInicial: "EM_USO", ...base });
     await registrarSituacaoDaFrota(prisma, { maquinaId: m.id, situacao: "BAIXADA", desde: "2026-02-01", motivo: "Ato de baixa 1/2026", criadoPor: POR });
+    await registradoNoDiaDoInicio();
   }
 
   it("março: cadastro só do que mudou no mês; situação de todos; abastecimento somado por combustível e o zero do locado", async () => {
@@ -157,14 +165,38 @@ describe("V27 — os arquivos da frota no SAGRES (§4.50 a §4.55), montados à 
 
   it("veículo sem o número do modelo: SÓ o arquivo de veículos fica fora, nomeando a placa; nova versão com o modelo resolve", async () => {
     const v = await proprio("QWE9876", "2026-03-03", { numeroModelo: "" });
+    await registradoNoDiaDoInicio();
     const r = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ_UG, competencia: MARCO });
     expect(r.recusas.map((x) => x.arquivo)).toEqual(["Veiculos"]);
     expect(r.recusas[0]!.detalhe).toMatch(/sem o número do modelo da tabela do Tribunal: QWE9876\. Informe-o publicando uma versão do veículo/);
     expect(r.arquivos.map((a) => a.arquivo.nome).some((n) => n.includes("SituacaoFrota"))).toBe(true);
     await publicarVersaoDoVeiculo(prisma, { veiculoId: v.id, anoModelo: 2022, renavam: "123456789", numeroModelo: "777", tipoFrota: "PROPRIO", combustivelPrincipal: "GASOLINA", vigenteDesde: "2026-03-10", ...base });
+    await registradoNoDiaDoInicio();
     const r2 = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ_UG, competencia: MARCO });
     expect(r2.recusas).toEqual([]);
     expect(linhas(r2.arquivos.find((a) => a.arquivo.nome.includes("Veiculos"))!.arquivo.conteudo)).toEqual([`${UG}QWE9876202200123456789000777` + `1${CNPJ_UG}${"0".repeat(14)}`]);
+  });
+
+  it("implantação: o veículo em uso desde janeiro e cadastrado em março vai no cadastro de março; a versão programada para abril vai em abril", async () => {
+    const v = await proprio("OLD2019", "2026-01-15"); // em uso desde janeiro, cadastrado só em março
+    await prisma.$executeRawUnsafe('UPDATE "VersaoDoVeiculo" SET "criadoEm" = $1', meioDiaCivil("2026-03-20"));
+    let r = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ_UG, competencia: MARCO });
+    expect(linhas(r.arquivos.find((a) => a.arquivo.nome.includes("Veiculos"))!.arquivo.conteudo)).toEqual([`${UG}OLD2019202200123456789001234` + `1${CNPJ_UG}${"0".repeat(14)}`]);
+    expect(linhas(r.arquivos.find((a) => a.arquivo.nome.includes("ProprietarioFrota"))!.arquivo.conteudo)).toHaveLength(1);
+    // Versão registrada em março para valer em abril: não vai em março, vai em abril.
+    await publicarVersaoDoVeiculo(prisma, { veiculoId: v.id, anoModelo: 2022, renavam: "123456789", numeroModelo: "4321", tipoFrota: "PROPRIO", combustivelPrincipal: "GASOLINA", vigenteDesde: "2026-04-01", ...base });
+    await prisma.$executeRawUnsafe('UPDATE "VersaoDoVeiculo" SET "criadoEm" = $1 WHERE versao = 2', meioDiaCivil("2026-03-25"));
+    r = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ_UG, competencia: MARCO });
+    expect(linhas(r.arquivos.find((a) => a.arquivo.nome.includes("Veiculos"))!.arquivo.conteudo)[0]).toContain("001234");
+    const abril = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ_UG, competencia: new Date(Date.UTC(2026, 3, 1)) });
+    expect(linhas(abril.arquivos.find((a) => a.arquivo.nome.includes("Veiculos"))!.arquivo.conteudo)).toEqual([`${UG}OLD2019202200123456789004321` + `1${CNPJ_UG}${"0".repeat(14)}`]);
+  });
+
+  it("baixa retroativa: não começa antes de um abastecimento já registrado (o arquivo levaria litros de bem baixado)", async () => {
+    const { id } = await proprio("ABC1234", "2026-03-01");
+    await registrarAbastecimento(prisma, { veiculoId: id, data: "2026-03-20", combustivel: "GASOLINA", quantidade: "15", documento: "Cupom 9", criadoPor: POR });
+    await expect(registrarSituacaoDaFrota(prisma, { veiculoId: id, situacao: "BAIXADA", desde: "2026-03-10", motivo: "Ato de baixa 4/2026", criadoPor: POR })).rejects.toThrow(/tem abastecimento registrado a partir de 10\/03\/2026 \(20\/03\/2026, Cupom 9\)/);
+    await registrarSituacaoDaFrota(prisma, { veiculoId: id, situacao: "BAIXADA", desde: "2026-03-21", motivo: "Ato de baixa 4/2026", criadoPor: POR });
   });
 
   it("domínio: a situação do dia 1 vem do mês anterior; a mudança no dia 1 não duplica", () => {
@@ -215,5 +247,46 @@ describe("V27 — farmácia pública e os arquivos §4.56 e §4.57", () => {
     expect(lerInformeDeEstoque("produto;nome\n1;x").erros[0]).toMatch(/primeira linha deve ser o cabeçalho/);
     const l = lerInformeDeEstoque("codigoProduto;descrição;unidade;quantidade\n1;Soro;FR;1\n1;Soro;FR;2\n2;Gaze;UN;-1\n3;Luva\n");
     expect(l.erros).toEqual(["Linha 3: o produto 1 já está na linha 2.", 'Linha 4: quantidade "-1" deve ser zero ou positiva, com até 2 casas.', "Linha 5: são 4 colunas separadas por ponto e vírgula."]);
+  });
+
+  it("estoque digitado com vários produtos (um por linha, a linha errada nomeada); farmácia encerrada não recebe informe", async () => {
+    const f = await farm("55", "Farmácia do Posto");
+    await expect(informarEstoqueDaFarmacia(prisma, { farmaciaId: f.id, ano: 2026, mes: 3, texto: "7891234567895;Dipirona 500 mg;COMPRIMIDO;10\nX;Gaze;UN;1", fundamento: "Inventário digitado", criadoPor: POR })).rejects.toThrow(/Linha 2: código do produto "X"/);
+    const r = await informarEstoqueDaFarmacia(prisma, { farmaciaId: f.id, ano: 2026, mes: 3, texto: "7891234567895;Dipirona 500 mg;COMPRIMIDO;10\n7896004700011;Amoxicilina 500 mg;CAPSULA;20,5", fundamento: "Inventário digitado", criadoPor: POR });
+    expect(r.itens).toBe(2);
+    expect((await prisma.informeDeEstoqueDaFarmacia.findFirstOrThrow({ select: { origem: true, arquivoHash: true } }))).toEqual({ origem: "DIGITADO", arquivoHash: null });
+    await publicarVersaoDaFarmacia(prisma, { farmaciaId: f.id, ativa: false, descricao: "Farmácia do Posto", endereco: "Rua Antenor Navarro, 837", nomeResponsavel: "Maria Farmacêutica", cpfResponsavel: "11144477735", crfResponsavel: "PB-1234", vigenteDesde: "2026-03-31", fundamento: "Decreto de encerramento (fixture)", criadoPor: POR });
+    await expect(informarEstoqueDaFarmacia(prisma, { farmaciaId: f.id, ano: 2026, mes: 4, texto: "1;Soro;FR;1", fundamento: "Inventário", criadoPor: POR })).rejects.toThrow(/estava encerrada no fim de 04\/2026/);
+  });
+});
+
+describe("V27 — autorização no servidor: sem a ação, cada ato é recusado nomeando-a, e nada grava", () => {
+  const SEM_PERMISSAO = "estagiario@cg.pb.gov.br";
+  beforeEach(async () => {
+    const perfil = await prisma.perfil.create({ data: { nome: "SEM_PODERES", descricao: "Perfil sem permissão alguma", criadoPor: POR }, select: { id: true } });
+    const u = await prisma.usuario.create({ data: { identificador: SEM_PERMISSAO, nome: SEM_PERMISSAO, criadoPor: POR }, select: { id: true } });
+    await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: perfil.id, criadoPor: POR } });
+  });
+
+  it("CADASTRAR_FROTA, REGISTRAR_ABASTECIMENTO, CADASTRAR_FARMACIA e INFORMAR_ESTOQUE_DA_FARMACIA", async () => {
+    await expect(proprio("ABC1234", "2026-03-01", { criadoPor: SEM_PERMISSAO })).rejects.toThrow(/não tem permissão para CADASTRAR_FROTA/);
+    const { id } = await proprio("ABC1234", "2026-03-01");
+    await expect(registrarSituacaoDaFrota(prisma, { veiculoId: id, situacao: "EM_MANUTENCAO", desde: "2026-03-05", motivo: "Ordem de serviço", criadoPor: SEM_PERMISSAO })).rejects.toThrow(/não tem permissão para CADASTRAR_FROTA/);
+    await expect(registrarAbastecimento(prisma, { veiculoId: id, data: "2026-03-02", combustivel: "GASOLINA", quantidade: "10", documento: "Cupom", criadoPor: SEM_PERMISSAO })).rejects.toThrow(/não tem permissão para REGISTRAR_ABASTECIMENTO/);
+    const farmacia = { ugId, codigo: "9", descricao: "Farmácia", endereco: "Rua 1, centro", nomeResponsavel: "Maria", cpfResponsavel: "11144477735", crfResponsavel: "PB-1", vigenteDesde: "2026-01-01", fundamento: "Portaria (fixture)" };
+    await expect(cadastrarFarmacia(prisma, { ...farmacia, criadoPor: SEM_PERMISSAO })).rejects.toThrow(/não tem permissão para CADASTRAR_FARMACIA/);
+    const f = await cadastrarFarmacia(prisma, { ...farmacia, criadoPor: POR });
+    await expect(informarEstoqueDaFarmacia(prisma, { farmaciaId: f.id, ano: 2026, mes: 3, texto: "1;Soro;FR;1", fundamento: "Inventário", criadoPor: SEM_PERMISSAO })).rejects.toThrow(/não tem permissão para INFORMAR_ESTOQUE_DA_FARMACIA/);
+    expect(await prisma.mudancaDeSituacaoDaFrota.count()).toBe(1);
+    expect(await prisma.abastecimentoDaFrota.count()).toBe(0);
+    expect(await prisma.informeDeEstoqueDaFarmacia.count()).toBe(0);
+  });
+
+  it("a atualização de permissões deriva só da permissão global (os atos são do ente): a concessão por unidade não é derivada", () => {
+    const perfis = [
+      { id: "p1", nome: "Patrimônio", permissoes: [{ acao: "CADASTRAR_BEM" as const, unidadeOrcId: null }, { acao: "REGISTRAR_ENTRADA_ALMOXARIFADO" as const, unidadeOrcId: "uo-1" }] },
+    ];
+    const d = derivarFrotaEFarmacia(perfis as never, {} as never);
+    expect(d.map((c) => `${c.acao} ${c.unidadeOrcId ?? "G"}`).sort()).toEqual(["CADASTRAR_FROTA G", "REGISTRAR_ABASTECIMENTO G"]);
   });
 });

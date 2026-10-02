@@ -33,8 +33,10 @@ import {
  * Mesmo regime das V24 a V26: cada arquivo sai do fato gravado, ou a recusa (mensagem que começa por "SAGRES") nomeia
  * o registro e o que falta, e SÓ AQUELE arquivo fica fora do pacote.
  *
- * - Proprietários, locadores, veículos e máquinas: o cadastro vai uma vez, e de novo quando muda (o leiaute). Saem as
- *   versões que começaram no mês; o dono e o locador saem com o bem que os cita.
+ * - Proprietários, locadores, veículos e máquinas: o cadastro vai uma vez, e de novo quando muda (o leiaute). Cada
+ *   versão vai no mês em que foi REGISTRADA — ou no mês em que começa, se começa depois. Um veículo de 2019 cadastrado
+ *   na implantação vai no mês da implantação; uma versão programada para o mês seguinte vai no mês seguinte. O dono e o
+ *   locador saem com o bem que os cita.
  * - Situação: todo mês, todo bem cadastrado — a situação do dia 1 e cada mudança do mês.
  * - Abastecimento: todo mês, todo bem da situação que não ficou baixado o mês inteiro; sem abastecimento, quantidade
  *   zero no combustível principal (o leiaute exige o registro mesmo sem abastecimento).
@@ -76,21 +78,26 @@ async function versoesDoMes(prisma: PrismaClient, p: Mes) {
   const prefixo = prefixoDoMes(p.competencia);
   const ug = await prisma.unidadeGestora.findUnique({ where: { codigoTce: p.codUnidadeGestora }, select: { id: true, nome: true } });
   if (ug === null) return { ug: null, veiculos: [], maquinas: [] };
-  const janela = { gte: new Date(`${prefixo}-01T00:00:00.000Z`), lt: new Date(new Date(`${fimDoMes(p.competencia)}T00:00:00.000Z`).getTime() + 30 * 3_600_000) };
   const vs = await prisma.versaoDoVeiculo.findMany({
-    where: { veiculo: { ugId: ug.id }, vigenteDesde: janela },
+    where: { veiculo: { ugId: ug.id } },
     orderBy: [{ veiculoId: "asc" }, { versao: "asc" }],
-    select: { veiculoId: true, versao: true, vigenteDesde: true, anoModelo: true, renavam: true, numeroModelo: true, tipoFrota: true, proprietarioId: true, locadorId: true, veiculo: { select: { placa: true } } },
+    select: { veiculoId: true, versao: true, vigenteDesde: true, criadoEm: true, anoModelo: true, renavam: true, numeroModelo: true, tipoFrota: true, proprietarioId: true, locadorId: true, veiculo: { select: { placa: true } } },
   });
   const ms = await prisma.versaoDaMaquina.findMany({
-    where: { maquina: { ugId: ug.id }, vigenteDesde: janela },
+    where: { maquina: { ugId: ug.id } },
     orderBy: [{ maquinaId: "asc" }, { versao: "asc" }],
-    select: { maquinaId: true, versao: true, vigenteDesde: true, anoFabricacao: true, descricao: true, tipoFrota: true, proprietarioId: true, locadorId: true, maquina: { select: { codigo: true } } },
+    select: { maquinaId: true, versao: true, vigenteDesde: true, criadoEm: true, anoFabricacao: true, descricao: true, tipoFrota: true, proprietarioId: true, locadorId: true, maquina: { select: { codigo: true } } },
   });
   // A última versão do mês de cada bem (a chave do arquivo é a placa / o código: um registro por bem).
-  const ultima = <T extends { readonly vigenteDesde: Date }>(xs: readonly T[], chave: (x: T) => string): T[] => {
+  // O mês do cadastro: o do registro, ou o do início se este for depois (dia civil do ente nos dois).
+  const mesDoCadastro = (v: { readonly vigenteDesde: Date; readonly criadoEm: Date }): string => {
+    const registro = diaCivil(v.criadoEm);
+    const inicio = diaCivil(v.vigenteDesde);
+    return (inicio > registro ? inicio : registro).slice(0, 7);
+  };
+  const ultima = <T extends { readonly vigenteDesde: Date; readonly criadoEm: Date }>(xs: readonly T[], chave: (x: T) => string): T[] => {
     const m = new Map<string, T>();
-    for (const x of xs.filter((v) => diaCivil(v.vigenteDesde).startsWith(prefixo))) m.set(chave(x), x);
+    for (const x of xs.filter((v) => mesDoCadastro(v) === prefixo)) m.set(chave(x), x);
     return [...m.values()];
   };
   return { ug, veiculos: ultima(vs, (v) => v.veiculoId), maquinas: ultima(ms, (m) => m.maquinaId) };
@@ -191,11 +198,12 @@ async function bensDoMes(prisma: PrismaClient, p: Mes): Promise<BemNoMes[]> {
   const montar = (categoria: string, codigo: string, b: (typeof veiculos)[number] | (typeof maquinas)[number]): BemNoMes => {
     const mudancas = b.situacoes.map((s) => ({ dia: diaCivil(s.desde), situacao: s.situacao }));
     const vigente = [...b.versoes].filter((v) => diaCivil(v.vigenteDesde) <= fim).pop() ?? b.versoes[0];
+    if (vigente === undefined) throw new Error(`SAGRES/Abastecimento §4.55 — o bem ${codigo} não tem cadastro com o combustível principal. Publique uma versão dele em Patrimônio › Frota.`);
     return {
       categoria,
       codigo,
       situacoes: situacoesDoMes(mudancas, prefixo),
-      combustivelPrincipal: vigente?.combustivelPrincipal ?? "GASOLINA",
+      combustivelPrincipal: vigente.combustivelPrincipal,
       abastecimentos: b.abastecimentos.map((a) => ({ combustivel: a.combustivel, quantidade: a.quantidade.toFixed(2), dia: diaCivil(a.data) })).filter((a) => a.dia.startsWith(prefixo)),
     };
   };

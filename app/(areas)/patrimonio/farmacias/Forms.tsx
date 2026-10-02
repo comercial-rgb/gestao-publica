@@ -79,11 +79,11 @@ export function FormEstoque({ farmaciaId, codigo }: { readonly farmaciaId: strin
           <span className={ROTULO}>Arquivo do estoque (texto com cabeçalho codigoProduto;descricao;unidade;quantidade)</span>
           <input name="arquivo" type="file" accept=".csv,.txt,text/plain,text/csv" className={CAMPO} />
         </label>
-        <p className="text-xs text-[color:var(--color-ink-3)] sm:col-span-3">Ou digite um produto (o informe com um só produto substitui o do mês inteiro):</p>
-        <label className="text-xs"><span className={ROTULO}>Código do produto (GTIN)</span><input name="codigoProduto" inputMode="numeric" maxLength={14} className={CAMPO} /></label>
-        <label className="text-xs"><span className={ROTULO}>Medicamento</span><input name="descricaoProduto" maxLength={60} className={CAMPO} /></label>
-        <label className="text-xs"><span className={ROTULO}>Unidade de dispensação</span><input name="unidadeMedida" maxLength={10} className={CAMPO} /></label>
-        <label className="text-xs"><span className={ROTULO}>Quantidade</span><input name="quantidade" inputMode="decimal" className={CAMPO} /></label>
+        <label className="text-xs sm:col-span-3">
+          <span className={ROTULO}>Ou digite os produtos, um por linha: código do produto; medicamento; unidade de dispensação; quantidade</span>
+          <textarea name="produtos" rows={5} className={CAMPO} placeholder="7891234567895;Dipirona 500 mg;COMPRIMIDO;1200" />
+        </label>
+        <p className="text-xs text-[color:var(--color-ink-3)] sm:col-span-3">O que for informado é a posição do mês inteiro: substitui o informe anterior do mesmo mês.</p>
         <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Informar"}</button>
         <Resultado estado={estado} acao="informar-estoque-da-farmacia" />
       </form>

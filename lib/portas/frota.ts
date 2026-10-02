@@ -53,7 +53,7 @@ export async function lerFrota(): Promise<{ readonly bens: readonly BemNaTela[];
   const pessoaSel = { select: { documento: true, versoes: { orderBy: { criadoEm: "desc" as const }, take: 1, select: { nome: true } } } };
   const comum = {
     ug: { select: { codigoTce: true, nome: true } },
-    situacoes: { orderBy: { desde: "desc" as const }, take: 12, select: { id: true, desde: true, situacao: true, motivo: true, anulacao: { select: { id: true } } } },
+    situacoes: { orderBy: { desde: "desc" as const }, select: { id: true, desde: true, situacao: true, motivo: true, anulacao: { select: { id: true } } } },
     abastecimentos: { orderBy: { data: "desc" as const }, take: 12, select: { id: true, data: true, combustivel: true, quantidade: true, documento: true, anulacao: { select: { id: true } } } },
   };
   const [veiculos, maquinas, ugs] = await Promise.all([
@@ -125,11 +125,11 @@ export async function cadastrarMaquinaPelaTela(input: SemAutor<CadastrarMaquinaI
 }
 export async function publicarVersaoDoVeiculoPelaTela(input: SemAutor<Parameters<typeof publicarVersaoDoVeiculo>[1]>): Promise<string> {
   const r = await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => publicarVersaoDoVeiculo(cliente(), { ...input, criadoPor }));
-  return `Versão ${String(r.versao)} do veículo publicada. Ela vai ao Tribunal no mês em que começa.`;
+  return `Versão ${String(r.versao)} do veículo publicada. Ela vai ao Tribunal no arquivo do mês do registro (ou do mês em que começa, se for depois).`;
 }
 export async function publicarVersaoDaMaquinaPelaTela(input: SemAutor<Parameters<typeof publicarVersaoDaMaquina>[1]>): Promise<string> {
   const r = await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => publicarVersaoDaMaquina(cliente(), { ...input, criadoPor }));
-  return `Versão ${String(r.versao)} da máquina publicada. Ela vai ao Tribunal no mês em que começa.`;
+  return `Versão ${String(r.versao)} da máquina publicada. Ela vai ao Tribunal no arquivo do mês do registro (ou do mês em que começa, se for depois).`;
 }
 export async function registrarSituacaoPelaTela(input: SemAutor<Parameters<typeof registrarSituacaoDaFrota>[1]>): Promise<string> {
   await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => registrarSituacaoDaFrota(cliente(), { ...input, criadoPor }));

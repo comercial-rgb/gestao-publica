@@ -29,16 +29,26 @@ abastecimento, manutenção, multas, CNH, hodômetro, estoque de combustível): 
 ## Ações
 
 `CADASTRAR_FROTA` (cadastro, versões, situação e anulação) e `REGISTRAR_ABASTECIMENTO` (abastecimento e anulação).
-A atualização de permissões v42 concede as duas a quem já tem `CADASTRAR_BEM`, no mesmo escopo. Leitura:
+A atualização de permissões v42 concede as duas a quem já tem `CADASTRAR_BEM` **global** (os atos são do ente; uma
+concessão por unidade não abriria nada). Leitura:
 `CONSULTAR_PATRIMONIO`. Tela: Patrimônio › Frota.
 
 ## SAGRES (`adapters/tribunais/tce-pb/sagres/gerador-frota-farmacia.ts`)
 
-- §4.50/§4.51/§4.52/§4.53: as versões que começam no mês (a última do mês por bem), com o dono e o locador citados.
+- §4.50/§4.51/§4.52/§4.53: cada versão vai no mês em que foi **registrada**, ou no mês em que começa se começa depois
+  (a última do mês por bem), com o dono e o locador citados. O veículo em uso há anos cadastrado na implantação vai no
+  mês da implantação; ele não some por ter data de início antiga.
 - §4.54: todo bem com situação até o fim do mês — a do dia 1 (data 01/mm) e cada mudança, na data em que começou.
 - §4.55: por bem e combustível, a soma do mês; sem abastecimento, o registro com quantidade zero no combustível
   principal, exceto o bem baixado o mês inteiro.
 - Recusa nomeada: veículo sem o número do modelo da tabela do Tribunal deixa **só** o arquivo de veículos fora.
+
+## Limites conhecidos
+
+- A placa é única no sistema e o veículo não muda de unidade gestora: passar um veículo para outra UG escriturada aqui
+  ainda não está disponível (a recusa diz isso).
+- Abastecimento ou anulação retroativos mudam um mês já remetido sem aviso: não há guarda de competência remetida.
+- A baixa não pode começar antes de um abastecimento já registrado; o inverso (abastecer bem baixado) também é recusado.
 
 ## Pendência nomeada
 

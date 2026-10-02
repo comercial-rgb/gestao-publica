@@ -57,8 +57,8 @@ export async function informarEstoqueAction(_p: EstadoDaFarmacia, f: FormData): 
     if (comArquivo && arquivo.size > LIMITE_DO_ARQUIVO) return { erro: "O arquivo passa de 2 MB. Divida a posição ou confira se é o arquivo certo." };
     const base = { farmaciaId: t(f, "farmaciaId"), ano: Number(mes.slice(0, 4)), mes: Number(mes.slice(5, 7)), fundamento: t(f, "fundamento") };
     if (comArquivo) return ato(async () => informarEstoquePelaTela({ ...base, arquivo: await arquivo.text() }), "Não foi possível informar o estoque. Nada foi gravado.");
-    const item = { codigoProduto: t(f, "codigoProduto"), descricao: t(f, "descricaoProduto"), unidadeMedida: t(f, "unidadeMedida"), quantidade: t(f, "quantidade") };
-    if (item.codigoProduto === "") return { erro: "Escolha o arquivo do estoque ou digite um produto." };
-    return ato(() => informarEstoquePelaTela({ ...base, itens: [item] }), "Não foi possível informar o estoque. Nada foi gravado.");
+    const texto = t(f, "produtos");
+    if (texto === "") return { erro: "Escolha o arquivo do estoque ou digite os produtos, um por linha." };
+    return ato(() => informarEstoquePelaTela({ ...base, texto }), "Não foi possível informar o estoque. Nada foi gravado.");
   });
 }

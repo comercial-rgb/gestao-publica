@@ -82,8 +82,10 @@ export const zInformarEstoqueDaFarmacia = z.object({
   farmaciaId: z.string().min(1),
   ano: z.coerce.number().int().min(2000).max(2100),
   mes: z.coerce.number().int().min(1).max(12),
-  /** Digitado: os itens. Arquivo: o conteúdo do arquivo, lido aqui. */
+  /** Digitado: os itens um a um, ou `texto` com um produto por linha (codigoProduto;descricao;unidade;quantidade). */
   itens: z.array(z.object({ codigoProduto: z.string().trim(), descricao: z.string().trim(), unidadeMedida: z.string().trim(), quantidade: z.string().trim() })).optional(),
+  texto: z.string().optional(),
+  /** Arquivo: o conteúdo do arquivo, lido aqui (com o cabeçalho). */
   arquivo: z.string().optional(),
   fundamento: z.string().trim().min(5, "Diga de onde vem a posição (o inventário, o relatório do sistema da farmácia)."),
   criadoPor: z.string().min(1),
@@ -102,6 +104,11 @@ export async function informarEstoqueDaFarmacia(prisma: PrismaClient, input: z.i
     if (l.erros.length > 0) throw new Error(`O arquivo do estoque tem erro: ${l.erros.slice(0, 10).join(" ")}${l.erros.length > 10 ? ` (e mais ${String(l.erros.length - 10)})` : ""} Nada foi gravado.`);
     itens = l.itens;
     arquivoHash = createHash("sha256").update(d.arquivo).digest("hex");
+  } else if (d.texto !== undefined && d.texto.trim() !== "") {
+    // O mesmo leitor do arquivo, com o cabeçalho posto aqui: a linha errada é nomeada pelo número dela na caixa.
+    const l = lerInformeDeEstoque(`codigoProduto;descricao;unidade;quantidade\n${d.texto}`);
+    if (l.erros.length > 0) throw new Error(`A lista de produtos tem erro: ${l.erros.slice(0, 10).map((e) => e.replace(/^Linha (\d+)/, (_m, n: string) => `Linha ${String(Number(n) - 1)}`)).join(" ")} Nada foi gravado.`);
+    itens = l.itens;
   } else {
     const digitados = (d.itens ?? []).map((i) => ({ ...i, quantidade: i.quantidade.replace(",", ".") }));
     if (digitados.length === 0) throw new Error("Informe ao menos um produto. Nada foi gravado.");
@@ -121,7 +128,10 @@ export async function informarEstoqueDaFarmacia(prisma: PrismaClient, input: z.i
     if (f === null) throw new Error("Farmácia não encontrada. Nada foi gravado.");
     const fimDoMes = `${String(d.ano)}-${String(d.mes).padStart(2, "0")}-31`;
     const inicio = f.versoes[0];
-    if (inicio === undefined || diaCivil(inicio.vigenteDesde) > fimDoMes) throw new Error(`A farmácia ${f.codigo} ainda não existia em ${String(d.mes).padStart(2, "0")}/${String(d.ano)}. Nada foi gravado.`);
+    const competencia = `${String(d.mes).padStart(2, "0")}/${String(d.ano)}`;
+    if (inicio === undefined || diaCivil(inicio.vigenteDesde) > fimDoMes) throw new Error(`A farmácia ${f.codigo} ainda não existia em ${competencia}. Nada foi gravado.`);
+    const vigenteNoFim = f.versoes.filter((v) => diaCivil(v.vigenteDesde) <= fimDoMes).pop();
+    if (vigenteNoFim !== undefined && !vigenteNoFim.ativa) throw new Error(`A farmácia ${f.codigo} estava encerrada no fim de ${competencia}. Nada foi gravado.`);
     const c = await tx.informeDeEstoqueDaFarmacia.create({
       data: {
         farmaciaId: d.farmaciaId,
