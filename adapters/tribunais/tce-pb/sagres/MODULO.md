@@ -250,3 +250,39 @@ código de agrupamento da folha é o do Tribunal ou o interno?), §4.36 Ordenado
 (sem cadastro), §4.2/§4.3 Programas e Ação (sem tela de cadastro), §4.7 ReceitaPrevista (subtipo da
 dedução), §4.5/§4.6/§4.49 (ofício e protocolo do TCE não modelados), §4.25 SaldoInicial (definição de
 saldo conciliado), §4.38 (modalidade e número do Tramita), §4.17/§4.18 (transferência entre UGs não existe).
+
+## V26 — o que dependia de decisão (32 → 45 de 58)
+
+As decisões vieram da ordem `docs/lotes/V26-decisoes-da-v25.md`. Todas as tabelas novas estão em
+`gerador-v26.ts` (grupo `gerarArquivosDaV26`; a recusa de um arquivo, regra `CADASTRO_FORA_DO_PACOTE`, deixa só
+ele fora do pacote).
+
+| Tabela | Periodicidade | Origem e decisão |
+|---|---|---|
+| §4.2 Programas, §4.3 Acao | mensal | `DeclaracaoDoPrograma`/`DeclaracaoDaAcao`, versionadas por vigência; objetivo da Agenda 2030 (§5.27) declarado, nunca inferido do nome; o 99 só no programa 5000. |
+| §4.5 AtualizacaoOrcamentaria | diária | itens dos decretos de crédito do dia civil; tipo de alteração = tipo da lei × origem do recurso (§5.13); o item que anula é 11; superávit exige fonte do exercício anterior. 5, 12/13 e 14/15 (ofício) não saem daqui. |
+| §4.6 DecretoseOficios | diária | decretos do dia com o PDF anexado ao decreto (M22, conferido pelo hash na leitura); o PDF viaja no pacote como `Decreto{UG}{NNNNNAAAA}.pdf`. Sem PDF: recusa nomeando o decreto. |
+| §4.8 (CPF do ordenador e licitação) | diária | o ordenador designado na data, por escopo (UO sobre o ente); a modalidade e o número da licitação do Tramita (Lei 14.133: 21–25, 30, 32–35). |
+| §4.10 (codAgrupamentoFolha) | diária | o código do sistema da folha na liquidação, quando há (`AgrupamentoDaFolhaNaLiquidacao`). |
+| §4.17 TransfRecebida, §4.18 TransfConcedida | diária | `TransferenciaEntreUgs` em que esta UG é o lado escriturado aqui; estorno com tipo de lançamento 2 no dia dele; tipo pelo §5.25. |
+| §4.23 ReceitaPrevista | anual (janeiro) | linha da LOA com o subtipo da dedução (3/4/5) em `DetalheDaReceitaPrevista`. |
+| §4.25 SaldoInicial | anual (janeiro) | saldo contábil sustentado pela conciliação de dezembro encerrada. |
+| §4.36 Ordenador, §4.48 ResponsavelSiafic | diária / anual | designações por ato e vigência; o responsável declarado. |
+| §4.38 RelacionamentoEmpenhoLicitacao | mensal | empenhos de contrato com a licitação do Tramita. |
+| §4.39 RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento | mensal | um para um; liquidação de folha sem código: recusa nomeando. O código é do sistema da folha, nunca gerado aqui. |
+| §4.49 NormasOrcamentarias | diária | leis do dia com o protocolo do banco de legislação do TCE-PB (000000/00); lei publicada sem protocolo: recusa nomeando. |
+
+**A unidade gestora da remessa** deixou de ser só o código de demonstração: a tela e o download usam a UG
+cadastrada (Contabilidade › Unidades gestoras) e escriturada aqui; com mais de uma, a tela oferece a escolha. Sem
+cadastro, o pacote sai com o código de demonstração e a tela diz isso. O CNPJ é o da UG ou o da entidade que a
+escritura; sem nenhum, recusa.
+
+**Defeito no instrumento, corrigido:** o leitor do HTML do `m15-leiaute-oficial.test.ts` cortava a seção no próximo
+`<h4`; a §4.18 não tem `<h4` antes da §4.19 e lia os campos da ReceitaExtra. Agora corta também no título da
+seção seguinte; as 45 tabelas batem, e uma posição mutada na §4.17/§4.18 fica vermelha.
+
+Ficam fora (pendência nomeada): as tabelas do projeto da LOA (§4.41 a §4.45 — o projeto encaminhado não tem os
+valores guardados; reconstruí-lo da LOA aprovada é proibido pela ordem); o ofício (tipos 14/15, sem autorização
+localizada para Esperança); a realocação no §4.5 (12/13); o recorte de TODOS os arquivos por UG (o razão não tem
+a dimensão da entidade: com mais de uma UG escriturada aqui, só as transferências e o agrupamento da folha são
+recortados por UG).

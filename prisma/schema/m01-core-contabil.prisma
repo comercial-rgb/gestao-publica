@@ -35,6 +35,9 @@ enum Subsistema {
 // ----------------------------------------------------------------------------
 
 model ContaPcasp {
+  /// V26 — as contas da transferência entre UGs (m01-unidade-gestora.prisma).
+  vpdDaTransferenciaEntreUgs ContabilizacaoDaTransferenciaEntreUgs[] @relation("VpdDaTransferenciaEntreUgs")
+  vpaDaTransferenciaEntreUgs ContabilizacaoDaTransferenciaEntreUgs[] @relation("VpaDaTransferenciaEntreUgs")
   id                 String             @id @default(cuid())
   /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
   creditosDaRetencaoPropria ClassificacaoDaRetencaoPropria[] @relation("CreditoDaRetencaoPropria")

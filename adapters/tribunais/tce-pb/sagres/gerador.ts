@@ -258,7 +258,7 @@ export async function lerFatosLiquidacao(
   const liqs = await prisma.liquidacao.findMany({
     // V24 — liquidação de empenho de exercício ANTERIOR é de restos e vai à LiquidacaoRestos (§4.31).
     where: { data: { gte, lt }, estornoDeId: null, anulacaoParcialDeId: null, empenho: { ficha: { exercicio: { gte: params.dia.getUTCFullYear() } } } },
-    include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } } },
+    include: { empenho: { include: { ficha: { include: { unidadeOrc: true } } } }, agrupamentoDaFolha: { select: { codigo: true } } },
     orderBy: [{ empenhoId: "asc" }, { numero: "asc" }],
   });
   return liqs.map((l) => ({
@@ -273,7 +273,8 @@ export async function lerFatosLiquidacao(
         ? { tipo: "02", chave: l.notaFiscalChave, numero: l.notaFiscalNum ?? "", serie: l.notaFiscalSerie ?? "", data: l.notaFiscalData, valor: money(l.notaFiscalValor) }
         : null,
     valor: money(l.valor),
-    codAgrupamentoFolha: null,
+    // V26 — o código do sistema da folha, quando a liquidação o tem (ver m33-agrupamento-da-folha.prisma).
+    codAgrupamentoFolha: l.agrupamentoDaFolha?.codigo ?? null,
   }));
 }
 

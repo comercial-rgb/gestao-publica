@@ -253,3 +253,21 @@ regra, e este era o risco real de um cenário com uma conta só.
 | `caixa.ts` | **a fonte única** dos fatos que moveram a conta, e o critério de inclusão |
 | `movimentacao.ts` | o caso de uso da movimentação bancária: lock, guard, razão |
 | `m09-movimentacao.test.ts` | 17 testes, com fixture N=2 onde a regra só aparece em conjunto |
+
+## V26 — transferências financeiras entre unidades gestoras (`transferencia-entre-ugs.ts`)
+
+Duodécimo à Câmara, aportes e devoluções entre UGs do mesmo ente (§5.25). Regime de profundidade.
+
+- **Não é receita nem despesa orçamentária.** Quem concede: D VPD intra (3.5.1.x.2) / C banco. Quem recebe:
+  D banco / C VPA intra (4.5.1.x.2). As contas vêm de `ContabilizacaoDaTransferenciaEntreUgs`, decidida pelo ente
+  por tipo e vigência (só analítica, da família e intra OFSS); sem a decisão, recusa nomeando o tipo.
+- **Só o lado daqui.** A UG sem entidade contábil é de fora: o lado dela não tem conta nem lançamento, e a
+  conciliação o mostra como sem confirmação. A conta de cada lado escriturado tem de estar declarada como da
+  entidade da UG.
+- **Data civil.** A data é normalizada ao meio-dia civil do ente (o arquivo do Tribunal a escreve certa).
+- **Estorno** inverte os dois lados, não se repete (`estornoDeId @unique`) e não se estorna.
+- Testes: `m09-transferencia-entre-ugs.test.ts` (9). Mutações provadas: sem conferir a entidade do titular, lado
+  recebido invertido, sem o dia civil, conciliação sempre "dois lados" — todas vermelhas. Não exercitada: a
+  conferência intra OFSS da conta (o plano do TCE-PB 2025 não tem analítica 3.5.1 fora do intra; nenhuma conta foi
+  inventada para isso).
+- Tela: Financeiro › Transferências entre unidades gestoras. Na consolidação, o par 3.5.1 × 4.5.1 é o E2 do M12.

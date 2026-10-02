@@ -387,6 +387,8 @@ model Liquidacao {
 
   /// M33 (V6.1) — o elo com o empenho da folha, quando esta liquidação nasceu da folha. VIRTUAL.
   liquidacaoDaFolha LiquidacaoDaFolha?
+  /// V26 — o código de agrupamento da folha no Tribunal (m33-agrupamento-da-folha.prisma).
+  agrupamentoDaFolha AgrupamentoDaFolhaNaLiquidacao? @relation("AgrupamentoDaFolhaDaLiquidacao")
   /// V6.2 — o elo com a liquidação dos encargos da folha. VIRTUAL.
   liquidacaoDosEncargos LiquidacaoDosEncargos? @relation("LiquidacaoDosEncargos")
   /// V7 M1 U3 — o rastro do ajuste para baixo quando ESTA linha é a anulação parcial. VIRTUAL.
@@ -400,6 +402,9 @@ model Liquidacao {
 /// conta" é uma regra que não dá para checar. `Pagamento.contaBancaria` guarda
 /// o código, e o adapter confere a fonte contra esta tabela.
 model ContaBancaria {
+  /// V26 — as transferências entre UGs (m01-unidade-gestora.prisma).
+  transferenciasEntreUgsConcedidas TransferenciaEntreUgs[] @relation("ContaOrigemDaTransferenciaEntreUgs")
+  transferenciasEntreUgsRecebidas  TransferenciaEntreUgs[] @relation("ContaDestinoDaTransferenciaEntreUgs")
   id        String       @id @default(cuid())
   codigo    String       @unique
   descricao String

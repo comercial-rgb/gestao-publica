@@ -14,7 +14,7 @@ import {
 import { POC_SAGRES } from "../../../../lib/portas/sagres-poc";
 import { SeletorCompetencia } from "./SeletorCompetencia";
 import { FormPlanoDoTribunal } from "./FormPlanoDoTribunal";
-import { lerPlanoDoTribunal, type ResumoDoPlanoDoTribunal } from "../../../../lib/portas/sagres";
+import { lerPlanoDoTribunal, ugDaRemessa, type ResumoDoPlanoDoTribunal, type UgDaRemessa } from "../../../../lib/portas/sagres";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { diaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
@@ -127,8 +127,8 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "Retencao", secao: "§4.14", exporta: true, nota: "Gerado a partir das retenções efetuadas nos pagamentos, conforme a correspondência do tipo de retenção (§5.24)." },
   { entidade: "EstornoRetencao", secao: "§4.15", exporta: true, nota: "Gerado a partir das retenções desfeitas pela anulação do pagamento." },
   { entidade: "ReceitaOrcamentaria", secao: "§4.16", exporta: true, nota: "Gerado a partir da receita arrecadada; a conta arrecadadora é informada na geração." },
-  { entidade: "TransfRecebida", secao: "§4.17", exporta: false, nota: "Ainda não é gerado por este sistema." },
-  { entidade: "TransfConcedida", secao: "§4.18", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "TransfRecebida", secao: "§4.17", exporta: true, nota: "Transferências recebidas de outra unidade gestora do município, no dia, com o estorno como tal." },
+  { entidade: "TransfConcedida", secao: "§4.18", exporta: true, nota: "Transferências concedidas a outra unidade gestora do município (o duodécimo à Câmara), no dia." },
   { entidade: "ReceitaExtra", secao: "§4.19", exporta: true, nota: "Gerado a partir das retenções e dos ingressos avulsos. Depende do plano de contas do Tribunal importado para o exercício." },
   { entidade: "DespesaExtra", secao: "§4.20", exporta: true, nota: "Gerado a partir dos recolhimentos; a fonte (860/861/862/869) é informada na geração." },
   { entidade: "EstornoReceitaExtra", secao: "§4.21", exporta: true, nota: "Gerado a partir dos estornos de ingresso, com o motivo informado." },
@@ -149,7 +149,7 @@ const MATRIZ_SAGRES: readonly { readonly entidade: string; readonly secao: strin
   { entidade: "Ordenador", secao: "§4.36", exporta: true, nota: "Ordenadores designados por ato, no dia em que a designação começa." },
   { entidade: "RelacionamentoEmpenhoObra", secao: "§4.37", exporta: true, nota: "Gerado a partir dos empenhos do mês que apontam uma obra, com o número da obra do cadastro de obras." },
   { entidade: "RelacionamentoEmpenhoLicitacao", secao: "§4.38", exporta: true, nota: "Empenhos de contrato com a licitação como cadastrada no Tramita." },
-  { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", secao: "§4.39", exporta: false, nota: "Ainda não é gerado por este sistema." },
+  { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", secao: "§4.39", exporta: true, nota: "Cada liquidação da folha com o código de agrupamento da remessa de pessoal, um para um." },
   { entidade: "RestosInscritos", secao: "§4.40", exporta: true, nota: "Gerado a partir das inscrições de restos a pagar do exercício, por empenho, e enviado no balancete de dezembro." },
   { entidade: "PloaAcao", secao: "§4.41", exporta: false, nota: "Ainda não é gerado por este sistema." },
   { entidade: "PloaDotacao", secao: "§4.42", exporta: false, nota: "Ainda não é gerado por este sistema." },
@@ -240,10 +240,10 @@ const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFER
 export default async function SagresPage({
   searchParams,
 }: {
-  readonly searchParams: Promise<{ readonly dia?: string; readonly mes?: string }>;
+  readonly searchParams: Promise<{ readonly dia?: string; readonly mes?: string; readonly ug?: string }>;
 }): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_INTEGRACOES");
-  const { dia: diaParam, mes: mesParam } = await searchParams;
+  const { dia: diaParam, mes: mesParam, ug: ugParam } = await searchParams;
 
   // ── NORMALIZAÇÃO DOS PARÂMETROS ──
   // O `dia` é livre (o seletor aceita qualquer data); só o FORMATO é validado. Data inválida vira
@@ -293,11 +293,14 @@ export default async function SagresPage({
 
   let preview: PreviewSagres | null = null;
   let erro: string | null = null;
+  // V26 — a unidade gestora da remessa: a cadastrada (escolhida, quando há mais de uma), ou a de demonstração.
+  let ug: UgDaRemessa | null = null;
   if (!diaValido) erro = `Data inválida: "${diaParam}" (formato esperado: aaaa-mm-dd).`;
   else if (!mesValido) erro = `Mês inválido: "${mesParam}" (formato esperado: aaaa-mm).`;
   else {
     try {
-      preview = await montarPreviewSagres({ ...POC_SAGRES, dia: diaEscolhido, mes: mesEscolhido });
+      ug = await ugDaRemessa(diaEscolhido, ugParam, POC_SAGRES);
+      preview = await montarPreviewSagres({ ...POC_SAGRES, codUnidadeGestora: ug.codUnidadeGestora, cnpjGerenciadora: ug.cnpjGerenciadora, dia: diaEscolhido, mes: mesEscolhido });
     } catch (e) {
       erro = e instanceof Error ? e.message : "Não foi possível gerar a prévia.";
     }
@@ -305,10 +308,12 @@ export default async function SagresPage({
 
   // O download precisa dos MESMOS dois parâmetros da prévia, senão o ZIP baixado não é o que a
   // Comissão acabou de ver na tela — e essa divergência seria invisível até alguém abrir o arquivo.
-  const hrefDownload = `/integracoes/sagres/download?dia=${diaIso}&mes=${mesIso}`;
+  const ugIso = ug !== null && !ug.demonstracao ? ug.codUnidadeGestora : "";
+  const hrefDownload = `/integracoes/sagres/download?dia=${diaIso}&mes=${mesIso}${ugIso !== "" ? `&ug=${ugIso}` : ""}`;
   /** Href de atalho que preserva a OUTRA metade da escolha (troca só o dia, ou só o mês). */
-  const hrefDia = (d: string): string => `/integracoes/sagres?dia=${d}&mes=${mesIso}`;
-  const hrefMes = (m: string): string => `/integracoes/sagres?dia=${diaIso}&mes=${m}`;
+  const sufixoUg = ugIso !== "" ? `&ug=${ugIso}` : "";
+  const hrefDia = (d: string): string => `/integracoes/sagres?dia=${d}&mes=${mesIso}${sufixoUg}`;
+  const hrefMes = (m: string): string => `/integracoes/sagres?dia=${diaIso}&mes=${m}${sufixoUg}`;
 
   // V23 — o plano de contas do Tribunal do exercício do dia escolhido, e quem pode importá-lo.
   const exercicioDoDia = diaValido ? Number(diaIso.slice(0, 4)) : Number(POC_SAGRES.dia.toISOString().slice(0, 4));
@@ -318,6 +323,20 @@ export default async function SagresPage({
   return (
     <div className="space-y-6">
       {cabecalho}
+      {ug !== null ? (
+        <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]" data-teste="ug-da-remessa">
+          {ug.demonstracao ? (
+            <span>Nenhuma unidade gestora cadastrada: o pacote sai com o código de demonstração {ug.codUnidadeGestora}. Cadastre a unidade em <a href="/contabilidade/unidades-gestoras" className="underline">Unidades gestoras</a>.</span>
+          ) : (
+            <span>
+              Unidade gestora da remessa: <strong>{ug.codUnidadeGestora} {ug.nome}</strong>.
+              {ug.opcoes.length > 1 ? (
+                <span> Outras: {ug.opcoes.filter((o) => o.codigo !== ug?.codUnidadeGestora).map((o) => <a key={o.codigo} href={`/integracoes/sagres?dia=${diaIso}&mes=${mesIso}&ug=${o.codigo}`} className="ml-2 underline">{o.codigo} {o.nome}</a>)}</span>
+              ) : null}
+            </span>
+          )}
+        </div>
+      ) : null}
 
       <BannerHonesto />
 

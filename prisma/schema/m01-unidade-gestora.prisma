@@ -1,0 +1,131 @@
+// ============================================================================
+// V26 (ordem, item 2.9) — UNIDADES GESTORAS DO ENTE E TRANSFERÊNCIAS FINANCEIRAS ENTRE ELAS.
+//
+// ⚠️ MONOENTE NÃO É UMA UG SÓ. Prefeitura e Câmara prestam contas como unidades distintas, com o código de
+// 6 dígitos do cadastro do TCE-PB. A UG daqui é esse cadastro: o código vem do Tribunal (o sistema não o
+// gera, não o deriva do CNPJ nem da entidade), e cada UG tem vigência. Secretaria ou fundo NÃO vira UG
+// automaticamente: só o que se cadastra.
+//
+// ⚠️ A UG OPERADA AQUI aponta a `EntidadeContabil` que a escritura neste sistema. A UG sem entidade é a
+// CONTRAPARTE DE FORA (identificada pelo código e pelo nome): a transferência com ela registra só o lado
+// daqui — a confirmação do outro lado não se fabrica.
+//
+// ⚠️ A TRANSFERÊNCIA NÃO É RECEITA. Concedida: VPD intra (3.5.1...) contra o banco; recebida: banco contra VPA
+// intra (4.5.1...). As contas vêm da tabela-parâmetro por tipo, decidida pelo ente com fundamento — nenhum
+// código de conta no código. Na consolidação, o par 3.5.1 × 4.5.1 é o E2 das eliminações (M12), já existente.
+// ============================================================================
+
+/// A UG no cadastro do TCE-PB. Insert-only: mudar nome ou natureza é encerrar e cadastrar outra vigência.
+model UnidadeGestora {
+  id String @id @default(cuid())
+
+  /// O código da UG no cadastro do Tribunal (6 dígitos). Dado do Tribunal — nunca gerado aqui.
+  codigoTce        String                    @unique @db.VarChar(6)
+  nome             String                    @db.VarChar(100)
+  cnpj             String?                   @db.VarChar(14)
+  naturezaJuridica NaturezaJuridicaDaUnidade
+
+  /// A entidade contábil que a escritura NESTE sistema. Nula: contraparte de fora.
+  entidadeContabilId String?
+  entidadeContabil   EntidadeContabil? @relation("UgDaEntidade", fields: [entidadeContabilId], references: [id])
+
+  vigenteDesde DateTime
+  /// De onde vêm o código e a vigência (ex.: "Cadastro de UG do TCE-PB, consulta de 01/10/2026").
+  fundamento   String
+
+  encerramento             EncerramentoDaUnidadeGestora?
+  transferenciasConcedidas TransferenciaEntreUgs[]       @relation("UgOrigemDaTransferencia")
+  transferenciasRecebidas  TransferenciaEntreUgs[]       @relation("UgDestinoDaTransferencia")
+  agrupamentosDaFolha      AgrupamentoDaFolhaNaLiquidacao[] @relation("AgrupamentosDaFolhaDaUg")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([entidadeContabilId])
+}
+
+/// O FATO "esta UG deixou de valer em tal dia", pelo ato. Existir = encerrada.
+model EncerramentoDaUnidadeGestora {
+  id         String         @id @default(cuid())
+  ugId       String         @unique
+  ug         UnidadeGestora @relation(fields: [ugId], references: [id])
+  vigenteAte DateTime
+  ato        String
+  criadoEm   DateTime       @default(now())
+  criadoPor  String
+}
+
+/// §5.25 TipoTransferencia do SAGRES, pelo nome do domínio (o código sai por de-para no adaptador).
+enum TipoDeTransferenciaEntreUgs {
+  DUODECIMO
+  APORTE_DESPESAS_ADMINISTRATIVAS
+  APORTE_INSUFICIENCIA_FINANCEIRA
+  APORTE_BENEFICIOS_PREVIDENCIARIOS
+  OUTROS_APORTES
+  INVESTIMENTOS_OU_RESGATES
+  DEVOLUCAO_DE_RECURSOS
+  TRANSFERENCIA_INDIRETA
+}
+
+/// Em que contas a transferência de cada tipo bate: a VPD de quem concede e a VPA de quem recebe.
+/// Versionada por vigência; a transferência guarda a versão que a contabilizou.
+model ContabilizacaoDaTransferenciaEntreUgs {
+  id               String                      @id @default(cuid())
+  tipo             TipoDeTransferenciaEntreUgs
+  contaConcedidaId String
+  contaConcedida   ContaPcasp                  @relation("VpdDaTransferenciaEntreUgs", fields: [contaConcedidaId], references: [id])
+  contaRecebidaId  String
+  contaRecebida    ContaPcasp                  @relation("VpaDaTransferenciaEntreUgs", fields: [contaRecebidaId], references: [id])
+  vigenteDesde     DateTime
+  fundamento       String
+  transferencias   TransferenciaEntreUgs[]
+  criadoEm         DateTime                    @default(now())
+  criadoPor        String
+
+  @@unique([tipo, vigenteDesde])
+}
+
+/// A transferência financeira entre duas UGs do mesmo ente. Append-only: o estorno é outra linha que aponta esta.
+model TransferenciaEntreUgs {
+  id   String                      @id @default(cuid())
+  tipo TipoDeTransferenciaEntreUgs
+
+  ugOrigemId  String
+  ugOrigem    UnidadeGestora @relation("UgOrigemDaTransferencia", fields: [ugOrigemId], references: [id])
+  ugDestinoId String
+  ugDestino   UnidadeGestora @relation("UgDestinoDaTransferencia", fields: [ugDestinoId], references: [id])
+
+  valor Decimal  @db.Decimal(18, 2)
+  /// O dia da transferência (meio-dia civil do ente).
+  data  DateTime
+
+  /// A conta de quem concede — obrigatória quando a UG de origem é operada aqui.
+  contaOrigemId  String?
+  contaOrigem    ContaBancaria? @relation("ContaOrigemDaTransferenciaEntreUgs", fields: [contaOrigemId], references: [id])
+  /// A conta de quem recebe — obrigatória quando a UG de destino é operada aqui.
+  contaDestinoId String?
+  contaDestino   ContaBancaria? @relation("ContaDestinoDaTransferenciaEntreUgs", fields: [contaDestinoId], references: [id])
+
+  /// O ato ou documento que a sustenta (ex.: "Lei 613/2025, art. 29-A da CF; duodécimo de março").
+  vinculo String
+
+  contabilizacaoId String
+  contabilizacao   ContabilizacaoDaTransferenciaEntreUgs @relation(fields: [contabilizacaoId], references: [id])
+
+  /// O lançamento de quem concede (nulo quando a origem é de fora).
+  lancamentoConcedidaId String? @unique
+  /// O lançamento de quem recebe (nulo quando o destino é de fora).
+  lancamentoRecebidaId  String? @unique
+
+  estornoDeId String?                @unique
+  estornoDe   TransferenciaEntreUgs? @relation("EstornoDaTransferenciaEntreUgs", fields: [estornoDeId], references: [id])
+  estorno     TransferenciaEntreUgs? @relation("EstornoDaTransferenciaEntreUgs")
+  motivo      String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([data])
+  @@index([ugOrigemId])
+  @@index([ugDestinoId])
+}

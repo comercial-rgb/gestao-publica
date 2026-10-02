@@ -14,6 +14,10 @@ import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarT
 import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "./apropriacao.js";
 import { certificarFolha, designarNaFolha, liquidarFolha } from "./certificacao.js";
 import { irDaFolhaPendente } from "./ir-da-folha.js";
+import { registrarAgrupamentoDaFolha } from "./agrupamento-no-tribunal.js";
+import { cadastrarUnidadeGestora } from "../m01-core-contabil/unidade-gestora.js";
+import { gerarRelacionamentoLiquidacaoAgrupamentoFolha } from "../../adapters/tribunais/tce-pb/sagres/gerador-v26.js";
+import { lerFatosLiquidacao } from "../../adapters/tribunais/tce-pb/sagres/gerador.js";
 
 /**
  * V26 — O IR DA FOLHA VIRA RECEITA NO PAGAMENTO (ordem V26, 1.5).
@@ -181,5 +185,57 @@ describe("V26 — o IR do servidor vira receita no pagamento da folha", { timeou
     await expect(irDaFolhaNoPagamento(prisma, { liquidacaoId: liquidacaoDe["MAT-A"]!, data: D(2026, 6, 28), contaBancariaId: "cb-folha" })).rejects.toThrow(
       /IR retido na folha de pagamento: é imposto do próprio município.*Retenções do\s+próprio município/s
     );
+  });
+});
+
+describe("V26 — o código de agrupamento da folha na liquidação (SAGRES §4.10 e §4.39)", { timeout: 300000 }, () => {
+  let ug = "";
+  let fora = "";
+  beforeEach(async () => {
+    await semear();
+    await prisma.entidadeContabil.create({ data: { id: "ent-pref", codigo: "0001", criadoPor: PREPARA } });
+    await prisma.versaoDaEntidadeContabil.create({ data: { entidadeId: "ent-pref", versao: 1, nome: "Prefeitura", tipoManad: "01", atoTipo: "LEI", atoNumero: "1", atoAno: 2000, atoDispositivo: "art. 1", atoCitacao: "Lei orgânica", criadoPor: PREPARA } });
+    const base = { cnpj: null, vigenteDesde: D(2026, 1, 1), fundamento: "Cadastro de UG do Tribunal (fixture do teste)", criadoPor: PREPARA };
+    ug = (await cadastrarUnidadeGestora(prisma, { ...base, codigoTce: "201001", nome: "Prefeitura", naturezaJuridica: "PREFEITURA_OU_SECRETARIA", entidadeContabilId: "ent-pref" })).id;
+    fora = (await cadastrarUnidadeGestora(prisma, { ...base, codigoTce: "201077", nome: "Instituto", naturezaJuridica: "AUTARQUIA_PREVIDENCIARIA", entidadeContabilId: null })).id;
+  }, 300000);
+
+  const numeroDe = async (matricula: string): Promise<string> => (await prisma.liquidacao.findUniqueOrThrow({ where: { id: liquidacaoDe[matricula]! }, select: { numero: true } })).numero;
+  const registrar = (matricula: string, codigo: string, extra: Partial<{ ugId: string; competencia: string }> = {}) =>
+    registrarAgrupamentoDaFolha(prisma, { liquidacaoId: liquidacaoDe[matricula]!, codigo, ugId: ug, competencia: JUNHO, sistemaDeOrigem: "Folha deste sistema", fundamento: "Remessa de pessoal de junho (fixture do teste)", criadoPor: FECHA, ...extra });
+  const JUNHO_FIM = new Date(Date.UTC(2026, 5, 30));
+
+  it("sem o código, o §4.39 nomeia as DUAS liquidações (N=2); com uma, só a outra; com as duas, sai um para um, e o §4.10 leva o código", async () => {
+    const [a, b] = [await numeroDe("MAT-A"), await numeroDe("MAT-B")];
+    await expect(gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma, { codUnidadeGestora: "201001", competencia: JUNHO_FIM })).rejects.toThrow(new RegExp(`sem o código de agrupamento da folha: liquidação ${[a, b].sort()[0]} .*; liquidação ${[a, b].sort()[1]} `));
+    await registrar("MAT-A", "06FPA00001");
+    const recusa = await gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma, { codUnidadeGestora: "201001", competencia: JUNHO_FIM }).then(
+      () => "",
+      (e: unknown) => (e instanceof Error ? e.message : String(e))
+    );
+    // Só a liquidação ainda sem código é nomeada; a que já tem não aparece mais.
+    expect(recusa).toContain(`da folha: liquidação ${b} (empenho `);
+    expect(recusa).toContain(", folha 2026-06). Informe");
+    expect(recusa).not.toContain(`liquidação ${a} (`);
+    await registrar("MAT-B", "06FPA00002");
+    const l = (await gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma, { codUnidadeGestora: "201001", competencia: JUNHO_FIM })).conteudo.toString("utf8").split("\r\n").filter((x) => x !== "");
+    expect(l.map((x) => [x.length, x.slice(0, 6), x.slice(6, 11), x.slice(25, 35)]).sort()).toEqual([
+      [41, "201001", "01001", "06FPA00001"],
+      [41, "201001", "01001", "06FPA00002"],
+    ]);
+    const liq = await lerFatosLiquidacao(prisma, { codUnidadeGestora: "201001", dia: new Date(Date.UTC(2026, 5, 27)) });
+    expect(liq.map((x) => x.codAgrupamentoFolha).sort()).toEqual(["06FPA00001", "06FPA00002"]);
+  });
+
+  it("um para um e o mês da folha, cada recusa com o motivo; o código não vai a unidade de fora", async () => {
+    const a = await numeroDe("MAT-A");
+    await expect(registrar("MAT-A", "07FPA00001")).rejects.toThrow(/começa pelo mês 07, e a competência da folha é 2026-06/);
+    await expect(registrar("MAT-A", "07FPA00001", { competencia: "2026-07" })).rejects.toThrow(new RegExp(`liquidação ${a} é da folha de 2026-06, não de 2026-07`));
+    await expect(registrar("MAT-A", "06FPA0001")).rejects.toThrow(/10 posições/);
+    await expect(registrar("MAT-A", "06FPA00001", { ugId: fora })).rejects.toThrow(/201077 é escriturada fora deste sistema/);
+    await registrar("MAT-A", "06FPA00001");
+    await expect(registrar("MAT-A", "06FPA00009")).rejects.toThrow(new RegExp(`liquidação ${a} já tem o código 06FPA00001`));
+    await expect(registrar("MAT-B", "06FPA00001")).rejects.toThrow(new RegExp(`código 06FPA00001 já é da liquidação ${a} em 2026`));
+    expect(await prisma.agrupamentoDaFolhaNaLiquidacao.count()).toBe(1);
   });
 });

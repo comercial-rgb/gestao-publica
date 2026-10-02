@@ -8,6 +8,10 @@
 //
 // Uso: node scripts/demonstracao/manter-apresentacao-no-ar.mjs [horas] [pasta-do-log]
 // Para parar: encerrar este processo (o PID fica no log). O servidor continua no ar.
+//
+// V26 — a promoção troca a versão sem tocar no original: APRESENTACAO_BANCO (padrão gestao_publica_apresentacao)
+// diz o banco servido, e APRESENTACAO_PASTA (padrão: este repositório) a pasta com o build. Reverter é voltar os
+// dois ao padrão. Ver docs/operacao/PROMOCAO-V26-3010.md.
 
 import { execFile, spawn } from "node:child_process";
 import { appendFileSync, mkdirSync, openSync } from "node:fs";
@@ -18,7 +22,8 @@ import { fileURLToPath } from "node:url";
 const horas = Number(process.argv[2] ?? "12");
 const pasta = process.argv[3] ?? join(process.env.LOCALAPPDATA ?? ".", "gestao-publica-apresentacao");
 mkdirSync(pasta, { recursive: true });
-const repo = resolve(fileURLToPath(import.meta.url), "..", "..", "..");
+const repo = process.env.APRESENTACAO_PASTA ?? resolve(fileURLToPath(import.meta.url), "..", "..", "..");
+const banco = process.env.APRESENTACAO_BANCO ?? "gestao_publica_apresentacao";
 const log = join(pasta, "apresentacao-no-ar.log");
 const registrar = (m) => appendFileSync(log, `${new Date().toLocaleString("sv-SE")} ${m}\n`, "utf8");
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -50,7 +55,7 @@ async function subirServidor() {
     detached: true,
     windowsHide: true,
     stdio: ["ignore", saida, saida],
-    env: { ...process.env, PERCURSO_BANCO: "gestao_publica_apresentacao", PERCURSO_COMO_RUNTIME: "1",
+    env: { ...process.env, PERCURSO_BANCO: banco, PERCURSO_COMO_RUNTIME: "1",
       PERCURSO_PORTA: "3010", AMBIENTE_DE_EXECUCAO: "demonstracao" },
   });
   filho.unref();

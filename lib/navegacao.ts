@@ -222,6 +222,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
 export const FINANCEIRO: readonly RelatorioNav[] = [
   { href: "/financeiro/consignacoes", numero: "Consignações", rotulo: "Consignações", descricao: "Contas contábeis das consignações e retenções na fonte, por tipo." },
   { href: "/financeiro/retencoes-proprias", numero: "Retenções do município", rotulo: "Retenções do próprio município", descricao: "IR e ISS retidos nos pagamentos, que entram como receita do município." },
+  { href: "/financeiro/transferencias-entre-ugs", numero: "Transferências entre unidades", rotulo: "Transferências entre unidades gestoras", descricao: "Duodécimo à Câmara, aportes e devoluções entre as unidades do município, com estorno e conciliação." },
   { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Retenções, consignações e demais ingressos e dispêndios extraorçamentários." },
   { href: "/financeiro/extraorcamentario/recolher", numero: "Recolher consignações", rotulo: "Recolher consignações", descricao: "Recolhimento das retenções do exercício e de exercícios anteriores." },
   { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Conciliação entre o extrato bancário e os lançamentos contábeis." },
@@ -243,6 +244,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
  */
 export const CONTABILIDADE: readonly RelatorioNav[] = [
   { href: "/contabilidade/ordenadores", numero: "Ordenadores", rotulo: "Ordenadores e responsável pelo sistema", descricao: "Ordenadores de despesa designados por ato e vigência, e o responsável técnico pelo sistema." },
+  { href: "/contabilidade/unidades-gestoras", numero: "Unidades gestoras", rotulo: "Unidades gestoras", descricao: "As unidades do município no cadastro do Tribunal de Contas, com código e vigência." },
   { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Contas contábeis de cada movimento orçamentário: dotação, créditos adicionais, anulação e reserva." },
   { href: "/contabilidade/roteiros-de-restos-a-pagar", numero: "Contas dos restos a pagar", rotulo: "Contas dos restos a pagar", descricao: "Contas contábeis de liquidação, pagamento e cancelamento de restos a pagar." },
   // V11 V9.3 — irmã do roteiro orçamentário, e pela mesma razão: o plano parte 7.2.1.1 por
@@ -313,6 +315,7 @@ export const MEUS_SERVICOS: readonly RelatorioNav[] = [
 /** FOLHA (M33) — fonte única da landing e do submenu. */
 export const FOLHA: readonly RelatorioNav[] = [
   { href: "/folha/folhas", numero: "Folhas", rotulo: "Folhas de pagamento", descricao: "Folha de cada competência: cálculo por servidor, conferência e fechamento." },
+  { href: "/folha/agrupamento-no-tribunal", numero: "Agrupamento no Tribunal", rotulo: "Agrupamento da folha no Tribunal", descricao: "O código da remessa de pessoal em cada liquidação da folha, um para um." },
   { href: "/folha/rubricas", numero: "Rubricas", rotulo: "Rubricas", descricao: "Proventos e descontos, com incidências e proporcionalidade." },
   { href: "/folha/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos", descricao: "Lançamentos fixos e variáveis por matrícula." },
   { href: "/folha/tabelas", numero: "Tabelas", rotulo: "Tabelas do ente", descricao: "Tabelas de contribuição previdenciária, IRRF e salário-família por vigência." },

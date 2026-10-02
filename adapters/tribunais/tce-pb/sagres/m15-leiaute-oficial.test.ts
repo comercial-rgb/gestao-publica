@@ -21,6 +21,9 @@ const limpa = (s: string): string => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/
 const NOME_NO_HTML: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   Dotacao: { reservado2: "reservado" },
   AtualizacaoOrcamentaria: { reservado2: "reservado" },
+  // O HTML escreve o nome do campo com acento.
+  TransfRecebida: { dataTransferencia: "dataTransferência" },
+  TransfConcedida: { dataTransferencia: "dataTransferência" },
   MovimentacaoEntreContasBancarias: {
     valorTransferencia: "Valor da Transferência",
     dataMovimentacao: "Data da Movimentação",
@@ -40,7 +43,13 @@ function camposDoHtml(entidade: string): string[] | null {
   // V26 — o título pode trazer espaço inseparável antes do fechamento (a ReceitaPrevista traz).
   const m = new RegExp(`<strong>4\\.\\d+\\. ${entidade}[\\s\\u00a0]*</strong>`).exec(HTML);
   if (m === null) return null;
-  const bloco = HTML.slice(m.index, HTML.indexOf("<h4", m.index + 10));
+  // V26 — a seção termina no próximo <h4 OU no título da seção seguinte: a §4.18 não tem <h4 antes da §4.19, e o
+  // corte só pelo <h4 lia os campos da ReceitaExtra como se fossem dela.
+  const fimPorH4 = HTML.indexOf("<h4", m.index + 10);
+  const proximoTitulo = /<strong>4\.\d+\.\s/.exec(HTML.slice(m.index + 10));
+  const fimPorTitulo = proximoTitulo === null ? -1 : m.index + 10 + proximoTitulo.index;
+  const fins = [fimPorH4, fimPorTitulo].filter((x) => x >= 0);
+  const bloco = HTML.slice(m.index, fins.length === 0 ? undefined : Math.min(...fins));
   const campos: string[] = [];
   for (const tr of bloco.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
     const c = [...(tr[1] ?? "").matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map((x) => limpa(x[1] ?? ""));

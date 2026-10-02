@@ -14,6 +14,14 @@ import {
   LAYOUT_ATUALIZACAO_ORCAMENTARIA,
   LAYOUT_DECRETOS_E_OFICIOS,
   LAYOUT_NORMAS_ORCAMENTARIAS,
+  LAYOUT_TRANSF_RECEBIDA,
+  LAYOUT_TRANSF_CONCEDIDA,
+  LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA,
+  type RelacionamentoLiquidacaoAgrupamentoFolhaFato,
+  DEPARA_TIPO_TRANSFERENCIA_SAGRES,
+  TIPO_LANCAMENTO_ORDINARIO,
+  TIPO_LANCAMENTO_ESTORNO,
+  type TransferenciaEntreUgsFato,
   type AtualizacaoOrcamentariaFato,
   type DecretoOuOficioFato,
   type NormaOrcamentariaFato,
@@ -31,6 +39,7 @@ import { conciliacaoBancaria } from "../../../../modules/m09-tesouraria/concilia
 import { comDigito, exigirTripla } from "./gerador.js";
 import { licitacaoNoTramita } from "../../../../modules/m11-licitacoes/identificacao-no-tramita.js";
 import { lerArquivo } from "../../../../modules/m22-documentos/armazenamento.js";
+import { liquidacoesDeFolhaSemAgrupamento } from "../../../../modules/m33-folha/agrupamento-no-tribunal.js";
 import { TIPO_CONTA_CORRENTE } from "./layout-2026v11.js";
 
 /**
@@ -452,6 +461,115 @@ export async function gerarNormasOrcamentarias(prisma: PrismaClient, p: { readon
   return empacotar(LAYOUT_NORMAS_ORCAMENTARIAS, nomeArquivo({ codUnidadeGestora: p.codUnidadeGestora, periodicidade: "DIARIO", entidade: "NormasOrcamentarias", competencia: p.dia }), await lerFatosNormasOrcamentarias(prisma, p));
 }
 
+// ── §4.17 TransfRecebida e §4.18 TransfConcedida (diários) ────────────────────────────────────────
+
+/**
+ * As transferências do dia civil em que esta UG é o lado escriturado aqui: recebida (ela é o destino) ou concedida (ela é
+ * a origem). O estorno sai com o tipo de lançamento 2, no dia do estorno. A conta é a desta UG, com a identificação
+ * bancária completa — sem ela, a recusa nomeia a conta.
+ */
+async function lerFatosDaTransferencia(
+  prisma: PrismaClient,
+  lado: "RECEBIDA" | "CONCEDIDA",
+  p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }
+): Promise<TransferenciaEntreUgsFato[]> {
+  const d = p.dia.toISOString().slice(0, 10);
+  const inicio = new Date(`${d}T00:00:00.000Z`);
+  const todas = await prisma.transferenciaEntreUgs.findMany({
+    where:
+      lado === "RECEBIDA"
+        ? { ugDestino: { codigoTce: p.codUnidadeGestora }, lancamentoRecebidaId: { not: null }, data: { gte: inicio, lt: new Date(inicio.getTime() + 27 * 3_600_000) } }
+        : { ugOrigem: { codigoTce: p.codUnidadeGestora }, lancamentoConcedidaId: { not: null }, data: { gte: inicio, lt: new Date(inicio.getTime() + 27 * 3_600_000) } },
+    orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
+    select: {
+      tipo: true,
+      valor: true,
+      data: true,
+      estornoDeId: true,
+      ugOrigem: { select: { codigoTce: true } },
+      ugDestino: { select: { codigoTce: true } },
+      contaOrigem: { select: { codigo: true, banco: true, agencia: true, conta: true, digitoAgencia: true, digitoConta: true } },
+      contaDestino: { select: { codigo: true, banco: true, agencia: true, conta: true, digitoAgencia: true, digitoConta: true } },
+    },
+  });
+  return todas
+    .filter((t) => diaCivil(t.data) === d)
+    .map((t) => {
+      const conta = lado === "RECEBIDA" ? t.contaDestino : t.contaOrigem;
+      if (conta === null) throw new Error(`SAGRES/Transf${lado === "RECEBIDA" ? "Recebida" : "Concedida"} — a transferência escriturada aqui não tem a conta desta unidade gestora.`);
+      const tripla = exigirTripla(conta);
+      return {
+        codUnidadeGestora: p.codUnidadeGestora,
+        codOutraUnidadeGestora: lado === "RECEBIDA" ? t.ugOrigem.codigoTce : t.ugDestino.codigoTce,
+        tipoTransferencia: DEPARA_TIPO_TRANSFERENCIA_SAGRES[t.tipo],
+        tipoLancamento: t.estornoDeId === null ? TIPO_LANCAMENTO_ORDINARIO : TIPO_LANCAMENTO_ESTORNO,
+        valor: toMoney(t.valor.toFixed(2)),
+        numeroConta: comDigito(tripla.conta, conta.digitoConta),
+        codBanco: tripla.banco,
+        numAgencia: comDigito(tripla.agencia, conta.digitoAgencia),
+        tipoContaBancaria: TIPO_CONTA_CORRENTE,
+        cnpjGerencia: p.cnpjGerenciadora,
+        data: t.data,
+      };
+    });
+}
+
+export async function lerFatosTransfRecebida(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }): Promise<TransferenciaEntreUgsFato[]> {
+  return lerFatosDaTransferencia(prisma, "RECEBIDA", p);
+}
+export async function lerFatosTransfConcedida(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }): Promise<TransferenciaEntreUgsFato[]> {
+  return lerFatosDaTransferencia(prisma, "CONCEDIDA", p);
+}
+export async function gerarTransfRecebida(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_TRANSF_RECEBIDA, nomeArquivo({ codUnidadeGestora: p.codUnidadeGestora, periodicidade: "DIARIO", entidade: "TransfRecebida", competencia: p.dia }), await lerFatosTransfRecebida(prisma, p));
+}
+export async function gerarTransfConcedida(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_TRANSF_CONCEDIDA, nomeArquivo({ codUnidadeGestora: p.codUnidadeGestora, periodicidade: "DIARIO", entidade: "TransfConcedida", competencia: p.dia }), await lerFatosTransfConcedida(prisma, p));
+}
+
+// ── §4.39 RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento (mensal) ──────────────────────────
+
+/**
+ * As liquidações do mês civil com o código de agrupamento da folha informado para esta UG, um para um. A liquidação de
+ * folha deste sistema sem o código é nomeada na recusa — o código não se fabrica aqui.
+ */
+export async function lerFatosRelacionamentoLiquidacaoAgrupamentoFolha(
+  prisma: PrismaClient,
+  p: { readonly codUnidadeGestora: string; readonly competencia: Date }
+): Promise<RelacionamentoLiquidacaoAgrupamentoFolhaFato[]> {
+  const ano = p.competencia.getUTCFullYear();
+  const mes = p.competencia.getUTCMonth() + 1;
+  const sem = await liquidacoesDeFolhaSemAgrupamento(prisma, { ano, mes });
+  if (sem.length > 0) {
+    throw new Error(
+      `SAGRES/RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento §4.39 — liquidação(ões) de folha sem o código de agrupamento da folha: ` +
+        `${sem.map((s) => `liquidação ${s.numero} (empenho ${s.empenho}, folha ${s.competencia})`).join("; ")}. Informe o código do sistema da folha em Folha › Agrupamento no Tribunal.`
+    );
+  }
+  const prefixo = `${String(ano)}-${String(mes).padStart(2, "0")}`;
+  const ags = await prisma.agrupamentoDaFolhaNaLiquidacao.findMany({
+    where: { ug: { codigoTce: p.codUnidadeGestora }, liquidacao: { data: { gte: new Date(Date.UTC(ano, mes - 1, 1)), lt: new Date(Date.UTC(ano, mes, 1, 6)) } } },
+    select: { codigo: true, liquidacao: { select: { numero: true, data: true, empenho: { select: { numero: true, ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } } },
+  });
+  return ags
+    .filter((a) => diaCivil(a.liquidacao.data).startsWith(prefixo))
+    .sort((a, b) => a.liquidacao.numero.localeCompare(b.liquidacao.numero))
+    .map((a) => ({
+      codUnidadeGestora: p.codUnidadeGestora,
+      codUnidadeOrcamentaria: a.liquidacao.empenho.ficha.unidadeOrc.codigo,
+      numEmpenho: a.liquidacao.empenho.numero,
+      numLiquidacao: a.liquidacao.numero,
+      codAgrupamentoFolha: a.codigo,
+    }));
+}
+export async function gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoV26> {
+  return empacotar(
+    LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA,
+    nomeArquivo({ codUnidadeGestora: p.codUnidadeGestora, periodicidade: "MENSAL", entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", competencia: p.competencia }),
+    await lerFatosRelacionamentoLiquidacaoAgrupamentoFolha(prisma, p)
+  );
+}
+
 // ── O grupo ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -467,9 +585,12 @@ export async function gerarArquivosDaV26(
     // Os diários das alterações orçamentárias: os itens dos decretos do dia, os decretos com o PDF, as leis com o protocolo.
     { entidade: "AtualizacaoOrcamentaria", layout: LAYOUT_ATUALIZACAO_ORCAMENTARIA as LayoutArquivo<never>, gerar: () => gerarAtualizacaoOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
     { entidade: "DecretoseOficios", layout: LAYOUT_DECRETOS_E_OFICIOS as LayoutArquivo<never>, gerar: () => gerarDecretosEOficios(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
+    { entidade: "TransfRecebida", layout: LAYOUT_TRANSF_RECEBIDA as LayoutArquivo<never>, gerar: () => gerarTransfRecebida(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }) },
+    { entidade: "TransfConcedida", layout: LAYOUT_TRANSF_CONCEDIDA as LayoutArquivo<never>, gerar: () => gerarTransfConcedida(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }) },
     { entidade: "NormasOrcamentarias", layout: LAYOUT_NORMAS_ORCAMENTARIAS as LayoutArquivo<never>, gerar: () => gerarNormasOrcamentarias(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
     { entidade: "Programas", layout: LAYOUT_PROGRAMAS as LayoutArquivo<never>, gerar: () => gerarProgramas(prisma, mensal) },
     { entidade: "Acao", layout: LAYOUT_ACAO as LayoutArquivo<never>, gerar: () => gerarAcao(prisma, mensal) },
+    { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", layout: LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA as LayoutArquivo<never>, gerar: () => gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma, mensal) },
     { entidade: "RelacionamentoEmpenhoLicitacao", layout: LAYOUT_RELACIONAMENTO_EMPENHO_LICITACAO as LayoutArquivo<never>, gerar: () => gerarRelacionamentoEmpenhoLicitacao(prisma, mensal) },
     { entidade: "Ordenador", layout: LAYOUT_ORDENADOR as LayoutArquivo<never>, gerar: () => gerarOrdenador(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
     // O balancete de janeiro: só no pacote de janeiro.

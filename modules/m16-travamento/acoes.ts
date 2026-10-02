@@ -1149,6 +1149,12 @@ export type NomeDeServico =
   | "detalharReceitaPrevista"
   | "identificarNoTramita"
   | "registrarNormaNoTce"
+  | "cadastrarUnidadeGestora"
+  | "encerrarUnidadeGestora"
+  | "definirContabilizacaoDaTransferenciaEntreUgs"
+  | "registrarTransferenciaEntreUgs"
+  | "estornarTransferenciaEntreUgs"
+  | "registrarAgrupamentoDaFolha"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1852,6 +1858,12 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // ⚠️ V26 — a mesma autoridade de cadastrar o processo: informar como a licitação está no Tramita é dado do processo.
   identificarNoTramita: "CADASTRAR_PROCESSO",
   registrarNormaNoTce: "CRIAR_LEI_DE_CREDITO",
+  cadastrarUnidadeGestora: "CADASTRAR_ENTIDADE_CONTABIL",
+  encerrarUnidadeGestora: "CADASTRAR_ENTIDADE_CONTABIL",
+  definirContabilizacaoDaTransferenciaEntreUgs: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  registrarTransferenciaEntreUgs: "TRANSFERIR_ENTRE_CONTAS",
+  estornarTransferenciaEntreUgs: "ESTORNAR_MOVIMENTO_BANCARIO",
+  registrarAgrupamentoDaFolha: "LIQUIDAR_FOLHA",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2206,6 +2218,17 @@ export const FORA_DO_CENSO: Record<string, string> = {
   gerarDecretosEOficios: "leitura (SAGRES §4.6: o arquivo e os PDFs, conferidos pelo hash)",
   lerFatosNormasOrcamentarias: "leitura (SAGRES §4.49: as leis do dia com o protocolo do TCE-PB)",
   gerarNormasOrcamentarias: "leitura (SAGRES §4.49: o arquivo)",
+  ugVigenteNoDia: "leitura (pura: a unidade gestora vale no dia civil)",
+  unidadesGestorasOperadas: "leitura (as unidades gestoras escrituradas aqui e vigentes no dia)",
+  contabilizacaoVigenteDaTransferencia: "leitura (as contas vigentes do tipo de transferência entre unidades gestoras)",
+  conciliacaoDasTransferenciasEntreUgs: "leitura (as transferências entre unidades gestoras do período, com o lado sem confirmação nomeado)",
+  lerFatosTransfRecebida: "leitura (SAGRES §4.17: as transferências recebidas do dia)",
+  lerFatosTransfConcedida: "leitura (SAGRES §4.18: as transferências concedidas do dia)",
+  gerarTransfRecebida: "leitura (SAGRES §4.17: o arquivo)",
+  gerarTransfConcedida: "leitura (SAGRES §4.18: o arquivo)",
+  liquidacoesDeFolhaSemAgrupamento: "leitura (as liquidações de folha do mês sem o código de agrupamento)",
+  lerFatosRelacionamentoLiquidacaoAgrupamentoFolha: "leitura (SAGRES §4.39: as liquidações do mês com o código de agrupamento da folha)",
+  gerarRelacionamentoLiquidacaoAgrupamentoFolha: "leitura (SAGRES §4.39: o arquivo)",
   irDaFolhaNoPagamento: "leitura (o IR dos servidores a reter no pagamento de uma liquidação de folha, e como: receita ou consignação)",
   irDaFolhaPendente: "leitura (o IR dos contracheques que a liquidação cobre e que ainda não foi retido)",
   exigirIrDaFolhaAindaPendente:

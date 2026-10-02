@@ -1,0 +1,48 @@
+// ============================================================================
+// V26 (ordem, item 2.2) — O CÓDIGO DE AGRUPAMENTO DA FOLHA NA LIQUIDAÇÃO (SAGRES §4.10 e §4.39).
+//
+// ⚠️ O CÓDIGO É DO SISTEMA DE ORIGEM DA FOLHA, NÃO DA CONTABILIDADE. É o identificador que a remessa de pessoal
+// manda ao Tribunal (CodigoAgrupamentoFolhaPagamento: MM + oito posições). Quando a folha vem de terceiro, ele é
+// importado e preservado; quando a folha é deste sistema, é informado por quem a gera. A contabilidade nunca o
+// fabrica.
+//
+// ⚠️ UM PARA UM, NAS DUAS DIREÇÕES. Uma liquidação tem um código (`liquidacaoId @unique`) e um código serve a uma
+// liquidação na UG e no exercício (`@@unique([ugId, exercicio, codigo])`). A folha daqui gera uma liquidação por
+// empenho da folha (por grupo ou por servidor): cada uma delas recebe o seu código — o agrupamento real é por
+// liquidação, e não se associa no exportador o que não foi associado no fato.
+// ============================================================================
+
+enum OrigemDoAgrupamentoDaFolha {
+  /// A folha calculada neste sistema (a liquidação é de `LiquidacaoDaFolha`).
+  FOLHA_DESTE_SISTEMA
+  /// A folha de outro sistema, com a liquidação registrada aqui; o código vem de lá.
+  FOLHA_DE_OUTRO_SISTEMA
+}
+
+model AgrupamentoDaFolhaNaLiquidacao {
+  id String @id @default(cuid())
+
+  liquidacaoId String     @unique
+  liquidacao   Liquidacao @relation("AgrupamentoDaFolhaDaLiquidacao", fields: [liquidacaoId], references: [id])
+
+  /// MM + 8 posições, como o sistema de origem da folha o informou.
+  codigo String @db.VarChar(10)
+
+  ugId String
+  ug   UnidadeGestora @relation("AgrupamentosDaFolhaDaUg", fields: [ugId], references: [id])
+
+  /// O exercício da liquidação (o escopo da unicidade do código).
+  exercicio   Int
+  /// A competência da folha (AAAA-MM); o MM do código é o mês dela.
+  competencia String @db.VarChar(7)
+
+  origem          OrigemDoAgrupamentoDaFolha
+  /// O nome do sistema que gerou a folha e o código.
+  sistemaDeOrigem String
+  fundamento      String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ugId, exercicio, codigo])
+}

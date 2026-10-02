@@ -1590,6 +1590,100 @@ const camposNormasOrcamentarias: readonly CampoLayout<NormaOrcamentariaFato>[] =
 ];
 export const LAYOUT_NORMAS_ORCAMENTARIAS: LayoutArquivo<NormaOrcamentariaFato> = { entidade: "NormasOrcamentarias", periodicidade: "DIARIO", versao: VERSAO, campos: camposNormasOrcamentarias };
 
+// ═══ V26 — TransfRecebida (§4.17) e TransfConcedida (§4.18), diários ═══════════════════════════════
+/** §5.25 TipoTransferencia — de-para EXAUSTIVO do tipo do domínio (M09). */
+export const DEPARA_TIPO_TRANSFERENCIA_SAGRES: Readonly<
+  Record<
+    | "DUODECIMO"
+    | "APORTE_DESPESAS_ADMINISTRATIVAS"
+    | "APORTE_INSUFICIENCIA_FINANCEIRA"
+    | "APORTE_BENEFICIOS_PREVIDENCIARIOS"
+    | "OUTROS_APORTES"
+    | "INVESTIMENTOS_OU_RESGATES"
+    | "DEVOLUCAO_DE_RECURSOS"
+    | "TRANSFERENCIA_INDIRETA",
+    string
+  >
+> = {
+  DUODECIMO: "1",
+  APORTE_DESPESAS_ADMINISTRATIVAS: "2",
+  APORTE_INSUFICIENCIA_FINANCEIRA: "3",
+  APORTE_BENEFICIOS_PREVIDENCIARIOS: "4",
+  OUTROS_APORTES: "5",
+  INVESTIMENTOS_OU_RESGATES: "6",
+  DEVOLUCAO_DE_RECURSOS: "8",
+  TRANSFERENCIA_INDIRETA: "9",
+};
+
+/** §5.18 TipoLancamento. */
+export const TIPO_LANCAMENTO_ORDINARIO = "1";
+export const TIPO_LANCAMENTO_ESTORNO = "2";
+
+export interface TransferenciaEntreUgsFato {
+  readonly codUnidadeGestora: string;
+  /** A outra UG: a transferidora (§4.17) ou a recebedora (§4.18). */
+  readonly codOutraUnidadeGestora: string;
+  readonly tipoTransferencia: string;
+  readonly tipoLancamento: string;
+  readonly valor: Money;
+  readonly numeroConta: string;
+  readonly codBanco: string;
+  readonly numAgencia: string;
+  readonly tipoContaBancaria: string;
+  readonly cnpjGerencia: string;
+  readonly data: Date;
+}
+function camposDaTransferencia(nomeDaOutra: string, origemDaOutra: string): readonly CampoLayout<TransferenciaEntreUgsFato>[] {
+  return [
+    { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+    { nome: nomeDaOutra, posInicial: 7, posFinal: 12, tipo: "NUMERICO", obrigatorio: true, origem: origemDaOutra, extrair: (f) => f.codOutraUnidadeGestora },
+    { nome: "tipoTransferencia", posInicial: 13, posFinal: 13, tipo: "NUMERICO", obrigatorio: true, origem: "transferencia.tipo → §5.25", extrair: (f) => f.tipoTransferencia },
+    { nome: "tipoLancamento", posInicial: 14, posFinal: 14, tipo: "NUMERICO", obrigatorio: true, origem: "1 ordinário, 2 estorno (§5.18)", extrair: (f) => f.tipoLancamento },
+    { nome: "valor", posInicial: 15, posFinal: 30, tipo: "VALOR", obrigatorio: true, origem: "transferencia.valor", extrair: (f) => f.valor },
+    { nome: "numeroConta", posInicial: 31, posFinal: 43, tipo: "ALFA", obrigatorio: true, origem: "conta desta UG: conta+digito", extrair: (f) => f.numeroConta },
+    { nome: "codBanco", posInicial: 44, posFinal: 46, tipo: "NUMERICO", obrigatorio: true, origem: "conta desta UG: banco", extrair: (f) => f.codBanco },
+    { nome: "numAgencia", posInicial: 47, posFinal: 52, tipo: "ALFA", obrigatorio: true, origem: "conta desta UG: agencia+digito", extrair: (f) => f.numAgencia },
+    { nome: "tipoContaBancaria", posInicial: 53, posFinal: 53, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (1 conta corrente)", extrair: (f) => f.tipoContaBancaria },
+    { nome: "cnpjGerencia", posInicial: 54, posFinal: 67, tipo: "NUMERICO", obrigatorio: true, origem: "CNPJ da UG que gerencia a conta", extrair: (f) => f.cnpjGerencia },
+    { nome: "dataTransferencia", posInicial: 68, posFinal: 75, tipo: "DATA", obrigatorio: true, origem: "transferencia.data", extrair: (f) => f.data },
+  ];
+}
+export const LAYOUT_TRANSF_RECEBIDA: LayoutArquivo<TransferenciaEntreUgsFato> = {
+  entidade: "TransfRecebida",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposDaTransferencia("codUnidadeGestoraTransferencia", "a UG que transferiu"),
+};
+export const LAYOUT_TRANSF_CONCEDIDA: LayoutArquivo<TransferenciaEntreUgsFato> = {
+  entidade: "TransfConcedida",
+  periodicidade: "DIARIO",
+  versao: VERSAO,
+  campos: camposDaTransferencia("codUnidadeGestoraRecebedora", "a UG que recebeu"),
+};
+
+// ═══ V26 — RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento (§4.39), mensal ═══════════════════
+export interface RelacionamentoLiquidacaoAgrupamentoFolhaFato {
+  readonly codUnidadeGestora: string;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly numLiquidacao: string;
+  readonly codAgrupamentoFolha: string;
+}
+const camposRelacionamentoLiquidacaoAgrupamentoFolha: readonly CampoLayout<RelacionamentoLiquidacaoAgrupamentoFolhaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codUnidadeOrcamentaria", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "liquidacao.empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 12, posFinal: 18, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero (chave do Empenhos §4.8, numérico lá)", extrair: (f) => f.numEmpenho },
+  { nome: "numLiquidacao", posInicial: 19, posFinal: 25, tipo: "NUMERICO", obrigatorio: true, origem: "liquidacao.numero", extrair: (f) => f.numLiquidacao },
+  { nome: "codAgrupamentoFolha", posInicial: 26, posFinal: 35, tipo: "ALFA", obrigatorio: true, origem: "AgrupamentoDaFolhaNaLiquidacao.codigo (do sistema da folha)", extrair: (f) => f.codAgrupamentoFolha },
+  { nome: "reservado", posInicial: 36, posFinal: 41, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA: LayoutArquivo<RelacionamentoLiquidacaoAgrupamentoFolhaFato> = {
+  entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento",
+  periodicidade: "MENSAL",
+  versao: VERSAO,
+  campos: camposRelacionamentoLiquidacaoAgrupamentoFolha,
+};
+
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
@@ -1633,4 +1727,7 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_ATUALIZACAO_ORCAMENTARIA,
   LAYOUT_DECRETOS_E_OFICIOS,
   LAYOUT_NORMAS_ORCAMENTARIAS,
+  LAYOUT_TRANSF_RECEBIDA,
+  LAYOUT_TRANSF_CONCEDIDA,
+  LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA,
 ] as const;

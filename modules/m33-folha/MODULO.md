@@ -1325,3 +1325,12 @@ estabelecimento, CNPJ completo). O estabelecimento vem da lotação vigente no f
 acima dela; sem registro na cadeia, o CNPJ do ente. Sem FAP aprovado para aquele CNPJ, o item fica
 `PARAMETRO_AUSENTE` com o CNPJ no motivo, e só os vínculos daquele estabelecimento. Tela:
 `/folha/encargos/fap` (cadastro e aprovação do FAP de cada CNPJ; lotações com estabelecimento próprio).
+
+## V26 — o código de agrupamento da folha no Tribunal (`agrupamento-no-tribunal.ts`)
+
+O código da remessa de pessoal (MM + oito posições) de cada liquidação de folha, para o SAGRES §4.10 e §4.39.
+**Vem do sistema da folha, nunca gerado aqui.** Um para um nas duas direções: a liquidação tem um código
+(`liquidacaoId @unique`) e o código serve a uma liquidação na UG e no exercício. A folha daqui gera uma liquidação
+por empenho da folha; cada uma recebe o seu. O mês do código é o da competência da folha (conferido também por
+CHECK). Folha de outro sistema: a liquidação é achada pelo número no exercício, e o código preservado.
+Tela: Folha › Agrupamento no Tribunal (o que falta no mês e o que foi informado).

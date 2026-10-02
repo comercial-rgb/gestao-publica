@@ -73,6 +73,7 @@ import type { LayoutArquivo } from "../../adapters/tribunais/tce-pb/sagres/regis
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
 import { anoCivil, competenciaCivil, diaCivil } from "../../packages/datas/index";
+import { unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -708,4 +709,38 @@ export async function importarPlanoDoTribunalPelaTela(input: {
     `Tabela de ${String(input.anoDaTabela)} importada para ${String(input.exercicio)}: ${String(r.contas)} contas, ` +
     `${String(r.exigemRetencao)} exigem o vínculo com a retenção e ${String(r.exigemReceitaExtra)} com a receita extra.`
   );
+}
+
+// ── V26 — A UNIDADE GESTORA DA REMESSA ───────────────────────────────────────────────────────
+
+export interface UgDaRemessa {
+  readonly codUnidadeGestora: string;
+  readonly cnpjGerenciadora: string;
+  readonly nome: string;
+  /** Sem unidade gestora cadastrada: o pacote sai com o código de demonstração, e a tela diz isso. */
+  readonly demonstracao: boolean;
+  readonly opcoes: readonly { readonly codigo: string; readonly nome: string }[];
+}
+
+/**
+ * A UG cuja remessa se monta: a pedida, ou a única escriturada aqui e vigente no dia. O CNPJ é o da UG, ou o da
+ * entidade que a escritura; sem nenhum dos dois, a recusa nomeia a UG — nenhum CNPJ é emprestado.
+ */
+export async function ugDaRemessa(dia: Date, codigoPedido?: string, demonstracao?: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string }): Promise<UgDaRemessa> {
+  await exigirLeituraDoEnte("CONSULTAR_INTEGRACOES");
+  const prisma = cliente();
+  const operadas = await unidadesGestorasOperadas(prisma, dia);
+  if (operadas.length === 0) {
+    if (demonstracao === undefined) throw new Error("Nenhuma unidade gestora escriturada aqui está vigente no dia. Cadastre-a em Contabilidade › Unidades gestoras.");
+    return { ...demonstracao, nome: "Unidade de demonstração", demonstracao: true, opcoes: [] };
+  }
+  const escolhida = codigoPedido === undefined || codigoPedido === "" ? operadas[0] : operadas.find((u) => u.codigoTce === codigoPedido);
+  if (escolhida === undefined) throw new Error(`A unidade gestora ${codigoPedido ?? ""} não é escriturada aqui ou não está vigente em ${diaCivil(dia)}.`);
+  let cnpj = escolhida.cnpj;
+  if (cnpj === null) {
+    const ug = await prisma.unidadeGestora.findUniqueOrThrow({ where: { id: escolhida.id }, select: { entidadeContabil: { select: { versoes: { orderBy: { versao: "desc" }, take: 1, select: { cnpj: true } } } } } });
+    cnpj = ug.entidadeContabil?.versoes[0]?.cnpj ?? null;
+  }
+  if (cnpj === null) throw new Error(`A unidade gestora ${escolhida.codigoTce} não tem CNPJ, nem a entidade que a escritura. Informe-o no cadastro antes de montar a remessa.`);
+  return { codUnidadeGestora: escolhida.codigoTce, cnpjGerenciadora: cnpj, nome: escolhida.nome, demonstracao: false, opcoes: operadas.map((u) => ({ codigo: u.codigoTce, nome: u.nome })) };
 }
