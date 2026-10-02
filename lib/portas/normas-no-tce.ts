@@ -1,4 +1,4 @@
-import { registrarNormaNoTce, type RegistrarNormaNoTceInput } from "../../modules/m03-creditos/norma-no-tce.js";
+import { informarProtocoloDaNorma, protocoloDaNorma, registrarNormaNoTce, type RegistrarNormaNoTceInput } from "../../modules/m03-creditos/norma-no-tce.js";
 import { diaCivilBr } from "../../packages/datas/index.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
@@ -23,7 +23,8 @@ export interface NormaNaTela {
   readonly lei: string;
   readonly tipo: string;
   readonly publicacao: string;
-  readonly protocolo: string;
+  /** Nulo enquanto o comprovante do Tribunal não chega. */
+  readonly protocolo: string | null;
   readonly autorizacao: string;
   readonly fundamento: string;
 }
@@ -42,7 +43,7 @@ export async function lerNormasNoTce(): Promise<{
   await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const prisma = cliente();
   const [normas, leis, loas] = await Promise.all([
-    prisma.normaOrcamentariaNoTce.findMany({ orderBy: [{ ano: "desc" }, { numero: "desc" }] }),
+    prisma.normaOrcamentariaNoTce.findMany({ orderBy: [{ ano: "desc" }, { numero: "desc" }], include: { protocolo: { select: { protocoloTce: true } } } }),
     prisma.leiCredito.findMany({ orderBy: [{ ano: "desc" }, { numero: "desc" }], select: { id: true, numero: true, ano: true, tipoCredito: true, dataPublicacao: true } }),
     prisma.aprovacaoDaLeiOrcamentaria.findMany({ select: { numeroDaLei: true, dataDaPublicacao: true, lei: { select: { exercicio: true } } } }),
   ]);
@@ -60,7 +61,7 @@ export async function lerNormasNoTce(): Promise<{
       lei: `${n.numero}/${String(n.ano)}`,
       tipo: TIPO[n.tipo] ?? n.tipo,
       publicacao: diaCivilBr(n.dataPublicacao),
-      protocolo: n.protocoloTce,
+      protocolo: protocoloDaNorma(n),
       autorizacao: n.autorizacaoPercentual ? `${n.valor.toFixed(2).replace(".", ",")}% da despesa fixada` : `R$ ${n.valor.toFixed(2).replace(".", ",")}`,
       fundamento: n.fundamento,
     })),
@@ -73,5 +74,12 @@ export async function lerNormasNoTce(): Promise<{
 
 export async function registrarNormaPelaTela(input: Omit<RegistrarNormaNoTceInput, "criadoPor">): Promise<string> {
   await comEscritaAutenticada("CRIAR_LEI_DE_CREDITO", (criadoPor) => registrarNormaNoTce(cliente(), { ...input, criadoPor }));
-  return `Lei ${input.numero}/${String(input.ano)} registrada com o protocolo ${input.protocoloTce}.`;
+  return input.protocoloTce === null || input.protocoloTce === undefined || input.protocoloTce === ""
+    ? `Lei ${input.numero}/${String(input.ano)} registrada, sem o protocolo do Tribunal. Anexe o PDF e informe o protocolo quando o comprovante chegar.`
+    : `Lei ${input.numero}/${String(input.ano)} registrada com o protocolo ${input.protocoloTce}.`;
+}
+
+export async function informarProtocoloPelaTela(input: { readonly normaId: string; readonly protocoloTce: string; readonly fundamento: string }): Promise<string> {
+  await comEscritaAutenticada("CRIAR_LEI_DE_CREDITO", (criadoPor) => informarProtocoloDaNorma(cliente(), { ...input, criadoPor }));
+  return `Protocolo ${input.protocoloTce} informado.`;
 }

@@ -27,8 +27,9 @@ model NormaOrcamentariaNoTce {
   numero          String
   ano             Int
   dataPublicacao  DateTime
-  /// O protocolo do banco de legislação do TCE-PB, "000000/00".
-  protocoloTce    String  @db.VarChar(9)
+  /// O protocolo do banco de legislação do TCE-PB, "000000/00". V27: nulo quando a lei é registrada antes de o
+  /// comprovante do Tribunal chegar — o protocolo vem depois, como fato próprio (`ProtocoloDaNormaNoTce`).
+  protocoloTce    String? @db.VarChar(9)
   /// A autorização é um percentual (true) ou um valor (false), e o número dela.
   autorizacaoPercentual Boolean
   valor           Decimal @db.Decimal(18, 2)
@@ -40,9 +41,25 @@ model NormaOrcamentariaNoTce {
   /// De onde vêm o protocolo e a autorização (o comprovante do TCE, o artigo da lei).
   fundamento String
 
+  /// V27 — o protocolo informado depois do registro, e o PDF da lei publicada.
+  protocolo ProtocoloDaNormaNoTce?
+  anexos    Anexo[] @relation("AnexoDaNorma")
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
   @@unique([ano, numero, tipo])
   @@index([dataPublicacao])
+}
+
+/// V27 — O PROTOCOLO QUE CHEGOU DEPOIS. A lei foi registrada (com o PDF) antes do comprovante do banco de legislação do
+/// TCE-PB; o protocolo entra como fato próprio, uma vez, com o fundamento (o comprovante). Nada na norma é reescrito.
+model ProtocoloDaNormaNoTce {
+  id           String                 @id @default(cuid())
+  normaId      String                 @unique
+  norma        NormaOrcamentariaNoTce @relation(fields: [normaId], references: [id])
+  protocoloTce String                 @db.VarChar(9)
+  fundamento   String
+  criadoEm     DateTime               @default(now())
+  criadoPor    String
 }

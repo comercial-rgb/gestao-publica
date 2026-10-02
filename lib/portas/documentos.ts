@@ -14,6 +14,7 @@ import {
   listarAnexosDaLeiOrcamentaria,
   listarAnexosDosDecretos,
   listarAnexosDasRealocacoes,
+  listarAnexosDasNormas,
   listarAnexosDaPessoa,
   listarAnexosDasLiquidacoes,
   listarAnexosDoComunicado,
@@ -131,6 +132,12 @@ export async function lerAnexosDosDecretos(decretoIds: readonly string[]): Promi
   return listarAnexosDosDecretos(cliente(), decretoIds, sessao.identificador);
 }
 
+/** V27 — os PDFs das leis no cadastro de normas, por norma. */
+export async function lerAnexosDasNormas(normaIds: readonly string[]): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return listarAnexosDasNormas(cliente(), normaIds, sessao.identificador);
+}
+
 /** V27 — os PDFs dos decretos de realocação, por ato. */
 export async function lerAnexosDasRealocacoes(atoIds: readonly string[]): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
   const sessao = await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
@@ -172,6 +179,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       leiOrcamentariaAnualId: true,
       decretoCreditoId: true,
       atoDeRealocacaoId: true,
+      normaOrcamentariaId: true,
       ocorrenciaDeFiscalizacaoId: true,
       ocorrenciaDeFiscalizacao: { select: { contratoId: true } },
       medicaoDaOrdem: { select: { ordem: { select: { contratoId: true } } } },
@@ -193,6 +201,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   if (a.decretoCreditoId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
   // V27 — o PDF do decreto de realocação: documento público do planejamento, como o de crédito.
   if (a.atoDeRealocacaoId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
+  // V27 — o PDF da lei publicada: documento público do planejamento.
+  if (a.normaOrcamentariaId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
   // V7 M2.1 — evidência de fiscalização é documento INTERNO do contrato: nunca vai à projeção pública.
   // ⚠️ V7 M2 U0.1 — e também não vai a quem só lê licitações: a evidência é da visão de FISCALIZAÇÃO (designado
   // vigente no contrato ou administrador da fiscalização). Antes, `CONSULTAR_LICITACOES` baixava qualquer uma.
@@ -278,6 +288,8 @@ export interface AnexarNaTela {
   readonly decretoCreditoId?: string | undefined;
   /** V27 — o PDF do decreto de transposição, remanejamento ou transferência (SAGRES §4.6). */
   readonly atoDeRealocacaoId?: string | undefined;
+  /** V27 — o PDF da lei orçamentária publicada, no cadastro da norma. */
+  readonly normaOrcamentariaId?: string | undefined;
 }
 
 export async function anexarNaTela(

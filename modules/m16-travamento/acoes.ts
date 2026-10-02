@@ -1173,6 +1173,7 @@ export type NomeDeServico =
   | "publicarVersaoDaFarmacia"
   | "informarEstoqueDaFarmacia"
   | "importarLicitacoesDoTribunal"
+  | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1897,6 +1898,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   informarEstoqueDaFarmacia: "INFORMAR_ESTOQUE_DA_FARMACIA",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
+  // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
+  informarProtocoloDaNorma: "CRIAR_LEI_DE_CREDITO",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2227,6 +2230,8 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
+  protocoloDaNorma: "puro (o protocolo do registro ou o informado depois)",
+  listarAnexosDasNormas: "leitura (os PDFs das leis no cadastro de normas, por norma — não muta)",
   listarAnexosDasRealocacoes: "leitura (os PDFs dos decretos de realocação, por ato — não muta)",
   diferencasDoProjetoParaALei: "leitura (o projeto guardado contra a dotação inicial e a receita prevista da lei aprovada — não muta)",
   lerLicitacoesDoTribunal: "puro (lê o CSV de licitações dos dados abertos do Tribunal e confere formato — não toca o banco)",

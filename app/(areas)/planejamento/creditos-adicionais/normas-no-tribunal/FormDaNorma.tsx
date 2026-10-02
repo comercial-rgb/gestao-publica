@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 import { CampoValor } from "../../../../../components/ui/Campos";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO as PAINEL, CLASSE_ROTULO as ROTULO } from "../../../../../components/ui/Formulario";
-import { registrarNormaAction, type EstadoDaNorma } from "./actions";
+import { informarProtocoloAction, registrarNormaAction, type EstadoDaNorma } from "./actions";
 
 export function FormDaNorma({ leis }: { readonly leis: readonly { readonly id: string; readonly rotulo: string }[] }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaNorma, FormData>(registrarNormaAction, {});
@@ -30,7 +30,7 @@ export function FormDaNorma({ leis }: { readonly leis: readonly { readonly id: s
         <label className="text-xs"><span className={ROTULO}>Número da lei</span><input name="numero" required inputMode="numeric" maxLength={5} className={CAMPO} /></label>
         <label className="text-xs"><span className={ROTULO}>Ano da lei</span><input name="ano" required inputMode="numeric" maxLength={4} className={CAMPO} /></label>
         <label className="text-xs"><span className={ROTULO}>Publicada em</span><input name="dataPublicacao" type="date" required className={CAMPO} /></label>
-        <label className="text-xs"><span className={ROTULO}>Protocolo no Tribunal</span><input name="protocoloTce" required placeholder="000000/00" pattern="\d{6}/\d{2}" maxLength={9} className={CAMPO} /></label>
+        <label className="text-xs"><span className={ROTULO}>Protocolo no Tribunal (se o comprovante já chegou)</span><input name="protocoloTce" placeholder="000000/00" pattern="\d{6}/\d{2}" maxLength={9} className={CAMPO} /></label>
         <label className="text-xs">
           <span className={ROTULO}>Lei de crédito do cadastro (se houver)</span>
           <select name="leiCreditoId" defaultValue="" className={CAMPO}>
@@ -52,5 +52,24 @@ export function FormDaNorma({ leis }: { readonly leis: readonly { readonly id: s
       {estado.erro !== undefined ? <p role="alert" className="mt-2 text-xs text-[color:var(--color-status-erro-fg)]">{estado.erro}</p> : null}
       {estado.sucesso !== undefined ? <p role="status" data-resultado-da-acao="registrar-norma-no-tribunal" className="mt-2 text-xs text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p> : null}
     </form>
+  );
+}
+
+/** V27 — o protocolo que chegou depois do registro da lei. */
+export function FormDoProtocolo({ normaId, lei }: { readonly normaId: string; readonly lei: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaNorma, FormData>(informarProtocoloAction, {});
+  return (
+    <details>
+      <summary className="cursor-pointer text-xs text-[color:var(--color-primary)]">Informar o protocolo</summary>
+      <form action={action} data-acao="informar-protocolo-da-norma" className="mt-2 grid gap-2" aria-label={`Informar o protocolo da lei ${lei}`}>
+        <ChaveDeComando />
+        <input type="hidden" name="normaId" value={normaId} />
+        <label className="text-xs"><span className={ROTULO}>Protocolo no Tribunal</span><input name="protocoloTce" required placeholder="000000/00" pattern="\d{6}/\d{2}" maxLength={9} className={CAMPO} /></label>
+        <label className="text-xs"><span className={ROTULO}>De onde vem (o comprovante de envio ao banco de legislação)</span><input name="fundamento" required minLength={10} className={CAMPO} /></label>
+        <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Informar"}</button>
+        {estado.erro !== undefined ? <p role="alert" className="text-xs text-[color:var(--color-status-erro-fg)]">{estado.erro}</p> : null}
+        {estado.sucesso !== undefined ? <p role="status" data-resultado-da-acao="informar-protocolo-da-norma" className="text-xs text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p> : null}
+      </form>
+    </details>
   );
 }

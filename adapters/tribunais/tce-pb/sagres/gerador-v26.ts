@@ -53,6 +53,7 @@ import { licitacaoNoTramita } from "../../../../modules/m11-licitacoes/identific
 import { lerArquivo } from "../../../../modules/m22-documentos/armazenamento.js";
 import { liquidacoesDeFolhaSemAgrupamento } from "../../../../modules/m33-folha/agrupamento-no-tribunal.js";
 import { versaoDoProjetoNaRemessa } from "../../../../modules/m02b-plurianual/projeto-da-loa.js";
+import { protocoloDaNorma } from "../../../../modules/m03-creditos/norma-no-tce.js";
 import { TIPO_CONTA_CORRENTE } from "./layout-2026v11.js";
 
 /**
@@ -508,7 +509,7 @@ const TIPO_DE_LEI: Readonly<Record<"LOA" | "CREDITO_SUPLEMENTAR" | "CREDITO_ESPE
 export async function lerFatosNormasOrcamentarias(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<NormaOrcamentariaFato[]> {
   const d = p.dia.toISOString().slice(0, 10);
   const [normas, leis, loas] = await Promise.all([
-    prisma.normaOrcamentariaNoTce.findMany({ orderBy: [{ ano: "asc" }, { numero: "asc" }] }),
+    prisma.normaOrcamentariaNoTce.findMany({ orderBy: [{ ano: "asc" }, { numero: "asc" }], include: { protocolo: { select: { protocoloTce: true } } } }),
     prisma.leiCredito.findMany({ where: { tipoCredito: { in: ["SUPLEMENTAR", "ESPECIAL"] } }, select: { numero: true, ano: true, dataPublicacao: true } }),
     prisma.aprovacaoDaLeiOrcamentaria.findMany({ select: { numeroDaLei: true, dataDaPublicacao: true, lei: { select: { exercicio: true } } } }),
   ]);
@@ -522,6 +523,8 @@ export async function lerFatosNormasOrcamentarias(prisma: PrismaClient, p: { rea
       .filter((l) => diaCivil(l.dataDaPublicacao) === d && !normas.some((n) => n.tipo === "LOA" && n.numero === l.numeroDaLei.replace(/\D/g, "")))
       .map((l) => `${l.numeroDaLei} (LOA de ${String(l.lei.exercicio)})`),
   ];
+  // V27 — a lei registrada (com o PDF) antes do comprovante do Tribunal: sem protocolo, nomeada aqui.
+  for (const n of doDia) if (protocoloDaNorma(n) === null) pendentes.push(`${n.numero}/${String(n.ano)} (registrada, sem o protocolo)`);
   if (pendentes.length > 0) {
     throw new Error(`SAGRES/NormasOrcamentarias §4.49 — lei(s) publicada(s) no dia sem o protocolo do banco de legislação do TCE-PB: ${pendentes.join(", ")}. Registre em Planejamento › Créditos adicionais › Normas no Tribunal.`);
   }
@@ -531,7 +534,7 @@ export async function lerFatosNormasOrcamentarias(prisma: PrismaClient, p: { rea
     numero: numeroComAno(n.numero, n.ano, 5, "lei"),
     data: n.dataPublicacao,
     tipo: TIPO_DE_LEI[n.tipo],
-    protocoloTCE: n.protocoloTce,
+    protocoloTCE: protocoloDaNorma(n) ?? "",
     tipoAutorizacao: n.autorizacaoPercentual ? "1" : "0",
     valor: toMoney(n.valor.toFixed(2)),
   }));

@@ -17,7 +17,7 @@ import { lerFatosEmpenhos } from "./gerador.js";
 import { gerarAtualizacaoOrcamentaria, gerarDecretosEOficios, gerarNormasOrcamentarias } from "./gerador-v26.js";
 import { criarM03Deps } from "../../../../modules/m03-creditos/adapter-prisma.js";
 import { criarDecreto, criarLei, executarCredito } from "../../../../modules/m03-creditos/servico.js";
-import { registrarNormaNoTce } from "../../../../modules/m03-creditos/norma-no-tce.js";
+import { informarProtocoloDaNorma, registrarNormaNoTce } from "../../../../modules/m03-creditos/norma-no-tce.js";
 import { anexarArquivo } from "../../../../modules/m22-documentos/anexos.js";
 
 /**
@@ -279,5 +279,20 @@ describe("V26 — as alterações orçamentárias do dia (§4.5, §4.6 com o PDF
       [54, "006512026", "2", "001235/26", "0"],
     ]);
     await expect(registrarNormaNoTce(prisma, { ...base, tipo: "CREDITO_ESPECIAL", numero: "651", protocoloTce: "009999/26", valor: "800.00", leiCreditoId: especial })).rejects.toThrow(/já está registrada com o protocolo 001235\/26/);
+  });
+
+  it("V27 §4.49: a lei registrada antes do comprovante (com o PDF) é nomeada sem protocolo; o protocolo informado depois a completa, uma vez só", async () => {
+    const { leiId } = await leiComDoisDecretos();
+    const base = { ano: 2026, dataPublicacao: D("2026-03-10"), autorizacaoPercentual: false, fundamento: "Lei 650/2026, art. 1º (publicação)", criadoPor: POR };
+    const n = await registrarNormaNoTce(prisma, { ...base, tipo: "CREDITO_SUPLEMENTAR", numero: "650", protocoloTce: "", valor: "5000.00", leiCreditoId: leiId });
+    await anexarArquivo(prisma, { nomeOriginal: "lei-650.pdf", mimeType: "application/pdf", conteudo: new TextEncoder().encode("%PDF-1.4\n% lei 650\n"), normaOrcamentariaId: n.id, criadoPor: POR });
+    await expect(gerarNormasOrcamentarias(prisma, { codUnidadeGestora: UG, dia: DIA })).rejects.toThrow(/TCE-PB: 650\/2026 \(registrada, sem o protocolo\)/);
+    await expect(registrarNormaNoTce(prisma, { ...base, tipo: "CREDITO_SUPLEMENTAR", numero: "650", protocoloTce: "001234/26", valor: "5000.00", leiCreditoId: leiId })).rejects.toThrow(/já está registrada, sem o protocolo do Tribunal \(informe-o na lista\)/);
+    await expect(informarProtocoloDaNorma(prisma, { normaId: n.id, protocoloTce: "1234/26", fundamento: "Comprovante do envio ao TCE-PB", criadoPor: POR })).rejects.toThrow(/formato 000000\/00/);
+    await informarProtocoloDaNorma(prisma, { normaId: n.id, protocoloTce: "001234/26", fundamento: "Comprovante do envio ao TCE-PB", criadoPor: POR });
+    await expect(informarProtocoloDaNorma(prisma, { normaId: n.id, protocoloTce: "001235/26", fundamento: "Comprovante do envio ao TCE-PB", criadoPor: POR })).rejects.toThrow(/já tem o protocolo 001234\/26/);
+    const l = linhas((await gerarNormasOrcamentarias(prisma, { codUnidadeGestora: UG, dia: DIA })).conteudo);
+    expect(l.map((x) => [x.slice(10, 19), x.slice(28, 37)])).toEqual([["006502026", "001234/26"]]);
+    expect(await prisma.anexo.count({ where: { normaOrcamentariaId: n.id } })).toBe(1);
   });
 });

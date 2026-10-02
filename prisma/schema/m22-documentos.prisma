@@ -141,6 +141,9 @@ model Anexo {
   /// V27 — o PDF do decreto de transposição, remanejamento ou transferência (SAGRES §4.6, tipos 12/13 na §4.5).
   atoDeRealocacaoId String?
   atoDeRealocacao   AtoDeRealocacao? @relation("AnexoDaRealocacao", fields: [atoDeRealocacaoId], references: [id])
+  /// V27 — o PDF da lei orçamentária publicada (LOA ou lei de crédito), no cadastro da norma.
+  normaOrcamentariaId String?
+  normaOrcamentaria   NormaOrcamentariaNoTce? @relation("AnexoDaNorma", fields: [normaOrcamentariaId], references: [id])
   obraId String?
   obra   Obra?   @relation(fields: [obraId], references: [id])
 

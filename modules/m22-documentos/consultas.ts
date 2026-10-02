@@ -174,6 +174,25 @@ export async function listarAnexosDosDecretos(prisma: PrismaClient, decretoIds: 
   return porDecreto;
 }
 
+/** V27 — os anexos de um conjunto de normas orçamentárias (o PDF da lei publicada), por norma. */
+export async function listarAnexosDasNormas(prisma: PrismaClient, normaIds: readonly string[], usuarioIdent: string): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  const porNorma = new Map<string, AnexoNaLista[]>();
+  if (u === null || !u.ativo || normaIds.length === 0) return porNorma;
+  const anexos = await prisma.anexo.findMany({
+    where: { normaOrcamentariaId: { in: [...normaIds] } },
+    select: { id: true, normaOrcamentariaId: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  for (const a of anexos) {
+    if (a.normaOrcamentariaId === null) continue;
+    const l = porNorma.get(a.normaOrcamentariaId) ?? [];
+    l.push({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null });
+    porNorma.set(a.normaOrcamentariaId, l);
+  }
+  return porNorma;
+}
+
 /** V27 — os anexos de um conjunto de atos de realocação (o PDF do decreto que vai ao Tribunal), por ato. */
 export async function listarAnexosDasRealocacoes(prisma: PrismaClient, atoIds: readonly string[], usuarioIdent: string): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
   const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
