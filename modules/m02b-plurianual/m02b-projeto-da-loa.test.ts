@@ -5,7 +5,7 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { cadastrarLeiOrcamentariaAnual, registrarAprovacaoDaLeiOrcamentaria } from "./lei-orcamentaria.js";
-import { capturarVersaoDoProjetoDaLoa } from "./projeto-da-loa.js";
+import { capturarVersaoDoProjetoDaLoa, diferencasDoProjetoParaALei } from "./projeto-da-loa.js";
 import {
   gerarArquivosDaV26,
   gerarPloaAcao,
@@ -131,5 +131,19 @@ describe("V26 — o projeto da LOA guardado no encaminhamento", { timeout: 12000
     await criarFichaDeTeste(prisma, { id: "f-e", exercicio: 2027, numero: 5, orgaoId: "org-02", unidadeOrcId: "uo-02", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg-12", acaoId: "aca-2001", naturezaDespesaId: "nd", fonteId: "fnt-500", exercicioFonte: 2, valorDotado: "50.00" });
     await capturar();
     await expect(gerarPloaDotacao(prisma, P)).rejects.toThrow(/só a unidade gestora de regime previdenciário pode usar: 02001\.0012\.2001 fonte 500/);
+  });
+
+  it("V27 — o que mudou do projeto para a lei: a ficha emendada e a ficha nova aparecem, a igual não; a cópia do projeto não muda", async () => {
+    const v = await capturar();
+    const antes = await prisma.dotacaoDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, select: { valor: true }, orderBy: { valor: "asc" } });
+    expect((await diferencasDoProjetoParaALei(prisma, v.id)).diferencas).toEqual([]);
+    // A Câmara emenda: uma ficha muda de valor e outra nasce (fixture do orçamento aprovado).
+    const f = await prisma.fichaOrcamentaria.findFirstOrThrow({ where: { exercicio: 2027 }, orderBy: { numero: "asc" }, select: { id: true, valorDotado: true } });
+    await prisma.fichaOrcamentaria.update({ where: { id: f.id }, data: { valorDotado: f.valorDotado.plus(250) } });
+    await criarFichaDeTeste(prisma, { id: "f-c", exercicio: 2027, numero: 3, orgaoId: "org-02", unidadeOrcId: "uo-02", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg-12", acaoId: "aca-2001", naturezaDespesaId: "nd2", fonteId: "fnt-500", valorDotado: "999.00" });
+    const d = await diferencasDoProjetoParaALei(prisma, v.id);
+    expect(d.diferencas.map((x) => `${x.tipo} ${x.projeto} ${x.lei} ${x.diferenca}`).sort()).toEqual(["DESPESA 0.00 999.00 999.00", expect.stringMatching(/^DESPESA \d+\.\d{2} \d+\.\d{2} 250\.00$/)].sort());
+    expect(Number(d.totais.despesaLei) - Number(d.totais.despesaProjeto)).toBe(1249);
+    expect(await prisma.dotacaoDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, select: { valor: true }, orderBy: { valor: "asc" } })).toEqual(antes);
   });
 });

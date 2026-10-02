@@ -2227,6 +2227,8 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
+  listarAnexosDasRealocacoes: "leitura (os PDFs dos decretos de realocação, por ato — não muta)",
+  diferencasDoProjetoParaALei: "leitura (o projeto guardado contra a dotação inicial e a receita prevista da lei aprovada — não muta)",
   lerLicitacoesDoTribunal: "puro (lê o CSV de licitações dos dados abertos do Tribunal e confere formato — não toca o banco)",
   numeroDaLicitacaoNoLeiaute: "puro (NNNNN/AAAA para as 9 posições do leiaute)",
   licitacoesCandidatas: "leitura (as licitações importadas do Tribunal compatíveis com a modalidade do processo — não muta)",

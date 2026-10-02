@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
+import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { vigenteNoCorte } from "../m02-planejamento/declaracao-da-unidade.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -156,4 +157,68 @@ export async function versaoDoProjetoNaRemessa(prisma: PrismaClient, competencia
     select: { id: true, numero: true, lei: { select: { exercicio: true } } },
   });
   return v === null ? null : { id: v.id, exercicio: v.lei.exercicio, numero: v.numero };
+}
+
+// ── V27 — o projeto contra a lei aprovada ─────────────────────────────────────────────────────────────
+
+export interface DiferencaDoProjeto {
+  readonly tipo: "DESPESA" | "RECEITA";
+  /** A classificação da linha, legível. */
+  readonly linha: string;
+  readonly projeto: string;
+  readonly lei: string;
+  readonly diferenca: string;
+}
+
+/**
+ * O que mudou entre uma versão guardada do projeto e a lei como está no orçamento (a dotação inicial das fichas e a
+ * receita prevista). Só leitura: nada é recalculado nem sobrescrito. Linha presente só de um lado aparece com zero do
+ * outro; linha igual não aparece. Os totais vêm junto.
+ */
+export async function diferencasDoProjetoParaALei(
+  prisma: PrismaClient,
+  versaoId: string
+): Promise<{ readonly diferencas: readonly DiferencaDoProjeto[]; readonly totais: { readonly despesaProjeto: string; readonly despesaLei: string; readonly receitaProjeto: string; readonly receitaLei: string } }> {
+  const v = await prisma.versaoDoProjetoDaLoa.findUnique({
+    where: { id: versaoId },
+    select: {
+      lei: { select: { exercicio: true } },
+      dotacoes: { select: { codUnidadeOrcamentaria: true, codFuncao: true, codSubfuncao: true, codPrograma: true, codAcao: true, codCategoria: true, codNatureza: true, codModalidade: true, codElemento: true, exercicioFonte: true, codFonte: true, valor: true } },
+      receitas: { select: { codNatureza: true, exercicioFonte: true, codFonte: true, tipoReceita: true, valor: true } },
+    },
+  });
+  if (v === null) throw new Error("Versão do projeto não encontrada.");
+  const [fichas, previstas] = await Promise.all([
+    prisma.fichaOrcamentaria.findMany({
+      where: { exercicio: v.lei.exercicio },
+      select: { valorDotado: true, exercicioFonte: true, unidadeOrc: { select: { codigo: true } }, funcao: { select: { codigo: true } }, subfuncao: { select: { codigo: true } }, programa: { select: { codigo: true } }, acao: { select: { codigo: true } }, naturezaDespesa: { select: { codCategoria: true, codNatureza: true, codModalidade: true, codElemento: true } }, fonte: { select: { codigo: true } } },
+    }),
+    prisma.receitaPrevista.findMany({ where: { exercicio: v.lei.exercicio }, select: { exercicioFonte: true, tipoReceita: true, valorPrevisto: true, naturezaReceita: { select: { codigo: true } }, fonte: { select: { codigo: true } } } }),
+  ]);
+  const somar = (m: Map<string, Money>, k: string, x: { toString(): string }): void => {
+    m.set(k, toMoney((m.get(k) ?? toMoney("0")).plus(x.toString())));
+  };
+  const dp = new Map<string, Money>();
+  const dl = new Map<string, Money>();
+  for (const d of v.dotacoes) somar(dp, `${d.codUnidadeOrcamentaria}.${d.codFuncao}.${d.codSubfuncao}.${d.codPrograma}.${d.codAcao} ${d.codCategoria}.${d.codNatureza}.${d.codModalidade}.${d.codElemento} fonte ${String(d.exercicioFonte)}${d.codFonte}`, d.valor);
+  for (const f of fichas) {
+    const n = f.naturezaDespesa;
+    somar(dl, `${f.unidadeOrc.codigo}.${f.funcao.codigo}.${f.subfuncao.codigo}.${f.programa.codigo}.${f.acao.codigo} ${n.codCategoria}.${n.codNatureza}.${n.codModalidade}.${n.codElemento} fonte ${String(f.exercicioFonte)}${f.fonte.codigo}`, f.valorDotado);
+  }
+  const rp = new Map<string, Money>();
+  const rl = new Map<string, Money>();
+  for (const r of v.receitas) somar(rp, `${r.codNatureza} fonte ${String(r.exercicioFonte)}${r.codFonte}${r.tipoReceita === "DEDUCAO" ? " (dedução)" : ""}`, r.valor);
+  for (const r of previstas) somar(rl, `${r.naturezaReceita.codigo} fonte ${String(r.exercicioFonte)}${r.fonte.codigo}${r.tipoReceita === "DEDUCAO" ? " (dedução)" : ""}`, r.valorPrevisto);
+  const diferencas: DiferencaDoProjeto[] = [];
+  const comparar = (tipo: "DESPESA" | "RECEITA", projeto: Map<string, Money>, lei: Map<string, Money>): void => {
+    for (const k of [...new Set([...projeto.keys(), ...lei.keys()])].sort()) {
+      const a = projeto.get(k) ?? toMoney("0");
+      const b = lei.get(k) ?? toMoney("0");
+      if (!a.equals(b)) diferencas.push({ tipo, linha: k, projeto: a.toFixed(2), lei: b.toFixed(2), diferenca: b.minus(a).toFixed(2) });
+    }
+  };
+  comparar("DESPESA", dp, dl);
+  comparar("RECEITA", rp, rl);
+  const total = (m: Map<string, Money>): string => [...m.values()].reduce((s, x) => toMoney(s.plus(x)), toMoney("0")).toFixed(2);
+  return { diferencas, totais: { despesaProjeto: total(dp), despesaLei: total(dl), receitaProjeto: total(rp), receitaLei: total(rl) } };
 }

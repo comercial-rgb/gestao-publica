@@ -45,7 +45,7 @@ import {
   type SaldoInicialFato,
   type RelacionamentoEmpenhoLicitacaoFato,
 } from "./layout-2026v11.js";
-import { diaCivil } from "../../../../packages/datas/index.js";
+import { anoCivil, diaCivil } from "../../../../packages/datas/index.js";
 import { toMoney } from "../../../../packages/contracts/index.js";
 import { conciliacaoBancaria } from "../../../../modules/m09-tesouraria/conciliacao.js";
 import { comDigito, exigirTripla } from "./gerador.js";
@@ -312,7 +312,10 @@ export async function gerarRelacionamentoEmpenhoLicitacao(prisma: PrismaClient, 
 
 /**
  * §5.13 TipoAlteracaoOrcamentaria — transcrição da tabela: o tipo do crédito da lei × a origem do recurso do decreto, e o
- * item que ANULA dotação (11). O 5 (reserva de contingência), o 12/13 (transposição) e o 14/15 (ofício) não saem daqui.
+ * item que ANULA dotação (11). O 5 (reserva de contingência) e o 14/15 (ofício) não saem daqui.
+ *
+ * V27 — o 12/13 (transposição, remanejamento, transferência — origem/destino) sai do ATO DE REALOCAÇÃO (M03), com o
+ * decreto e a lei autorizativa dele: a perna que cede é a origem (12), a que recebe é o destino (13).
  */
 const TIPO_ALTERACAO: Readonly<Record<"SUPLEMENTAR" | "ESPECIAL", Readonly<Record<string, string>>>> = {
   SUPLEMENTAR: { OPERACAO_CREDITO: "1", SUPERAVIT_FINANCEIRO: "2", EXCESSO_ARRECADACAO: "3", ANULACAO: "4" },
@@ -354,6 +357,34 @@ async function decretosDoDia(prisma: PrismaClient, dia: Date) {
   return todos.filter((x) => diaCivil(x.data) === d);
 }
 
+/** V27 — os atos de realocação do dia civil (as pernas originais) e os desfeitos no dia. */
+async function realocacoesDoDia(prisma: PrismaClient, dia: Date) {
+  const d = dia.toISOString().slice(0, 10);
+  const janela = { gte: new Date(`${d}T00:00:00.000Z`), lt: new Date(new Date(`${d}T00:00:00.000Z`).getTime() + 86_400_000 + 3 * 3_600_000) };
+  const selFicha = { select: { exercicioFonte: true, unidadeOrc: { select: { codigo: true } }, funcao: { select: { codigo: true } }, subfuncao: { select: { codigo: true } }, programa: { select: { codigo: true } }, acao: { select: { codigo: true } }, naturezaDespesa: { select: { codCategoria: true, codNatureza: true, codModalidade: true, codElemento: true } } } } as const;
+  const [atos, anulacoes] = await Promise.all([
+    prisma.atoDeRealocacao.findMany({
+      where: { data: janela },
+      orderBy: [{ ano: "asc" }, { numero: "asc" }],
+      select: {
+        id: true,
+        numero: true,
+        ano: true,
+        data: true,
+        leiNumero: true,
+        leiDataPublicacao: true,
+        anexos: { select: { id: true, sha256: true, mimeType: true }, orderBy: { criadoEm: "desc" } },
+        itens: { where: { estornoDeId: null }, orderBy: { criadoEm: "asc" }, select: { tipo: true, valor: true, fonte: { select: { codigo: true } }, ficha: selFicha } },
+      },
+    }),
+    prisma.anulacaoDeRealocacao.findMany({ where: { data: janela }, select: { data: true, ato: { select: { numero: true, ano: true } } } }),
+  ]);
+  return { atos: atos.filter((a) => diaCivil(a.data) === d), anulados: anulacoes.filter((a) => diaCivil(a.data) === d).map((a) => `${a.ato.numero}/${String(a.ato.ano)}`) };
+}
+
+/** O número da lei autorizativa como o ato o guarda ("613" ou "613/2025"): o número antes da barra. */
+const numeroDaLei = (leiNumero: string): string => leiNumero.split("/")[0] ?? leiNumero;
+
 export async function lerFatosAtualizacaoOrcamentaria(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<AtualizacaoOrcamentariaFato[]> {
   const fatos: AtualizacaoOrcamentariaFato[] = [];
   for (const dec of await decretosDoDia(prisma, p.dia)) {
@@ -392,6 +423,37 @@ export async function lerFatosAtualizacaoOrcamentaria(prisma: PrismaClient, p: {
       });
     }
   }
+  // V27 — as realocações do dia (tipos 12/13). O ato desfeito no dia não tem registro no leiaute: o arquivo fica fora,
+  // nomeando o ato, até a orientação do Tribunal (nenhum registro inventado para o desfazimento).
+  const { atos, anulados } = await realocacoesDoDia(prisma, p.dia);
+  if (anulados.length > 0) {
+    throw new Error(`SAGRES/AtualizacaoOrcamentaria §4.5 — realocação desfeita no dia (${anulados.join(", ")}): o leiaute não tem registro para desfazer transposição, remanejamento ou transferência. O arquivo do dia fica fora; consulte o Tribunal sobre como informar o desfazimento.`);
+  }
+  for (const ato of atos) {
+    const numero = numeroComAno(ato.numero, ato.ano, 5, "decreto");
+    for (const it of ato.itens) {
+      const n = it.ficha.naturezaDespesa;
+      fatos.push({
+        codUnidadeGestora: p.codUnidadeGestora,
+        competencia: ato.ano,
+        codUnidadeOrcamentaria: it.ficha.unidadeOrc.codigo,
+        codFuncao: it.ficha.funcao.codigo,
+        codSubfuncao: it.ficha.subfuncao.codigo,
+        codPrograma: it.ficha.programa.codigo,
+        codAcao: it.ficha.acao.codigo,
+        numDecretoOficio: numero,
+        tipoDecretoOficio: "1",
+        tipoAlteracao: it.tipo === "REDUCAO" ? "12" : "13",
+        codCategoriaEconomica: n.codCategoria,
+        codNaturezaDespesa: n.codNatureza,
+        codModalidadeDespesa: n.codModalidade,
+        codElementoDespesa: n.codElemento,
+        exercicioFonteRecurso: it.ficha.exercicioFonte,
+        codFonteRecurso: it.fonte.codigo,
+        valor: toMoney(it.valor.toFixed(2)),
+      });
+    }
+  }
   return fatos;
 }
 
@@ -414,8 +476,24 @@ export async function lerFatosDecretosEOficios(
     // §3: o nome do PDF é [Decreto|Oficio][UG][Número] — ex.: Oficio20113900012018.pdf.
     pdfs.push({ nome: `Decreto${p.codUnidadeGestora}${numero}.pdf`, anexoId: pdf.id, sha256: pdf.sha256 });
   }
-  if (semPdf.length > 0) {
-    throw new Error(`SAGRES/DecretoseOficios §4.6 — decreto(s) sem o PDF anexado (o Tribunal exige o arquivo de cada um): ${semPdf.join(", ")}. Anexe em Planejamento › Créditos adicionais.`);
+  // V27 — os decretos de realocação do dia, com a lei autorizativa e o PDF.
+  const semPdfRealocacao: string[] = [];
+  for (const ato of (await realocacoesDoDia(prisma, p.dia)).atos) {
+    const numero = numeroComAno(ato.numero, ato.ano, 5, "decreto");
+    const pdf = ato.anexos.find((a) => a.mimeType === "application/pdf");
+    if (pdf === undefined) {
+      semPdfRealocacao.push(`${ato.numero}/${String(ato.ano)}`);
+      continue;
+    }
+    fatos.push({ codUnidadeGestora: p.codUnidadeGestora, competencia: ato.ano, numero, numLei: numeroComAno(numeroDaLei(ato.leiNumero), anoCivil(ato.leiDataPublicacao), 4, "lei"), data: ato.data, tipo: "1" });
+    pdfs.push({ nome: `Decreto${p.codUnidadeGestora}${numero}.pdf`, anexoId: pdf.id, sha256: pdf.sha256 });
+  }
+  if (semPdf.length > 0 || semPdfRealocacao.length > 0) {
+    const partes = [
+      ...(semPdf.length > 0 ? [`de crédito ${semPdf.join(", ")} (anexe em Planejamento › Créditos adicionais)`] : []),
+      ...(semPdfRealocacao.length > 0 ? [`de realocação ${semPdfRealocacao.join(", ")} (anexe em Planejamento › Remanejamento, transposição e transferência)`] : []),
+    ];
+    throw new Error(`SAGRES/DecretoseOficios §4.6 — decreto(s) sem o PDF anexado (o Tribunal exige o arquivo de cada um): ${partes.join("; ")}.`);
   }
   return { fatos, pdfs };
 }

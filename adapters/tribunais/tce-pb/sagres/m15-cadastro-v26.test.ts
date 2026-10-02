@@ -245,7 +245,7 @@ describe("V26 — as alterações orçamentárias do dia (§4.5, §4.6 com o PDF
   it("§4.6: sem o PDF, a recusa nomeia SÓ o decreto que falta; com os dois, sai o arquivo e cada PDF com o nome do Tribunal e o conteúdo íntegro", async () => {
     const { d15, d16 } = await leiComDoisDecretos();
     await anexarArquivo(prisma, { nomeOriginal: "decreto-15.pdf", mimeType: "application/pdf", conteudo: PDF_A, decretoCreditoId: d15, criadoPor: POR });
-    await expect(gerarDecretosEOficios(prisma, { codUnidadeGestora: UG, dia: DIA })).rejects.toThrow(/sem o PDF anexado[^:]*: 16\/2026\./);
+    await expect(gerarDecretosEOficios(prisma, { codUnidadeGestora: UG, dia: DIA })).rejects.toThrow(/sem o PDF anexado[^:]*: de crédito 16\/2026 \(anexe em Planejamento › Créditos adicionais\)\./);
     await anexarArquivo(prisma, { nomeOriginal: "decreto-16.pdf", mimeType: "application/pdf", conteudo: PDF_B, decretoCreditoId: d16, criadoPor: POR });
     const [txt, ...pdfs] = await gerarDecretosEOficios(prisma, { codUnidadeGestora: UG, dia: DIA });
     expect(linhas(txt!.conteudo).map((x) => [x.length, x.slice(10, 19), x.slice(19, 27), x.slice(35, 36)])).toEqual([

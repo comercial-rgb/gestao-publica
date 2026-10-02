@@ -58,6 +58,8 @@ export const zAnexar = z
     leiOrcamentariaAnualId: z.string().min(1).optional(),
     // ── V26: o PDF do decreto de abertura de crédito, que o SAGRES exige junto (§4.6) ──
     decretoCreditoId: z.string().min(1).optional(),
+    // ── V27: o PDF do decreto de transposição, remanejamento ou transferência (SAGRES §4.6) ──
+    atoDeRealocacaoId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -78,12 +80,13 @@ export const zAnexar = z
         d.medicaoDaOrdemId,
         d.leiOrcamentariaAnualId,
         d.decretoCreditoId,
+        d.atoDeRealocacaoId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária ou decreto de crédito. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito ou decreto de realocação. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -123,6 +126,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       medicaoDaOrdemId: d.medicaoDaOrdemId ?? null,
       leiOrcamentariaAnualId: d.leiOrcamentariaAnualId ?? null,
       decretoCreditoId: d.decretoCreditoId ?? null,
+      atoDeRealocacaoId: d.atoDeRealocacaoId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -186,6 +190,7 @@ export async function anexarArquivo(
         documentoFiscalId: d.documentoFiscalId ?? null,
         leiOrcamentariaAnualId: d.leiOrcamentariaAnualId ?? null,
       decretoCreditoId: d.decretoCreditoId ?? null,
+      atoDeRealocacaoId: d.atoDeRealocacaoId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -239,6 +244,7 @@ async function escopoDoDono(
     readonly documentoFiscalId?: string | undefined;
     readonly leiOrcamentariaAnualId?: string | undefined;
     readonly decretoCreditoId?: string | undefined;
+    readonly atoDeRealocacaoId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
@@ -252,6 +258,12 @@ async function escopoDoDono(
   if (d.decretoCreditoId !== undefined) {
     const dec = await tx.decretoCredito.findUnique({ where: { id: d.decretoCreditoId }, select: { id: true } });
     if (dec === null) throw new Error(`Decreto ${d.decretoCreditoId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
+  // V27: o decreto de realocação é ato do ENTE, como o de crédito; o ato tem de existir.
+  if (d.atoDeRealocacaoId !== undefined) {
+    const ato = await tx.atoDeRealocacao.findUnique({ where: { id: d.atoDeRealocacaoId }, select: { id: true } });
+    if (ato === null) throw new Error(`Decreto de realocação ${d.atoDeRealocacaoId} não existe. Nada foi gravado.`);
     return "ENTE";
   }
   if (d.documentoFiscalId !== undefined) {

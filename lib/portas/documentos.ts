@@ -13,6 +13,7 @@ import { alcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscal
 import {
   listarAnexosDaLeiOrcamentaria,
   listarAnexosDosDecretos,
+  listarAnexosDasRealocacoes,
   listarAnexosDaPessoa,
   listarAnexosDasLiquidacoes,
   listarAnexosDoComunicado,
@@ -130,6 +131,12 @@ export async function lerAnexosDosDecretos(decretoIds: readonly string[]): Promi
   return listarAnexosDosDecretos(cliente(), decretoIds, sessao.identificador);
 }
 
+/** V27 — os PDFs dos decretos de realocação, por ato. */
+export async function lerAnexosDasRealocacoes(atoIds: readonly string[]): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return listarAnexosDasRealocacoes(cliente(), atoIds, sessao.identificador);
+}
+
 export async function lerAnexosDoComunicado(
   comunicadoId: string
 ): Promise<readonly AnexoNaLista[]> {
@@ -164,6 +171,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       guiaDeRecolhimentoId: true,
       leiOrcamentariaAnualId: true,
       decretoCreditoId: true,
+      atoDeRealocacaoId: true,
       ocorrenciaDeFiscalizacaoId: true,
       ocorrenciaDeFiscalizacao: { select: { contratoId: true } },
       medicaoDaOrdem: { select: { ordem: { select: { contratoId: true } } } },
@@ -183,6 +191,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   if (a.leiOrcamentariaAnualId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
   // V26 — o PDF do decreto de crédito: documento público do planejamento, lido no ente, como a LOA.
   if (a.decretoCreditoId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
+  // V27 — o PDF do decreto de realocação: documento público do planejamento, como o de crédito.
+  if (a.atoDeRealocacaoId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
   // V7 M2.1 — evidência de fiscalização é documento INTERNO do contrato: nunca vai à projeção pública.
   // ⚠️ V7 M2 U0.1 — e também não vai a quem só lê licitações: a evidência é da visão de FISCALIZAÇÃO (designado
   // vigente no contrato ou administrador da fiscalização). Antes, `CONSULTAR_LICITACOES` baixava qualquer uma.
@@ -266,6 +276,8 @@ export interface AnexarNaTela {
   readonly leiOrcamentariaAnualId?: string | undefined;
   /** V26 — o PDF do decreto de abertura de crédito (SAGRES §4.6). */
   readonly decretoCreditoId?: string | undefined;
+  /** V27 — o PDF do decreto de transposição, remanejamento ou transferência (SAGRES §4.6). */
+  readonly atoDeRealocacaoId?: string | undefined;
 }
 
 export async function anexarNaTela(

@@ -138,6 +138,9 @@ model Anexo {
   /// V26 — o PDF do decreto de abertura de crédito (SAGRES §4.6).
   decretoCreditoId String?
   decretoCredito   DecretoCredito? @relation("AnexoDoDecreto", fields: [decretoCreditoId], references: [id])
+  /// V27 — o PDF do decreto de transposição, remanejamento ou transferência (SAGRES §4.6, tipos 12/13 na §4.5).
+  atoDeRealocacaoId String?
+  atoDeRealocacao   AtoDeRealocacao? @relation("AnexoDaRealocacao", fields: [atoDeRealocacaoId], references: [id])
   obraId String?
   obra   Obra?   @relation(fields: [obraId], references: [id])
 

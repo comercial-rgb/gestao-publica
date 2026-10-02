@@ -18,6 +18,10 @@ import {
   type FichaParaRealocacao,
 } from "../../../../lib/portas/realocacao";
 import { dataBr } from "../../../../lib/recorte";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { EXTENSOES_ACEITAS, lerAnexosDasRealocacoes, TAMANHO_MAXIMO_BYTES, type AnexoNaLista } from "../../../../lib/portas/documentos";
+import { ListaDeAnexos } from "../../../../components/ui/ListaDeAnexos";
+import { FormAnexo } from "../../documentos/FormAnexo";
 import { FormAnularRealocacao } from "./FormAnularRealocacao";
 import { FormRealocacao } from "./FormRealocacao";
 
@@ -95,11 +99,18 @@ export default async function RealocacoesPage({
   let recorte: RecorteDaPagina;
   let atos: readonly AtoDeRealocacaoNaLista[];
   let fichas: readonly FichaParaRealocacao[];
+  let anexos: ReadonlyMap<string, readonly AnexoNaLista[]>;
+  let podeAnexar: boolean;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_PLANEJAMENTO");
     [atos, fichas] = await Promise.all([
       lerRealocacoes({ exercicio: recorte.exercicio }),
       lerFichasParaRealocacao({ exercicio: recorte.exercicio }),
+    ]);
+    // V27 — o PDF de cada decreto: vai ao Tribunal com os itens do dia (tipos 12 e 13 da atualização orçamentária).
+    [anexos, podeAnexar] = await Promise.all([
+      lerAnexosDasRealocacoes(atos.map((a) => a.id)),
+      acoesPermitidas(["ANEXAR_ARQUIVO"]).then((x) => x.has("ANEXAR_ARQUIVO")),
     ]);
   } catch (erro) {
     return (
@@ -156,6 +167,22 @@ export default async function RealocacoesPage({
           legenda={`${String(atos.length)} ato(s) · ${String(vigentes.length)} vigente(s) · valores em R$`}
         />
       )}
+
+      {atos.length > 0 ? (
+        <section className="space-y-3" aria-label="Decretos publicados (PDF)">
+          <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Decretos publicados (PDF)</h2>
+          {atos.map((a) => (
+            <div key={a.id} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-pdf-da-realocacao={a.numero}>
+              <p className="text-xs font-semibold text-[color:var(--color-ink-2)]">Decreto {a.numero} de {dataBr(a.data)}</p>
+              {(anexos.get(a.id) ?? []).some((x) => x.mimeType === "application/pdf") ? null : (
+                <p className="text-xs text-[color:var(--color-status-erro-fg)]">Sem o PDF: o decreto e os itens dele ficam fora da remessa ao Tribunal do dia em que foi publicado.</p>
+              )}
+              <ListaDeAnexos anexos={anexos.get(a.id) ?? []} />
+              {podeAnexar ? <FormAnexo dono={{ atoDeRealocacaoId: a.id }} accept={EXTENSOES_ACEITAS} tamanhoMaximoBytes={TAMANHO_MAXIMO_BYTES} rotulo={`Anexar o PDF do decreto ${a.numero}`} /> : null}
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       {atos.length > 0 ? (
         <FormAnularRealocacao

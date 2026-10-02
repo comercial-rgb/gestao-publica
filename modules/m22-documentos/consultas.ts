@@ -174,6 +174,25 @@ export async function listarAnexosDosDecretos(prisma: PrismaClient, decretoIds: 
   return porDecreto;
 }
 
+/** V27 — os anexos de um conjunto de atos de realocação (o PDF do decreto que vai ao Tribunal), por ato. */
+export async function listarAnexosDasRealocacoes(prisma: PrismaClient, atoIds: readonly string[], usuarioIdent: string): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  const porAto = new Map<string, AnexoNaLista[]>();
+  if (u === null || !u.ativo || atoIds.length === 0) return porAto;
+  const anexos = await prisma.anexo.findMany({
+    where: { atoDeRealocacaoId: { in: [...atoIds] } },
+    select: { id: true, atoDeRealocacaoId: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  for (const a of anexos) {
+    if (a.atoDeRealocacaoId === null) continue;
+    const l = porAto.get(a.atoDeRealocacaoId) ?? [];
+    l.push({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null });
+    porAto.set(a.atoDeRealocacaoId, l);
+  }
+  return porAto;
+}
+
 /**
  * V22: os anexos de um conjunto de liquidações (o comprovante do banco, a nota) — por liquidação.
  *

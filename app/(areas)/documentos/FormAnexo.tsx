@@ -41,6 +41,7 @@ export interface DonoDoAnexo {
   readonly leiOrcamentariaAnualId?: string | undefined;
   /** V26 — o PDF do decreto de abertura de crédito. */
   readonly decretoCreditoId?: string | undefined;
+  readonly atoDeRealocacaoId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -98,6 +99,7 @@ export function FormAnexo({
       {dono.leiOrcamentariaAnualId !== undefined ? (
         <input type="hidden" name="leiOrcamentariaAnualId" value={dono.leiOrcamentariaAnualId} />
       ) : null}
+      {dono.atoDeRealocacaoId !== undefined ? <input type="hidden" name="atoDeRealocacaoId" value={dono.atoDeRealocacaoId} /> : null}
       {dono.decretoCreditoId !== undefined ? (
         <input type="hidden" name="decretoCreditoId" value={dono.decretoCreditoId} />
       ) : null}

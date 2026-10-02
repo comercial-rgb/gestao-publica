@@ -10,7 +10,7 @@ import { LEIS_ORCAMENTARIAS } from "../../../../../lib/portas/recursos/leis-orca
 import { disponibilidadeDaLeiOrcamentaria, verLeiOrcamentaria } from "../../../../../lib/portas/recursos/leis-orcamentarias-dados";
 import { FormAnexo } from "../../../documentos/FormAnexo";
 import { acaoDasLeisOrcamentariasAction } from "../actions";
-import { lerVersoesDoProjeto } from "../../../../../lib/portas/projeto-da-loa";
+import { lerDiferencasDoProjeto, lerVersoesDoProjeto } from "../../../../../lib/portas/projeto-da-loa";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { FormVersaoDoProjeto } from "./VersoesDoProjeto";
 
@@ -60,6 +60,8 @@ export default async function Detalhe({
 
   // V26 — as versões do projeto encaminhado à Câmara, com a cópia dos valores (a prestação de contas lê a cópia).
   const projeto = await lerVersoesDoProjeto(id);
+  // V27 — com a lei aprovada, o que mudou do projeto para a lei (a cópia do projeto não é tocada).
+  const diferencas = await lerDiferencasDoProjeto(projeto.aprovada ? projeto.versoes.map((v) => v.id) : []);
   const secaoDoProjeto = (
     <section className="space-y-3" data-secao="versoes-do-projeto" aria-label="Versões do projeto encaminhado">
       <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Versões do projeto encaminhado à Câmara</h2>
@@ -83,6 +85,38 @@ export default async function Detalhe({
           </tbody>
         </table>
       )}
+      {projeto.versoes.map((v) => {
+        const d = diferencas.get(v.id);
+        if (d === undefined) return null;
+        return (
+          <details key={`dif-${v.id}`} className="text-xs" data-diferencas-da-versao={v.numero}>
+            <summary className="cursor-pointer text-[color:var(--color-primary)]">
+              Versão {v.numero}: o que mudou do projeto para a lei aprovada ({d.diferencas.length === 0 ? "nada" : `${String(d.diferencas.length)} linha(s)`})
+            </summary>
+            <p className="mt-1">
+              Despesa: projeto <ValorMonetario valor={d.totais.despesaProjeto} />, lei <ValorMonetario valor={d.totais.despesaLei} />. Receita (sem descontar deduções): projeto{" "}
+              <ValorMonetario valor={d.totais.receitaProjeto} />, lei <ValorMonetario valor={d.totais.receitaLei} />.
+            </p>
+            {d.diferencas.length > 0 ? (
+              <table className="mt-1 w-full">
+                <thead><tr className="text-left text-[color:var(--color-ink-2)]"><th className="pr-3">Tipo</th><th className="pr-3">Classificação</th><th className="pr-3 text-right">Projeto</th><th className="pr-3 text-right">Lei</th><th className="text-right">Diferença</th></tr></thead>
+                <tbody>
+                  {d.diferencas.slice(0, 300).map((x, k) => (
+                    <tr key={k} className="border-b border-[color:var(--color-border)]">
+                      <td className="pr-3">{x.tipo === "DESPESA" ? "Despesa" : "Receita"}</td>
+                      <td className="pr-3 font-mono">{x.linha}</td>
+                      <td className="pr-3 text-right"><ValorMonetario valor={x.projeto} /></td>
+                      <td className="pr-3 text-right"><ValorMonetario valor={x.lei} /></td>
+                      <td className="text-right"><ValorMonetario valor={x.diferenca} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : null}
+            {d.diferencas.length > 300 ? <p className="mt-1 text-[color:var(--color-ink-3)]">Mostrando as 300 primeiras linhas de {d.diferencas.length}.</p> : null}
+          </details>
+        );
+      })}
       {!projeto.aprovada && projeto.exercicio !== null && permitidas.has("CADASTRAR_LOA") ? <FormVersaoDoProjeto leiId={id} exercicio={projeto.exercicio} /> : null}
     </section>
   );

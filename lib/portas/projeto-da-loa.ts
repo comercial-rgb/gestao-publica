@@ -1,4 +1,4 @@
-import { capturarVersaoDoProjetoDaLoa, type CapturarVersaoDoProjetoDaLoaInput } from "../../modules/m02b-plurianual/projeto-da-loa.js";
+import { capturarVersaoDoProjetoDaLoa, diferencasDoProjetoParaALei, type CapturarVersaoDoProjetoDaLoaInput, type DiferencaDoProjeto } from "../../modules/m02b-plurianual/projeto-da-loa.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import { diaCivilBr } from "../../packages/datas/index.js";
 import { cliente } from "./cliente";
@@ -73,4 +73,13 @@ export async function lerVersoesDoProjeto(leiId: string): Promise<{ readonly ver
 export async function capturarVersaoPelaTela(input: Omit<CapturarVersaoDoProjetoDaLoaInput, "criadoPor">): Promise<string> {
   const r = await comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => capturarVersaoDoProjetoDaLoa(cliente(), { ...input, criadoPor }));
   return `Versão ${String(r.numero)} do projeto guardada, com a cópia da despesa, da receita, dos programas, das ações e das unidades.`;
+}
+
+/** V27 — o que mudou de cada versão do projeto para a lei aprovada (só leitura; só depois da aprovação). */
+export async function lerDiferencasDoProjeto(versaoIds: readonly string[]): Promise<ReadonlyMap<string, { readonly diferencas: readonly DiferencaDoProjeto[]; readonly totais: { readonly despesaProjeto: string; readonly despesaLei: string; readonly receitaProjeto: string; readonly receitaLei: string } }>> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  const prisma = cliente();
+  const saida = new Map<string, Awaited<ReturnType<typeof diferencasDoProjetoParaALei>>>();
+  for (const id of versaoIds) saida.set(id, await diferencasDoProjetoParaALei(prisma, id));
+  return saida;
 }

@@ -21,6 +21,8 @@ import {
 } from "./realocacao.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import { balancoOrcamentario } from "../m12-relatorios/balanco-orcamentario.js";
+import { anexarArquivo } from "../m22-documentos/anexos.js";
+import { lerFatosAtualizacaoOrcamentaria, lerFatosDecretosEOficios } from "../../adapters/tribunais/tce-pb/sagres/gerador-v26.js";
 
 /**
  * M03 V21 — A REALOCAÇÃO DE DOTAÇÃO POR LEI ESPECÍFICA (CF art. 167, VI).
@@ -449,5 +451,31 @@ describe("M03 V21 — realocação de dotação por lei específica", () => {
       anularRealocacao({ atoId: r.atoId, data: new Date("2026-04-20T15:00:00Z"), motivo: "Sem permissao para desfazer.", criadoPor: SEM_CRACHA }, deps)
     ).rejects.toThrow(/ANULAR_REALOCACAO_DE_DOTACAO/);
     expect(await prisma.anulacaoDeRealocacao.count()).toBe(0);
+  });
+
+  /**
+   * V27 — O ATO VAI AO TRIBUNAL (SAGRES §4.5 tipos 12/13, §4.6 com o PDF). Tabela "Tipo Alteração Orçamentária" do
+   * TCE-PB: 12 = transposição, remanejamento, transferências — origem; 13 = destino. A perna que cede é a origem.
+   */
+  it("V27 SAGRES: as pernas saem como 12 (origem) e 13 (destino) com o decreto; sem PDF o decreto é nomeado; o desfazimento no dia fica fora com o motivo", async () => {
+    const r = await registrarRealocacao(atoQueFecha(), deps);
+    const dia = new Date(Date.UTC(2026, 3, 10));
+    const itens = await lerFatosAtualizacaoOrcamentaria(prisma, { codUnidadeGestora: "201078", dia });
+    expect(itens.map((i) => `${i.numDecretoOficio} ${i.tipoAlteracao} ${i.codUnidadeOrcamentaria} ${i.codPrograma} ${i.codFonteRecurso} ${i.valor.toFixed(2)}`)).toEqual([
+      "000102026 12 01001 0012 500 1500.00",
+      "000102026 13 01002 0020 500 1500.00",
+      "000102026 12 01001 0012 540 700.00",
+      "000102026 13 01002 0020 540 700.00",
+    ]);
+    await expect(lerFatosDecretosEOficios(prisma, { codUnidadeGestora: "201078", dia })).rejects.toThrow(/decreto\(s\) sem o PDF anexado .*de realocação DEC-10\/2026 \(anexe em Planejamento › Remanejamento, transposição e transferência\)/);
+    await anexarArquivo(prisma, { nomeOriginal: "decreto-10.pdf", mimeType: "application/pdf", conteudo: new TextEncoder().encode("%PDF-1.4\n% decreto 10\n"), atoDeRealocacaoId: r.atoId, criadoPor: POR });
+    const dec = await lerFatosDecretosEOficios(prisma, { codUnidadeGestora: "201078", dia });
+    expect(dec.fatos.map((f) => `${f.numero} ${f.numLei} ${f.tipo}`)).toEqual(["000102026 00552026 1"]);
+    expect(dec.pdfs.map((x) => x.nome)).toEqual(["Decreto201078000102026.pdf"]);
+
+    await anularRealocacao({ atoId: r.atoId, data: new Date("2026-04-20T15:00:00Z"), motivo: "Lei revogada pela Camara em abril.", criadoPor: POR }, deps);
+    await expect(lerFatosAtualizacaoOrcamentaria(prisma, { codUnidadeGestora: "201078", dia: new Date(Date.UTC(2026, 3, 20)) })).rejects.toThrow(/realocação desfeita no dia \(DEC-10\/2026\): o leiaute não tem registro/);
+    // No dia do ato, o arquivo continua o mesmo: as pernas de estorno não entram como 12/13.
+    expect(await lerFatosAtualizacaoOrcamentaria(prisma, { codUnidadeGestora: "201078", dia })).toHaveLength(4);
   });
 });

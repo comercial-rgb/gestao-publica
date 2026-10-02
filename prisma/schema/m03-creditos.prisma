@@ -265,6 +265,8 @@ model AtoDeRealocacao {
 
   itens     ItemDeRealocacao[]
   anulacao  AnulacaoDeRealocacao?
+  /// V27 — o PDF do decreto (o SAGRES exige o arquivo junto).
+  anexos    Anexo[] @relation("AnexoDaRealocacao")
 
   criadoEm  DateTime @default(now())
   criadoPor String
