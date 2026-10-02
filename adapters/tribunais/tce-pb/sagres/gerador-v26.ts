@@ -18,6 +18,18 @@ import {
   LAYOUT_TRANSF_CONCEDIDA,
   LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA,
   type RelacionamentoLiquidacaoAgrupamentoFolhaFato,
+  LAYOUT_PLOA_ACAO,
+  LAYOUT_PLOA_DOTACAO,
+  LAYOUT_PLOA_PROGRAMA,
+  LAYOUT_PLOA_RECEITA_PREVISTA,
+  LAYOUT_PLOA_UNIDADE_ORCAMENTARIA,
+  DEPARA_ATO_JURIDICO_SAGRES,
+  DEPARA_NATUREZA_JURIDICA_SAGRES,
+  type PloaAcaoFato,
+  type PloaDotacaoFato,
+  type PloaProgramaFato,
+  type PloaReceitaPrevistaFato,
+  type PloaUnidadeOrcamentariaFato,
   DEPARA_TIPO_TRANSFERENCIA_SAGRES,
   TIPO_LANCAMENTO_ORDINARIO,
   TIPO_LANCAMENTO_ESTORNO,
@@ -40,6 +52,7 @@ import { comDigito, exigirTripla } from "./gerador.js";
 import { licitacaoNoTramita } from "../../../../modules/m11-licitacoes/identificacao-no-tramita.js";
 import { lerArquivo } from "../../../../modules/m22-documentos/armazenamento.js";
 import { liquidacoesDeFolhaSemAgrupamento } from "../../../../modules/m33-folha/agrupamento-no-tribunal.js";
+import { versaoDoProjetoNaRemessa } from "../../../../modules/m02b-plurianual/projeto-da-loa.js";
 import { TIPO_CONTA_CORRENTE } from "./layout-2026v11.js";
 
 /**
@@ -570,6 +583,118 @@ export async function gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma: Pris
   );
 }
 
+// ── §4.41 a §4.45 o projeto da LOA (anuais, no balancete do mês da remessa — o leiaute prevê setembro) ──────
+
+/** AAAA-MM da competência da remessa. */
+const mesDaRemessa = (competencia: Date): string => `${String(competencia.getUTCFullYear())}-${String(competencia.getUTCMonth() + 1).padStart(2, "0")}`;
+
+/**
+ * A versão do projeto que vai na remessa do mês (a última do Executivo), ou a recusa: sem versão registrada antes da
+ * aprovação, o projeto não sai — nunca é reconstruído da LOA aprovada.
+ */
+async function versaoDaRemessa(prisma: PrismaClient, entidade: string, competencia: Date): Promise<{ readonly id: string; readonly exercicio: number }> {
+  const v = await versaoDoProjetoNaRemessa(prisma, mesDaRemessa(competencia));
+  if (v === null) {
+    throw new Error(
+      `SAGRES/${entidade} — nenhuma versão do projeto da LOA de ${String(competencia.getUTCFullYear() + 1)} registrada para a remessa de ${mesDaRemessa(competencia)}. ` +
+        "Registre o projeto encaminhado em Planejamento › Leis orçamentárias, antes da aprovação; depois dela, o projeto não se reconstrói."
+    );
+  }
+  return v;
+}
+
+const nomeDaPloa = (p: { readonly codUnidadeGestora: string; readonly competencia: Date }, entidade: string): string =>
+  nomeArquivo({ codUnidadeGestora: p.codUnidadeGestora, periodicidade: "ANUAL", entidade, competencia: p.competencia });
+
+export async function lerFatosPloaPrograma(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<PloaProgramaFato[]> {
+  const v = await versaoDaRemessa(prisma, "PloaPrograma", p.competencia);
+  const xs = await prisma.programaDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, orderBy: { codigo: "asc" } });
+  return xs.map((x) => ({ codUnidadeGestora: p.codUnidadeGestora, codigo: x.codigo, descricao: x.descricao, descObjetivo: x.objetivo, tipoObjetivoMilenio: x.tipoObjetivoMilenio }));
+}
+export async function lerFatosPloaAcao(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<PloaAcaoFato[]> {
+  const v = await versaoDaRemessa(prisma, "PloaAcao", p.competencia);
+  const xs = await prisma.acaoDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, orderBy: { codigo: "asc" } });
+  return xs.map((x) => ({ codUnidadeGestora: p.codUnidadeGestora, codigo: x.codigo, descricao: x.descricao, tipoAcao: TIPO_ACAO_SAGRES[x.tipo], descMeta: x.descMeta, descUnidade: x.unidadeMedida }));
+}
+export async function lerFatosPloaUnidadeOrcamentaria(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<PloaUnidadeOrcamentariaFato[]> {
+  const v = await versaoDaRemessa(prisma, "PloaUnidadeOrcamentaria", p.competencia);
+  const xs = await prisma.unidadeDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, orderBy: { codigo: "asc" } });
+  return xs.map((x) => ({
+    codUnidadeGestora: p.codUnidadeGestora,
+    codigo: x.codigo,
+    descricao: x.descricao,
+    nomeSecretario: x.nomeSecretario,
+    cpfSecretario: x.cpfSecretario,
+    tipoAtoJuridico: DEPARA_ATO_JURIDICO_SAGRES[x.atoDeNomeacao],
+    tipoNaturezaJuridica: DEPARA_NATUREZA_JURIDICA_SAGRES[x.naturezaJuridica],
+  }));
+}
+export async function lerFatosPloaReceitaPrevista(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<PloaReceitaPrevistaFato[]> {
+  const v = await versaoDaRemessa(prisma, "PloaReceitaPrevista", p.competencia);
+  const xs = await prisma.receitaDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, orderBy: [{ codNatureza: "asc" }, { codFonte: "asc" }] });
+  return xs
+    .filter((x) => !toMoney(x.valor.toFixed(2)).isZero())
+    .map((x) => ({
+      codUnidadeGestora: p.codUnidadeGestora,
+      competencia: v.exercicio,
+      codReceitaOrcamentaria: x.codNatureza,
+      exercicioFonteRecurso: x.exercicioFonte,
+      codFonteRecurso: x.codFonte,
+      // A cópia só existe com o subtipo de cada dedução (a captura recusa sem ele).
+      tipoReceita: x.tipoReceita === "DEDUCAO" ? (x.tipoDeducaoSagres ?? "") : TIPO_RECEITA_SAGRES[x.tipoReceita],
+      valor: toMoney(x.valor.toFixed(2)),
+    }));
+}
+/** Na §4.42, a fonte do exercício anterior (2) só vale para unidade gestora de regime previdenciário. */
+export async function lerFatosPloaDotacao(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<PloaDotacaoFato[]> {
+  const v = await versaoDaRemessa(prisma, "PloaDotacao", p.competencia);
+  const xs = await prisma.dotacaoDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, orderBy: [{ codUnidadeOrcamentaria: "asc" }, { codPrograma: "asc" }, { codAcao: "asc" }] });
+  if (xs.some((x) => x.exercicioFonte === 2)) {
+    const ug = await prisma.unidadeGestora.findUnique({ where: { codigoTce: p.codUnidadeGestora }, select: { naturezaJuridica: true } });
+    if (ug === null || (ug.naturezaJuridica !== "AUTARQUIA_PREVIDENCIARIA" && ug.naturezaJuridica !== "FUNDO_PREVIDENCIARIO")) {
+      const linhas = xs.filter((x) => x.exercicioFonte === 2).map((x) => `${x.codUnidadeOrcamentaria}.${x.codPrograma}.${x.codAcao} fonte ${x.codFonte}`);
+      throw new Error(`SAGRES/PloaDotacao §4.42 — dotação do projeto com fonte do exercício anterior, que só a unidade gestora de regime previdenciário pode usar: ${linhas.join("; ")}.`);
+    }
+  }
+  return xs.map((x) => ({
+    codUnidadeGestora: p.codUnidadeGestora,
+    competencia: v.exercicio,
+    codUnidadeOrcamentaria: x.codUnidadeOrcamentaria,
+    codFuncao: x.codFuncao,
+    codSubfuncao: x.codSubfuncao,
+    codPrograma: x.codPrograma,
+    codAcao: x.codAcao,
+    codCategoriaEconomica: x.codCategoria,
+    codNaturezaDespesa: x.codNatureza,
+    codModalidadeDespesa: x.codModalidade,
+    codElementoDespesa: x.codElemento,
+    exercicioFonteRecurso: x.exercicioFonte,
+    codFonteRecurso: x.codFonte,
+    valor: toMoney(x.valor.toFixed(2)),
+  }));
+}
+
+export async function gerarPloaPrograma(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_PLOA_PROGRAMA, nomeDaPloa(p, "PloaPrograma"), await lerFatosPloaPrograma(prisma, p));
+}
+export async function gerarPloaAcao(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_PLOA_ACAO, nomeDaPloa(p, "PloaAcao"), await lerFatosPloaAcao(prisma, p));
+}
+export async function gerarPloaUnidadeOrcamentaria(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_PLOA_UNIDADE_ORCAMENTARIA, nomeDaPloa(p, "PloaUnidadeOrcamentaria"), await lerFatosPloaUnidadeOrcamentaria(prisma, p));
+}
+export async function gerarPloaReceitaPrevista(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_PLOA_RECEITA_PREVISTA, nomeDaPloa(p, "PloaReceitaPrevista"), await lerFatosPloaReceitaPrevista(prisma, p));
+}
+export async function gerarPloaDotacao(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly competencia: Date }): Promise<ArquivoV26> {
+  return empacotar(LAYOUT_PLOA_DOTACAO, nomeDaPloa(p, "PloaDotacao"), await lerFatosPloaDotacao(prisma, p));
+}
+
+/** O projeto entra no pacote do mês em que há versão para a remessa, ou em setembro (quando a falta é recusada nomeando). */
+async function remessaDoProjeto(prisma: PrismaClient, competencia: Date): Promise<boolean> {
+  return competencia.getUTCMonth() === 8 || (await versaoDoProjetoNaRemessa(prisma, mesDaRemessa(competencia))) !== null;
+}
+
 // ── O grupo ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -581,6 +706,7 @@ export async function gerarArquivosDaV26(
   p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date; readonly competencia: Date }
 ): Promise<{ readonly arquivos: readonly { readonly arquivo: ArquivoV26; readonly layout: LayoutArquivo<never> }[]; readonly recusas: readonly { readonly arquivo: string; readonly detalhe: string }[] }> {
   const mensal = { codUnidadeGestora: p.codUnidadeGestora, competencia: p.competencia };
+  const comProjeto = await remessaDoProjeto(prisma, p.competencia);
   const tarefas: readonly { readonly entidade: string; readonly layout: LayoutArquivo<never>; readonly gerar: () => Promise<ArquivoV26 | readonly ArquivoV26[]> }[] = [
     // Os diários das alterações orçamentárias: os itens dos decretos do dia, os decretos com o PDF, as leis com o protocolo.
     { entidade: "AtualizacaoOrcamentaria", layout: LAYOUT_ATUALIZACAO_ORCAMENTARIA as LayoutArquivo<never>, gerar: () => gerarAtualizacaoOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
@@ -593,6 +719,16 @@ export async function gerarArquivosDaV26(
     { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", layout: LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA as LayoutArquivo<never>, gerar: () => gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma, mensal) },
     { entidade: "RelacionamentoEmpenhoLicitacao", layout: LAYOUT_RELACIONAMENTO_EMPENHO_LICITACAO as LayoutArquivo<never>, gerar: () => gerarRelacionamentoEmpenhoLicitacao(prisma, mensal) },
     { entidade: "Ordenador", layout: LAYOUT_ORDENADOR as LayoutArquivo<never>, gerar: () => gerarOrdenador(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
+    // O projeto da LOA: no pacote do mês da remessa (setembro, ou o mês em que a versão foi registrada para ir).
+    ...(comProjeto
+      ? [
+          { entidade: "PloaUnidadeOrcamentaria", layout: LAYOUT_PLOA_UNIDADE_ORCAMENTARIA as LayoutArquivo<never>, gerar: () => gerarPloaUnidadeOrcamentaria(prisma, mensal) },
+          { entidade: "PloaPrograma", layout: LAYOUT_PLOA_PROGRAMA as LayoutArquivo<never>, gerar: () => gerarPloaPrograma(prisma, mensal) },
+          { entidade: "PloaAcao", layout: LAYOUT_PLOA_ACAO as LayoutArquivo<never>, gerar: () => gerarPloaAcao(prisma, mensal) },
+          { entidade: "PloaDotacao", layout: LAYOUT_PLOA_DOTACAO as LayoutArquivo<never>, gerar: () => gerarPloaDotacao(prisma, mensal) },
+          { entidade: "PloaReceitaPrevista", layout: LAYOUT_PLOA_RECEITA_PREVISTA as LayoutArquivo<never>, gerar: () => gerarPloaReceitaPrevista(prisma, mensal) },
+        ]
+      : []),
     // O balancete de janeiro: só no pacote de janeiro.
     ...(p.competencia.getUTCMonth() === 0
       ? [

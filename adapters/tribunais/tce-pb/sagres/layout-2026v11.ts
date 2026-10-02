@@ -1684,6 +1684,115 @@ export const LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA: LayoutArquivo<R
   campos: camposRelacionamentoLiquidacaoAgrupamentoFolha,
 };
 
+// ═══ V26 — o projeto da LOA (§4.41 a §4.45), anuais no balancete de setembro ══════════════════════════════
+export interface PloaAcaoFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly tipoAcao: string;
+  readonly descMeta: string;
+  readonly descUnidade: string;
+}
+const camposPloaAcao: readonly CampoLayout<PloaAcaoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "AcaoDoProjetoDaLoa.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 11, posFinal: 80, tipo: "ALFA", obrigatorio: true, origem: "AcaoDoProjetoDaLoa.descricao", extrair: (f) => f.descricao },
+  { nome: "tipoAcao", posInicial: 81, posFinal: 81, tipo: "NUMERICO", obrigatorio: true, origem: "AcaoDoProjetoDaLoa.tipo → §5.12", extrair: (f) => f.tipoAcao },
+  { nome: "descMeta", posInicial: 82, posFinal: 231, tipo: "ALFA", obrigatorio: true, origem: "AcaoDoProjetoDaLoa.descMeta (obrigatória no projeto)", extrair: (f) => f.descMeta },
+  { nome: "descUnidade", posInicial: 232, posFinal: 281, tipo: "ALFA", obrigatorio: true, origem: "AcaoDoProjetoDaLoa.unidadeMedida (obrigatória no projeto)", extrair: (f) => f.descUnidade },
+];
+export const LAYOUT_PLOA_ACAO: LayoutArquivo<PloaAcaoFato> = { entidade: "PloaAcao", periodicidade: "ANUAL", versao: VERSAO, campos: camposPloaAcao };
+
+export interface PloaDotacaoFato {
+  readonly codUnidadeGestora: string;
+  readonly competencia: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly codFuncao: string;
+  readonly codSubfuncao: string;
+  readonly codPrograma: string;
+  readonly codAcao: string;
+  readonly codCategoriaEconomica: string;
+  readonly codNaturezaDespesa: string;
+  readonly codModalidadeDespesa: string;
+  readonly codElementoDespesa: string;
+  readonly exercicioFonteRecurso: number;
+  readonly codFonteRecurso: string;
+  readonly valor: Money;
+}
+const camposPloaDotacao: readonly CampoLayout<PloaDotacaoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "competencia", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "o exercício de vigência do projeto", extrair: (f) => f.competencia },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "codFuncao", posInicial: 16, posFinal: 17, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codFuncao },
+  { nome: "codSubfuncao", posInicial: 18, posFinal: 20, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codSubfuncao },
+  { nome: "codPrograma", posInicial: 21, posFinal: 24, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codPrograma },
+  { nome: "codAcao", posInicial: 25, posFinal: 28, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codAcao },
+  { nome: "codCategoriaEconomica", posInicial: 29, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codCategoriaEconomica },
+  { nome: "codNaturezaDespesa", posInicial: 30, posFinal: 30, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codNaturezaDespesa },
+  { nome: "codModalidadeDespesa", posInicial: 31, posFinal: 32, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codModalidadeDespesa },
+  { nome: "codElementoDespesa", posInicial: 33, posFinal: 34, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codElementoDespesa },
+  { nome: "exercicioFonteRecurso", posInicial: 35, posFinal: 35, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa (2 só em UG previdenciária)", extrair: (f) => f.exercicioFonteRecurso },
+  { nome: "codFonteRecurso", posInicial: 36, posFinal: 38, tipo: "NUMERICO", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa", extrair: (f) => f.codFonteRecurso },
+  { nome: "valor", posInicial: 39, posFinal: 54, tipo: "VALOR", obrigatorio: true, origem: "DotacaoDoProjetoDaLoa.valor", extrair: (f) => f.valor },
+];
+export const LAYOUT_PLOA_DOTACAO: LayoutArquivo<PloaDotacaoFato> = { entidade: "PloaDotacao", periodicidade: "ANUAL", versao: VERSAO, campos: camposPloaDotacao };
+
+export interface PloaProgramaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly descObjetivo: string;
+  readonly tipoObjetivoMilenio: string;
+}
+const camposPloaPrograma: readonly CampoLayout<PloaProgramaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "ProgramaDoProjetoDaLoa.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 11, posFinal: 80, tipo: "ALFA", obrigatorio: true, origem: "ProgramaDoProjetoDaLoa.descricao", extrair: (f) => f.descricao },
+  { nome: "descObjetivo", posInicial: 81, posFinal: 230, tipo: "ALFA", obrigatorio: true, origem: "ProgramaDoProjetoDaLoa.objetivo", extrair: (f) => f.descObjetivo },
+  { nome: "tipoObjetivoMilenio", posInicial: 231, posFinal: 232, tipo: "NUMERICO", obrigatorio: true, origem: "ProgramaDoProjetoDaLoa (§5.27)", extrair: (f) => f.tipoObjetivoMilenio },
+];
+export const LAYOUT_PLOA_PROGRAMA: LayoutArquivo<PloaProgramaFato> = { entidade: "PloaPrograma", periodicidade: "ANUAL", versao: VERSAO, campos: camposPloaPrograma };
+
+export interface PloaReceitaPrevistaFato {
+  readonly codUnidadeGestora: string;
+  readonly competencia: number;
+  readonly codReceitaOrcamentaria: string;
+  readonly exercicioFonteRecurso: number;
+  readonly codFonteRecurso: string;
+  readonly tipoReceita: string;
+  readonly valor: Money;
+}
+const camposPloaReceitaPrevista: readonly CampoLayout<PloaReceitaPrevistaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "competencia", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "o exercício de vigência do projeto", extrair: (f) => f.competencia },
+  { nome: "codReceitaOrcamentaria", posInicial: 11, posFinal: 18, tipo: "NUMERICO", obrigatorio: true, origem: "ReceitaDoProjetoDaLoa.codNatureza", extrair: (f) => f.codReceitaOrcamentaria },
+  { nome: "exercicioFonteRecurso", posInicial: 19, posFinal: 19, tipo: "NUMERICO", obrigatorio: true, origem: "ReceitaDoProjetoDaLoa", extrair: (f) => f.exercicioFonteRecurso },
+  { nome: "codFonteRecurso", posInicial: 20, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "ReceitaDoProjetoDaLoa", extrair: (f) => f.codFonteRecurso },
+  { nome: "tipoReceita", posInicial: 23, posFinal: 23, tipo: "NUMERICO", obrigatorio: true, origem: "§5.23 (1, ou o subtipo da dedução)", extrair: (f) => f.tipoReceita },
+  { nome: "valor", posInicial: 24, posFinal: 39, tipo: "VALOR", obrigatorio: true, origem: "ReceitaDoProjetoDaLoa.valor", extrair: (f) => f.valor },
+];
+export const LAYOUT_PLOA_RECEITA_PREVISTA: LayoutArquivo<PloaReceitaPrevistaFato> = { entidade: "PloaReceitaPrevista", periodicidade: "ANUAL", versao: VERSAO, campos: camposPloaReceitaPrevista };
+
+export interface PloaUnidadeOrcamentariaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly nomeSecretario: string;
+  readonly cpfSecretario: string;
+  readonly tipoAtoJuridico: string;
+  readonly tipoNaturezaJuridica: string;
+}
+const camposPloaUnidadeOrcamentaria: readonly CampoLayout<PloaUnidadeOrcamentariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "UnidadeDoProjetoDaLoa.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 12, posFinal: 61, tipo: "ALFA", obrigatorio: true, origem: "UnidadeDoProjetoDaLoa.descricao", extrair: (f) => f.descricao },
+  { nome: "nomeSecretario", posInicial: 62, posFinal: 121, tipo: "ALFA", obrigatorio: true, origem: "UnidadeDoProjetoDaLoa.nomeSecretario", extrair: (f) => f.nomeSecretario },
+  { nome: "cpfSecretario", posInicial: 122, posFinal: 132, tipo: "NUMERICO", obrigatorio: true, origem: "UnidadeDoProjetoDaLoa.cpfSecretario", extrair: (f) => f.cpfSecretario },
+  { nome: "tipoAtoJuridico", posInicial: 133, posFinal: 133, tipo: "NUMERICO", obrigatorio: true, origem: "§5.14", extrair: (f) => f.tipoAtoJuridico },
+  { nome: "tipoNaturezaJuridica", posInicial: 134, posFinal: 134, tipo: "NUMERICO", obrigatorio: true, origem: "§5.26", extrair: (f) => f.tipoNaturezaJuridica },
+];
+export const LAYOUT_PLOA_UNIDADE_ORCAMENTARIA: LayoutArquivo<PloaUnidadeOrcamentariaFato> = { entidade: "PloaUnidadeOrcamentaria", periodicidade: "ANUAL", versao: VERSAO, campos: camposPloaUnidadeOrcamentaria };
+
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
@@ -1730,4 +1839,9 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_TRANSF_RECEBIDA,
   LAYOUT_TRANSF_CONCEDIDA,
   LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA,
+  LAYOUT_PLOA_ACAO,
+  LAYOUT_PLOA_DOTACAO,
+  LAYOUT_PLOA_PROGRAMA,
+  LAYOUT_PLOA_RECEITA_PREVISTA,
+  LAYOUT_PLOA_UNIDADE_ORCAMENTARIA,
 ] as const;

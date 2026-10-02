@@ -1,0 +1,124 @@
+// ============================================================================
+// V26 (ordem, item 2.1) — O PROJETO DA LOA COMO FOI ENCAMINHADO À CÂMARA, separado da lei aprovada.
+//
+// ⚠️ O PLANEJAMENTO VIVO NÃO É O PROJETO. As fichas e a receita prevista do exercício seguinte mudam depois do
+// encaminhamento (emendas, a lei aprovada, os créditos): ler "o cadastro atual do ano seguinte" em setembro de um ano
+// passado daria a lei, não o projeto. Por isso cada VERSÃO do projeto guarda uma CÓPIA IMUTÁVEL dos valores no
+// momento do encaminhamento — dotação, receita, programas, ações e unidades — e o SAGRES (§4.41 a §4.45) lê a cópia.
+//
+// ⚠️ A CÓPIA SÓ SE TIRA ANTES DA LEI APROVADA. Depois do registro da aprovação, a versão é recusada: reconstruir o
+// projeto a partir da LOA aprovada e apresentá-lo como original é o que a ordem proíbe. A ausência do projeto
+// histórico fica como pendência nomeada.
+//
+// O tipo da versão separa o que o Executivo mandou (ENCAMINHADO, MENSAGEM_MODIFICATIVA) do que a Câmara alterou
+// (EMENDADO_NA_CAMARA). O arquivo do Tribunal é o do projeto do Executivo: a última versão que não é emenda.
+// ============================================================================
+
+enum TipoDaVersaoDoProjetoDaLoa {
+  ENCAMINHADO
+  MENSAGEM_MODIFICATIVA
+  EMENDADO_NA_CAMARA
+}
+
+model VersaoDoProjetoDaLoa {
+  id     String               @id @default(cuid())
+  leiId  String
+  lei    LeiOrcamentariaAnual @relation("VersoesDoProjetoDaLoa", fields: [leiId], references: [id])
+  numero Int
+  tipo   TipoDaVersaoDoProjetoDaLoa
+
+  /// O dia em que esta versão chegou à Câmara (meio-dia civil).
+  dataDoEncaminhamento DateTime
+  /// A remessa ao Tribunal em que o projeto vai (AAAA-MM; o leiaute prevê o balancete de setembro).
+  competenciaDaRemessa String   @db.VarChar(7)
+  /// O documento (mensagem, ofício de encaminhamento, número do protocolo na Câmara).
+  documento            String
+  fundamento           String
+
+  dotacoes  DotacaoDoProjetoDaLoa[]
+  receitas  ReceitaDoProjetoDaLoa[]
+  programas ProgramaDoProjetoDaLoa[]
+  acoes     AcaoDoProjetoDaLoa[]
+  unidades  UnidadeDoProjetoDaLoa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([leiId, numero])
+}
+
+model DotacaoDoProjetoDaLoa {
+  id                     String               @id @default(cuid())
+  versaoId               String
+  versao                 VersaoDoProjetoDaLoa @relation(fields: [versaoId], references: [id])
+  codUnidadeOrcamentaria String               @db.VarChar(5)
+  codFuncao              String               @db.VarChar(2)
+  codSubfuncao           String               @db.VarChar(3)
+  codPrograma            String               @db.VarChar(4)
+  codAcao                String               @db.VarChar(4)
+  codCategoria           String               @db.VarChar(1)
+  codNatureza            String               @db.VarChar(1)
+  codModalidade          String               @db.VarChar(2)
+  codElemento            String               @db.VarChar(2)
+  exercicioFonte         Int
+  codFonte               String               @db.VarChar(3)
+  valor                  Decimal              @db.Decimal(18, 2)
+
+  @@index([versaoId])
+}
+
+model ReceitaDoProjetoDaLoa {
+  id                String               @id @default(cuid())
+  versaoId          String
+  versao            VersaoDoProjetoDaLoa @relation(fields: [versaoId], references: [id])
+  codNatureza       String               @db.VarChar(8)
+  exercicioFonte    Int
+  codFonte          String               @db.VarChar(3)
+  tipoReceita       TipoReceita
+  /// O subtipo da dedução (3, 4 ou 5), como o detalhe da linha o declarava no encaminhamento.
+  tipoDeducaoSagres String?              @db.VarChar(1)
+  valor             Decimal              @db.Decimal(18, 2)
+
+  @@index([versaoId])
+}
+
+model ProgramaDoProjetoDaLoa {
+  id                  String               @id @default(cuid())
+  versaoId            String
+  versao              VersaoDoProjetoDaLoa @relation(fields: [versaoId], references: [id])
+  codigo              String               @db.VarChar(4)
+  descricao           String               @db.VarChar(70)
+  objetivo            String               @db.VarChar(150)
+  tipoObjetivoMilenio String               @db.VarChar(2)
+
+  @@unique([versaoId, codigo])
+}
+
+model AcaoDoProjetoDaLoa {
+  id            String               @id @default(cuid())
+  versaoId      String
+  versao        VersaoDoProjetoDaLoa @relation(fields: [versaoId], references: [id])
+  codigo        String               @db.VarChar(4)
+  descricao     String               @db.VarChar(70)
+  tipo          TipoAcao
+  /// No projeto a meta e a unidade são obrigatórias (§4.41), diferente da ação do orçamento em execução (§4.3).
+  descMeta      String               @db.VarChar(150)
+  unidadeMedida String               @db.VarChar(50)
+
+  @@unique([versaoId, codigo])
+}
+
+model UnidadeDoProjetoDaLoa {
+  id             String               @id @default(cuid())
+  versaoId       String
+  versao         VersaoDoProjetoDaLoa @relation(fields: [versaoId], references: [id])
+  codigo         String               @db.VarChar(5)
+  descricao      String               @db.VarChar(50)
+  nomeSecretario String               @db.VarChar(60)
+  cpfSecretario  String               @db.VarChar(11)
+  atoDeNomeacao  AtoDeNomeacao
+  /// A natureza jurídica declarada da unidade no encaminhamento (§4.45 a pede, posição 134).
+  naturezaJuridica NaturezaJuridicaDaUnidade
+
+  @@unique([versaoId, codigo])
+}

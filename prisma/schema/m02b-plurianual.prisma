@@ -865,6 +865,8 @@ model LeiOrcamentariaAnual {
   ementa          String
 
   aprovacao AprovacaoDaLeiOrcamentaria?
+  /// V26 — as versões do projeto encaminhado, com a cópia dos valores (m02b-projeto-da-loa.prisma).
+  versoesDoProjeto VersaoDoProjetoDaLoa[] @relation("VersoesDoProjetoDaLoa")
   anexos    Anexo[] @relation("AnexoDaLeiOrcamentaria")
 
   criadoEm  DateTime @default(now())

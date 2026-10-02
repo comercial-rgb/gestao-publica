@@ -1155,6 +1155,7 @@ export type NomeDeServico =
   | "registrarTransferenciaEntreUgs"
   | "estornarTransferenciaEntreUgs"
   | "registrarAgrupamentoDaFolha"
+  | "capturarVersaoDoProjetoDaLoa"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1864,6 +1865,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarTransferenciaEntreUgs: "TRANSFERIR_ENTRE_CONTAS",
   estornarTransferenciaEntreUgs: "ESTORNAR_MOVIMENTO_BANCARIO",
   registrarAgrupamentoDaFolha: "LIQUIDAR_FOLHA",
+  capturarVersaoDoProjetoDaLoa: "CADASTRAR_LOA",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2229,6 +2231,17 @@ export const FORA_DO_CENSO: Record<string, string> = {
   liquidacoesDeFolhaSemAgrupamento: "leitura (as liquidações de folha do mês sem o código de agrupamento)",
   lerFatosRelacionamentoLiquidacaoAgrupamentoFolha: "leitura (SAGRES §4.39: as liquidações do mês com o código de agrupamento da folha)",
   gerarRelacionamentoLiquidacaoAgrupamentoFolha: "leitura (SAGRES §4.39: o arquivo)",
+  versaoDoProjetoNaRemessa: "leitura (a versão do projeto da LOA que vai na remessa do mês)",
+  lerFatosPloaPrograma: "leitura (SAGRES §4.43: os programas da cópia do projeto)",
+  lerFatosPloaAcao: "leitura (SAGRES §4.41: as ações da cópia do projeto)",
+  lerFatosPloaUnidadeOrcamentaria: "leitura (SAGRES §4.45: as unidades da cópia do projeto)",
+  lerFatosPloaReceitaPrevista: "leitura (SAGRES §4.44: a receita da cópia do projeto)",
+  lerFatosPloaDotacao: "leitura (SAGRES §4.42: a dotação da cópia do projeto)",
+  gerarPloaPrograma: "leitura (SAGRES §4.43: o arquivo)",
+  gerarPloaAcao: "leitura (SAGRES §4.41: o arquivo)",
+  gerarPloaUnidadeOrcamentaria: "leitura (SAGRES §4.45: o arquivo)",
+  gerarPloaReceitaPrevista: "leitura (SAGRES §4.44: o arquivo)",
+  gerarPloaDotacao: "leitura (SAGRES §4.42: o arquivo)",
   irDaFolhaNoPagamento: "leitura (o IR dos servidores a reter no pagamento de uma liquidação de folha, e como: receita ou consignação)",
   irDaFolhaPendente: "leitura (o IR dos contracheques que a liquidação cobre e que ainda não foi retido)",
   exigirIrDaFolhaAindaPendente:
