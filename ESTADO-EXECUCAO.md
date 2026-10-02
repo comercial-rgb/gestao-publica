@@ -99,6 +99,11 @@ receita reconhecida (5.10.2.62).
 As três migrations acima, o papel de runtime, `prisma/seed/m04-contas-da-receita.ts` (senão toda guia é recusada),
 e o seed da folha da demonstração (declara PREV → INSS e troca a conta sintética do INSS pela analítica).
 
+⚠️ **O ensaio da promoção da V27 (21 migrations, 251→272) foi feito SEM a V28.** Com a V28 na branch, a promoção
+precisa ser ENSAIADA DE NOVO numa cópia do banco da apresentação antes da janela: as 21 da V27 + as 3 da V28
+(272→275), o papel de runtime, o seed das contas da receita e o seed da folha da demonstração — e conferir uma
+guia de IPTU (VPA 4.1.1.2.1.02.00) e o pagamento da folha de setembro retendo a PREV. Não ensaiado nesta rodada.
+
 ### Próximo passo exato
 
 Push e publicação aguardam confirmação explícita do usuário (a ordem e o `CLAUDE.md` proíbem). Depois: as
