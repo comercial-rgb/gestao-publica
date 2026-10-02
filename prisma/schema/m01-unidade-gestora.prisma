@@ -37,6 +37,10 @@ model UnidadeGestora {
   transferenciasConcedidas TransferenciaEntreUgs[]       @relation("UgOrigemDaTransferencia")
   transferenciasRecebidas  TransferenciaEntreUgs[]       @relation("UgDestinoDaTransferencia")
   agrupamentosDaFolha      AgrupamentoDaFolhaNaLiquidacao[] @relation("AgrupamentosDaFolhaDaUg")
+  /// V27 — frota e farmácia sob a UG (M36, M37).
+  veiculos                 VeiculoDaFrota[]                 @relation("VeiculosDaUg")
+  maquinas                 MaquinaDaFrota[]                 @relation("MaquinasDaUg")
+  farmacias                FarmaciaPublica[]                @relation("FarmaciasDaUg")
 
   criadoEm  DateTime @default(now())
   criadoPor String

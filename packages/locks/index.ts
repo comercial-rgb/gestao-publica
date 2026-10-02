@@ -358,6 +358,21 @@ export const ORDEM_DOS_LOCKS = {
    * transação, depois da liquidação, da retenção de terceiros, da amortização e do precatório.
    */
   NumeradorDaReceita: 33,
+  /**
+   * V27 — O VEÍCULO OU A MÁQUINA DA FROTA (M36). A corrida é de ESTADO: duas versões simultâneas leriam o mesmo "último
+   * número de versão", e duas situações no mesmo dia leriam "nenhuma situação hoje" — o arquivo do mês sairia com a
+   * chave duplicada. Versão, situação e abastecimento travam o bem ANTES de ler.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: os atos da frota não travam mais nada depois do bem.
+   */
+  BemDaFrota: 34,
+  /**
+   * V27 — A FARMÁCIA PÚBLICA (M37). Duas versões simultâneas leriam o mesmo "último número de versão". O informe de
+   * estoque também trava a farmácia, para que o "último informe do mês" seja um só.
+   *
+   * ⚠️ ÚLTIMO POSTO: os atos da farmácia não travam mais nada depois dela.
+   */
+  FarmaciaPublica: 35,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

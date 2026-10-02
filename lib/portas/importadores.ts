@@ -36,7 +36,6 @@ const CONTA_DISP = "6.2.2.1.1.00.00";
 const CONTA_EMPENHADO = "6.2.2.1.3.01.00";
 const CONTA_LIQUIDADO = "6.2.2.1.3.03.00";
 const CONTA_PAGO = "6.2.2.1.3.04.00";
-const CONTAS_CONSIGNACAO: Readonly<Record<string, string>> = { INSS: "2.1.8.8.1.01.00", ISS: "2.1.8.8.1.02.00" };
 
 const ROTEIROS = {
   empenho: roteiroEmpenho({ creditoDisponivel: CONTA_DISP, creditoEmpenhado: CONTA_EMPENHADO }),
@@ -74,7 +73,7 @@ export async function confirmarFolha(p: { readonly nomeArquivo: string; readonly
         nomeArquivo: p.nomeArquivo, conteudo: p.conteudo, exercicio: p.exercicio,
         dataEmpenho: new Date(), dataLiquidacao: new Date(), dataPagamento: new Date(),
         contaBancaria: "CC-POC-A", contaDisponibilidade: CONTA_BANCOS,
-        contaConsignacaoPorTipo: CONTAS_CONSIGNACAO, credorCpfCnpj: p.credorCpfCnpj, criadoPor,
+        credorCpfCnpj: p.credorCpfCnpj, criadoPor,
       },
       ROTEIROS,
       criarM05DepsComAlmoxarifado(cliente())

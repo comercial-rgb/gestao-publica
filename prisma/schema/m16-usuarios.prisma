@@ -600,6 +600,14 @@ enum AcaoDoSistema {
   CADASTRAR_LOA
   /// V23 — o plano de contas do Tribunal (exigências por conta), designado para o exercício com fundamento.
   IMPORTAR_PLANO_DO_TRIBUNAL
+  /// V27 — M36 frota: cadastro de veículo e máquina, as versões e a situação no mês.
+  CADASTRAR_FROTA
+  /// V27 — M36 frota: o abastecimento (quem abastece não altera o cadastro do veículo).
+  REGISTRAR_ABASTECIMENTO
+  /// V27 — M37 farmácia pública: o cadastro e o responsável técnico.
+  CADASTRAR_FARMACIA
+  /// V27 — M37 farmácia pública: o estoque do mês.
+  INFORMAR_ESTOQUE_DA_FARMACIA
 
   // ── M02b V18/C13 — o ATO que ALTERA a peça já aprovada (TR 5.9.1.30 · 5.9.2.18).
   // UMA ação para as DUAS peças e para os dois serviços (registrar o ato, acrescentar item),

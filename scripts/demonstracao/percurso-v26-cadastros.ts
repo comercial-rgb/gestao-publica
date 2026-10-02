@@ -206,7 +206,7 @@ async function main(): Promise<void> {
     await ir(p, "/integracoes/sagres?dia=2026-09-10&mes=2026-09");
     const ts5 = await texto(p);
     afirmar(/Unidade gestora da remessa: 999101/.test(ts5), "a remessa usa a unidade 999101 cadastrada, não a de demonstração");
-    afirmar(/50 de 58/.test(ts5), "a tabela do leiaute mostra 50 de 58 tabelas geradas");
+    afirmar(/58 de 58/.test(ts5), "a tabela do leiaute mostra 58 de 58 tabelas geradas");
     const cnpjEnte = (await prisma.enteConfig.findFirst({ select: { cnpj: true } }))?.cnpj ?? "";
     const conc = (await gerarTransfConcedida(prisma, { codUnidadeGestora: "999101", cnpjGerenciadora: cnpjEnte, dia: new Date(Date.UTC(2026, 8, 10)) })).conteudo.toString("utf8").split("\r\n").filter((l) => l !== "");
     afirmar(conc.length === 2 && conc.every((l) => l.slice(6, 12) === "999102" && l.slice(12, 14) === "11"), "o arquivo das transferências concedidas de 10/09 tem as duas, para a 999102, duodécimo ordinário");

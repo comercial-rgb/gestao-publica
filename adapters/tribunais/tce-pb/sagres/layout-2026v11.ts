@@ -1793,6 +1793,167 @@ const camposPloaUnidadeOrcamentaria: readonly CampoLayout<PloaUnidadeOrcamentari
 ];
 export const LAYOUT_PLOA_UNIDADE_ORCAMENTARIA: LayoutArquivo<PloaUnidadeOrcamentariaFato> = { entidade: "PloaUnidadeOrcamentaria", periodicidade: "ANUAL", versao: VERSAO, campos: camposPloaUnidadeOrcamentaria };
 
+// ── V27 — §4.50 a §4.57: frota (M36) e farmácia pública (M37), todos mensais ─────────────────────────
+
+/** §4.52/§4.53 tipo_frota e tipo_maquina: 1 próprio, 2 locado, 3 prestação de serviços, 4 cedido. */
+export const DEPARA_TIPO_FROTA_SAGRES: Readonly<Record<"PROPRIO" | "LOCADO" | "PRESTACAO_DE_SERVICOS" | "CEDIDO", string>> = {
+  PROPRIO: "1",
+  LOCADO: "2",
+  PRESTACAO_DE_SERVICOS: "3",
+  CEDIDO: "4",
+};
+/** §4.54 tipoSituacao: a tabela "Tipo Situação Frota" do TCE-PB (domínios do Captura 2.0, desde 2025). */
+export const DEPARA_SITUACAO_FROTA_SAGRES: Readonly<Record<"EM_USO" | "EM_MANUTENCAO" | "BAIXADA" | "BAIXA_TEMPORARIA", string>> = {
+  EM_USO: "1",
+  EM_MANUTENCAO: "2",
+  BAIXADA: "3",
+  BAIXA_TEMPORARIA: "4",
+};
+/** §4.55 tipoCombustivel. */
+export const DEPARA_COMBUSTIVEL_SAGRES: Readonly<Record<"GASOLINA" | "DIESEL" | "ETANOL" | "GAS_NATURAL" | "ARLA_32" | "ELETRICIDADE", string>> = {
+  GASOLINA: "1",
+  DIESEL: "2",
+  ETANOL: "3",
+  GAS_NATURAL: "4",
+  ARLA_32: "5",
+  ELETRICIDADE: "6",
+};
+/** §4.54/§4.55 categoria: 1 veículo, 2 máquina. */
+export const CATEGORIA_FROTA_VEICULO = "1";
+export const CATEGORIA_FROTA_MAQUINA = "2";
+
+export interface PessoaDaFrotaFato {
+  readonly codUnidadeGestora: string;
+  readonly cpfcnpj: string;
+  readonly nome: string;
+}
+const camposPessoaDaFrota = (papel: string): readonly CampoLayout<PessoaDaFrotaFato>[] => [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "cpfcnpj", posInicial: 7, posFinal: 20, tipo: "DOCUMENTO", obrigatorio: true, origem: `${papel}: Pessoa.documento (no bem próprio, o CNPJ da UG)`, extrair: (f) => f.cpfcnpj },
+  { nome: "nome", posInicial: 21, posFinal: 100, tipo: "ALFA", obrigatorio: true, origem: `${papel}: VersaoDePessoa.nome vigente (no bem próprio, UnidadeGestora.nome)`, extrair: (f) => f.nome },
+];
+export const LAYOUT_PROPRIETARIO_FROTA: LayoutArquivo<PessoaDaFrotaFato> = { entidade: "ProprietarioFrota", periodicidade: "MENSAL", versao: VERSAO, campos: camposPessoaDaFrota("proprietário") };
+export const LAYOUT_LOCADOR_PRESTADOR: LayoutArquivo<PessoaDaFrotaFato> = { entidade: "LocadorPrestador", periodicidade: "MENSAL", versao: VERSAO, campos: camposPessoaDaFrota("locador") };
+
+export interface VeiculoFato {
+  readonly codUnidadeGestora: string;
+  readonly placa: string;
+  readonly anoModelo: number;
+  readonly numeroRenavan: string;
+  readonly numeroModelo: string;
+  readonly tipoFrota: string;
+  readonly cpfcnpjProprietario: string;
+  readonly cpfcnpjLocador: string | null;
+}
+const camposVeiculos: readonly CampoLayout<VeiculoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "placa", posInicial: 7, posFinal: 13, tipo: "ALFA", obrigatorio: true, origem: "VeiculoDaFrota.placa", extrair: (f) => f.placa },
+  { nome: "anoModelo", posInicial: 14, posFinal: 17, tipo: "NUMERICO", obrigatorio: true, origem: "VersaoDoVeiculo.anoModelo", extrair: (f) => f.anoModelo },
+  { nome: "numeroRenavan", posInicial: 18, posFinal: 28, tipo: "NUMERICO", obrigatorio: true, origem: "VersaoDoVeiculo.renavam", extrair: (f) => f.numeroRenavan },
+  { nome: "numero_modelo", posInicial: 29, posFinal: 34, tipo: "NUMERICO", obrigatorio: true, origem: "VersaoDoVeiculo.numeroModelo (tabela de modelos do Tribunal)", extrair: (f) => f.numeroModelo },
+  { nome: "tipo_frota", posInicial: 35, posFinal: 35, tipo: "NUMERICO", obrigatorio: true, origem: "VersaoDoVeiculo.tipoFrota (DEPARA_TIPO_FROTA_SAGRES)", extrair: (f) => f.tipoFrota },
+  { nome: "cpfcnpjProprietario", posInicial: 36, posFinal: 49, tipo: "DOCUMENTO", obrigatorio: true, origem: "VersaoDoVeiculo.proprietario (no próprio, o CNPJ da UG)", extrair: (f) => f.cpfcnpjProprietario },
+  { nome: "cpfcnpjLocador", posInicial: 50, posFinal: 63, tipo: "DOCUMENTO", obrigatorio: false, origem: "VersaoDoVeiculo.locador (locado e prestação de serviços)", extrair: (f) => f.cpfcnpjLocador },
+];
+export const LAYOUT_VEICULOS: LayoutArquivo<VeiculoFato> = { entidade: "Veiculos", periodicidade: "MENSAL", versao: VERSAO, campos: camposVeiculos };
+
+export interface MaquinaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly anoFabricacao: number;
+  readonly descricao: string;
+  readonly tipoMaquina: string;
+  readonly cpfcnpjProprietario: string;
+  readonly cpfcnpjLocador: string | null;
+}
+const camposMaquinas: readonly CampoLayout<MaquinaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 13, tipo: "ALFA", obrigatorio: true, origem: "MaquinaDaFrota.codigo", extrair: (f) => f.codigo },
+  { nome: "anofabricacao", posInicial: 14, posFinal: 17, tipo: "NUMERICO", obrigatorio: true, origem: "VersaoDaMaquina.anoFabricacao", extrair: (f) => f.anoFabricacao },
+  { nome: "descricao", posInicial: 18, posFinal: 67, tipo: "ALFA", obrigatorio: true, origem: "VersaoDaMaquina.descricao", extrair: (f) => f.descricao },
+  { nome: "tipo_maquina", posInicial: 68, posFinal: 68, tipo: "NUMERICO", obrigatorio: true, origem: "VersaoDaMaquina.tipoFrota (DEPARA_TIPO_FROTA_SAGRES)", extrair: (f) => f.tipoMaquina },
+  { nome: "cpfcnpjProprietario", posInicial: 69, posFinal: 82, tipo: "DOCUMENTO", obrigatorio: true, origem: "VersaoDaMaquina.proprietario (no próprio, o CNPJ da UG)", extrair: (f) => f.cpfcnpjProprietario },
+  { nome: "cpfcnpjLocador", posInicial: 83, posFinal: 96, tipo: "DOCUMENTO", obrigatorio: false, origem: "VersaoDaMaquina.locador (locado e prestação de serviços)", extrair: (f) => f.cpfcnpjLocador },
+];
+export const LAYOUT_MAQUINAS: LayoutArquivo<MaquinaFato> = { entidade: "Maquinas", periodicidade: "MENSAL", versao: VERSAO, campos: camposMaquinas };
+
+export interface SituacaoFrotaFato {
+  readonly codUnidadeGestora: string;
+  readonly data: Date;
+  readonly tipoSituacao: string;
+  readonly categoria: string;
+  readonly codigo: string;
+}
+const camposSituacaoFrota: readonly CampoLayout<SituacaoFrotaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "data", posInicial: 7, posFinal: 14, tipo: "DATA", obrigatorio: true, origem: "MudancaDeSituacaoDaFrota.desde (01/mm para a situação que vem do mês anterior)", extrair: (f) => f.data },
+  { nome: "tipoSituacao", posInicial: 15, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "MudancaDeSituacaoDaFrota.situacao (DEPARA_SITUACAO_FROTA_SAGRES)", extrair: (f) => f.tipoSituacao },
+  { nome: "categoria", posInicial: 16, posFinal: 16, tipo: "NUMERICO", obrigatorio: true, origem: "1 veículo, 2 máquina", extrair: (f) => f.categoria },
+  { nome: "codigo", posInicial: 17, posFinal: 23, tipo: "ALFA", obrigatorio: true, origem: "placa do veículo ou código da máquina", extrair: (f) => f.codigo },
+];
+export const LAYOUT_SITUACAO_FROTA: LayoutArquivo<SituacaoFrotaFato> = { entidade: "SituacaoFrota", periodicidade: "MENSAL", versao: VERSAO, campos: camposSituacaoFrota };
+
+export interface AbastecimentoFato {
+  readonly codUnidadeGestora: string;
+  readonly ano: number;
+  readonly mes: number;
+  readonly quantidade: Money;
+  readonly tipoCombustivel: string;
+  readonly categoria: string;
+  readonly codigo: string;
+}
+const camposAbastecimento: readonly CampoLayout<AbastecimentoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "ano", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "competência", extrair: (f) => f.ano },
+  { nome: "mes", posInicial: 11, posFinal: 12, tipo: "NUMERICO", obrigatorio: true, origem: "competência", extrair: (f) => f.mes },
+  // Numérico de 16 posições: 13 inteiros, a vírgula e 2 decimais (leiaute, "Dados numéricos para valores").
+  { nome: "quantidade", posInicial: 13, posFinal: 28, tipo: "VALOR", obrigatorio: true, origem: "soma de AbastecimentoDaFrota.quantidade não anulados no mês (0 sem abastecimento)", extrair: (f) => f.quantidade },
+  { nome: "tipoCombustivel", posInicial: 29, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "AbastecimentoDaFrota.combustivel (sem abastecimento, o combustível principal)", extrair: (f) => f.tipoCombustivel },
+  { nome: "categoria", posInicial: 30, posFinal: 30, tipo: "NUMERICO", obrigatorio: true, origem: "1 veículo, 2 máquina", extrair: (f) => f.categoria },
+  { nome: "codigo", posInicial: 31, posFinal: 37, tipo: "ALFA", obrigatorio: true, origem: "placa do veículo ou código da máquina", extrair: (f) => f.codigo },
+];
+export const LAYOUT_ABASTECIMENTO: LayoutArquivo<AbastecimentoFato> = { entidade: "Abastecimento", periodicidade: "MENSAL", versao: VERSAO, campos: camposAbastecimento };
+
+export interface FarmaciaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly endereco: string;
+  readonly nomeResponsavel: string;
+  readonly cpf: string;
+  readonly crf: string;
+}
+const camposFarmacia: readonly CampoLayout<FarmaciaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 13, tipo: "NUMERICO", obrigatorio: true, origem: "FarmaciaPublica.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 14, posFinal: 73, tipo: "ALFA", obrigatorio: true, origem: "VersaoDaFarmacia.descricao", extrair: (f) => f.descricao },
+  { nome: "endereco", posInicial: 74, posFinal: 193, tipo: "ALFA", obrigatorio: true, origem: "VersaoDaFarmacia.endereco", extrair: (f) => f.endereco },
+  { nome: "nomeResponsavel", posInicial: 194, posFinal: 253, tipo: "ALFA", obrigatorio: true, origem: "VersaoDaFarmacia.nomeResponsavel", extrair: (f) => f.nomeResponsavel },
+  { nome: "cpf", posInicial: 254, posFinal: 264, tipo: "DOCUMENTO", obrigatorio: true, origem: "VersaoDaFarmacia.cpfResponsavel", extrair: (f) => f.cpf },
+  { nome: "crf", posInicial: 265, posFinal: 274, tipo: "ALFA", obrigatorio: true, origem: "VersaoDaFarmacia.crfResponsavel", extrair: (f) => f.crf },
+];
+export const LAYOUT_FARMACIA: LayoutArquivo<FarmaciaFato> = { entidade: "Farmacia", periodicidade: "MENSAL", versao: VERSAO, campos: camposFarmacia };
+
+export interface EstoqueFarmaciaFato {
+  readonly codUnidadeGestora: string;
+  readonly mesReferencia: number;
+  readonly codigoFarmacia: string;
+  readonly codigoProduto: string;
+  readonly descricao: string;
+  readonly unidadeMedida: string;
+  readonly quantidade: Money;
+}
+const camposEstoqueFarmacia: readonly CampoLayout<EstoqueFarmaciaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "mesReferencia", posInicial: 7, posFinal: 8, tipo: "NUMERICO", obrigatorio: true, origem: "InformeDeEstoqueDaFarmacia.mes", extrair: (f) => f.mesReferencia },
+  { nome: "codigoFarmacia", posInicial: 9, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "FarmaciaPublica.codigo", extrair: (f) => f.codigoFarmacia },
+  { nome: "codigoProduto", posInicial: 16, posFinal: 29, tipo: "NUMERICO", obrigatorio: true, origem: "ItemDoInformeDeEstoque.codigoProduto", extrair: (f) => f.codigoProduto },
+  { nome: "descricao", posInicial: 30, posFinal: 89, tipo: "ALFA", obrigatorio: true, origem: "ItemDoInformeDeEstoque.descricao", extrair: (f) => f.descricao },
+  { nome: "unidade_medida", posInicial: 90, posFinal: 99, tipo: "ALFA", obrigatorio: true, origem: "ItemDoInformeDeEstoque.unidadeMedida", extrair: (f) => f.unidadeMedida },
+  { nome: "quantidade", posInicial: 100, posFinal: 115, tipo: "VALOR", obrigatorio: true, origem: "ItemDoInformeDeEstoque.quantidade (13 inteiros, vírgula, 2 decimais)", extrair: (f) => f.quantidade },
+];
+export const LAYOUT_ESTOQUE_FARMACIA: LayoutArquivo<EstoqueFarmaciaFato> = { entidade: "EstoqueFarmacia", periodicidade: "MENSAL", versao: VERSAO, campos: camposEstoqueFarmacia };
+
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
@@ -1844,4 +2005,12 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_PLOA_PROGRAMA,
   LAYOUT_PLOA_RECEITA_PREVISTA,
   LAYOUT_PLOA_UNIDADE_ORCAMENTARIA,
+  LAYOUT_PROPRIETARIO_FROTA,
+  LAYOUT_LOCADOR_PRESTADOR,
+  LAYOUT_VEICULOS,
+  LAYOUT_MAQUINAS,
+  LAYOUT_SITUACAO_FROTA,
+  LAYOUT_ABASTECIMENTO,
+  LAYOUT_FARMACIA,
+  LAYOUT_ESTOQUE_FARMACIA,
 ] as const;

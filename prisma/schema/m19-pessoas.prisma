@@ -98,6 +98,11 @@ model Pessoa {
   depositosSobResponsabilidade Deposito[] @relation("ResponsavelDeDeposito")
   /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
   bensSobResponsabilidade MovimentoDeGestaoDoBem[]      @relation("ResponsavelPeloBem")
+  /// back-relations V27 (M36 frota) — VIRTUAIS: dono e locador de veículo e de máquina.
+  veiculosComoProprietario VersaoDoVeiculo[] @relation("ProprietarioDoVeiculo")
+  veiculosComoLocador      VersaoDoVeiculo[] @relation("LocadorDoVeiculo")
+  maquinasComoProprietario VersaoDaMaquina[] @relation("ProprietarioDaMaquina")
+  maquinasComoLocador      VersaoDaMaquina[] @relation("LocadorDaMaquina")
   comissoesPatrimoniais   MembroDeComissaoPatrimonial[] @relation("MembroDeComissaoPatrimonial")
   termosPatrimoniais      TermoPatrimonial[]            @relation("ResponsavelDeTermo")
 

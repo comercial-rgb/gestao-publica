@@ -1,0 +1,24 @@
+{
+  "$comment": "Procedência da LOA 2026 de Esperança/PB. Não editar os arquivos baixados; versão nova = entrada nova. sha256 calculado nesta máquina sobre os bytes baixados.",
+  "arquivos": [
+    {
+      "arquivo": "esperanca-pb/lei-613-2025-loa-2026.pdf",
+      "fonte": "Semanário/Quinzenário Oficial do Município de Esperança/PB, edição EXTRA de 19/12/2025 — Lei Ordinária 613, de 19 de dezembro de 2025 (estima a receita e fixa a despesa para 2026)",
+      "url": "https://www.esperanca.pb.gov.br/storage/content/publicacoes/quinzenarios/2720/arquivos/695513b45a3998q4tg.pdf",
+      "versao": "Lei Ordinária 613, de 19/12/2025",
+      "dataPublicacao": "2025-12-19",
+      "vigenteDesde": "2026-01-01",
+      "dataDownload": "2026-10-01",
+      "bytes": 5150520,
+      "sha256": "43e84beacbc5f4de47949d2fac4356c40ecbca7a5f4a2bb38df0bff7e982b236",
+      "sha256Informado": "43e84beacbc5f4de47949d2fac4356c40ecbca7a5f4a2bb38df0bff7e982b236",
+      "conferencia": "o hash calculado localmente é igual ao informado na ordem V27; a data 19/12/2025 é a do cabeçalho do PDF e do art. 13 (vigência em 1º/01/2026), não a da descrição da página"
+    },
+    {
+      "arquivo": "esperanca-pb/lei-613-2025-loa-2026.txt",
+      "fonte": "texto extraído do PDF acima por `pdftotext -enc UTF-8` (poppler, MSYS2); serve à busca, o PDF é o documento",
+      "dataDownload": "2026-10-01",
+      "sha256": "b7de647abc9eac558b9ccc7a770759476b7285b06d0c4b9c4f0a1c3dd2073af0"
+    }
+  ]
+}

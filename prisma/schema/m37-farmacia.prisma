@@ -1,0 +1,94 @@
+// ============================================================================
+// V27 — M37 FARMÁCIA PÚBLICA: o que o SAGRES pede (leiaute 2026 v1.1, §4.56 Farmacia e §4.57 EstoqueFarmacia).
+//
+// A farmácia sob responsabilidade da unidade gestora, com o responsável técnico, e o estoque de medicamentos do
+// mês. Não é a assistência farmacêutica do termo de referência (dispensação, lote, validade, BNAFAR): é a base
+// que a prestação de contas exige.
+//
+// ⚠️ O ESTOQUE DO MÊS É UM INFORME. A posição vem do sistema da farmácia (arquivo) ou é digitada; um informe novo
+// para o mesmo mês SUBSTITUI o anterior na remessa, e o anterior fica na história. Nada se apaga.
+// ============================================================================
+
+model FarmaciaPublica {
+  id String @id @default(cuid())
+
+  ugId String
+  ug   UnidadeGestora @relation("FarmaciasDaUg", fields: [ugId], references: [id])
+
+  /// Código da farmácia, até 7 dígitos.
+  codigo String @db.VarChar(7)
+
+  versoes  VersaoDaFarmacia[]
+  informes InformeDeEstoqueDaFarmacia[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ugId, codigo])
+}
+
+model VersaoDaFarmacia {
+  id String @id @default(cuid())
+
+  farmaciaId String
+  farmacia   FarmaciaPublica @relation(fields: [farmaciaId], references: [id])
+  versao     Int
+
+  descricao       String  @db.VarChar(60)
+  endereco        String  @db.VarChar(120)
+  nomeResponsavel String  @db.VarChar(60)
+  cpfResponsavel  String  @db.VarChar(11)
+  crfResponsavel  String  @db.VarChar(10)
+  /// Falso encerra a farmácia a partir de `vigenteDesde`.
+  ativa           Boolean
+
+  vigenteDesde DateTime
+  fundamento   String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([farmaciaId, versao])
+}
+
+enum OrigemDoInformeDeEstoque {
+  DIGITADO
+  ARQUIVO
+}
+
+model InformeDeEstoqueDaFarmacia {
+  id String @id @default(cuid())
+
+  farmaciaId String
+  farmacia   FarmaciaPublica @relation(fields: [farmaciaId], references: [id])
+
+  ano Int
+  mes Int
+
+  origem      OrigemDoInformeDeEstoque
+  /// SHA-256 do arquivo importado (nulo no digitado).
+  arquivoHash String? @db.VarChar(64)
+  fundamento  String
+
+  itens ItemDoInformeDeEstoque[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([farmaciaId, ano, mes, criadoEm])
+}
+
+model ItemDoInformeDeEstoque {
+  id String @id @default(cuid())
+
+  informeId String
+  informe   InformeDeEstoqueDaFarmacia @relation(fields: [informeId], references: [id])
+
+  /// Código do produto, de preferência o GTIN; até 14 dígitos.
+  codigoProduto String  @db.VarChar(14)
+  descricao     String  @db.VarChar(60)
+  unidadeMedida String  @db.VarChar(10)
+  quantidade    Decimal @db.Decimal(15, 2)
+
+  @@unique([informeId, codigoProduto])
+}

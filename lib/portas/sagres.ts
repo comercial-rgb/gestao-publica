@@ -16,6 +16,7 @@ import {
   gerarArquivosDeRestos,
   gerarArquivosDeRelacionamentos,
   gerarArquivosDaV26,
+  gerarArquivosDaFrotaEFarmacia,
   gerarEstornoDespesaExtra,
   gerarReceitaExtraOuRecusa,
   gerarEstornoReceitaExtraOuRecusa,
@@ -260,12 +261,15 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   // V26 — o cadastro que dependia de decisão (programas, ações, ordenador, licitação no Tramita; em janeiro, o responsável
   // pelo sistema, a receita prevista e o saldo inicial), no mesmo regime: o arquivo, ou a recusa nomeada.
   const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
+  // V27 — frota e farmácia pública (§4.50 a §4.57), do mês, no mesmo regime.
+  const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
 
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
     ...restos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "movimento", regra: "RESTOS_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...relacionamentos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "RELACIONAMENTO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...v26.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "CADASTRO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
+    ...frota.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "CADASTRO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...("recusa" in unidades
       ? [{ arquivo: "UnidadeOrcamentaria", linha: 0, campo: "unidade", regra: "DADOS_DA_UNIDADE_AUSENTES" as const, detalhe: `${unidades.recusa} O arquivo das unidades fica FORA do pacote até a declaração.` }]
       : validarObrigatorios(LAYOUT_UNIDADE_ORCAMENTARIA, unidades.fatos)),
@@ -422,6 +426,9 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   // V26 — o mesmo grupo da prévia (a recusa nomeada fica fora, como lá).
   const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
   arquivos.push(...v26.arquivos.map((r) => r.arquivo));
+  // V27 — frota e farmácia: os mesmos da prévia.
+  const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
+  arquivos.push(...frota.arquivos.map((r) => r.arquivo));
 
   const pacote = montarPacote(
     { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora },

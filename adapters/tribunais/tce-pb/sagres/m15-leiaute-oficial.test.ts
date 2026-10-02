@@ -23,6 +23,7 @@ const NOME_NO_HTML: Readonly<Record<string, Readonly<Record<string, string>>>> =
   AtualizacaoOrcamentaria: { reservado2: "reservado" },
   // O HTML escreve o nome do campo com acento.
   TransfRecebida: { dataTransferencia: "dataTransferência" },
+  Farmacia: { descricao: "descrição", nomeResponsavel: "nomeResponsável" },
   TransfConcedida: { dataTransferencia: "dataTransferência" },
   MovimentacaoEntreContasBancarias: {
     valorTransferencia: "Valor da Transferência",

@@ -56,7 +56,6 @@ const R_ARRECADACAO = roteiroArrecadacao({
   disponibilidade: CONTA_BANCOS, variacaoAumentativa: "4.1.1.2.1.01.00",
   receitaARealizar: CONTA_RECEITA_A_REALIZAR, receitaRealizada: CONTA_RECEITA_REALIZADA,
 });
-const CONTAS_CONSIG = { INSS: "2.1.8.8.1.01.00", ISS: "2.1.8.8.1.02.00" };
 
 const fixture = (nome: string): string =>
   readFileSync(fileURLToPath(new URL(`../../docs/poc-fixtures/${nome}`, import.meta.url)), "utf8");
@@ -65,7 +64,7 @@ const paramsFolha = (conteudo: string, nome = "folha-poc-2026-11.csv") => ({
   nomeArquivo: nome, conteudo, exercicio: 2026,
   dataEmpenho: new Date(Date.UTC(2026, 10, 5, 12)), dataLiquidacao: new Date(Date.UTC(2026, 10, 6, 12)), dataPagamento: new Date(Date.UTC(2026, 10, 10, 12)),
   contaBancaria: "CC-POC-A", contaDisponibilidade: CONTA_BANCOS,
-  contaConsignacaoPorTipo: CONTAS_CONSIG, credorCpfCnpj: "12345678000195", criadoPor: POR,
+  credorCpfCnpj: "12345678000195", criadoPor: POR,
 });
 
 describe("M20 — importador de folha e tributos", () => {
@@ -121,6 +120,45 @@ describe("M20 — importador de folha e tributos", () => {
     expect(hist).toHaveLength(1);
     expect(hist[0]!.tipo).toBe("FOLHA");
     expect(hist[0]!.linhas).toBe(5);
+  });
+
+  /**
+   * V27 — a conta da consignação vem do CADASTRO. O importador tinha um mapa fixo (ISS → Garantias,
+   * INSS → a sintética); com a conta redefinida, o pagamento recusava a folha ou, antes da redefinição,
+   * deixava o ISS em Garantias. Fixture N=2: dois tipos, dois destinos.
+   */
+  it("a conta de cada consignação é a da decisão vigente do tipo (ISS e INSS redefinidos)", async () => {
+    const contas = [
+      { codigo: "2.1.8.8.1.01.08", nome: "ISS" },
+      { codigo: "2.1.8.8.1.01.02", nome: "CONTRIBUIÇÃO AO RGPS" },
+    ];
+    for (const c of contas) {
+      await prisma.contaPcasp.upsert({ where: { codigo: c.codigo }, update: {}, create: { ...c, naturezaSaldo: "CREDORA", nivel: 7, analitica: true, indicadorSuperavit: "F" } });
+    }
+    for (const [tipo, conta] of [["ISS", "2.1.8.8.1.01.08"], ["INSS", "2.1.8.8.1.01.02"]] as const) {
+      const t = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: tipo } });
+      const c = await prisma.contaPcasp.findUniqueOrThrow({ where: { codigo: conta } });
+      await prisma.decisaoDoTipoDeConsignacao.create({ data: { tipoId: t.id, ativo: true, contaPassivoId: c.id, fundamento: "PCASP do TCE-PB 2025, analítica do tributo", criadoPor: POR } });
+    }
+
+    await confirmarImportacaoFolha(prisma, paramsFolha(fixture("folha-poc-2026-11.csv")), ROTEIROS, criarM05DepsComAlmoxarifado(prisma));
+
+    const credito = async (codigo: string): Promise<number> =>
+      prisma.partidaContabil.count({ where: { tipo: "CREDITO", conta: { codigo }, lancamento: { origemTipo: "PAGAMENTO", historico: { startsWith: "Folha" } } } });
+    expect(await credito("2.1.8.8.1.01.08")).toBe(5);
+    expect(await credito("2.1.8.8.1.01.02")).toBe(5);
+    expect(await credito("2.1.8.8.1.02.00")).toBe(0);
+    expect(await credito("2.1.8.8.1.01.00")).toBe(0);
+  });
+
+  it("tipo de consignação desativado no cadastro: recusa nomeada antes de gravar qualquer fato", async () => {
+    const t = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "ISS" } });
+    await prisma.decisaoDoTipoDeConsignacao.create({ data: { tipoId: t.id, ativo: false, contaPassivoId: null, fundamento: "desativado para o teste da importação", criadoPor: POR } });
+    const antes = await prisma.empenho.count();
+    await expect(
+      confirmarImportacaoFolha(prisma, paramsFolha(fixture("folha-poc-2026-11.csv")), ROTEIROS, criarM05DepsComAlmoxarifado(prisma))
+    ).rejects.toThrow(/ISS está INATIVO/);
+    expect(await prisma.empenho.count()).toBe(antes);
   });
 
   it("IDEMPOTÊNCIA: reimportar o MESMO arquivo é recusa NOMEADA — nada duplica", async () => {

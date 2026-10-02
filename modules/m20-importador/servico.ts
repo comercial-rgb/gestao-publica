@@ -7,6 +7,7 @@ import { liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import type { RoteiroContabil } from "../m05-despesa/dominio.js";
 import { registrarArrecadacao } from "../m04-receita/servico.js";
+import { exigirTipoAtivo } from "../m07-extraorcamentario/extraorcamentario.js";
 import type { M04Deps } from "../m04-receita/ports.js";
 import type { RoteiroContabil as RoteiroReceita } from "../m04-receita/dominio.js";
 import {
@@ -77,8 +78,6 @@ export interface ConfirmarFolhaParams {
   readonly contaBancaria: string;
   /** Conta PCASP da disponibilidade (o líquido sai daqui). */
   readonly contaDisponibilidade: string;
-  /** tipoCodigo da consignação → conta PCASP do passivo (ex.: ISS → 2.1.8.8.1.02.00). */
-  readonly contaConsignacaoPorTipo: Readonly<Record<string, string>>;
   /** CPF/CNPJ sintético do credor da folha (a POC não usa CPF de servidor real). */
   readonly credorCpfCnpj: string;
   readonly criadoPor: string;
@@ -109,7 +108,15 @@ export async function confirmarImportacaoFolha(
   const tipoPorCodigo = new Map(tipos.map((t) => [t.codigo, t]));
   for (const c of codigosTipo) {
     if (!tipoPorCodigo.has(c)) throw new Error(`CONSIGNACAO-INEXISTENTE: a folha cita a consignação "${c}", que não está cadastrada. Nada foi gravado.`);
-    if (p.contaConsignacaoPorTipo[c] === undefined) throw new Error(`CONSIGNACAO-SEM-CONTA: a consignação "${c}" não tem conta de passivo configurada. Nada foi gravado.`);
+  }
+  // A conta do passivo de cada consignação é a do CADASTRO (a decisão vigente do tipo), nunca uma
+  // tabela escrita à mão: o ISS da folha ia para Garantias (2.1.8.8.1.02.00) por um mapa fixo na porta,
+  // mesmo depois de o ente redefinir a conta. Tipo inativo ou sem conta recusa antes de gravar.
+  const contaPorTipo = new Map<string, string>();
+  for (const c of codigosTipo) {
+    const tipo = await exigirTipoAtivo(prisma, tipoPorCodigo.get(c)!.id);
+    if (tipo.contaPassivo === null) throw new Error(`CONSIGNACAO-SEM-CONTA: a consignação "${c}" não tem conta de passivo no cadastro (Financeiro › Consignações). Nada foi gravado.`);
+    contaPorTipo.set(c, tipo.contaPassivo);
   }
 
   // ── O LOTE: cada linha vira empenho → liquidação → pagamento (com as suas retenções). ──
@@ -134,7 +141,7 @@ export async function confirmarImportacaoFolha(
       tipoConsignacaoId: tipoPorCodigo.get(c.tipoCodigo)!.id,
       credorConsignatario: c.tipoCodigo,
       valor: c.valor,
-      contaConsignacaoAPagar: p.contaConsignacaoPorTipo[c.tipoCodigo]!,
+      contaConsignacaoAPagar: contaPorTipo.get(c.tipoCodigo)!,
     }));
     await pagar(
       { liquidacaoId: liq.liquidacaoId, numero: `FL${sufixo}`, valor: l.valorBruto, data: p.dataPagamento, contaBancaria: p.contaBancaria, fonteId: ficha.fonteId, historico: `Folha — matricula ${l.matricula}`, criadoPor: p.criadoPor },

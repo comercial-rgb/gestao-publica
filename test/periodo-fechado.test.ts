@@ -76,7 +76,6 @@ const paramsFolha = () => ({
   dataPagamento: new Date(Date.UTC(2026, 10, 10, 12)),
   contaBancaria: "CC-POC-A",
   contaDisponibilidade: CONTA_BANCOS,
-  contaConsignacaoPorTipo: { INSS: "2.1.8.8.1.01.00", ISS: "2.1.8.8.1.02.00" },
   credorCpfCnpj: "12345678000195",
   criadoPor: POR,
 });

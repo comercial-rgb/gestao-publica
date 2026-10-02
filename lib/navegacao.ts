@@ -539,6 +539,8 @@ export const ACERVO: readonly RelatorioNav[] = [
   { href: "/patrimonio/classes-de-bens", numero: "Classes", rotulo: "Classes de Bens", descricao: "Classes de bens móveis e imóveis e a conta contábil de cada uma." },
   { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "Cadastro de bens patrimoniais: classe, aquisição, incorporação e valor." },
   { href: "/patrimonio/meus-bens", numero: "Meus bens", rotulo: "Bens sob minha responsabilidade", descricao: "Bens sob sua responsabilidade." },
+  { href: "/patrimonio/frota", numero: "Frota", rotulo: "Frota", descricao: "Veículos e máquinas, dono e locador, situação no mês e abastecimento." },
+  { href: "/patrimonio/farmacias", numero: "Farmácias", rotulo: "Farmácias Públicas", descricao: "Farmácias públicas, responsável técnico e estoque de medicamentos do mês." },
 ];
 
 /**

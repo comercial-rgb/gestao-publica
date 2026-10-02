@@ -1,0 +1,203 @@
+// ============================================================================
+// V27 — M36 FROTA: o que o SAGRES pede da frota (leiaute 2026 v1.1, §4.50 a §4.55).
+//
+// O cadastro do veículo e da máquina, quem é o dono e quem aluga, a situação de cada um ao longo do mês e os
+// litros abastecidos. Não é o bloco inteiro de frota do termo de referência (ordem de abastecimento, manutenção,
+// multas, CNH): é a base que a prestação de contas exige, com entrada pela tela, autorização e validação.
+//
+// ⚠️ DONO E LOCADOR SÃO PESSOAS DO CADASTRO ÚNICO (M19). No veículo próprio o dono é a própria unidade gestora
+// (o leiaute manda o CNPJ dela): `proprietarioId` fica nulo e o CNPJ sai da UG — nunca do município para a
+// Câmara, um fundo ou uma autarquia.
+//
+// ⚠️ APPEND-ONLY. Mudou o dono, o locador ou um dado do veículo: VERSÃO nova (o leiaute manda reenviar o
+// cadastro). Situação e abastecimento lançados errado se ANULAM com motivo; o arquivo do mês lê o que não foi
+// anulado.
+// ============================================================================
+
+/// Tipo de frota do leiaute (§4.52 tipo_frota e §4.53 tipo_maquina): 1 próprio, 2 locado, 3 prestação de
+/// serviços, 4 cedido.
+enum TipoDeFrota {
+  PROPRIO
+  LOCADO
+  PRESTACAO_DE_SERVICOS
+  CEDIDO
+}
+
+/// Tabela "Tipo Situação Frota" do TCE-PB (tabelas de domínio do Captura 2.0, vigente desde 2025).
+enum SituacaoDaFrota {
+  EM_USO
+  EM_MANUTENCAO
+  BAIXADA
+  BAIXA_TEMPORARIA
+}
+
+/// §4.55 tipoCombustivel: 1 gasolina, 2 diesel, 3 etanol, 4 gás natural (em m³), 5 Arla 32, 6 eletricidade.
+enum CombustivelDaFrota {
+  GASOLINA
+  DIESEL
+  ETANOL
+  GAS_NATURAL
+  ARLA_32
+  ELETRICIDADE
+}
+
+model VeiculoDaFrota {
+  id String @id @default(cuid())
+
+  ugId String
+  ug   UnidadeGestora @relation("VeiculosDaUg", fields: [ugId], references: [id])
+
+  /// Placa sem hífen, maiúsculas, 7 posições (padrão antigo ou Mercosul).
+  placa String @unique @db.VarChar(7)
+
+  versoes      VersaoDoVeiculo[]
+  situacoes    MudancaDeSituacaoDaFrota[]   @relation("SituacaoDoVeiculo")
+  abastecimentos AbastecimentoDaFrota[]     @relation("AbastecimentoDoVeiculo")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ugId])
+}
+
+model VersaoDoVeiculo {
+  id String @id @default(cuid())
+
+  veiculoId String
+  veiculo   VeiculoDaFrota @relation(fields: [veiculoId], references: [id])
+  versao    Int
+
+  anoModelo     Int
+  /// RENAVAM com 11 dígitos (o de 9 vem completado com zeros à esquerda, como o leiaute mostra).
+  renavam       String  @db.VarChar(11)
+  /// Número do modelo na tabela de modelos do Tribunal. Nulo enquanto não informado: o veículo fica fora do
+  /// arquivo de veículos, nomeado na prévia.
+  numeroModelo  String? @db.VarChar(6)
+  tipoFrota     TipoDeFrota
+  /// Nulo no veículo próprio: o dono é a UG.
+  proprietarioId String?
+  proprietario   Pessoa? @relation("ProprietarioDoVeiculo", fields: [proprietarioId], references: [id])
+  /// Obrigatório no locado e na prestação de serviços.
+  locadorId      String?
+  locador        Pessoa? @relation("LocadorDoVeiculo", fields: [locadorId], references: [id])
+  /// O combustível do registro sem abastecimento no mês (o leiaute exige o registro mesmo sem abastecimento).
+  combustivelPrincipal CombustivelDaFrota
+
+  vigenteDesde DateTime
+  fundamento   String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([veiculoId, versao])
+  @@index([vigenteDesde])
+}
+
+model MaquinaDaFrota {
+  id String @id @default(cuid())
+
+  ugId String
+  ug   UnidadeGestora @relation("MaquinasDaUg", fields: [ugId], references: [id])
+
+  /// Código próprio da unidade, até 7 posições.
+  codigo String @db.VarChar(7)
+
+  versoes        VersaoDaMaquina[]
+  situacoes      MudancaDeSituacaoDaFrota[] @relation("SituacaoDaMaquina")
+  abastecimentos AbastecimentoDaFrota[]     @relation("AbastecimentoDaMaquina")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ugId, codigo])
+}
+
+model VersaoDaMaquina {
+  id String @id @default(cuid())
+
+  maquinaId String
+  maquina   MaquinaDaFrota @relation(fields: [maquinaId], references: [id])
+  versao    Int
+
+  anoFabricacao Int
+  descricao     String @db.VarChar(50)
+  tipoFrota     TipoDeFrota
+  proprietarioId String?
+  proprietario   Pessoa? @relation("ProprietarioDaMaquina", fields: [proprietarioId], references: [id])
+  locadorId      String?
+  locador        Pessoa? @relation("LocadorDaMaquina", fields: [locadorId], references: [id])
+  combustivelPrincipal CombustivelDaFrota
+
+  vigenteDesde DateTime
+  fundamento   String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([maquinaId, versao])
+  @@index([vigenteDesde])
+}
+
+/// A situação a partir de um dia civil (o leiaute: a data em que a situação começou no mês).
+model MudancaDeSituacaoDaFrota {
+  id String @id @default(cuid())
+
+  veiculoId String?
+  veiculo   VeiculoDaFrota? @relation("SituacaoDoVeiculo", fields: [veiculoId], references: [id])
+  maquinaId String?
+  maquina   MaquinaDaFrota? @relation("SituacaoDaMaquina", fields: [maquinaId], references: [id])
+
+  situacao SituacaoDaFrota
+  desde    DateTime
+  motivo   String
+
+  anulacao AnulacaoDeSituacaoDaFrota?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([veiculoId, desde])
+  @@index([maquinaId, desde])
+}
+
+model AnulacaoDeSituacaoDaFrota {
+  id        String                   @id @default(cuid())
+  mudancaId String                   @unique
+  mudanca   MudancaDeSituacaoDaFrota @relation(fields: [mudancaId], references: [id])
+  motivo    String
+  criadoEm  DateTime                 @default(now())
+  criadoPor String
+}
+
+model AbastecimentoDaFrota {
+  id String @id @default(cuid())
+
+  veiculoId String?
+  veiculo   VeiculoDaFrota? @relation("AbastecimentoDoVeiculo", fields: [veiculoId], references: [id])
+  maquinaId String?
+  maquina   MaquinaDaFrota? @relation("AbastecimentoDaMaquina", fields: [maquinaId], references: [id])
+
+  data        DateTime
+  combustivel CombustivelDaFrota
+  /// Litros (m³ no gás natural), com até 2 casas — o formato do leiaute para numérico de 16 posições.
+  quantidade  Decimal @db.Decimal(15, 2)
+  /// Cupom, nota ou ordem de abastecimento.
+  documento   String
+
+  anulacao AnulacaoDeAbastecimento?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([veiculoId, data])
+  @@index([maquinaId, data])
+}
+
+model AnulacaoDeAbastecimento {
+  id              String               @id @default(cuid())
+  abastecimentoId String               @unique
+  abastecimento   AbastecimentoDaFrota @relation(fields: [abastecimentoId], references: [id])
+  motivo          String
+  criadoEm        DateTime             @default(now())
+  criadoPor       String
+}

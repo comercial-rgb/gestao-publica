@@ -184,3 +184,4 @@ export {
 
 // V26 — o cadastro que dependia de decisão.
 export * from "./gerador-v26.js";
+export * from "./gerador-frota-farmacia.js";

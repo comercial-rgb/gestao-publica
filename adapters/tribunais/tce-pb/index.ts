@@ -21,6 +21,7 @@ import {
   gerarArquivosDeRestos,
   gerarArquivosDeRelacionamentos,
   gerarArquivosDaV26,
+  gerarArquivosDaFrotaEFarmacia,
   gerarEstornoDespesaExtra,
   gerarReceitaExtraOuRecusa,
   gerarEstornoReceitaExtraOuRecusa,
@@ -184,6 +185,9 @@ export function criarExportadorTcePb(deps: DependenciasTcePb): ExportadorTribuna
       // V26 — o cadastro que dependia de decisão, a mesma lista da prévia.
       const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora, cnpjGerenciadora, dia, competencia: mesRef });
       gerados.push(...v26.arquivos.map((r) => r.arquivo));
+      // V27 — frota e farmácia pública (§4.50 a §4.57), a mesma lista da prévia.
+      const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora, cnpjGerenciadora, competencia: mesRef });
+      gerados.push(...frota.arquivos.map((r) => r.arquivo));
       // V21 — a conciliação (§4.27) entra quando a conta fecha; a recusa é da prévia, não do pacote.
       const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora, cnpjGerenciadora, competencia: mesRef });
       const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora, competencia: mesRef });

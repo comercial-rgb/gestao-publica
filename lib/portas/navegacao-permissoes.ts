@@ -147,6 +147,11 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // M18 — SAGRES Captura 2.0
   SUBMETER_CAPTURA: "integracoes",
   IMPORTAR_PLANO_DO_TRIBUNAL: "integracoes",
+  // V27 — frota e farmácia pública ficam na área do patrimônio (bens e estoque)
+  CADASTRAR_FROTA: "patrimonio",
+  REGISTRAR_ABASTECIMENTO: "patrimonio",
+  CADASTRAR_FARMACIA: "patrimonio",
+  INFORMAR_ESTOQUE_DA_FARMACIA: "patrimonio",
   // M20 — importadores de arquivo externo (folha/tributário)
   IMPORTAR_FOLHA: "integracoes",
   IMPORTAR_TRIBUTOS: "integracoes",

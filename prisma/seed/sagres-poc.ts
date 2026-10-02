@@ -57,7 +57,11 @@ const D = (mes: number, dia: number): Date => new Date(Date.UTC(2026, mes - 1, d
 // — e a `analitica: true` que ele declara abaixo plantaria no banco uma conta sintética marcada
 // como analítica, exatamente o que a conferência do roteiro existe para impedir.
 const CONTA_BANCOS = "1.1.1.1.1.19.00"; // ENT05 ITEM 3 — repontada: a antiga era INTRA OFSS
-const CONTA_CONSIGNACAO_ISS = "2.1.8.8.1.02.00"; // Consignações ISS a pagar (passivo, M07) — mesmo código do m07-retencao.test
+// ⚠️ NO PCASP DO TCE-PB 2025, 2.1.8.8.1.02.00 É "GARANTIAS", não consignação de ISS (a do ISS é
+// 2.1.8.8.1.01.08). A POC nasceu com esta conta e os fatos dela foram escriturados assim; o valor fica
+// para não reescrever a massa. Banco real redefine a conta pelo cadastro (Financeiro › Consignações) e a
+// promoção da V26 faz isso na apresentação. Memória: docs/operacao/DIVERGENCIA-ISS-200-GARANTIAS.md.
+const CONTA_CONSIGNACAO_ISS = "2.1.8.8.1.02.00";
 const CONTA_CONSIGNACAO_INSS = "2.1.8.8.1.01.00"; // Consignações INSS a pagar (usada pelo importador de folha, M20)
 // Patrimônio (M10, TRAVA-3) — contas CANÔNICAS (mesmos códigos dos testes do M10 / par do despacho 0b).
 const CONTA_IMOB_MOVEL = "1.2.3.1.1.01.00"; //   Bens móveis (veículos)

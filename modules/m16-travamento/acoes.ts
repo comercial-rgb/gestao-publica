@@ -143,6 +143,11 @@ export type AcaoDoSistema =
   | "SUBMETER_CAPTURA"
   // ── M15 — V23: o plano de contas do Tribunal, designado para o exercício com fundamento ──
   | "IMPORTAR_PLANO_DO_TRIBUNAL"
+  // ── M36/M37 — V27: frota e farmácia pública (SAGRES §4.50 a §4.57) ──
+  | "CADASTRAR_FROTA"
+  | "REGISTRAR_ABASTECIMENTO"
+  | "CADASTRAR_FARMACIA"
+  | "INFORMAR_ESTOQUE_DA_FARMACIA"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
   | "IMPORTAR_FOLHA"
   | "IMPORTAR_TRIBUTOS"
@@ -1156,6 +1161,17 @@ export type NomeDeServico =
   | "estornarTransferenciaEntreUgs"
   | "registrarAgrupamentoDaFolha"
   | "capturarVersaoDoProjetoDaLoa"
+  | "cadastrarVeiculo"
+  | "publicarVersaoDoVeiculo"
+  | "cadastrarMaquina"
+  | "publicarVersaoDaMaquina"
+  | "registrarSituacaoDaFrota"
+  | "anularSituacaoDaFrota"
+  | "registrarAbastecimento"
+  | "anularAbastecimento"
+  | "cadastrarFarmacia"
+  | "publicarVersaoDaFarmacia"
+  | "informarEstoqueDaFarmacia"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1866,6 +1882,18 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   estornarTransferenciaEntreUgs: "ESTORNAR_MOVIMENTO_BANCARIO",
   registrarAgrupamentoDaFolha: "LIQUIDAR_FOLHA",
   capturarVersaoDoProjetoDaLoa: "CADASTRAR_LOA",
+  // ── M36/M37 — V27: frota e farmácia pública ──
+  cadastrarVeiculo: "CADASTRAR_FROTA",
+  publicarVersaoDoVeiculo: "CADASTRAR_FROTA",
+  cadastrarMaquina: "CADASTRAR_FROTA",
+  publicarVersaoDaMaquina: "CADASTRAR_FROTA",
+  registrarSituacaoDaFrota: "CADASTRAR_FROTA",
+  anularSituacaoDaFrota: "CADASTRAR_FROTA",
+  registrarAbastecimento: "REGISTRAR_ABASTECIMENTO",
+  anularAbastecimento: "REGISTRAR_ABASTECIMENTO",
+  cadastrarFarmacia: "CADASTRAR_FARMACIA",
+  publicarVersaoDaFarmacia: "CADASTRAR_FARMACIA",
+  informarEstoqueDaFarmacia: "INFORMAR_ESTOQUE_DA_FARMACIA",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2195,6 +2223,17 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
+  lerInformeDeEstoque: "puro (lê o arquivo de estoque da farmácia e confere cada linha — não toca o banco)",
+  gerarArquivosDaFrotaEFarmacia: "leitura (os TXT SAGRES §4.50 a §4.57, ou a recusa nomeada por arquivo — não muta)",
+  lerFatosProprietarioFrota: "leitura (os donos dos bens cadastrados ou alterados no mês, para o §4.50 — não muta)",
+  lerFatosLocadorPrestador: "leitura (os locadores dos bens cadastrados ou alterados no mês, para o §4.51 — não muta)",
+  lerFatosVeiculos: "leitura (as versões de veículo que começam no mês, para o §4.52, ou a recusa sem o modelo — não muta)",
+  lerFatosMaquinas: "leitura (as versões de máquina que começam no mês, para o §4.53 — não muta)",
+  lerFatosSituacaoFrota: "leitura (a situação de cada bem no dia 1 e as mudanças do mês, para o §4.54 — não muta)",
+  lerFatosAbastecimento: "leitura (os litros do mês por bem e combustível, com o registro zerado, para o §4.55 — não muta)",
+  lerFatosFarmacia: "leitura (as farmácias ativas no fim do mês, para o §4.56 — não muta)",
+  lerFatosEstoqueFarmacia: "leitura (o último informe de estoque do mês de cada farmácia, para o §4.57, ou a recusa — não muta)",
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
   fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
   ordenadorNaData: "leitura (o ordenador designado vigente na data, para a unidade da ficha; recusa a ambiguidade)",

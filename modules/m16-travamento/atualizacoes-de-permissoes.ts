@@ -1299,6 +1299,36 @@ export function derivarPlanoDoTribunal(
   return saida;
 }
 
+/**
+ * V27 — FROTA E FARMÁCIA PÚBLICA (SAGRES §4.50 a §4.57) chegaram com quatro ações.
+ *
+ * CADASTRAR_FROTA e REGISTRAR_ABASTECIMENTO vão a quem já CADASTRA BEM (o setor do patrimônio guarda o veículo e a
+ * máquina); CADASTRAR_FARMACIA e INFORMAR_ESTOQUE_DA_FARMACIA vão a quem já registra entrada no ALMOXARIFADO (o
+ * setor que responde por estoque). Sempre no mesmo escopo. Idempotente por construção.
+ */
+export function derivarFrotaEFarmacia(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const regras: readonly { readonly origem: AcaoDoSistema; readonly novas: readonly AcaoDoSistema[] }[] = [
+    { origem: "CADASTRAR_BEM", novas: ["CADASTRAR_FROTA", "REGISTRAR_ABASTECIMENTO"] },
+    { origem: "REGISTRAR_ENTRADA_ALMOXARIFADO", novas: ["CADASTRAR_FARMACIA", "INFORMAR_ESTOQUE_DA_FARMACIA"] },
+  ];
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    for (const regra of regras) {
+      for (const origem of perfil.permissoes.filter((p) => p.acao === regra.origem)) {
+        for (const acao of regra.novas) {
+          if (perfil.permissoes.some((p) => p.acao === acao && p.unidadeOrcId === origem.unidadeOrcId)) continue;
+          if (saida.some((c) => c.perfilId === perfil.id && c.acao === acao && c.unidadeOrcId === origem.unidadeOrcId)) continue;
+          saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: origem.unidadeOrcId });
+        }
+      }
+    }
+  }
+  return saida;
+}
+
 export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
   {
     versao: 1,
@@ -1792,6 +1822,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "a receita extra aponta a retencao e o recolhimento aponta a receita extra. Vem com a acao " +
       "IMPORTAR_PLANO_DO_TRIBUNAL, concedida a quem ja submete a prestacao de contas ao Tribunal, no mesmo escopo.",
     derivar: derivarPlanoDoTribunal,
+  },
+  {
+    versao: 42,
+    nome: "frota-e-farmacia",
+    descricao:
+      "A frota e a farmacia publica passaram a ser cadastradas (V27) para a prestacao de contas ao Tribunal: veiculos, " +
+      "maquinas, situacao e abastecimento; farmacias e o estoque do mes. CADASTRAR_FROTA e REGISTRAR_ABASTECIMENTO vao a " +
+      "quem ja cadastra bem; CADASTRAR_FARMACIA e INFORMAR_ESTOQUE_DA_FARMACIA, a quem ja registra entrada no " +
+      "almoxarifado. Sempre no mesmo escopo.",
+    derivar: derivarFrotaEFarmacia,
   },
 ];
 

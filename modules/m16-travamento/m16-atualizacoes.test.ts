@@ -398,6 +398,8 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 40, previa: 0, aplicada: false },
       // V23 — prévia 0 na instalação limpa: IMPORTAR_PLANO_DO_TRIBUNAL chegou a ACOES_DO_ENTE pelo bootstrap.
       { versao: 41, previa: 0, aplicada: false },
+      // V27 — prévia 0 na instalação limpa: as quatro ações da frota e da farmácia chegaram a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 42, previa: 0, aplicada: false },
     ]);
   });
 
