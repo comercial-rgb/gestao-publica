@@ -21,6 +21,10 @@ import {
   type RecorteDaPagina,
 } from "../../../../lib/portas/contexto";
 import { dataBr } from "../../../../lib/recorte";
+import { EXTENSOES_ACEITAS, lerAnexosDosDecretos, TAMANHO_MAXIMO_BYTES, type AnexoNaLista } from "../../../../lib/portas/documentos";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { ListaDeAnexos } from "../../../../components/ui/ListaDeAnexos";
+import { FormAnexo } from "../../documentos/FormAnexo";
 import { FormEncerrarDecreto } from "./FormEncerrarDecreto";
 import { FormDecretoCredito } from "./FormDecretoCredito";
 import { FormLeiCredito } from "./FormLeiCredito";
@@ -56,12 +60,19 @@ export default async function CreditosAdicionaisPage({
   // ficha, e a fonte da perna É a da ficha (o adapter do M03 recusa divergência). Uma segunda
   // leitura de fichas só para o form abriria a porta a as duas discordarem.
   let fichas: readonly LinhaQdd[];
+  let anexos: ReadonlyMap<string, readonly AnexoNaLista[]>;
+  let podeAnexar: boolean;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_PLANEJAMENTO");
     [decretos, leis, fichas] = await Promise.all([
       lerDecretos({ ano: recorte.exercicio }),
       lerLeis({ ano: recorte.exercicio }),
       lerQdd({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo }),
+    ]);
+    // V26 — o PDF de cada decreto (vai ao Tribunal com a remessa do dia da publicação).
+    [anexos, podeAnexar] = await Promise.all([
+      lerAnexosDosDecretos(decretos.map((d) => d.id)),
+      acoesPermitidas(["ANEXAR_ARQUIVO"]).then((p) => p.has("ANEXAR_ARQUIVO")),
     ]);
   } catch (erro) {
     return (
@@ -102,6 +113,13 @@ export default async function CreditosAdicionaisPage({
         são somados automaticamente à <strong>dotação atualizada</strong> das fichas, que limita a emissão de
         empenhos.
       </div>
+
+      <p className="text-sm">
+        <a href="/planejamento/creditos-adicionais/normas-no-tribunal" className="underline" data-link="normas-no-tribunal">
+          Leis no Tribunal de Contas
+        </a>{" "}
+        <span className="text-xs text-[color:var(--color-ink-3)]">— o protocolo de cada lei no banco de legislação do Tribunal.</span>
+      </p>
 
       <FormLeiCredito exercicio={exercicio} />
 
@@ -145,6 +163,17 @@ export default async function CreditosAdicionaisPage({
               {d.encerrado && d.encerramento !== null ? (
                 <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Encerrado em {dataBr(d.encerramento.data)} — {d.encerramento.motivo}.</p>
               ) : null}
+
+              <div className="mt-3 border-t border-[color:var(--color-border)] pt-3" data-pdf-do-decreto={`${d.numero}/${d.ano}`}>
+                <h3 className="mb-1 text-xs font-semibold text-[color:var(--color-ink-2)]">Decreto publicado (PDF)</h3>
+                {(anexos.get(d.id) ?? []).some((a) => a.mimeType === "application/pdf") ? null : (
+                  <p className="mb-2 text-xs text-[color:var(--color-status-erro-fg)]">Sem o PDF: o decreto fica fora da remessa ao Tribunal do dia em que foi publicado.</p>
+                )}
+                <ListaDeAnexos anexos={anexos.get(d.id) ?? []} />
+                {podeAnexar ? (
+                  <FormAnexo dono={{ decretoCreditoId: d.id }} accept={EXTENSOES_ACEITAS} tamanhoMaximoBytes={TAMANHO_MAXIMO_BYTES} rotulo={`Anexar o PDF do decreto ${d.numero}/${d.ano}`} />
+                ) : null}
+              </div>
 
               <div className="mt-3 overflow-x-auto">
                 <table className="w-full text-sm">

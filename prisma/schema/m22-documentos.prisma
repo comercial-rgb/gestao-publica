@@ -135,6 +135,9 @@ model Anexo {
   consorcioId String?
   consorcio   ConsorcioPublico? @relation(fields: [consorcioId], references: [id])
 
+  /// V26 — o PDF do decreto de abertura de crédito (SAGRES §4.6).
+  decretoCreditoId String?
+  decretoCredito   DecretoCredito? @relation("AnexoDoDecreto", fields: [decretoCreditoId], references: [id])
   obraId String?
   obra   Obra?   @relation(fields: [obraId], references: [id])
 

@@ -41,7 +41,12 @@ function revalidarDono(dono: {
   readonly documentoFiscalId?: string | undefined;
   readonly liquidacaoId?: string | undefined;
   readonly leiOrcamentariaAnualId?: string | undefined;
+  readonly decretoCreditoId?: string | undefined;
 }): void {
+  if (dono.decretoCreditoId !== undefined) {
+    revalidatePath("/planejamento/creditos-adicionais");
+    return;
+  }
   if (dono.leiOrcamentariaAnualId !== undefined) {
     revalidatePath(`/planejamento/leis-orcamentarias/${dono.leiOrcamentariaAnualId}`);
     return;
@@ -95,6 +100,7 @@ export async function anexarArquivoAction(
     const documentoFiscalId = texto(formData, "documentoFiscalId");
     const liquidacaoId = texto(formData, "liquidacaoId");
     const leiOrcamentariaAnualId = texto(formData, "leiOrcamentariaAnualId");
+    const decretoCreditoId = texto(formData, "decretoCreditoId");
 
     const dono = {
       ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
@@ -105,6 +111,7 @@ export async function anexarArquivoAction(
       ...(documentoFiscalId !== "" ? { documentoFiscalId } : {}),
       ...(liquidacaoId !== "" ? { liquidacaoId } : {}),
       ...(leiOrcamentariaAnualId !== "" ? { leiOrcamentariaAnualId } : {}),
+      ...(decretoCreditoId !== "" ? { decretoCreditoId } : {}),
     };
 
     try {

@@ -1,0 +1,93 @@
+// ============================================================================
+// V26 — QUEM ORDENA A DESPESA E QUEM RESPONDE PELO SISTEMA (SAGRES §4.36 Ordenador, §4.48 ResponsavelSiafic, e o
+// cpfOrdenador do §4.8 Empenhos).
+//
+// ORDENADOR: vários por unidade gestora, cada um com o ATO que o designou (nomeação, delegação, substituição), o
+// escopo (o ente todo ou uma unidade orçamentária) e a vigência. A troca acompanha o ato, não o mês. O ordenador de
+// um empenho é o designado vigente na data dele para a unidade da ficha — nunca o usuário que clicou.
+//
+// RESPONSÁVEL PELO SIAFIC: manutenção terceirizada (a empresa e o responsável técnico dela) ou própria (a prefeitura
+// e o encarregado). Os dados vêm do contrato ou da designação; o contador não substitui o responsável técnico.
+//
+// APPEND-ONLY. O fim de uma designação é fato próprio (`EncerramentoDaDesignacaoDeOrdenador`).
+// ============================================================================
+
+enum EscopoDoOrdenador {
+  /// Ordena toda a despesa da unidade gestora.
+  ENTE
+  /// Ordena só a despesa das fichas de uma unidade orçamentária.
+  UNIDADE_ORCAMENTARIA
+}
+
+enum TipoDoAtoDoOrdenador {
+  NOMEACAO
+  DELEGACAO
+  SUBSTITUICAO
+}
+
+model DesignacaoDeOrdenador {
+  id   String @id @default(cuid())
+  cpf  String @db.VarChar(11)
+  nome String @db.VarChar(50)
+
+  escopo       EscopoDoOrdenador
+  unidadeOrcId String?
+  unidadeOrc   UnidadeOrcamentaria? @relation("OrdenadorDaUnidade", fields: [unidadeOrcId], references: [id])
+
+  tipoDoAto  TipoDoAtoDoOrdenador
+  /// O ato (ex.: "Portaria 12/2026"), como publicado.
+  ato        String
+  vigenteDesde DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  encerramento EncerramentoDaDesignacaoDeOrdenador?
+
+  @@index([unidadeOrcId, vigenteDesde])
+  @@index([cpf])
+}
+
+model EncerramentoDaDesignacaoDeOrdenador {
+  id           String                @id @default(cuid())
+  designacaoId String                @unique
+  designacao   DesignacaoDeOrdenador @relation(fields: [designacaoId], references: [id])
+  /// O último dia em que a designação vale.
+  vigenteAte   DateTime
+  /// O ato que revogou, exonerou ou encerrou a substituição.
+  ato          String
+  criadoEm     DateTime @default(now())
+  criadoPor    String
+}
+
+enum ModalidadeDeManutencaoDoSiafic {
+  /// Empresa contratada mantém o sistema.
+  TERCEIRIZADA
+  /// A própria prefeitura mantém o sistema.
+  PROPRIA
+}
+
+model DeclaracaoDoResponsavelSiafic {
+  id         String                         @id @default(cuid())
+  modalidade ModalidadeDeManutencaoDoSiafic
+
+  cnpjEmpresa       String  @db.VarChar(14)
+  nomeEmpresa       String  @db.VarChar(80)
+  telefoneEmpresa   String? @db.VarChar(11)
+  emailEmpresa      String  @db.VarChar(30)
+  denominacaoSiafic String  @db.VarChar(30)
+
+  cpfResponsavelTecnico      String  @db.VarChar(11)
+  nomeResponsavelTecnico     String  @db.VarChar(60)
+  emailResponsavelTecnico    String  @db.VarChar(30)
+  telefoneResponsavelTecnico String? @db.VarChar(11)
+
+  /// O contrato de manutenção ou o ato de designação de onde vêm os dados.
+  fundamento   String
+  vigenteDesde DateTime
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([vigenteDesde])
+}

@@ -155,6 +155,25 @@ export async function listarAnexosDaLeiOrcamentaria(prisma: PrismaClient, leiOrc
   return anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null }));
 }
 
+/** V26 — os anexos de um conjunto de decretos de crédito (o PDF que vai ao Tribunal), por decreto. */
+export async function listarAnexosDosDecretos(prisma: PrismaClient, decretoIds: readonly string[], usuarioIdent: string): Promise<ReadonlyMap<string, readonly AnexoNaLista[]>> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  const porDecreto = new Map<string, AnexoNaLista[]>();
+  if (u === null || !u.ativo || decretoIds.length === 0) return porDecreto;
+  const anexos = await prisma.anexo.findMany({
+    where: { decretoCreditoId: { in: [...decretoIds] } },
+    select: { id: true, decretoCreditoId: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  for (const a of anexos) {
+    if (a.decretoCreditoId === null) continue;
+    const l = porDecreto.get(a.decretoCreditoId) ?? [];
+    l.push({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO" as const, movimento: null });
+    porDecreto.set(a.decretoCreditoId, l);
+  }
+  return porDecreto;
+}
+
 /**
  * V22: os anexos de um conjunto de liquidações (o comprovante do banco, a nota) — por liquidação.
  *

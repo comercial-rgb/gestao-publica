@@ -1,0 +1,70 @@
+// ============================================================================
+// V26 — O QUE A PRESTAÇÃO DE CONTAS PEDE DO PROGRAMA E DA AÇÃO (SAGRES §4.2 Programas, §4.3 Acao).
+//
+// O programa: a denominação, o objetivo e o código do objetivo da Agenda 2030 (tabela §5.27), todos
+// obrigatórios no arquivo. A ação: a denominação e, opcionais no §4.3 (obrigatórias no projeto da LOA, §4.41),
+// a meta e a unidade de medida. Os dados vêm do PPA e da LOA do ente — nada é inferido do nome do programa.
+//
+// VERSIONADAS, como a declaração da unidade orçamentária: o objetivo muda com o PPA, e o arquivo de um mês
+// passado tem de sair com o que valia nele. A vigente num corte é a de maior `vigenteDesde` até ele.
+// ============================================================================
+
+model DeclaracaoDoPrograma {
+  id         String   @id @default(cuid())
+  programaId String
+  programa   Programa @relation(fields: [programaId], references: [id])
+
+  /// Denominação do programa no arquivo (até 70 caracteres).
+  descricao           String @db.VarChar(70)
+  /// Descrição do objetivo (até 150 caracteres).
+  objetivo            String @db.VarChar(150)
+  /// Código da tabela §5.27 (objetivos da Agenda 2030; 99 = Primeira Infância).
+  tipoObjetivoMilenio String @db.VarChar(2)
+  /// De onde vem (PPA, LOA, lei de alteração).
+  fundamento          String
+
+  vigenteDesde DateTime
+  criadoEm     DateTime @default(now())
+  criadoPor    String
+
+  @@index([programaId, vigenteDesde])
+}
+
+model DeclaracaoDaAcao {
+  id     String @id @default(cuid())
+  acaoId String
+  acao   Acao   @relation(fields: [acaoId], references: [id])
+
+  descricao     String  @db.VarChar(70)
+  /// Descrição da meta (até 150). Opcional no §4.3; o projeto da LOA (§4.41) a exige.
+  descMeta      String? @db.VarChar(150)
+  /// Unidade de medida da meta (até 50). Mesma regra.
+  unidadeMedida String? @db.VarChar(50)
+  fundamento    String
+
+  vigenteDesde DateTime
+  criadoEm     DateTime @default(now())
+  criadoPor    String
+
+  @@index([acaoId, vigenteDesde])
+}
+
+/// V26 — O QUE A PRESTAÇÃO DE CONTAS PEDE DE UMA LINHA DA RECEITA PREVISTA e o cadastro não tinha (SAGRES §4.7 e §4.44):
+/// o subtipo da DEDUÇÃO na tabela §5.23 (3 dedução para o Fundeb, 4 dedução de rendimentos de investimentos, 5 outras
+/// deduções) e o código como está no DOCUMENTO de origem (a LOA pode trazer um desdobramento local, como ".00").
+/// Uma por linha da previsão (`@unique`): a linha publicada não muda, e o detalhe a descreve.
+model DetalheDaReceitaPrevista {
+  id                String          @id @default(cuid())
+  receitaPrevistaId String          @unique
+  receitaPrevista   ReceitaPrevista @relation(fields: [receitaPrevistaId], references: [id])
+
+  /// "3", "4" ou "5" (§5.23) quando a linha é DEDUCAO; nulo nas demais.
+  tipoDeducaoSagres String? @db.VarChar(1)
+  /// O código como aparece no documento (ex.: 1.7.1.1.51.1.1.00), sem normalização.
+  codigoNoDocumento String?
+  /// O documento de onde vem a linha (ex.: Lei 613/2025, Anexo II).
+  documento         String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

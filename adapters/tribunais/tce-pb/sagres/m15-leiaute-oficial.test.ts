@@ -20,6 +20,7 @@ const limpa = (s: string): string => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/
 
 const NOME_NO_HTML: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   Dotacao: { reservado2: "reservado" },
+  AtualizacaoOrcamentaria: { reservado2: "reservado" },
   MovimentacaoEntreContasBancarias: {
     valorTransferencia: "Valor da Transferência",
     dataMovimentacao: "Data da Movimentação",
@@ -27,8 +28,17 @@ const NOME_NO_HTML: Readonly<Record<string, Readonly<Record<string, string>>>> =
   },
 };
 
+/**
+ * V26 — as linhas que o leitor do HTML não lê porque a posição está escrita errada lá: na NormasOrcamentarias, o
+ * "tipo" tem a posição inicial "2/8" (é 28). Saem da comparação NOMEADAS; a posição certa está no leiaute, com o motivo.
+ */
+const LINHA_ILEGIVEL_NO_HTML: Readonly<Record<string, readonly string[]>> = {
+  NormasOrcamentarias: ["tipo 28-28"],
+};
+
 function camposDoHtml(entidade: string): string[] | null {
-  const m = new RegExp(`<strong>4\\.\\d+\\. ${entidade}</strong>`).exec(HTML);
+  // V26 — o título pode trazer espaço inseparável antes do fechamento (a ReceitaPrevista traz).
+  const m = new RegExp(`<strong>4\\.\\d+\\. ${entidade}[\\s\\u00a0]*</strong>`).exec(HTML);
   if (m === null) return null;
   const bloco = HTML.slice(m.index, HTML.indexOf("<h4", m.index + 10));
   const campos: string[] = [];
@@ -44,7 +54,8 @@ describe("V25 — os leiautes do SAGRES contra o HTML oficial", () => {
     const html = camposDoHtml(entidade);
     expect(html, `a seção de ${entidade} existe no HTML`).not.toBeNull();
     const renomeio = NOME_NO_HTML[entidade] ?? {};
-    const nosso = layout.campos.map((c) => `${renomeio[c.nome] ?? c.nome} ${String(c.posInicial)}-${String(c.posFinal)}`);
+    const ilegivel = LINHA_ILEGIVEL_NO_HTML[entidade] ?? [];
+    const nosso = layout.campos.map((c) => `${renomeio[c.nome] ?? c.nome} ${String(c.posInicial)}-${String(c.posFinal)}`).filter((x) => !ilegivel.includes(x));
     expect(nosso).toEqual(html);
   });
 });

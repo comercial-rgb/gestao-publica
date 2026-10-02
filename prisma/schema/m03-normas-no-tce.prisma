@@ -1,0 +1,48 @@
+// ============================================================================
+// V26 — AS NORMAS ORÇAMENTÁRIAS NO BANCO DE LEGISLAÇÃO DO TCE-PB (SAGRES §4.49 NormasOrcamentarias).
+//
+// A LOA e as leis que a alteram (créditos suplementares e especiais) ou que autorizam transposição, transferência ou
+// remanejamento, com o PROTOCOLO do banco de legislação do TCE-PB — o documento que comprova a entrega da lei, no
+// formato 000000/00, com a barra e os zeros. Não é o número da lei, nem protocolo interno, nem recibo de balancete.
+// O ente informa o protocolo e a autorização (valor ou percentual) como estão na lei; sem protocolo, a lei fica nomeada
+// como pendente e o arquivo fora do pacote, sem parar os demais.
+// ============================================================================
+
+enum TipoDeNormaOrcamentaria {
+  /// 0 — Lei Orçamentária Anual.
+  LOA
+  /// 1 — Crédito suplementar.
+  CREDITO_SUPLEMENTAR
+  /// 2 — Crédito especial.
+  CREDITO_ESPECIAL
+  /// 3 — Transposição, transferência ou remanejamento.
+  TRANSPOSICAO
+}
+
+model NormaOrcamentariaNoTce {
+  id   String                  @id @default(cuid())
+  tipo TipoDeNormaOrcamentaria
+
+  /// Número e ano da lei, como publicada.
+  numero          String
+  ano             Int
+  dataPublicacao  DateTime
+  /// O protocolo do banco de legislação do TCE-PB, "000000/00".
+  protocoloTce    String  @db.VarChar(9)
+  /// A autorização é um percentual (true) ou um valor (false), e o número dela.
+  autorizacaoPercentual Boolean
+  valor           Decimal @db.Decimal(18, 2)
+
+  /// Quando a norma é uma lei de crédito já cadastrada no M03, a ligação (conferida: número, ano e tipo).
+  leiCreditoId String?
+  leiCredito   LeiCredito? @relation("NormaDaLeiDeCredito", fields: [leiCreditoId], references: [id])
+
+  /// De onde vêm o protocolo e a autorização (o comprovante do TCE, o artigo da lei).
+  fundamento String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ano, numero, tipo])
+  @@index([dataPublicacao])
+}

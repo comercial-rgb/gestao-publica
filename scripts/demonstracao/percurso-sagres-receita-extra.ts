@@ -125,7 +125,7 @@ async function main(): Promise<void> {
     await ir(p, "/integracoes/sagres?dia=2026-09-14&mes=2026-09");
     const antes = await texto(p);
     afirmar(/Receita extra fora do pacote/.test(antes) && /plano de contas do Tribunal para 2026 não foi importado/.test(antes), "a prévia nomeia a falta do plano");
-    afirmar(/32 de 58/.test(antes), "a tabela do leiaute mostra 32 de 58 tabelas geradas");
+    afirmar(/42 de 58/.test(antes), "a tabela do leiaute mostra 42 de 58 tabelas geradas");
 
     console.log("4. importar a planilha do Tribunal, dizendo qual ano vale e por quê");
     const imp = await enviar(p, "importar-plano-do-tribunal", [

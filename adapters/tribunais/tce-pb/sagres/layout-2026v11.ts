@@ -1364,6 +1364,232 @@ const camposRelacionamentoLiquidacaoPagamento: readonly CampoLayout<Relacionamen
 ];
 export const LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO: LayoutArquivo<RelacionamentoLiquidacaoPagamentoFato> = { entidade: "RelacionamentoLiquidacaoPagamento", periodicidade: "MENSAL", versao: VERSAO, campos: camposRelacionamentoLiquidacaoPagamento };
 
+// ═══ V26 — O CADASTRO DO ORÇAMENTO: programas (§4.2) e ações (§4.3) ════════════════════════════════
+export interface ProgramaFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly descObjetivo: string;
+  readonly tipoObjetivoMilenio: string;
+}
+const camposProgramas: readonly CampoLayout<ProgramaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "programa.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 11, posFinal: 80, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoPrograma.descricao (vigente no mês)", extrair: (f) => f.descricao },
+  { nome: "descObjetivo", posInicial: 81, posFinal: 230, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoPrograma.objetivo", extrair: (f) => f.descObjetivo },
+  { nome: "tipoObjetivoMilenio", posInicial: 231, posFinal: 232, tipo: "NUMERICO", obrigatorio: true, origem: "DeclaracaoDoPrograma.tipoObjetivoMilenio (§5.27)", extrair: (f) => f.tipoObjetivoMilenio },
+  { nome: "reservado", posInicial: 233, posFinal: 238, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_PROGRAMAS: LayoutArquivo<ProgramaFato> = { entidade: "Programas", periodicidade: "MENSAL", versao: VERSAO, campos: camposProgramas };
+
+export interface AcaoFato {
+  readonly codUnidadeGestora: string;
+  readonly codigo: string;
+  readonly descricao: string;
+  readonly tipo: string;
+  readonly descMeta: string | null;
+  readonly unidadeMedida: string | null;
+}
+const camposAcao: readonly CampoLayout<AcaoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codigo", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "acao.codigo", extrair: (f) => f.codigo },
+  { nome: "descricao", posInicial: 11, posFinal: 80, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDaAcao.descricao (vigente no mês)", extrair: (f) => f.descricao },
+  { nome: "tipo", posInicial: 81, posFinal: 81, tipo: "NUMERICO", obrigatorio: true, origem: "acao.tipo → §5.12", extrair: (f) => f.tipo },
+  { nome: "descMeta", posInicial: 82, posFinal: 231, tipo: "ALFA", obrigatorio: false, origem: "DeclaracaoDaAcao.descMeta", extrair: (f) => f.descMeta },
+  { nome: "unidadeMedida", posInicial: 232, posFinal: 281, tipo: "ALFA", obrigatorio: false, origem: "DeclaracaoDaAcao.unidadeMedida", extrair: (f) => f.unidadeMedida },
+  { nome: "reservado", posInicial: 282, posFinal: 287, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_ACAO: LayoutArquivo<AcaoFato> = { entidade: "Acao", periodicidade: "MENSAL", versao: VERSAO, campos: camposAcao };
+
+// ═══ V26 — Ordenador (§4.36) e ResponsavelSiafic (§4.48) ════════════════════════════════════════════
+export interface OrdenadorFato {
+  readonly codUnidadeGestora: string;
+  readonly cpf: string;
+  readonly nome: string;
+}
+const camposOrdenador: readonly CampoLayout<OrdenadorFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "cpf", posInicial: 7, posFinal: 17, tipo: "DOCUMENTO", obrigatorio: true, origem: "DesignacaoDeOrdenador.cpf", extrair: (f) => f.cpf },
+  // ⚠️ O HTML oficial tipifica o nome como "Numérico (50)"; é texto (a descrição é "Nome do Ordenador").
+  { nome: "nome", posInicial: 18, posFinal: 67, tipo: "ALFA", obrigatorio: true, origem: "DesignacaoDeOrdenador.nome", extrair: (f) => f.nome },
+  { nome: "reservado", posInicial: 68, posFinal: 73, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_ORDENADOR: LayoutArquivo<OrdenadorFato> = { entidade: "Ordenador", periodicidade: "DIARIO", versao: VERSAO, campos: camposOrdenador };
+
+export interface ResponsavelSiaficFato {
+  readonly codUnidadeGestora: string;
+  readonly cnpjEmpresa: string;
+  readonly nomeEmpresa: string;
+  readonly telefoneEmpresa: string | null;
+  readonly emailEmpresa: string;
+  readonly denominacaoSiafic: string;
+  readonly cpfResponsavelTecnico: string;
+  readonly nomeResponsavelTecnico: string;
+  readonly emailResponsavelTecnico: string;
+  readonly telefoneResponsavelTecnico: string | null;
+}
+const camposResponsavelSiafic: readonly CampoLayout<ResponsavelSiaficFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "cnpjEmpresa", posInicial: 7, posFinal: 20, tipo: "DOCUMENTO", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.cnpjEmpresa", extrair: (f) => f.cnpjEmpresa },
+  { nome: "nomeEmpresa", posInicial: 21, posFinal: 100, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.nomeEmpresa", extrair: (f) => f.nomeEmpresa },
+  { nome: "telefoneEmpresa", posInicial: 101, posFinal: 111, tipo: "NUMERICO", obrigatorio: false, origem: "DeclaracaoDoResponsavelSiafic.telefoneEmpresa (com DDD)", extrair: (f) => f.telefoneEmpresa },
+  { nome: "emailEmpresa", posInicial: 112, posFinal: 141, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.emailEmpresa", extrair: (f) => f.emailEmpresa },
+  { nome: "denominacaoSiafic", posInicial: 142, posFinal: 171, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.denominacaoSiafic", extrair: (f) => f.denominacaoSiafic },
+  { nome: "cpfResponsavelTecnico", posInicial: 172, posFinal: 182, tipo: "DOCUMENTO", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.cpfResponsavelTecnico", extrair: (f) => f.cpfResponsavelTecnico },
+  { nome: "nomeResponsavelTecnico", posInicial: 183, posFinal: 242, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.nomeResponsavelTecnico", extrair: (f) => f.nomeResponsavelTecnico },
+  { nome: "emailResponsavelTecnico", posInicial: 243, posFinal: 272, tipo: "ALFA", obrigatorio: true, origem: "DeclaracaoDoResponsavelSiafic.emailResponsavelTecnico", extrair: (f) => f.emailResponsavelTecnico },
+  { nome: "telefoneResponsavelTecnico", posInicial: 273, posFinal: 283, tipo: "NUMERICO", obrigatorio: false, origem: "DeclaracaoDoResponsavelSiafic.telefoneResponsavelTecnico", extrair: (f) => f.telefoneResponsavelTecnico },
+];
+export const LAYOUT_RESPONSAVEL_SIAFIC: LayoutArquivo<ResponsavelSiaficFato> = { entidade: "ResponsavelSiafic", periodicidade: "ANUAL", versao: VERSAO, campos: camposResponsavelSiafic };
+
+// ═══ V26 — ReceitaPrevista (§4.7, anual — janeiro) ═══════════════════════════════════════════════════
+export interface ReceitaPrevistaFato {
+  readonly codUnidadeGestora: string;
+  readonly competencia: number;
+  readonly codReceitaOrcamentaria: string;
+  readonly exercicioFonteRecurso: number;
+  readonly codFonteRecurso: string;
+  readonly tipoReceita: string;
+  readonly valor: Money;
+}
+const camposReceitaPrevista: readonly CampoLayout<ReceitaPrevistaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "competencia", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "receitaPrevista.exercicio", extrair: (f) => f.competencia },
+  { nome: "codReceitaOrcamentaria", posInicial: 11, posFinal: 18, tipo: "NUMERICO", obrigatorio: true, origem: "receitaPrevista.naturezaReceita.codigo", extrair: (f) => f.codReceitaOrcamentaria },
+  { nome: "exercicioFonteRecurso", posInicial: 19, posFinal: 19, tipo: "NUMERICO", obrigatorio: true, origem: "receitaPrevista.exercicioFonte", extrair: (f) => f.exercicioFonteRecurso },
+  { nome: "codFonteRecurso", posInicial: 20, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "receitaPrevista.fonte.codigo", extrair: (f) => f.codFonteRecurso },
+  { nome: "tipoReceita", posInicial: 23, posFinal: 23, tipo: "NUMERICO", obrigatorio: true, origem: "tipoReceita → §5.23 (dedução pelo DetalheDaReceitaPrevista)", extrair: (f) => f.tipoReceita },
+  { nome: "valor", posInicial: 24, posFinal: 39, tipo: "VALOR", obrigatorio: true, origem: "receitaPrevista.valorPrevisto", extrair: (f) => f.valor },
+  { nome: "reservado", posInicial: 40, posFinal: 45, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_RECEITA_PREVISTA: LayoutArquivo<ReceitaPrevistaFato> = { entidade: "ReceitaPrevista", periodicidade: "ANUAL", versao: VERSAO, campos: camposReceitaPrevista };
+
+// ═══ V26 — SaldoInicial (§4.25, janeiro) ═════════════════════════════════════════════════════════════
+export interface SaldoInicialFato {
+  readonly codUnidadeGestora: string;
+  readonly numContaBancaria: string;
+  readonly numAgencia: string;
+  readonly codBanco: string;
+  readonly valor: Money;
+  readonly tipoContaBancaria: string;
+  readonly cnpjGerenciaContaBancaria: string;
+}
+const camposSaldoInicial: readonly CampoLayout<SaldoInicialFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "numContaBancaria", posInicial: 7, posFinal: 19, tipo: "ALFA", obrigatorio: true, origem: "contaBancaria.conta + dígito", extrair: (f) => f.numContaBancaria },
+  { nome: "numAgencia", posInicial: 20, posFinal: 25, tipo: "ALFA", obrigatorio: true, origem: "contaBancaria.agencia + dígito", extrair: (f) => f.numAgencia },
+  { nome: "codBanco", posInicial: 26, posFinal: 28, tipo: "ALFA", obrigatorio: true, origem: "contaBancaria.banco", extrair: (f) => f.codBanco },
+  { nome: "valor", posInicial: 29, posFinal: 44, tipo: "VALOR", obrigatorio: true, origem: "saldo contábil de 31/12 do exercício anterior, da conciliação encerrada (interpretação V26)", extrair: (f) => f.valor },
+  { nome: "tipoContaBancaria", posInicial: 45, posFinal: 45, tipo: "NUMERICO", obrigatorio: true, origem: "§5.31 (conta corrente)", extrair: (f) => f.tipoContaBancaria },
+  { nome: "cnpjGerenciaContaBancaria", posInicial: 46, posFinal: 59, tipo: "DOCUMENTO", obrigatorio: true, origem: "parâmetro export (CNPJ gerenciador)", extrair: (f) => f.cnpjGerenciaContaBancaria },
+];
+export const LAYOUT_SALDO_INICIAL: LayoutArquivo<SaldoInicialFato> = { entidade: "SaldoInicial", periodicidade: "ANUAL", versao: VERSAO, campos: camposSaldoInicial };
+
+// ═══ V26 — RelacionamentoEmpenhoLicitacao (§4.38, mensal) ═══════════════════════════════════════════
+export interface RelacionamentoEmpenhoLicitacaoFato {
+  readonly codUnidadeGestora: string;
+  readonly codUnidadeOrcamentaria: string;
+  readonly numEmpenho: string;
+  readonly codUnidadeGestoraLicitacao: string;
+  readonly numLicitacao: string;
+  readonly modalidadeLicitacao: string;
+}
+const camposRelacionamentoEmpenhoLicitacao: readonly CampoLayout<RelacionamentoEmpenhoLicitacaoFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "codUnidadeOrcamentaria", posInicial: 7, posFinal: 11, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "numEmpenho", posInicial: 12, posFinal: 18, tipo: "NUMERICO", obrigatorio: true, origem: "empenho.numero (chave do Empenhos §4.8, numérico lá)", extrair: (f) => f.numEmpenho },
+  { nome: "codUnidadeGestoraLicitacao", posInicial: 19, posFinal: 24, tipo: "NUMERICO", obrigatorio: true, origem: "IdentificacaoNoTramita.codUnidadeGestora", extrair: (f) => f.codUnidadeGestoraLicitacao },
+  { nome: "numLicitacao", posInicial: 25, posFinal: 33, tipo: "ALFA", obrigatorio: true, origem: "IdentificacaoNoTramita.numeroNoTramita", extrair: (f) => f.numLicitacao },
+  { nome: "modalidadeLicitacao", posInicial: 34, posFinal: 35, tipo: "NUMERICO", obrigatorio: true, origem: "IdentificacaoNoTramita.modalidadeSagres (§6.2)", extrair: (f) => f.modalidadeLicitacao },
+  { nome: "reservado", posInicial: 36, posFinal: 41, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_RELACIONAMENTO_EMPENHO_LICITACAO: LayoutArquivo<RelacionamentoEmpenhoLicitacaoFato> = { entidade: "RelacionamentoEmpenhoLicitacao", periodicidade: "MENSAL", versao: VERSAO, campos: camposRelacionamentoEmpenhoLicitacao };
+
+// ═══ V26 — AtualizacaoOrcamentaria (§4.5), DecretoseOficios (§4.6), NormasOrcamentarias (§4.49), diários ════
+export interface AtualizacaoOrcamentariaFato {
+  readonly codUnidadeGestora: string;
+  readonly competencia: number;
+  readonly codUnidadeOrcamentaria: string;
+  readonly codFuncao: string;
+  readonly codSubfuncao: string;
+  readonly codPrograma: string;
+  readonly codAcao: string;
+  readonly numDecretoOficio: string;
+  readonly tipoDecretoOficio: string;
+  readonly tipoAlteracao: string;
+  readonly codCategoriaEconomica: string;
+  readonly codNaturezaDespesa: string;
+  readonly codModalidadeDespesa: string;
+  readonly codElementoDespesa: string;
+  readonly exercicioFonteRecurso: number;
+  readonly codFonteRecurso: string;
+  readonly valor: Money;
+}
+const camposAtualizacaoOrcamentaria: readonly CampoLayout<AtualizacaoOrcamentariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "competencia", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "decreto.ano", extrair: (f) => f.competencia },
+  { nome: "codUnidadeOrcamentaria", posInicial: 11, posFinal: 15, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.unidadeOrc.codigo", extrair: (f) => f.codUnidadeOrcamentaria },
+  { nome: "codFuncao", posInicial: 16, posFinal: 17, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.funcao.codigo", extrair: (f) => f.codFuncao },
+  { nome: "codSubfuncao", posInicial: 18, posFinal: 20, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.subfuncao.codigo", extrair: (f) => f.codSubfuncao },
+  { nome: "codPrograma", posInicial: 21, posFinal: 24, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.programa.codigo", extrair: (f) => f.codPrograma },
+  { nome: "codAcao", posInicial: 25, posFinal: 28, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.acao.codigo", extrair: (f) => f.codAcao },
+  { nome: "reservado", posInicial: 29, posFinal: 34, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+  { nome: "numDecretoOficio", posInicial: 35, posFinal: 43, tipo: "NUMERICO", obrigatorio: true, origem: "decreto.numero + ano (NNNNNAAAA)", extrair: (f) => f.numDecretoOficio },
+  { nome: "tipoDecretoOficio", posInicial: 44, posFinal: 44, tipo: "NUMERICO", obrigatorio: true, origem: "1 (decreto)", extrair: (f) => f.tipoDecretoOficio },
+  { nome: "tipoAlteracao", posInicial: 45, posFinal: 46, tipo: "NUMERICO", obrigatorio: true, origem: "lei.tipoCredito × decreto.origemRecurso × item.tipo → §5.13", extrair: (f) => f.tipoAlteracao },
+  { nome: "codCategoriaEconomica", posInicial: 47, posFinal: 47, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.naturezaDespesa.codCategoria", extrair: (f) => f.codCategoriaEconomica },
+  { nome: "codNaturezaDespesa", posInicial: 48, posFinal: 48, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.naturezaDespesa.codNatureza", extrair: (f) => f.codNaturezaDespesa },
+  { nome: "codModalidadeDespesa", posInicial: 49, posFinal: 50, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.naturezaDespesa.codModalidade", extrair: (f) => f.codModalidadeDespesa },
+  { nome: "codElementoDespesa", posInicial: 51, posFinal: 52, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.naturezaDespesa.codElemento", extrair: (f) => f.codElementoDespesa },
+  { nome: "exercicioFonteRecurso", posInicial: 53, posFinal: 53, tipo: "NUMERICO", obrigatorio: true, origem: "item.ficha.exercicioFonte", extrair: (f) => f.exercicioFonteRecurso },
+  { nome: "codFonteRecurso", posInicial: 54, posFinal: 56, tipo: "NUMERICO", obrigatorio: true, origem: "item.fonte.codigo", extrair: (f) => f.codFonteRecurso },
+  { nome: "valor", posInicial: 57, posFinal: 72, tipo: "VALOR", obrigatorio: true, origem: "item.valor", extrair: (f) => f.valor },
+  { nome: "reservado2", posInicial: 73, posFinal: 78, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_ATUALIZACAO_ORCAMENTARIA: LayoutArquivo<AtualizacaoOrcamentariaFato> = { entidade: "AtualizacaoOrcamentaria", periodicidade: "DIARIO", versao: VERSAO, campos: camposAtualizacaoOrcamentaria };
+
+export interface DecretoOuOficioFato {
+  readonly codUnidadeGestora: string;
+  readonly competencia: number;
+  readonly numero: string;
+  readonly numLei: string;
+  readonly data: Date;
+  readonly tipo: string;
+}
+const camposDecretosEOficios: readonly CampoLayout<DecretoOuOficioFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "competencia", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "decreto.ano", extrair: (f) => f.competencia },
+  { nome: "numero", posInicial: 11, posFinal: 19, tipo: "NUMERICO", obrigatorio: true, origem: "decreto.numero + ano", extrair: (f) => f.numero },
+  { nome: "numLei", posInicial: 20, posFinal: 27, tipo: "NUMERICO", obrigatorio: true, origem: "lei.numero + ano (NNNNAAAA)", extrair: (f) => f.numLei },
+  { nome: "data", posInicial: 28, posFinal: 35, tipo: "DATA", obrigatorio: true, origem: "decreto.data", extrair: (f) => f.data },
+  { nome: "tipo", posInicial: 36, posFinal: 36, tipo: "NUMERICO", obrigatorio: true, origem: "1 (decreto)", extrair: (f) => f.tipo },
+  { nome: "reservado", posInicial: 37, posFinal: 42, tipo: "RESERVADO", obrigatorio: false, origem: "= ZEROS" },
+];
+export const LAYOUT_DECRETOS_E_OFICIOS: LayoutArquivo<DecretoOuOficioFato> = { entidade: "DecretoseOficios", periodicidade: "DIARIO", versao: VERSAO, campos: camposDecretosEOficios };
+
+export interface NormaOrcamentariaFato {
+  readonly codUnidadeGestora: string;
+  readonly competencia: number;
+  readonly numero: string;
+  readonly data: Date;
+  readonly tipo: string;
+  readonly protocoloTCE: string;
+  readonly tipoAutorizacao: string;
+  readonly valor: Money;
+}
+const camposNormasOrcamentarias: readonly CampoLayout<NormaOrcamentariaFato>[] = [
+  { nome: "codUnidadeGestora", posInicial: 1, posFinal: 6, tipo: "NUMERICO", obrigatorio: true, origem: "parâmetro export (UG)", extrair: (f) => f.codUnidadeGestora },
+  { nome: "competencia", posInicial: 7, posFinal: 10, tipo: "NUMERICO", obrigatorio: true, origem: "norma.ano", extrair: (f) => f.competencia },
+  { nome: "numero", posInicial: 11, posFinal: 19, tipo: "NUMERICO", obrigatorio: true, origem: "norma.numero + ano (NNNNNAAAA)", extrair: (f) => f.numero },
+  { nome: "data", posInicial: 20, posFinal: 27, tipo: "DATA", obrigatorio: true, origem: "norma.dataPublicacao", extrair: (f) => f.data },
+  // ⚠️ O HTML oficial traz a posição inicial deste campo como "2/8"; é 28 (o anterior termina em 27, o seguinte começa em 29).
+  { nome: "tipo", posInicial: 28, posFinal: 28, tipo: "NUMERICO", obrigatorio: true, origem: "norma.tipo → §5.36", extrair: (f) => f.tipo },
+  { nome: "protocoloTCE", posInicial: 29, posFinal: 37, tipo: "ALFA", obrigatorio: true, origem: "norma.protocoloTce (000000/00)", extrair: (f) => f.protocoloTCE },
+  { nome: "tipo_autorizacao", posInicial: 38, posFinal: 38, tipo: "NUMERICO", obrigatorio: true, origem: "norma.autorizacaoPercentual (1/0)", extrair: (f) => f.tipoAutorizacao },
+  { nome: "valor", posInicial: 39, posFinal: 54, tipo: "VALOR", obrigatorio: true, origem: "norma.valor", extrair: (f) => f.valor },
+];
+export const LAYOUT_NORMAS_ORCAMENTARIAS: LayoutArquivo<NormaOrcamentariaFato> = { entidade: "NormasOrcamentarias", periodicidade: "DIARIO", versao: VERSAO, campos: camposNormasOrcamentarias };
+
 export const LAYOUTS_2026V11 = [
   LAYOUT_UNIDADE_ORCAMENTARIA,
   LAYOUT_DOTACAO,
@@ -1397,4 +1623,14 @@ export const LAYOUTS_2026V11 = [
   LAYOUT_RELACIONAMENTO_EMPENHO_OBRA,
   LAYOUT_RELACIONAMENTO_EMPENHO_NATUREZA,
   LAYOUT_RELACIONAMENTO_LIQUIDACAO_PAGAMENTO,
+  LAYOUT_PROGRAMAS,
+  LAYOUT_ACAO,
+  LAYOUT_ORDENADOR,
+  LAYOUT_RESPONSAVEL_SIAFIC,
+  LAYOUT_RECEITA_PREVISTA,
+  LAYOUT_SALDO_INICIAL,
+  LAYOUT_RELACIONAMENTO_EMPENHO_LICITACAO,
+  LAYOUT_ATUALIZACAO_ORCAMENTARIA,
+  LAYOUT_DECRETOS_E_OFICIOS,
+  LAYOUT_NORMAS_ORCAMENTARIAS,
 ] as const;

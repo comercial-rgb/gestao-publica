@@ -159,7 +159,7 @@ async function main(): Promise<void> {
     ];
     for (const d of decisoes) {
       await ir(p, "/financeiro/retencoes-proprias");
-      await p.evaluate(() => Array.from(document.querySelectorAll('button[type="button"]')).find((b) => b.textContent?.trim() === "Registrar decisão")?.click());
+      await p.evaluate(() => (Array.from(document.querySelectorAll('button[type="button"]')).find((b) => b.textContent?.trim() === "Registrar decisão") as HTMLElement | undefined)?.click());
       const f = 'form[data-acao="classificar-retencao-propria"]';
       await p.waitForSelector(f, { timeout: 20000 });
       await p.select(`${f} select[name="fato"]`, d.fato);

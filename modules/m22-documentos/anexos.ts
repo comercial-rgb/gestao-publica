@@ -56,6 +56,8 @@ export const zAnexar = z
     medicaoDaOrdemId: z.string().min(1).optional(),
     // ── V22: o projeto, a lei e os anexos da Lei Orçamentária Anual ──
     leiOrcamentariaAnualId: z.string().min(1).optional(),
+    // ── V26: o PDF do decreto de abertura de crédito, que o SAGRES exige junto (§4.6) ──
+    decretoCreditoId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -75,12 +77,13 @@ export const zAnexar = z
         d.ocorrenciaDeFiscalizacaoId,
         d.medicaoDaOrdemId,
         d.leiOrcamentariaAnualId,
+        d.decretoCreditoId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço ou lei orçamentária. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária ou decreto de crédito. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -119,6 +122,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       ocorrenciaDeFiscalizacaoId: d.ocorrenciaDeFiscalizacaoId ?? null,
       medicaoDaOrdemId: d.medicaoDaOrdemId ?? null,
       leiOrcamentariaAnualId: d.leiOrcamentariaAnualId ?? null,
+      decretoCreditoId: d.decretoCreditoId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -181,6 +185,7 @@ export async function anexarArquivo(
         termoPatrimonialId: d.termoPatrimonialId ?? null,
         documentoFiscalId: d.documentoFiscalId ?? null,
         leiOrcamentariaAnualId: d.leiOrcamentariaAnualId ?? null,
+      decretoCreditoId: d.decretoCreditoId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -233,6 +238,7 @@ async function escopoDoDono(
     readonly termoPatrimonialId?: string | undefined;
     readonly documentoFiscalId?: string | undefined;
     readonly leiOrcamentariaAnualId?: string | undefined;
+    readonly decretoCreditoId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
@@ -240,6 +246,12 @@ async function escopoDoDono(
   if (d.leiOrcamentariaAnualId !== undefined) {
     const lei = await tx.leiOrcamentariaAnual.findUnique({ where: { id: d.leiOrcamentariaAnualId }, select: { id: true } });
     if (lei === null) throw new Error(`Lei orçamentária ${d.leiOrcamentariaAnualId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
+  // V26: o decreto de crédito é ato do ENTE (o planejamento não tem escopo de unidade); o decreto tem de existir.
+  if (d.decretoCreditoId !== undefined) {
+    const dec = await tx.decretoCredito.findUnique({ where: { id: d.decretoCreditoId }, select: { id: true } });
+    if (dec === null) throw new Error(`Decreto ${d.decretoCreditoId} não existe. Nada foi gravado.`);
     return "ENTE";
   }
   if (d.documentoFiscalId !== undefined) {

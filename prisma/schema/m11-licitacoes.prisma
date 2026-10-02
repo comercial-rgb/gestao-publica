@@ -45,6 +45,8 @@ enum HipoteseDispensa {
 
 model ProcessoLicitatorio {
   id             String              @id @default(cuid())
+  /// V26 — a licitação como está no Tramita do TCE-PB (m11-tramita.prisma).
+  identificacoesNoTramita IdentificacaoNoTramita[]
   numeroProcesso String              @unique
   modalidade     ModalidadeLicitacao
   objeto         String

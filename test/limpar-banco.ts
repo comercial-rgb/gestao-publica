@@ -426,6 +426,15 @@ export const TABELAS = [
   "ExtratoBancario",
   // M07 — extraorçamentário
   // V26 — a retenção própria do Tesouro (elo pagamento → receita) e a classificação do ente.
+  // V26 — o cadastro que o SAGRES pede (programa, ação, ordenador, responsável pelo sistema, receita prevista, Tramita).
+  "DeclaracaoDoPrograma",
+  "DeclaracaoDaAcao",
+  "EncerramentoDaDesignacaoDeOrdenador",
+  "DesignacaoDeOrdenador",
+  "DeclaracaoDoResponsavelSiafic",
+  "DetalheDaReceitaPrevista",
+  "IdentificacaoNoTramita",
+  "NormaOrcamentariaNoTce",
   "IrDoContrachequeRetido",
   "ApropriacaoDaConsignacaoPropria",
   "RetencaoPropriaDoPagamento",

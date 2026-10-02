@@ -55,6 +55,8 @@ model Orgao {
 
 model UnidadeOrcamentaria {
   id        String @id @default(cuid())
+  /// V26 — os ordenadores designados para a unidade (m05-ordenador-e-siafic.prisma).
+  ordenadores DesignacaoDeOrdenador[] @relation("OrdenadorDaUnidade")
   /// SAGRES-PB: 5 dígitos.
   codigo    String @unique @db.VarChar(5)
   descricao String
@@ -140,6 +142,8 @@ model Subfuncao {
 
 model Programa {
   id                  String  @id @default(cuid())
+  /// V26 — os dados da prestação de contas (m02-programa-e-acao.prisma).
+  declaracoes DeclaracaoDoPrograma[]
   codigo              String  @unique @db.VarChar(4)
   descricao           String
   objetivo            String?
@@ -157,6 +161,8 @@ model Programa {
 
 model Acao {
   id        String   @id @default(cuid())
+  /// V26 — os dados da prestação de contas (m02-programa-e-acao.prisma).
+  declaracoes DeclaracaoDaAcao[]
   codigo    String   @unique @db.VarChar(4)
   descricao String
   tipo      TipoAcao
@@ -410,6 +416,8 @@ model TipoReceitaSagres {
 
 model ReceitaPrevista {
   id                String          @id @default(cuid())
+  /// V26 — o subtipo da dedução e a origem da linha (m02-programa-e-acao.prisma).
+  detalhe DetalheDaReceitaPrevista?
   exercicio         Int
   naturezaReceitaId String
   naturezaReceita   NaturezaReceita @relation(fields: [naturezaReceitaId], references: [id])

@@ -181,3 +181,6 @@ export {
   type ImportarPlanoDoTribunalInput,
   type PlanoVigente,
 } from "./plano-do-tribunal.js";
+
+// V26 — o cadastro que dependia de decisão.
+export * from "./gerador-v26.js";

@@ -5,6 +5,8 @@ import { nomeArquivo } from "./nomenclatura.js";
 import { versaoVigente } from "../../../../modules/m19-pessoas/dominio.js";
 import { planoVigenteDoTribunal, type PlanoVigente } from "./plano-do-tribunal.js";
 import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
+import { ordenadorNaData } from "../../../../modules/m05-despesa/ordenador.js";
+import { licitacaoNoTramita } from "../../../../modules/m11-licitacoes/identificacao-no-tramita.js";
 import {
   conciliacaoBancaria,
   ConciliacaoNaoFechaError,
@@ -159,9 +161,11 @@ export async function lerFatosEmpenhos(
   params: { readonly codUnidadeGestora: string; readonly dia: Date }
 ): Promise<EmpenhoFato[]> {
   const { gte, lt } = intervaloDoDia(params.dia);
-  // O ORDENADOR é atributo do ente (S6): o empenho o herda daqui (quita o gap cpfOrdenador da S3).
+  // V26 — O ORDENADOR do empenho é o designado vigente na data dele, para a unidade da ficha (ou para o ente todo).
+  // Sem nenhuma designação cadastrada, vale o ordenador declarado no cadastro do ente (o regime anterior à V26).
   const ente = await prisma.enteConfig.findFirst({ select: { cpfOrdenador: true } });
   const cpfOrdenadorDoEnte = ente?.cpfOrdenador ?? null;
+  const haDesignacoes = (await prisma.designacaoDeOrdenador.count()) > 0;
   // V23 — só EMPENHOS genuínos. A linha de anulação (inteira ou parcial) e o estorno de uma anulação
   // não são empenhos novos: vão a Estornos (§4.9), ou são recusados nomeando (`lerFatosEstornos`).
   const empenhos = await prisma.empenho.findMany({
@@ -173,15 +177,35 @@ export async function lerFatosEmpenhos(
     },
     orderBy: [{ numero: "asc" }],
   });
-  return empenhos.map((e) => {
-    if (e.contratoId !== null) {
-      // Empenho COM contrato: a modalidade sai do processo (m11), não mapeada nesta fatia. Para NÃO
-      // inventar domínio (PATCH §4), recusa nomeando. A massa POC empenha sem contrato (modalidade "9").
-      throw new Error(
-        `SAGRES/Empenhos — empenho ${e.numero} tem contrato: a modalidade de licitação vem do ` +
-          `processo (m11) e não está mapeada nesta fatia. Proibido inventar domínio (PATCH §4).`
-      );
+  const cpfDoOrdenador = new Map<string, string | null>();
+  for (const e of empenhos) {
+    if (!haDesignacoes) {
+      cpfDoOrdenador.set(e.id, cpfOrdenadorDoEnte);
+      continue;
     }
+    const o = await ordenadorNaData(prisma, { data: e.data, unidadeOrcId: e.ficha.unidadeOrcId });
+    if (o === null) {
+      throw new Error(`SAGRES/Empenhos — o empenho ${e.numero} não tem ordenador designado na data dele para a unidade ${e.ficha.unidadeOrc.codigo} nem para o ente todo. Designe em Contabilidade › Ordenadores e responsável pelo sistema.`);
+    }
+    cpfDoOrdenador.set(e.id, o.cpf);
+  }
+  // V26 — EMPENHO COM CONTRATO: a modalidade e o número da licitação são os do TRAMITA do TCE-PB, como o processo do
+  // contrato foi identificado lá (§6.2; o número não é o do processo interno). Sem a identificação, recusa nomeando.
+  const doTramita = new Map<string, { readonly modalidade: string; readonly numero: string }>();
+  for (const e of empenhos) {
+    if (e.contratoId === null) continue;
+    const c = await prisma.contrato.findUniqueOrThrow({ where: { id: e.contratoId }, select: { processoId: true, processo: { select: { numeroProcesso: true } } } });
+    const t = await licitacaoNoTramita(prisma, c.processoId);
+    if (t === null) {
+      throw new Error(`SAGRES/Empenhos — o empenho ${e.numero} é de contrato do processo ${c.processo.numeroProcesso}, que ainda não tem o número da licitação no Tramita. Informe em Licitações › o processo.`);
+    }
+    if (!/^\d{1,9}$/.test(t.numeroNoTramita)) {
+      throw new Error(`SAGRES/Empenhos — o número da licitação no Tramita do processo ${c.processo.numeroProcesso} (${t.numeroNoTramita}) não é numérico, e o campo do empenho é numérico.`);
+    }
+    doTramita.set(e.id, { modalidade: t.modalidadeSagres, numero: t.numeroNoTramita });
+  }
+  return empenhos.map((e) => {
+    const lic = doTramita.get(e.id);
     const f = e.ficha;
     return {
       codUnidadeGestora: params.codUnidadeGestora,
@@ -196,8 +220,9 @@ export async function lerFatosEmpenhos(
       codModalidadeDespesa: f.naturezaDespesa.codModalidade,
       codElementoDespesa: f.naturezaDespesa.codElemento,
       codSubelemento: e.subelemento?.codigo ?? null,
-      modalidadeLicitacao: MODALIDADE_SEM_LICITACAO,
-      numLicitacao: null,
+      modalidadeLicitacao: lic?.modalidade ?? MODALIDADE_SEM_LICITACAO,
+      // Modalidade 9 (sem licitação) sai com zeros; as demais exigem o número (só 6 e 9 têm exceção).
+      numLicitacao: lic?.numero ?? null,
       numEmpenho: e.numero,
       tipoEmpenho: e.tipo,
       data: e.data,
@@ -209,7 +234,7 @@ export async function lerFatosEmpenhos(
       numObra: e.obra?.identificador ?? null,
       exercicioFonteRecurso: f.exercicioFonte,
       codFonteRecurso: f.fonte.codigo,
-      cpfOrdenador: cpfOrdenadorDoEnte, // herdado do EnteConfig (S6) — quita o gap da S3
+      cpfOrdenador: cpfDoOrdenador.get(e.id) ?? null, // V26: a designação vigente na data (ou o do cadastro do ente)
       co: f.co?.codigo ?? null,
     };
   });
@@ -261,7 +286,7 @@ export async function gerarLiquidacao(
 }
 
 // ── A conta bancária com a tripla, ou o erro que nomeia o que falta. ─────────────
-function exigirTripla(c: { codigo: string; banco: string | null; agencia: string | null; conta: string | null }): {
+export function exigirTripla(c: { codigo: string; banco: string | null; agencia: string | null; conta: string | null }): {
   banco: string;
   agencia: string;
   conta: string;
@@ -276,7 +301,7 @@ function exigirTripla(c: { codigo: string; banco: string | null; agencia: string
 }
 
 /** Conta + dígito (dado cru, só dígitos concatenados — a máscara BR é da UI). */
-function comDigito(numero: string, digito: string | null): string {
+export function comDigito(numero: string, digito: string | null): string {
   return `${numero}${digito ?? ""}`;
 }
 

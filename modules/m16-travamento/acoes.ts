@@ -1140,6 +1140,15 @@ export type NomeDeServico =
   | "classificarRetencaoPropria"
   // M04 V26 — a regularização do legado: o IR/ISS do próprio Tesouro que ficou na consignação vira receita
   | "regularizarConsignacaoPropria"
+  // V26 — o cadastro que a prestação de contas pede: programa, ação, ordenador e responsável pelo sistema
+  | "declararDadosDoPrograma"
+  | "declararDadosDaAcao"
+  | "designarOrdenador"
+  | "encerrarDesignacaoDeOrdenador"
+  | "declararResponsavelSiafic"
+  | "detalharReceitaPrevista"
+  | "identificarNoTramita"
+  | "registrarNormaNoTce"
   | "criarUnidadeDeAtendimento"
   | "criarGuiche"
   | "definirServicoNoGuiche"
@@ -1830,6 +1839,19 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // ⚠️ V26 — REGISTRAR_ARRECADACAO: regularizar é registrar a receita que deixou de ser registrada (a guia nasce
   // aqui); a baixa da consignação é a outra perna do mesmo fato, sem saída de dinheiro.
   regularizarConsignacaoPropria: "REGISTRAR_ARRECADACAO",
+  // ⚠️ V26 — A MESMA AUTORIDADE da declaração da unidade orçamentária: são os dados do orçamento e de quem o ordena
+  // que a prestação de contas pede, não atos de execução.
+  declararDadosDoPrograma: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA",
+  declararDadosDaAcao: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA",
+  designarOrdenador: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA",
+  encerrarDesignacaoDeOrdenador: "DECLARAR_DADOS_DA_UNIDADE_ORCAMENTARIA",
+  // ⚠️ V26 — sob CADASTRAR_ENTIDADE_CONTABIL, a mesma dos responsáveis do MANAD: quem responde pela escrituração.
+  declararResponsavelSiafic: "CADASTRAR_ENTIDADE_CONTABIL",
+  // ⚠️ V26 — a mesma autoridade de criar a linha da previsão: dizer de que dedução ela é e de que documento veio.
+  detalharReceitaPrevista: "CRIAR_RECEITA_PREVISTA",
+  // ⚠️ V26 — a mesma autoridade de cadastrar o processo: informar como a licitação está no Tramita é dado do processo.
+  identificarNoTramita: "CADASTRAR_PROCESSO",
+  registrarNormaNoTce: "CRIAR_LEI_DE_CREDITO",
   // ── M21 V11 V8 — a agenda do guichê ──
   criarUnidadeDeAtendimento: "CONFIGURAR_AGENDA_DO_GUICHE",
   criarGuiche: "CONFIGURAR_AGENDA_DO_GUICHE",
@@ -2161,6 +2183,29 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
   fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
+  ordenadorNaData: "leitura (o ordenador designado vigente na data, para a unidade da ficha; recusa a ambiguidade)",
+  lerFatosProgramas: "leitura (SAGRES §4.2: os programas do orçamento com a declaração vigente)",
+  lerFatosAcao: "leitura (SAGRES §4.3: as ações do orçamento com a declaração vigente)",
+  gerarProgramas: "leitura (SAGRES §4.2: o arquivo)",
+  gerarAcao: "leitura (SAGRES §4.3: o arquivo)",
+  lerFatosOrdenador: "leitura (SAGRES §4.36: as designações que começam no dia)",
+  gerarOrdenador: "leitura (SAGRES §4.36: o arquivo)",
+  lerFatosResponsavelSiafic: "leitura (SAGRES §4.48: a declaração vigente no fim de janeiro)",
+  gerarResponsavelSiafic: "leitura (SAGRES §4.48: o arquivo)",
+  lerFatosReceitaPrevista: "leitura (SAGRES §4.7: as linhas da previsão do exercício, com o subtipo da dedução)",
+  gerarReceitaPrevista: "leitura (SAGRES §4.7: o arquivo)",
+  lerFatosSaldoInicial: "leitura (SAGRES §4.25: o saldo contábil de abertura, da conciliação de dezembro encerrada)",
+  gerarSaldoInicial: "leitura (SAGRES §4.25: o arquivo)",
+  licitacaoNoTramita: "leitura (a identificação vigente do processo no Tramita)",
+  lerFatosRelacionamentoEmpenhoLicitacao: "leitura (SAGRES §4.38: os empenhos do mês com a licitação do Tramita)",
+  gerarRelacionamentoEmpenhoLicitacao: "leitura (SAGRES §4.38: o arquivo)",
+  gerarArquivosDaV26: "leitura (SAGRES: os arquivos da V26 do pacote, com as recusas nomeadas)",
+  lerFatosAtualizacaoOrcamentaria: "leitura (SAGRES §4.5: os itens dos decretos de crédito do dia)",
+  gerarAtualizacaoOrcamentaria: "leitura (SAGRES §4.5: o arquivo)",
+  lerFatosDecretosEOficios: "leitura (SAGRES §4.6: os decretos do dia e o PDF de cada um)",
+  gerarDecretosEOficios: "leitura (SAGRES §4.6: o arquivo e os PDFs, conferidos pelo hash)",
+  lerFatosNormasOrcamentarias: "leitura (SAGRES §4.49: as leis do dia com o protocolo do TCE-PB)",
+  gerarNormasOrcamentarias: "leitura (SAGRES §4.49: o arquivo)",
   irDaFolhaNoPagamento: "leitura (o IR dos servidores a reter no pagamento de uma liquidação de folha, e como: receita ou consignação)",
   irDaFolhaPendente: "leitura (o IR dos contracheques que a liquidação cobre e que ainda não foi retido)",
   exigirIrDaFolhaAindaPendente:
@@ -3131,6 +3176,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarAnexosDoProcesso: "leitura (os anexos que ESTE usuário pode ver — pergunta ao processo dono)",
   listarAnexosDaPessoa: "leitura (os anexos de um cadastro do ente; exige usuário ativo)",
   listarAnexosDoTermo: "leitura (os anexos de um termo patrimonial — o termo assinado; do ente, exige usuário ativo — V4 §5)",
+  listarAnexosDosDecretos: "leitura (os PDFs dos decretos de crédito; a área é da porta, CONSULTAR_PLANEJAMENTO no ente — V26)",
   listarAnexosDaLeiOrcamentaria: "leitura (os anexos da LOA — projeto, lei e anexos da lei; a área é da porta, CONSULTAR_PLANEJAMENTO no ente — V22)",
   listarAnexosDoComunicado: "leitura (os anexos de um comunicado — pergunta ao M23 quem participa)",
   loteDeAnexosDoProcesso: "leitura (monta o zip com o que baixarAnexo entregaria um a um)",

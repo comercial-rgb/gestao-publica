@@ -58,6 +58,8 @@ enum TipoItemCredito {
 
 model LeiCredito {
   id     String @id @default(cuid())
+  /// V26 — a norma no banco de legislação do TCE-PB (m03-normas-no-tce.prisma).
+  normasNoTce NormaOrcamentariaNoTce[] @relation("NormaDaLeiDeCredito")
   numero String
   ano    Int
   tipoCredito TipoCredito
@@ -88,6 +90,8 @@ model LeiCredito {
 
 model DecretoCredito {
   id     String     @id @default(cuid())
+  /// V26 — o PDF do decreto, que o SAGRES exige junto (§4.6).
+  anexos Anexo[] @relation("AnexoDoDecreto")
   leiId  String
   lei    LeiCredito @relation(fields: [leiId], references: [id])
   numero String

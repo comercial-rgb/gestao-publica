@@ -7,6 +7,8 @@ import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde"
 import { PROCESSOS_LICITATORIOS } from "../../../../../lib/portas/recursos/contratacao";
 import { verProcesso, opcoesDoProcesso } from "../../../../../lib/portas/recursos/contratacao-dados";
 import { processoslicitatoriosAction } from "../actions";
+import { lerTramitaDoProcesso } from "../../../../../lib/portas/tramita";
+import { FormDoTramita } from "./FormDoTramita";
 
 /**
  * O DETALHE DO PROCESSO: situação derivada, reservas vivas, contratos — e as ações que os criam. As reservas oferecidas à liberação são SÓ as deste processo.
@@ -18,9 +20,10 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   await exigirLeitura("CONSULTAR_LICITACOES");
   const { id } = await params;
   const consulta = lerConsulta(PROCESSOS_LICITATORIOS, await searchParams);
-  const [detalhe, opcoes, permitidas] = await Promise.all([verProcesso(id), opcoesDoProcesso(id), acoesPermitidas(PROCESSOS_LICITATORIOS.acoes.map((a) => a.acaoDoCenso))]);
+  const [detalhe, opcoes, permitidas, tramita] = await Promise.all([verProcesso(id), opcoesDoProcesso(id), acoesPermitidas(PROCESSOS_LICITATORIOS.acoes.map((a) => a.acaoDoCenso)), lerTramitaDoProcesso(id)]);
   if (detalhe === null) notFound();
   return (
+    <div className="space-y-4">
     <DetalheDeRecurso
       definicao={PROCESSOS_LICITATORIOS}
       id={id}
@@ -32,5 +35,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
       historico={detalhe.historico}
       acoes={<FormsDoRecurso definicao={PROCESSOS_LICITATORIOS} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={processoslicitatoriosAction} modo="acoes" />}
     />
+    {tramita !== null ? <FormDoTramita processoId={id} tramita={tramita} /> : null}
+    </div>
   );
 }

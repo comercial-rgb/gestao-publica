@@ -39,6 +39,8 @@ export interface DonoDoAnexo {
   readonly liquidacaoId?: string | undefined;
   /** V22 — o projeto, a lei e os anexos da Lei Orçamentária Anual. */
   readonly leiOrcamentariaAnualId?: string | undefined;
+  /** V26 — o PDF do decreto de abertura de crédito. */
+  readonly decretoCreditoId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -95,6 +97,9 @@ export function FormAnexo({
       ) : null}
       {dono.leiOrcamentariaAnualId !== undefined ? (
         <input type="hidden" name="leiOrcamentariaAnualId" value={dono.leiOrcamentariaAnualId} />
+      ) : null}
+      {dono.decretoCreditoId !== undefined ? (
+        <input type="hidden" name="decretoCreditoId" value={dono.decretoCreditoId} />
       ) : null}
       {dono.liquidacaoId !== undefined ? (
         <input type="hidden" name="liquidacaoId" value={dono.liquidacaoId} />

@@ -1,0 +1,29 @@
+// ============================================================================
+// V26 — A LICITAÇÃO COMO ESTÁ CADASTRADA NO TRAMITA DO TCE-PB (SAGRES §4.8 modalidadeLicitacao/numLicitacao e §4.38
+// RelacionamentoEmpenhoLicitacao). O leiaute exige que a licitação EXISTA no Tramita: o número é o de lá (não o número
+// do processo interno, nem um protocolo do Tribunal), com a UG e a modalidade da tabela §6.2 registradas lá.
+//
+// A modalidade é conferida contra o procedimento do processo (Lei 14.133): o pregão é 24 (não 10/11 por ser eletrônico
+// ou presencial), a dispensa 21 ou 33 (alienação), a inexigibilidade 22 ou 30 (credenciamento). Append-only: uma
+// identificação nova substitui a anterior (a vigente é a de maior criadoEm), com o motivo.
+// ============================================================================
+
+model IdentificacaoNoTramita {
+  id         String              @id @default(cuid())
+  processoId String
+  processo   ProcessoLicitatorio @relation(fields: [processoId], references: [id])
+
+  /// O número da licitação no Tramita (até 9 posições), como cadastrado lá.
+  numeroNoTramita   String @db.VarChar(9)
+  /// A unidade gestora em que a licitação está cadastrada no Tramita (6 dígitos).
+  codUnidadeGestora String @db.VarChar(6)
+  /// A modalidade da tabela §6.2, como cadastrada no Tramita.
+  modalidadeSagres  String @db.VarChar(2)
+  /// De onde vem (consulta ao Tramita, comprovante de cadastro) — ou o motivo da correção.
+  fundamento        String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoId, criadoEm])
+}

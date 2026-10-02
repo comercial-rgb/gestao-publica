@@ -196,12 +196,15 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
   { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "Alterações do PPA e da LDO por lei ou decreto, com o valor original e o vigente." },
   { href: "/planejamento/unidades-orcamentarias", numero: "Unidades", rotulo: "Unidades orçamentárias", descricao: "Natureza jurídica, secretário responsável e ato de nomeação de cada unidade orçamentária, com histórico." },
+  { href: "/planejamento/programas-e-acoes", numero: "Programas e ações", rotulo: "Programas e ações", descricao: "Objetivo, objetivo da Agenda 2030, meta e unidade de medida dos programas e ações do orçamento, com histórico." },
+  { href: "/planejamento/receita-prevista", numero: "Receita prevista", rotulo: "Receita prevista", descricao: "As linhas da previsão da receita da LOA, com o tipo de cada dedução e o documento de origem." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
   { href: "/planejamento/loa", numero: "LOA", rotulo: "Lei Orçamentária Anual", descricao: "Receita prevista, despesa fixada, equilíbrio e anexos da Lei 4.320/64 do exercício." },
   { href: "/planejamento/leis-orcamentarias", numero: "Leis", rotulo: "Projeto e Lei da LOA", descricao: "O projeto enviado ao Legislativo, a lei que o aprovou e os documentos anexos, por exercício." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },
+  { href: "/planejamento/creditos-adicionais/normas-no-tribunal", numero: "Leis no Tribunal", rotulo: "Leis no Tribunal de Contas", descricao: "O protocolo de cada lei orçamentária no banco de legislação do Tribunal, e as leis publicadas sem ele." },
   { href: "/planejamento/realocacoes", numero: "Realocações", rotulo: "Remanejamento, Transposição e Transferência", descricao: "Movimentação de dotação entre programações autorizada por lei específica, com as fichas cedentes e as recebedoras." },
   { href: "/planejamento/recursos-novos", numero: "Recurso novo", rotulo: "Disponibilidade de Recurso Novo", descricao: "Superávit financeiro, excesso de arrecadação e operações de crédito que lastreiam créditos adicionais (Lei 4.320, art. 43)." },
   { href: "/planejamento/reprevisao", numero: "Reprevisão", rotulo: "Reprevisão da Receita", descricao: "Revisão da previsão de receita ao longo do exercício (LRF art. 12)." },
@@ -239,6 +242,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
  * são a BASE (o plano que classifica e os lançamentos que registram). Quem audita chega por aqui.
  */
 export const CONTABILIDADE: readonly RelatorioNav[] = [
+  { href: "/contabilidade/ordenadores", numero: "Ordenadores", rotulo: "Ordenadores e responsável pelo sistema", descricao: "Ordenadores de despesa designados por ato e vigência, e o responsável técnico pelo sistema." },
   { href: "/contabilidade/roteiros-orcamentarios", numero: "Roteiro orçamentário", rotulo: "Roteiro orçamentário", descricao: "Contas contábeis de cada movimento orçamentário: dotação, créditos adicionais, anulação e reserva." },
   { href: "/contabilidade/roteiros-de-restos-a-pagar", numero: "Contas dos restos a pagar", rotulo: "Contas dos restos a pagar", descricao: "Contas contábeis de liquidação, pagamento e cancelamento de restos a pagar." },
   // V11 V9.3 — irmã do roteiro orçamentário, e pela mesma razão: o plano parte 7.2.1.1 por
