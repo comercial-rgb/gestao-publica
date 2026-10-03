@@ -828,6 +828,7 @@ export type NomeDeServico =
   | "registrarPrestacaoDeAdiantamento"
   | "aprovarPrestacaoDeAdiantamento"
   | "rejeitarPrestacaoDeAdiantamento"
+  | "implantarSaldosIniciais"
   | "anularArrecadacao"
   | "reconhecerReceita"
   | "estornarReconhecimento"
@@ -1620,6 +1621,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarPrestacaoDeAdiantamento: "EMPENHAR",
   aprovarPrestacaoDeAdiantamento: "APROVAR_PRESTACAO_DE_CONTAS",
   rejeitarPrestacaoDeAdiantamento: "APROVAR_PRESTACAO_DE_CONTAS",
+  // V32 — a carga do balancete do sistema anterior: um lançamento de partidas arbitrárias, a autoridade do manual.
+  implantarSaldosIniciais: "REGISTRAR_LANCAMENTO_MANUAL",
   destravar: "DESTRAVAR_COMPETENCIA",
 
   // M16 — administração de usuários (7.14). A família ADMINISTRACAO — quem gerencia usuários não é
@@ -2276,6 +2279,8 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V32 ──
+  lerBalancete: "puro (o balancete colado lido em linhas, com os problemas de forma)",
+  previaDaImplantacao: "leitura (as contas conferidas no plano e os totais por subsistema — não muta)",
   situacaoDoAdiantamento: "puro (a situação da concessão pela prestação e pelo prazo)",
   listarAdiantamentos: "leitura (as concessões de diárias e suprimentos com a situação — não muta)",
   roteiroPatrimonialVigente: "leitura (o roteiro declarado vigente de precatório ou convênio, com os ids das contas — não muta)",
