@@ -33,7 +33,8 @@ const completa = JSON.parse(readFileSync(`.registro-de-execucao/conferencia-de-t
 const enxuta = { digesto, quando: completa.quando, comando: completa.comando, duracaoMs: completa.duracaoMs, heapMb: completa.heapMb, node: completa.node, sha: completa.sha };
 const destino = "scripts/implantacao/aprovacao-de-tipos.json";
 const antes = existsSync(destino) ? JSON.parse(readFileSync(destino, "utf8")).digesto : "";
-writeFileSync(destino, JSON.stringify(enxuta, null, 1) + "\n");
+// Mesmo digesto: o arquivo fica como está (reescrever só a data geraria um commit sem conteúdo novo).
+if (antes !== digesto) writeFileSync(destino, JSON.stringify(enxuta, null, 1) + "\n");
 console.log(antes === digesto ? "[publicar] aprovação já estava no repositório" : `[publicar] aprovação ${digesto.slice(0, 12)} gravada`);
 '
 

@@ -105,6 +105,11 @@ if [ "$SIMULAR" -eq 0 ] && [ -e "$RAIZ/ativa-$ATIVA" ]; then ANTERIOR="$(readlin
 if [ -n "$ANTERIOR" ] && [ "$ANTERIOR" != "$VERSAO" ] && [ -d "$ANTERIOR/node_modules" ]    && cmp -s "$ANTERIOR/package-lock.json" "$VERSAO/package-lock.json"; then
   echo "  package-lock.json igual ao da versão no ar: dependências copiadas dela"
   x sudo -u "$USUARIO" cp -a "$ANTERIOR/node_modules" "$VERSAO/node_modules"
+  # O Chrome do PDF (baixado pelo npm ci para .cache-puppeteer, ver .puppeteerrc.cjs) vem junto: sem ele
+  # o preflight do navegador para. Links físicos — binário só de leitura, 643 MB que não se duplicam.
+  if [ -d "$ANTERIOR/.cache-puppeteer" ]; then
+    x sudo -u "$USUARIO" cp -al "$ANTERIOR/.cache-puppeteer" "$VERSAO/.cache-puppeteer"
+  fi
 else
   na_versao npm ci
 fi
