@@ -820,6 +820,8 @@ export type NomeDeServico =
   | "declararDisponibilidade"
   | "registrarArrecadacao"
   | "arrecadarQuitandoReconhecimento"
+  | "arrecadarRecebendoDividaAtiva"
+  | "arrecadarIngressoDaOperacaoDeCredito"
   | "anularArrecadacao"
   | "reconhecerReceita"
   | "estornarReconhecimento"
@@ -1406,6 +1408,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarArrecadacao: "REGISTRAR_ARRECADACAO",
   // V28 — a guia da tela que quita um crédito já reconhecido: o MESMO ato de arrecadar.
   arrecadarQuitandoReconhecimento: "REGISTRAR_ARRECADACAO",
+  // V32 — a guia da tela que recebe dívida ativa ou ingressa operação de crédito: o MESMO ato de arrecadar.
+  arrecadarRecebendoDividaAtiva: "REGISTRAR_ARRECADACAO",
+  arrecadarIngressoDaOperacaoDeCredito: "REGISTRAR_ARRECADACAO",
   anularArrecadacao: "ANULAR_ARRECADACAO",
 
   reconhecerReceita: "RECONHECER_RECEITA",

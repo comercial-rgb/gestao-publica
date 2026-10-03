@@ -6,6 +6,7 @@ import type { Prisma } from "../../prisma/generated/client/client.js";
 import { cliente } from "./cliente";
 import { saldoReconhecidoDe } from "../../modules/m04-receita/reconhecimento.js";
 import { saldoAIncorporarDaLiquidacao } from "../../modules/m10-patrimonial/patrimonio.js";
+import { saldoDaDividaAtivaEm } from "../../modules/m10-patrimonial/divida-ativa.js";
 import { formatarMoeda } from "../../packages/contracts/moeda";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
@@ -219,8 +220,8 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
           estornoDeId: null,
           estornos: { none: {} },
           ...(p.valor !== undefined ? { id: p.valor } : {}),
-          ...(/^d{8}$/.test(natureza) ? { naturezaCodigo: natureza } : {}),
-          ...(/^d{3}$/.test(fonte) ? { fonte: { codigo: fonte } } : {}),
+          ...(/^\d{8}$/.test(natureza) ? { naturezaCodigo: natureza } : {}),
+          ...(/^\d{3}$/.test(fonte) ? { fonte: { codigo: fonte } } : {}),
           ...(p.q === "" ? {} : { OR: [{ historico: contem(p.q) }, { contribuinteRef: contem(p.q) }] }),
         },
         orderBy: [{ dataFatoGerador: "asc" }, { id: "asc" }],
@@ -238,6 +239,58 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
             detalhe: `natureza ${l.naturezaCodigo} · fonte ${l.fonte.codigo} · saldo a receber R$ ${formatarMoeda(saldo.toFixed(2)).texto}`,
             dados: { saldo: saldo.toFixed(2) },
           })),
+        temMais: r.temMais,
+      };
+    },
+  },
+  // V32 — a dívida ativa que a guia RECEBE (só as com saldo a receber). O saldo é o do M10 (Σ movimentos).
+  "dividas-ativas-a-receber": {
+    leitura: "CONSULTAR_DIVIDA",
+    async buscar(_s, p) {
+      const linhas = await cliente().dividaAtiva.findMany({
+        where: {
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(p.q === "" ? {} : { OR: [{ identificador: contem(p.q) }, { devedorNome: contem(p.q) }, { devedorDocumento: { startsWith: p.q.replace(/\D/g, "") || p.q } }] }),
+        },
+        orderBy: [{ identificador: "asc" }],
+        skip: skip(p), take,
+        select: { id: true, identificador: true, devedorNome: true, devedorDocumento: true, contaContabil: { select: { codigo: true } } },
+      });
+      const r = pagina(linhas, p);
+      const comSaldo = await Promise.all(r.linhas.map(async (l) => ({ l, saldo: await saldoDaDividaAtivaEm(cliente(), l.id) })));
+      return {
+        opcoes: comSaldo
+          .filter((x) => p.valor !== undefined || x.saldo.greaterThan(0))
+          .map(({ l, saldo }) => ({
+            valor: l.id,
+            rotulo: `${l.identificador} — ${l.devedorNome}`,
+            detalhe: `${formatarDocumento(l.devedorDocumento)} · conta ${l.contaContabil.codigo} · saldo R$ ${formatarMoeda(saldo.toFixed(2)).texto}`,
+            dados: { saldo: saldo.toFixed(2) },
+          })),
+        temMais: r.temMais,
+      };
+    },
+  },
+  // V32 — a dívida fundada (operação de crédito) em que a guia registra o INGRESSO do empréstimo.
+  "dividas-fundadas": {
+    leitura: "CONSULTAR_DIVIDA",
+    async buscar(_s, p) {
+      const linhas = await cliente().dividaConsolidada.findMany({
+        where: {
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(p.q === "" ? {} : { OR: [{ identificador: contem(p.q) }, { credorNome: contem(p.q) }, { objeto: contem(p.q) }] }),
+        },
+        orderBy: [{ identificador: "asc" }],
+        skip: skip(p), take,
+        select: { id: true, identificador: true, credorNome: true, leiAutorizativa: true, contaContabil: { select: { codigo: true } } },
+      });
+      const r = pagina(linhas, p);
+      return {
+        opcoes: r.linhas.map((l) => ({
+          valor: l.id,
+          rotulo: `${l.identificador} — ${l.credorNome}`,
+          detalhe: `lei ${l.leiAutorizativa} · conta ${l.contaContabil.codigo}`,
+        })),
         temMais: r.temMais,
       };
     },

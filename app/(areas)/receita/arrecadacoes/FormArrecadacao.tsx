@@ -155,6 +155,24 @@ export function FormArrecadacao({
           largura={3}
         />
 
+        <CampoReferenciado
+          name="dividaAtivaId"
+          rotulo="Dívida ativa que esta guia recebe (opcional)"
+          catalogo="dividas-ativas-a-receber"
+          placeholder="Digite a inscrição, o devedor ou o CPF/CNPJ"
+          ajuda="Escolha quando a guia paga uma dívida ativa inscrita. O valor inteiro da guia baixa o saldo da dívida, e a receita não é reconhecida de novo."
+          largura={3}
+        />
+
+        <CampoReferenciado
+          name="dividaFundadaId"
+          rotulo="Operação de crédito que esta guia ingressa (opcional)"
+          catalogo="dividas-fundadas"
+          placeholder="Digite o contrato ou o credor"
+          ajuda="Escolha quando o dinheiro é a liberação de um empréstimo. O valor entra como dívida do município, e não como ganho."
+          largura={3}
+        />
+
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nº da guia</span>
           <input
