@@ -15,6 +15,7 @@ import {
   registrarPrestacaoDeAdiantamento,
   rejeitarPrestacaoDeAdiantamento,
 } from "./adiantamentos.js";
+import { listarDiariasPublicas } from "../../lib/portas/diarias-publicas.js";
 
 /**
  * V32 — DIÁRIAS E SUPRIMENTO DE FUNDOS. REGIME: PROFUNDIDADE (saldo do empenho, trinco, razão de controle).
@@ -184,5 +185,20 @@ describe("V32 — diárias e suprimento de fundos", () => {
     await expect(diaria(e14, "R-4", "1", { por: LEITOR })).rejects.toThrow(/ACESSO NEGADO[\s\S]*EMPENHAR/);
     expect(await prisma.concessaoDeAdiantamento.count()).toBe(0);
     expect(await saldo(A_COMPROVAR)).toBe("0.00");
+  });
+
+  it("t5: o portal publica as diárias do exercício com o CPF mascarado — o número cru nunca sai", async () => {
+    await roteiros();
+    const e = await empenho("ficha-14", "1000.00");
+    await diaria(e, "P-1", "2");
+    await diaria(e, "P-2", "0,5");
+    const pub = await listarDiariasPublicas(2026);
+    expect(pub.linhas.map((l) => [l.numero, l.valor, l.quantidade, l.beneficiarioDocumento, l.prestacaoAprovada])).toEqual([
+      ["P-1", "400.00", "2.0", "***.456.789-**", false],
+      ["P-2", "100.00", "0.5", "***.456.789-**", false],
+    ]);
+    expect(pub.total).toBe("500.00");
+    expect(JSON.stringify(pub)).not.toContain(SERVIDOR);
+    expect((await listarDiariasPublicas(2025)).linhas).toEqual([]);
   });
 });

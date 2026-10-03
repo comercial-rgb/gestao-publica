@@ -49,6 +49,12 @@ const ABERTAS: readonly Familia[] = [
     href: "/transparencia/pessoal",
   },
   {
+    titulo: "Diárias",
+    descricao:
+      "Diárias concedidas, com o beneficiário, cargo, destino, finalidade, período, quantidade, valor, norma que autorizou e a situação da prestação de contas.",
+    href: "/transparencia/diarias",
+  },
+  {
     titulo: "Contratos",
     descricao:
       "Contratos, com objeto, contratado, vigência, valores, aditivos e execução física aprovada.",
