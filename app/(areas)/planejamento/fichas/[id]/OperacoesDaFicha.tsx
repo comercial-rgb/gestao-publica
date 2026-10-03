@@ -59,8 +59,9 @@ export function OperacoesDaFichaSecao({
       chave: "acao",
       cabecalho: "",
       celula: (r) =>
-        podeLiberar && !r.liberada && toMoney(r.saldo).greaterThan(0) ? (
-          <FormLiberarReserva fichaId={o.fichaId} reservaId={r.id} rotulo={`a reserva de ${dataBr(r.criadoEm)}`} />
+        // Montado também depois de liberada, para a confirmação não sumir com o próprio sucesso.
+        podeLiberar && (r.liberada || toMoney(r.saldo).greaterThan(0)) ? (
+          <FormLiberarReserva fichaId={o.fichaId} reservaId={r.id} rotulo={`a reserva de ${dataBr(r.criadoEm)}`} liberada={r.liberada} />
         ) : null,
     },
   ];

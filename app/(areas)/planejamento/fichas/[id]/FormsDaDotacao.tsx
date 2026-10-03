@@ -61,8 +61,24 @@ export function FormReservar({ fichaId, disponivel }: { readonly fichaId: string
   );
 }
 
-export function FormLiberarReserva({ fichaId, reservaId, rotulo }: { readonly fichaId: string; readonly reservaId: string; readonly rotulo: string }): React.ReactElement {
+/**
+ * ⚠️ FICA MONTADO DEPOIS DA LIBERAÇÃO (`liberada`): a linha passa a dizer "Liberada" e deixaria de
+ * oferecer o formulário — e a confirmação sumiria junto. O percurso da V31 mediu esse silêncio (D.3).
+ * Liberada e sem resposta a mostrar, não desenha nada.
+ */
+export function FormLiberarReserva({
+  fichaId,
+  reservaId,
+  rotulo,
+  liberada,
+}: {
+  readonly fichaId: string;
+  readonly reservaId: string;
+  readonly rotulo: string;
+  readonly liberada: boolean;
+}): React.ReactElement | null {
   const [estado, action, pendente] = useActionState<EstadoDaDotacao, FormData>(liberarReservaAction, {});
+  if (liberada) return <Resultado estado={estado} acao="liberar-reserva" />;
   return (
     <details data-forma="liberar-reserva">
       <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-primary)]">Liberar</summary>
