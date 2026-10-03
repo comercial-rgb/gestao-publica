@@ -88,13 +88,22 @@ function* varrer(dir) {
   }
 }
 
+/**
+ * O conteúdo com as quebras de linha normalizadas para LF. O Next gera o next-env.d.ts com CRLF no
+ * Windows e LF no Linux: o mesmo arquivo dava digestos diferentes, e a aprovação feita na máquina de
+ * construção não valia no servidor (V29, EC2). Quebra de linha não muda tipo nenhum.
+ */
+function conteudoNormalizado(f) {
+  return readFileSync(join(RAIZ, f), "utf8").replace(/\r\n/g, "\n");
+}
+
 /** O inventário: caminho relativo -> sha256 do conteúdo. Ordenado, para ser estável. */
 export function inventarioDeTipos() {
   const inv = {};
   for (const raiz of [...RAIZES_DE_FONTE, ...RAIZES_GERADAS])
-    for (const f of varrer(raiz)) inv[f] = sha256(readFileSync(join(RAIZ, f)));
+    for (const f of varrer(raiz)) inv[f] = sha256(conteudoNormalizado(f));
   for (const f of ARQUIVOS_AVULSOS)
-    if (existsSync(join(RAIZ, f))) inv[f] = sha256(readFileSync(join(RAIZ, f)));
+    if (existsSync(join(RAIZ, f))) inv[f] = sha256(conteudoNormalizado(f));
   return Object.fromEntries(Object.entries(inv).sort(([a], [b]) => (a < b ? -1 : 1)));
 }
 
