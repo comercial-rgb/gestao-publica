@@ -250,6 +250,26 @@ describe("(2) apropriar — a folha fechada vira despesa", () => {
     expect(primeira.apropriacaoId).toBe(segunda.apropriacaoId);
   });
 
+  it("V32 — o EMPENHO SEM ELO (queda entre empenhar e amarrar) é religado na retomada; com valor diferente, recusa nomeando", async () => {
+    await fecharFolha(prisma, { folhaId, criadoPor: POR });
+    await grupoPorServidor();
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-HEXT", descricao: "Horas extras", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FH", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaHext], criadoPor: POR });
+    await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
+    // A JANELA: dois empenhos ficam sem elo (N=2), como se o processo tivesse caído depois de empenhar.
+    const elos = await prisma.empenhoDaFolha.findMany({ orderBy: { criadoEm: "asc" }, select: { id: true, empenhoId: true } });
+    await prisma.empenhoDaFolha.deleteMany({ where: { id: { in: [elos[0]!.id, elos[1]!.id] } } });
+    const retomada = await apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR });
+    expect([retomada.empenhados, retomada.jaExistiam, retomada.religados]).toEqual([0, 3, 2]);
+    expect(await prisma.empenhoDaFolha.count()).toBe(3);
+    expect(await prisma.empenho.count()).toBe(3);
+    // Valor que não confere: não amarra o que não é desta parcela.
+    const um = await prisma.empenhoDaFolha.findFirstOrThrow({ where: { empenhoId: elos[0]!.empenhoId }, select: { id: true } });
+    await prisma.empenhoDaFolha.delete({ where: { id: um.id } });
+    await prisma.$executeRawUnsafe(`UPDATE "Empenho" SET "valor" = "valor" + 1 WHERE "id" = '${elos[0]!.empenhoId}'`);
+    await expect(apropriarFolha(prisma, { folhaId, dataDoEmpenho: DATA_EMPENHO, criadoPor: POR })).rejects.toThrow(/existe sem o elo[\s\S]*não é o desta parcela/);
+    expect(await prisma.empenhoDaFolha.count()).toBe(2);
+  });
+
   it("⚠️ V22 — O NÚMERO RESERVADO NÃO É DIGITÁVEL: a reserva ficou de uma tentativa que falhou; o operador tenta o número e é recusado; a retomada empenha a despesa", async () => {
     await fecharFolha(prisma, { folhaId, criadoPor: POR });
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FOLHA-UNICA", descricao: "Folha do mês", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "GLOBAL", serie: "FG", porServidor: false, credorId, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [rubricaVenc, rubricaGrat, rubricaHext], criadoPor: POR });

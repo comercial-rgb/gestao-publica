@@ -68,6 +68,15 @@ function paginacao(c: ConsultaDoMolde): { readonly skip: number; readonly take: 
 }
 const competenciaDeHoje = (): string => diaCivilBr(new Date()).split("/").reverse().slice(0, 2).join("-");
 const ROTULO_DA_SITUACAO: Readonly<Record<SituacaoDaFolha, string>> = { SEM_CALCULO: "SEM CÁLCULO", CALCULADA: "CALCULADA", FECHADA: "FECHADA" };
+/** V32 — `ROTULO-CRU-DO-TIPO-DE-FOLHA`: a tela mostrava o nome interno ("Folha adiantamento_salarial de 2026-09"). */
+const ROTULO_DO_TIPO_DE_FOLHA: Readonly<Record<string, string>> = {
+  MENSAL: "mensal",
+  ADIANTAMENTO_DECIMO_TERCEIRO: "adiantamento do 13º salário",
+  DECIMO_TERCEIRO: "13º salário",
+  MENSAL_COMPLEMENTAR: "complementar",
+  ADIANTAMENTO_SALARIAL: "adiantamento salarial",
+};
+const rotuloDoTipoDeFolha = (tipo: string): string => ROTULO_DO_TIPO_DE_FOLHA[tipo] ?? tipo.toLowerCase();
 const ROTULO_DA_CERTIFICACAO: Readonly<Record<SituacaoDaCertificacao, string>> = {
   PENDENTE: "PENDENTE DE ATESTO",
   CERTIFICADA: "CERTIFICADA",
@@ -114,7 +123,7 @@ export async function listarFolhas(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
   const todas = await prisma.folhaDePagamento.findMany({ where, orderBy: { competencia: c.direcao === "asc" ? "asc" : "desc" }, select: SELECAO_DA_FOLHA });
   const mapeadas = todas.map((f) => {
     const d = derivarFolha(f);
-    return { id: f.id, competencia: f.competencia, tipo: f.tipo, calculos: String(f.calculos.length), contracheques: String(d.vivo?.contracheques ?? 0), liquido: d.vivo === null ? "0.00" : toMoney(d.vivo.totalLiquido).toFixed(2), situacao: ROTULO_DA_SITUACAO[d.situacao], situacaoTom: d.situacao === "FECHADA" ? "neutro" : d.situacao === "SEM_CALCULO" ? "alerta" : "neutro", _sit: d.situacao };
+    return { id: f.id, competencia: f.competencia, tipo: rotuloDoTipoDeFolha(f.tipo), calculos: String(f.calculos.length), contracheques: String(d.vivo?.contracheques ?? 0), liquido: d.vivo === null ? "0.00" : toMoney(d.vivo.totalLiquido).toFixed(2), situacao: ROTULO_DA_SITUACAO[d.situacao], situacaoTom: d.situacao === "FECHADA" ? "neutro" : d.situacao === "SEM_CALCULO" ? "alerta" : "neutro", _sit: d.situacao };
   });
   const filtradas = sit === "" ? mapeadas : mapeadas.filter((l) => l._sit === sit);
   const { skip, take } = paginacao(c);
@@ -193,7 +202,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   });
   const dados: DadoDoDetalhe[] = [
     { rotulo: "Competência", valor: f.competencia },
-    { rotulo: "Tipo", valor: f.tipo },
+    { rotulo: "Tipo", valor: rotuloDoTipoDeFolha(f.tipo) },
     { rotulo: "Situação", valor: ROTULO_DA_SITUACAO[d.situacao] },
     ...(simulacaoDoAbatimento === null
       ? []
@@ -253,7 +262,7 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
     ...(f.fechamento === null ? [] : [{ id: f.fechamento.id, oQue: `Fechamento sobre o cálculo nº ${f.fechamento.calculo.numero}`, quando: diaCivilBr(f.fechamento.criadoEm), registradoEm: diaCivilBr(f.fechamento.criadoEm), por: f.fechamento.criadoPor, motivo: `código de integridade ${f.fechamento.sha256.slice(0, 12)}…` }]),
   ];
   return {
-    titulo: `Folha ${f.tipo.toLowerCase()} de ${f.competencia}`,
+    titulo: `Folha ${rotuloDoTipoDeFolha(f.tipo)} de ${f.competencia}`,
     subtitulo: d.vivo === null ? "sem cálculo" : `cálculo nº ${d.vivo.numero} · líquido R$ ${formatarMoeda(toMoney(d.vivo.totalLiquido).toFixed(2)).texto}`,
     selos: [
       { texto: ROTULO_DA_SITUACAO[d.situacao], tom: d.situacao === "FECHADA" ? "ok" : d.situacao === "CALCULADA" ? "neutro" : "alerta" },
@@ -676,7 +685,7 @@ export async function verLancamento(id: string): Promise<DetalheLido | null> {
   return {
     titulo: `${l.rubrica.codigo} · ${l.vinculo.matricula}`,
     subtitulo: `${l.tipo === "FIXO" ? "Fixo" : "Variável"} · ${l.tipo === "VARIAVEL" ? l.competenciaInicio : `${l.competenciaInicio} → ${l.competenciaFim ?? "aberto"}`}`,
-    selos: [{ texto: l.tipo, tom: "neutro" }],
+    selos: [{ texto: l.tipo === "FIXO" ? "Fixo" : "Variável", tom: "neutro" }],
     dados: [
       { rotulo: "Matrícula", valor: l.vinculo.matricula },
       { rotulo: "Rubrica", valor: `${l.rubrica.codigo} — ${l.rubrica.descricao}` },
