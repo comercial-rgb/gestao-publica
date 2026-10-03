@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { UG_CONSOLIDADO, useUiContext } from "../../lib/ui-context";
+import { alinharContextoEUrl, type ContextoNaUrl } from "../../lib/contexto-na-url";
 
 /**
  * SINCRONIA UiContext → URL (ilha client, não renderiza nada).
@@ -39,24 +40,42 @@ import { UG_CONSOLIDADO, useUiContext } from "../../lib/ui-context";
  * código de uma unidade que o usuário não tinha direito de ler — e, numa tela de LEITURA (que não
  * chama `autorizar`), ninguém reclamaria. Hoje o que não está na lista não chega à URL.
  */
+/*
+ * ⚠️ V31 — NA MONTAGEM A URL VENCE; DEPOIS, O SELETOR. E a troca descarta a seleção de registro e
+ * sai do detalhe. A regra inteira é pura e testada em `lib/contexto-na-url.ts`; aqui só se aplica.
+ */
 export function SincronizarContexto(): null {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const { exercicio, ug, ugsDisponiveis } = useUiContext();
+  const { exercicio, setExercicio, ug, setUg, ugsDisponiveis, exerciciosDisponiveis } = useUiContext();
+  const anterior = useRef<ContextoNaUrl | null>(null);
 
   useEffect(() => {
-    const alvo = new URLSearchParams(params.toString());
-    alvo.set("exercicio", String(exercicio));
-
-    const codigo = ugsDisponiveis.find((u) => u.id === ug)?.codigo;
-    if (ug === UG_CONSOLIDADO || codigo === undefined) alvo.delete("ug");
-    else alvo.set("ug", codigo);
-
-    if (alvo.toString() !== params.toString()) {
-      router.replace(`${pathname}?${alvo.toString()}`);
+    const codigo = ug === UG_CONSOLIDADO ? null : (ugsDisponiveis.find((u) => u.id === ug)?.codigo ?? null);
+    const contexto: ContextoNaUrl = { exercicio, ugCodigo: codigo };
+    const r = alinharContextoEUrl({
+      pathname,
+      busca: params.toString(),
+      contexto,
+      anterior: anterior.current,
+      exerciciosValidos: exerciciosDisponiveis.map((e) => e.ano),
+      ugsValidas: ugsDisponiveis.map((u) => u.codigo),
+    });
+    if (r.adotar !== null) {
+      // A URL pediu outro recorte válido: o contexto o adota e a próxima passada confirma a URL.
+      if (r.adotar.exercicio !== undefined) setExercicio(r.adotar.exercicio);
+      const adotada = ugsDisponiveis.find((u) => u.codigo === r.adotar?.ugCodigo);
+      if (adotada !== undefined) setUg(adotada.id);
+      anterior.current = {
+        exercicio: r.adotar.exercicio ?? exercicio,
+        ugCodigo: adotada?.codigo ?? codigo,
+      };
+      return;
     }
-  }, [exercicio, ug, ugsDisponiveis, params, pathname, router]);
+    anterior.current = contexto;
+    if (r.destino !== null) router.replace(r.destino);
+  }, [exercicio, ug, ugsDisponiveis, exerciciosDisponiveis, params, pathname, router, setExercicio, setUg]);
 
   return null;
 }

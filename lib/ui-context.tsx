@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo, useState } from "react";
-import { anoCivil } from "../packages/datas/index";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { anoCivil, mesCivil } from "../packages/datas/index";
+import type { SituacaoDoExercicio } from "./situacao-do-exercicio";
 
 /**
  * O CONTEXTO DE UI — EXERCÍCIO e UNIDADE GESTORA ativos.
@@ -21,6 +22,22 @@ import { anoCivil } from "../packages/datas/index";
 export interface Exercicio {
   readonly ano: number;
   readonly encerrado: boolean;
+  /** Proposta, aprovado, execução ou encerrado (derivada no servidor). Ausente só em render isolado. */
+  readonly situacao?: SituacaoDoExercicio;
+}
+
+/**
+ * ⚠️ A ESCOLHA DE EXERCÍCIO E UNIDADE SOBREVIVE AO RECARREGAMENTO — em COOKIE, que o layout lê no
+ * servidor (o primeiro HTML já sai no exercício certo, sem piscar). Antes ela vivia só na memória da
+ * aba: recarregar a página devolvia o contador ao exercício MAIS RECENTE, e com 2027 aberto pela
+ * proposta isso o levava, sem aviso, do orçamento em execução para o projeto do ano seguinte.
+ * O cookie guarda só a PREFERÊNCIA; o servidor revalida contra os exercícios e unidades permitidos.
+ */
+export const COOKIE_EXERCICIO = "contexto_exercicio";
+export const COOKIE_UG = "contexto_ug";
+
+function gravarPreferencia(nome: string, valor: string): void {
+  document.cookie = `${nome}=${encodeURIComponent(valor)}; path=/; max-age=31536000; samesite=lax`;
 }
 
 export interface UnidadeGestora {
@@ -45,6 +62,9 @@ export interface UiContextValor {
    * demais, o consolidado conteria unidades que eles não podem ler.
    */
   readonly podeConsolidado: boolean;
+  /** O ano e o mês civis do ente (o período do cabeçalho). */
+  readonly anoCivil: number;
+  readonly mesCivil: number;
 }
 
 const UiContext = createContext<UiContextValor | null>(null);
@@ -55,6 +75,12 @@ export interface UiContextProviderProps {
   readonly exercicios: readonly Exercicio[];
   readonly ugs: readonly UnidadeGestora[];
   readonly podeConsolidado: boolean;
+  /** O exercício que abre a sessão, decidido no servidor (cookie revalidado, senão o ano civil). */
+  readonly exercicioInicial?: number | null;
+  /** O CÓDIGO da unidade escolhida antes (cookie). Só vale se estiver entre as permitidas. */
+  readonly ugPreferida?: string | null;
+  readonly anoCivil?: number;
+  readonly mesCivil?: number;
 }
 
 /**
@@ -65,7 +91,11 @@ export interface UiContextProviderProps {
  * recorte mais amplo do que o crachá permite. Sem unidade nenhuma, a seleção fica no consolidado
  * e a tela cai no estado vazio: não há o que mostrar, e é isso que ela diz.
  */
-function ugInicial(ugs: readonly UnidadeGestora[], podeConsolidado: boolean): UgSelecionada {
+function ugInicial(ugs: readonly UnidadeGestora[], podeConsolidado: boolean, preferida: string | null): UgSelecionada {
+  // A preferência só vale dentro do permitido: um cookie antigo não alarga o recorte.
+  if (preferida === UG_CONSOLIDADO && podeConsolidado) return UG_CONSOLIDADO;
+  const escolhida = ugs.find((u) => u.codigo === preferida);
+  if (escolhida !== undefined) return escolhida.id;
   if (podeConsolidado) return UG_CONSOLIDADO;
   return ugs[0]?.id ?? UG_CONSOLIDADO;
 }
@@ -75,12 +105,30 @@ export function UiContextProvider({
   exercicios,
   ugs,
   podeConsolidado,
+  exercicioInicial = null,
+  ugPreferida = null,
+  anoCivil: anoDoEnte,
+  mesCivil: mesDoEnte,
 }: UiContextProviderProps): React.ReactElement {
-  // O exercício default é o mais recente cadastrado (a lista vem ordenada desc pela porta).
-  const [exercicio, setExercicio] = useState<number>(
-    exercicios[0]?.ano ?? anoCivil(new Date())
+  const [exercicio, setExercicioCru] = useState<number>(
+    exercicioInicial ?? exercicios[0]?.ano ?? anoCivil(new Date())
   );
-  const [ug, setUg] = useState<UgSelecionada>(() => ugInicial(ugs, podeConsolidado));
+  const [ug, setUgCru] = useState<UgSelecionada>(() => ugInicial(ugs, podeConsolidado, ugPreferida));
+  const setExercicio = useCallback((ano: number): void => {
+    setExercicioCru(ano);
+    gravarPreferencia(COOKIE_EXERCICIO, String(ano));
+  }, []);
+  const setUg = useCallback(
+    (nova: UgSelecionada): void => {
+      setUgCru(nova);
+      const codigo = nova === UG_CONSOLIDADO ? UG_CONSOLIDADO : ugs.find((u) => u.id === nova)?.codigo;
+      if (codigo !== undefined) gravarPreferencia(COOKIE_UG, codigo);
+    },
+    [ugs]
+  );
+  const agora = new Date();
+  const anoCivilDoEnte = anoDoEnte ?? anoCivil(agora);
+  const mesCivilDoEnte = mesDoEnte ?? mesCivil(agora);
 
   const valor = useMemo<UiContextValor>(
     () => ({
@@ -91,8 +139,10 @@ export function UiContextProvider({
       exerciciosDisponiveis: exercicios,
       ugsDisponiveis: ugs,
       podeConsolidado,
+      anoCivil: anoCivilDoEnte,
+      mesCivil: mesCivilDoEnte,
     }),
-    [exercicio, ug, exercicios, ugs, podeConsolidado]
+    [exercicio, ug, exercicios, ugs, podeConsolidado, setExercicio, setUg, anoCivilDoEnte, mesCivilDoEnte]
   );
 
   return <UiContext.Provider value={valor}>{children}</UiContext.Provider>;

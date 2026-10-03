@@ -3,10 +3,11 @@ import { Footer } from "../../components/ui/Footer";
 import { Header } from "../../components/ui/Header";
 import { PanoDoMenu, ShellProvider } from "../../components/ui/Shell";
 import { Sidebar } from "../../components/ui/Sidebar";
+import { VigiaDeEdicao } from "../../components/ui/VigiaDeEdicao";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
 import { identidadePublica, paraATela } from "../../lib/portas/identidade";
 import { exigirSessao } from "../../lib/portas/sessao";
-import { UiContextProvider } from "../../lib/ui-context";
+import { COOKIE_EXERCICIO, COOKIE_UG, UiContextProvider } from "../../lib/ui-context";
 import { areasVisiveis } from "../../lib/portas/navegacao-permissoes";
 import { permitidos } from "../../lib/portas/busca-global";
 import { sairAction } from "./actions";
@@ -26,10 +27,18 @@ export default async function AreasLayout({
   readonly children: React.ReactNode;
 }): Promise<React.ReactElement> {
   const ident = await exigirSessao();
-  const colapsada = (await cookies()).get("sidebar_colapsada")?.value === "1";
+  const jarra = await cookies();
+  const colapsada = jarra.get("sidebar_colapsada")?.value === "1";
+  // A PREFERÊNCIA de exercício e unidade (cookie) — só preferência: a porta a revalida contra os
+  // exercícios existentes e o provider contra as unidades permitidas.
+  const preferido = Number(jarra.get(COOKIE_EXERCICIO)?.value ?? "");
+  const ugPreferida = jarra.get(COOKIE_UG)?.value ?? null;
   // ⚠️ LIDO NO SERVIDOR, injetado por PROPS. O provider é client e só guarda a SELEÇÃO — quem
   // decide QUAIS unidades ele pode oferecer é a porta, contra as permissões reais do usuário.
-  const [contexto, identidade] = await Promise.all([carregarContextoDoUsuario(), identidadePublica()]);
+  const [contexto, identidade] = await Promise.all([
+    carregarContextoDoUsuario(Number.isInteger(preferido) && preferido > 0 ? preferido : null),
+    identidadePublica(),
+  ]);
   const tela = paraATela(identidade);
 
   // ⚠️ O RECORTE DA BUSCA É FEITO AQUI, NO SERVIDOR, e pela MESMA regra da barra lateral:
@@ -44,8 +53,13 @@ export default async function AreasLayout({
       exercicios={contexto.exercicios}
       ugs={contexto.ugs}
       podeConsolidado={contexto.podeConsolidado}
+      exercicioInicial={contexto.exercicioInicial}
+      ugPreferida={ugPreferida === null ? null : decodeURIComponent(ugPreferida)}
+      anoCivil={contexto.anoCivil}
+      mesCivil={contexto.mesCivil}
     >
       <ShellProvider>
+        <VigiaDeEdicao />
         <div className="flex h-screen overflow-hidden" data-tema={tela.tema}>
           <PanoDoMenu />
           <Sidebar

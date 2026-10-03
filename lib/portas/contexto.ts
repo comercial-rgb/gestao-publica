@@ -13,6 +13,8 @@ import {
 } from "../recorte";
 import { recorteDePaginaPara } from "./leitura";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes";
+import { anoCivil, mesCivil } from "../../packages/datas/index";
+import { exercicioPadrao, situacaoDoExercicio, type SituacaoDoExercicio } from "../situacao-do-exercicio";
 
 // ⚠️ OS DOIS ERROS SAEM PELA PORTA, e não é conveniência de import: é o idioma que ~70
 // telas já falam com `PortaSemBancoError` (e `lib/portas/tesouraria.ts` com
@@ -47,6 +49,8 @@ export type { RecorteDaPagina, AcaoDeLeitura };
 export interface ExercicioDisponivel {
   readonly ano: number;
   readonly encerrado: boolean;
+  /** Proposta, orçamento aprovado, execução ou encerrado — derivada dos fatos (lib/situacao-do-exercicio). */
+  readonly situacao: SituacaoDoExercicio;
 }
 
 export interface UgDisponivel {
@@ -73,6 +77,11 @@ export interface ContextoDoUsuario {
    * defeito do seletor de encaminhamento do ENT02, repetido em escala de sistema.
    */
   readonly acoes: readonly AcaoDoSistema[];
+  /** O ano e o mês civis do ente agora — o período que o cabeçalho mostra. */
+  readonly anoCivil: number;
+  readonly mesCivil: number;
+  /** O exercício que abre a sessão: o escolhido antes (cookie), senão o do ano civil — nunca "o mais recente". */
+  readonly exercicioInicial: number | null;
 }
 
 /**
@@ -179,11 +188,37 @@ export async function listarUgsDoUsuario(
  */
 export async function listarExercicios(): Promise<readonly ExercicioDisponivel[]> {
   const prisma = cliente();
-  const exercicios = await prisma.exercicio.findMany({
-    select: { ano: true, encerramento: { select: { id: true } } },
-    orderBy: { ano: "desc" },
+  const [exercicios, propostas, efetivacoes, leis] = await Promise.all([
+    prisma.exercicio.findMany({
+      select: { ano: true, encerramento: { select: { id: true } } },
+      orderBy: { ano: "desc" },
+    }),
+    prisma.propostaOrcamentaria.findMany({ select: { exercicio: true }, distinct: ["exercicio"] }),
+    prisma.efetivacaoDaProposta.findMany({ select: { exercicio: true } }),
+    prisma.leiOrcamentariaAnual.findMany({ select: { exercicio: true, aprovacao: { select: { id: true } } } }),
+  ]);
+  const comProposta = new Set(propostas.map((p) => p.exercicio));
+  const efetivados = new Set(efetivacoes.map((e) => e.exercicio));
+  const leiPorAno = new Map(leis.map((l) => [l.exercicio, l.aprovacao !== null]));
+  const hoje = anoCivil(new Date());
+  return exercicios.map((e) => {
+    const encerrado = e.encerramento !== null;
+    return {
+      ano: e.ano,
+      encerrado,
+      situacao: situacaoDoExercicio(
+        {
+          ano: e.ano,
+          encerrado,
+          temProposta: comProposta.has(e.ano),
+          propostaEfetivada: efetivados.has(e.ano),
+          projetoEnviado: leiPorAno.has(e.ano),
+          leiAprovada: leiPorAno.get(e.ano) === true,
+        },
+        hoje
+      ),
+    };
   });
-  return exercicios.map((e) => ({ ano: e.ano, encerrado: e.encerramento !== null }));
 }
 
 /**
@@ -233,12 +268,22 @@ export async function recorteDePagina(
  * nunca consulta o banco (o Prisma não bundla para o browser, e a fronteira do
  * `test/ui/fronteira-ui.test.ts` recusa a tentativa).
  */
-export async function carregarContextoDoUsuario(): Promise<ContextoDoUsuario> {
+export async function carregarContextoDoUsuario(exercicioPreferido: number | null = null): Promise<ContextoDoUsuario> {
   const sessao = await exigirSessao();
   const [{ ugs, global }, exercicios, acoes] = await Promise.all([
     listarUgsDoUsuario(sessao),
     listarExercicios(),
     listarAcoesDoUsuario(sessao),
   ]);
-  return { exercicios, ugs, podeConsolidado: global, acoes };
+  const agora = new Date();
+  const ano = anoCivil(agora);
+  return {
+    exercicios,
+    ugs,
+    podeConsolidado: global,
+    acoes,
+    anoCivil: ano,
+    mesCivil: mesCivil(agora),
+    exercicioInicial: exercicioPadrao(exercicios.map((e) => e.ano), ano, exercicioPreferido),
+  };
 }

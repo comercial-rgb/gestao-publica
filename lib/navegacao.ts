@@ -568,3 +568,402 @@ export const ROTEIROS_CONTABEIS: readonly RelatorioNav[] = [
 export const CONTROLE_INTERNO: readonly RelatorioNav[] = [
   { href: "/controle-interno/auditorias", numero: "Auditorias", rotulo: "Auditorias Internas", descricao: "Auditorias internas: roteiro com base legal, achados, providências e relatório." },
 ];
+
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+// O MENU DO CONTADOR (V31) — as abas como o contador público procura, sobre as MESMAS rotas.
+// ═════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Um item do menu: a rota existente e o nome que o contador reconhece. */
+export interface ItemDoMenu {
+  readonly href: string;
+  readonly rotulo: string;
+}
+
+export interface GrupoDoMenu {
+  readonly rotulo: string;
+  readonly itens: readonly ItemDoMenu[];
+}
+
+export interface AbaDoMenu {
+  readonly id: string;
+  readonly rotulo: string;
+  readonly grupos: readonly GrupoDoMenu[];
+}
+
+const deLista = (lista: readonly RelatorioNav[]): readonly ItemDoMenu[] => lista.map((r) => ({ href: r.href, rotulo: r.rotulo }));
+
+/**
+ * ⚠️ O MENU ORGANIZA, NÃO CRIA. Cada item aponta para uma tela que já existe, com o serviço, a
+ * permissão e os fatos dela. A mesma operação aparece em mais de uma aba quando o contador a procura
+ * por mais de um caminho (a ficha é LOA no planejamento e dotação na despesa) — é atalho, não cópia.
+ *
+ * ⚠️ E A VISIBILIDADE NÃO É DECIDIDA AQUI. Um item aparece se a ÁREA da rota dele (`areaDaRota`) está
+ * entre as que o servidor liberou para o usuário (`areasVisiveis`, a mesma tabela que `autorizar`
+ * lê). Nenhuma permissão nova, nenhuma permissão a menos: só outra arrumação. A tela, ao abrir, ainda
+ * confere a própria ação. `test/ui/menu-do-contador.test.ts` prova que todo item tem página e área.
+ *
+ * ⚠️ AS TELAS QUE SÓ SE ALCANÇAVAM PELA URL ganharam entrada aqui: contas bancárias, entidades,
+ * lançamento da receita, certidões, receita por entidade, distribuição por fontes, importadores,
+ * SAGRES e Tribunal de Contas, captura, provisões, etiquetas e a posição de bens por classe.
+ */
+export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
+  {
+    id: "planejamento",
+    rotulo: "Planejamento",
+    grupos: [
+      { rotulo: "PPA", itens: [
+        { href: "/planejamento/ppa", rotulo: "Plano Plurianual" },
+        { href: "/planejamento/ppa/programas", rotulo: "Programas, objetivos e metas" },
+        { href: "/planejamento/ppa/estrutura", rotulo: "Estrutura temática" },
+        { href: "/planejamento/programas-e-acoes", rotulo: "Programas e ações do orçamento" },
+      ] },
+      { rotulo: "LDO", itens: [
+        { href: "/planejamento/ldo", rotulo: "Diretrizes, prioridades, metas e anexos" },
+        { href: "/planejamento/alteracoes", rotulo: "Alterações do PPA e da LDO" },
+      ] },
+      { rotulo: "LOA", itens: [
+        { href: "/planejamento/loa", rotulo: "Lei Orçamentária Anual" },
+        { href: "/planejamento/receita-prevista", rotulo: "Receitas previstas" },
+        { href: "/planejamento/fichas", rotulo: "Fichas e dotações" },
+        { href: "/planejamento/unidades-orcamentarias", rotulo: "Unidades orçamentárias" },
+        { href: "/planejamento/leis-orcamentarias", rotulo: "Projeto de lei e aprovação" },
+      ] },
+      { rotulo: "Próximo exercício", itens: [
+        { href: "/planejamento/proposta-orcamentaria", rotulo: "Importar e preparar a proposta" },
+      ] },
+      { rotulo: "Detalhamento e programação", itens: [
+        { href: "/planejamento/qdd", rotulo: "QDD — detalhamento da despesa" },
+        { href: "/planejamento/cmd-mba", rotulo: "Programação financeira (CMD e MBA)" },
+      ] },
+      { rotulo: "Conferências e relatórios", itens: [
+        { href: "/relatorios/consistencia", rotulo: "Conferência de consistência" },
+        { href: "/relatorios/atualizacoes-orcamentarias", rotulo: "Atualizações orçamentárias" },
+      ] },
+    ],
+  },
+  {
+    id: "despesa",
+    rotulo: "Orçamento e Despesa",
+    grupos: [
+      { rotulo: "Dotações", itens: [
+        { href: "/planejamento/qdd", rotulo: "Dotações e saldos" },
+        { href: "/planejamento/fichas", rotulo: "Fichas orçamentárias" },
+      ] },
+      { rotulo: "Solicitações e reservas", itens: [
+        { href: "/despesa/solicitacoes-de-empenho", rotulo: "Solicitação e autorização de empenho" },
+        { href: "/licitacoes/processos", rotulo: "Reserva de dotação do processo" },
+      ] },
+      { rotulo: "Alterações orçamentárias", itens: [
+        { href: "/planejamento/creditos-adicionais", rotulo: "Créditos adicionais" },
+        { href: "/planejamento/realocacoes", rotulo: "Remanejamento, transposição e transferência" },
+        { href: "/planejamento/recursos-novos", rotulo: "Recursos para créditos adicionais" },
+        { href: "/contabilidade/superavit", rotulo: "Superávit financeiro por fonte" },
+        { href: "/planejamento/creditos-adicionais/normas-no-tribunal", rotulo: "Leis no Tribunal de Contas" },
+      ] },
+      { rotulo: "Execução", itens: [
+        { href: "/despesa/empenhos", rotulo: "Empenhos" },
+        { href: "/despesa/liquidacoes", rotulo: "Liquidações" },
+        { href: "/licitacoes/documentos-fiscais", rotulo: "Documentos fiscais" },
+        { href: "/despesa/assinaturas", rotulo: "Assinatura dos documentos" },
+        { href: "/despesa/campanhas-publicitarias", rotulo: "Campanhas publicitárias" },
+      ] },
+      { rotulo: "Restos a pagar", itens: [
+        { href: "/despesa/restos-a-pagar", rotulo: "Restos a pagar" },
+      ] },
+    ],
+  },
+  {
+    id: "receitas",
+    rotulo: "Receitas",
+    grupos: [
+      { rotulo: "Classificação e previsão", itens: [
+        { href: "/receita/naturezas", rotulo: "Naturezas de receita" },
+        { href: "/planejamento/receita-prevista", rotulo: "Previsão da receita" },
+        { href: "/planejamento/reprevisao", rotulo: "Reprevisão" },
+      ] },
+      { rotulo: "Lançamento e reconhecimento", itens: [
+        { href: "/receita/lancamentos", rotulo: "Lançamento de tributos" },
+        { href: "/receita/imoveis", rotulo: "Cadastro imobiliário" },
+        { href: "/receita/parametros-tributarios", rotulo: "Parâmetros dos tributos" },
+        { href: "/receita/certidoes", rotulo: "Certidões" },
+      ] },
+      { rotulo: "Arrecadação", itens: [
+        { href: "/receita/arrecadacoes", rotulo: "Arrecadação, anulação e estorno" },
+        { href: "/receita/arrecadacoes/distribuir", rotulo: "Distribuição por fontes" },
+        { href: "/financeiro/retencoes-proprias", rotulo: "Receitas de retenções" },
+      ] },
+      { rotulo: "Acompanhamento", itens: [
+        { href: "/receita/por-entidade", rotulo: "Arrecadação por entidade" },
+        { href: "/divida/ativa", rotulo: "Dívida ativa" },
+      ] },
+    ],
+  },
+  {
+    id: "tesouraria",
+    rotulo: "Tesouraria",
+    grupos: [
+      { rotulo: "Contas e disponibilidades", itens: [
+        { href: "/financeiro/contas-bancarias", rotulo: "Contas bancárias" },
+        { href: "/financeiro/movimentacao", rotulo: "Movimentação bancária" },
+      ] },
+      { rotulo: "Pagamentos", itens: [
+        { href: "/despesa/ordens", rotulo: "Ordens de pagamento" },
+        { href: "/despesa/pagamentos", rotulo: "Fila de pagamentos" },
+        { href: "/despesa/ordem-cronologica", rotulo: "Ordem cronológica" },
+        { href: "/financeiro/lotes", rotulo: "Lotes, borderô e retorno do banco" },
+      ] },
+      { rotulo: "Transferências", itens: [
+        { href: "/financeiro/transferencias-entre-ugs", rotulo: "Entre unidades gestoras" },
+        { href: "/transferencias/convenios", rotulo: "Convênios" },
+        { href: "/transferencias/consorcios", rotulo: "Consórcios" },
+      ] },
+      { rotulo: "Conciliação", itens: [
+        { href: "/financeiro/conciliacao", rotulo: "Conciliação bancária" },
+        { href: "/financeiro/conciliacao/periodo", rotulo: "Conciliação por período" },
+      ] },
+      { rotulo: "Consultas", itens: [
+        { href: "/relatorios/gerenciais", rotulo: "Consulta por credor e fonte" },
+      ] },
+    ],
+  },
+  {
+    id: "extraorcamentario",
+    rotulo: "Extraorçamentário",
+    grupos: [
+      { rotulo: "Movimento", itens: [
+        { href: "/financeiro/extraorcamentario", rotulo: "Ingressos, dispêndios e estornos" },
+        { href: "/financeiro/extraorcamentario/recolher", rotulo: "Recolhimentos, inclusive de exercícios anteriores" },
+      ] },
+      { rotulo: "Consignações e retenções", itens: [
+        { href: "/financeiro/consignacoes", rotulo: "Consignações" },
+        { href: "/folha/descontos-retidos", rotulo: "Descontos retidos na folha" },
+      ] },
+    ],
+  },
+  {
+    id: "contratacoes",
+    rotulo: "Contratações",
+    grupos: [
+      { rotulo: "Demandas", itens: [
+        { href: "/licitacoes/solicitacoes", rotulo: "Solicitações de compra" },
+        { href: "/licitacoes/pesquisas-de-precos", rotulo: "Pesquisas de preços" },
+      ] },
+      { rotulo: "Procedimentos", itens: [
+        { href: "/licitacoes/processos", rotulo: "Licitações e contratações diretas" },
+      ] },
+      { rotulo: "Contratos", itens: [
+        { href: "/licitacoes/contratos", rotulo: "Contratos e alterações" },
+        { href: "/licitacoes/ordens-de-compra", rotulo: "Ordens de fornecimento" },
+      ] },
+      { rotulo: "Execução e fiscalização", itens: [
+        { href: "/licitacoes/fiscalizacao", rotulo: "Fiscalização" },
+        { href: "/licitacoes/obras", rotulo: "Obras e medições" },
+        { href: "/licitacoes/documentos-fiscais", rotulo: "Recebimento de notas" },
+      ] },
+    ],
+  },
+  {
+    id: "pessoal",
+    rotulo: "Pessoal e Folha",
+    grupos: [
+      { rotulo: "Cadastro", itens: deLista(PESSOAL) },
+      { rotulo: "Parâmetros", itens: [
+        { href: "/folha/rubricas", rotulo: "Rubricas" },
+        { href: "/folha/tabelas", rotulo: "Tabelas" },
+        { href: "/folha/parametros-do-13", rotulo: "Parâmetros do 13º" },
+        { href: "/folha/parametros-do-adiantamento-salarial", rotulo: "Parâmetros do adiantamento" },
+        { href: "/folha/encargos", rotulo: "Encargos do empregador" },
+      ] },
+      { rotulo: "Folha", itens: [
+        { href: "/folha/lancamentos", rotulo: "Eventos e lançamentos" },
+        { href: "/folha/folhas", rotulo: "Cálculo, conferência e fechamento" },
+        { href: "/folha/designacoes", rotulo: "Designações para o atesto" },
+        { href: "/folha/esocial", rotulo: "Consistência para o eSocial" },
+      ] },
+      { rotulo: "Apropriação e pagamento", itens: [
+        { href: "/folha/grupos-de-empenho", rotulo: "Grupos de empenho" },
+        { href: "/folha/agrupamento-no-tribunal", rotulo: "Agrupamento no Tribunal" },
+      ] },
+    ],
+  },
+  {
+    id: "patrimonio",
+    rotulo: "Patrimônio e Estoque",
+    grupos: [
+      { rotulo: "Bens", itens: [
+        { href: "/patrimonio/bens-patrimoniais", rotulo: "Bens e incorporações" },
+        { href: "/patrimonio/bens", rotulo: "Posição por classe" },
+        { href: "/patrimonio/classes-de-bens", rotulo: "Classes de bens" },
+        { href: "/patrimonio/tipos-de-incorporacao", rotulo: "Tipos de incorporação" },
+        { href: "/patrimonio/etiquetas", rotulo: "Etiquetas" },
+      ] },
+      { rotulo: "Localização e responsabilidade", itens: [
+        { href: "/patrimonio/localizacoes", rotulo: "Localizações" },
+        { href: "/patrimonio/meus-bens", rotulo: "Bens sob minha responsabilidade" },
+        { href: "/patrimonio/termos", rotulo: "Termos" },
+      ] },
+      { rotulo: "Mensuração e baixa", itens: [
+        { href: "/patrimonio/competencia", rotulo: "Depreciação por competência" },
+        { href: "/patrimonio/parametros-de-atualizacao", rotulo: "Parâmetros de depreciação" },
+        { href: "/patrimonio/provisoes", rotulo: "Provisões" },
+        { href: "/patrimonio/motivos-de-baixa", rotulo: "Motivos de baixa" },
+      ] },
+      { rotulo: "Estoque", itens: deLista(ALMOXARIFADO) },
+      { rotulo: "Integração contábil", itens: [
+        { href: "/patrimonio/roteiros", rotulo: "Roteiros contábeis" },
+        { href: "/patrimonio/roteiros-de-resultado", rotulo: "Resultado da alienação" },
+      ] },
+      { rotulo: "Frota e farmácias", itens: [
+        { href: "/patrimonio/frota", rotulo: "Frota" },
+        { href: "/patrimonio/farmacias", rotulo: "Farmácias públicas" },
+      ] },
+    ],
+  },
+  {
+    id: "contabilidade",
+    rotulo: "Contabilidade",
+    grupos: [
+      { rotulo: "Plano e configurações", itens: [
+        { href: "/contabilidade/plano-de-contas", rotulo: "Plano de contas" },
+        { href: "/contabilidade/roteiros-orcamentarios", rotulo: "Roteiro orçamentário" },
+        { href: "/contabilidade/roteiros-de-restos-a-pagar", rotulo: "Contas dos restos a pagar" },
+        { href: "/contabilidade/contas-da-liquidacao", rotulo: "Contas da liquidação" },
+        { href: "/contabilidade/contas-da-receita", rotulo: "Contas da receita" },
+      ] },
+      { rotulo: "Lançamentos e livros", itens: [
+        { href: "/contabilidade/lancamentos", rotulo: "Lançamentos e documentos de origem" },
+        ...deLista(RELATORIOS_LIVROS.filter((l) => l.href.startsWith("/relatorios/livros/"))),
+      ] },
+      { rotulo: "Demonstrações contábeis", itens: deLista(RELATORIOS_DEMONSTRACOES) },
+      { rotulo: "Conferências", itens: [
+        { href: "/relatorios/consistencia", rotulo: "Conferência de consistência" },
+        { href: "/financeiro/conciliacao", rotulo: "Conciliação bancária" },
+      ] },
+      { rotulo: "Encerramento e abertura", itens: [
+        { href: "/despesa/restos-a-pagar", rotulo: "Inscrição de restos e encerramento" },
+        { href: "/contabilidade/virada-dos-controles", rotulo: "Virada das contas de controle" },
+        { href: "/planejamento/proposta-orcamentaria", rotulo: "Abertura do exercício seguinte" },
+      ] },
+      { rotulo: "Consolidação, custos e dívida", itens: [
+        { href: "/relatorios/eliminacoes-intra", rotulo: "Operações intragovernamentais" },
+        { href: "/contabilidade/custos", rotulo: "Custos" },
+        { href: "/divida/fundada", rotulo: "Dívida fundada" },
+        { href: "/divida/precatorios", rotulo: "Precatórios" },
+      ] },
+    ],
+  },
+  {
+    id: "prestacao",
+    rotulo: "Prestação de Contas",
+    grupos: [
+      { rotulo: "RREO", itens: deLista(RELATORIOS_RREO) },
+      { rotulo: "RGF", itens: deLista(RELATORIOS_RGF) },
+      { rotulo: "Tribunal de Contas", itens: [
+        { href: "/integracoes/sagres", rotulo: "SAGRES — remessa e validação" },
+        { href: "/integracoes/tce", rotulo: "Plano do Tribunal e situação do envio" },
+        { href: "/folha/agrupamento-no-tribunal", rotulo: "Folha no Tribunal" },
+      ] },
+      { rotulo: "Arquivos e integrações", itens: [
+        { href: "/contabilidade/exportacoes-federais", rotulo: "Arquivos para a STN e a Receita" },
+        { href: "/integracoes", rotulo: "Central de integrações" },
+        { href: "/integracoes/captura", rotulo: "Captura de documentos" },
+      ] },
+      { rotulo: "Relatórios do ente", itens: [
+        ...deLista(RELATORIOS_GERENCIAIS),
+        ...deLista(RELATORIOS_DESIGNER),
+      ] },
+    ],
+  },
+  {
+    id: "cadastros",
+    rotulo: "Cadastros e Administração",
+    grupos: [
+      { rotulo: "Ente e unidades", itens: [
+        { href: "/administracao/apresentacao", rotulo: "Ente" },
+        { href: "/contabilidade/entidades", rotulo: "Entidades" },
+        { href: "/contabilidade/unidades-gestoras", rotulo: "Unidades gestoras" },
+        { href: "/planejamento/unidades-orcamentarias", rotulo: "Órgãos e unidades orçamentárias" },
+      ] },
+      { rotulo: "Credores", itens: deLista(CADASTROS) },
+      { rotulo: "Classificações e fontes", itens: [
+        { href: "/contabilidade/natureza-das-fontes", rotulo: "Fontes de recurso" },
+        { href: "/receita/naturezas", rotulo: "Naturezas de receita" },
+        { href: "/contabilidade/exportacoes-federais/classificacao", rotulo: "Classificação para a Receita" },
+      ] },
+      { rotulo: "Responsáveis e acesso", itens: [
+        { href: "/contabilidade/ordenadores", rotulo: "Ordenadores e responsáveis" },
+        { href: "/contabilidade/exportacoes-federais/responsaveis", rotulo: "Responsáveis técnicos" },
+        { href: "/administracao/usuarios", rotulo: "Usuários" },
+        { href: "/administracao/perfis", rotulo: "Perfis e permissões" },
+        { href: "/administracao/senha", rotulo: "Trocar senha" },
+      ] },
+      { rotulo: "Importações e histórico", itens: [
+        { href: "/integracoes/importadores", rotulo: "Importações" },
+        { href: "/administracao/auditoria", rotulo: "Histórico de operações" },
+        { href: "/administracao/sistema", rotulo: "Sobre o sistema" },
+      ] },
+    ],
+  },
+];
+
+/**
+ * AS ÁREAS QUE NÃO SÃO DA CONTABILIDADE (protocolo, comunicação, controle interno, portal do
+ * servidor...) continuam no menu, numa aba própria — reorganizar para o contador não pode sumir com a
+ * tela de quem não é contador.
+ */
+const AREAS_FORA_DO_MENU_CONTABIL: readonly SlugDeArea[] = [
+  "protocolo",
+  "comunicacao",
+  "controle-interno",
+  "transparencia",
+  "portal-do-servidor",
+  "meus-servicos",
+  "suporte",
+  "licenciamento",
+];
+
+export const ABA_OUTRAS_AREAS: AbaDoMenu = {
+  id: "outras",
+  rotulo: "Outras áreas",
+  grupos: [
+    {
+      rotulo: "Outras áreas",
+      itens: AREAS.filter((a) => AREAS_FORA_DO_MENU_CONTABIL.includes(a.slug)).map((a) => ({ href: rotaDaArea(a), rotulo: a.rotulo })),
+    },
+  ],
+};
+
+/** O menu inteiro, recortado pelas áreas que o servidor liberou. Abas e grupos vazios somem. */
+export function menuVisivel(areasVisiveis: readonly string[] | undefined): readonly AbaDoMenu[] {
+  const pode = (href: string): boolean => {
+    if (areasVisiveis === undefined) return true;
+    const area = areaDaRota(href);
+    return area !== null && areasVisiveis.includes(area.slug);
+  };
+  return [...MENU_DO_CONTADOR, ABA_OUTRAS_AREAS]
+    .map((aba) => ({
+      ...aba,
+      grupos: aba.grupos
+        .map((g) => ({ ...g, itens: g.itens.filter((i) => pode(i.href)) }))
+        .filter((g) => g.itens.length > 0),
+    }))
+    .filter((aba) => aba.grupos.length > 0);
+}
+
+/**
+ * A ABA DA ROTA ATUAL: a que tem o item de prefixo mais longo casando com o caminho. Uma rota com
+ * atalho em duas abas (as fichas) abre a primeira que a declara — a casa natural dela.
+ */
+export function abaDaRota(pathname: string, abas: readonly AbaDoMenu[]): string | null {
+  let melhor: { id: string; tamanho: number } | null = null;
+  for (const aba of abas) {
+    for (const g of aba.grupos) {
+      for (const i of g.itens) {
+        if ((pathname === i.href || pathname.startsWith(`${i.href}/`)) && (melhor === null || i.href.length > melhor.tamanho)) {
+          melhor = { id: aba.id, tamanho: i.href.length };
+        }
+      }
+    }
+  }
+  return melhor?.id ?? null;
+}
