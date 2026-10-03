@@ -173,6 +173,13 @@ export async function pagar(
   if (liquidacao === null) {
     throw new Error(`Liquidação ${dados.liquidacaoId} não encontrada.`);
   }
+  // V33 — a linha de ANULAÇÃO (total ou parcial) não é liquidação a pagar. Dito aqui, antes de ler a obrigação: a
+  // parcial creditou a conta de obrigação no sentido inverso, e a recusa sairia por um motivo que não é o verdadeiro.
+  if (liquidacao.estornoDeId !== null || (liquidacao.anulacaoParcialDeId ?? null) !== null) {
+    throw new Error(
+      `A liquidação ${dados.liquidacaoId} É uma anulação${(liquidacao.anulacaoParcialDeId ?? null) !== null ? " parcial" : ""}, e não o fato original — não se paga. Nada foi gravado.`
+    );
+  }
   // V24 — o pagamento extingue a obrigação que ESTA liquidação fez nascer: salário a pagar, encargo a
   // recolher, fornecedor. Debitar outra deixaria a obrigação de verdade aberta para sempre no balanço.
   exigirObrigacaoDaLiquidacao(roteiro, liquidacao.obrigacoes);

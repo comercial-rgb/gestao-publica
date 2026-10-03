@@ -3,6 +3,7 @@ import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // O rol oficial de elementos é do M02 (dono da classificação). O M10 DECIDE sobre ele;
@@ -418,7 +419,10 @@ export async function registrarEntradaAlmoxarifadoNaTx(
       numero: true,
       valor: true,
       estornoDeId: true,
+      anulacaoParcialDeId: true,
       estornos: { select: { id: true } },
+      // V33 — as anulações PARCIAIS da liquidação e o estorno de cada uma: o teto é o líquido.
+      anulacoesParciais: { select: { id: true, valor: true, estornos: { select: { id: true } } } },
       // A cadeia da classificação: liquidação -> empenho -> ficha -> natureza.
       // É a MESMA que o Anexo 12 e o portal (M13) percorrem — não há join novo.
       empenho: {
@@ -441,7 +445,7 @@ export async function registrarEntradaAlmoxarifadoNaTx(
         `almoxarifado nasça do material RECEBIDO E ATESTADO.`
     );
   }
-  if (liq.estornoDeId !== null) {
+  if (liq.estornoDeId !== null || liq.anulacaoParcialDeId !== null) {
     throw new Error(
       `A liquidação ${liq.numero} É uma ANULAÇÃO — não se dá entrada de material com ` +
         `o estorno de uma liquidação.`
@@ -472,7 +476,16 @@ export async function registrarEntradaAlmoxarifadoNaTx(
     );
   }
 
-  const liquidado = toMoney(liq.valor.toFixed(2));
+  // ⚠️ V33 — O TETO É O LÍQUIDO: a liquidação menos as anulações parciais vivas (a estornada volta a não
+  // descontar). Pelo bruto, a liquidação de 6.000 glosada em 3.500 aceitava 6.000 de material, e o razão do
+  // estoque crescia por um material que a despesa já não reconhece.
+  const liquidado = somaLiquidaEstornaveis([
+    { id: liq.id, valor: toMoney(liq.valor.toFixed(2)), estornoDeId: null },
+    ...liq.anulacoesParciais.flatMap((p) => [
+      { id: p.id, valor: toMoney(p.valor.toFixed(2)), estornoDeId: null, anulacaoParcialDeId: liq.id },
+      ...p.estornos.map((e) => ({ id: e.id, valor: toMoney(p.valor.toFixed(2)), estornoDeId: p.id })),
+    ]),
+  ]);
 
   // A SOMA das entradas daquela liquidação (com o sinal — o estorno devolve espaço).
   const outras = await tx.movimentoAlmoxarifado.findMany({

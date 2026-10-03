@@ -185,7 +185,8 @@ async function liquidadoEPagoDasLiquidacoes(
   if (ids.length === 0) return new Map();
   const [liqs, pags] = await Promise.all([
     prisma.liquidacao.findMany({
-      where: { OR: [{ id: { in: [...ids] } }, { anulacaoParcialDeId: { in: [...ids] } }, { estornoDeId: { in: [...ids] } }] },
+      // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+      where: { OR: [{ id: { in: [...ids] } }, { anulacaoParcialDeId: { in: [...ids] } }, { estornoDeId: { in: [...ids] } }, { estornoDe: { anulacaoParcialDeId: { in: [...ids] } } }] },
       select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
     }),
     prisma.pagamento.findMany({ where: { liquidacaoId: { in: [...ids] } }, select: { id: true, liquidacaoId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),

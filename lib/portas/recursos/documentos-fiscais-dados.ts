@@ -581,7 +581,7 @@ async function estadoDosAtosDoDocumento(documentoId: string): Promise<{ readonly
       ordem: { select: { numero: true, fornecedorId: true } },
       movimentos: { select: { id: true, tipo: true } },
       recebimentos: { select: { id: true } },
-      liquidacoes: { select: { id: true, estornoDeId: true, estornos: { select: { id: true } } } },
+      liquidacoes: { select: { id: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } } },
     },
   });
   if (doc === null) return null;
@@ -591,7 +591,7 @@ async function estadoDosAtosDoDocumento(documentoId: string): Promise<{ readonly
     emitenteConfereComOrdem: doc.ordem === null || doc.ordem.fornecedorId === doc.emitenteId,
     ordemNumero: doc.ordem?.numero ?? null,
     recebimentos: doc.recebimentos.length,
-    liquidacoesVivas: doc.liquidacoes.filter((l) => l.estornoDeId === null && l.estornos.length === 0).length,
+    liquidacoesVivas: doc.liquidacoes.filter((l) => l.estornoDeId === null && l.anulacaoParcialDeId === null && l.estornos.length === 0).length,
   };
   return { estado, versao: versaoDoEstado([doc.movimentos.map((m) => m.id).sort(), doc.recebimentos.length, doc.liquidacoes.map((l) => [l.id, l.estornos.length]), doc.ordem?.fornecedorId ?? null, doc.emitenteId]) };
 }

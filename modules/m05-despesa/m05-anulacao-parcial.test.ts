@@ -849,3 +849,68 @@ describe("V23 — as anulações de empenho e de liquidação no SAGRES", () => 
     expect(s.slice(164, 180)).toBe("0000000001000,00");
   });
 });
+
+/**
+ * ═══ V33 — A ANULAÇÃO PARCIAL NOS GUARDS DO NÚCLEO (liquidar, pagar, anular, entrada de material) ═══
+ *
+ * Achado pelo levantamento que a composição do M12 abriu. Três padrões, cada um com o seu teste:
+ *   A. o limite comparava com o valor BRUTO do original (liquidava-se/pagava-se a glosa);
+ *   B. a família do fato não levava o estorno da parcial (a parcial estornada continuava descontando);
+ *   C. a linha da parcial passava como se fosse o fato.
+ * E a anulação TOTAL depois de uma parcial viva devolvia o valor cheio — a ficha recebia a parcial duas vezes.
+ * Literais por aritmética manual.
+ */
+describe("V33 — a anulação parcial nos guards do núcleo", () => {
+  beforeEach(semear);
+  const MOTIVO = "glosa registrada pela fiscalização do contrato";
+
+  it("A: empenho 9.000 com parcial de 1.000 — liquidar 9.000 é recusado pelo empenhado LÍQUIDO (8.000); 8.000 passa", async () => {
+    const e = await empenhaDe("9000.00");
+    await anularEmpenhoParcial({ originalId: e, numero: "NE-1-AP1", valor: "1000.00", data: new Date("2026-02-10T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    await expect(liquidaDe(e, "9000.00")).rejects.toThrow(/excede o empenho .*empenhado 8000\.00, já liquidado 0\.00, solicitado 9000\.00/);
+    await expect(liquidaDe(e, "8000.00")).resolves.toBeTruthy();
+  });
+
+  it("A: liquidação 6.000 glosada em 3.500 — pagar 6.000 é recusado pela liquidação LÍQUIDA (2.500); 2.500 passa", async () => {
+    const e = await empenhaDe("10000.00");
+    const l = await liquidaDe(e, "6000.00");
+    await anularLiquidacaoParcial({ originalId: l, numero: "NL-1-AP1", valor: "3500.00", data: new Date("2026-03-10T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    await expect(pagaDe(l, "6000.00")).rejects.toThrow(/excede a liquidação .*liquidado 2500\.00, já pago 0\.00, solicitado 6000\.00/);
+    await expect(pagaDe(l, "2500.00")).resolves.toBeTruthy();
+  });
+
+  it("C: a linha da parcial não é liquidada nem paga como se fosse o fato — e o motivo é dito", async () => {
+    const e = await empenhaDe("10000.00");
+    const pe = await anularEmpenhoParcial({ originalId: e, numero: "NE-1-AP1", valor: "1000.00", data: new Date("2026-02-10T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    await expect(liquidaDe(pe.anulacaoId, "100.00", "X")).rejects.toThrow(/É uma anulação parcial, e não o fato original/);
+    const l = await liquidaDe(e, "5000.00");
+    const pl = await anularLiquidacaoParcial({ originalId: l, numero: "NL-1-AP1", valor: "1000.00", data: new Date("2026-03-10T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    await expect(pagaDe(pl.anulacaoId, "100.00", "X")).rejects.toThrow(/É uma anulação parcial, e não o fato original/);
+  });
+
+  it("anulação TOTAL com parcial viva é recusada com o caminho; com a parcial estornada, passa e a ficha volta ao dotado", async () => {
+    const e = await empenhaDe("9000.00");
+    const ap = await anularEmpenhoParcial({ originalId: e, numero: "NE-1-AP1", valor: "1000.00", data: new Date("2026-02-10T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    const anular = () => anularEmpenho({ empenhoId: e, numero: "NE-1-ANUL", data: new Date("2026-02-20T12:00:00Z"), historico: "empenho cancelado por desistência do contrato", criadoPor: POR }, deps);
+    await expect(anular()).rejects.toThrow(/tem anulação parcial viva: .*Anule o saldo restante pela anulação parcial/);
+    expect(await prisma.empenho.count({ where: { estornoDeId: e } })).toBe(0);
+
+    await estornarAnulacaoParcial({ nivel: "EMPENHO", anulacaoId: ap.anulacaoId, numero: "NE-1-AP1-E", data: new Date("2026-02-15T12:00:00Z"), motivo: "anulação registrada em duplicidade", criadoPor: POR }, deps);
+    await expect(anular()).resolves.toBeTruthy();
+    const saldos = await saldosCorrentesDaFicha(FICHA, deps);
+    expect(saldos.empenhado.toFixed(2)).toBe("0.00");
+  });
+
+  it("B: com a parcial estornada, uma nova parcial pelo saldo inteiro passa (o guard vê o empenhado de volta)", async () => {
+    const e = await empenhaDe("1000.00");
+    const ap = await anularEmpenhoParcial({ originalId: e, numero: "NE-1-AP1", valor: "400.00", data: new Date("2026-02-10T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    await estornarAnulacaoParcial({ nivel: "EMPENHO", anulacaoId: ap.anulacaoId, numero: "NE-1-AP1-E", data: new Date("2026-02-11T12:00:00Z"), motivo: "anulação registrada em duplicidade", criadoPor: POR }, deps);
+    await expect(
+      anularEmpenhoParcial({ originalId: e, numero: "NE-1-AP2", valor: "1000.00", data: new Date("2026-02-12T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps)
+    ).resolves.toBeTruthy();
+  });
+
+  // A (almoxarifado): o teto da entrada passou a ser a liquidação LÍQUIDA (`almoxarifado.ts`). Pelo serviço o caminho não
+  // se monta: a entrada nasce no ato de liquidar e iguala o liquidado, e a parcial abaixo do material é recusada pela
+  // cascata (t6) — o teto só alcança liquidação gravada antes da regra da entrada no ato. Fica como defesa, sem teste.
+});

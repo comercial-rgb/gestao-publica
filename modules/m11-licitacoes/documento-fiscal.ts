@@ -174,10 +174,11 @@ async function conferirVinculos(
   if (d.empenhoId !== undefined) {
     const empenho = await tx.empenho.findUnique({
       where: { id: d.empenhoId },
-      select: { id: true, numero: true, credorCpfCnpj: true, estornoDeId: true, estornos: { select: { id: true } } },
+      select: { id: true, numero: true, credorCpfCnpj: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } },
     });
     if (empenho === null) throw new Error(`Empenho ${d.empenhoId} não existe. Nada foi gravado.`);
-    if (empenho.estornoDeId !== null || empenho.estornos.length > 0) {
+    // V33 — a linha da anulação parcial também não lastreia documento.
+    if (empenho.estornoDeId !== null || empenho.anulacaoParcialDeId !== null || empenho.estornos.length > 0) {
       throw new Error(`Empenho ${empenho.numero} está anulado — não lastreia documento fiscal.`);
     }
     if (empenho.credorCpfCnpj !== emitente.documento) {
@@ -550,7 +551,7 @@ export async function cancelarDocumentoFiscal(
         ordem: { select: { ficha: { select: { unidadeOrcId: true } } } },
         movimentos: { select: { tipo: true } },
         recebimentos: { select: { id: true } },
-        liquidacoes: { select: { id: true, estornoDeId: true, estornos: { select: { id: true } } } },
+        liquidacoes: { select: { id: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } } },
       },
     });
     if (doc === null) throw new Error(`Documento fiscal ${d.documentoId} não existe.`);
@@ -568,7 +569,7 @@ export async function cancelarDocumentoFiscal(
       emitenteConfereComOrdem: true,
       ordemNumero: null,
       recebimentos: doc.recebimentos.length,
-      liquidacoesVivas: doc.liquidacoes.filter((l) => l.estornoDeId === null && l.estornos.length === 0).length,
+      liquidacoesVivas: doc.liquidacoes.filter((l) => l.estornoDeId === null && l.anulacaoParcialDeId === null && l.estornos.length === 0).length,
     }));
     await tx.movimentoDoDocumentoFiscal.create({
       data: {

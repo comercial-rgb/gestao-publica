@@ -6,7 +6,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // cheque. Importar é o preço de não ter duas.
 import { somaLiquidaEstornaveis } from "../m08-restos-a-pagar/dominio.js";
 import { comRetencoesProprias, tetoConciliavelDoPagamento } from "../m09-tesouraria/dominio.js";
-import type { LinhaEstornavel } from "../../packages/estornaveis/index.js";
+import { liquidoDoFato, type LinhaEstornavel } from "../../packages/estornaveis/index.js";
 import { statusDoEmpenho, type CategoriaOrdemCronologica, type StatusEmpenho } from "./dominio.js";
 
 /** O client OU uma transação dele — as consultas servem aos dois. */
@@ -713,17 +713,11 @@ export function comoLinha(x: {
 /**
  * O LÍQUIDO DE UM FATO SÓ: valor − parciais vivas, ou 0,00 se ele foi anulado TOTAL.
  *
- * ⚠️ POR QUE NÃO É O `liquidoDoFato` DE `packages/estornaveis`.
- * O `liquidoDoFato` de lá recorta o conjunto em `l.id === fatoId || l.anulacaoParcialDeId
- * === fatoId` — ou seja, JOGA FORA a linha do estorno TOTAL (que aponta por
- * `estornoDeId`). Sem essa linha, `somaLiquidaEstornaveis` não tem como saber que o fato
- * morreu, e devolve o valor CHEIO de um empenho anulado. O docstring de lá promete o
- * contrário ("Devolve 0,00 se o fato foi anulado TOTALMENTE"); a função não cumpre.
- *
- * Ela tem ZERO chamadores no repositório e nenhum teste — este foi o primeiro uso real, e
- * o t1 de `m05-consultas-execucao.test.ts` pegou a divergência. Corrigir lá é mexer em
- * `packages/estornaveis/index.ts`, fora do escopo desta fatia (só borda). Fica NOMEADO:
- * pendência **liquidoDoFato-anulacao-total** (ver components/ui/MODULO-UI.md).
+ * ⚠️ V33 — AGORA É O `liquidoDoFato` DE `packages/estornaveis`. Este recorte local existia porque o de lá
+ * descartava o estorno TOTAL (pendência **liquidoDoFato-anulacao-total**). Os dois tinham, além disso, o mesmo
+ * buraco: nenhum levava o ESTORNO DE UMA PARCIAL (que aponta para a parcial, não para o fato), e a parcial
+ * estornada continuava descontando. A régua do pacote foi corrigida para as duas pernas, com teste
+ * (`packages/estornaveis/estornaveis.test.ts`), e este recorte deixou de ser necessário.
  *
  * A ARITMÉTICA CONTINUA SENDO UMA: `somaLiquidaEstornaveis`. O que muda aqui é só o
  * RECORTE — o fato, as parciais dele e os estornos dele.
@@ -732,14 +726,7 @@ export function liquidoDeUmFato(
   fatoId: string,
   universo: readonly LinhaEstornavel[]
 ): Money {
-  return somaLiquidaEstornaveis(
-    universo.filter(
-      (l) =>
-        l.id === fatoId ||
-        l.anulacaoParcialDeId === fatoId ||
-        l.estornoDeId === fatoId
-    )
-  );
+  return liquidoDoFato(fatoId, universo);
 }
 
 /**

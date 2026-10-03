@@ -45,7 +45,8 @@ type Tx = Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction"
 
 async function empenhadoLiquidoDoEmpenho(tx: Tx, empenhoId: string): Promise<Money> {
   const linhas = await tx.empenho.findMany({
-    where: { OR: [{ id: empenhoId }, { estornoDeId: empenhoId }, { anulacaoParcialDeId: empenhoId }] },
+    // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+    where: { OR: [{ id: empenhoId }, { estornoDeId: empenhoId }, { anulacaoParcialDeId: empenhoId }, { estornoDe: { anulacaoParcialDeId: empenhoId } }] },
     select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
   return somaLiquidaEstornaveis(

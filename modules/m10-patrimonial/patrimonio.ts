@@ -380,6 +380,7 @@ export async function adquirirBem(
         numero: true,
         valor: true,
         estornoDeId: true,
+        anulacaoParcialDeId: true,
         estornos: { select: { id: true } },
         // V28 — a perna patrimonial DEVEDORA da liquidação: o que a despesa virou quando foi liquidada.
         lancamento: { select: { partidas: { where: { subsistema: "PATRIMONIAL", tipo: "DEBITO" }, select: { conta: { select: { codigo: true } } } } } },
@@ -413,7 +414,8 @@ export async function adquirirBem(
           `não existe mais.`
       );
     }
-    if (liq.estornoDeId !== null) {
+    // V33 — a anulação PARCIAL também é linha de `Liquidacao`: com o id dela, o teto virava o valor da glosa.
+    if (liq.estornoDeId !== null || liq.anulacaoParcialDeId !== null) {
       throw new Error(
         `Liquidação ${liq.numero} É uma anulação de liquidação — não incorpora bem.`
       );
@@ -519,7 +521,8 @@ export async function saldoAIncorporarDaLiquidacao(tx: Tx, liquidacaoId: string)
 /** O líquido de UMA liquidação: o valor menos as anulações parciais vivas (zero se anulada). */
 async function liquidoDaLiquidacaoNaTx(tx: Tx, id: string): Promise<Money> {
   const linhas = await tx.liquidacao.findMany({
-    where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }] },
+    // V33 — e o estorno de cada parcial: sem ele, a parcial estornada continuava descontando o teto.
+    where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }, { estornoDe: { anulacaoParcialDeId: id } }] },
     select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
   return somaLiquidaEstornaveis(

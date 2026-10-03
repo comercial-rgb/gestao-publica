@@ -181,7 +181,8 @@ export async function lerLiquidacoesApropriaveis(p: {
       valor: true,
       empenho: { select: { numero: true, credorCpfCnpj: true } },
       estornos: { select: { valor: true } },
-      anulacoesParciais: { select: { valor: true } },
+      // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+      anulacoesParciais: { select: { valor: true, estornos: { select: { id: true } } } },
       apropriacoesDeCusto: { select: { valor: true } },
     },
   });
@@ -189,7 +190,7 @@ export async function lerLiquidacoesApropriaveis(p: {
   const saida: LiquidacaoApropriavelParaTela[] = [];
   for (const l of liquidacoes) {
     const bruto = l.valor;
-    const anulado = [...l.estornos, ...l.anulacoesParciais].reduce(
+    const anulado = [...l.estornos, ...l.anulacoesParciais.filter((a) => a.estornos.length === 0)].reduce(
       (acc, x) => acc.plus(x.valor),
       bruto.minus(bruto)
     );

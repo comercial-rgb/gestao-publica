@@ -459,10 +459,14 @@ async function exigirEmpenhoDoConvenio(
 ): Promise<void> {
   const e = await tx.empenho.findUnique({
     where: { id: empenhoId },
-    select: { id: true, numero: true, convenioId: true },
+    select: { id: true, numero: true, convenioId: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
   if (e === null) {
     throw new Error(`Empenho ${empenhoId} não encontrado. Nada foi gravado.`);
+  }
+  // V33 — a anulação (total ou parcial) copia o convênio do original, e não é empenho da liberação.
+  if (e.estornoDeId !== null || e.anulacaoParcialDeId !== null) {
+    throw new Error(`O empenho ${e.numero} é uma anulação, e não o empenho do convênio. Nada foi gravado.`);
   }
   if (e.convenioId === null) {
     throw new Error(

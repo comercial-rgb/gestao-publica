@@ -1781,7 +1781,8 @@ export async function opcoesDoCadastro(
     p.convenioId === undefined
       ? Promise.resolve([])
       : prisma.empenho.findMany({
-          where: { convenioId: p.convenioId },
+          // V33 — as anulações (total e parcial) copiam o convênio e não são empenho a oferecer.
+          where: { convenioId: p.convenioId, estornoDeId: null, anulacaoParcialDeId: null, estornos: { none: {} } },
           select: { id: true, numero: true, valor: true, data: true },
           orderBy: { numero: "asc" },
         }),

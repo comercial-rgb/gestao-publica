@@ -147,12 +147,13 @@ export async function passivoDaLiquidacaoDeOrigem(
 ): Promise<PassivoDeOrigem> {
   const liq = await tx.liquidacao.findUnique({
     where: { id: p.liquidacaoId },
-    select: { id: true, numero: true, empenhoId: true, lancamentoId: true, estornoDeId: true },
+    select: { id: true, numero: true, empenhoId: true, lancamentoId: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
   if (liq === null) {
     throw new Error(`A liquidação informada não existe. Nada foi gravado.`);
   }
-  if (liq.estornoDeId !== null) {
+  // V33 — a anulação parcial também é linha de `Liquidacao`, e não origem de passivo.
+  if (liq.estornoDeId !== null || liq.anulacaoParcialDeId !== null) {
     throw new Error(
       `A liquidação ${liq.numero} é um ESTORNO — ela desfez uma liquidação, não criou obrigação. ` +
         `Nada foi gravado.`

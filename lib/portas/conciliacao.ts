@@ -362,7 +362,7 @@ async function resolverInterno(
       const pg = await prisma.pagamento.findUnique({
         where: { id },
         select: {
-          numero: true, valor: true, data: true,
+          numero: true, valor: true, data: true, anulacaoParcialDeId: true,
           liquidacao: { select: { numero: true, empenho: { select: { numero: true, credorCpfCnpj: true, historico: true } } } },
         },
       });
@@ -370,7 +370,8 @@ async function resolverInterno(
       const emp = pg.liquidacao.empenho;
       return {
         tipo,
-        rotulo: `Pagamento nº ${pg.numero}`,
+        // V33 — a anulação parcial do pagamento é dinheiro voltando; o rótulo diz isso.
+        rotulo: pg.anulacaoParcialDeId !== null ? `Anulação parcial do pagamento (nº ${pg.numero})` : `Pagamento nº ${pg.numero}`,
         data: pg.data,
         valor: pg.valor.toFixed(2),
         // O CPF/CNPJ sai FORMATADO (máscara BR de apresentação, `lib/format/mascaras.ts`) — é dado

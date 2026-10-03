@@ -136,8 +136,9 @@ async function saldoAPagarDaLiquidacao(tx: Tx, liquidacaoId: string): Promise<Mo
     select: {
       valor: true,
       estornos: { select: { id: true } },
+      // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
       anulacoesParciais: {
-        select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+        select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } },
       },
     },
   });
@@ -151,7 +152,7 @@ async function saldoAPagarDaLiquidacao(tx: Tx, liquidacaoId: string): Promise<Mo
   // A mesma aritmética líquida do resto do repositório — nunca um SUM bruto.
   const liquidado = toMoney(l.valor.toFixed(2)).minus(
     somaLiquidaEstornaveis(
-      l.anulacoesParciais.map((a) => ({
+      l.anulacoesParciais.filter((a) => a.estornos.length === 0).map((a) => ({
         id: a.id,
         valor: toMoney(a.valor.toFixed(2)),
         estornoDeId: a.estornoDeId,

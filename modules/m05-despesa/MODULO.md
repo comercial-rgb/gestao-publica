@@ -422,3 +422,33 @@ número: é o que mantém a retomada idempotente. `NumeroReservado` é append-on
 - Provas: `m05-numerador.test.ts` (idempotência, N=2, o maior número digitado, texto e outro exercício
   ignorados, espécies separadas, 10 reservas simultâneas, a mesma chave cinco vezes ao mesmo tempo, o
   oitavo dígito recusado).
+
+## A anulação parcial nos guards do núcleo (V33)
+
+Levantamento aberto pela composição do M12: 19 pontos tratavam a anulação parcial pela metade.
+
+**No núcleo, com teste (`m05-anulacao-parcial.test.ts`, bloco V33) e mutante vermelho:**
+- **`liquidar`:** o limite é o empenhado LÍQUIDO. Antes era o bruto, e liquidava-se o que a parcial já
+  tinha devolvido à ficha.
+- **`pagar`:** o limite é a liquidação LÍQUIDA. Antes, pagava-se a glosa.
+- **A linha da anulação, total ou parcial, não é fato:** é recusada em `liquidar` e em `pagar` (no
+  serviço, antes de ler a obrigação, para que o motivo seja o verdadeiro) e nas anulações totais.
+- **Anulação TOTAL com parcial viva:** é recusada. Inverter o lançamento inteiro devolveria a parcial
+  duas vezes. O caminho é anular o saldo pela anulação parcial; com a parcial estornada, a total volta
+  a valer.
+- **Os auxiliares do líquido de um fato** (`liquidoDaLiquidacao`, `liquidoDoPagamento`,
+  `empenhadoLiquidoDoEmpenho`) levam a família inteira: o fato, as parciais, o estorno total e o
+  estorno de cada parcial. `liquidoDeUmFato` delega a `packages/estornaveis.liquidoDoFato`, também
+  corrigido. Isso resolve a pendência `liquidoDoFato-anulacao-total`.
+
+**Fora do núcleo, corrigidos sem teste próprio** (a regressão dos módulos passa):
+- **Estorno da parcial esquecido:** encargos da folha, consumo da parcela do contrato, saldo da ordem
+  de pagamento, adiantamentos, custos (serviço, folha e porta) e dados da folha.
+- **Soma pela régua:** relatório de restos.
+- **A parcial como fato vivo:** compras, documento fiscal, convênio, ordem de serviço, origem do
+  passivo do resto e opções de empenho do convênio.
+- **Rótulo:** na conciliação.
+
+**Ainda abertos, nomeados:**
+- MANAD L150 em período menor que o exercício: a parcial dentro da janela com o original fora dela.
+- `totaisDoEmpenho` (status) pelo valor de emissão. É deliberado, ver `consultas.ts`.

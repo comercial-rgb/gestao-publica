@@ -82,7 +82,8 @@ export async function apropriarCustoDaFolha(
     }
 
     const familia = await tx.liquidacao.findMany({
-      where: { OR: [{ id: liq.id }, { estornoDeId: liq.id }, { anulacaoParcialDeId: liq.id }] },
+      // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+      where: { OR: [{ id: liq.id }, { estornoDeId: liq.id }, { anulacaoParcialDeId: liq.id }, { estornoDe: { anulacaoParcialDeId: liq.id } }] },
       select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
     });
     const liquido = somaLiquidaEstornaveis(familia.map((l) => ({ id: l.id, valor: toMoney(l.valor.toFixed(2)), estornoDeId: l.estornoDeId, anulacaoParcialDeId: l.anulacaoParcialDeId })));

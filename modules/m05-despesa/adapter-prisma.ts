@@ -1304,12 +1304,16 @@ export function criarDespesaRepositoryPrisma(
             valor: true,
             categoriaOrdemCronologica: true,
             ...SELECAO_DAS_DIMENSOES,
+            estornoDeId: true,
+            anulacaoParcialDeId: true,
+            anulacoesParciais: { select: { estornos: { select: { id: true } } } },
             estornos: { select: { id: true } },
           },
         });
         if (original === null) {
           throw new Error(`Empenho ${p.empenhoOriginalId} não encontrado.`);
         }
+        exigirFatoOriginalSemParcialViva(`O empenho ${p.empenhoOriginalId}`, original, "anular");
 
         // ⚠️ GUARD NOVO (ADR de 2026-09-10). A anulação DEVOLVE crédito à ficha, e o
         // movimento dela carrega `p.data` como competência. Datada dentro de um
@@ -2018,6 +2022,7 @@ export function criarDespesaRepositoryPrisma(
             credorCpfCnpj: true,
             ordemDeCompraId: true,
             estornoDeId: true,
+            anulacaoParcialDeId: true,
             estornos: { select: { id: true } },
             // ⚠️ M10 (ENT06 item 2) — O ELEMENTO decide se esta liquidação é de MATERIAL, e
             // material não vira despesa: vira ESTOQUE. A leitura é aqui, DENTRO da
@@ -2036,9 +2041,7 @@ export function criarDespesaRepositoryPrisma(
         if (empenho.estornos.length > 0) {
           throw new Error(`Empenho ${p.empenhoId} está ANULADO — não se liquida.`);
         }
-        if (empenho.estornoDeId !== null) {
-          throw new Error(`Empenho ${p.empenhoId} É uma anulação — não se liquida.`);
-        }
+        exigirFatoOriginalSemParcialViva(`O empenho ${p.empenhoId}`, empenho, "liquidar");
 
         // ⚠️ LOCK: a FICHA do empenho (posto 2), ANTES de somar o já liquidado. Achado de V7 M2 U3 (m05-concorrencia t5):
         // duas liquidações concorrentes de 700 num empenho de 1.000 liam "já liquidado = 0" e gravavam as duas. É a
@@ -2064,8 +2067,9 @@ export function criarDespesaRepositoryPrisma(
           });
         }
 
-        // INVARIANTE 3: limite lido do SUM REAL, dentro da transação.
-        const empenhado = toMoney(empenho.valor.toFixed(2));
+        // INVARIANTE 3: limite lido do SUM REAL, dentro da transação — e o empenhado é o LÍQUIDO das anulações
+        // parciais vivas (V33): pelo bruto, liquidava-se a parte que a parcial já tinha devolvido à ficha.
+        const empenhado = await empenhadoLiquidoDoEmpenho(tx, p.empenhoId);
         const jaLiquidado = await liquidadoLiquido(tx, p.empenhoId);
         const depois = toMoney(jaLiquidado.plus(p.valor));
 
@@ -2217,6 +2221,7 @@ export function criarDespesaRepositoryPrisma(
             id: true,
             valor: true,
             estornoDeId: true,
+            anulacaoParcialDeId: true,
             estornos: { select: { id: true } },
           },
         });
@@ -2226,6 +2231,7 @@ export function criarDespesaRepositoryPrisma(
         if (liq.estornos.length > 0) {
           throw new Error(`Liquidação ${p.liquidacaoId} está ANULADA — não se paga.`);
         }
+        exigirFatoOriginalSemParcialViva(`A liquidação ${p.liquidacaoId}`, liq, "pagar");
 
         // M08 — pagamento de despesa de exercício encerrado é pagamento de
         // RESTOS A PAGAR: ele baixa a inscrição, não a dotação.
@@ -2268,7 +2274,8 @@ export function criarDespesaRepositoryPrisma(
         }
 
         // Limite: SUM REAL do já pago, dentro da transação.
-        const liquidado = toMoney(liq.valor.toFixed(2));
+        // V33 — o liquidado é o LÍQUIDO das anulações parciais vivas: pelo bruto, pagava-se a glosa.
+        const liquidado = await liquidoDaLiquidacao(tx, p.liquidacaoId);
         const jaPago = await pagoLiquido(tx, p.liquidacaoId);
         const depois = toMoney(jaPago.plus(p.valor));
 
@@ -2467,12 +2474,16 @@ export function criarDespesaRepositoryPrisma(
             data: true,
             responsavelAtesto: true,
             documentoFiscalId: true,
+            estornoDeId: true,
+            anulacaoParcialDeId: true,
+            anulacoesParciais: { select: { estornos: { select: { id: true } } } },
             estornos: { select: { id: true } },
           },
         });
         if (original === null) {
           throw new Error(`Liquidação ${p.liquidacaoOriginalId} não encontrada.`);
         }
+        exigirFatoOriginalSemParcialViva(`A liquidação ${p.liquidacaoOriginalId}`, original, "anular");
         if (original.estornos.length > 0) {
           throw new Error(`Liquidação ${p.liquidacaoOriginalId} já foi anulada.`);
         }
@@ -2534,12 +2545,16 @@ export function criarDespesaRepositoryPrisma(
             contaBancaria: true,
             fonteId: true,
             lancamentoId: true,
+            estornoDeId: true,
+            anulacaoParcialDeId: true,
+            anulacoesParciais: { select: { estornos: { select: { id: true } } } },
             estornos: { select: { id: true } },
           },
         });
         if (original === null) {
           throw new Error(`Pagamento ${p.pagamentoOriginalId} não encontrado.`);
         }
+        exigirFatoOriginalSemParcialViva(`O pagamento ${p.pagamentoOriginalId}`, original, "anular");
         if (original.estornos.length > 0) {
           throw new Error(`Pagamento ${p.pagamentoOriginalId} já foi anulado.`);
         }
@@ -2640,6 +2655,7 @@ export function criarDespesaRepositoryPrisma(
           valor: true,
           lancamentoId: true,
           estornoDeId: true,
+          anulacaoParcialDeId: true,
           estornos: { select: { id: true } },
           empenho: { select: { fichaId: true } },
           lancamento: { select: { partidas: { where: { tipo: "CREDITO", subsistema: "PATRIMONIAL", conta: { codigo: { startsWith: "2." } } }, select: { conta: { select: { codigo: true } } } } } },
@@ -2653,6 +2669,7 @@ export function criarDespesaRepositoryPrisma(
         valor: toMoney(l.valor.toFixed(2)),
         lancamentoId: l.lancamentoId,
         estornoDeId: l.estornoDeId,
+        anulacaoParcialDeId: l.anulacaoParcialDeId,
         estornos: l.estornos.map((x) => x.id),
         obrigacoes: [...new Set(l.lancamento.partidas.map((p) => p.conta.codigo))],
       };
@@ -2704,6 +2721,38 @@ export function criarDespesaRepositoryPrisma(
   };
 }
 
+/**
+ * ⚠️ V33 — A LINHA DE ANULAÇÃO NÃO É FATO, E O FATO COM PARCIAL VIVA NÃO SE ANULA INTEIRO.
+ *
+ * (1) A anulação parcial é uma linha da MESMA tabela, com `anulacaoParcialDeId` e `estornoDeId` nulo. Quem
+ * informasse o id dela como se fosse o empenho, a liquidação ou o pagamento liquidava, pagava ou "anulava" contra
+ * a glosa: os guards só olhavam o `estornoDeId`.
+ *
+ * (2) A anulação TOTAL inverte o lançamento ORIGINAL inteiro e grava o valor cheio. Com uma parcial viva, a parte
+ * já devolvida pela parcial voltaria DE NOVO: a ficha ganhava crédito em dobro e o SAGRES declarava 1.000 + 9.000
+ * de estorno sobre um fato de 9.000. O caminho certo existe e não perde nada: anular o SALDO pela anulação parcial
+ * (ela aceita o saldo inteiro). Fail-closed, com o caminho na mensagem.
+ */
+function exigirFatoOriginalSemParcialViva(
+  rotulo: string,
+  fato: {
+    readonly estornoDeId: string | null;
+    readonly anulacaoParcialDeId: string | null;
+    readonly anulacoesParciais?: readonly { readonly estornos: readonly unknown[] }[];
+  },
+  ato: "liquidar" | "pagar" | "anular" | null
+): void {
+  if (fato.estornoDeId !== null || fato.anulacaoParcialDeId !== null) {
+    throw new Error(`${rotulo} É uma anulação${fato.anulacaoParcialDeId !== null ? " parcial" : ""}, e não o fato original${ato === null ? "" : ` — não se ${ato === "anular" ? "anula uma anulação" : ato === "liquidar" ? "liquida" : "paga"}`}. Nada foi gravado.`);
+  }
+  if (ato === "anular" && (fato.anulacoesParciais ?? []).some((p) => p.estornos.length === 0)) {
+    throw new Error(
+      `${rotulo} tem anulação parcial viva: anulá-lo inteiro devolveria de novo o que a parcial já devolveu. ` +
+        `Anule o saldo restante pela anulação parcial. Nada foi gravado.`
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // BLOCO 2 — liquidação e pagamento.
 //
@@ -2742,7 +2791,10 @@ async function liquidadoLiquido(
 /** O líquido de UMA liquidação (já descontadas as suas anulações parciais). */
 async function liquidoDaLiquidacao(tx: Tx, id: string): Promise<Money> {
   const linhas = await tx.liquidacao.findMany({
-    where: { OR: [{ id }, { anulacaoParcialDeId: id }] },
+    // ⚠️ V33 — A FAMÍLIA INTEIRA: o fato, as parciais dele, o estorno TOTAL dele e o estorno de cada parcial.
+    // Sem as duas últimas pernas, o fato anulado inteiro saía com o valor cheio e a parcial estornada continuava
+    // descontando (o guard recusava uma parcial legítima).
+    where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }, { estornoDe: { anulacaoParcialDeId: id } }] },
     select: {
       id: true,
       valor: true,
@@ -2763,7 +2815,10 @@ async function liquidoDaLiquidacao(tx: Tx, id: string): Promise<Money> {
 /** O líquido de UM pagamento (já descontadas as suas anulações parciais). */
 async function liquidoDoPagamento(tx: Tx, id: string): Promise<Money> {
   const linhas = await tx.pagamento.findMany({
-    where: { OR: [{ id }, { anulacaoParcialDeId: id }] },
+    // ⚠️ V33 — A FAMÍLIA INTEIRA: o fato, as parciais dele, o estorno TOTAL dele e o estorno de cada parcial.
+    // Sem as duas últimas pernas, o fato anulado inteiro saía com o valor cheio e a parcial estornada continuava
+    // descontando (o guard recusava uma parcial legítima).
+    where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }, { estornoDe: { anulacaoParcialDeId: id } }] },
     select: {
       id: true,
       valor: true,
@@ -2784,7 +2839,10 @@ async function liquidoDoPagamento(tx: Tx, id: string): Promise<Money> {
 /** O empenhado líquido de UM empenho (já descontadas as parciais dele). */
 async function empenhadoLiquidoDoEmpenho(tx: Tx, id: string): Promise<Money> {
   const linhas = await tx.empenho.findMany({
-    where: { OR: [{ id }, { anulacaoParcialDeId: id }] },
+    // ⚠️ V33 — A FAMÍLIA INTEIRA: o fato, as parciais dele, o estorno TOTAL dele e o estorno de cada parcial.
+    // Sem as duas últimas pernas, o fato anulado inteiro saía com o valor cheio e a parcial estornada continuava
+    // descontando (o guard recusava uma parcial legítima).
+    where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }, { estornoDe: { anulacaoParcialDeId: id } }] },
     select: {
       id: true,
       valor: true,

@@ -40,7 +40,7 @@ export async function consumoDasParcelas(tx: Tx, recebimentoIds: readonly string
     where: { recebimentoDefinitivoId: { in: [...recebimentoIds] } },
     select: {
       recebimentoDefinitivoId: true, valor: true,
-      liquidacao: { select: { id: true, valor: true, estornos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }, anulacoesParciais: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }, _count: { select: { alocacoesNaParcela: true } } } },
+      liquidacao: { select: { id: true, valor: true, estornos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }, anulacoesParciais: { select: { id: true, valor: true, estornos: { select: { id: true } } } }, _count: { select: { alocacoesNaParcela: true } } } },
     },
   });
   const m = new Map<string, Decimal>();
@@ -52,7 +52,11 @@ export async function consumoDasParcelas(tx: Tx, recebimentoIds: readonly string
     else {
       const liquido = somaLiquidaEstornaveis([
         { id: l.id, valor: toMoney(l.valor.toFixed(2)), estornoDeId: null, anulacaoParcialDeId: null },
-        ...l.anulacoesParciais.map((x) => ({ id: x.id, valor: toMoney(x.valor.toFixed(2)), estornoDeId: x.estornoDeId, anulacaoParcialDeId: x.anulacaoParcialDeId })),
+        // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+        ...l.anulacoesParciais.flatMap((x) => [
+          { id: x.id, valor: toMoney(x.valor.toFixed(2)), estornoDeId: null, anulacaoParcialDeId: l.id },
+          ...x.estornos.map((e) => ({ id: e.id, valor: toMoney(x.valor.toFixed(2)), estornoDeId: x.id, anulacaoParcialDeId: null })),
+        ]),
       ]);
       consumido = Decimal.min(new Decimal(a.valor.toFixed(2)), liquido);
     }

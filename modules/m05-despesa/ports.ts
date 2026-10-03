@@ -393,6 +393,8 @@ export interface LiquidacaoResumo {
   readonly valor: Money;
   readonly lancamentoId: string;
   readonly estornoDeId: string | null;
+  /** V33 — a linha da ANULAÇÃO PARCIAL também é uma `Liquidacao`; ela não se paga. */
+  readonly anulacaoParcialDeId?: string | null;
   readonly estornos: readonly string[];
   /**
    * V24 — a(s) conta(s) de OBRIGAÇÃO que a liquidação creditou (perna patrimonial credora da classe 2).

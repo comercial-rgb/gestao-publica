@@ -751,7 +751,7 @@ export async function estornarOrdemDeCompra(
         itens: { select: { id: true } },
         recebimentos: { select: { id: true, data: true } },
         empenhos: {
-          select: { id: true, numero: true, estornoDeId: true, estornos: { select: { id: true } } },
+          select: { id: true, numero: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } },
         },
       },
     });
@@ -769,7 +769,7 @@ export async function estornarOrdemDeCompra(
       numero: ordem.numero,
       estornada: await ordemEstornada(tx, ordem.id),
       recebimentos: ordem.recebimentos.length,
-      empenhosVivos: ordem.empenhos.filter((e) => e.estornoDeId === null && e.estornos.length === 0).map((e) => e.numero),
+      empenhosVivos: ordem.empenhos.filter((e) => e.estornoDeId === null && e.anulacaoParcialDeId === null && e.estornos.length === 0).map((e) => e.numero),
       itensPendentes: null,
     }));
     const agora = new Date();

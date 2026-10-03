@@ -196,9 +196,9 @@ export async function criarRascunhoDeOrdemDeServico(prisma: PrismaClient, input:
       throw new Error(`FISCAL-DA-ORDEM-INVALIDO: a designação indicada não é de FISCAL vigente hoje no contrato ${c.numeroContrato}. Nada foi gravado.`);
     }
     if (d.empenhoId !== undefined) {
-      const e = await tx.empenho.findUnique({ where: { id: d.empenhoId }, select: { numero: true, contratoId: true, estornoDeId: true, estornos: { select: { id: true } } } });
+      const e = await tx.empenho.findUnique({ where: { id: d.empenhoId }, select: { numero: true, contratoId: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } } });
       if (e === null || e.contratoId !== c.id) throw new Error(`EMPENHO-DE-OUTRO-CONTRATO: o empenho indicado não informou o contrato ${c.numeroContrato}. Nada foi gravado.`);
-      if (e.estornoDeId !== null || e.estornos.length > 0) throw new Error(`EMPENHO-ANULADO: o empenho ${e.numero} está anulado (ou é uma anulação) e não suporta a ordem. Nada foi gravado.`);
+      if (e.estornoDeId !== null || e.anulacaoParcialDeId !== null || e.estornos.length > 0) throw new Error(`EMPENHO-ANULADO: o empenho ${e.numero} está anulado (ou é uma anulação) e não suporta a ordem. Nada foi gravado.`);
     }
     const itens = await tx.itemDoContrato.findMany({ where: { id: { in: ids } }, select: { id: true, contratoId: true, numero: true } });
     // V7 M2 U5 — o unitário é o da versão do item vigente no início previsto (aditivo por itens), nunca o original às cegas.
@@ -249,7 +249,7 @@ export async function emitirOrdemDeServico(prisma: PrismaClient, input: EmitirOr
         select: {
           id: true, numero: true, ano: true, finalidade: true, local: true, unidadeSolicitante: true, inicioPrevisto: true, fimPrevisto: true, condicoesDeRecebimento: true, fiscalDesignacaoId: true,
           emissao: { select: { id: true } }, descarte: { select: { id: true } },
-          empenho: { select: { numero: true, estornoDeId: true, estornos: { select: { id: true } } } },
+          empenho: { select: { numero: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } } },
           fiscalDesignacao: { select: { vigenciaInicio: true, vigenciaFim: true, revogacao: { select: { dataEfeito: true } } } },
           contrato: { select: { numeroContrato: true, contratadoNome: true, contratadoDocumento: true } },
           itens: { orderBy: { criadoEm: "asc" }, select: { id: true, quantidade: true, valorUnitario: true, itemDoContrato: { select: { id: true, numero: true, descricao: true, unidade: true } } } },

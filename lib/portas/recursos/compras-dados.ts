@@ -745,7 +745,7 @@ async function estadoDosAtosDaOrdem(ordemId: string): Promise<{ readonly estado:
       numero: true,
       recebimentos: { select: { id: true } },
       movimentos: { select: { id: true } },
-      empenhos: { select: { id: true, numero: true, estornoDeId: true, estornos: { select: { id: true } } } },
+      empenhos: { select: { id: true, numero: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } } } },
     },
   });
   if (o === null) return null;
@@ -754,7 +754,7 @@ async function estadoDosAtosDaOrdem(ordemId: string): Promise<{ readonly estado:
     numero: o.numero,
     estornada,
     recebimentos: o.recebimentos.length,
-    empenhosVivos: o.empenhos.filter((e) => e.estornoDeId === null && e.estornos.length === 0).map((e) => e.numero),
+    empenhosVivos: o.empenhos.filter((e) => e.estornoDeId === null && e.anulacaoParcialDeId === null && e.estornos.length === 0).map((e) => e.numero),
     itensPendentes: saldos.filter((x) => x.pendente.greaterThan(0)).length,
   };
   return { estado, versao: versaoDoEstado([o.movimentos.map((m) => m.id).sort(), o.recebimentos.map((r) => r.id).sort(), o.empenhos.map((e) => [e.id, e.estornos.length])]) };

@@ -476,3 +476,12 @@ ausência vale tanto quanto marcar presença**. Nada foi construído para elas.
   `VALIDADO_LOCALMENTE` com `rota_verificada` VAZIA. Pela regra do catálogo,
   `VALIDADO_LOCALMENTE` exige tela **e** percurso; sem percurso, a marcação certa é
   `IMPLEMENTADO_NAO_VALIDADO`, que é o que as outras doze cláusulas de 5.18 já dizem.
+
+## A anulação parcial na entrada de material e no bem (V33)
+
+- **Teto da entrada no almoxarifado:** passou a ser a liquidação LÍQUIDA das parciais vivas. Pelo
+  serviço, esse caminho não se monta: a entrada nasce no ato de liquidar e a cascata recusa a parcial
+  abaixo do material. O teto só alcança liquidação gravada antes da regra da entrada no ato. Fica como
+  defesa, sem teste próprio.
+- **`adquirirBem` e a entrada:** recusam a linha da parcial como liquidação.
+- **Teto de incorporação:** leva o estorno da parcial.

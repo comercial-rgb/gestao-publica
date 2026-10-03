@@ -83,6 +83,8 @@ export async function relatorioRestosAPagar(
       empenhoId: true,
       valor: true,
       estornoDeId: true,
+      // V33 — a anulação parcial REDUZ a liquidação; sem o campo, a régua a somava como mais liquidação.
+      anulacaoParcialDeId: true,
       criadoEm: true,
     },
   });
@@ -116,6 +118,7 @@ export async function relatorioRestosAPagar(
               id: l.id,
               valor: toMoney(l.valor.toFixed(2)),
               estornoDeId: l.estornoDeId,
+              anulacaoParcialDeId: l.anulacaoParcialDeId,
             }))
         );
       }

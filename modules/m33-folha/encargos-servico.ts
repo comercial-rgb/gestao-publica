@@ -411,17 +411,23 @@ async function posicaoDosGrupos(tx: Tx, folhaId: string, apuracao: { readonly id
 
   const idsDeEmpenho = empenhosDaFolha.map((e) => e.empenhoId);
   const [linhasDeEmpenho, linhasDeLiquidacao] = await Promise.all([
-    tx.empenho.findMany({ where: { OR: [{ id: { in: idsDeEmpenho } }, { anulacaoParcialDeId: { in: idsDeEmpenho } }, { estornoDeId: { in: idsDeEmpenho } }] }, select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),
+    // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+    tx.empenho.findMany({ where: { OR: [{ id: { in: idsDeEmpenho } }, { anulacaoParcialDeId: { in: idsDeEmpenho } }, { estornoDeId: { in: idsDeEmpenho } }, { estornoDe: { anulacaoParcialDeId: { in: idsDeEmpenho } } }] }, select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),
     tx.liquidacao.findMany({ where: { empenhoId: { in: idsDeEmpenho } }, select: { id: true, empenhoId: true, numero: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),
   ]);
   const linhasDePagamento = await tx.pagamento.findMany({ where: { liquidacaoId: { in: linhasDeLiquidacao.map((l) => l.id) } }, select: { id: true, liquidacaoId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } });
 
   const detalheDoEmpenho = (empenhoId: string) => {
-    const doEmpenho = linhasDeEmpenho.filter((l) => l.id === empenhoId || l.anulacaoParcialDeId === empenhoId || l.estornoDeId === empenhoId);
+    // A família: o empenho, as parciais dele e os estornos de qualquer um dos dois.
+    const familiaDe = <L extends { id: string; estornoDeId: string | null; anulacaoParcialDeId: string | null }>(linhas: readonly L[], fato: string): L[] => {
+      const nucleo = new Set([fato, ...linhas.filter((l) => l.anulacaoParcialDeId === fato).map((l) => l.id)]);
+      return linhas.filter((l) => nucleo.has(l.id) || (l.estornoDeId !== null && nucleo.has(l.estornoDeId)));
+    };
+    const doEmpenho = familiaDe(linhasDeEmpenho, empenhoId);
     const liqs = linhasDeLiquidacao.filter((l) => l.empenhoId === empenhoId);
     const originais = liqs.filter((l) => l.estornoDeId === null && l.anulacaoParcialDeId === null);
     const liquidacoes = originais.map((o) => {
-      const liquido = somaLiquidaEstornaveis(liqs.filter((l) => l.id === o.id || l.anulacaoParcialDeId === o.id || l.estornoDeId === o.id).map(linhaEstornavel));
+      const liquido = somaLiquidaEstornaveis(familiaDe(liqs, o.id).map(linhaEstornavel));
       const pago = somaLiquidaEstornaveis(linhasDePagamento.filter((pg) => pg.liquidacaoId === o.id).map(linhaEstornavel));
       return { id: o.id, numero: o.numero, liquido, pago };
     });

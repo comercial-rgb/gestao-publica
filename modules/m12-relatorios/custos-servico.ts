@@ -179,7 +179,8 @@ export async function apropriarCustoDaLiquidacao(
     // ── O LÍQUIDO DA LIQUIDAÇÃO: a original e tudo o que a nega ou reduz ──
     const familia = await tx.liquidacao.findMany({
       where: {
-        OR: [{ id: liq.id }, { estornoDeId: liq.id }, { anulacaoParcialDeId: liq.id }],
+        // V33 — e o estorno de cada parcial (aponta para a parcial): sem ele, a parcial estornada continuava descontando.
+        OR: [{ id: liq.id }, { estornoDeId: liq.id }, { anulacaoParcialDeId: liq.id }, { estornoDe: { anulacaoParcialDeId: liq.id } }],
       },
       select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
     });
