@@ -63,7 +63,7 @@ MANIFESTO="$TMP/MANIFESTO-DO-FONTE.txt"
   # Uma chamada de shasum para todos os arquivos (e não um processo por arquivo): no Windows o laço
   # antigo levava mais de 10 minutos. A saída é a mesma: "<hash>  <caminho>", em ordem de caminho.
   ( cd "$TMP" && find . -type f -not -name "MANIFESTO-DO-FONTE.txt" -print0 | LC_ALL=C sort -z \
-      | xargs -0 shasum -a 256 | sed 's#  \./#  #' )
+      | xargs -0 shasum -a 256 | sed 's#^\([0-9a-f]\{64\}\) [ *]\./#\1  #' )
 } > "$MANIFESTO"
 
 ARQUIVOS="$(grep -c '^[0-9a-f]\{64\}  ' "$MANIFESTO")"
