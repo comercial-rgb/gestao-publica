@@ -19,7 +19,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
  * A tabela antiga segue valendo enquanto não houver declaração (`roteiroPatrimonialVigente` cai nela).
  */
 
-export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO";
+export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO";
 
 interface DefinicaoDaFamilia {
   readonly rotulo: string;
@@ -50,6 +50,18 @@ export const FAMILIAS_DE_ROTEIRO: Readonly<Record<FamiliaDoRoteiro, DefinicaoDaF
       { chave: "PRESTACAO_APROVADA/CONVENENTE", rotulo: "Prestação de contas aprovada — o ente recebe" },
       { chave: "GLOSA/CONVENENTE", rotulo: "Glosa — o ente recebe" },
       { chave: "DEVOLUCAO/CONVENENTE", rotulo: "Devolução — o ente recebe" },
+    ],
+  },
+  // V32 — as contas de controle dos empenhos que geram adiantamento: lançadas na concessão, baixadas na aprovação.
+  ADIANTAMENTO: {
+    rotulo: "Diárias e suprimento de fundos",
+    subsistema: "CONTROLE",
+    classes: ["7", "8"],
+    chaves: [
+      { chave: "CONCESSAO/DIARIA", rotulo: "Concessão de diária (responsabilidade a comprovar)" },
+      { chave: "BAIXA/DIARIA", rotulo: "Prestação de contas da diária aprovada" },
+      { chave: "CONCESSAO/SUPRIMENTO_DE_FUNDOS", rotulo: "Concessão de suprimento de fundos (responsabilidade a comprovar)" },
+      { chave: "BAIXA/SUPRIMENTO_DE_FUNDOS", rotulo: "Prestação de contas do suprimento aprovada" },
     ],
   },
 };
@@ -128,7 +140,7 @@ export async function listarRoteirosPatrimoniais(prisma: PrismaClient): Promise<
 }
 
 export const zDeclararRoteiroPatrimonial = z.object({
-  familia: z.enum(["PRECATORIO", "CONVENIO"]),
+  familia: z.enum(["PRECATORIO", "CONVENIO", "ADIANTAMENTO"]),
   chave: z.string().trim().min(1, "Escolha o movimento."),
   contaDebitoCodigo: z.string().trim().min(1, "Escolha a conta debitada."),
   contaCreditoCodigo: z.string().trim().min(1, "Escolha a conta creditada."),

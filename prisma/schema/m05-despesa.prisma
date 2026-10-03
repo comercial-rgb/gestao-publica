@@ -210,6 +210,8 @@ model Empenho {
   /// (DIMENSOES_DO_EMPENHO), para que o empenhado por campanha feche.
   campanhaPublicitariaId String?
   campanhaPublicitaria   CampanhaPublicitaria? @relation(fields: [campanhaPublicitariaId], references: [id])
+  /// V32 — as diárias e os suprimentos de fundos concedidos por este empenho (m05-adiantamentos.prisma).
+  adiantamentos ConcessaoDeAdiantamento[]
 
   /// M29 (ENT03b) — o PRECATÓRIO que este empenho paga.
   precatorioId String?

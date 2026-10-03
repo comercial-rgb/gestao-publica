@@ -1,0 +1,89 @@
+/// V32 — DIÁRIAS E SUPRIMENTO DE FUNDOS: o adiantamento a servidor e a prestação de contas dele.
+///
+/// A despesa continua sendo a do empenho (elemento 14/15 na diária; o da despesa no suprimento), liquidada e
+/// paga pelo caminho de sempre. O que esta tabela acrescenta é o que a execução não sabia: QUEM recebeu,
+/// para QUÊ, até QUANDO presta contas, e o que foi comprovado e devolvido — com o controle contábil (classes
+/// 7 e 8) lançado na concessão e baixado na aprovação, pelas contas que o contador declara.
+enum EspecieDeAdiantamento {
+  DIARIA
+  SUPRIMENTO_DE_FUNDOS
+}
+
+model ConcessaoDeAdiantamento {
+  id String @id @default(cuid())
+
+  especie EspecieDeAdiantamento
+  /// Único por espécie: é por ele que o humano encontra a concessão (portaria, processo).
+  numero  String
+
+  empenhoId String
+  empenho   Empenho @relation(fields: [empenhoId], references: [id])
+
+  beneficiarioNome      String
+  beneficiarioDocumento String  @db.VarChar(14)
+  cargoOuFuncao         String?
+
+  finalidade String
+  /// Só na diária: a cidade de destino.
+  destino    String?
+  /// Diária: saída e retorno. Suprimento: o período de aplicação.
+  dataInicio DateTime
+  dataFim    DateTime
+
+  /// Só na diária: a quantidade (meia diária é 0,5) e o valor unitário. O valor é o produto.
+  quantidadeDeDiarias Decimal? @db.Decimal(6, 1)
+  valorUnitario       Decimal? @db.Decimal(18, 2)
+  valor               Decimal  @db.Decimal(18, 2)
+
+  /// A norma que autoriza: a lei das diárias, o decreto do suprimento, a portaria de concessão.
+  atoAutorizativo String
+  /// Até quando o beneficiário presta contas.
+  prazoDePrestacao DateTime
+
+  /// O lançamento de controle da concessão (classes 7 e 8).
+  lancamentoId String @unique
+
+  prestacoes PrestacaoDeContasDoAdiantamento[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([especie, numero])
+  @@index([empenhoId])
+  @@index([beneficiarioDocumento])
+}
+
+/// A prestação de contas APRESENTADA. Append-only: uma rejeitada fica, e outra pode ser apresentada.
+model PrestacaoDeContasDoAdiantamento {
+  id String @id @default(cuid())
+
+  concessaoId String
+  concessao   ConcessaoDeAdiantamento @relation(fields: [concessaoId], references: [id])
+
+  valorComprovado Decimal  @db.Decimal(18, 2)
+  valorDevolvido  Decimal  @db.Decimal(18, 2)
+  relatorio       String
+  apresentadaEm   DateTime
+
+  decisao DecisaoDaPrestacaoDoAdiantamento?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([concessaoId])
+}
+
+/// A DECISÃO sobre uma prestação: aprovada (com o lançamento que baixa o controle) ou rejeitada (com o motivo).
+model DecisaoDaPrestacaoDoAdiantamento {
+  id String @id @default(cuid())
+
+  prestacaoId String                          @unique
+  prestacao   PrestacaoDeContasDoAdiantamento @relation(fields: [prestacaoId], references: [id])
+
+  aprovada     Boolean
+  motivo       String
+  lancamentoId String? @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

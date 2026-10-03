@@ -25,7 +25,7 @@ const SITUACAO: Readonly<Record<RoteiroNaLista["situacao"], { readonly rotulo: s
 };
 
 export default async function RoteirosPatrimoniaisPage(): Promise<React.ReactElement> {
-  const cabecalho = <PageHeader titulo="Roteiros de precatórios e convênios" subtitulo="Em que contas cada movimento é lançado" />;
+  const cabecalho = <PageHeader titulo="Roteiros de precatórios, convênios e adiantamentos" subtitulo="Em que contas cada movimento é lançado" />;
   let linhas: readonly RoteiroNaLista[];
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_CONTABILIDADE");

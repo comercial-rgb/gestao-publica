@@ -383,6 +383,15 @@ export const ORDEM_DOS_LOCKS = {
    * `travar`). Se a efetivação um dia passar a travar ficha ou exercício, este recurso tem de subir na fila.
    */
   PropostaOrcamentaria: 36,
+  /**
+   * V32 — O EMPENHO QUE CONCEDE DIÁRIAS OU SUPRIMENTO DE FUNDOS (M05, `adiantamentos.ts`). A corrida é de
+   * saldo: duas concessões simultâneas sobre o mesmo empenho leriam o mesmo "ainda cabe" e as duas
+   * gravariam, e as diárias somadas passariam do empenhado. O trinco é por empenho.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: a concessão confere o empenho por leitura, trava aqui e grava o
+   * lançamento de controle e a concessão; não trava mais nada depois.
+   */
+  AdiantamentoDoEmpenho: 37,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

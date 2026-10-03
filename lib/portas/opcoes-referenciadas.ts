@@ -295,6 +295,38 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       };
     },
   },
+  // V32 — os empenhos que podem pagar uma diária (elemento 14 ou 15) ou um suprimento (os demais). Só os
+  // originais (nem anulação total nem parcial); o saldo que ainda cabe é conferido na concessão, sob trinco.
+  "empenhos-para-adiantamento": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const especie = p.contexto["especie"] ?? "";
+      const elementos = ["14", "15"];
+      const linhas = await cliente().empenho.findMany({
+        where: {
+          estornoDeId: null,
+          anulacaoParcialDeId: null,
+          ...(especie === "DIARIA" ? { ficha: { naturezaDespesa: { codElemento: { in: elementos } } } } : {}),
+          ...(especie === "SUPRIMENTO_DE_FUNDOS" ? { ficha: { naturezaDespesa: { codElemento: { notIn: elementos } } } } : {}),
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(p.q === "" ? {} : { OR: [{ numero: { contains: p.q } }, { credorCpfCnpj: { startsWith: p.q.replace(/\D/g, "") || p.q } }] }),
+        },
+        orderBy: [{ data: "desc" }, { numero: "desc" }],
+        skip: skip(p), take,
+        select: { id: true, numero: true, valor: true, credorCpfCnpj: true, ficha: { select: { naturezaDespesa: { select: { codigoCompleto: true } } } } },
+      });
+      const r = pagina(linhas, p);
+      return {
+        opcoes: r.linhas.map((e) => ({
+          valor: e.id,
+          rotulo: `${e.numero} — ${formatarDocumento(e.credorCpfCnpj)}`,
+          detalhe: `natureza ${e.ficha.naturezaDespesa.codigoCompleto} · R$ ${formatarMoeda(e.valor.toFixed(2)).texto}`,
+          dados: { credorDocumento: e.credorCpfCnpj },
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
   // V32 — os precatórios INSCRITOS e com saldo, para o empenho que os paga.
   "precatorios-para-empenho": {
     leitura: "CONSULTAR_DESPESA",

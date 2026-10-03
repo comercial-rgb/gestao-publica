@@ -40,7 +40,7 @@ export async function declararRoteiroPatrimonialNaTela(input: {
   readonly fundamento: string;
 }): Promise<string> {
   const [familia, chave] = input.movimento.split("|");
-  if ((familia !== "PRECATORIO" && familia !== "CONVENIO") || chave === undefined || chave === "") {
+  if ((familia !== "PRECATORIO" && familia !== "CONVENIO" && familia !== "ADIANTAMENTO") || chave === undefined || chave === "") {
     throw new Error("Escolha o movimento na lista. Nada foi gravado.");
   }
   return comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_ORCAMENTARIO", async (criadoPor) => {
