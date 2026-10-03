@@ -28,18 +28,19 @@ export function SeletorExercicio(): React.ReactElement {
   const escolhido = exerciciosDisponiveis.find((e) => e.ano === exercicio);
   const situacao = escolhido?.situacao;
   // A competência: no exercício em curso, a de AGORA (o que o guard do razão faria com um lançamento de
-  // hoje); nos outros, quantos meses estão travados inteiros para este usuário.
+  // hoje); nos outros, quantos meses estão travados inteiros para este usuário. A palavra é a da tela de
+  // fechamento mensal (V33): fechar o mês É travar a competência — um fato só, com um nome só.
   const travados = escolhido?.mesesTravados ?? [];
   const competencia =
     exercicio === anoCivil
       ? competenciaAtual === null
-        ? "competência aberta"
-        : `competência travada${competenciaAtual.escopo === "USUARIO" ? " para você" : ""}`
+        ? "mês aberto"
+        : `mês fechado${competenciaAtual.escopo === "USUARIO" ? " para você" : ""}`
       : travados.length === 0
-        ? "nenhuma competência travada"
+        ? "nenhum mês fechado"
         : travados.length === 12
-          ? "as 12 competências travadas"
-          : `${String(travados.length)} competência(s) travada(s)`;
+          ? "os 12 meses fechados"
+          : `${String(travados.length)} mês(es) fechado(s)`;
   return (
     <div className="flex items-center gap-2">
       <label className="flex items-center gap-1.5 text-xs text-[color:var(--color-ink-2)]">

@@ -28,36 +28,60 @@ function Resultado({ estado, acao }: { readonly estado: EstadoDoFechamento; read
   return null;
 }
 
-export function FormFecharMes({ competencia, rotulo }: { readonly competencia: string; readonly rotulo: string }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDoFechamento, FormData>(fecharMesAction, {});
+/**
+ * ⚠️ AS DUAS AÇÕES DO MÊS NUM COMPONENTE SÓ, SEMPRE MONTADO (V33). Fechar recarrega a página e a linha
+ * passa a oferecer "reabrir"; com um formulário por situação, o de fechar desmontava e a confirmação
+ * sumia com o próprio sucesso (a classe de defeito que o percurso da V31 mediu na reserva). E cada
+ * ação só aparece para quem a tem: o servidor recusaria de qualquer modo, mas um botão que sempre
+ * recusa é um botão que finge função.
+ */
+export function AcoesDoMes({
+  competencia,
+  rotulo,
+  aberto,
+  podeFechar,
+  podeReabrir,
+}: {
+  readonly competencia: string;
+  readonly rotulo: string;
+  readonly aberto: boolean;
+  readonly podeFechar: boolean;
+  readonly podeReabrir: boolean;
+}): React.ReactElement {
+  const [fechou, fechar, fechando] = useActionState<EstadoDoFechamento, FormData>(fecharMesAction, {});
+  const [reabriu, reabrir, reabrindo] = useActionState<EstadoDoFechamento, FormData>(reabrirMesAction, {});
+  const podeAgora = aberto ? podeFechar : podeReabrir;
   return (
-    <form action={action} data-acao="fechar-mes" data-competencia={competencia}>
-      <ChaveDeComando />
-      <input type="hidden" name="competencia" value={competencia} />
-      <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO} aria-label={`Conferir e fechar ${rotulo}`}>
-        {pendente ? "Conferindo…" : "Conferir e fechar"}
-      </button>
-      <Resultado estado={estado} acao="fechar-mes" />
-    </form>
-  );
-}
-
-export function FormReabrirMes({ competencia, rotulo }: { readonly competencia: string; readonly rotulo: string }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDoFechamento, FormData>(reabrirMesAction, {});
-  return (
-    <form action={action} data-acao="reabrir-mes" data-competencia={competencia} className="flex flex-wrap items-end gap-2">
-      <ChaveDeComando />
-      <input type="hidden" name="competencia" value={competencia} />
-      <label className="min-w-[16rem] flex-1 text-xs text-[color:var(--color-ink-2)]">
-        <span className={ROTULO}>Motivo da reabertura de {rotulo}</span>
-        <input name="motivo" required minLength={10} maxLength={500} placeholder="Por que o mês precisa ser reaberto" className={CAMPO} />
-      </label>
-      <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
-        {pendente ? "Reabrindo…" : "Reabrir"}
-      </button>
-      <div className="basis-full">
-        <Resultado estado={estado} acao="reabrir-mes" />
-      </div>
-    </form>
+    <div>
+      {aberto && podeFechar ? (
+        <form action={fechar} data-acao="fechar-mes" data-competencia={competencia}>
+          <ChaveDeComando />
+          <input type="hidden" name="competencia" value={competencia} />
+          <button type="submit" disabled={fechando} className={CLASSE_BOTAO_PRIMARIO} aria-label={`Conferir e fechar ${rotulo}`}>
+            {fechando ? "Conferindo…" : "Conferir e fechar"}
+          </button>
+        </form>
+      ) : null}
+      {!aberto && podeReabrir ? (
+        <form action={reabrir} data-acao="reabrir-mes" data-competencia={competencia} className="flex flex-wrap items-end gap-2">
+          <ChaveDeComando />
+          <input type="hidden" name="competencia" value={competencia} />
+          <label className="min-w-[16rem] flex-1 text-xs text-[color:var(--color-ink-2)]">
+            <span className={ROTULO}>Motivo da reabertura de {rotulo}</span>
+            <input name="motivo" required minLength={10} maxLength={500} placeholder="Por que o mês precisa ser reaberto" className={CAMPO} />
+          </label>
+          <button type="submit" disabled={reabrindo} className={CLASSE_BOTAO_PRIMARIO}>
+            {reabrindo ? "Reabrindo…" : "Reabrir"}
+          </button>
+        </form>
+      ) : null}
+      {!podeAgora ? (
+        <span className="text-xs text-[color:var(--color-ink-3)]" data-sem-acao-do-mes>
+          {aberto ? "Fechar o mês não está no seu acesso." : "Reabrir o mês não está no seu acesso."}
+        </span>
+      ) : null}
+      <Resultado estado={fechou} acao="fechar-mes" />
+      <Resultado estado={reabriu} acao="reabrir-mes" />
+    </div>
   );
 }

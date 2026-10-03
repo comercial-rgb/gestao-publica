@@ -7,7 +7,8 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerConferenciaDoMes, lerFechamentoDoExercicio, type SituacaoDoMes, type Verificacao } from "../../../../lib/portas/fechamento-mensal";
 import { anoCivil } from "../../../../packages/datas/index";
-import { FormFecharMes, FormReabrirMes } from "./FormsDoFechamento";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { AcoesDoMes } from "./FormsDoFechamento";
 
 /**
  * O FECHAMENTO MENSAL — onde a contabilidade confere e fecha cada mês (V32).
@@ -54,9 +55,10 @@ export default async function FechamentoMensalPage({
 
   let meses: readonly SituacaoDoMes[];
   let conferencia: readonly Verificacao[] | null = null;
+  let permitidas: ReadonlySet<string> = new Set();
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_CONTABILIDADE");
-    meses = await lerFechamentoDoExercicio(exercicio);
+    [meses, permitidas] = await Promise.all([lerFechamentoDoExercicio(exercicio), acoesPermitidas(["TRAVAR_COMPETENCIA", "DESTRAVAR_COMPETENCIA"])]);
     if (mes !== null) conferencia = await lerConferenciaDoMes(mes);
   } catch (erro) {
     return (
@@ -115,11 +117,13 @@ export default async function FechamentoMensalPage({
                     </Link>
                   </td>
                   <td className="py-2 pr-3">
-                    {m.situacao === "ABERTO" ? (
-                      <FormFecharMes competencia={m.competencia} rotulo={rotuloDoMes(m.competencia)} />
-                    ) : (
-                      <FormReabrirMes competencia={m.competencia} rotulo={rotuloDoMes(m.competencia)} />
-                    )}
+                    <AcoesDoMes
+                      competencia={m.competencia}
+                      rotulo={rotuloDoMes(m.competencia)}
+                      aberto={m.situacao === "ABERTO"}
+                      podeFechar={permitidas.has("TRAVAR_COMPETENCIA")}
+                      podeReabrir={permitidas.has("DESTRAVAR_COMPETENCIA")}
+                    />
                   </td>
                 </tr>
               ))}

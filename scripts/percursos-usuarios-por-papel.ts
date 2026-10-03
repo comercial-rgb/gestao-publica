@@ -61,7 +61,12 @@ export const PAPEIS: readonly Papel[] = [
       // V6.2 — e APURA os encargos do empregador sobre a folha fechada (não os certifica).
       "APURAR_ENCARGOS_DA_FOLHA",
       // V7 M1 — o AJUSTE para baixo dos encargos anula pela despesa, e cada anulação cobra a própria ação.
-      "ANULAR_LIQUIDACAO_PARCIAL", "ANULAR_EMPENHO_PARCIAL"],
+      "ANULAR_LIQUIDACAO_PARCIAL", "ANULAR_EMPENHO_PARCIAL",
+      // V33 — o contador LÊ os livros e as demonstrações (balancete, razão, balanços), a receita, a
+      // tesouraria e o patrimônio que entram no razão, e FECHA o mês. Não REABRE (DESTRAVAR fica com
+      // quem autoriza) e não PAGA: as competências continuam separadas. A V31 mediu o contrário —
+      // "a contabilidade não vê os livros" — e era o perfil de percurso que estava curto, não a regra.
+      "CONSULTAR_RELATORIOS", "CONSULTAR_RECEITA", "CONSULTAR_FINANCEIRO", "CONSULTAR_PATRIMONIO", "TRAVAR_COMPETENCIA"],
   },
   {
     identificador: "tesouraria@percursos.local",

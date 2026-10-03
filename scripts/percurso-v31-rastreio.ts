@@ -6,7 +6,7 @@ import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, registroDe
 /**
  * V31 — O CONTADOR SEGUE UM VALOR NOS DOIS SENTIDOS (relatório ↔ lançamento ↔ documento ↔ operação).
  *
- *   R. A CONTABILIDADE (perfil sem reserva): do balancete ao razão da conta, do razão ao lançamento, do
+ *   R. A CONTABILIDADE (perfil sem reserva; lê os livros desde a V33): do balancete ao razão da conta, do razão ao lançamento, do
  *      lançamento ao documento; da lista de lançamentos, a liquidação abre o dossiê do empenho na âncora;
  *      do empenho à ficha, e da ficha de volta ao mesmo empenho. Sem RESERVAR_DOTACAO, a ficha não oferece
  *      reserva (negação com motivo: o formulário não existe para ela).
@@ -42,14 +42,24 @@ async function main(): Promise<void> {
     // ══ R. CONTABILIDADE ══
     await entrar(N, page, "contabilidade@percursos.local", SENHA_PAPEIS);
     R.ok("R.0 login da contabilidade");
-    // O menu é honesto: sem CONSULTAR_RELATORIOS, os livros não aparecem na aba Contabilidade, e a URL
-    // direta é recusada dizendo a ação que falta.
+    // V33 — o contador LÊ os livros: o menu oferece, e o caminho balancete → razão → lançamento é dele.
     await irPara(N, page, "/");
     await page.click('li[data-aba="contabilidade"] button[aria-expanded]');
     const livrosNoMenu = await page.evaluate(() => document.querySelectorAll('li[data-aba="contabilidade"] a[href^="/relatorios/livros/"]').length);
-    R.conferir("R.0a sem a consulta de relatórios, a aba Contabilidade não oferece os livros", livrosNoMenu === 0, `${String(livrosNoMenu)} link(s) de livro`);
-    await page.goto(`${BASE}/relatorios/livros/balancete?exercicio=2026`, { waitUntil: "networkidle0" });
-    R.conferir("R.0b e o balancete pela URL é recusado nomeando a ação", page.url().includes("/sem-acesso") && page.url().includes("CONSULTAR_RELATORIOS"), page.url());
+    R.conferir("R.0a a aba Contabilidade oferece os livros ao contador", livrosNoMenu > 0, `${String(livrosNoMenu)} link(s) de livro`);
+    await irPara(N, page, "/relatorios/livros/balancete?exercicio=2026");
+    const linkRazao = await page.evaluate(() => (document.querySelector('a[href^="/relatorios/livros/razao?conta="]') as HTMLAnchorElement | null)?.getAttribute("href") ?? null);
+    R.conferir("R.1 a conta do balancete abre o razão no mesmo período", linkRazao !== null && /desde=2026-01-01&ate=2026-12-31/.test(linkRazao), String(linkRazao));
+    if (linkRazao === null) throw new Error("sem conta no balancete");
+    await irPara(N, page, linkRazao);
+    const linkLanc = await page.evaluate(() => (document.querySelector('a[href^="/contabilidade/lancamentos/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? null);
+    R.conferir("R.2 o número do razão abre o lançamento", linkLanc !== null, String(linkLanc));
+    if (linkLanc === null) throw new Error("sem lançamento no razão");
+    const lanc = await irPara(N, page, linkLanc);
+    const temPartidas = await page.evaluate(() => document.querySelectorAll('section[aria-label="Partidas do lançamento"] tbody tr').length);
+    R.conferir("R.3 o lançamento mostra as partidas e a origem", temPartidas >= 2 && (await page.$("[data-origem-do-lancamento]")) !== null, `${String(temPartidas)} partida(s) · ${lanc.slice(0, 200)}`);
+    const voltaAoRazao = await page.evaluate(() => (document.querySelector('a[href^="/relatorios/livros/razao?conta="]') as HTMLAnchorElement | null)?.getAttribute("href") ?? null);
+    R.conferir("R.4 e cada conta do lançamento volta ao razão", voltaAoRazao !== null, String(voltaAoRazao));
 
     // Da lista de lançamentos: a liquidação abre o dossiê do empenho, na âncora.
     await irPara(N, page, `/contabilidade/lancamentos/${liq.lancamentoId}`);
@@ -79,6 +89,13 @@ async function main(): Promise<void> {
 
     // ══ P. PLANEJAMENTO ══
     await entrar(N, page, "planejamento@percursos.local", SENHA_PAPEIS);
+    // A negação com motivo, em quem de fato não lê os livros: o planejamento.
+    await irPara(N, page, "/");
+    await page.click('li[data-aba="contabilidade"] button[aria-expanded]').catch(() => undefined);
+    const livrosDoPlan = await page.evaluate(() => document.querySelectorAll('a[href^="/relatorios/livros/"]').length);
+    R.conferir("R.0b sem a consulta de relatórios, o menu do planejamento não oferece os livros", livrosDoPlan === 0, `${String(livrosDoPlan)} link(s) de livro`);
+    await page.goto(`${BASE}/relatorios/livros/balancete?exercicio=2026`, { waitUntil: "networkidle0" });
+    R.conferir("R.0c e o balancete pela URL é recusado nomeando a ação", page.url().includes("/sem-acesso") && page.url().includes("CONSULTAR_RELATORIOS"), page.url());
     await irPara(N, page, `/planejamento/fichas/${liq.empenho.fichaId}`);
     const motivo = await page.evaluate(() => document.querySelector("[data-motivo-sem-empenhos]")?.textContent ?? "");
     R.conferir(
@@ -90,21 +107,6 @@ async function main(): Promise<void> {
 
     // ══ D. ADMINISTRADOR: reserva avulsa e liberação ══
     await entrar(N, page, "admin@cg.pb.gov.br", SENHA_ADMIN);
-    // O caminho do relatório, com quem tem a consulta dos relatórios.
-    await irPara(N, page, "/relatorios/livros/balancete?exercicio=2026");
-    const linkRazao = await page.evaluate(() => (document.querySelector('a[href^="/relatorios/livros/razao?conta="]') as HTMLAnchorElement | null)?.getAttribute("href") ?? null);
-    R.conferir("R.1 a conta do balancete abre o razão no mesmo período", linkRazao !== null && /desde=2026-01-01&ate=2026-12-31/.test(linkRazao), String(linkRazao));
-    if (linkRazao === null) throw new Error("sem conta no balancete");
-    await irPara(N, page, linkRazao);
-    const linkLanc = await page.evaluate(() => (document.querySelector('a[href^="/contabilidade/lancamentos/"]') as HTMLAnchorElement | null)?.getAttribute("href") ?? null);
-    R.conferir("R.2 o número do razão abre o lançamento", linkLanc !== null, String(linkLanc));
-    if (linkLanc === null) throw new Error("sem lançamento no razão");
-    const lanc = await irPara(N, page, linkLanc);
-    const temPartidas = await page.evaluate(() => document.querySelectorAll('section[aria-label="Partidas do lançamento"] tbody tr').length);
-    R.conferir("R.3 o lançamento mostra as partidas e a origem", temPartidas >= 2 && (await page.$("[data-origem-do-lancamento]")) !== null, `${String(temPartidas)} partida(s) · ${lanc.slice(0, 200)}`);
-    const voltaAoRazao = await page.evaluate(() => (document.querySelector('a[href^="/relatorios/livros/razao?conta="]') as HTMLAnchorElement | null)?.getAttribute("href") ?? null);
-    R.conferir("R.4 e cada conta do lançamento volta ao razão", voltaAoRazao !== null, String(voltaAoRazao));
-
     const antes = await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: liq.empenho.fichaId }, select: { saldoReservado: true, saldoDisponivel: true } });
     await irPara(N, page, `/planejamento/fichas/${liq.empenho.fichaId}`);
     const r = await preencherEEnviar(page, "reservar-dotacao", [
