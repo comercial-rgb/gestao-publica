@@ -7,6 +7,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
 import { estadoDaOrdem } from "../m05-despesa/ordem-pagamento.js";
 import { avaliarOrdem } from "../m06-ordem-cronologica/dominio.js";
+import { liquidacoesComSaldo } from "../m06-ordem-cronologica/adapter-prisma.js";
 import { anexarArquivo } from "../m22-documentos/anexos.js";
 import {
   criarFilaDeAssinatura,
@@ -260,20 +261,16 @@ async function exigirOrdemCronologica(
   const fonteId = alvo.empenho.ficha.fonteId;
   const categoria = alvo.empenho.categoriaOrdemCronologica;
 
-  const candidatas = await tx.liquidacao.findMany({
-    where: {
-      empenho: {
-        categoriaOrdemCronologica: categoria,
-        ficha: { fonteId },
-      },
-      estornoDeId: null,
-    },
+  // ⚠️ V33 — A FILA É A DO M06, e não uma cópia dela. A cópia que morava aqui filtrava só o
+  // `estornoDeId` e somava o pago por `estornoDeId === null`: a anulação parcial da liquidação entrava
+  // na fila como liquidação própria, a parcial do pagamento contava como mais pagamento, e o pagamento
+  // anulado inteiro continuava contando como pago. Uma liquidação quitada pela glosa ficava na frente
+  // de todas as outras da mesma fonte, e o lote recusava por "quebra da ordem" para sempre.
+  const naFila = await liquidacoesComSaldo(tx, { fonteId, categoria });
+  const ordens = await tx.liquidacao.findMany({
+    where: { id: { in: naFila.map((l) => l.liquidacaoId) } },
     select: {
       id: true,
-      numero: true,
-      data: true,
-      valor: true,
-      pagamentos: { select: { valor: true, estornoDeId: true } },
       ordensDePagamento: {
         select: {
           itemDeLote: {
@@ -300,7 +297,7 @@ async function exigirOrdemCronologica(
   // fila — senão bastaria criar um lote, cancelá-lo, e a liquidação antiga ficaria fora da
   // fila para sempre, abrindo a porta que o guard existe para fechar.
   const emLoteVigente = new Set(
-    candidatas
+    ordens
       .filter((l) =>
         l.ordensDePagamento.some((o) => {
           const movimentos = o.itemDeLote?.lote.movimentos;
@@ -310,23 +307,7 @@ async function exigirOrdemCronologica(
       .map((l) => l.id)
   );
 
-  const fila = candidatas
-    .map((l) => {
-      const pago = l.pagamentos
-        .filter((p) => p.estornoDeId === null)
-        .reduce((s, p) => s.plus(toMoney(p.valor.toFixed(2))), toMoney("0.00"));
-      const saldo = toMoney(l.valor.toFixed(2)).minus(pago);
-      return {
-        liquidacaoId: l.id,
-        numero: l.numero,
-        dataLiquidacao: l.data,
-        fonteId,
-        categoria,
-        saldoAPagar: saldo,
-      };
-    })
-    .filter((l) => l.saldoAPagar.greaterThan(toMoney("0.00")))
-    .filter((l) => !emLoteVigente.has(l.liquidacaoId));
+  const fila = naFila.filter((l) => !emLoteVigente.has(l.liquidacaoId));
 
   const r = avaliarOrdem(fila, liquidacaoId);
   if (!r.ehCabecaDaFila && r.preterida !== null) {

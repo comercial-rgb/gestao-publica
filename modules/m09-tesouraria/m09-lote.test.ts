@@ -11,6 +11,7 @@ import type { M05Deps } from "../m05-despesa/ports.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
+import { anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import {
   autorizarOrdemDePagamento,
   prepararOrdemDePagamento,
@@ -273,6 +274,22 @@ describe("M09 — o lote NÃO é rota alternativa à ordem cronológica (art. 14
 
     // E nada foi gravado.
     expect(await prisma.itemDoLote.count({ where: { loteId } })).toBe(0);
+  });
+
+  it("t6c: (V33) a liquidação glosada inteira pela anulação parcial sai da fila — a seguinte entra no lote", async () => {
+    // A fila do lote é a do M06. A cópia que morava no lote lia a liquidação pelo BRUTO e somava o pago por
+    // `estornoDeId === null`: a antiga, sem saldo depois da glosa, continuava cabeça da fila, e a nova era
+    // recusada por "quebra da ordem" para sempre.
+    const antiga = await liquidacaoEm("2026-03-01", "1", "1000.00");
+    const nova = await liquidacaoEm("2026-03-10", "2", "500.00");
+    await anularLiquidacaoParcial(
+      { originalId: antiga, numero: "NL-1-AP1", valor: "1000.00", data: new Date("2026-03-05T12:00:00Z"), motivo: "glosa integral registrada pela fiscalização", criadoPor: POR },
+      deps
+    );
+    const ordemNova = await ordemAutorizada(nova, "2", "500.00");
+    const loteId = await loteAberto();
+    const item = await incluirNoLote(prisma, { loteId, ordemId: ordemNova, criadoPor: TESOUREIRO });
+    expect(item.itemId).toBeTruthy();
   });
 
   it("t7: a CABEÇA da fila entra normalmente — o guard permite o certo", async () => {

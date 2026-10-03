@@ -62,17 +62,25 @@ import { lancarNoRazao } from "../m01-core-contabil/razao.js";
  */
 
 /**
- * SUM líquido: originais menos os estornados.
+ * SUM líquido: originais vivos, cada um descontado das suas anulações PARCIAIS vivas.
  *
  * A aritmética PURA vive no domínio (`somaLiquidaEstornaveis`) — aqui só se
  * converte o `Decimal` do Prisma em `Money`. Fonte única: o M12 (relatórios) usa
  * a MESMA função, com o recorte temporal dele.
+ *
+ * ⚠️ V33 — ESTA PONTE NÃO REPASSAVA O `anulacaoParcialDeId`, e todo chamador selecionava só o
+ * `estornoDeId`. A régua recebia a anulação parcial como fato ORIGINAL vivo e a SOMAVA: a parcial
+ * de uma liquidação de resto contava como mais liquidação (recusando a liquidação legítima e o
+ * cancelamento do saldo), e a parcial de um pagamento contava como mais pagamento. O mesmo
+ * defeito do encerramento (`encerramento.ts`), achado pela composição do M12 e pela auditoria dela.
+ * Caracterizado em `m08-restos-parcial.test.ts`.
  */
 function somaLiquida(
   linhas: readonly {
     readonly id: string;
     readonly valor: { toFixed(n: number): string };
     readonly estornoDeId: string | null;
+    readonly anulacaoParcialDeId: string | null;
   }[]
 ): Money {
   return somaLiquidaEstornaveis(
@@ -80,6 +88,7 @@ function somaLiquida(
       id: l.id,
       valor: toMoney(l.valor.toFixed(2)),
       estornoDeId: l.estornoDeId,
+      anulacaoParcialDeId: l.anulacaoParcialDeId,
     }))
   );
 }
@@ -118,7 +127,7 @@ async function liquidacoesPosInscricao(
 ): Promise<Money> {
   const linhas = await tx.liquidacao.findMany({
     where: { empenhoId, criadoEm: { gt: encerradoEm } },
-    select: { id: true, valor: true, estornoDeId: true },
+    select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
   return somaLiquida(linhas);
 }
@@ -354,7 +363,11 @@ export async function pagarRestosAPagar(
         id: true,
         criadoEm: true,
         valor: true,
+        estornoDeId: true,
+        anulacaoParcialDeId: true,
         estornos: { select: { id: true } },
+        // A parcial da liquidação e o estorno DELA: o liquidado é o original menos as parciais vivas.
+        anulacoesParciais: { select: { id: true, valor: true, estornos: { select: { id: true, valor: true } } } },
         empenho: {
           select: {
             id: true,
@@ -364,11 +377,15 @@ export async function pagarRestosAPagar(
             },
           },
         },
-        pagamentos: { select: { id: true, valor: true, estornoDeId: true } },
+        pagamentos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
       },
     });
     if (liq === null) {
       throw new Error(`Liquidação ${dados.liquidacaoId} não encontrada.`);
+    }
+    // A linha de ANULAÇÃO (total ou parcial) não é liquidação a pagar: ela reduz a original.
+    if (liq.estornoDeId !== null || liq.anulacaoParcialDeId !== null) {
+      throw new Error(`A liquidação ${dados.liquidacaoId} é uma anulação, e não uma liquidação a pagar. Nada foi gravado.`);
     }
     if (liq.estornos.length > 0) {
       throw new Error(`Liquidação ${dados.liquidacaoId} está ANULADA.`);
@@ -437,8 +454,14 @@ export async function pagarRestosAPagar(
     // chamadores — nunca duas cópias.
     await exigirFonteDaFicha(tx, dados.liquidacaoId, dados.fonteId);
 
-    // LIMITE 1: não pagar mais do que a liquidação.
-    const liquidado = toMoney(liq.valor.toFixed(2));
+    // LIMITE 1: não pagar mais do que a liquidação — LÍQUIDA das anulações parciais vivas.
+    const liquidado = somaLiquida([
+      { id: liq.id, valor: liq.valor, estornoDeId: null, anulacaoParcialDeId: null },
+      ...liq.anulacoesParciais.flatMap((p) => [
+        { id: p.id, valor: p.valor, estornoDeId: null, anulacaoParcialDeId: liq.id },
+        ...p.estornos.map((x) => ({ id: x.id, valor: x.valor, estornoDeId: p.id, anulacaoParcialDeId: null })),
+      ]),
+    ]);
     const jaPago = somaLiquida(liq.pagamentos);
     if (toMoney(jaPago.plus(dados.valor)).greaterThan(liquidado)) {
       throw new Error(
@@ -669,6 +692,7 @@ export async function anularPagamentoRestosAPagar(
         fonteId: true,
         lancamentoId: true,
         estornoDeId: true,
+        anulacaoParcialDeId: true,
         estornos: { select: { id: true } },
         movimentosRestos: {
           select: { id: true, tipo: true, inscricaoId: true, estornos: { select: { id: true } } },
@@ -678,7 +702,7 @@ export async function anularPagamentoRestosAPagar(
     if (pag === null) {
       throw new Error(`Pagamento ${dados.pagamentoId} não encontrado.`);
     }
-    if (pag.estornoDeId !== null) {
+    if (pag.estornoDeId !== null || pag.anulacaoParcialDeId !== null) {
       throw new Error(
         `Pagamento ${dados.pagamentoId} JÁ É uma anulação — não se anula uma anulação.`
       );

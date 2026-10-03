@@ -117,6 +117,7 @@ async function carregarPagamento(
       valor: true,
       contaBancaria: true, // CÓDIGO, não FK (modelo do M05)
       estornoDeId: true,
+      anulacaoParcialDeId: true,
       estornos: { select: { id: true } },
       retencoes: { select: { tipo: true, valor: true } },
       retencoesProprias: { select: { valor: true, estornoDeId: true } },
@@ -162,6 +163,18 @@ async function carregarPagamento(
     throw new Error(
       `Conta bancária "${p.contaBancaria}" do pagamento ${p.numero} não existe.`
     );
+  }
+
+  // ⚠️ V33 — a ANULAÇÃO PARCIAL é dinheiro voltando: concilia-se com a linha de CRÉDITO do extrato, pelo
+  // valor dela (o M05 só a aceita em pagamento sem retenção). A mesma decisão de `fatosDeCaixaDaConta`.
+  if (p.anulacaoParcialDeId !== null) {
+    return {
+      descricao: `a anulação parcial do pagamento (${p.numero})`,
+      sentido: "ENTRADA",
+      valorConciliavel: toMoney(p.valor.toFixed(2)),
+      contaBancariaId: conta.id,
+      fonteId: conta.fonteId,
+    };
   }
 
   return {

@@ -271,3 +271,11 @@ Duodécimo à Câmara, aportes e devoluções entre UGs do mesmo ente (§5.25). 
   conferência intra OFSS da conta (o plano do TCE-PB 2025 não tem analítica 3.5.1 fora do intra; nenhuma conta foi
   inventada para isso).
 - Tela: Financeiro › Transferências entre unidades gestoras. Na consolidação, o par 3.5.1 × 4.5.1 é o E2 do M12.
+
+## A anulação parcial do pagamento na conciliação (V33)
+
+A parcial de pagamento herda a conta do original. Antes, ela entrava no lado interno
+(`fatosDeCaixaDaConta`) e no vínculo (`carregarPagamento`) como mais uma SAÍDA, pelo valor cheio.
+Agora é ENTRADA pelo valor dela: é dinheiro voltando, e o M05 só aceita parcial em pagamento sem
+retenção. A parcial estornada sai dos dois lados, como o par anulado. A fila do lote passou a ser a do
+M06 (`liquidacoesComSaldo`). Caracterização: `m09-pagamento-parcial-conciliacao.test.ts`.

@@ -110,11 +110,29 @@ export async function fatosDeCaixaDaConta(
       numero: true,
       valor: true,
       data: true,
+      anulacaoParcialDeId: true,
       retencoes: { select: { tipo: true, valor: true } },
       retencoesProprias: { select: { valor: true, estornoDeId: true } },
     },
   });
   for (const p of pagamentos) {
+    // ⚠️ V33 — A ANULAÇÃO PARCIAL DO PAGAMENTO É DINHEIRO VOLTANDO. Ela é uma linha de `Pagamento` com
+    // `anulacaoParcialDeId`, herda a conta do original e passava por este filtro como mais uma SAÍDA
+    // pelo valor cheio: o lado interno mostrava 3.500 saindo onde o extrato tem 2.500 saindo e 1.000
+    // entrando. O M05 só aceita parcial de pagamento SEM retenção (`anularPagamentoParcial`), então o
+    // que volta ao banco é o valor da parcial. A parcial estornada sai pelo mesmo filtro do par anulado
+    // (`estornos: none`): o par soma zero no caixa.
+    if (p.anulacaoParcialDeId !== null) {
+      fatos.push({
+        tipoInterno: "PAGAMENTO",
+        id: p.id,
+        data: p.data,
+        descricao: `Anulação parcial do pagamento (${p.numero})`,
+        teto: toMoney(p.valor.toFixed(2)),
+        sentido: "ENTRADA",
+      });
+      continue;
+    }
     fatos.push({
       tipoInterno: "PAGAMENTO",
       id: p.id,

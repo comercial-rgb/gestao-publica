@@ -594,7 +594,9 @@ export async function atosDoResto(inscricaoId: string): Promise<AtosDoResto> {
       : await prisma.liquidacao.findMany({
           where: {
             empenhoId: inscricao.empenhoId,
+            // V33 — a anulação (total ou parcial) não é liquidação do resto: ela reduz a original.
             estornoDeId: null,
+            anulacaoParcialDeId: null,
             ...(inscricao.tipo === "NAO_PROCESSADO"
               ? { criadoEm: { gt: corte } }
               : { criadoEm: { lte: corte } }),

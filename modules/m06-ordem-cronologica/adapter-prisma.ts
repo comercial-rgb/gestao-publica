@@ -48,7 +48,7 @@ type Tx = Omit<
  *
  * A fonte vem da FICHA do empenho; a categoria, do próprio empenho.
  */
-async function liquidacoesComSaldo(
+export async function liquidacoesComSaldo(
   tx: Tx,
   filtro?: {
     readonly fonteId?: string;
@@ -71,6 +71,10 @@ async function liquidacoesComSaldo(
     where: {
       // a anulação de liquidação não entra na fila; a anulada, também não
       estornoDeId: null,
+      // ⚠️ V33 — E A ANULAÇÃO PARCIAL TAMBÉM NÃO: ela é uma linha de `Liquidacao` com
+      // `anulacaoParcialDeId` e `estornoDeId` nulo, e entrava na fila como liquidação própria, com o
+      // valor da glosa como "saldo a pagar" — uma posição fantasma que a fila mandava pagar primeiro.
+      anulacaoParcialDeId: null,
       ...(ate !== undefined ? { criadoEm: ate } : {}),
       // ANULADA ATÉ O CORTE não entra. Anulada DEPOIS dele ainda estava viva
       // naquele instante — e a fila daquele instante tinha de contá-la.
@@ -98,8 +102,16 @@ async function liquidacoesComSaldo(
       // ⚠️ TR 5.35 — as ANULAÇÕES PARCIAIS DA PRÓPRIA LIQUIDAÇÃO. Sem elas, a fila
       // leria o valor BRUTO da liquidação e manteria na fila um saldo a pagar que a
       // despesa já não reconhece — o art. 141 mandaria pagar o que foi glosado.
+      // ⚠️ V33 — a parcial ESTORNADA é a que tem um estorno apontando para ela (`estornos`), e não a
+      // que tem `estornoDeId` (esse campo, numa parcial, é sempre nulo): lido assim, toda parcial
+      // estornada continuava descontando. E o recorte temporal vale para elas também.
       anulacoesParciais: {
-        select: { id: true, valor: true, estornoDeId: true },
+        ...(ate !== undefined ? { where: { criadoEm: ate } } : {}),
+        select: {
+          id: true,
+          valor: true,
+          estornos: { ...(ate !== undefined ? { where: { criadoEm: ate } } : {}), select: { id: true } },
+        },
       },
       pagamentos: {
         ...(ate !== undefined ? { where: { criadoEm: ate } } : {}),
@@ -119,12 +131,10 @@ async function liquidacoesComSaldo(
     // O liquidado LÍQUIDO: o valor da liquidação, menos as anulações parciais VIVAS.
     const liquidado = somaLiquidaEstornaveis([
       { id: l.id, valor: toMoney(l.valor.toFixed(2)), estornoDeId: null },
-      ...l.anulacoesParciais.map((a) => ({
-        id: a.id,
-        valor: toMoney(a.valor.toFixed(2)),
-        estornoDeId: a.estornoDeId,
-        anulacaoParcialDeId: l.id,
-      })),
+      ...l.anulacoesParciais.flatMap((a) => [
+        { id: a.id, valor: toMoney(a.valor.toFixed(2)), estornoDeId: null, anulacaoParcialDeId: l.id },
+        ...a.estornos.map((e) => ({ id: e.id, valor: toMoney(a.valor.toFixed(2)), estornoDeId: a.id })),
+      ]),
     ]);
     const pago = somaLiquidaEstornaveis(
       l.pagamentos.map((p) => ({

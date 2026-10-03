@@ -60,7 +60,8 @@ export async function documentosDaDespesa(): Promise<readonly DocumentoAssinavel
 
   const [empenhos, liquidacoes, ordens] = await Promise.all([
     prisma.empenho.findMany({
-      where: { estornoDeId: null },
+      // V33 — como a anulação total, a parcial não entra na lista de documentos a assinar como empenho.
+      where: { estornoDeId: null, anulacaoParcialDeId: null },
       orderBy: { numero: "asc" },
       take: 100,
       select: {
@@ -69,7 +70,7 @@ export async function documentosDaDespesa(): Promise<readonly DocumentoAssinavel
       },
     }),
     prisma.liquidacao.findMany({
-      where: { estornoDeId: null },
+      where: { estornoDeId: null, anulacaoParcialDeId: null },
       orderBy: { numero: "asc" },
       take: 100,
       select: {

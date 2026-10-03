@@ -106,3 +106,15 @@ passos: `ADD COLUMN` nullable → `UPDATE ... WHERE NULL` → `SET NOT NULL`.
   impede classificar uma obra como `FORNECIMENTO_BENS`. Quando o M11
   (licitações/contratos) existir, a categoria deveria vir do contrato, não da
   digitação.
+
+## A anulação parcial na fila do art. 141 (V33)
+
+`liquidacoesComSaldo` tinha dois defeitos:
+- **A linha da parcial entrava na fila** como liquidação própria, porque o filtro olhava só
+  `estornoDeId`. Virava uma posição fantasma na frente das reais.
+- **A parcial estornada continuava descontando.** Era lida por `estornoDeId`, que numa parcial é
+  sempre nulo: quem aponta para ela é o estorno.
+
+Os dois foram corrigidos. O recorte temporal agora vale para as parciais também. A função é
+exportada e é a mesma fila do lote do M09, que tinha uma cópia própria com os mesmos defeitos e mais
+um: o pagamento anulado inteiro contava como pago. Caracterização: `m06-fila-parcial.test.ts`.

@@ -484,3 +484,16 @@ Exercícios já encerrados com anulação parcial têm a inscrição gravada pel
 inscrição é fato append-only. Não se reescreve: corrige-se pelo cancelamento do resto a pagar
 indevido, com motivo. Na base da apresentação, nenhum exercício encerrado tem anulação parcial (ver
 o checkpoint da V33).
+
+## A anulação parcial no pagamento de restos a pagar (V33)
+
+A ponte `somaLiquida` de `restos.ts` não repassava `anulacaoParcialDeId`. Além disso, o limite 1 do
+pagamento de resto lia o valor bruto da liquidação. O M05 recusa anulação parcial depois do
+encerramento, então o caso real é a parcial feita no exercício de origem e atravessando a virada:
+- **Liquidação com parcial:** podia ser paga pelo bruto. O limite do saldo do resto não segura quando
+  o empenho tem outra liquidação.
+- **Pagamento com parcial:** contava a parcial como mais pagamento e recusava o pagamento legítimo.
+- **A própria linha da parcial:** era aceita como liquidação a pagar.
+
+Agora o liquidado é o líquido das parciais vivas, o pago passa pela régua e a linha de anulação é
+recusada. Caracterização: `m08-restos-parcial.test.ts`.

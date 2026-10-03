@@ -75,6 +75,10 @@ export function somaLiquidaEstornaveis(
  * O LÍQUIDO DE UM ÚNICO FATO — o mesmo cálculo, recortado.
  *
  * Devolve 0,00 se o fato foi anulado TOTALMENTE (ou se ele próprio é uma anulação).
+ *
+ * ⚠️ V33 — O RECORTE LEVA TAMBÉM OS ESTORNOS: o do próprio fato e os das parciais dele. Antes ele
+ * guardava só o fato e as parciais, e uma parcial ESTORNADA (o estorno aponta para a parcial, não
+ * para o fato) continuava descontando — o mesmo erro que a composição do M12 achou no encerramento.
  */
 export function liquidoDoFato(
   fatoId: string,
@@ -82,7 +86,9 @@ export function liquidoDoFato(
 ): Money {
   const alvo = linhas.find((l) => l.id === fatoId);
   if (alvo === undefined) return toMoney("0.00");
+  const familia = new Set<string>([fatoId]);
+  for (const l of linhas) if (l.anulacaoParcialDeId === fatoId) familia.add(l.id);
   return somaLiquidaEstornaveis(
-    linhas.filter((l) => l.id === fatoId || l.anulacaoParcialDeId === fatoId)
+    linhas.filter((l) => familia.has(l.id) || (l.estornoDeId !== null && familia.has(l.estornoDeId)))
   );
 }
