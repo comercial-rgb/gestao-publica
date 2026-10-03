@@ -1,9 +1,11 @@
+import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { Footer } from "../../components/ui/Footer";
 import { Header } from "../../components/ui/Header";
 import { PanoDoMenu, ShellProvider } from "../../components/ui/Shell";
 import { Sidebar } from "../../components/ui/Sidebar";
 import { VigiaDeEdicao } from "../../components/ui/VigiaDeEdicao";
+import { ContextoNaNavegacao } from "../../components/ui/ContextoNaNavegacao";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
 import { identidadePublica, paraATela } from "../../lib/portas/identidade";
 import { exigirSessao } from "../../lib/portas/sessao";
@@ -61,6 +63,9 @@ export default async function AreasLayout({
     >
       <ShellProvider>
         <VigiaDeEdicao />
+        <Suspense fallback={null}>
+          <ContextoNaNavegacao />
+        </Suspense>
         <div className="flex h-screen overflow-hidden" data-tema={tela.tema}>
           <PanoDoMenu />
           <Sidebar

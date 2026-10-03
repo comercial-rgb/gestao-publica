@@ -7,6 +7,7 @@ import { abaDaRota, menuVisivel } from "../../lib/navegacao";
 import { identidadeNeutra, type IdentidadeDaTela } from "../../lib/identidade/produto";
 import { Marca } from "./Marca";
 import { useShell } from "./Shell";
+import { UG_CONSOLIDADO, useUiContext } from "../../lib/ui-context";
 
 /** A sigla da aba na barra recolhida ("Orçamento e Despesa" → "OD"). */
 function sigla(rotulo: string): string {
@@ -67,6 +68,12 @@ export function Sidebar({
   // ⚠️ V31 — AS ABAS DO CONTADOR. O recorte usa as áreas que o SERVIDOR liberou (props); aqui só se
   // arruma. A aba da rota atual abre sozinha; as outras abrem e fecham pelo botão, sem navegar.
   const abas = useMemo(() => menuVisivel(areasVisiveis), [areasVisiveis]);
+  // ⚠️ O LINK LEVA O CONTEXTO: a tela abre já no exercício e na unidade do cabeçalho, sem uma segunda
+  // ida ao servidor para corrigir a URL. O servidor ainda confere o recorte (a URL não amplia acesso).
+  const { exercicio, ug, ugsDisponiveis } = useUiContext();
+  const codigoUg = ug === UG_CONSOLIDADO ? null : (ugsDisponiveis.find((u) => u.id === ug)?.codigo ?? null);
+  const comContexto = (href: string): string =>
+    `${href}?exercicio=${String(exercicio)}${codigoUg === null ? "" : `&ug=${encodeURIComponent(codigoUg)}`}`;
   const abaAtual = abaDaRota(pathname, abas);
   const [abertas, setAbertas] = useState<ReadonlySet<string>>(() => new Set(abaAtual === null ? [] : [abaAtual]));
   useEffect(() => {
@@ -129,7 +136,7 @@ export function Sidebar({
               return (
                 <li key={aba.id}>
                   <Link
-                    href={primeiro}
+                    href={comContexto(primeiro)}
                     title={aba.rotulo}
                     className={`flex justify-center rounded-[var(--radius-md)] py-2 text-xs font-semibold ${
                       ativa ? "bg-[color:var(--color-primary-soft)] text-[color:var(--color-primary)]" : "text-[color:var(--color-ink-3)] hover:text-[color:var(--color-ink)]"
@@ -167,7 +174,7 @@ export function Sidebar({
                           return (
                             <li key={`${grupo.rotulo}-${item.href}`}>
                               <Link
-                                href={item.href}
+                                href={comContexto(item.href)}
                                 aria-current={subAtivo ? "page" : undefined}
                                 className={`block rounded-[var(--radius-md)] px-2 py-1.5 text-xs leading-snug transition-colors ${
                                   subAtivo ? "bg-[color:var(--color-primary-soft)] font-semibold text-[color:var(--color-primary)]" : "text-[color:var(--color-ink-2)] hover:text-[color:var(--color-ink)]"
