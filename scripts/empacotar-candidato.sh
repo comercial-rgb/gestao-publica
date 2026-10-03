@@ -60,9 +60,10 @@ MANIFESTO="$TMP/MANIFESTO-DO-FONTE.txt"
   echo "#   · Chromium e fontes -> pacotes do sistema, com versao conferida na instalacao;"
   echo "#   · .env              -> configuracao e segredo, que NUNCA viajam no pacote."
   echo "#"
-  ( cd "$TMP" && find . -type f -not -name "MANIFESTO-DO-FONTE.txt" | sort | while read -r f; do
-      printf '%s  %s\n' "$(shasum -a 256 "$f" | cut -d' ' -f1)" "${f#./}"
-    done )
+  # Uma chamada de shasum para todos os arquivos (e não um processo por arquivo): no Windows o laço
+  # antigo levava mais de 10 minutos. A saída é a mesma: "<hash>  <caminho>", em ordem de caminho.
+  ( cd "$TMP" && find . -type f -not -name "MANIFESTO-DO-FONTE.txt" -print0 | LC_ALL=C sort -z \
+      | xargs -0 shasum -a 256 | sed 's#  \./#  #' )
 } > "$MANIFESTO"
 
 ARQUIVOS="$(grep -c '^[0-9a-f]\{64\}  ' "$MANIFESTO")"

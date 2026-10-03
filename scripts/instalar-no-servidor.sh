@@ -141,6 +141,16 @@ passo 7 "o banco: dono migra, runtime opera"
 ( cd "$RAIZ" && sudo -u "$USUARIO" npm run licenciamento:instalar -- --aplicar --demonstracao ) || \
   echo "  (licenciamento ja instalado, ou faltam LICENCA_NUMERO/LICENCA_CLIENTE no .env — conferir)"
 
+# ⚠️ O SERVIÇO CONECTA COMO RUNTIME, NÃO COMO DONO. O .env traz o DATABASE_URL do DONO, que migra (DDL);
+# a aplicação usa DATABASE_URL tal como chega (lib/portas/cliente.ts). Sem isto o serviço rodaria com
+# poder de DDL. O .env.runtime (640, do usuário do serviço) troca a credencial pela do papel de runtime, e
+# a unit o carrega DEPOIS do .env — o último EnvironmentFile vence, e o Next não sobrescreve variável que
+# já veio do ambiente.
+( cd "$RAIZ" && sudo -u "$USUARIO" env DOTENV_CONFIG_QUIET=true npx tsx -e 'import "dotenv/config"; import { urlDoRuntime, papelDoAmbiente } from "./prisma/papel-runtime.ts"; console.log("DATABASE_URL=\"" + urlDoRuntime(process.env.DATABASE_URL ?? "", papelDoAmbiente()) + "\"");' ) | sudo tee "$RAIZ/.env.runtime" > /dev/null
+sudo chown "$USUARIO:$USUARIO" "$RAIZ/.env.runtime" && sudo chmod 640 "$RAIZ/.env.runtime"
+grep -q "^DATABASE_URL=\"postgresql" "$RAIZ/.env.runtime" || erro "nao foi possivel montar a conexao do papel de runtime." 14
+echo "  .env.runtime: conexao do papel de runtime"
+
 passo 8 "o build, e a prova de que o PDF sai NESTE runtime"
 # ⚠️ A CONFERÊNCIA DE TIPOS NÃO CABE EM SERVIDOR PEQUENO (V29: mais de 6 GB de heap). Ela roda na
 # máquina de construção (`npm run tipos:conferir`), que grava uma aprovação pelo DIGESTO DO CONTEÚDO.
@@ -173,6 +183,7 @@ User=$USUARIO
 Group=$USUARIO
 WorkingDirectory=$RAIZ
 EnvironmentFile=$RAIZ/.env
+EnvironmentFile=$RAIZ/.env.runtime
 # ⚠️ A IDENTIDADE DO CANDIDATO vem do MANIFESTO, no mesmo passo em que o codigo e instalado.
 # E ela que /release publica e que o aceite pos-DNS compara.
 Environment=IDENTIDADE_DO_CANDIDATO=$CANDIDATO
