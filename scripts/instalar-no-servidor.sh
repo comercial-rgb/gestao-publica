@@ -135,6 +135,12 @@ passo 7 "o banco: dono migra, runtime opera"
 ( cd "$RAIZ" && sudo -u "$USUARIO" npx prisma migrate deploy )
 ( cd "$RAIZ" && sudo -u "$USUARIO" npm run db:papel )
 ( cd "$RAIZ" && sudo -u "$USUARIO" npm run db:sql )
+# ⚠️ NUMA INSTALAÇÃO LIMPA O ADMINISTRADOR VEM ANTES DAS PERMISSÕES. As atualizações de permissão são
+# um ATO de SEED_IDENTIDADE, autorizado no servidor; sem o usuário, elas param em "usuário não
+# encontrado" (medido na EC2, V29). O bootstrap RECUSA quando o banco já tem usuários — numa
+# reinstalação ele não faz nada, e a mensagem dele sai no log.
+( cd "$RAIZ" && sudo -u "$USUARIO" npm run seed:bootstrap ) || \
+  echo "  (bootstrap nao criou usuario: o banco ja tem usuarios, ou falta SEED_ADMIN_SENHA — conferir acima)"
 ( cd "$RAIZ" && sudo -u "$USUARIO" npm run permissoes:atualizar -- pendentes )
 # ⚠️ O LICENCIAMENTO COMERCIAL (V10 T1). Sem ele o gate fecha os módulos contratáveis — e a
 # mensagem que o operador leria nomeia exatamente este comando.
