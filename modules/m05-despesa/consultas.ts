@@ -640,6 +640,11 @@ export interface RecorteDeEmpenhos extends RecorteDaExecucao {
    * tela tem de dizer isso ao usuário em vez de oferecer um campo que não funcionaria.
    */
   readonly credorCpfCnpj?: string | undefined;
+  /**
+   * V31 — os empenhos de UMA ficha (a dotação abre os empenhos dela). As anulações têm a mesma ficha
+   * do original, então o filtro não as separa: `liquidoDoFato` continua vendo o conjunto inteiro.
+   */
+  readonly fichaId?: string | undefined;
 }
 
 /**
@@ -751,7 +756,7 @@ export async function listarEmpenhos(
 ): Promise<readonly EmpenhoNaLista[]> {
   const linhas = await prisma.empenho.findMany({
     // ⚠️ Fonte pela FICHA, credor pelo EMPENHO (e pelos pais dele — ver `doCredor`).
-    where: { ficha: daFicha(p), ...doCredor(p.credorCpfCnpj) },
+    where: { ficha: daFicha(p), ...doCredor(p.credorCpfCnpj), ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}) },
     orderBy: [{ data: "desc" }, { numero: "desc" }],
     select: {
       id: true,

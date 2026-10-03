@@ -209,6 +209,10 @@ export interface OrigemDoEmpenho {
   readonly fonteDescricao: string;
   /** O cache da ficha HOJE — não o saldo na data do empenho. A tela tem de dizer isso. */
   readonly saldoDisponivelHoje: Money;
+  /** V31 — o id do contrato e o processo dele, para o empenho abrir os dois. */
+  readonly contratoId: string | null;
+  readonly processoId: string | null;
+  readonly processoNumero: string | null;
   readonly contratoNumero: string | null;
   readonly contratadoNome: string | null;
   readonly ordemDeCompraId: string | null;
@@ -277,7 +281,7 @@ export async function dossieDoEmpenho(
       lancamentoId: true,
       estornoDeId: true,
       anulacaoParcialDeId: true,
-      contrato: { select: { numeroContrato: true, contratadoNome: true } },
+      contrato: { select: { id: true, numeroContrato: true, contratadoNome: true, processo: { select: { id: true, numeroProcesso: true } } } },
       ordemDeCompra: { select: { id: true, numero: true } },
       obra: { select: { descricao: true } },
       ficha: {
@@ -561,6 +565,9 @@ export async function dossieDoEmpenho(
       fonteCodigo: e.ficha.fonte.codigo,
       fonteDescricao: e.ficha.fonte.descricao,
       saldoDisponivelHoje: toMoney(e.ficha.saldoDisponivel.toFixed(2)),
+      contratoId: e.contrato?.id ?? null,
+      processoId: e.contrato?.processo.id ?? null,
+      processoNumero: e.contrato?.processo.numeroProcesso ?? null,
       contratoNumero: e.contrato?.numeroContrato ?? null,
       contratadoNome: e.contrato?.contratadoNome ?? null,
       ordemDeCompraId: e.ordemDeCompra?.id ?? null,

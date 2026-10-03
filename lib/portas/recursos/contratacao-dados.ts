@@ -350,7 +350,7 @@ export async function verContrato(id: string): Promise<DetalheLido | null> {
       { texto: `${x.empenhos.length} empenho(s)`, tom: "neutro" },
     ],
     dados: [
-      { rotulo: "Processo", valor: `${x.processo.numeroProcesso} — ${modalidade(x.processo.modalidade)}` },
+      { rotulo: "Processo", valor: `${x.processo.numeroProcesso} — ${modalidade(x.processo.modalidade)}`, href: `/licitacoes/processos/${x.processo.id}` },
       { rotulo: "Contratado", valor: `${x.contratadoNome} · ${formatarDocumento(x.contratadoDocumento)}` },
       { rotulo: "Objeto", valor: x.objeto ?? "— (mesmo objeto do processo)", tipo: "longo" },
       { rotulo: "Valor inicial", valor: x.valorInicial.toFixed(2), tipo: "dinheiro" },

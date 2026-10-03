@@ -439,6 +439,12 @@ export interface DadoDoDetalhe {
   readonly tipo?: TipoDeDado;
   /** Explicação curta — a base legal do campo, quando houver. */
   readonly nota?: string;
+  /**
+   * V31 — o registro relacionado que este campo nomeia (o processo do contrato, a ficha do empenho).
+   * Rastreabilidade é exigência geral, não exceção de uma tela: o contador abre a operação de origem
+   * de onde ela aparece. A rota de destino faz a própria autorização ao abrir.
+   */
+  readonly href?: string;
 }
 
 export interface LinhaDoHistorico {

@@ -1,5 +1,7 @@
 import { Badge } from "../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
+import { familiaDoTipo } from "../../../../lib/portas/documento-da-despesa";
+import { ROTA_DA_ORIGEM } from "../../../../lib/rota-da-origem";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/TabelaDeDados";
@@ -285,59 +287,6 @@ function umSubsistema(
   return bruto === "ORCAMENTARIO" || bruto === "PATRIMONIAL" || bruto === "CONTROLE" ? bruto : undefined;
 }
 
-/**
- * O MAPA `origemTipo → rota` — o drill até o DOCUMENTO que gerou o lançamento.
- *
- * ⚠️ PARCIAL DE PROPÓSITO. Só entra aqui a espécie cuja tela EXISTE. O que não está mapeado
- * aparece como texto (tipo + id), sem link: uma origem sem destino é informação honesta; um link
- * quebrado é uma promessa falsa a quem está auditando.
- *
- * ⚠️ AS VARIANTES DO MESMO DOCUMENTO APONTAM PARA A MESMA TELA. "EMPENHO", "EMPENHO_ANULADO" e
- * "ANULACAO_PARCIAL_EMPENHO" são atos DIFERENTES sobre o MESMO empenho — e o `origemId` de todos
- * é o id do empenho. Levar os três para `/despesa/empenhos` é o comportamento certo: o auditor
- * quer a NE, não o ato.
- */
-/** A Nota de Empenho do empenho de `origemId`, no exercício do recorte da tela. */
-function neDoEmpenho(origemId: string, exercicio: number): string {
-  return `/despesa/empenhos/ne?id=${encodeURIComponent(origemId)}&exercicio=${exercicio}`;
-}
-
-interface DestinoDoDrill {
-  readonly rota: string;
-  readonly documento: string;
-  /**
-   * O DOCUMENTO EM SI, quando ele existe como emissão própria — recebe o `origemId` e o exercício
-   * e devolve a URL da rota que o imprime. Quando presente, o drill leva ao PAPEL; quando ausente,
-   * leva à lista onde o documento pode ser localizado.
-   */
-  readonly emissao?: (origemId: string, exercicio: number) => string;
-}
-
-const ROTA_DA_ORIGEM: Readonly<Record<string, DestinoDoDrill>> = {
-  // ── Despesa: a NOTA DE EMPENHO e sua cadeia (o caminho do roteiro de demonstração). ──
-  // ⚠️ AQUI O DRILL CHEGA AO DOCUMENTO, não à lista: `/despesa/empenhos/ne?id=` já emite a Nota de
-  // Empenho em PDF, e o `origemId` destas cinco espécies É o id do empenho. Um auditor que sai do
-  // lançamento quer a NE na mão — mandá-lo à lista para procurar a linha certa seria devolver-lhe
-  // o trabalho que o sistema pode fazer. O exercício vai junto porque a rota o exige no recorte.
-  EMPENHO: { rota: "/despesa/empenhos", documento: "Nota de Empenho", emissao: neDoEmpenho },
-  EMPENHO_DE_RESERVA: { rota: "/despesa/empenhos", documento: "Nota de Empenho", emissao: neDoEmpenho },
-  EMPENHO_ANULADO: { rota: "/despesa/empenhos", documento: "Nota de Empenho", emissao: neDoEmpenho },
-  ANULACAO_PARCIAL_EMPENHO: { rota: "/despesa/empenhos", documento: "Nota de Empenho", emissao: neDoEmpenho },
-  ESTORNO_ANULACAO_PARCIAL_EMPENHO: { rota: "/despesa/empenhos", documento: "Nota de Empenho", emissao: neDoEmpenho },
-  LIQUIDACAO: { rota: "/despesa/liquidacoes", documento: "Liquidação" },
-  LIQUIDACAO_ANULADA: { rota: "/despesa/liquidacoes", documento: "Liquidação" },
-  ANULACAO_PARCIAL_LIQUIDACAO: { rota: "/despesa/liquidacoes", documento: "Liquidação" },
-  PAGAMENTO: { rota: "/despesa/pagamentos", documento: "Ordem de Pagamento" },
-  PAGAMENTO_ANULADO: { rota: "/despesa/pagamentos", documento: "Ordem de Pagamento" },
-  ANULACAO_PARCIAL_PAGAMENTO: { rota: "/despesa/pagamentos", documento: "Ordem de Pagamento" },
-  // ── Receita ──
-  ARRECADACAO: { rota: "/receita/arrecadacoes", documento: "Arrecadação" },
-  ANULACAO_RECEITA: { rota: "/receita/arrecadacoes", documento: "Arrecadação" },
-  // ── Planejamento / créditos ──
-  CREDITO_ADICIONAL: { rota: "/planejamento/creditos-adicionais", documento: "Decreto de crédito" },
-  CREDITO_ANULADO: { rota: "/planejamento/creditos-adicionais", documento: "Decreto de crédito" },
-  LOA: { rota: "/planejamento/qdd", documento: "Dotação inicial (LOA)" },
-};
 
 /**
  * A CÉLULA DO DRILL — em dois níveis, porque nem toda origem tem documento emitido.
@@ -377,6 +326,30 @@ function Drill({ l, exercicio }: { readonly l: LinhaDeLancamento; readonly exerc
           title={`Abre ${destino.documento} em PDF — origem ${l.origemTipo}, documento ${l.origemId}`}
         >
           {destino.documento} (PDF) →
+        </a>
+        <a
+          href={`/despesa/documento/${encodeURIComponent(l.origemTipo)}/${encodeURIComponent(l.origemId)}`}
+          className="text-[10px] text-[color:var(--color-primary)] hover:underline"
+        >
+          abrir o empenho
+        </a>
+      </span>
+    );
+  }
+
+  // V31 — liquidação e pagamento abrem o DOSSIÊ do empenho dono, na âncora do documento (a cadeia
+  // inteira mora lá: retenções, pagamentos e lançamentos). Fecha a pendência rota-de-detalhe-por-documento
+  // para a despesa; receita e créditos seguem para a lista, com o id à vista.
+  const familia = familiaDoTipo(l.origemTipo);
+  if (familia === "LIQUIDACAO" || familia === "PAGAMENTO") {
+    return (
+      <span className="flex flex-col gap-0.5">
+        <a
+          href={`/despesa/documento/${encodeURIComponent(l.origemTipo)}/${encodeURIComponent(l.origemId)}`}
+          className="text-xs font-medium text-[color:var(--color-primary)] hover:underline"
+          title={`${destino.documento} — abre o empenho com a cadeia inteira`}
+        >
+          {destino.documento} →
         </a>
         <a href={destino.rota} className="text-[10px] text-[color:var(--color-ink-3)] hover:underline">
           ver na lista
@@ -434,9 +407,13 @@ const colunasDe = (exercicio: number): readonly ColunaTabela<LinhaDeLancamento>[
     alinhamento: "esquerda",
     largura: "9rem",
     celula: (l) => (
-      <span className="font-mono text-xs" title={`Natureza: ${l.natureza} · registrado por ${l.criadoPor}`}>
+      <a
+        href={`/contabilidade/lancamentos/${l.id}`}
+        className="font-mono text-xs text-[color:var(--color-primary)] hover:underline"
+        title={`Abrir o lançamento — natureza: ${l.natureza} · registrado por ${l.criadoPor}`}
+      >
         {l.numeroControle}
-      </span>
+      </a>
     ),
   },
   { chave: "hist", cabecalho: "Histórico", alinhamento: "esquerda", celula: (l) => l.historico },

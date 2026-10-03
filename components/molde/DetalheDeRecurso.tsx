@@ -62,6 +62,13 @@ export interface DetalheDeRecursoProps {
 
 function valorFormatado(d: DadoDoDetalhe): React.ReactNode {
   if (d.valor === "") return <span className="text-[color:var(--color-ink-3)]">—</span>;
+  if (d.href !== undefined) {
+    return (
+      <Link href={d.href} className="text-[color:var(--color-primary)] hover:underline">
+        {d.tipo === "dinheiro" ? <ValorMonetario valor={d.valor} comSimbolo /> : d.valor}
+      </Link>
+    );
+  }
   if (d.tipo === "dinheiro") return <ValorMonetario valor={d.valor} comSimbolo />;
   if (d.tipo === "data" || d.tipo === "inteiro") {
     return <span className="tabular-nums">{d.valor}</span>;

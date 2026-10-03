@@ -49,7 +49,7 @@ export default async function BalancetePage({
         <Badge status={dados.fecha ? "ok" : "erro"}>{dados.fecha ? "Débitos e créditos conferem" : "Débitos e créditos não conferem"}</Badge>
       </div>
       <TabelaDeDados
-        colunas={COLUNAS}
+        colunas={colunasDe(desdeStr, ateStr)}
         grupos={GRUPOS}
         linhas={[...dados.linhas, totalRow]}
         keyDe={(l) => l.conta}
@@ -70,8 +70,21 @@ const GRUPOS: readonly GrupoColuna[] = [
 const val = (get: (l: LinhaDoBalancete) => string): Omit<ColunaTabela<LinhaDoBalancete>, "chave" | "cabecalho"> => ({
   alinhamento: "direita", largura: "7.5rem", celula: (l) => <ValorMonetario valor={get(l)} />,
 });
-const COLUNAS: readonly ColunaTabela<LinhaDoBalancete>[] = [
-  { chave: "conta", cabecalho: "Conta", alinhamento: "esquerda", celula: (l) => l.conta },
+const colunasDe = (desde: string, ate: string): readonly ColunaTabela<LinhaDoBalancete>[] => [
+  // V31 — do balancete ao razão da conta, no MESMO período (e do razão ao lançamento).
+  {
+    chave: "conta",
+    cabecalho: "Conta",
+    alinhamento: "esquerda",
+    celula: (l) =>
+      l.conta === "TOTAL" || l.sintetica ? (
+        l.conta
+      ) : (
+        <a href={`/relatorios/livros/razao?conta=${encodeURIComponent(l.conta)}&desde=${desde}&ate=${ate}`} className="text-[color:var(--color-primary)] hover:underline">
+          {l.conta}
+        </a>
+      ),
+  },
   { chave: "sad", cabecalho: "Devedor", ...val((l) => l.saldoAnteriorDevedor) },
   { chave: "sac", cabecalho: "Credor", ...val((l) => l.saldoAnteriorCredor) },
   { chave: "md", cabecalho: "Débito", ...val((l) => l.movimentoDebito) },

@@ -219,7 +219,12 @@ function Origem({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactEl
       <dl className="grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-3">
         <Campo rotulo="Órgão">{`${o.orgaoCodigo} — ${o.orgaoNome}`}</Campo>
         <Campo rotulo="Unidade orçamentária">{`${o.unidadeCodigo} — ${o.unidadeNome}`}</Campo>
-        <Campo rotulo="Ficha">{`nº ${o.fichaNumero} · exercício ${o.exercicio}`}</Campo>
+        <Campo rotulo="Ficha">
+          {/* V31 — da despesa à dotação: a ficha abre reservas, empenhos e saldos. */}
+          <Link href={`/planejamento/fichas/${o.fichaId}`} className="text-[color:var(--color-primary)] hover:underline">
+            {`nº ${o.fichaNumero} · exercício ${o.exercicio}`}
+          </Link>
+        </Campo>
         <Campo rotulo="Função / subfunção">
           {`${o.funcaoCodigo} ${o.funcaoDescricao} / ${o.subfuncaoCodigo} ${o.subfuncaoDescricao}`}
         </Campo>
@@ -243,10 +248,21 @@ function Origem({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactEl
           </Link>
         </Campo>
         <Campo rotulo="Contrato">
-          {o.contratoNumero === null
-            ? "— (empenho sem contrato)"
-            : `${o.contratoNumero}${o.contratadoNome === null ? "" : ` — ${o.contratadoNome}`}`}
+          {o.contratoNumero === null || o.contratoId === null ? (
+            "— (empenho sem contrato)"
+          ) : (
+            <Link href={`/licitacoes/contratos/${o.contratoId}`} className="text-[color:var(--color-primary)] hover:underline">
+              {`${o.contratoNumero}${o.contratadoNome === null ? "" : ` — ${o.contratadoNome}`}`}
+            </Link>
+          )}
         </Campo>
+        {o.processoId === null ? null : (
+          <Campo rotulo="Processo da contratação">
+            <Link href={`/licitacoes/processos/${o.processoId}`} className="text-[color:var(--color-primary)] hover:underline">
+              {o.processoNumero}
+            </Link>
+          </Campo>
+        )}
         <Campo rotulo="Ordem de compra">
           {o.ordemDeCompraId === null || o.ordemDeCompraNumero === null
             ? "— (empenho sem ordem)"
@@ -368,7 +384,8 @@ function Liquidacoes({
           {d.liquidacoes.map((l) => (
             <li
               key={l.id}
-              className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3"
+              id={`liquidacao-${l.id}`}
+              className="scroll-mt-20 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3 target:ring-2 target:ring-[color:var(--color-primary)]"
             >
               <BlocoLiquidacao liquidacao={l} />
             </li>
@@ -420,7 +437,8 @@ function BlocoLiquidacao({
           {l.pagamentos.map((p) => (
             <li
               key={p.id}
-              className="rounded-[var(--radius-md)] bg-[color:var(--color-surface-2)] px-3 py-2"
+              id={`pagamento-${p.id}`}
+              className="scroll-mt-20 rounded-[var(--radius-md)] bg-[color:var(--color-surface-2)] px-3 py-2 target:ring-2 target:ring-[color:var(--color-primary)]"
             >
               <BlocoPagamento pagamento={p} />
             </li>

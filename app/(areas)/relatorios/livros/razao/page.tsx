@@ -64,7 +64,8 @@ export default async function RazaoPage({
 type LinhaR = LinhaDoRazao & { dataFmt: string };
 const COLUNAS: readonly ColunaTabela<LinhaR>[] = [
   { chave: "data", cabecalho: "Data", alinhamento: "esquerda", largura: "6rem", celula: (l) => l.dataFmt },
-  { chave: "nc", cabecalho: "Nº", alinhamento: "esquerda", largura: "8rem", celula: (l) => l.numeroControle },
+  // V31 — do razão ao lançamento (e dele ao documento de origem).
+  { chave: "nc", cabecalho: "Nº", alinhamento: "esquerda", largura: "8rem", celula: (l) => <a href={`/contabilidade/lancamentos/${l.lancamentoId}`} className="text-[color:var(--color-primary)] hover:underline">{l.numeroControle}</a> },
   { chave: "hist", cabecalho: "Histórico", alinhamento: "esquerda", celula: (l) => l.historico },
   { chave: "d", cabecalho: "Débito", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.debito} /> },
   { chave: "c", cabecalho: "Crédito", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.credito} /> },

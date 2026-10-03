@@ -82,6 +82,8 @@ export async function listarEmpenhosDaExecucao(p: {
   readonly credorCpfCnpj?: string | undefined;
   /** ADITIVO. Código da fonte de recursos — filtra pela ficha do empenho. */
   readonly fonteCodigo?: string | undefined;
+  /** V31 — os empenhos de uma ficha. */
+  readonly fichaId?: string | undefined;
 }): Promise<readonly EmpenhoDaTela[]> {
   // ⚠️ TODO filtro desce ao SQL do módulo. A porta NUNCA recorta a lista depois de
   // recebê-la: um `.filter()` aqui traria o exercício inteiro do banco para jogar fora,
@@ -91,6 +93,7 @@ export async function listarEmpenhosDaExecucao(p: {
     ...(p.unidadeCodigo !== undefined ? { unidadeCodigo: p.unidadeCodigo } : {}),
     ...(p.credorCpfCnpj !== undefined ? { credorCpfCnpj: p.credorCpfCnpj } : {}),
     ...(p.fonteCodigo !== undefined ? { fonteCodigo: p.fonteCodigo } : {}),
+    ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}),
   });
   const [nomes, vinculos] = await Promise.all([
     nomesDosCredores(linhas.map((l) => l.credorCpfCnpj)),
@@ -410,6 +413,9 @@ export interface OrigemDaTela {
   readonly fonteCodigo: string;
   readonly fonteDescricao: string;
   readonly saldoDisponivelHoje: string;
+  readonly contratoId: string | null;
+  readonly processoId: string | null;
+  readonly processoNumero: string | null;
   readonly contratoNumero: string | null;
   readonly contratadoNome: string | null;
   readonly ordemDeCompraId: string | null;
