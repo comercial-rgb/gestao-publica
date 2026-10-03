@@ -638,6 +638,34 @@ async function exigirVinculoDeCampanha(tx: Tx, p: EmpenharParams): Promise<void>
   }
 }
 
+/**
+ * V32 — o precatório vinculado tem de existir, estar inscrito, e a ficha tem de ser de sentenças
+ * judiciais (elemento 91): um precatório pago por outra despesa baixaria o passivo judicial com dinheiro
+ * classificado como outra coisa. Voluntário: sem precatório, nada a conferir.
+ */
+async function exigirVinculoDePrecatorio(tx: Tx, p: EmpenharParams): Promise<void> {
+  if (p.precatorioId === undefined) return;
+  const prec = await tx.precatorio.findUnique({
+    where: { id: p.precatorioId },
+    select: { numeroProcesso: true, movimentos: { where: { tipo: "INSCRICAO" }, select: { id: true } } },
+  });
+  if (prec === null) throw new Error(`O precatório indicado não existe. Escolha o precatório na lista. Nada foi gravado.`);
+  if (prec.movimentos.length === 0) {
+    throw new Error(`O precatório ${prec.numeroProcesso} ainda não foi inscrito; inscreva-o antes de empenhar o pagamento. Nada foi gravado.`);
+  }
+  const ficha = await tx.fichaOrcamentaria.findUniqueOrThrow({
+    where: { id: p.fichaId },
+    select: { naturezaDespesa: { select: { codElemento: true, codigoCompleto: true } } },
+  });
+  if (ficha.naturezaDespesa.codElemento !== "91") {
+    throw new Error(
+      `O empenho ${p.numero} paga o precatório ${prec.numeroProcesso}, mas a ficha é da natureza ` +
+        `${ficha.naturezaDespesa.codigoCompleto}, e não de sentenças judiciais (elemento 91). Escolha a ficha de ` +
+        `sentenças judiciais. Nada foi gravado.`
+    );
+  }
+}
+
 export async function empenhadoLiquidoDaOrdem(tx: Tx, ordemDeCompraId: string): Promise<Money> {
   const empenhos = await tx.empenho.findMany({
     where: { ordemDeCompraId },
@@ -1167,6 +1195,7 @@ export function criarDespesaRepositoryPrisma(
         // M28 (V22) — o vínculo com o CONVÊNIO: voluntário, mas tem de existir.
         await exigirVinculoDeConvenio(tx, p);
         await exigirVinculoDeCampanha(tx, p);
+        await exigirVinculoDePrecatorio(tx, p);
 
         // V22 — emitido de SOLICITAÇÃO: ela tem de estar autorizada, não empenhada, e casar com
         // o empenho. ÚLTIMO trinco da transação (posto da solicitação) — logo antes de gravar.
@@ -1207,6 +1236,8 @@ export function criarDespesaRepositoryPrisma(
             convenioId: p.convenioId ?? null,
             // V22 — a campanha publicitária que este empenho custeia. A anulação a COPIA.
             campanhaPublicitariaId: p.campanhaPublicitariaId ?? null,
+            // V32 — o precatório que este empenho paga. A anulação o COPIA (DIMENSOES_DO_EMPENHO).
+            precatorioId: p.precatorioId ?? null,
             // V22 — a solicitação autorizada de origem (única; a anulação NÃO a copia).
             solicitacaoDeEmpenhoId: p.solicitacaoDeEmpenhoId ?? null,
             numero: p.numero,

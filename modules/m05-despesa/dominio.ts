@@ -349,6 +349,12 @@ export const zEmpenharInput = z
     /** V22 — a CAMPANHA PUBLICITÁRIA que o empenho custeia. VOLUNTÁRIO; o adapter confere que existe. */
     campanhaPublicitariaId: z.string().min(1).optional(),
     /**
+     * V32 — o PRECATÓRIO que este empenho paga. VOLUNTÁRIO; o adapter confere que existe, que está
+     * inscrito e que a ficha é de sentenças judiciais (elemento 91). É ele que faz o `pagar` baixar o
+     * precatório e conferir a ordem constitucional — antes só um teste o gravava, direto no banco.
+     */
+    precatorioId: z.string().min(1).optional(),
+    /**
      * V22 — a SOLICITAÇÃO AUTORIZADA da qual o empenho é emitido. O adapter confere, DENTRO da
      * transação e sob trava, que ela está autorizada, não foi empenhada e casa com o empenho.
      */

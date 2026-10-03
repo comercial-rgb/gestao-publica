@@ -53,6 +53,7 @@ export async function pagarAction(
 
     const hipoteseBruta = String(formData.get("hipotese") ?? "").trim();
     const justificativa = String(formData.get("justificativa") ?? "").trim();
+    const justificativaOrdemConstitucional = String(formData.get("justificativaOrdemConstitucional") ?? "").trim();
     const autorizadoPor = String(formData.get("autorizadoPor") ?? "").trim();
 
     if (liquidacaoId === "") return { erro: "Escolha a liquidação a pagar." };
@@ -100,6 +101,7 @@ export async function pagarAction(
         ...(calculada ? {} : retencoes.length > 0 ? { retencoes } : {}),
         ...(operacaoFiscal !== undefined ? { operacaoFiscal } : {}),
         ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
+        ...(justificativaOrdemConstitucional !== "" ? { justificativaOrdemConstitucional } : {}),
       });
       revalidatePath("/despesa/pagamentos");
       revalidatePath("/despesa/liquidacoes");

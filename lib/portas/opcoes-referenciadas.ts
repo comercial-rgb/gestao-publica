@@ -295,6 +295,32 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       };
     },
   },
+  // V32 — os precatórios INSCRITOS e com saldo, para o empenho que os paga.
+  "precatorios-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const linhas = await cliente().precatorio.findMany({
+        where: {
+          movimentos: { some: { tipo: "INSCRICAO" } },
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(p.q === "" ? {} : { OR: [{ numeroProcesso: contem(p.q) }, { beneficiarioNome: contem(p.q) }] }),
+        },
+        orderBy: [{ dataApresentacao: "asc" }, { numeroProcesso: "asc" }],
+        skip: skip(p), take,
+        select: { id: true, numeroProcesso: true, beneficiarioNome: true, beneficiarioDocumento: true, natureza: true, tribunal: true },
+      });
+      const r = pagina(linhas, p);
+      return {
+        opcoes: r.linhas.map((x) => ({
+          valor: x.id,
+          rotulo: `${x.numeroProcesso} — ${x.beneficiarioNome}`,
+          detalhe: `${x.tribunal} · ${x.natureza === "ALIMENTAR" ? "alimentar" : "comum"} · ${formatarDocumento(x.beneficiarioDocumento)}`,
+          dados: { credorDocumento: x.beneficiarioDocumento, credorNome: x.beneficiarioNome },
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
   pessoas: {
     leitura: "CONSULTAR_CADASTROS",
     async buscar(_s, p) {

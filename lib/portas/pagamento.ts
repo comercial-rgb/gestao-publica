@@ -297,6 +297,11 @@ export async function registrarPagamento(input: {
    * autorização do pagamento; a memória de cada tributo nasce na mesma transação. Exclui `retencoes`.
    */
   readonly operacaoFiscal?: DadosFiscaisDaOperacao | undefined;
+  /**
+   * V32 — a justificativa para pagar um PRECATÓRIO fora da ordem cronológica constitucional (acordo
+   * homologado, sequestro de verba). Só texto; quem decide se é exigida é o `pagar`, na transação.
+   */
+  readonly justificativaOrdemConstitucional?: string | undefined;
 }): Promise<string> {
   // ⚠️ V6 P1.2 — A PERNA DE DISPONIBILIDADE É A CONTA CONTÁBIL DA CONTA BANCÁRIA QUE PAGA, lida
   // do cadastro (fail-closed). Vinha de uma constante (1.1.1.1.2.00.00) enquanto as contas
@@ -373,6 +378,9 @@ export async function registrarPagamento(input: {
           : {}),
         ...(input.ordemDePagamentoId !== undefined
           ? { ordemDePagamentoId: input.ordemDePagamentoId }
+          : {}),
+        ...(input.justificativaOrdemConstitucional !== undefined && input.justificativaOrdemConstitucional !== ""
+          ? { justificativaOrdemConstitucional: input.justificativaOrdemConstitucional }
           : {}),
       },
       roteiroPagamento({
