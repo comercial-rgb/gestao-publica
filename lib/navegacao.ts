@@ -630,6 +630,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Próximo exercício", itens: [
         { href: "/planejamento/proposta-orcamentaria", rotulo: "Importar e preparar a proposta" },
+        { href: "/planejamento/comparacao-de-exercicios", rotulo: "Comparação de exercícios" },
       ] },
       { rotulo: "Detalhamento e programação", itens: [
         { href: "/planejamento/qdd", rotulo: "QDD — detalhamento da despesa" },

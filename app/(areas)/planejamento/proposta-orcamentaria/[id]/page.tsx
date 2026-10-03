@@ -9,15 +9,17 @@ import { EscopoDeLeituraError } from "../../../../../lib/portas/contexto";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { acoesPermitidas } from "../../../../../lib/portas/molde";
 import {
-  lerPropostaOrcamentaria,
+  lerPropostaComConferencia,
   PortaSemBancoError,
   ROTULO_BASE_DESPESA,
   ROTULO_BASE_RECEITA,
+  type ConferenciaDaProposta,
   type PropostaDetalhada,
 } from "../../../../../lib/portas/proposta-orcamentaria";
 import { dataBr } from "../../../../../lib/recorte";
 import { toMoney } from "../../../../../packages/contracts/index";
 import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta } from "../Forms";
+import { ConferenciaDaPropostaSecao } from "./Conferencia";
 
 /**
  * UMA PROPOSTA ORÇAMENTÁRIA (M02 V29): as receitas e as fichas importadas, com a base, o projetado e o
@@ -167,11 +169,11 @@ export default async function PropostaPage({ params }: { readonly params: Promis
   // Dado do ENTE: a proposta reúne as fichas de todas as unidades.
   await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const { id } = await params;
-  let p: PropostaDetalhada | null;
+  let lido: { readonly proposta: PropostaDetalhada; readonly conferencia: ConferenciaDaProposta } | null;
   let permitidas: ReadonlySet<string>;
   try {
-    [p, permitidas] = await Promise.all([
-      lerPropostaOrcamentaria(id),
+    [lido, permitidas] = await Promise.all([
+      lerPropostaComConferencia(id),
       acoesPermitidas(["CADASTRAR_LOA", "CRIAR_FICHA", "ABRIR_EXERCICIO"]),
     ]);
   } catch (erro) {
@@ -192,7 +194,7 @@ export default async function PropostaPage({ params }: { readonly params: Promis
       </div>
     );
   }
-  if (p === null) {
+  if (lido === null) {
     return (
       <div className="space-y-4">
         <SincronizarContexto />
@@ -202,6 +204,7 @@ export default async function PropostaPage({ params }: { readonly params: Promis
     );
   }
 
+  const p = lido.proposta;
   const efetivada = p.efetivacao !== null;
   const editavel = !efetivada && permitidas.has("CADASTRAR_LOA");
   const diferenca = toMoney(p.totalDaReceita.vigente).minus(p.totalDaDespesa.vigente).toFixed(2);
@@ -254,6 +257,8 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         </div>
       </div>
 
+      <ConferenciaDaPropostaSecao c={lido.conferencia} />
+
       <section className="space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" aria-label="Gerar o orçamento">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Gerar o orçamento de {String(p.exercicio)}</h2>
         {efetivada ? (
@@ -263,6 +268,14 @@ export default async function PropostaPage({ params }: { readonly params: Promis
               {String(p.efetivacao!.fichasCriadas)} ficha(s) e {String(p.efetivacao!.receitasCriadas)} receita(s) prevista(s).{" "}
               <Link className="text-[color:var(--color-primary)] underline" href={`/planejamento/fichas?exercicio=${String(p.exercicio)}`}>
                 Ver as fichas
+              </Link>
+              {" · "}
+              <Link className="text-[color:var(--color-primary)] underline" href={`/planejamento/loa?exercicio=${String(p.exercicio)}`}>
+                Anexos da LOA de {String(p.exercicio)}
+              </Link>
+              {" · "}
+              <Link className="text-[color:var(--color-primary)] underline" href={`/planejamento/qdd?exercicio=${String(p.exercicio)}`}>
+                QDD
               </Link>
             </p>
             {p.destino.deducoesSemTipo > 0 ? (

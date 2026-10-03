@@ -132,7 +132,7 @@ export const zElaborarPropostaOrcamentaria = z
   });
 export type ElaborarPropostaOrcamentariaInput = z.input<typeof zElaborarPropostaOrcamentaria>;
 
-interface BaseDaFicha {
+export interface BaseDaFicha {
   readonly fichaId: string;
   readonly valorNaLei: Money;
   readonly valor: Money;
@@ -146,7 +146,7 @@ interface BaseDaFicha {
  * (dotação inicial zero; nasceu de um decreto). Ela é alteração EXCLUSIVA daquele exercício e só
  * entra quando o operador pede — o padrão é ficar de fora.
  */
-async function basesDasFichas(
+export async function basesDasFichas(
   tx: Tx,
   exercicio: number,
   base: BaseDaDespesaDaProposta,
@@ -216,7 +216,7 @@ async function basesDasFichas(
 }
 
 /** As previsões de origem com a base escolhida. A ATUALIZADA soma as reprevisões da mesma natureza, fonte e tipo. */
-async function basesDasReceitas(
+export async function basesDasReceitas(
   tx: Tx,
   exercicio: number,
   base: BaseDaReceitaDaProposta

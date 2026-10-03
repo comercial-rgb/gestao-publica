@@ -12,6 +12,11 @@ import {
   type PropostaDetalhada,
   type PropostaNaLista,
 } from "../../modules/m02-planejamento/proposta-orcamentaria";
+import {
+  conferirProposta,
+  levantarFatosDoPlanejamento,
+  type ConferenciaDaProposta,
+} from "../../modules/m02-planejamento/conferencia-da-proposta";
 
 /**
  * A PORTA DA PROPOSTA ORÇAMENTÁRIA (V29) — importar um exercício, alterar linha a linha, efetivar.
@@ -22,7 +27,7 @@ import {
  */
 
 export { PortaSemBancoError };
-export type { PropostaDetalhada, PropostaNaLista };
+export type { PropostaDetalhada, PropostaNaLista, ConferenciaDaProposta };
 export {
   ROTULO_BASE_DESPESA,
   ROTULO_BASE_RECEITA,
@@ -36,6 +41,20 @@ export async function lerPropostasOrcamentarias(): Promise<readonly PropostaNaLi
 export async function lerPropostaOrcamentaria(id: string): Promise<PropostaDetalhada | null> {
   await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   return detalharPropostaOrcamentaria(cliente(), id);
+}
+
+/**
+ * A PROPOSTA E A CONFERÊNCIA DELA ANTES DA VOTAÇÃO (V31) — a mesma leitura do ente, e os fatos do PPA e
+ * da LDO do exercício de destino. A conferência é calculada a cada leitura: nada fica gravado.
+ */
+export async function lerPropostaComConferencia(
+  id: string
+): Promise<{ readonly proposta: PropostaDetalhada; readonly conferencia: ConferenciaDaProposta } | null> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  const db = cliente();
+  const proposta = await detalharPropostaOrcamentaria(db, id);
+  if (proposta === null) return null;
+  return { proposta, conferencia: conferirProposta(proposta, await levantarFatosDoPlanejamento(db, proposta.exercicio)) };
 }
 
 /** Os exercícios cadastrados, do mais recente ao mais antigo — as origens possíveis da importação. */

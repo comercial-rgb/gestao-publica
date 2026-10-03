@@ -12,9 +12,10 @@
  * é execução, com ou sem a lei registrada no sistema — a ausência da lei aparece como pendência, não
  * como uma fase que não existe. O ano civil é o do ente (packages/datas), passado por parâmetro.
  *
- * ⚠️ NÃO HÁ FECHAMENTO MENSAL DE PERÍODO NESTE SISTEMA: o período de escrituração aberto é o exercício
- * não encerrado. Por isso o "período" que o cabeçalho mostra é o mês corrente do exercício em curso, e
- * a situação dele é a do exercício — dizer "período fechado" sem um fato que o feche seria inventar.
+ * ⚠️ O PERÍODO TEM SITUAÇÃO PRÓPRIA: a COMPETÊNCIA TRAVADA (M16, `MovimentoTravamento`). O guard
+ * `exigirCompetenciaDestravada` roda dentro de todo lançamento no razão e recusa fato datado numa janela
+ * travada — global ou só para aquele usuário. O cabeçalho mostra a mesma resposta que o guard daria,
+ * pela MESMA derivação (`derivarTravamento`), em `lib/portas/competencia.ts` — a interface não importa domínio.
  */
 
 export type FaseDoExercicio =
@@ -87,3 +88,4 @@ export function exercicioPadrao(anos: readonly number[], anoCivilDoEnte: number,
   if (anteriores.length > 0) return Math.max(...anteriores);
   return anos.length > 0 ? Math.min(...anos) : null;
 }
+

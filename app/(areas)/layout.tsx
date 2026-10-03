@@ -57,6 +57,7 @@ export default async function AreasLayout({
       ugPreferida={ugPreferida === null ? null : decodeURIComponent(ugPreferida)}
       anoCivil={contexto.anoCivil}
       mesCivil={contexto.mesCivil}
+      competenciaAtual={contexto.competenciaAtual}
     >
       <ShellProvider>
         <VigiaDeEdicao />

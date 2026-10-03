@@ -24,8 +24,22 @@ const TOM: Record<SituacaoDoExercicio["tom"], string> = {
 };
 
 export function SeletorExercicio(): React.ReactElement {
-  const { exercicio, setExercicio, exerciciosDisponiveis, anoCivil, mesCivil } = useUiContext();
-  const situacao = exerciciosDisponiveis.find((e) => e.ano === exercicio)?.situacao;
+  const { exercicio, setExercicio, exerciciosDisponiveis, anoCivil, mesCivil, competenciaAtual } = useUiContext();
+  const escolhido = exerciciosDisponiveis.find((e) => e.ano === exercicio);
+  const situacao = escolhido?.situacao;
+  // A competência: no exercício em curso, a de AGORA (o que o guard do razão faria com um lançamento de
+  // hoje); nos outros, quantos meses estão travados inteiros para este usuário.
+  const travados = escolhido?.mesesTravados ?? [];
+  const competencia =
+    exercicio === anoCivil
+      ? competenciaAtual === null
+        ? "competência aberta"
+        : `competência travada${competenciaAtual.escopo === "USUARIO" ? " para você" : ""}`
+      : travados.length === 0
+        ? "nenhuma competência travada"
+        : travados.length === 12
+          ? "as 12 competências travadas"
+          : `${String(travados.length)} competência(s) travada(s)`;
   return (
     <div className="flex items-center gap-2">
       <label className="flex items-center gap-1.5 text-xs text-[color:var(--color-ink-2)]">
@@ -50,13 +64,13 @@ export function SeletorExercicio(): React.ReactElement {
         <span
           data-situacao-do-exercicio={situacao.fase}
           className={`rounded-[var(--radius-md)] px-2 py-0.5 text-xs font-medium ${TOM[situacao.tom]}`}
-          title={`Período: ${periodoDoExercicio(exercicio, anoCivil, mesCivil)}`}
+          title={`Período: ${periodoDoExercicio(exercicio, anoCivil, mesCivil)} — ${competencia}`}
         >
           {situacao.rotulo}
         </span>
       ) : null}
       <span data-periodo className="hidden text-xs text-[color:var(--color-ink-3)] lg:inline">
-        {periodoDoExercicio(exercicio, anoCivil, mesCivil)}
+        {periodoDoExercicio(exercicio, anoCivil, mesCivil)} · <span data-competencia={exercicio === anoCivil ? (competenciaAtual === null ? "aberta" : "travada") : String(travados.length)}>{competencia}</span>
       </span>
     </div>
   );

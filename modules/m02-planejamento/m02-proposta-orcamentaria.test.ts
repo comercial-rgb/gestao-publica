@@ -15,6 +15,8 @@ import {
   projetar,
   valorVigente,
 } from "./proposta-orcamentaria.js";
+import { compararExercicios } from "./comparacao-de-exercicios.js";
+import { conferirProposta, levantarFatosDoPlanejamento } from "./conferencia-da-proposta.js";
 import {
   CLASSIFICACAO_VALIDA,
   SEED_ACOES,
@@ -494,4 +496,89 @@ describe("V29 — proposta orçamentária no banco", () => {
     ).rejects.toThrow(/Escolha o que aproveitar/);
     expect(await prisma.propostaOrcamentaria.count()).toBe(0);
   });
+});
+
+describe("V31 — a comparação de exercícios e a conferência da proposta, no banco", () => {
+  beforeEach(async () => {
+    await semear();
+  }, 60_000);
+
+  it("a comparação fecha com a proposta: a dotação autorizada de 2026 é a mesma que a proposta leu, e a linha que não virou receita aparece com zero", async () => {
+    const id = await elaborarPadrao();
+    const p0 = await detalharPropostaOrcamentaria(prisma, id);
+    const linha7 = p0!.despesas.find((d) => d.numero === 7)!;
+    const linhaB = p0!.receitas.find((r) => r.naturezaCodigo === "17515001")!;
+    await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: linha7.id, valor: "450000.00", motivo: "Nova unidade", criadoPor: ADMIN });
+    await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", linhaId: linhaB.id, valor: "0", motivo: "Fonte extinta", criadoPor: ADMIN });
+    await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN });
+
+    const lancamentosAntes = await prisma.lancamentoContabil.count();
+    const d = await compararExercicios(prisma, { exercicioA: 2026, exercicioB: 2027, lado: "despesa", agrupamento: "unidade" });
+    expect(d.linhas.map((l) => [l.chave, l.a.atualizado, l.a.executado, l.b.inicial, l.b.atualizado])).toEqual([
+      ["01001", "1000000.00", "300000.00", "315000.00", "315000.00"],
+      ["01002", "400000.00", "0.00", "450000.00", "450000.00"],
+    ]);
+    // O total de 2027 é o total vigente da proposta efetivada — a mesma verdade nas duas telas.
+    expect(d.total.b.atualizado).toBe((await detalharPropostaOrcamentaria(prisma, id))!.totalDaDespesa.vigente);
+
+    const r = await compararExercicios(prisma, { exercicioA: 2026, exercicioB: 2027, lado: "receita", agrupamento: "natureza" });
+    expect(r.linhas.map((l) => [l.chave, l.a.inicial, l.a.atualizado, l.b.atualizado])).toEqual([
+      ["11125001", "2000000.00", "2100000.00", "2310000.00"],
+      ["17515001", "800000.00", "800000.00", "0.00"],
+    ]);
+    // Comparar não grava nada.
+    expect(await prisma.lancamentoContabil.count()).toBe(lancamentosAntes);
+  }, 60_000);
+
+  it("a conferência lê a meta da LDO do PRÓPRIO exercício (N=2 anos na mesma LDO) e a prioridade sem valor", async () => {
+    const id = await elaborarPadrao();
+    const vazio = await levantarFatosDoPlanejamento(prisma, 2027);
+    // Negação com motivo: sem LDO e sem PPA, os fatos dizem isso — não um "conforme" vazio.
+    expect(vazio).toEqual({ metaDaLdo: { ldoRegistrada: false }, prioridadesDaLdo: [], plano: null });
+
+    const metas = (ano: number, receita: string, despesa: string) => ({
+      ano,
+      receitaTotal: receita,
+      receitaPrimaria: receita,
+      despesaTotal: despesa,
+      despesaPrimaria: despesa,
+      resultadoNominal: "0",
+      dividaPublicaConsolidada: "0",
+      dividaConsolidadaLiquida: "0",
+      receitaPrimariaPpp: "0",
+      despesaPrimariaPpp: "0",
+      impactoSaldoPpp: "0",
+      criadoPor: "TESTE",
+    });
+    await prisma.leiDiretrizesOrcamentarias.create({
+      data: {
+        exercicio: 2027,
+        inicioVigencia: new Date("2026-07-01T03:00:00Z"),
+        fimVigencia: new Date("2027-12-31T03:00:00Z"),
+        criadoPor: "TESTE",
+        metasAnuais: { create: [metas(2027, "3190000.00", "315000.00"), metas(2028, "9.00", "9.00")] },
+        prioridades: {
+          create: [
+            { acaoId: "aca-2001", descricaoAcao: "Ensino fundamental", produto: "aluno", unidadeMedida: "un", meta: "1", criadoPor: "TESTE" },
+            { acaoId: null, descricaoAcao: "Ação ainda sem cadastro", produto: "x", unidadeMedida: "un", meta: "1", criadoPor: "TESTE" },
+          ],
+        },
+      },
+    });
+    const fatos = await levantarFatosDoPlanejamento(prisma, 2027);
+    expect(fatos.metaDaLdo).toEqual({ ldoRegistrada: true, meta: { receitaTotal: toMoney("3190000.00"), despesaTotal: toMoney("315000.00"), ajustes: 0 } });
+    expect(fatos.prioridadesDaLdo).toEqual([
+      { acaoCodigo: "2001", descricao: "Ensino fundamental" },
+      { acaoCodigo: null, descricao: "Ação ainda sem cadastro" },
+    ]);
+
+    const c = conferirProposta((await detalharPropostaOrcamentaria(prisma, id))!, fatos);
+    // Receita e despesa (pelo empenhado: 315.000) coincidem com a meta de 2027 — e não com a de 2028.
+    expect(c.verificacoes.find((v) => v.codigo === "LDO")?.situacao).toBe("CONFORME");
+    // A ação 2001 tem valor na proposta: a prioridade está atendida.
+    expect(c.verificacoes.find((v) => v.codigo === "PRIORIDADES_DA_LDO")?.situacao).toBe("CONFORME");
+    // Mas 3.190.000 de receita para 315.000 de despesa não é equilíbrio.
+    expect(c.verificacoes.find((v) => v.codigo === "EQUILIBRIO")?.situacao).toBe("ATENCAO");
+  }, 60_000);
 });

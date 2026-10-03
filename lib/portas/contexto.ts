@@ -15,6 +15,7 @@ import { recorteDePaginaPara } from "./leitura";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes";
 import { anoCivil, mesCivil } from "../../packages/datas/index";
 import { exercicioPadrao, situacaoDoExercicio, type SituacaoDoExercicio } from "../situacao-do-exercicio";
+import { competenciaTravadaEm, mesesTravados } from "./competencia";
 
 // ⚠️ OS DOIS ERROS SAEM PELA PORTA, e não é conveniência de import: é o idioma que ~70
 // telas já falam com `PortaSemBancoError` (e `lib/portas/tesouraria.ts` com
@@ -51,6 +52,8 @@ export interface ExercicioDisponivel {
   readonly encerrado: boolean;
   /** Proposta, orçamento aprovado, execução ou encerrado — derivada dos fatos (lib/situacao-do-exercicio). */
   readonly situacao: SituacaoDoExercicio;
+  /** Os meses (1..12) travados inteiros para ESTE usuário — o mesmo que o guard do razão recusaria. */
+  readonly mesesTravados?: readonly number[];
 }
 
 export interface UgDisponivel {
@@ -82,6 +85,8 @@ export interface ContextoDoUsuario {
   readonly mesCivil: number;
   /** O exercício que abre a sessão: o escolhido antes (cookie), senão o do ano civil — nunca "o mais recente". */
   readonly exercicioInicial: number | null;
+  /** A competência de agora está travada para este usuário? (null = aberta) */
+  readonly competenciaAtual: { readonly escopo: "GLOBAL" | "USUARIO"; readonly travadoPor: string } | null;
 }
 
 /**
@@ -270,14 +275,20 @@ export async function recorteDePagina(
  */
 export async function carregarContextoDoUsuario(exercicioPreferido: number | null = null): Promise<ContextoDoUsuario> {
   const sessao = await exigirSessao();
-  const [{ ugs, global }, exercicios, acoes] = await Promise.all([
+  const [{ ugs, global }, exerciciosCrus, acoes, travas] = await Promise.all([
     listarUgsDoUsuario(sessao),
     listarExercicios(),
     listarAcoesDoUsuario(sessao),
+    // A tabela cresce um evento por fechamento: poucas linhas, lidas inteiras uma vez por página.
+    cliente().movimentoTravamento.findMany({
+      select: { id: true, tipo: true, janelaInicio: true, janelaFim: true, usuarioAlvo: true, criadoEm: true, criadoPor: true },
+    }),
   ]);
   const agora = new Date();
   const ano = anoCivil(agora);
+  const exercicios = exerciciosCrus.map((e) => ({ ...e, mesesTravados: mesesTravados(travas, e.ano, sessao.identificador) }));
   return {
+    competenciaAtual: competenciaTravadaEm(travas, agora, sessao.identificador),
     exercicios,
     ugs,
     podeConsolidado: global,

@@ -24,7 +24,12 @@ export interface Exercicio {
   readonly encerrado: boolean;
   /** Proposta, aprovado, execução ou encerrado (derivada no servidor). Ausente só em render isolado. */
   readonly situacao?: SituacaoDoExercicio;
+  /** Os meses travados inteiros para este usuário (derivados no servidor). */
+  readonly mesesTravados?: readonly number[];
 }
+
+/** A competência de agora travada para o usuário (null = aberta). */
+export type CompetenciaAtual = { readonly escopo: "GLOBAL" | "USUARIO"; readonly travadoPor: string } | null;
 
 /**
  * ⚠️ A ESCOLHA DE EXERCÍCIO E UNIDADE SOBREVIVE AO RECARREGAMENTO — em COOKIE, que o layout lê no
@@ -65,6 +70,7 @@ export interface UiContextValor {
   /** O ano e o mês civis do ente (o período do cabeçalho). */
   readonly anoCivil: number;
   readonly mesCivil: number;
+  readonly competenciaAtual: CompetenciaAtual;
 }
 
 const UiContext = createContext<UiContextValor | null>(null);
@@ -81,6 +87,7 @@ export interface UiContextProviderProps {
   readonly ugPreferida?: string | null;
   readonly anoCivil?: number;
   readonly mesCivil?: number;
+  readonly competenciaAtual?: CompetenciaAtual;
 }
 
 /**
@@ -109,6 +116,7 @@ export function UiContextProvider({
   ugPreferida = null,
   anoCivil: anoDoEnte,
   mesCivil: mesDoEnte,
+  competenciaAtual = null,
 }: UiContextProviderProps): React.ReactElement {
   const [exercicio, setExercicioCru] = useState<number>(
     exercicioInicial ?? exercicios[0]?.ano ?? anoCivil(new Date())
@@ -141,8 +149,9 @@ export function UiContextProvider({
       podeConsolidado,
       anoCivil: anoCivilDoEnte,
       mesCivil: mesCivilDoEnte,
+      competenciaAtual,
     }),
-    [exercicio, ug, exercicios, ugs, podeConsolidado, setExercicio, setUg, anoCivilDoEnte, mesCivilDoEnte]
+    [exercicio, ug, exercicios, ugs, podeConsolidado, setExercicio, setUg, anoCivilDoEnte, mesCivilDoEnte, competenciaAtual]
   );
 
   return <UiContext.Provider value={valor}>{children}</UiContext.Provider>;

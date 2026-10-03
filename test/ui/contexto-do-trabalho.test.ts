@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { exercicioPadrao, periodoDoExercicio, situacaoDoExercicio, type FatosDoExercicio } from "../../lib/situacao-do-exercicio";
+import { competenciaTravadaEm, mesesTravados } from "../../lib/portas/competencia";
 import { alinharContextoEUrl, caminhoDaLista } from "../../lib/contexto-na-url";
 
 /**
@@ -133,5 +134,37 @@ describe("o alinhamento entre o seletor e a URL", () => {
       anterior: { exercicio: 2026, ugCodigo: null },
     });
     expect(r.destino).toBeNull();
+  });
+});
+
+describe("a competência no cabeçalho — a mesma resposta do guard do razão", () => {
+  const ev = (id: string, tipo: "TRAVAR" | "DESTRAVAR", ini: string, fim: string, usuarioAlvo: string | null, criadoEm: string) => ({
+    id,
+    tipo,
+    janelaInicio: new Date(ini),
+    janelaFim: new Date(fim),
+    usuarioAlvo,
+    criadoEm: new Date(criadoEm),
+    criadoPor: "contador@ente",
+  });
+  // Setembro e outubro travados para todos (horário civil de Brasília: -03:00); outubro destravado só para a ana;
+  // e uma trava por data de 1 a 15 de novembro, que NÃO fecha a competência inteira.
+  const eventos = [
+    ev("e1", "TRAVAR", "2026-09-01T03:00:00Z", "2026-11-01T02:59:59.999Z", null, "2026-11-02T12:00:00Z"),
+    ev("e2", "DESTRAVAR", "2026-10-01T03:00:00Z", "2026-11-01T02:59:59.999Z", "ana", "2026-11-03T12:00:00Z"),
+    ev("e3", "TRAVAR", "2026-11-01T03:00:00Z", "2026-11-16T02:59:59.999Z", null, "2026-11-20T12:00:00Z"),
+  ];
+
+  it("t1: os meses travados inteiros, por usuário — a trava parcial de novembro não conta", () => {
+    expect(mesesTravados(eventos, 2026, "bruno")).toEqual([9, 10]);
+    expect(mesesTravados(eventos, 2026, "ana")).toEqual([9]);
+    expect(mesesTravados(eventos, 2025, "bruno")).toEqual([]);
+  });
+
+  it("t2: a competência de agora diz o escopo — e a borda civil de 31/10 às 23h59 ainda é outubro", () => {
+    const borda = new Date("2026-11-01T02:59:00Z"); // 31/10 23:59 em Brasília
+    expect(competenciaTravadaEm(eventos, borda, "bruno")).toEqual({ escopo: "GLOBAL", travadoPor: "contador@ente" });
+    expect(competenciaTravadaEm(eventos, borda, "ana")).toBeNull();
+    expect(competenciaTravadaEm(eventos, new Date("2026-12-10T15:00:00Z"), "bruno")).toBeNull();
   });
 });
