@@ -22,6 +22,7 @@ set -euo pipefail
 
 PACOTE=""
 MANIFESTO=""
+APROVACAO_DE_TIPOS=""
 SO_CONFERIR=0
 RAIZ="/opt/gestao-publica"
 USUARIO="gestao-publica"
@@ -31,6 +32,7 @@ while [ $# -gt 0 ]; do
     --pacote) PACOTE="${2:-}"; shift 2 ;;
     --manifesto) MANIFESTO="${2:-}"; shift 2 ;;
     --conferir) SO_CONFERIR=1; shift ;;
+    --aprovacao-de-tipos) APROVACAO_DE_TIPOS="${2:-}"; shift 2 ;;
     --raiz) RAIZ="${2:-}"; shift 2 ;;
     *) echo "argumento desconhecido: $1"; exit 2 ;;
   esac
@@ -140,7 +142,19 @@ passo 7 "o banco: dono migra, runtime opera"
   echo "  (licenciamento ja instalado, ou faltam LICENCA_NUMERO/LICENCA_CLIENTE no .env — conferir)"
 
 passo 8 "o build, e a prova de que o PDF sai NESTE runtime"
-( cd "$RAIZ" && sudo -u "$USUARIO" env NEXT_PUBLIC_BUILD_COMMIT="$(grep '^commit=' "$MANIFESTO" | cut -d= -f2- | cut -c1-7)" npx next build )
+# ⚠️ A CONFERÊNCIA DE TIPOS NÃO CABE EM SERVIDOR PEQUENO (V29: mais de 6 GB de heap). Ela roda na
+# máquina de construção (`npm run tipos:conferir`), que grava uma aprovação pelo DIGESTO DO CONTEÚDO.
+# Trazida com --aprovacao-de-tipos, o build a confere (next.config.mjs) e só dispensa o tsc se o
+# conteúdo for o mesmo; se não for, o build PARA nomeando o que mudou. Sem ela, o build faz o tsc.
+PULAR=""
+if [ -n "$APROVACAO_DE_TIPOS" ]; then
+  [ -f "$APROVACAO_DE_TIPOS" ] || erro "aprovacao de tipos nao encontrada: $APROVACAO_DE_TIPOS" 2
+  sudo -u "$USUARIO" mkdir -p "$RAIZ/.registro-de-execucao/conferencia-de-tipos"
+  sudo cp "$APROVACAO_DE_TIPOS" "$RAIZ/.registro-de-execucao/conferencia-de-tipos/"
+  sudo chown -R "$USUARIO:$USUARIO" "$RAIZ/.registro-de-execucao"
+  PULAR="PULAR_CONFERENCIA_DE_TIPOS_DO_BUILD=1"
+fi
+( cd "$RAIZ" && sudo -u "$USUARIO" env $PULAR NEXT_PUBLIC_BUILD_COMMIT="$(grep '^commit=' "$MANIFESTO" | cut -d= -f2- | cut -c1-7)" npx next build )
 # ⚠️ CHROMIUM INSTALADO NÃO É PDF RENDERIZADO. Fonte faltando produz caixas no lugar das letras,
 # e isso só aparece olhando o arquivo. O ensaio é aqui, antes de o serviço subir.
 ( cd "$RAIZ" && sudo -u "$USUARIO" npx tsx scripts/preflight-navegador.ts ) || \
