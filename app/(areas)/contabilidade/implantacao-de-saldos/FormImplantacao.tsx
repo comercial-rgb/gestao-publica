@@ -18,6 +18,8 @@ import { implantacaoAction, type EstadoDaImplantacao } from "./actions";
 export function FormImplantacao(): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaImplantacao, FormData>(implantacaoAction, {});
   const [texto, setTexto] = useState("");
+  // Controlada: o React limpa os campos não controlados quando a ação volta, e a data sumiria depois de "Conferir".
+  const [dia, setDia] = useState("");
   return (
     <form action={action} data-painel="implantar-saldos" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -37,7 +39,7 @@ export function FormImplantacao(): React.ReactElement {
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Data da implantação</span>
-          <input name="dia" type="date" className={CAMPO} />
+          <input name="dia" type="date" value={dia} onChange={(e) => setDia(e.target.value)} className={CAMPO} />
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Balancete: conta;saldo devedor;saldo credor (uma conta por linha)</span>
