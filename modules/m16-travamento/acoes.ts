@@ -822,6 +822,7 @@ export type NomeDeServico =
   | "arrecadarQuitandoReconhecimento"
   | "arrecadarRecebendoDividaAtiva"
   | "arrecadarIngressoDaOperacaoDeCredito"
+  | "fecharCompetenciaConferida"
   | "anularArrecadacao"
   | "reconhecerReceita"
   | "estornarReconhecimento"
@@ -1604,6 +1605,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarLinhaDemonstrativo: "CADASTRAR_LINHA_DEMONSTRATIVO",
 
   travar: "TRAVAR_COMPETENCIA",
+  // V32 — fechar o mês pela tela, depois da conferência de divergências: o MESMO ato de travar.
+  fecharCompetenciaConferida: "TRAVAR_COMPETENCIA",
   destravar: "DESTRAVAR_COMPETENCIA",
 
   // M16 — administração de usuários (7.14). A família ADMINISTRACAO — quem gerencia usuários não é
@@ -2259,6 +2262,8 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V32 ──
+  situacaoDoFechamento: "leitura (as doze competências do exercício e se cada uma está fechada para todos — não muta)",
   // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
   protocoloDaNorma: "puro (o protocolo do registro ou o informado depois)",
   listarAnexosDasNormas: "leitura (os PDFs das leis no cadastro de normas, por norma — não muta)",
