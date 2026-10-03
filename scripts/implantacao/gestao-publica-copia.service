@@ -1,0 +1,12 @@
+# Cópia de segurança diária do banco (V32). Instalar em /etc/systemd/system/ junto com o .timer.
+# A senha do dono do banco vem do ~/.pgpass do usuário de serviço; o destino externo, de /etc/gestao-publica/copia.env.
+[Unit]
+Description=Gestao Publica - copia de seguranca do banco
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+EnvironmentFile=/etc/gestao-publica/copia.env
+ExecStart=/usr/local/sbin/gestao-publica-copia-de-seguranca.sh
+# Saída 2 = cópia local feita e cópia externa indisponível: o serviço fica "failed" de propósito, para acusar.
