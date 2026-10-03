@@ -56,7 +56,9 @@ async function main(): Promise<void> {
     const itens = await page.evaluate(() =>
       [...document.querySelectorAll('li[data-aba="planejamento"] a')].map((a) => [a.textContent?.trim() ?? "", a.getAttribute("href") ?? ""])
     );
-    const temItem = (rotulo: string, href: string): boolean => itens.some(([t, h]) => t === rotulo && h === href);
+    // Os links levam o contexto (?exercicio=): confere-se o CAMINHO e que o exercício vai junto.
+    const temItem = (rotulo: string, href: string): boolean =>
+      itens.some(([t, h]) => t === rotulo && (h ?? "").split("?")[0] === href && /exercicio=\d{4}/.test(h ?? ""));
     R.conferir("A.3 a aba abre os grupos com o nome do contador: Importar e preparar a proposta", temItem("Importar e preparar a proposta", "/planejamento/proposta-orcamentaria"), JSON.stringify(itens));
     R.conferir("A.4 e a comparação de exercícios", temItem("Comparação de exercícios", "/planejamento/comparacao-de-exercicios"), JSON.stringify(itens));
 
@@ -115,11 +117,12 @@ async function main(): Promise<void> {
       /n[ãa]o salvos/i.test(perguntou) && new URL(page.url()).pathname === "/planejamento/proposta-orcamentaria",
       `${perguntou} · ${page.url()}`
     );
+    // O rascunho de B.2 continua no formulário: sair agora dispara o aviso do navegador — aceito aqui.
+    page.on("dialog", (d) => void d.accept());
     await sair(N, page).catch(() => undefined);
 
     // ══ C (administrador): abrir 2027 e gerar ══
     await entrar(N, page, ADMIN, SENHA_ADMIN);
-    page.on("dialog", (d) => void d.accept());
     await irPara(N, page, rota);
     const ab = await preencherEEnviar(page, "abrir-exercicio", []);
     R.conferir(`C.5 o administrador abre ${String(DESTINO)}`, ab.tipo === "ok", `${ab.tipo}: ${ab.texto}`);
