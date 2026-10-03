@@ -116,7 +116,9 @@ if [ "$SIMULAR" -eq 1 ] || [ -f "$APROVACAO" ]; then
   na_versao cp scripts/implantacao/aprovacao-de-tipos.json ".registro-de-execucao/conferencia-de-tipos/$DIGESTO_APROVADO.json"
   PULAR="PULAR_CONFERENCIA_DE_TIPOS_DO_BUILD=1"
 fi
-na_versao env $PULAR NEXT_PUBLIC_BUILD_COMMIT="$CURTO" npx next build
+# A compilação do Next passa do heap padrão do Node numa máquina de 2 GB (medido: OOM no primeiro
+# deploy da EC2 t3.small). A memória de troca (4 GB) cobre o pico; HEAP_DO_BUILD ajusta sem editar o script.
+na_versao env $PULAR NODE_OPTIONS="--max-old-space-size=${HEAP_DO_BUILD:-3072}" NEXT_PUBLIC_BUILD_COMMIT="$CURTO" npx next build
 na_versao npx tsx scripts/preflight-navegador.ts
 
 # ─────────────────────────────────────────────────────────────────────────────
