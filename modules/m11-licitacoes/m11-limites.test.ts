@@ -79,6 +79,7 @@ const IMOBILIZADO = "1.2.3.1.1.01.00";
 const FORNECEDOR = "2.1.3.1.1.00.00";
 const VPD = "3.3.2.1.1.01.00";
 const VPA_INCORP = "4.5.9.1.1.00.00";
+const A_INCORPORAR = "1.2.3.1.1.99.00";
 const C_DISPONIVEL = "6.2.2.1.1.00.00";
 const C_EMPENHADO = "6.2.2.1.3.01.00";
 const C_LIQUIDADO = "6.2.2.1.3.03.00";
@@ -89,6 +90,11 @@ const R_EMPENHO = roteiroEmpenho({
 });
 const R_LIQUIDACAO = roteiroLiquidacao({
   variacaoDiminutiva: VPD, obrigacaoAPagar: FORNECEDOR,
+  creditoEmpenhado: C_EMPENHADO, creditoLiquidado: C_LIQUIDADO,
+});
+/** A liquidação de CAPITAL debita "bens a incorporar"; a incorporação retira dali (V28). */
+const R_LIQUIDACAO_CAPITAL = roteiroLiquidacao({
+  variacaoDiminutiva: A_INCORPORAR, obrigacaoAPagar: FORNECEDOR,
   creditoEmpenhado: C_EMPENHADO, creditoLiquidado: C_LIQUIDADO,
 });
 const R_PAGAMENTO = roteiroPagamento({
@@ -113,6 +119,7 @@ async function semear(): Promise<void> {
       { id: "c-imob", codigo: IMOBILIZADO, nome: "Veículos", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
       { id: "c-forn", codigo: FORNECEDOR, nome: "Fornecedores", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-vpd", codigo: VPD, nome: "VPD", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
+      { id: "c-a-incorporar", codigo: A_INCORPORAR, nome: "Bens a incorporar", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
       { id: "c-vpa-inc", codigo: VPA_INCORP, nome: "VPA incorporação", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-disp", codigo: C_DISPONIVEL, nome: "Crédito Disponível", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-emp", codigo: C_EMPENHADO, nome: "Crédito Empenhado", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
@@ -157,7 +164,9 @@ async function semear(): Promise<void> {
     ],
   });
   await prisma.roteiroPatrimonial.create({
-    data: { tipo: "AQUISICAO", contaDebitoId: "c-imob", contaCreditoId: "c-vpa-inc", criadoPor: POR },
+    // V28 — a aquisição RETIRA o valor da conta em que a liquidação o pôs (bens a incorporar), em vez de reconhecer
+    // a compra outra vez numa VPA. O mesmo modelo de `m10-patrimonio.test.ts`.
+    data: { tipo: "AQUISICAO", contaDebitoId: "c-imob", contaCreditoId: "c-a-incorporar", criadoPor: POR },
   });
 
   // OS LIMITES OFICIAIS (dado colado, não digitado).
@@ -420,7 +429,7 @@ describe("M11 bloco 3 — limites, aquisição e relatório", () => {
         data: new Date("2026-03-01T12:00:00Z"), responsavelAtesto: "Fulano",
         historico: "liquidação", criadoPor: POR,
       },
-      R_LIQUIDACAO,
+      R_LIQUIDACAO_CAPITAL,
       deps
     );
 
