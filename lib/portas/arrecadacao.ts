@@ -13,6 +13,7 @@ import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma";
 import { registrarArrecadacao } from "../../modules/m04-receita/servico";
 import { arrecadarQuitandoReconhecimento } from "../../modules/m04-receita/arrecadacao-vinculada";
 import { exigirContaDaReceita } from "../../modules/m04-receita/conta-da-receita";
+import { arrecadarIngressoDaOperacaoDeCredito, arrecadarRecebendoDividaAtiva } from "../../modules/m10-patrimonial/adapter-m04";
 import {
   roteiroArrecadacao,
   roteiroArrecadacaoDistribuida,
@@ -145,7 +146,15 @@ export async function registrarGuia(input: {
    * receber da origem, e a VPA não se repete; ausente, é a guia comum (receita sem lançamento).
    */
   readonly reconhecimentoId?: string | undefined;
+  /** V32 — a dívida ativa que esta guia RECEBE (a guia inteira baixa o crédito inscrito). */
+  readonly dividaAtivaId?: string | undefined;
+  /** V32 — a operação de crédito (dívida fundada) cujo INGRESSO esta guia registra. */
+  readonly dividaFundadaId?: string | undefined;
 }): Promise<string> {
+  const vinculos = [input.reconhecimentoId, input.dividaAtivaId, input.dividaFundadaId].filter((v) => v !== undefined && v !== "");
+  if (vinculos.length > 1) {
+    throw new Error("Uma guia quita um crédito lançado, OU recebe uma dívida ativa, OU registra o ingresso de uma operação de crédito — escolha só um. Nada foi gravado.");
+  }
   return comEscritaAutenticada("REGISTRAR_ARRECADACAO", async (criadoPor) => {
     // A perna de disponibilidade É a conta contábil da conta bancária declarada — do cadastro.
     const conta = await cliente().contaBancaria.findUnique({
@@ -180,6 +189,25 @@ export async function registrarGuia(input: {
         reconhecimentoId: input.reconhecimentoId,
       });
       return q.receitaId;
+    }
+    if (input.dividaAtivaId !== undefined && input.dividaAtivaId !== "") {
+      const d = await arrecadarRecebendoDividaAtiva(cliente(), {
+        arrecadacao: daGuia,
+        disponibilidade: conta.contaContabil.codigo,
+        naturezaDaFonte: natureza.natureza,
+        dividaAtivaId: input.dividaAtivaId,
+      });
+      return d.receitaId;
+    }
+    if (input.dividaFundadaId !== undefined && input.dividaFundadaId !== "") {
+      const d = await arrecadarIngressoDaOperacaoDeCredito(cliente(), {
+        arrecadacao: daGuia,
+        disponibilidade: conta.contaContabil.codigo,
+        naturezaDaFonte: natureza.natureza,
+        dividaId: input.dividaFundadaId,
+        motivo: `Ingresso pela guia ${input.numeroReceita}`,
+      });
+      return d.receitaId;
     }
     // A VPA só existe na guia comum (na que quita crédito lançado a receita já foi reconhecida); lida ainda antes de gravar.
     const vpa = await exigirContaDaReceita(cliente(), input.naturezaReceita);

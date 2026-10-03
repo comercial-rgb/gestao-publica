@@ -1,0 +1,29 @@
+/// V32 — O ROTEIRO DE PRECATÓRIO E DE CONVÊNIO DECLARADO PELO ENTE, PELA TELA.
+///
+/// `RoteiroPrecatorio` e `RoteiroConvenio` só eram escritos por teste: numa instalação limpa, inscrever
+/// precatório e aprovar prestação de convênio eram recusados, e a recusa não tinha saída. Esta tabela é
+/// a declaração do contador, APPEND-ONLY e versionada por (família, chave): vale a maior versão, e os
+/// serviços a leem antes da tabela antiga (que segue valendo para quem já a tinha).
+///
+/// Contas por CÓDIGO, conferidas na declaração (existem, são analíticas, são do subsistema que o
+/// movimento lança) — o precedente de `ContaDaReceitaPorNatureza`.
+model RoteiroPatrimonialDeclarado {
+  id String @id @default(cuid())
+
+  /// PRECATORIO ou CONVENIO.
+  familia String @db.VarChar(20)
+  /// O movimento: INSCRICAO, ATUALIZACAO, CANCELAMENTO (precatório); PRESTACAO_APROVADA/CONCEDENTE... (convênio).
+  chave String @db.VarChar(60)
+
+  contaDebitoCodigo  String @db.VarChar(20)
+  contaCreditoCodigo String @db.VarChar(20)
+  historicoPadrao    String
+  fundamento         String
+
+  versao    Int
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([familia, chave, versao])
+  @@index([familia, chave, versao])
+}

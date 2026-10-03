@@ -15,6 +15,9 @@ import type {
 } from "../m04-receita/ports.js";
 import { estornarIngressoNaTx, ingressoNaTx } from "./divida.js";
 import { estornarRecebimentoNaTx, receberNaTx } from "./divida-ativa.js";
+import { roteiroArrecadacao as roteiroDaGuiaComum, type NaturezaDaFonteDdr } from "../m01-core-contabil/roteiros.js";
+import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { autorizarNo } from "../m16-travamento/escopo.js";
 
 /**
  * M10 × M04 — O ÚNICO LUGAR ONDE OS DOIS MÓDULOS SE ENCONTRAM.
@@ -212,5 +215,89 @@ export function criarM04DepsComDividas(prisma: PrismaClient): M04Deps {
   return criarM04Deps(prisma, {
     contasReservadas: criarContaReservadaPort(prisma),
     aoAnular: criarAoAnularArrecadacaoPort(),
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V32 — AS DUAS COMPOSTAS ALCANÇADAS PELA GUIA DA TELA
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A guia comum da tela (`registrarGuia`) e o que ela precisa dizer para virar recebimento de dívida
+ * ativa ou ingresso de operação de crédito. A conta de disponibilidade é a da conta bancária (lida pela
+ * porta); a natureza da fonte é a declarada pelo ente (DDR).
+ */
+export interface GuiaDaTelaParaDivida {
+  readonly arrecadacao: RegistrarArrecadacaoInput;
+  readonly disponibilidade: string;
+  readonly naturezaDaFonte: NaturezaDaFonteDdr;
+}
+
+/**
+ * V32 — RECEBER DÍVIDA ATIVA PELA GUIA DA TELA. Até aqui `arrecadarRecebimentoDividaAtiva` só tinha
+ * chamador em teste: o operador registrava a guia como receita comum (D caixa × C VPA) e a dívida ativa
+ * ficava com o saldo inteiro — a receita era reconhecida DUAS vezes (na inscrição e na guia).
+ *
+ * ⚠️ O ROTEIRO É O DA GUIA COMUM com UMA perna trocada: o crédito vai à CONTA DA DÍVIDA ATIVA (a do
+ * cadastro, classe 1), e não à VPA. É permutativo — a VPA nasceu na inscrição. As pernas orçamentária e
+ * de DDR são as mesmas de qualquer guia: o recebimento É receita orçamentária.
+ *
+ * ⚠️ A GUIA INTEIRA quita a dívida escolhida (a composta recusa vínculo parcial, e recusa receber mais
+ * que o saldo — `receberNaTx`). Tudo conferido antes de gravar; a autorização é a de arrecadar.
+ */
+export async function arrecadarRecebendoDividaAtiva(
+  prisma: PrismaClient,
+  input: GuiaDaTelaParaDivida & { readonly dividaAtivaId: string }
+): Promise<{ readonly receitaId: string; readonly movimentoIds: readonly string[] }> {
+  await autorizarNo(prisma, input.arrecadacao.criadoPor, ACAO_DO_SERVICO.arrecadarRecebendoDividaAtiva, "ENTE");
+  const divida = await prisma.dividaAtiva.findUnique({
+    where: { id: input.dividaAtivaId },
+    select: { identificador: true, contaContabil: { select: { codigo: true, analitica: true } } },
+  });
+  if (divida === null) throw new Error("A dívida ativa indicada não existe. Escolha a dívida na lista. Nada foi gravado.");
+  if (!divida.contaContabil.analitica) {
+    throw new Error(`A conta ${divida.contaContabil.codigo} da dívida ativa ${divida.identificador} é sintética; o recebimento não tem onde baixar o crédito. Nada foi gravado.`);
+  }
+  return arrecadarRecebimentoDividaAtiva(prisma, {
+    arrecadacao: input.arrecadacao,
+    roteiro: roteiroDaGuiaComum({
+      disponibilidade: input.disponibilidade,
+      // ⚠️ A PERNA QUE TORNA O ATO PERMUTATIVO: o crédito inscrito, e não a VPA.
+      variacaoAumentativa: divida.contaContabil.codigo,
+      naturezaDaFonte: input.naturezaDaFonte,
+    }),
+    vinculos: [{ dividaAtivaId: input.dividaAtivaId, valor: toMoney(String(input.arrecadacao.valor)).toFixed(2) }],
+  });
+}
+
+/**
+ * V32 — O INGRESSO DA OPERAÇÃO DE CRÉDITO PELA GUIA DA TELA. Mesmo desenho: o empréstimo que entra é
+ * receita orçamentária de capital, e a contrapartida patrimonial é o PASSIVO da dívida (classe 2, do
+ * cadastro) — nunca uma VPA, que faria o empréstimo aparecer como riqueza do ente.
+ */
+export async function arrecadarIngressoDaOperacaoDeCredito(
+  prisma: PrismaClient,
+  input: GuiaDaTelaParaDivida & { readonly dividaId: string; readonly motivo: string }
+): Promise<{ readonly receitaId: string; readonly movimentoId: string }> {
+  await autorizarNo(prisma, input.arrecadacao.criadoPor, ACAO_DO_SERVICO.arrecadarIngressoDaOperacaoDeCredito, "ENTE");
+  const divida = await prisma.dividaConsolidada.findUnique({
+    where: { id: input.dividaId },
+    select: { identificador: true, contaContabil: { select: { codigo: true, analitica: true } } },
+  });
+  if (divida === null) throw new Error("A dívida fundada indicada não existe. Escolha a operação de crédito na lista. Nada foi gravado.");
+  if (!divida.contaContabil.analitica) {
+    throw new Error(`A conta ${divida.contaContabil.codigo} da dívida ${divida.identificador} é sintética; o ingresso não tem onde registrar o passivo. Nada foi gravado.`);
+  }
+  if (input.motivo.trim() === "") throw new Error("Informe o histórico do ingresso (contrato, parcela liberada). Nada foi gravado.");
+  return arrecadarIngressoOperacaoCredito(prisma, {
+    arrecadacao: input.arrecadacao,
+    roteiro: roteiroDaGuiaComum({
+      disponibilidade: input.disponibilidade,
+      // ⚠️ O empréstimo entra no PASSIVO da dívida, não na VPA.
+      variacaoAumentativa: divida.contaContabil.codigo,
+      naturezaDaFonte: input.naturezaDaFonte,
+    }),
+    dividaId: input.dividaId,
+    motivo: input.motivo.trim(),
   });
 }

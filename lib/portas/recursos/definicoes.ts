@@ -517,6 +517,20 @@ export const DIVIDA_ATIVA: DefinicaoDeRecurso = definirRecurso({
         { nome: "diaMovimento", rotulo: "Data da inscrição", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
       ] },
+    { nome: "reclassificar", rotulo: "Inscrever crédito já lançado", acaoDoCenso: "INSCREVER_DIVIDA_ATIVA",
+      aviso:
+        "Para o crédito que já foi lançado (como o IPTU constituído) e não foi pago no vencimento: o valor sai do " +
+        "crédito a receber e entra na dívida ativa, sem reconhecer a receita de novo.",
+      campos: [
+        {
+          nome: "reconhecimentoId", rotulo: "Crédito lançado", tipo: "referencia", catalogo: "creditos-a-receber",
+          obrigatorio: true, largura: 4,
+          ajuda: "Créditos lançados com saldo ainda não arrecadado.",
+        },
+        { nome: "valor", rotulo: "Valor inscrito (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
+        { nome: "diaMovimento", rotulo: "Data da inscrição", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 4 },
+      ] },
     { nome: "atualizar", rotulo: "Atualizar (juros, multa, correção)", acaoDoCenso: "ATUALIZAR_DIVIDA_ATIVA",
       aviso: "A atualização é registrada uma vez por competência; após estorno, pode ser registrada novamente.",
       campos: [

@@ -667,6 +667,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/licitacoes/documentos-fiscais", rotulo: "Documentos fiscais" },
         { href: "/despesa/assinaturas", rotulo: "Assinatura dos documentos" },
         { href: "/despesa/campanhas-publicitarias", rotulo: "Campanhas publicitárias" },
+        { href: "/despesa/adiantamentos", rotulo: "Diárias e suprimento de fundos" },
       ] },
       { rotulo: "Restos a pagar", itens: [
         { href: "/despesa/restos-a-pagar", rotulo: "Restos a pagar" },
@@ -830,6 +831,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/contabilidade/roteiros-de-restos-a-pagar", rotulo: "Contas dos restos a pagar" },
         { href: "/contabilidade/contas-da-liquidacao", rotulo: "Contas da liquidação" },
         { href: "/contabilidade/contas-da-receita", rotulo: "Contas da receita" },
+        { href: "/contabilidade/roteiros-patrimoniais", rotulo: "Roteiros de precatórios, convênios e adiantamentos" },
       ] },
       { rotulo: "Lançamentos e livros", itens: [
         { href: "/contabilidade/lancamentos", rotulo: "Lançamentos e documentos de origem" },
@@ -841,9 +843,11 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/financeiro/conciliacao", rotulo: "Conciliação bancária" },
       ] },
       { rotulo: "Encerramento e abertura", itens: [
+        { href: "/contabilidade/fechamento-mensal", rotulo: "Fechamento mensal" },
         { href: "/despesa/restos-a-pagar", rotulo: "Inscrição de restos e encerramento" },
         { href: "/contabilidade/virada-dos-controles", rotulo: "Virada das contas de controle" },
         { href: "/planejamento/proposta-orcamentaria", rotulo: "Abertura do exercício seguinte" },
+        { href: "/contabilidade/implantacao-de-saldos", rotulo: "Implantação de saldos" },
       ] },
       { rotulo: "Consolidação, custos e dívida", itens: [
         { href: "/relatorios/eliminacoes-intra", rotulo: "Operações intragovernamentais" },

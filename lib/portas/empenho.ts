@@ -246,6 +246,8 @@ export async function registrarEmpenho(input: {
   readonly dividaId?: string;
   /** V22: a campanha publicitária que o empenho custeia (o M05 confere que existe). */
   readonly campanhaPublicitariaId?: string;
+  /** V32: o precatório que o empenho paga (o M05 confere inscrição e elemento 91). */
+  readonly precatorioId?: string;
   /** V22: a solicitação autorizada de origem — o M05 confere situação e conteúdo, sob trava. */
   readonly solicitacaoDeEmpenhoId?: string;
 }): Promise<string> {

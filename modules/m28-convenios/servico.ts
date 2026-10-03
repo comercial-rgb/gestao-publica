@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { roteiroPatrimonialVigente } from "../m01-core-contabil/roteiro-patrimonial-declarado.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { fimDoDiaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
 import { travar } from "../../packages/locks/index.js";
@@ -314,7 +315,8 @@ async function movimentoComLancamento(
     guardaDoTipo(c, d);
 
     // ROTEIRO POR TABELA, pela chave (tipo, papel do ente): ausente = RECUSA, sem gravar.
-    const roteiro = await tx.roteiroConvenio.findUnique({
+    // V32 — a declaração da tela vale primeiro; a tabela antiga continua valendo para quem já a tinha.
+    const roteiro = (await roteiroPatrimonialVigente(tx, "CONVENIO", `${tipo}/${c.papelDoEnte}`)) ?? await tx.roteiroConvenio.findUnique({
       where: { tipo_papelDoEnte: { tipo, papelDoEnte: c.papelDoEnte } },
       select: {
         contaDebito: { select: { id: true } },
@@ -326,8 +328,8 @@ async function movimentoComLancamento(
       throw new Error(
         `Não há RoteiroConvenio cadastrado para ${tipo} / ${c.papelDoEnte}. As contas do ` +
           `PCASP vêm por PARÂMETRO — nenhuma conta é inventada no código, porque uma conta ` +
-          `plausível errada produz um balanço que fecha e mente. Cadastre o roteiro. Nada ` +
-          `foi gravado.`
+          `plausível errada produz um balanço que fecha e mente. Declare o roteiro em ` +
+          `Contabilidade > Roteiros de precatórios e convênios. Nada foi gravado.`
       );
     }
 

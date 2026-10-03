@@ -107,7 +107,9 @@ const AUSENCIAS: readonly Ausencia[] = [
   {
     clausulas: ["5.19.43", "5.19.44", "5.19.45", "5.19.46"],
     oQue: "concessão de bem imóvel, com matrícula e cobrança da taxa",
-    padrao: /model Concessao\b|concessaoId|matriculaDoImovel/,
+    // V32: "concessaoId" das diárias e do suprimento (concessão do ADIANTAMENTO) casava aqui sem ser o
+    // conceito vigiado. O padrão nomeia a concessão de BEM, não a palavra.
+    padrao: /model Concessao\b|model ConcessaoDeBem|concessaoDeBemId|matriculaDoImovel/,
   },
   {
     clausulas: ["5.19.41"],

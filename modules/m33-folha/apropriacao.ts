@@ -358,6 +358,8 @@ export interface ResultadoDaApropriacao {
   readonly empenhados: number;
   /** Já existiam (execução anterior): a numeração determinística os reconheceu. */
   readonly jaExistiam: number;
+  /** V32 — dos que já existiam, quantos estavam SEM o elo com a folha (a janela da queda) e foram amarrados agora. */
+  readonly religados: number;
   readonly total: Money;
   readonly porGrupo: readonly { readonly codigo: string; readonly ficha: number; readonly empenhos: number; readonly valor: Money }[];
 }
@@ -652,6 +654,7 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
   const roteiro = roteiroEmpenho();
   let empenhados = 0;
   let jaExistiam = 0;
+  let religados = 0;
   const porGrupo = new Map<string, { codigo: string; ficha: number; empenhos: number; valor: Money }>();
 
   for (const p of agrupamento.parcelas) {
@@ -698,6 +701,29 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
     const ja = jaComOTexto ?? (reserva === null ? null : await prisma.empenho.findUnique({ where: { fichaId_numero: { fichaId: p.grupo.fichaId, numero } }, select: { id: true } }));
 
     if (ja !== null || legadoEDestaFolha) {
+      /**
+       * ⚠️ V32 — `ELO-DO-EMPENHO-PERDIDO-NA-JANELA`, FECHADA. Se o processo morreu entre `empenhar` e a
+       * gravação do elo, o empenho existe (achado pelo texto ou pelo número reservado, que PROVAM que é
+       * este documento) e o elo não: a liquidação da folha nunca o alcançaria. A retomada amarra agora —
+       * desde que o valor seja o desta parcela; diferente, recusa nomeando, sem amarrar o que não confere.
+       */
+      if (ja !== null) {
+        const elo = await prisma.empenhoDaFolha.findUnique({ where: { empenhoId: ja.id }, select: { id: true } });
+        if (elo === null) {
+          const emp = await prisma.empenho.findUniqueOrThrow({ where: { id: ja.id }, select: { numero: true, valor: true } });
+          if (!toMoney(emp.valor.toFixed(2)).equals(p.valor)) {
+            throw new ApropriacaoInterrompidaError(
+              empenhados,
+              onde,
+              `o empenho ${emp.numero} existe sem o elo com a folha, e o valor dele (${emp.valor.toFixed(2)}) não é o desta parcela (${p.valor.toFixed(2)}); confira-o antes de retomar.`
+            );
+          }
+          await prisma.empenhoDaFolha.create({
+            data: { apropriacaoId, grupoId: p.grupo.id, vinculoId: p.vinculoId, empenhoId: ja.id, valor: p.valor.toFixed(2), criadoPor: d.criadoPor },
+          });
+          religados += 1;
+        }
+      }
       jaExistiam += 1;
     } else {
       if (p.credorCpfCnpj === "") throw new ApropriacaoInterrompidaError(empenhados, onde, "o grupo não tem credor e não empenha por servidor — o cadastro do grupo está incoerente.");
@@ -740,6 +766,7 @@ export async function apropriarFolha(prisma: PrismaClient, input: ApropriarFolha
     competencia: folha.competencia,
     empenhados,
     jaExistiam,
+    religados,
     total: sumMoney([...porGrupo.values()].map((g) => g.valor)),
     porGrupo: [...porGrupo.values()],
   };

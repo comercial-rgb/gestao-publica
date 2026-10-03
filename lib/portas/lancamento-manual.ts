@@ -6,6 +6,7 @@ import { subsistemaDaConta } from "../../packages/ledger/index.js";
 import { meioDiaCivil } from "../../packages/datas/index";
 import { criarM01Deps } from "../../modules/m01-core-contabil/adapter-prisma";
 import { estornarLancamento, registrarLancamento } from "../../modules/m01-core-contabil/servico";
+import { ORIGEM_IMPLANTACAO } from "../../modules/m01-core-contabil/implantacao-de-saldos";
 
 /**
  * PORTA — O LANÇAMENTO CONTÁBIL MANUAL (V22 rodada 7).
@@ -65,7 +66,8 @@ export class EstornoDeLancamentoDeFatoError extends Error {
 export async function estornarLancamentoManual(input: { readonly lancamentoId: string; readonly numeroControle: string; readonly dia: string }): Promise<string> {
   const original = await cliente().lancamentoContabil.findUnique({ where: { id: input.lancamentoId }, select: { numeroControle: true, origemTipo: true } });
   if (original === null) throw new Error("Lançamento não encontrado.");
-  if (original.origemTipo !== ORIGEM_MANUAL) throw new EstornoDeLancamentoDeFatoError(original.numeroControle, original.origemTipo);
+  // V32 — a implantação dos saldos iniciais também se corrige pelo estorno do razão (não há registro de origem a anular).
+  if (original.origemTipo !== ORIGEM_MANUAL && original.origemTipo !== ORIGEM_IMPLANTACAO) throw new EstornoDeLancamentoDeFatoError(original.numeroControle, original.origemTipo);
   return comEscritaAutenticada("ESTORNAR_LANCAMENTO_MANUAL", (criadoPor) =>
     estornarLancamento(
       { lancamentoId: input.lancamentoId, numeroControleEstorno: input.numeroControle, dataEstorno: meioDiaCivil(input.dia), criadoPor },

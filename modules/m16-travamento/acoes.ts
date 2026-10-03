@@ -820,6 +820,15 @@ export type NomeDeServico =
   | "declararDisponibilidade"
   | "registrarArrecadacao"
   | "arrecadarQuitandoReconhecimento"
+  | "arrecadarRecebendoDividaAtiva"
+  | "arrecadarIngressoDaOperacaoDeCredito"
+  | "fecharCompetenciaConferida"
+  | "declararRoteiroPatrimonial"
+  | "concederAdiantamento"
+  | "registrarPrestacaoDeAdiantamento"
+  | "aprovarPrestacaoDeAdiantamento"
+  | "rejeitarPrestacaoDeAdiantamento"
+  | "implantarSaldosIniciais"
   | "anularArrecadacao"
   | "reconhecerReceita"
   | "estornarReconhecimento"
@@ -1406,6 +1415,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarArrecadacao: "REGISTRAR_ARRECADACAO",
   // V28 — a guia da tela que quita um crédito já reconhecido: o MESMO ato de arrecadar.
   arrecadarQuitandoReconhecimento: "REGISTRAR_ARRECADACAO",
+  // V32 — a guia da tela que recebe dívida ativa ou ingressa operação de crédito: o MESMO ato de arrecadar.
+  arrecadarRecebendoDividaAtiva: "REGISTRAR_ARRECADACAO",
+  arrecadarIngressoDaOperacaoDeCredito: "REGISTRAR_ARRECADACAO",
   anularArrecadacao: "ANULAR_ARRECADACAO",
 
   reconhecerReceita: "RECONHECER_RECEITA",
@@ -1599,6 +1611,18 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarLinhaDemonstrativo: "CADASTRAR_LINHA_DEMONSTRATIVO",
 
   travar: "TRAVAR_COMPETENCIA",
+  // V32 — fechar o mês pela tela, depois da conferência de divergências: o MESMO ato de travar.
+  fecharCompetenciaConferida: "TRAVAR_COMPETENCIA",
+  // V32 — o roteiro de precatório e de convênio declarado pela tela: dizer em que conta o movimento entra.
+  declararRoteiroPatrimonial: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V32 — diárias e suprimento de fundos. Conceder e registrar a prestação são atos de quem EMPENHA (a concessão
+  // se apoia no empenho do beneficiário); aprovar e rejeitar, de quem aprova prestação de contas.
+  concederAdiantamento: "EMPENHAR",
+  registrarPrestacaoDeAdiantamento: "EMPENHAR",
+  aprovarPrestacaoDeAdiantamento: "APROVAR_PRESTACAO_DE_CONTAS",
+  rejeitarPrestacaoDeAdiantamento: "APROVAR_PRESTACAO_DE_CONTAS",
+  // V32 — a carga do balancete do sistema anterior: um lançamento de partidas arbitrárias, a autoridade do manual.
+  implantarSaldosIniciais: "REGISTRAR_LANCAMENTO_MANUAL",
   destravar: "DESTRAVAR_COMPETENCIA",
 
   // M16 — administração de usuários (7.14). A família ADMINISTRACAO — quem gerencia usuários não é
@@ -2254,6 +2278,14 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  * grep-teste lê esta lista — nada sai do censo por descuido.
  */
 export const FORA_DO_CENSO: Record<string, string> = {
+  // ── V32 ──
+  lerBalancete: "puro (o balancete colado lido em linhas, com os problemas de forma)",
+  previaDaImplantacao: "leitura (as contas conferidas no plano e os totais por subsistema — não muta)",
+  situacaoDoAdiantamento: "puro (a situação da concessão pela prestação e pelo prazo)",
+  listarAdiantamentos: "leitura (as concessões de diárias e suprimentos com a situação — não muta)",
+  roteiroPatrimonialVigente: "leitura (o roteiro declarado vigente de precatório ou convênio, com os ids das contas — não muta)",
+  listarRoteirosPatrimoniais: "leitura (os movimentos que precisam de roteiro e o que vale para cada um — não muta)",
+  situacaoDoFechamento: "leitura (as doze competências do exercício e se cada uma está fechada para todos — não muta)",
   // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
   protocoloDaNorma: "puro (o protocolo do registro ou o informado depois)",
   listarAnexosDasNormas: "leitura (os PDFs das leis no cadastro de normas, por norma — não muta)",

@@ -290,6 +290,22 @@ export function FormPagamento({
         </fieldset>
       ) : null}
 
+      <details className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" data-painel="precatorio-fora-da-ordem">
+        <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-ink)]">Pagamento de precatório fora da ordem cronológica</summary>
+        <label className="mt-2 block text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Justificativa (mín. 20 caracteres)</span>
+          <textarea
+            name="justificativaOrdemConstitucional"
+            rows={2}
+            placeholder="Acordo homologado judicialmente, sequestro de verba ou outra razão que autoriza pagar antes dos anteriores"
+            className={CLASSE_AREA_TEXTO}
+          />
+        </label>
+        <p className="mt-1 text-xs text-[color:var(--color-ink-3)]">
+          Só se aplica quando o empenho paga um precatório e há outros mais antigos na fila. Sem justificativa, o pagamento fora da ordem não é aceito.
+        </p>
+      </details>
+
       <fieldset className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">IR, INSS e ISS do fornecedor</legend>
         <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)]">

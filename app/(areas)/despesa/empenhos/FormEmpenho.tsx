@@ -306,6 +306,15 @@ export function FormEmpenho({
             ajuda="Vincule quando a despesa custeia uma campanha publicitária cadastrada."
             largura={1}
           />
+          <CampoReferenciado
+            key={`precatorio-${rodada}`}
+            name="precatorioId"
+            rotulo="Precatório"
+            catalogo="precatorios-para-empenho"
+            placeholder="Número do processo ou beneficiário"
+            ajuda="Vincule quando o empenho paga um precatório inscrito; a ficha tem de ser de sentenças judiciais. O pagamento baixa o precatório e confere a ordem cronológica."
+            largura={1}
+          />
         </fieldset>
       ) : null}
 

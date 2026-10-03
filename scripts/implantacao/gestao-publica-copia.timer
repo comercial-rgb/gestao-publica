@@ -1,0 +1,10 @@
+# Dispara a cópia todo dia às 02:30 (horário da máquina) e na partida, se a última foi perdida.
+[Unit]
+Description=Gestao Publica - copia de seguranca diaria
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

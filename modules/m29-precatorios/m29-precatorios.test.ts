@@ -142,12 +142,13 @@ async function pagarPrecatorio(
       fichaId: FICHA, numero: `2026NE${n}`, tipo: "ORDINARIO", valor,
       data: new Date("2026-03-10T12:00:00Z"), credorCpfCnpj: "12345678909",
       historico: "Precatório judicial", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
+      // V32 — o vínculo passa pelo empenho (a tela o oferece); antes este teste o gravava direto no banco.
+      precatorioId,
       criadoPor: POR,
     },
     R_EMPENHO,
     deps
   );
-  await prisma.empenho.update({ where: { id: empenhoId }, data: { precatorioId } });
 
   const { liquidacaoId } = await liquidar(
     {
@@ -300,5 +301,44 @@ describe("M29 — o precatório e a ordem do art. 100", () => {
       where: { id: p }, select: { dataApresentacao: true },
     });
     expect(lido.dataApresentacao.toISOString()).toBe("2023-01-10T03:00:00.000Z");
+  });
+});
+
+describe("V32 — o empenho que paga o precatório", () => {
+  const empenharPrecatorio = (precatorioId: string, n: string, fichaId = FICHA) =>
+    empenhar(
+      {
+        fichaId, numero: `2026NE${n}`, tipo: "ORDINARIO", valor: "100.00",
+        data: new Date("2026-03-10T12:00:00Z"), credorCpfCnpj: "12345678909",
+        historico: "Precatório judicial", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
+        precatorioId, criadoPor: POR,
+      },
+      R_EMPENHO,
+      deps
+    );
+
+  it("t10: precatório não inscrito, inexistente ou ficha fora de sentenças judiciais — recusa nomeando, e nenhum empenho nasce", async () => {
+    const { precatorioId } = await cadastrarPrecatorio(prisma, {
+      numeroProcesso: "0009-N", tribunal: "TJPB", beneficiarioNome: "Beneficiário não inscrito", beneficiarioDocumento: "12345678909",
+      natureza: "COMUM", preferencia: "NENHUMA", diaApresentacao: "2025-01-10", exercicioDePagamento: 2026, valorOriginal: "100.00",
+      contaContabilId: "c-prec", criadoPor: POR,
+    });
+    await expect(empenharPrecatorio(precatorioId, "000901")).rejects.toThrow(/0009-N ainda não foi inscrito/);
+    await expect(empenharPrecatorio("nao-existe", "000902")).rejects.toThrow(/precatório indicado não existe/);
+
+    const inscrito = await precatorio({ numero: "0001-C", natureza: "COMUM", diaApresentacao: "2023-01-10", valor: "10000.00" });
+    await prisma.naturezaDespesa.create({
+      data: { id: "nd-39", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", codigoCompleto: "339039", descricao: "Serviços PJ" },
+    });
+    await criarFichaDeTeste(prisma, {
+      id: "ficha-39", numero: 2, exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01",
+      funcaoId: "fun-28", subfuncaoId: "sub-846", programaId: "prg", acaoId: "aca",
+      fonteId: FONTE, naturezaDespesaId: "nd-39", valorDotado: "1000.00",
+    });
+    await expect(empenharPrecatorio(inscrito, "000903", "ficha-39")).rejects.toThrow(/339039[\s\S]*sentenças judiciais \(elemento 91\)/);
+    expect(await prisma.empenho.count()).toBe(0);
+
+    await empenharPrecatorio(inscrito, "000904");
+    expect(await prisma.empenho.count({ where: { precatorioId: inscrito } })).toBe(1);
   });
 });

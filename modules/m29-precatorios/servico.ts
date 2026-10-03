@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { roteiroPatrimonialVigente } from "../m01-core-contabil/roteiro-patrimonial-declarado.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { inicioDoDiaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
 import { travar } from "../../packages/locks/index.js";
@@ -232,7 +233,8 @@ async function comLancamento(
 
     guarda(p, d);
 
-    const roteiro = await tx.roteiroPrecatorio.findUnique({
+    // V32 — a declaração da tela vale primeiro; a tabela antiga continua valendo para quem já a tinha.
+    const roteiro = (await roteiroPatrimonialVigente(tx, "PRECATORIO", tipo)) ?? await tx.roteiroPrecatorio.findUnique({
       where: { tipo },
       select: {
         contaDebito: { select: { id: true } },
@@ -243,7 +245,7 @@ async function comLancamento(
     if (roteiro === null) {
       throw new Error(
         `Não há RoteiroPrecatorio cadastrado para ${tipo}. As contas do PCASP vêm por ` +
-          `PARÂMETRO — nenhuma conta é inventada no código. Cadastre o roteiro. Nada foi gravado.`
+          `PARÂMETRO — nenhuma conta é inventada no código. Declare o roteiro em Contabilidade > Roteiros de precatórios e convênios. Nada foi gravado.`
       );
     }
 
