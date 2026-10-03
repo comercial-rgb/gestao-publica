@@ -127,11 +127,15 @@ function caminhoDaAprovacao(digesto) {
  * `5120` era um número escrito à mão para ESTA máquina de 8 GB. Num servidor de 2 GB ele
  * pede mais memória do que existe e o processo morre por OOM do sistema — que é o modo de
  * falha que esta rodada inteira existe para parar de confundir com "erro de tipo".
- * 65% da memória total, com teto de 6 GB e piso de 1,5 GB.
+ * 65% da memória total, com teto de 12 GB e piso de 1,5 GB.
+ *
+ * ⚠️ O TETO SUBIU DE 6 PARA 12 GB NA V29, MEDIDO: o recorte `tsconfig.app-sem-rotas.json` estourou em
+ * 6.130 MB (heap de 6.144 MB, 180 s) com o `c899c6e`, e passou limpo com 14.000 MB nesta máquina de 31 GB. Em
+ * máquina menor quem manda continua sendo os 65% — o teto só alcança quem tem mais de 18 GB.
  */
 export function heapEmMegabytes() {
   const totalMb = Math.floor(totalmem() / (1024 * 1024));
-  return Math.max(1536, Math.min(6144, Math.floor(totalMb * 0.65)));
+  return Math.max(1536, Math.min(12288, Math.floor(totalMb * 0.65)));
 }
 
 /**
