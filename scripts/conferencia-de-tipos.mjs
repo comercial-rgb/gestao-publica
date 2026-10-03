@@ -81,7 +81,10 @@ function* varrer(dir) {
   for (const e of readdirSync(abs, { withFileTypes: true })) {
     const p = join(dir, e.name);
     if (e.isDirectory()) yield* varrer(p);
-    else if (/\.(ts|tsx)$/.test(e.name)) yield p;
+    // ⚠️ SEMPRE COM "/": no Windows o `join` devolve "\", e o digesto de uma aprovação feita aqui não
+    // batia com o mesmo conteúdo num servidor Linux — todos os arquivos apareciam como "novo" (V29, EC2).
+    // O inventário de rotas, que filtra por "/", também saía vazio no Windows.
+    else if (/\.(ts|tsx)$/.test(e.name)) yield p.split("\\").join("/");
   }
 }
 
