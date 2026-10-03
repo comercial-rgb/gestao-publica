@@ -44,7 +44,21 @@ async function main(): Promise<void> {
     throw new Error(`O exercício ${String(DESTINO)} já existe neste banco; o percurso precisa dele fechado. Use um ensaio limpo. Nada foi feito.`);
   }
   const receitasOrigem = await prisma.receitaPrevista.count({ where: { exercicio: ORIGEM } });
-  const fichasOrigem = await prisma.fichaOrcamentaria.count({ where: { exercicio: ORIGEM, exercicioFonte: 1 } });
+  // A MESMA regra do serviço, contada aqui por outro caminho: ficam de fora por padrão as fichas de recurso de
+  // exercício anterior e as abertas no exercício por crédito especial ou extraordinário com dotação inicial zero.
+  const todasOrigem = await prisma.fichaOrcamentaria.findMany({
+    where: { exercicio: ORIGEM },
+    select: {
+      exercicioFonte: true,
+      valorDotado: true,
+      itensCredito: { where: { estornoDeId: null }, select: { decreto: { select: { lei: { select: { tipoCredito: true } } } } } },
+    },
+  });
+  const exclusiva = (f: (typeof todasOrigem)[number]): boolean =>
+    f.exercicioFonte !== 1 ||
+    (f.valorDotado.isZero() && f.itensCredito.some((i) => i.decreto.lei.tipoCredito === "ESPECIAL" || i.decreto.lei.tipoCredito === "EXTRAORDINARIO"));
+  const fichasOrigem = todasOrigem.filter((f) => !exclusiva(f)).length;
+  const deixadas = todasOrigem.length - fichasOrigem;
 
   const navegador = await lancarNavegadorDoPercurso();
   try {
@@ -71,6 +85,11 @@ async function main(): Promise<void> {
       { sel: 'input[name="percentualDaDespesa"]', valor: "4,5" },
     ]);
     R.conferir("2.1 importar confirma com a contagem", r.tipo === "ok" && /proposta criada/i.test(r.texto), `${r.tipo}: ${r.texto}`);
+    R.conferir(
+      `2.1b a confirmação diz que ${String(deixadas)} ficha(s) exclusiva(s) de ${String(ORIGEM)} ficaram de fora`,
+      deixadas === 0 ? !/ficaram de fora/i.test(r.texto) : r.texto.includes(`${String(deixadas)} ficha(s)`) && /ficaram de fora/i.test(r.texto),
+      r.texto
+    );
     const proposta = await prisma.propostaOrcamentaria.findFirst({
       where: { descricao: nome },
       select: { id: true, _count: { select: { linhasDeReceita: true, linhasDeDespesa: true } } },
@@ -157,7 +176,11 @@ async function main(): Promise<void> {
     R.conferir("7.1 a proposta mostra o orçamento gerado", /or[çc]amento gerado/i.test(fim), fim.slice(0, 400));
     R.conferir(
       "7.2 e não oferece mais alteração nem nova geração",
-      await page.evaluate(() => document.querySelector('form[data-acao="ajustar-linha"], form[data-acao="efetivar-proposta"]') === null),
+      await page.evaluate(
+        () =>
+          document.querySelector('form[data-acao="ajustar-linha"]') === null &&
+          document.querySelector('form[data-acao="efetivar-proposta"] button[type="submit"]') === null
+      ),
       "ainda há formulário"
     );
     const fichas = await irPara(N, page, `/planejamento/fichas?exercicio=${String(DESTINO)}`);

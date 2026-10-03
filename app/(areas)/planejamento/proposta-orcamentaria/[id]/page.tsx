@@ -307,10 +307,15 @@ export default async function PropostaPage({ params }: { readonly params: Promis
                 </li>
               ) : null}
             </ul>
-            {!p.destino.existe && permitidas.has("ABRIR_EXERCICIO") ? <FormAbrirExercicio ano={p.exercicio} propostaOrcamentariaId={p.id} /> : null}
-            {permitidas.has("CRIAR_FICHA") ? <FormEfetivarProposta propostaOrcamentariaId={p.id} exercicio={p.exercicio} pronta={pronta} /> : null}
           </>
         )}
+        {/* Fora do ternário e sempre na mesma posição: o sucesso não pode desmontar o formulário que o mostra. */}
+        {!efetivada && permitidas.has("ABRIR_EXERCICIO") ? (
+          <FormAbrirExercicio ano={p.exercicio} propostaOrcamentariaId={p.id} aberto={p.destino.existe} />
+        ) : null}
+        {permitidas.has("CRIAR_FICHA") ? (
+          <FormEfetivarProposta propostaOrcamentariaId={p.id} exercicio={p.exercicio} pronta={pronta} efetivada={efetivada} />
+        ) : null}
       </section>
 
       <section className="space-y-2" aria-label="Receitas da proposta">

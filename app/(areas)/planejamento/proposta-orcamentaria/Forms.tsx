@@ -181,8 +181,22 @@ export function FormAjusteDaLinha({
   );
 }
 
-/** ABRIR o exercício de destino, quando ele ainda não existe. */
-export function FormAbrirExercicio({ ano, propostaOrcamentariaId }: { readonly ano: number; readonly propostaOrcamentariaId: string }): React.ReactElement {
+/**
+ * ABRIR o exercício de destino, quando ele ainda não existe.
+ *
+ * ⚠️ O FORMULÁRIO NÃO SOME COM O PRÓPRIO SUCESSO: depois de abrir, a página recarrega com o exercício
+ * aberto; se o formulário saísse da árvore, a confirmação sairia junto e a pessoa não veria resposta
+ * nenhuma (o percurso da V29 mediu "silêncio" aqui). Ele fica montado e só o botão sai.
+ */
+export function FormAbrirExercicio({
+  ano,
+  propostaOrcamentariaId,
+  aberto,
+}: {
+  readonly ano: number;
+  readonly propostaOrcamentariaId: string;
+  readonly aberto: boolean;
+}): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(abrirExercicioAction, {});
   return (
     <form action={action} className="space-y-2" data-acao="abrir-exercicio" aria-label={`Abrir o exercício ${String(ano)}`}>
@@ -190,22 +204,26 @@ export function FormAbrirExercicio({ ano, propostaOrcamentariaId }: { readonly a
       <input type="hidden" name="ano" value={ano} />
       <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
       <Resultado estado={estado} acao="abrir-exercicio" />
-      <button className={BOTAO_SECUNDARIO} disabled={pendente} type="submit">
-        {pendente ? "Abrindo…" : `Abrir o exercício ${String(ano)}`}
-      </button>
+      {aberto ? null : (
+        <button className={BOTAO_SECUNDARIO} disabled={pendente} type="submit">
+          {pendente ? "Abrindo…" : `Abrir o exercício ${String(ano)}`}
+        </button>
+      )}
     </form>
   );
 }
 
-/** EFETIVAR: gera as fichas e a receita prevista do exercício. */
+/** EFETIVAR: gera as fichas e a receita prevista do exercício. Fica montado depois do sucesso (ver acima). */
 export function FormEfetivarProposta({
   propostaOrcamentariaId,
   exercicio,
   pronta,
+  efetivada,
 }: {
   readonly propostaOrcamentariaId: string;
   readonly exercicio: number;
   readonly pronta: boolean;
+  readonly efetivada: boolean;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(efetivarPropostaAction, {});
   return (
@@ -213,9 +231,11 @@ export function FormEfetivarProposta({
       <ChaveDeComando />
       <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
       <Resultado estado={estado} acao="efetivar-proposta" />
-      <button className={BOTAO} disabled={pendente || !pronta} type="submit">
-        {pendente ? "Gerando o orçamento…" : `Gerar o orçamento de ${String(exercicio)}`}
-      </button>
+      {efetivada ? null : (
+        <button className={BOTAO} disabled={pendente || !pronta} type="submit">
+          {pendente ? "Gerando o orçamento…" : `Gerar o orçamento de ${String(exercicio)}`}
+        </button>
+      )}
     </form>
   );
 }
