@@ -139,7 +139,7 @@ export default async function LiquidacoesPage({
         de <strong>material de consumo</strong> registra também as entradas no almoxarifado.
       </div>
 
-      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} />
+      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} />
 
       {liquidacoes.length === 0 ? (
         <EstadoVazio

@@ -876,8 +876,8 @@ export async function vocabularioDosEmpenhos(
   };
 }
 
-/** Liquidado LÍQUIDO por empenho — a soma do adapter, em lote. */
-async function liquidadoDosEmpenhos(
+/** Liquidado LÍQUIDO por empenho — a soma do adapter, em lote. V33: exportada para a execução das diárias. */
+export async function liquidadoDosEmpenhos(
   prisma: Tx,
   empenhoIds: readonly string[]
 ): Promise<ReadonlyMap<string, Money>> {
@@ -910,7 +910,7 @@ async function liquidadoDosEmpenhos(
  * Pago (BRUTO) por empenho, contado por liquidação VIVA — a mesma exclusão que
  * `pagoDoEmpenho` faz no adapter: uma liquidação anulada não carrega pagamento.
  */
-async function pagoDosEmpenhos(
+export async function pagoDosEmpenhos(
   prisma: Tx,
   empenhoIds: readonly string[]
 ): Promise<ReadonlyMap<string, Money>> {

@@ -54,17 +54,21 @@ export function FormLiquidacao({
   empenhos,
   opcoesDeMaterial,
   documentos = [],
+  empenhoInicial,
 }: {
   readonly empenhos: readonly EmpenhoLiquidavel[];
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   readonly documentos?: readonly { readonly id: string; readonly rotulo: string }[];
+  /** V33 — o empenho que veio escolhido de outra tela (diárias, a pagar). Sem saldo a liquidar, é ignorado. */
+  readonly empenhoInicial?: string | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoLiquidacao, FormData>(
     liquidarAction,
     {}
   );
   const ref = useRef<HTMLFormElement>(null);
-  const [escolhido, setEscolhido] = useState<string>("");
+  const inicial = empenhoInicial !== undefined && empenhos.some((e) => e.id === empenhoInicial) ? empenhoInicial : "";
+  const [escolhido, setEscolhido] = useState<string>(inicial);
   const [linhas, setLinhas] = useState<number>(1);
   if (estado.sucesso !== undefined) ref.current?.reset();
 
@@ -101,7 +105,7 @@ export function FormLiquidacao({
           <select
             name="empenhoId"
             required
-            defaultValue=""
+            defaultValue={inicial}
             className={CAMPO}
             onChange={(e) => setEscolhido(e.target.value)}
           >

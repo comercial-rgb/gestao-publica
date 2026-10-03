@@ -84,7 +84,20 @@ export default async function AdiantamentosPage(): Promise<React.ReactElement> {
                   <tr key={l.id} data-concessao={l.numero} className="border-t border-[color:var(--color-border)] align-top">
                     <th scope="row" className="py-2 pr-3 font-normal">
                       {l.especie === "DIARIA" ? "Diária" : "Suprimento"} {l.numero}
-                      <span className="block text-[color:var(--color-ink-3)]">empenho {l.empenhoNumero}</span>
+                      <span className="block text-[color:var(--color-ink-3)]">
+                        <a className="underline" href={`/despesa/empenhos/${l.empenhoId}`}>empenho {l.empenhoNumero}</a>
+                      </span>
+                      <span className="block text-[color:var(--color-ink-3)]" data-execucao-do-empenho data-pago={l.pago}>
+                        liquidado R$ {formatarMoeda(l.liquidado).texto} · pago R$ {formatarMoeda(l.pago).texto}
+                        {l.pago === "0.00" ? (
+                          <>
+                            {" · "}
+                            <a className="underline" href={l.liquidado === "0.00" ? `/despesa/liquidacoes?empenho=${l.empenhoId}` : `/despesa/a-pagar?credor=${l.beneficiarioDocumento}`}>
+                              {l.liquidado === "0.00" ? "liquidar" : "pagar"}
+                            </a>
+                          </>
+                        ) : null}
+                      </span>
                       <span className="block text-[color:var(--color-ink-3)]">{l.finalidade}{l.destino !== null ? ` — ${l.destino}` : ""}</span>
                     </th>
                     <td className="py-2 pr-3">

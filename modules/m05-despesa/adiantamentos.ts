@@ -9,6 +9,7 @@ import { roteiroPatrimonialVigente } from "../m01-core-contabil/roteiro-patrimon
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { liquidadoDosEmpenhos, pagoDosEmpenhos } from "./consultas.js";
 
 /**
  * M05 — DIÁRIAS E SUPRIMENTO DE FUNDOS (V32).
@@ -355,6 +356,10 @@ export interface AdiantamentoNaLista {
   readonly especie: Especie;
   readonly numero: string;
   readonly empenhoNumero: string;
+  /** V33 — o empenho e a execução dele: a concessão só se encerra quando o dinheiro chega ao beneficiário. */
+  readonly empenhoId: string;
+  readonly liquidado: string;
+  readonly pago: string;
   readonly beneficiarioNome: string;
   readonly beneficiarioDocumento: string;
   readonly finalidade: string;
@@ -375,19 +380,22 @@ export async function listarAdiantamentos(prisma: PrismaClient, agora: Date, esp
     orderBy: [{ prazoDePrestacao: "asc" }, { numero: "asc" }],
     select: {
       id: true, especie: true, numero: true, beneficiarioNome: true, beneficiarioDocumento: true, finalidade: true, destino: true,
-      dataInicio: true, dataFim: true, valor: true, prazoDePrestacao: true, empenho: { select: { numero: true } },
+      dataInicio: true, dataFim: true, valor: true, prazoDePrestacao: true, empenho: { select: { id: true, numero: true } },
       prestacoes: {
         orderBy: { criadoEm: "asc" },
         select: { id: true, valorComprovado: true, valorDevolvido: true, relatorio: true, decisao: { select: { aprovada: true, motivo: true, criadoPor: true } } },
       },
     },
   });
+  const ids = [...new Set(linhas.map((l) => l.empenho.id))];
+  const [liquidado, pago] = await Promise.all([liquidadoDosEmpenhos(prisma, ids), pagoDosEmpenhos(prisma, ids)]);
   return linhas.map((l) => {
     const emAnalise = l.prestacoes.find((p) => p.decisao === null);
     const decididas = l.prestacoes.filter((p) => p.decisao !== null);
     const ultima = decididas[decididas.length - 1]?.decisao ?? null;
     return {
-      id: l.id, especie: l.especie, numero: l.numero, empenhoNumero: l.empenho.numero,
+      id: l.id, especie: l.especie, numero: l.numero, empenhoNumero: l.empenho.numero, empenhoId: l.empenho.id,
+      liquidado: (liquidado.get(l.empenho.id) ?? toMoney("0.00")).toFixed(2), pago: (pago.get(l.empenho.id) ?? toMoney("0.00")).toFixed(2),
       beneficiarioNome: l.beneficiarioNome, beneficiarioDocumento: l.beneficiarioDocumento, finalidade: l.finalidade, destino: l.destino,
       diaInicio: diaCivil(l.dataInicio), diaFim: diaCivil(l.dataFim), valor: l.valor.toFixed(2), diaPrazo: diaCivil(l.prazoDePrestacao),
       situacao: situacaoDoAdiantamento(l, agora),
