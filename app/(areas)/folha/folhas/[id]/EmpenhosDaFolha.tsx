@@ -9,10 +9,20 @@ import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
  * registro paralelo, é o mesmo `Empenho` do M05, com o mesmo razão, o mesmo saldo de ficha e a
  * mesma fila do art. 141. É o que separa integração de duplicação.
  */
+type SituacaoDoPagamento = "sem-liquidacao" | "a-pagar" | "pago-em-parte" | "pago";
+const ROTULO_DO_PAGAMENTO: Readonly<Record<SituacaoDoPagamento, string>> = { "sem-liquidacao": "—", "a-pagar": "a pagar", "pago-em-parte": "pago em parte", pago: "pago" };
+/** A situação vem dos dois números do servidor (comparados em centavos, sem conta de dinheiro na tela). */
+function situacaoDoPagamento(l: { readonly liquidado: string; readonly pago: string } | undefined): SituacaoDoPagamento {
+  if (l === undefined) return "sem-liquidacao";
+  const c = (v: string): bigint => BigInt(v.replace(".", ""));
+  if (c(l.pago) === 0n) return "a-pagar";
+  return c(l.pago) >= c(l.liquidado) ? "pago" : "pago-em-parte";
+}
+
 export function EmpenhosDaFolha({ apropriacao, liquidacoes }: {
   readonly apropriacao: { readonly dataDoEmpenho: string; readonly por: string; readonly total: string; readonly empenhos: readonly { readonly numero: string; readonly ficha: number; readonly grupo: string; readonly matricula: string | null; readonly credor: string; readonly valor: string; readonly empenhoId: string }[] };
   /** V6.1 — por número de empenho. Ausente = aquele empenho ainda NÃO virou obrigação liquidada. */
-  readonly liquidacoes: Readonly<Record<string, { readonly numero: string; readonly responsavelAtesto: string; readonly data: string }>>;
+  readonly liquidacoes: Readonly<Record<string, { readonly numero: string; readonly responsavelAtesto: string; readonly data: string; readonly liquidacaoId: string; readonly liquidado: string; readonly pago: string }>>;
 }): React.ReactElement {
   // ⚠️ ZERO EMPENHOS É UM ESTADO REAL, e a tela tem de dizer qual: a apropriação foi TENTADA e
   // parou antes de gravar o primeiro (saldo da ficha, em geral). Uma tabela vazia com o título
@@ -34,8 +44,8 @@ export function EmpenhosDaFolha({ apropriacao, liquidacoes }: {
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Empenhos gerados por esta folha</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
         Apropriada em {apropriacao.dataDoEmpenho} por {apropriacao.por}. Só o bruto é empenhado: a contribuição e o imposto
-        retidos do servidor são retenções do pagamento, não despesa orçamentária. A coluna Liquidação indica quais empenhos
-        já foram liquidados; esta seção não registra pagamentos.
+        retidos do servidor são retenções do pagamento, não despesa orçamentária. As colunas Liquidação e Pagamento mostram
+        até onde cada empenho andou; liquidar e pagar se fazem na despesa e na tesouraria.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[44rem] border-collapse text-sm">
@@ -47,6 +57,7 @@ export function EmpenhosDaFolha({ apropriacao, liquidacoes }: {
               <th scope="col" className="py-2 pr-3 text-left">Matrícula</th>
               <th scope="col" className="py-2 pr-3 text-left">Credor</th>
               <th scope="col" className="py-2 pr-3 text-left">Liquidação</th>
+              <th scope="col" className="py-2 pr-3 text-left">Pagamento</th>
               <th scope="col" className="py-2 text-right">Valor</th>
             </tr>
           </thead>
@@ -67,8 +78,23 @@ export function EmpenhosDaFolha({ apropriacao, liquidacoes }: {
                     <span className="text-[color:var(--color-ink-3)]">pendente</span>
                   ) : (
                     <span className="text-[color:var(--color-ink-2)]">
+                      <Link href={`/despesa/empenhos/${e.empenhoId}#liquidacao-${liquidacoes[e.numero]?.liquidacaoId ?? ""}`} className="underline underline-offset-2">
+                        {liquidacoes[e.numero]?.numero}
+                      </Link>{" "}
                       {liquidacoes[e.numero]?.data}
                       <span className="block text-[11px] break-words [overflow-wrap:anywhere] text-[color:var(--color-ink-3)]">atesto: {liquidacoes[e.numero]?.responsavelAtesto}</span>
+                    </span>
+                  )}
+                </td>
+                <td className="py-2 pr-3 text-xs" data-pagamento={situacaoDoPagamento(liquidacoes[e.numero])}>
+                  {liquidacoes[e.numero] === undefined ? (
+                    <span className="text-[color:var(--color-ink-3)]">—</span>
+                  ) : (
+                    <span>
+                      {ROTULO_DO_PAGAMENTO[situacaoDoPagamento(liquidacoes[e.numero])]}
+                      <span className="block text-[11px] text-[color:var(--color-ink-3)]">
+                        pago <ValorMonetario valor={liquidacoes[e.numero]?.pago ?? "0.00"} /> de <ValorMonetario valor={liquidacoes[e.numero]?.liquidado ?? "0.00"} />
+                      </span>
                     </span>
                   )}
                 </td>

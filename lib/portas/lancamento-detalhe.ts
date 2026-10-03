@@ -51,6 +51,8 @@ export function destinoDaOrigem(origemTipo: string, origemId: string | null): { 
   if (familia !== null) {
     return { href: `/despesa/documento/${encodeURIComponent(origemTipo)}/${encodeURIComponent(origemId)}`, rotulo: d?.documento ?? "Documento da despesa" };
   }
+  // V33 — a arrecadação (e a anulação dela, que aponta a original) abre o PRÓPRIO registro, com a cadeia da receita.
+  if (origemTipo === "ARRECADACAO" || origemTipo === "ANULACAO_RECEITA") return { href: `/receita/arrecadacoes/${encodeURIComponent(origemId)}`, rotulo: "Arrecadação" };
   if (d === undefined) return null;
   return { href: d.rota, rotulo: `${d.documento} (na lista)` };
 }

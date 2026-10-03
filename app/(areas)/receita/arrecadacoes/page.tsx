@@ -212,7 +212,8 @@ const COLUNAS: readonly ColunaTabela<ArrecadacaoDaTela>[] = [
     cabecalho: "Guia",
     alinhamento: "esquerda",
     largura: "7rem",
-    celula: (l) => l.numeroReceita,
+    // V33 — o número abre a arrecadação e a cadeia dela (classificação, conta, conciliação, razão).
+    celula: (l) => <a href={`/receita/arrecadacoes/${l.id}`} className="text-[color:var(--color-primary)] underline">{l.numeroReceita}</a>,
   },
   {
     chave: "natureza",

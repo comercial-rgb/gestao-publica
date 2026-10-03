@@ -423,6 +423,8 @@ export interface OrigemDaTela {
   readonly ordemDeCompraId: string | null;
   readonly ordemDeCompraNumero: string | null;
   readonly obraDescricao: string | null;
+  /** V33 — a folha que gerou o empenho. */
+  readonly folhaId: string | null;
 }
 
 export interface DossieDaTela {

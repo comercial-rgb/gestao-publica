@@ -1,4 +1,6 @@
 import { formatarMoeda } from "../../format/moeda";
+import { comoLinha, liquidoDeUmFato } from "../../../modules/m05-despesa/consultas.js";
+import { somaLiquidaEstornaveis } from "../../../packages/estornaveis/index.js";
 import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
 import { Decimal, emProsa, toMoney, sumMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
@@ -161,7 +163,7 @@ export interface FolhaLida extends DetalheLido {
     readonly pendentes: number;
     readonly total: string;
     /** Por número de empenho — a tela dos empenhos mostra qual já virou obrigação. */
-    readonly porEmpenho: Readonly<Record<string, { readonly numero: string; readonly responsavelAtesto: string; readonly data: string }>>;
+    readonly porEmpenho: Readonly<Record<string, { readonly numero: string; readonly responsavelAtesto: string; readonly data: string; readonly liquidacaoId: string; readonly liquidado: string; readonly pago: string }>>;
   } | null;
   readonly contracheques: readonly { readonly vinculoId: string; readonly matricula: string; readonly servidor: string; readonly regime: string; readonly dias: number; readonly proventos: string; readonly descontos: string; readonly liquido: string }[];
   /**
@@ -175,6 +177,31 @@ export interface FolhaLida extends DetalheLido {
   readonly simulacaoDoAbatimento: { readonly totalAbatido: string } | null;
 }
 
+/** V33 — liquidado líquido e pago líquido de cada liquidação, pela aritmética do M05 (anulações e estornos vivos). */
+async function liquidadoEPagoDasLiquidacoes(
+  prisma: ReturnType<typeof cliente>,
+  ids: readonly string[]
+): Promise<ReadonlyMap<string, { readonly liquidado: string; readonly pago: string }>> {
+  if (ids.length === 0) return new Map();
+  const [liqs, pags] = await Promise.all([
+    prisma.liquidacao.findMany({
+      where: { OR: [{ id: { in: [...ids] } }, { anulacaoParcialDeId: { in: [...ids] } }, { estornoDeId: { in: [...ids] } }] },
+      select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+    }),
+    prisma.pagamento.findMany({ where: { liquidacaoId: { in: [...ids] } }, select: { id: true, liquidacaoId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } }),
+  ]);
+  const universo = liqs.map(comoLinha);
+  return new Map(
+    ids.map((id) => [
+      id,
+      {
+        liquidado: liquidoDeUmFato(id, universo).toFixed(2),
+        pago: somaLiquidaEstornaveis(pags.filter((p) => p.liquidacaoId === id).map(comoLinha)).toFixed(2),
+      },
+    ])
+  );
+}
+
 export async function verFolha(id: string): Promise<FolhaLida | null> {
   const prisma = cliente();
   const f = await prisma.folhaDePagamento.findUnique({ where: { id }, select: SELECAO_DA_FOLHA });
@@ -182,6 +209,8 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
   const d = derivarFolha(f);
   const apropriada = await apropriacaoDaFolha(prisma, id);
   const [certificada, liquidada] = await Promise.all([certificacaoDaFolha(prisma, id), liquidacaoDaFolha(prisma, id)]);
+  // V33 — o pago de cada liquidação da folha, pela mesma soma líquida do M05: a folha mostra até onde o dinheiro andou.
+  const pagamentoDaFolha = await liquidadoEPagoDasLiquidacoes(prisma, (liquidada?.linhas ?? []).flatMap((l) => (l.liquidacaoId === null ? [] : [l.liquidacaoId])));
   /**
    * ⚠️ LÊ-SE DO CÁLCULO VIVO, E NÃO SÓ DO FECHADO. A folha calculada e ainda aberta já é a
    * simulação; esperar o fechamento para avisar deixaria o operador descobrir o problema com o
@@ -285,7 +314,17 @@ export async function verFolha(id: string): Promise<FolhaLida | null> {
       porEmpenho: Object.fromEntries(
         liquidada.linhas
           .filter((l) => l.numero !== null && l.data !== null)
-          .map((l) => [l.empenho, { numero: l.numero as string, responsavelAtesto: l.responsavelAtesto ?? "", data: diaCivilBr(l.data as Date) }])
+          .map((l) => [
+            l.empenho,
+            {
+              numero: l.numero as string,
+              responsavelAtesto: l.responsavelAtesto ?? "",
+              data: diaCivilBr(l.data as Date),
+              liquidacaoId: l.liquidacaoId as string,
+              liquidado: pagamentoDaFolha.get(l.liquidacaoId as string)?.liquidado ?? "0.00",
+              pago: pagamentoDaFolha.get(l.liquidacaoId as string)?.pago ?? "0.00",
+            },
+          ])
       ),
     },
     apropriacao: apropriada === null ? null : {

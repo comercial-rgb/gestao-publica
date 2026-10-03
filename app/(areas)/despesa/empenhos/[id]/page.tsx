@@ -278,6 +278,13 @@ function Origem({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactEl
         {o.obraDescricao === null ? null : (
           <Campo rotulo="Obra">{o.obraDescricao}</Campo>
         )}
+        {o.folhaId === null ? null : (
+          <Campo rotulo="Folha de pagamento">
+            <Link className="text-[color:var(--color-primary)] underline" href={`/folha/folhas/${o.folhaId}#empenhos`} data-folha-do-empenho>
+              Abrir a folha que gerou este empenho
+            </Link>
+          </Campo>
+        )}
       </dl>
 
       <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">

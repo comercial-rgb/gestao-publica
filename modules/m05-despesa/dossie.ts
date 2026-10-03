@@ -218,6 +218,8 @@ export interface OrigemDoEmpenho {
   readonly ordemDeCompraId: string | null;
   readonly ordemDeCompraNumero: string | null;
   readonly obraDescricao: string | null;
+  /** V33 — a folha de pagamento que gerou este empenho (apropriação), para o empenho voltar a ela. */
+  readonly folhaId: string | null;
 }
 
 export interface DossieDoEmpenho {
@@ -284,6 +286,7 @@ export async function dossieDoEmpenho(
       contrato: { select: { id: true, numeroContrato: true, contratadoNome: true, processo: { select: { id: true, numeroProcesso: true } } } },
       ordemDeCompra: { select: { id: true, numero: true } },
       obra: { select: { descricao: true } },
+      daFolha: { select: { apropriacao: { select: { folhaId: true } } } },
       ficha: {
         select: {
           id: true,
@@ -566,6 +569,7 @@ export async function dossieDoEmpenho(
       fonteDescricao: e.ficha.fonte.descricao,
       saldoDisponivelHoje: toMoney(e.ficha.saldoDisponivel.toFixed(2)),
       contratoId: e.contrato?.id ?? null,
+      folhaId: e.daFolha?.apropriacao.folhaId ?? null,
       processoId: e.contrato?.processo.id ?? null,
       processoNumero: e.contrato?.processo.numeroProcesso ?? null,
       contratoNumero: e.contrato?.numeroContrato ?? null,
