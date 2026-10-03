@@ -162,6 +162,9 @@ passo 8 "o build, e a prova de que o PDF sai NESTE runtime"
 # máquina de construção (`npm run tipos:conferir`), que grava uma aprovação pelo DIGESTO DO CONTEÚDO.
 # Trazida com --aprovacao-de-tipos, o build a confere (next.config.mjs) e só dispensa o tsc se o
 # conteúdo for o mesmo; se não for, o build PARA nomeando o que mudou. Sem ela, o build faz o tsc.
+# O next-env.d.ts é gerado pelo Next e entra no digesto; ele não viaja no pacote. `next typegen` o
+# gera (da versão do package-lock) antes da conferência do build — sem ele o digesto diferia.
+( cd "$RAIZ" && sudo -u "$USUARIO" npx next typegen > /dev/null )
 PULAR=""
 if [ -n "$APROVACAO_DE_TIPOS" ]; then
   [ -f "$APROVACAO_DE_TIPOS" ] || erro "aprovacao de tipos nao encontrada: $APROVACAO_DE_TIPOS" 2
