@@ -40,7 +40,12 @@ import { ACOES_DO_ENTE } from "../../modules/m16-travamento/acoes.js";
  * nome, a partir do censo — e o t5b confere que ele não importou nada de fixture.
  */
 
-const IDENT_ADMIN = "admin@cg.pb.gov.br";
+/**
+ * A identidade do primeiro administrador. Numa implantação de outro ente ela vem de
+ * BOOTSTRAP_IDENTIDADE (a EC2 de Esperança não pode nascer com um usuário do domínio de Campina
+ * Grande); sem a variável, o padrão de sempre — o que os testes e a apresentação usam.
+ */
+const IDENT_ADMIN = process.env["BOOTSTRAP_IDENTIDADE"]?.trim() || "admin@cg.pb.gov.br";
 /** ⚠️ NÃO é o `ADMIN` das fixtures — este nasce aqui, do censo. */
 const NOME_PERFIL = "ADMINISTRADOR";
 
