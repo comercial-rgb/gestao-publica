@@ -5,8 +5,9 @@ import { subsistemaDaConta } from "../../packages/ledger/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
-import { criarM01Deps } from "./adapter-prisma.js";
-import { registrarLancamento } from "./servico.js";
+import { comporLancamento } from "./dominio.js";
+import { lancarNoRazao } from "./razao.js";
+import { travar } from "../../packages/locks/index.js";
 
 /**
  * M01 — A IMPLANTAÇÃO DOS SALDOS INICIAIS (V32).
@@ -156,6 +157,15 @@ export async function previaDaImplantacao(prisma: PrismaClient, texto: string): 
 /**
  * IMPLANTA os saldos: um lançamento de abertura, na data informada (o primeiro dia em que o sistema passa
  * a escriturar). Recusa nomeando cada problema da prévia; nada é gravado.
+ *
+ * ⚠️ V33 — A UNICIDADE "UMA IMPLANTAÇÃO VIVA POR EXERCÍCIO" É CONFERIDA SOB TRINCO, NA MESMA TRANSAÇÃO DA
+ * GRAVAÇÃO. Antes ela era só uma consulta seguida de outra transação: duas implantações simultâneas de
+ * balancetes diferentes passavam as duas (apontado na revisão da V32). Agora o exercício é travado
+ * (`ImplantacaoDeSaldos`), a conferência é refeita lá dentro e o lançamento é gravado pelo funil do razão
+ * (`lancarNoRazao`), que também recusa competência fechada antes de gravar qualquer linha.
+ *
+ * ⚠️ O NÚMERO DE CONTROLE LEVA A SEQUÊNCIA DO EXERCÍCIO (`IMPLANTACAO-2026-2` na reimplantação depois de um
+ * estorno): antes as duas saíam `IMPLANTACAO-2026`, e a lista de lançamentos não as distinguia.
  */
 export async function implantarSaldosIniciais(
   prisma: PrismaClient,
@@ -169,37 +179,56 @@ export async function implantarSaldosIniciais(
   }
   const data = meioDiaCivil(input.dia);
   const exercicio = anoCivil(data);
-  const ja = await prisma.lancamentoContabil.findMany({
-    where: { origemTipo: ORIGEM_IMPLANTACAO, estornoDeId: null, estornos: { none: {} } },
-    select: { id: true, origemId: true, dataTransacao: true, numeroControle: true },
-  });
-  const doExercicio = ja.filter((l) => anoCivil(l.dataTransacao) === exercicio);
-  const mesmo = doExercicio.find((l) => l.origemId === previa.marca);
-  if (mesmo !== undefined) return { lancamentoId: mesmo.id, repetido: true, contas: previa.contas };
-  if (doExercicio.length > 0) {
-    throw new Error(
-      `O exercício ${String(exercicio)} já tem saldos implantados (lançamento ${doExercicio[0]!.numeroControle}), de outro balancete. ` +
-        `Para corrigir, estorne aquele lançamento em Contabilidade > Lançamentos e implante de novo. Nada foi gravado.`
-    );
-  }
   const lido = lerBalancete(input.texto);
-  const partidas = lido.linhas.map((l) => ({
-    conta: l.conta,
-    tipo: l.devedor.greaterThan(0) ? ("DEBITO" as const) : ("CREDITO" as const),
-    subsistema: subsistemaDaConta(l.conta),
-    valor: (l.devedor.greaterThan(0) ? l.devedor : l.credor).toFixed(2),
-  }));
-  const lancamentoId = await registrarLancamento(
-    {
-      numeroControle: `IMPLANTACAO-${String(exercicio)}`,
+  const historico = `Implantação dos saldos iniciais de ${String(exercicio)} — balancete do sistema anterior, ${String(previa.contas)} contas`;
+  // O motor puro do M01 confere a forma do lançamento (ΣD = ΣC por subsistema, valores positivos) antes de abrir a transação.
+  const { partidas } = comporLancamento({
+    numeroControle: `IMPLANTACAO-${String(exercicio)}`,
+    dataTransacao: data,
+    historico,
+    origemTipo: ORIGEM_IMPLANTACAO,
+    origemId: previa.marca,
+    criadoPor: input.criadoPor,
+    partidas: lido.linhas.map((l) => ({
+      conta: l.conta,
+      tipo: l.devedor.greaterThan(0) ? ("DEBITO" as const) : ("CREDITO" as const),
+      subsistema: subsistemaDaConta(l.conta),
+      valor: (l.devedor.greaterThan(0) ? l.devedor : l.credor).toFixed(2),
+    })),
+  });
+  const contas = await prisma.contaPcasp.findMany({ where: { codigo: { in: partidas.map((p) => p.conta) } }, select: { id: true, codigo: true } });
+  const idDe = new Map(contas.map((c) => [c.codigo, c.id]));
+
+  return prisma.$transaction(async (tx) => {
+    await travar(tx, "ImplantacaoDeSaldos", [String(exercicio)]);
+    const todas = await tx.lancamentoContabil.findMany({
+      where: { origemTipo: ORIGEM_IMPLANTACAO, estornoDeId: null },
+      select: { id: true, origemId: true, dataTransacao: true, numeroControle: true, estornos: { select: { id: true } } },
+    });
+    const doExercicio = todas.filter((l) => anoCivil(l.dataTransacao) === exercicio);
+    const vivas = doExercicio.filter((l) => l.estornos.length === 0);
+    const mesmo = vivas.find((l) => l.origemId === previa.marca);
+    if (mesmo !== undefined) return { lancamentoId: mesmo.id, repetido: true, contas: previa.contas };
+    if (vivas.length > 0) {
+      throw new Error(
+        `O exercício ${String(exercicio)} já tem saldos implantados (lançamento ${vivas[0]!.numeroControle}), de outro balancete. ` +
+          `Para corrigir, estorne aquele lançamento em Contabilidade > Lançamentos e implante de novo. Nada foi gravado.`
+      );
+    }
+    const sequencia = doExercicio.length + 1;
+    const lancamentoId = await lancarNoRazao(tx, {
+      numeroControle: sequencia === 1 ? `IMPLANTACAO-${String(exercicio)}` : `IMPLANTACAO-${String(exercicio)}-${String(sequencia)}`,
       dataTransacao: data,
-      historico: `Implantação dos saldos iniciais de ${String(exercicio)} — balancete do sistema anterior, ${String(previa.contas)} contas`,
+      historico,
       origemTipo: ORIGEM_IMPLANTACAO,
       origemId: previa.marca,
       criadoPor: input.criadoPor,
-      partidas,
-    },
-    criarM01Deps(prisma)
-  );
-  return { lancamentoId, repetido: false, contas: previa.contas };
+      partidas: partidas.map((p) => {
+        const contaId = idDe.get(p.conta);
+        if (contaId === undefined) throw new Error(`A conta ${p.conta} saiu do plano entre a prévia e a gravação. Nada foi gravado.`);
+        return { contaId, tipo: p.tipo, subsistema: p.subsistema, valor: p.valor.toFixed(2) };
+      }),
+    });
+    return { lancamentoId, repetido: false, contas: previa.contas };
+  });
 }

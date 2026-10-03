@@ -392,6 +392,15 @@ export const ORDEM_DOS_LOCKS = {
    * lançamento de controle e a concessão; não trava mais nada depois.
    */
   AdiantamentoDoEmpenho: 37,
+  /**
+   * V33 — A IMPLANTAÇÃO DE SALDOS DE UM EXERCÍCIO (M01, `implantacao-de-saldos.ts`). A corrida é de unicidade: duas
+   * implantações simultâneas de balancetes diferentes leriam "nenhuma viva" e gravariam as duas. O trinco é por
+   * exercício.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: a implantação trava aqui, confere e grava o lançamento pelo funil do razão,
+   * que não usa estes trincos.
+   */
+  ImplantacaoDeSaldos: 38,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

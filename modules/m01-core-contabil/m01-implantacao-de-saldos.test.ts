@@ -5,6 +5,7 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { criarM01Deps, saldoDasContas } from "./adapter-prisma.js";
 import { implantarSaldosIniciais, lerBalancete, previaDaImplantacao } from "./implantacao-de-saldos.js";
 import { estornarLancamento } from "./servico.js";
+import { travar } from "../m16-travamento/servico.js";
 
 /**
  * V32 — A IMPLANTAÇÃO DOS SALDOS INICIAIS.
@@ -99,8 +100,11 @@ describe("V32 — implantação dos saldos iniciais", () => {
     const outro = BALANCETE.replace("10.500,00", "10.600,00").replace("6.500,00", "6.600,00");
     await expect(implantarSaldosIniciais(prisma, { texto: outro, dia: "2026-01-02", criadoPor: POR })).rejects.toThrow(/2026 já tem saldos implantados[\s\S]*estorne/);
     await estornarLancamento({ lancamentoId: r1.lancamentoId, numeroControleEstorno: "EST-IMPLANTACAO-2026", dataEstorno: new Date("2026-01-02T15:00:00Z"), criadoPor: POR }, criarM01Deps(prisma));
-    await implantarSaldosIniciais(prisma, { texto: outro, dia: "2026-01-02", criadoPor: POR });
+    const r3 = await implantarSaldosIniciais(prisma, { texto: outro, dia: "2026-01-02", criadoPor: POR });
     expect(await saldo("1.1.1.1.1.00.00")).toBe("10600.00");
+    // V33 — a reimplantação tem número próprio: a lista de lançamentos distingue as duas.
+    const numeros = await prisma.lancamentoContabil.findMany({ where: { id: { in: [r1.lancamentoId, r3.lancamentoId] } }, select: { id: true, numeroControle: true } });
+    expect(new Map(numeros.map((n) => [n.id, n.numeroControle]))).toEqual(new Map([[r1.lancamentoId, "IMPLANTACAO-2026"], [r3.lancamentoId, "IMPLANTACAO-2026-2"]]));
   });
 
   it("t3: balancete que não fecha, conta sintética ou fora do plano — recusa nomeando, e nada é gravado", async () => {
@@ -113,6 +117,23 @@ describe("V32 — implantação dos saldos iniciais", () => {
 
   it("t4: quem só consulta não implanta — recusa nomeando a ação, sem conferir nada", async () => {
     await expect(implantarSaldosIniciais(prisma, { texto: BALANCETE, dia: "2026-01-01", criadoPor: LEITOR })).rejects.toThrow(/ACESSO NEGADO[\s\S]*REGISTRAR_LANCAMENTO_MANUAL/);
+    expect(await prisma.lancamentoContabil.count()).toBe(0);
+  });
+  it("t5: duas implantações simultâneas de balancetes diferentes — uma grava, a outra recusa; o razão fica com uma", async () => {
+    const outro = BALANCETE.replace("10.500,00", "10.600,00").replace("6.500,00", "6.600,00");
+    const r = await Promise.allSettled([
+      implantarSaldosIniciais(prisma, { texto: BALANCETE, dia: "2026-01-01", criadoPor: POR }),
+      implantarSaldosIniciais(prisma, { texto: outro, dia: "2026-01-01", criadoPor: POR }),
+    ]);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    const recusa = r.find((x) => x.status === "rejected");
+    expect(recusa?.status === "rejected" ? String(recusa.reason) : "").toMatch(/2026 já tem saldos implantados/);
+    expect(await prisma.lancamentoContabil.count({ where: { origemTipo: "IMPLANTACAO_DE_SALDOS" } })).toBe(1);
+  }, 120000);
+
+  it("t6: mês fechado recusa a implantação naquela data, nomeando a competência, e nada é gravado", async () => {
+    await travar(prisma, { competencia: "2026-01", criadoPor: POR });
+    await expect(implantarSaldosIniciais(prisma, { texto: BALANCETE, dia: "2026-01-01", criadoPor: POR })).rejects.toThrow(/2026-01|janeiro|travad|fechad/i);
     expect(await prisma.lancamentoContabil.count()).toBe(0);
   });
 });
