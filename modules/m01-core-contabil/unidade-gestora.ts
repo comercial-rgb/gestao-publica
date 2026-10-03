@@ -108,11 +108,11 @@ export function ugVigenteNoDia(ug: { readonly vigenteDesde: Date; readonly encer
 }
 
 /** As UGs escrituradas neste sistema (com entidade), vigentes no dia — as que podem remeter ao Tribunal. */
-export async function unidadesGestorasOperadas(prisma: PrismaClient, dia: Date): Promise<readonly { readonly id: string; readonly codigoTce: string; readonly nome: string; readonly cnpj: string | null }[]> {
+export async function unidadesGestorasOperadas(prisma: PrismaClient, dia: Date): Promise<readonly { readonly id: string; readonly codigoTce: string; readonly nome: string; readonly cnpj: string | null; readonly naturezaJuridica: string }[]> {
   const ugs = await prisma.unidadeGestora.findMany({
     where: { entidadeContabilId: { not: null } },
     orderBy: { codigoTce: "asc" },
-    select: { id: true, codigoTce: true, nome: true, cnpj: true, vigenteDesde: true, encerramento: { select: { vigenteAte: true } } },
+    select: { id: true, codigoTce: true, nome: true, cnpj: true, naturezaJuridica: true, vigenteDesde: true, encerramento: { select: { vigenteAte: true } } },
   });
-  return ugs.filter((u) => ugVigenteNoDia(u, dia)).map((u) => ({ id: u.id, codigoTce: u.codigoTce, nome: u.nome, cnpj: u.cnpj }));
+  return ugs.filter((u) => ugVigenteNoDia(u, dia)).map((u) => ({ id: u.id, codigoTce: u.codigoTce, nome: u.nome, cnpj: u.cnpj, naturezaJuridica: u.naturezaJuridica }));
 }

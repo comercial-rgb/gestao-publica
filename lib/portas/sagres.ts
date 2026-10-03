@@ -75,6 +75,7 @@ import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribun
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
 import { anoCivil, competenciaCivil, diaCivil } from "../../packages/datas/index";
 import { unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
+import { aplicarAbrangencia, decidirArquivo, tabelaDoArquivo, type ContextoDasUgs } from "../../adapters/tribunais/tce-pb/sagres/abrangencia";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -215,6 +216,17 @@ function linhasDe(arq: ArquivoGerado): string[] {
 }
 
 /**
+ * V33 — O QUE A REMESSA SABE DAS UGS NO DIA: quantas são escrituradas aqui, e se a pedida é a Prefeitura.
+ * "Prefeitura" é a ÚNICA operada com natureza PREFEITURA_OU_SECRETARIA; duas assim (uma secretaria cadastrada
+ * como UG) e nenhuma é tratada como a Prefeitura — o arquivo do ente fica fora até o cadastro dizer qual é.
+ */
+export async function contextoDasUgs(prisma: ReturnType<typeof cliente>, dia: Date, codUnidadeGestora: string): Promise<ContextoDasUgs> {
+  const operadas = await unidadesGestorasOperadas(prisma, dia);
+  const prefeituras = operadas.filter((u) => u.naturezaJuridica === "PREFEITURA_OU_SECRETARIA");
+  return { operadas: operadas.length, pedidaEhAPrefeitura: operadas.length === 0 || (prefeituras.length === 1 && prefeituras[0]?.codigoTce === codUnidadeGestora) };
+}
+
+/**
  * MONTA A PRÉVIA + AS VALIDAÇÕES do pacote SAGRES para a competência do `dia`. Lê o banco uma vez
  * (via `lerFatos*`), valida os fatos, e serializa os arquivos. Nada é transmitido.
  */
@@ -263,9 +275,18 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
   // V27 — frota e farmácia pública (§4.50 a §4.57), do mês, no mesmo regime.
   const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
+  // V33 — a abrangência de cada arquivo diante das UGs do dia (ver `abrangencia.ts`).
+  const ugs = await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora);
+  // A decisão depende só da TABELA, então o que fica fora se nomeia antes de serializar: o núcleo fixo e os grupos.
+  const NUCLEO = ["Dotacao", "Empenhos", "Liquidacao", "Pagamentos", "EstornoPagamento", "Estornos", "EstornoLiquidacao", "EstornoRetencao", "EstornoDespesaExtra", "ReceitaOrcamentaria", "CadastroContaBancaria", "SaldoMensal", "MovimentacaoEntreContasBancarias", "Retencao", "DespesaExtra", "ConciliacaoBancaria", "UnidadeOrcamentaria", "ReceitaExtra", "EstornoReceitaExtra"];
+  const foraPorAbrangencia = aplicarAbrangencia(
+    [...NUCLEO.map((nome) => ({ nome })), ...[...restos.arquivos, ...relacionamentos.arquivos, ...v26.arquivos, ...frota.arquivos].map((r) => ({ nome: r.arquivo.nome }))],
+    ugs
+  ).fora;
 
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
+    ...foraPorAbrangencia.map((f) => ({ arquivo: f.arquivo, linha: 0, campo: "unidade gestora", regra: f.regra, detalhe: f.detalhe })),
     ...restos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "movimento", regra: "RESTOS_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...relacionamentos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "RELACIONAMENTO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...v26.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "CADASTRO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
@@ -322,7 +343,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
-  const arquivosGerados = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : []), ...restos.arquivos.map((r) => r.arquivo), ...relacionamentos.arquivos.map((r) => r.arquivo)];
+  const arquivosCandidatos = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : []), ...restos.arquivos.map((r) => r.arquivo), ...relacionamentos.arquivos.map((r) => r.arquivo)];
+  const arquivosGerados = aplicarAbrangencia(arquivosCandidatos, ugs).arquivos;
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -357,13 +379,14 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     ...restos.arquivos.map((r) => ({ g: r.arquivo, l: r.layout as LayoutArquivo<unknown> })),
     ...relacionamentos.arquivos.map((r) => ({ g: r.arquivo, l: r.layout as LayoutArquivo<unknown> })),
   ];
-  const larguraMax = Math.max(...meta.map((m) => m.l.campos.reduce((mx, c) => Math.max(mx, c.posFinal), 0)));
+  const metaDentro = meta.filter((m) => decidirArquivo(tabelaDoArquivo(m.g.nome), ugs).incluir);
+  const larguraMax = Math.max(0, ...metaDentro.map((m) => m.l.campos.reduce((mx, c) => Math.max(mx, c.posFinal), 0)));
 
   return {
     codUnidadeGestora: p.codUnidadeGestora,
     competenciaDiaria,
     competenciaMensal,
-    arquivos: meta.map((m) => ({
+    arquivos: metaDentro.map((m) => ({
       nome: m.g.nome,
       entidade: m.l.entidade,
       periodicidade: m.l.periodicidade,
@@ -429,6 +452,8 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   // V27 — frota e farmácia: os mesmos da prévia.
   const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   arquivos.push(...frota.arquivos.map((r) => r.arquivo));
+  // V33 — o que mistura UGs fica FORA do ZIP (não só marcado): a prévia abaixo nomeia cada um como pendência.
+  const dentro = aplicarAbrangencia(arquivos, await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora)).arquivos;
 
   // V27 — as pendências da MESMA prévia que a tela mostrou: com alguma, o pacote é de conferência (nome e manifesto
   // dizem isso) e não a remessa pronta. A preparação e a consulta continuam; o que falta fica nomeado.
@@ -436,7 +461,7 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   const pendencias = previa.violacoes.map((v) => ({ arquivo: v.arquivo, detalhe: `${v.linha > 0 ? `linha ${String(v.linha)}, ` : ""}campo ${v.campo}: ${v.detalhe}` }));
   const pacote = montarPacote(
     { layout: tribunal.layoutVersao, periodicidade: "PACOTE", competencia: diaCivil(p.dia), codUnidadeGestora: p.codUnidadeGestora, pendencias },
-    arquivos
+    dentro
   );
   return { nome: pacote.nome, zip: pacote.zip, hashPacote: pacote.manifesto.hashPacote };
 }
@@ -731,6 +756,11 @@ export interface UgDaRemessa {
   /** Sem unidade gestora cadastrada: o pacote sai com o código de demonstração, e a tela diz isso. */
   readonly demonstracao: boolean;
   readonly opcoes: readonly { readonly codigo: string; readonly nome: string }[];
+  /**
+   * V33 — a UG veio do pedido (`?ug=`). Com mais de uma escriturada e nenhuma pedida, a tela abre na primeira e diz
+   * isso; o DOWNLOAD recusa (`exigirUgEscolhida`): remessa não sai de uma escolha que ninguém fez.
+   */
+  readonly escolhidaNoPedido: boolean;
 }
 
 /**
@@ -743,7 +773,7 @@ export async function ugDaRemessa(dia: Date, codigoPedido?: string, demonstracao
   const operadas = await unidadesGestorasOperadas(prisma, dia);
   if (operadas.length === 0) {
     if (demonstracao === undefined) throw new Error("Nenhuma unidade gestora escriturada aqui está vigente no dia. Cadastre-a em Contabilidade › Unidades gestoras.");
-    return { ...demonstracao, nome: "Unidade de demonstração", demonstracao: true, opcoes: [] };
+    return { ...demonstracao, nome: "Unidade de demonstração", demonstracao: true, opcoes: [], escolhidaNoPedido: false };
   }
   const escolhida = codigoPedido === undefined || codigoPedido === "" ? operadas[0] : operadas.find((u) => u.codigoTce === codigoPedido);
   if (escolhida === undefined) throw new Error(`A unidade gestora ${codigoPedido ?? ""} não é escriturada aqui ou não está vigente em ${diaCivil(dia)}.`);
@@ -753,5 +783,19 @@ export async function ugDaRemessa(dia: Date, codigoPedido?: string, demonstracao
     cnpj = ug.entidadeContabil?.versoes[0]?.cnpj ?? null;
   }
   if (cnpj === null) throw new Error(`A unidade gestora ${escolhida.codigoTce} não tem CNPJ, nem a entidade que a escritura. Informe-o no cadastro antes de montar a remessa.`);
-  return { codUnidadeGestora: escolhida.codigoTce, cnpjGerenciadora: cnpj, nome: escolhida.nome, demonstracao: false, opcoes: operadas.map((u) => ({ codigo: u.codigoTce, nome: u.nome })) };
+  return {
+    codUnidadeGestora: escolhida.codigoTce,
+    cnpjGerenciadora: cnpj,
+    nome: escolhida.nome,
+    demonstracao: false,
+    opcoes: operadas.map((u) => ({ codigo: u.codigoTce, nome: u.nome })),
+    escolhidaNoPedido: codigoPedido !== undefined && codigoPedido !== "",
+  };
+}
+
+/** V33 — o pacote para baixar exige a UG escolhida quando há mais de uma escriturada. */
+export function exigirUgEscolhida(ug: UgDaRemessa): void {
+  if (ug.opcoes.length > 1 && !ug.escolhidaNoPedido) {
+    throw new Error(`Há ${String(ug.opcoes.length)} unidades gestoras escrituradas aqui (${ug.opcoes.map((o) => o.codigo).join(", ")}). Escolha a unidade da remessa; nenhum pacote sai de uma escolha implícita.`);
+  }
 }

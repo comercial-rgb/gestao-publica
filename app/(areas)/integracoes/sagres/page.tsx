@@ -224,7 +224,10 @@ function AvisoSemMovimento({
 }
 
 /** O tipo da violação em português — o enum não vai para a tela. */
-const ROTULO_DA_REGRA: Record<"OBRIGATORIEDADE" | "DOMINIO" | "INTEGRIDADE_REFERENCIAL" | "CONCILIACAO_NAO_FECHA" | "DADOS_DA_UNIDADE_AUSENTES" | "RECEITA_EXTRA_FORA_DO_PACOTE" | "PLANO_DO_TRIBUNAL_AUSENTE" | "RESTOS_FORA_DO_PACOTE" | "RELACIONAMENTO_FORA_DO_PACOTE" | "CADASTRO_FORA_DO_PACOTE", string> = {
+const ROTULO_DA_REGRA: Record<PreviewSagres["violacoes"][number]["regra"], string> = {
+  RECORTE_POR_UG_INDISPONIVEL: "Dados de mais de uma unidade gestora: arquivo fora do pacote",
+  ARQUIVO_SO_DA_PREFEITURA: "Arquivo do ente, remetido só pela Prefeitura",
+  TABELA_SEM_ABRANGENCIA: "Abrangência do arquivo não declarada",
   RECEITA_EXTRA_FORA_DO_PACOTE: "Receita extra fora do pacote",
   RESTOS_FORA_DO_PACOTE: "Restos a pagar fora do pacote",
   RELACIONAMENTO_FORA_DO_PACOTE: "Fornecedores ou relacionamento fora do pacote",
@@ -330,6 +333,7 @@ export default async function SagresPage({
           ) : (
             <span>
               Unidade gestora da remessa: <strong>{ug.codUnidadeGestora} {ug.nome}</strong>.
+              {ug.opcoes.length > 1 && !ug.escolhidaNoPedido ? <span data-ug-implicita> Aberta na primeira das {ug.opcoes.length} escrituradas: escolha a unidade antes de baixar.</span> : null}
               {ug.opcoes.length > 1 ? (
                 <span> Outras: {ug.opcoes.filter((o) => o.codigo !== ug?.codUnidadeGestora).map((o) => <a key={o.codigo} href={`/integracoes/sagres?dia=${diaIso}&mes=${mesIso}&ug=${o.codigo}`} className="ml-2 underline">{o.codigo} {o.nome}</a>)}</span>
               ) : null}

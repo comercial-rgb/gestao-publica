@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { baixarPacoteSagres, ugDaRemessa } from "../../../../../lib/portas/sagres";
+import { baixarPacoteSagres, ugDaRemessa, exigirUgEscolhida } from "../../../../../lib/portas/sagres";
 import { POC_SAGRES } from "../../../../../lib/portas/sagres-poc";
 import { inicioDoDiaCivil, janelaCivilDoMes } from "../../../../../packages/datas/index";
 import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
@@ -45,6 +45,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     // V26 — a mesma unidade gestora da prévia (o parâmetro `ug`), ou a de demonstração sem cadastro.
     const ug = await ugDaRemessa(dia, req.nextUrl.searchParams.get("ug") ?? undefined, POC_SAGRES);
+    exigirUgEscolhida(ug);
     const pacote = await baixarPacoteSagres({ codUnidadeGestora: ug.codUnidadeGestora, cnpjGerenciadora: ug.cnpjGerenciadora, codContaArrecadadora: POC_SAGRES.codContaArrecadadora, codFonteRecursoExtra: POC_SAGRES.codFonteRecursoExtra, dia, ...(mes !== undefined ? { mes } : {}) });
     return new NextResponse(new Uint8Array(pacote.zip), {
       status: 200,
