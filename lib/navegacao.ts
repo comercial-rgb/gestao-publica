@@ -848,7 +848,6 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/contabilidade/fechamento-mensal", rotulo: "Fechamento mensal" },
         { href: "/despesa/restos-a-pagar", rotulo: "Inscrição de restos e encerramento" },
         { href: "/contabilidade/virada-dos-controles", rotulo: "Virada das contas de controle" },
-        { href: "/planejamento/proposta-orcamentaria", rotulo: "Abertura do exercício seguinte" },
         { href: "/contabilidade/implantacao-de-saldos", rotulo: "Implantação de saldos" },
       ] },
       { rotulo: "Consolidação, custos e dívida", itens: [

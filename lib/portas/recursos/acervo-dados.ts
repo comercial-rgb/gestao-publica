@@ -1,4 +1,5 @@
 import { diaCivil, diaCivilBr, FUSO_DO_ENTE, inicioDoDiaCivil } from "../../../packages/datas/index.js";
+import type { DadoDoDetalhe } from "../../molde/tipos.js";
 import { normalizarDocumento } from "../../../packages/documento/index.js";
 import { toMoney } from "../../../packages/contracts/index.js";
 import {
@@ -351,6 +352,25 @@ export async function listarBensPatrimoniais(c: ConsultaDoMolde): Promise<Pagina
   };
 }
 
+/** V33 — os elos do bem para o detalhe (todos com link). */
+function elosDoBem(x: {
+  readonly dataAquisicao: Date;
+  readonly classeDeBens: { readonly contaContabilAtivo: { readonly codigo: string; readonly nome: string } };
+  readonly movimentos: readonly { readonly liquidacaoId: string | null; readonly lancamentoId: string; readonly estornoDeId: string | null; readonly estornos: readonly { readonly id: string }[] }[];
+}): DadoDoDetalhe[] {
+  const ano = diaCivilBr(x.dataAquisicao).slice(-4);
+  const daLiquidacao = x.movimentos.find((m) => m.liquidacaoId !== null && m.estornoDeId === null && m.estornos.length === 0);
+  const ultimo = x.movimentos[0];
+  const conta = x.classeDeBens.contaContabilAtivo;
+  return [
+    { rotulo: "Conta do ativo no razão", valor: `${conta.codigo} — ${conta.nome}`, href: `/relatorios/livros/razao?conta=${encodeURIComponent(conta.codigo)}&exercicio=${ano}` },
+    daLiquidacao !== undefined && daLiquidacao.liquidacaoId !== null
+      ? { rotulo: "Incorporado pela liquidação", valor: "abrir a liquidação no empenho", href: `/despesa/documento/LIQUIDACAO/${daLiquidacao.liquidacaoId}` }
+      : { rotulo: "Incorporado pela liquidação", valor: "sem liquidação (doação, inventário ou outra forma de entrada)" },
+    ...(ultimo === undefined ? [] : [{ rotulo: "Último lançamento de valor", valor: "abrir o lançamento", href: `/contabilidade/lancamentos/${ultimo.lancamentoId}` }]),
+  ];
+}
+
 export async function verBemPatrimonial(id: string): Promise<DetalheLido | null> {
   const prisma = cliente();
   const x = await prisma.bemPatrimonial.findUnique({
@@ -398,6 +418,9 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
           // V3 (pacote 2): o motivo do rol e a guia da venda, ao lado do texto livre.
           motivoDeBaixa: { select: { codigo: true, descricao: true } },
           receitaArrecadada: { select: { numeroReceita: true, exercicio: true } },
+          // V33 — de onde o valor veio e onde ele está no razão.
+          liquidacaoId: true,
+          lancamentoId: true,
         },
         orderBy: { dataMovimento: "desc" },
         take: 200,
@@ -438,6 +461,9 @@ export async function verBemPatrimonial(id: string): Promise<DetalheLido | null>
             : `${x.tipoDeIncorporacao.codigo} — ${x.tipoDeIncorporacao.descricao}`,
       },
       { rotulo: "Data de aquisição", valor: diaCivilBr(x.dataAquisicao), tipo: "data" },
+      // V33 — os elos do bem com a despesa e com o razão: a liquidação que o incorporou, a conta do ativo e o último
+      // lançamento de valor. Bem cadastrado sem liquidação (doação, inventário inicial) diz isso.
+      ...elosDoBem(x),
       {
         // ⚠️ ESTE RÓTULO NÃO É ENFEITE, E O PERCURSO O LÊ PELO NOME. O domínio recusa baixa
         // acima do valor do bem; oferecer o formulário sem dizer quanto ele vale seria montar
