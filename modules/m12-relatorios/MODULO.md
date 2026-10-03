@@ -907,3 +907,40 @@ mutação provada (volta ao percentual: 5 vermelhos; conserto só da base zero: 
 A tela, com base nula, mostra "—" no lugar do percentual e o selo "sem base de impostos" (Anexo 12)
 ou "sem recurso do FUNDEB" (Anexo 8). O Anexo 8 não tem indicador próprio do mínimo de 25% em MDE —
 só a linha 5 (mínimo além do FUNDEB) —, e por isso o mesmo padrão só existia no indicador dos 70%.
+
+## A composição das linhas do Anexo 12, do Anexo 13 e da DFC (V33)
+
+A pergunta do contador é "de que documentos é feito este número?". A resposta não é uma consulta ao
+lado dos motores, porque seria a segunda aritmética da demonstração. As linhas documento a documento
+moram em `composicao.ts`, e os três motores SOMAM a partir delas:
+
+| Linha documento a documento | Quem soma | Por |
+|---|---|---|
+| `parcelasDaReceitaRealizada` (guia × fonte, com sinal) | Anexo 13, Anexo 12, DFC | fonte; natureza; origem |
+| `movimentosDeEmpenho` (cada EMPENHO/EMPENHO_ANULADO, com o empenho original) | Anexo 13 | fonte |
+| `execucaoPorEmpenho` (liquidado e pago pela régua dos estornáveis) | Anexo 12 | ficha |
+| `restosPagosNaJanela` (pagamento e estorno de RP de exercício anterior) | Anexo 13, DFC | tipo; grupo |
+
+O empenhado do Anexo 12 continua no `switch` exaustivo dos movimentos de dotação, que também apura
+dotação e créditos. A composição desse número usa `movimentosDeEmpenho` com o mesmo filtro, e o teste
+de propriedade confere os dois.
+
+A tela (`/relatorios/demonstracoes/composicao?linha=...`) abre pela fonte do Anexo 13, pelo código da
+categoria, origem ou grupo do Anexo 12 e pelo rótulo da linha da DFC (`LinhaDfc.composicao`). A porta
+confere a soma contra a linha do motor (`Money.equals`). Se o motor recusar (sem rol de caixa, DFC que
+não fecha), os documentos aparecem assim mesmo, com o motivo.
+
+Prova: `m12-composicao.test.ts`, com N=2 em cada eixo e dois exercícios. A propriedade cobre toda
+linha com documentos. A aritmética manual pega o erro de sinal no leitor comum, que a propriedade não
+veria. Quatro mutações acusam (origem, liquidado/pago, restos pagos, raiz da parcial).
+
+Achado ao escrever o teste: o encerramento (M08) inscrevia a anulação parcial do empenho como resto a
+pagar próprio, e o Anexo 13 do exercício encerrado não fechava contra o caixa. Correção e
+caracterização no M08 (`m08-encerramento-parcial.test.ts`).
+
+**Mudança de comportamento declarada (V33):** o Anexo 12 e a DFC passaram a ler a receita pelas
+parcelas de fonte de cada guia (`parcelasDaGuia`). Uma guia cuja distribuição não soma o total agora
+derruba os dois relatórios com "DISTRIBUIÇÃO INCONSISTENTE", nomeando a guia. Antes eles somavam pelo
+valor da guia e não viam o defeito; o Anexo 13 já recusava. É fail-closed e é a mesma recusa nos três.
+A escrita (motor de partidas e `distribuicao.ts`) já impede essa guia; a recusa cobre importador,
+manutenção e caminho futuro.

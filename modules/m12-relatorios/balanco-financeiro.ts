@@ -1,5 +1,6 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
-import { parcelasDaGuia } from "../m04-receita/parcelas-por-fonte.js";
+// V33 — as linhas documento a documento são da composição; aqui elas só se somam por fonte.
+import { movimentosDeEmpenho, naJanela, parcelasDaReceitaRealizada, restosPagosNaJanela } from "./composicao.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // A apuração de caixa é do M01: uma aritmética, muitos recortes.
 import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
@@ -27,12 +28,8 @@ import {
  * quem chama declara o rol. Fail-closed: rol vazio ou conta inexistente = erro.
  */
 
-/** Janela `(inicio, fim]`. Limites nulos = sem limite. */
-export function naJanela(quando: Date, inicio: Date | null, fim: Date | null): boolean {
-  if (inicio !== null && quando <= inicio) return false;
-  if (fim !== null && quando > fim) return false;
-  return true;
-}
+/** Janela `(inicio, fim]`. Limites nulos = sem limite. Mora na composição (V33), a base dos três motores. */
+export { naJanela };
 
 export async function balancoFinanceiro(
   prisma: PrismaClient,
@@ -161,66 +158,16 @@ async function lerReceitasPorFonte(
   exercicio: number,
   corte: Date | null
 ): Promise<readonly FatoPorFonte[]> {
-  const arrecadadas = await prisma.receitaArrecadada.findMany({
-    where: {
-      exercicio,
-      ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
-    },
-    select: {
-      tipo: true,
-      // ⚠️ V16/C30 — a guia pode repartir o depósito entre fontes, e o ingresso entra na LINHA DE
-      // CADA UMA. Somar pela fonte padrão da guia faria o Balanço Financeiro publicar ingresso
-      // numa fonte que não recebeu aquele dinheiro — e o balanço fecharia no total, que é o que
-      // torna esse erro invisível.
-      numeroReceita: true,
-      fonteId: true,
-      exercicioFonte: true,
-      valor: true,
-      fonte: { select: { codigo: true, descricao: true } },
-      distribuicao: {
-        select: {
-          fonteId: true,
-          exercicioFonte: true,
-          valor: true,
-          fonte: { select: { codigo: true, descricao: true } },
-        },
-      },
-    },
-  });
-
+  // ⚠️ V16/C30 — a guia pode repartir o depósito entre fontes, e o ingresso entra na LINHA DE
+  // CADA UMA (`parcelasDaReceitaRealizada` já devolve uma linha por parcela, com o rótulo do
+  // cadastro de cada fonte). ARRECADAÇÃO entra, ANULAÇÃO sai; RETIFICAÇÃO derruba (sinal
+  // indefinido). V33: as linhas são as mesmas que a composição da tela lista.
   const por = new Map<string, { rotulo: string; valor: Money }>();
-  for (const a of arrecadadas) {
-    // ARRECADAÇÃO entra, ANULAÇÃO sai. (RETIFICACAO não é emitida pelo M04 e tem
-    // sinal indefinido — o Anexo 12 já derruba o relatório nela; aqui ela cairia
-    // no mesmo problema, então também não é somada às cegas.)
-    if (a.tipo !== "ARRECADACAO" && a.tipo !== "ANULACAO") {
-      throw new Error(
-        `Receita do tipo ${a.tipo} não tem sinal definido — ver ` +
-          `SINAL_RECEITA_REALIZADA (M12) e a PENDÊNCIA do M04.`
-      );
-    }
-    // O rótulo de cada fonte vem do cadastro dela, não do da guia: numa guia repartida a linha
-    // da fonte 540 não pode sair com a descrição da 500.
-    const rotuloDa = new Map<string, { codigo: string; descricao: string }>([
-      [a.fonteId, a.fonte],
-      ...a.distribuicao.map(
-        (d) => [d.fonteId, d.fonte] as [string, { codigo: string; descricao: string }]
-      ),
-    ]);
-    for (const parcela of parcelasDaGuia(a)) {
-      const fonte = rotuloDa.get(parcela.fonteId)!;
-      const acc = por.get(fonte.codigo) ?? {
-        rotulo: fonte.descricao,
-        valor: toMoney("0.00"),
-      };
-      acc.valor =
-        a.tipo === "ARRECADACAO"
-          ? toMoney(acc.valor.plus(parcela.valor))
-          : toMoney(acc.valor.minus(parcela.valor));
-      por.set(fonte.codigo, acc);
-    }
+  for (const p of await parcelasDaReceitaRealizada(prisma, exercicio, corte)) {
+    const acc = por.get(p.fonteCodigo) ?? { rotulo: p.fonteDescricao, valor: toMoney("0.00") };
+    acc.valor = toMoney(acc.valor.plus(p.valor));
+    por.set(p.fonteCodigo, acc);
   }
-
   return [...por.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([codigo, v]) => ({ codigo, rotulo: v.rotulo, valor: v.valor }));
@@ -238,34 +185,13 @@ async function lerDespesasPorFonte(
   exercicio: number,
   corte: Date | null
 ): Promise<readonly FatoPorFonte[]> {
-  const movimentos = await prisma.movimentoDotacao.findMany({
-    where: {
-      tipo: { in: ["EMPENHO", "EMPENHO_ANULADO"] },
-      ficha: { exercicio },
-      ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
-    },
-    select: {
-      tipo: true,
-      valor: true,
-      ficha: { select: { fonte: { select: { codigo: true, descricao: true } } } },
-    },
-  });
-
   const por = new Map<string, { rotulo: string; valor: Money }>();
-  for (const m of movimentos) {
-    const fonte = m.ficha.fonte;
-    const acc = por.get(fonte.codigo) ?? {
-      rotulo: fonte.descricao,
-      valor: toMoney("0.00"),
-    };
-    const v = toMoney(m.valor.toFixed(2));
-    acc.valor =
-      m.tipo === "EMPENHO"
-        ? toMoney(acc.valor.plus(v))
-        : toMoney(acc.valor.minus(v)); // EMPENHO_ANULADO devolve
-    por.set(fonte.codigo, acc);
+  // O movimento já vem com sinal: EMPENHO_ANULADO devolve.
+  for (const m of await movimentosDeEmpenho(prisma, exercicio, corte)) {
+    const acc = por.get(m.fonteCodigo) ?? { rotulo: m.fonteDescricao, valor: toMoney("0.00") };
+    acc.valor = toMoney(acc.valor.plus(m.valor));
+    por.set(m.fonteCodigo, acc);
   }
-
   return [...por.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([codigo, v]) => ({ codigo, rotulo: v.rotulo, valor: v.valor }));
@@ -351,32 +277,16 @@ async function lerPagamentosDeRestos(
   inicio: Date | null,
   corte: Date | null
 ): Promise<{ naoProcessados: Money; processados: Money }> {
-  const movimentos = await prisma.movimentoRestosAPagar.findMany({
-    where: {
-      tipo: { in: ["PAGAMENTO", "ESTORNO_PAGAMENTO"] },
-      inscricao: { exercicioOrigem: { lt: exercicio } },
-    },
-    select: {
-      tipo: true,
-      valor: true,
-      criadoEm: true,
-      inscricao: { select: { tipo: true } },
-    },
-  });
-
   let naoProcessados = toMoney("0.00");
   let processados = toMoney("0.00");
 
-  for (const m of movimentos) {
-    if (!naJanela(m.criadoEm, inicio, corte)) continue;
-    const v = toMoney(m.valor.toFixed(2));
-    // PAGAMENTO sai do caixa; ESTORNO_PAGAMENTO devolve. Nenhum SUM bruto.
-    const delta = m.tipo === "PAGAMENTO" ? v : toMoney(v.negated());
-
-    if (m.inscricao.tipo === "NAO_PROCESSADO") {
-      naoProcessados = toMoney(naoProcessados.plus(delta));
+  // A janela e o sinal (PAGAMENTO sai do caixa; ESTORNO_PAGAMENTO devolve) já vêm das linhas da
+  // composição — as mesmas que a DFC soma por grupo.
+  for (const m of await restosPagosNaJanela(prisma, exercicio, inicio, corte)) {
+    if (m.tipoInscricao === "NAO_PROCESSADO") {
+      naoProcessados = toMoney(naoProcessados.plus(m.valor));
     } else {
-      processados = toMoney(processados.plus(delta));
+      processados = toMoney(processados.plus(m.valor));
     }
   }
   return { naoProcessados, processados };

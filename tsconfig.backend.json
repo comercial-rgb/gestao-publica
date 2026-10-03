@@ -106,6 +106,22 @@
     "test/demonstracoes-contabeis.test.ts",
     "test/bens-publicos-contrato.test.ts",
     "test/csv-injecao.test.ts",
-    "test/despesas-publicas-contrato.test.ts"
+    "test/despesas-publicas-contrato.test.ts",
+    // ⚠️ V33 — A MESMA TROCA, MEDIDA OUTRA VEZ, e o caso documentado acima repetido por onze arquivos da V29 à
+    // V33 (a maioria da V33). Cada um importa uma porta escrita para a resolução `bundler` (`lib/portas/sagres`,
+    // `anulacao`, `composicao`, `comparacao-de-exercicios`, `diarias-publicas`, `exportacoes-federais`,
+    // `leitura`, `lib/navegacao`). Medido no `tsc -p tsconfig.backend.json` em bbd4972 + a árvore da composição:
+    // 130 erros TS2835/TS7006, nenhum em linha de código de produto. Saem daqui e entram no `tsconfig.json`.
+    "test/anulacoes-registradas.test.ts",
+    "test/sagres-recorte-por-ug.test.ts",
+    "test/sagres-ugs-do-dia.test.ts",
+    "test/exportacoes-federais-leitura.test.ts",
+    "test/ui/contexto-do-trabalho.test.ts",
+    "test/ui/menu-do-contador.test.ts",
+    "test/ui/periodo-das-demonstracoes.test.ts",
+    "test/ui/csv-ida-e-volta.test.ts",
+    "modules/m02-planejamento/m02-comparacao-de-exercicios.test.ts",
+    "modules/m05-despesa/m05-adiantamentos.test.ts",
+    "modules/m12-relatorios/m12-composicao.test.ts"
   ]
 }

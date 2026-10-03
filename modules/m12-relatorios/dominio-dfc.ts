@@ -207,6 +207,12 @@ export interface LinhaDfc {
    */
   readonly nivel: NivelLinhaDfc;
   readonly valor: Dinheiro;
+  /**
+   * V33 — a linha que tem documentos atrás dela diz qual composição a abre: `receita:<origem>`
+   * (as guias da origem) ou `despesa:<grupo>` (o pago do exercício e os restos a pagar pagos).
+   * Ausente nas linhas sem documento próprio (depósitos, transferências, o detalhe dos restos).
+   */
+  readonly composicao?: string;
 }
 
 export interface FluxoDaAtividade {
@@ -371,14 +377,14 @@ export function montarDfc(f: FatosDfc): DemonstracaoFluxosDeCaixa {
   let geracao = zero();
 
   for (const atividade of ATIVIDADES_DFC) {
-    const ingressos: { rotulo: string; nivel: NivelLinhaDfc; valor: Money }[] = [];
-    const desembolsos: { rotulo: string; nivel: NivelLinhaDfc; valor: Money }[] = [];
+    const ingressos: { rotulo: string; nivel: NivelLinhaDfc; valor: Money; composicao?: string }[] = [];
+    const desembolsos: { rotulo: string; nivel: NivelLinhaDfc; valor: Money; composicao?: string }[] = [];
 
     // Receita: TODAS as linhas da atividade, na ordem do leiaute — zeradas, não omitidas.
     for (const origem of ORDEM_ORIGENS) {
       const c = CLASSIFICACAO_RECEITA[origem];
       if (c.atividade !== atividade) continue;
-      ingressos.push({ rotulo: c.rotulo, nivel: "ITEM", valor: receitaPorOrigem.get(origem) ?? zero() });
+      ingressos.push({ rotulo: c.rotulo, nivel: "ITEM", valor: receitaPorOrigem.get(origem) ?? zero(), composicao: `receita:${origem}` });
     }
 
     // Despesa: uma linha por grupo da atividade (exercício + restos a pagar pagos), e o
@@ -388,7 +394,7 @@ export function montarDfc(f: FatosDfc): DemonstracaoFluxosDeCaixa {
       const grupo = par.charAt(1);
       const doExercicio = pagoPorGrupo.get(grupo) ?? zero();
       const deRestos = restosPorGrupo.get(grupo) ?? zero();
-      desembolsos.push({ rotulo: rotuloDoGrupo(grupo), nivel: "ITEM", valor: soma(doExercicio, deRestos) });
+      desembolsos.push({ rotulo: rotuloDoGrupo(grupo), nivel: "ITEM", valor: soma(doExercicio, deRestos), composicao: `despesa:${grupo}` });
       if (!deRestos.isZero()) {
         desembolsos.push({
           rotulo: "dos quais, restos a pagar de exercícios anteriores",
@@ -416,10 +422,11 @@ export function montarDfc(f: FatosDfc): DemonstracaoFluxosDeCaixa {
     const liquido = sub(totalIngressos, totalDesembolsos);
     geracao = soma(geracao, liquido);
 
-    const serial = (l: { rotulo: string; nivel: NivelLinhaDfc; valor: Money }): LinhaDfc => ({
+    const serial = (l: { rotulo: string; nivel: NivelLinhaDfc; valor: Money; composicao?: string }): LinhaDfc => ({
       rotulo: l.rotulo,
       nivel: l.nivel,
       valor: serializar(l.valor),
+      ...(l.composicao === undefined ? {} : { composicao: l.composicao }),
     });
     fluxos.push({
       atividade,

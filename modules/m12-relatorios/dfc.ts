@@ -1,10 +1,11 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { sinalDaReceitaRealizada } from "../m04-receita/dominio.js";
+// V33 — as linhas documento a documento são da composição; aqui elas só se somam.
+import { parcelasDaReceitaRealizada, restosPagosNaJanela } from "./composicao.js";
 // OS MESMOS FATOS DO ANEXO 13 — importados, não recopiados: a janela, o caixa (a apuração do
 // M01 pelas partidas) e o dinheiro de terceiros (M07). Duas cópias de cada um seriam duas
 // verdades sobre o mesmo saldo.
-import { apurarCaixa, lerDepositos, naJanela } from "./balanco-financeiro.js";
+import { apurarCaixa, lerDepositos } from "./balanco-financeiro.js";
 // E A MESMA DESPESA PAGA DO ANEXO 12: a coluna "pagas", por ficha, pelo bruto, com o corte que
 // separa o pago do exercício do pago de restos a pagar.
 import { lerDespesas } from "./balanco-orcamentario.js";
@@ -117,28 +118,11 @@ async function lerReceitasPorNatureza(
   exercicio: number,
   corte: Date | null
 ): Promise<readonly FatoReceitaDfc[]> {
-  const arrecadadas = await prisma.receitaArrecadada.findMany({
-    where: {
-      exercicio,
-      ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
-    },
-    select: {
-      tipo: true,
-      valor: true,
-      naturezaReceita: { select: { codigo: true, descricao: true } },
-    },
-  });
-
   const por = new Map<string, { descricao: string; valor: Money }>();
-  for (const a of arrecadadas) {
-    const { codigo, descricao } = a.naturezaReceita;
-    const acc = por.get(codigo) ?? { descricao, valor: toMoney("0.00") };
-    const v = toMoney(a.valor.toFixed(2));
-    acc.valor =
-      sinalDaReceitaRealizada(a.tipo) === 1
-        ? toMoney(acc.valor.plus(v))
-        : toMoney(acc.valor.minus(v));
-    por.set(codigo, acc);
+  for (const p of await parcelasDaReceitaRealizada(prisma, exercicio, corte)) {
+    const acc = por.get(p.naturezaCodigo) ?? { descricao: p.naturezaDescricao, valor: toMoney("0.00") };
+    acc.valor = toMoney(acc.valor.plus(p.valor));
+    por.set(p.naturezaCodigo, acc);
   }
 
   return [...por.entries()]
@@ -157,41 +141,14 @@ async function lerRestosPagosPorNatureza(
   inicio: Date | null,
   corte: Date | null
 ): Promise<readonly FatoDespesaDfc[]> {
-  const movimentos = await prisma.movimentoRestosAPagar.findMany({
-    where: {
-      tipo: { in: ["PAGAMENTO", "ESTORNO_PAGAMENTO"] },
-      inscricao: { exercicioOrigem: { lt: exercicio } },
-    },
-    select: {
-      tipo: true,
-      valor: true,
-      criadoEm: true,
-      inscricao: {
-        select: {
-          empenho: {
-            select: {
-              ficha: {
-                select: { naturezaDespesa: { select: { codCategoria: true, codNatureza: true } } },
-              },
-            },
-          },
-        },
-      },
-    },
-  });
-
   const por = new Map<string, FatoDespesaDfc>();
-  for (const m of movimentos) {
-    if (!naJanela(m.criadoEm, inicio, corte)) continue;
-    const nd = m.inscricao.empenho.ficha.naturezaDespesa;
-    const chave = `${nd.codCategoria}|${nd.codNatureza}`;
-    const v = toMoney(m.valor.toFixed(2));
-    const delta = m.tipo === "PAGAMENTO" ? v : toMoney(v.negated());
+  for (const m of await restosPagosNaJanela(prisma, exercicio, inicio, corte)) {
+    const chave = `${m.codCategoria}|${m.codGrupo}`;
     const acc = por.get(chave);
     por.set(chave, {
-      codCategoria: nd.codCategoria,
-      codGrupo: nd.codNatureza,
-      valor: toMoney((acc?.valor ?? toMoney("0.00")).plus(delta)),
+      codCategoria: m.codCategoria,
+      codGrupo: m.codGrupo,
+      valor: toMoney((acc?.valor ?? toMoney("0.00")).plus(m.valor)),
     });
   }
   return [...por.values()];

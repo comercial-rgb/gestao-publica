@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
@@ -8,6 +9,7 @@ import {
   PortaSemBancoError,
   type BalancoOrcamentario,
 } from "../../../../../lib/portas/demonstrativos";
+import { hrefDaComposicao } from "../../../../../lib/portas/composicao";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { SeletorExercicio } from "../SeletorExercicio";
 import { lerExercicio } from "../exercicio";
@@ -75,7 +77,7 @@ export default async function BalancoOrcamentarioPage({
         <EstadoVazio titulo="Sem receita no exercício" descricao="Não há receita prevista nem arrecadada no exercício selecionado." />
       ) : (
         <TabelaDeDados
-          colunas={COLUNAS_RECEITA}
+          colunas={colunasDaReceita(exercicio)}
           linhas={dados.receitas}
           keyDe={(l, i) => `${l.codigo ?? l.nota ?? "r"}-${i}`}
           ehTotal={(l) => l.nivel === "TOTAL"}
@@ -87,7 +89,7 @@ export default async function BalancoOrcamentarioPage({
         <EstadoVazio titulo="Sem despesa no exercício" descricao="Não há dotação nem execução no exercício selecionado." />
       ) : (
         <TabelaDeDados
-          colunas={COLUNAS_DESPESA}
+          colunas={colunasDaDespesa(exercicio)}
           linhas={dados.despesas}
           keyDe={(l, i) => `${l.codigo ?? l.nota ?? "d"}-${i}`}
           ehTotal={(l) => l.nivel === "TOTAL"}
@@ -98,9 +100,29 @@ export default async function BalancoOrcamentarioPage({
   );
 }
 
-const COLUNAS_RECEITA: readonly ColunaTabela<LinhaReceita>[] = [
+/** V33 — o código da categoria, da origem e do grupo abre a composição da linha. */
+function CodigoDaLinha({ codigo, href }: { readonly codigo: string | null; readonly href: string | null }): React.ReactElement {
+  if (codigo === null) return <></>;
+  if (href === null) return <>{codigo}</>;
+  return (
+    <Link className="font-mono text-[color:var(--color-primary)] underline" href={href} title="Abrir os documentos que formam esta linha">
+      {codigo}
+    </Link>
+  );
+}
+
+const colunasDaReceita = (exercicio: number): readonly ColunaTabela<LinhaReceita>[] => [
   { chave: "nota", cabecalho: "Nota", celula: (l) => l.nota ?? "" },
-  { chave: "codigo", cabecalho: "Código", celula: (l) => l.codigo ?? "" },
+  {
+    chave: "codigo",
+    cabecalho: "Código",
+    celula: (l) => (
+      <CodigoDaLinha
+        codigo={l.codigo}
+        href={l.codigo !== null && (l.nivel === "CATEGORIA" || l.nivel === "ORIGEM") ? hrefDaComposicao({ tipo: "BO_RECEITA", codigo: l.codigo }, exercicio) : null}
+      />
+    ),
+  },
   { chave: "rotulo", cabecalho: "Especificação", celula: (l) => l.rotulo ?? "" },
   { chave: "previsaoInicial", cabecalho: "Previsão inicial (a)", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.previsaoInicial} /> },
   { chave: "previsaoAtualizada", cabecalho: "Previsão atualizada (b)", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.previsaoAtualizada} /> },
@@ -108,9 +130,18 @@ const COLUNAS_RECEITA: readonly ColunaTabela<LinhaReceita>[] = [
   { chave: "saldo", cabecalho: "Saldo (d)", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.saldo} /> },
 ];
 
-const COLUNAS_DESPESA: readonly ColunaTabela<LinhaDespesa>[] = [
+const colunasDaDespesa = (exercicio: number): readonly ColunaTabela<LinhaDespesa>[] => [
   { chave: "nota", cabecalho: "Nota", celula: (l) => l.nota ?? "" },
-  { chave: "codigo", cabecalho: "Código", celula: (l) => l.codigo ?? "" },
+  {
+    chave: "codigo",
+    cabecalho: "Código",
+    celula: (l) => (
+      <CodigoDaLinha
+        codigo={l.codigo}
+        href={l.codigo !== null && (l.nivel === "CATEGORIA" || l.nivel === "GRUPO") ? hrefDaComposicao({ tipo: "BO_DESPESA", codigo: l.codigo }, exercicio) : null}
+      />
+    ),
+  },
   { chave: "rotulo", cabecalho: "Especificação", celula: (l) => l.rotulo },
   { chave: "dotacaoInicial", cabecalho: "Dotação inicial (e)", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.dotacaoInicial} /> },
   { chave: "creditosAdicionais", cabecalho: "Créditos adicionais (f)", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.creditosAdicionais} /> },

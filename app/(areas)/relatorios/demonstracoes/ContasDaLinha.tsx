@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 /**
  * V33 — A COMPOSIÇÃO DE UMA LINHA DE DEMONSTRAÇÃO, NAVEGÁVEL. Cada conta que soma na linha abre o próprio razão no
@@ -26,7 +27,7 @@ export function ContasDaLinha({
         >
           {c.codigo}{" "}
           <span className="text-[color:var(--color-ink-3)]">
-            ({Number(c.saldo).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})
+            ({formatarMoeda(c.saldo).texto})
           </span>
         </Link>
       ))}

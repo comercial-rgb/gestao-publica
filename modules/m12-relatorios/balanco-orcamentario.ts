@@ -1,10 +1,10 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { execucaoPorEmpenho, naJanela, parcelasDaReceitaRealizada } from "./composicao.js";
 import {
   montarBalancoOrcamentario,
   SINAL_PREVISAO,
-  sinalDaReceitaRealizada,
   type BalancoOrcamentario,
   type FatoDespesa,
   type FatoReceita,
@@ -63,12 +63,6 @@ function somaLiquida(linhas: readonly Estornavel[]): Money {
   );
 }
 
-/** `criadoEm` dentro da janela `(inicio, fim]`. Limites nulos = sem limite. */
-function naJanela(criadoEm: Date, inicio: Date | null, fim: Date | null): boolean {
-  if (inicio !== null && criadoEm <= inicio) return false;
-  if (fim !== null && criadoEm > fim) return false;
-  return true;
-}
 
 export async function balancoOrcamentario(
   prisma: PrismaClient,
@@ -133,17 +127,8 @@ async function lerReceitas(
     },
   });
 
-  const arrecadadas = await prisma.receitaArrecadada.findMany({
-    where: {
-      exercicio,
-      ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
-    },
-    select: {
-      tipo: true,
-      valor: true,
-      naturezaReceita: { select: { codigo: true } },
-    },
-  });
+  // V33 — as linhas guia × fonte da composição: as mesmas que a tela lista ao abrir a linha.
+  const arrecadadas = await parcelasDaReceitaRealizada(prisma, exercicio, corte);
 
   const por = new Map<string, { previsto: Money; realizado: Money }>();
   const zerado = () => ({ previsto: toMoney("0.00"), realizado: toMoney("0.00") });
@@ -161,14 +146,11 @@ async function lerReceitas(
   }
 
   for (const a of arrecadadas) {
-    const codigo = a.naturezaReceita.codigo;
+    const codigo = a.naturezaCodigo;
     const acc = por.get(codigo) ?? zerado();
-    // ANULAÇÃO SUBTRAI; RETIFICAÇÃO derruba o relatório (sinal indefinido).
-    const valor = toMoney(a.valor.toFixed(2));
-    acc.realizado =
-      sinalDaReceitaRealizada(a.tipo) === 1
-        ? toMoney(acc.realizado.plus(valor))
-        : toMoney(acc.realizado.minus(valor));
+    // A parcela já vem com sinal: ANULAÇÃO SUBTRAI; RETIFICAÇÃO derrubou a leitura (sinal
+    // indefinido). As parcelas de uma guia somam o valor dela (fail-closed em `parcelasDaGuia`).
+    acc.realizado = toMoney(acc.realizado.plus(a.valor));
     por.set(codigo, acc);
   }
 
@@ -208,41 +190,9 @@ export async function lerDespesas(
     select: { fichaId: true, tipo: true, valor: true },
   });
 
-  const empenhos = await prisma.empenho.findMany({
-    where: { fichaId: { in: fichaIds } },
-    select: { id: true, fichaId: true },
-  });
-  const fichaDoEmpenho = new Map(empenhos.map((e) => [e.id, e.fichaId]));
-
-  const liquidacoes = await prisma.liquidacao.findMany({
-    where: {
-      empenhoId: { in: empenhos.map((e) => e.id) },
-      // CORTE: liquidação de RPNP acontece DEPOIS do encerramento — ela é
-      // execução de restos a pagar, não despesa liquidada deste exercício.
-      ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
-    },
-    select: { id: true, empenhoId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
-  });
-
-  const pagamentos = await prisma.pagamento.findMany({
-    where: {
-      liquidacaoId: { in: liquidacoes.map((l) => l.id) },
-      // CORTE: pagamento de RP é de exercício seguinte. Sem isto, o mesmo
-      // dinheiro apareceria na despesa paga E no quadro de restos a pagar.
-      ...(corte !== null ? { criadoEm: { lte: corte } } : {}),
-    },
-    select: {
-      id: true,
-      liquidacaoId: true,
-      // ⚠️ O BRUTO. Um pagamento com retenção (M07) sai do caixa pelo líquido,
-      // mas a DESPESA EXECUTADA é o valor cheio. O líquido é assunto do Anexo 13.
-      valor: true,
-      estornoDeId: true,
-      anulacaoParcialDeId: true,
-    },
-  });
-
-  const liquidacaoDoEmpenho = new Map(liquidacoes.map((l) => [l.id, l.empenhoId]));
+  // Liquidado e pago POR EMPENHO, pela régua única dos estornáveis, com o corte nas duas pontas —
+  // as linhas da composição (V33). Aqui só se somam por ficha.
+  const execucao = await execucaoPorEmpenho(prisma, fichaIds, corte);
 
   // Agrupa por ficha, sempre com SUM líquido (o estorno neutraliza o original).
   const porFicha = new Map<
@@ -310,36 +260,9 @@ export async function lerDespesas(
     liquidadasPorFicha.set(id, zero());
     pagasPorFicha.set(id, zero());
   }
-
-  // Liquidado por empenho (líquido de anulações), somado na ficha do empenho.
-  const porEmpenho = new Map<string, Estornavel[]>();
-  for (const l of liquidacoes) {
-    const lista = porEmpenho.get(l.empenhoId) ?? [];
-    lista.push(l);
-    porEmpenho.set(l.empenhoId, lista);
-  }
-  for (const [empenhoId, lista] of porEmpenho) {
-    const fichaId = fichaDoEmpenho.get(empenhoId)!;
-    liquidadasPorFicha.set(
-      fichaId,
-      toMoney(liquidadasPorFicha.get(fichaId)!.plus(somaLiquida(lista)))
-    );
-  }
-
-  // Pago por liquidação (líquido de anulações), somado na ficha do empenho dela.
-  const porLiquidacao = new Map<string, Estornavel[]>();
-  for (const p of pagamentos) {
-    const lista = porLiquidacao.get(p.liquidacaoId) ?? [];
-    lista.push(p);
-    porLiquidacao.set(p.liquidacaoId, lista);
-  }
-  for (const [liquidacaoId, lista] of porLiquidacao) {
-    const empenhoId = liquidacaoDoEmpenho.get(liquidacaoId)!;
-    const fichaId = fichaDoEmpenho.get(empenhoId)!;
-    pagasPorFicha.set(
-      fichaId,
-      toMoney(pagasPorFicha.get(fichaId)!.plus(somaLiquida(lista)))
-    );
+  for (const e of execucao) {
+    liquidadasPorFicha.set(e.fichaId, toMoney(liquidadasPorFicha.get(e.fichaId)!.plus(e.liquidado)));
+    pagasPorFicha.set(e.fichaId, toMoney(pagasPorFicha.get(e.fichaId)!.plus(e.pago)));
   }
 
   return fichas.map((f) => {

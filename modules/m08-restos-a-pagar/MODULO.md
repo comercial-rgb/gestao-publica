@@ -462,3 +462,25 @@ e o saldo já de volta — e silêncio é indistinguível de "nada aconteceu".
   contas `5.3`/`6.3`. Por isso o caso `TRANSFERE` não tem saldo real em nenhum banco deste
   repositório, e o teste o prova pela aritmética (classificar uma perna do espelho como TRANSFERE faz
   a soma deixar de fechar) em vez de por um saldo que não existe.
+
+## A anulação parcial no encerramento (V33)
+
+`situacaoDosEmpenhos` somava pela cópia local que só conhecia o `estornoDeId`. A anulação parcial
+(TR 5.35) é uma linha nova com `anulacaoParcialDeId`. Para aquela cópia, era um fato original vivo.
+- **Empenho:** a parcial era inscrita como resto a pagar próprio, e o original não recebia o desconto.
+- **Liquidação e pagamento:** as parciais somavam em vez de subtrair.
+O efeito eram restos a pagar a maior, e o Anexo 13 do exercício encerrado sem fechar contra o caixa.
+Achado pela composição das linhas do M12 (V33).
+
+Agora as três colunas usam `packages/estornaveis`, a régua do Anexo 12:
+- a parcial viva desconta;
+- a parcial estornada volta a não descontar;
+- as linhas de anulação, total ou parcial, não entram na lista de empenhos a inscrever.
+
+Caracterização: `m08-encerramento-parcial.test.ts`, com N=2 parciais vivas por nível e uma
+estornada. O mutante (o código anterior) acusa as duas afirmações.
+
+Exercícios já encerrados com anulação parcial têm a inscrição gravada pelo cálculo antigo. A
+inscrição é fato append-only. Não se reescreve: corrige-se pelo cancelamento do resto a pagar
+indevido, com motivo. Na base da apresentação, nenhum exercício encerrado tem anulação parcial (ver
+o checkpoint da V33).

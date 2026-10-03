@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
@@ -10,6 +11,7 @@ import {
   type BalancoFinanceiro,
   type LinhaFinanceira,
 } from "../../../../../lib/portas/demonstrativos";
+import { hrefDaComposicao } from "../../../../../lib/portas/composicao";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { SeletorExercicio } from "../SeletorExercicio";
 import { lerExercicio } from "../exercicio";
@@ -93,14 +95,14 @@ export default async function BalancoFinanceiroPage({
       ) : (
         <>
           <TabelaDeDados
-            colunas={COLUNAS}
+            colunas={colunasDo("BF_RECEITA", exercicio)}
             linhas={comTotal(dados.ingressos, "Total dos ingressos", dados.totalIngressos)}
             keyDe={(l, i) => `i-${l.codigo ?? l.rotulo}-${i}`}
             ehTotal={(l) => l.nivel === "TOTAL"}
             legenda="Ingressos — valores em R$"
           />
           <TabelaDeDados
-            colunas={COLUNAS}
+            colunas={colunasDo("BF_DESPESA", exercicio)}
             linhas={comTotal(dados.dispendios, "Total dos dispêndios", dados.totalDispendios)}
             keyDe={(l, i) => `d-${l.codigo ?? l.rotulo}-${i}`}
             ehTotal={(l) => l.nivel === "TOTAL"}
@@ -143,11 +145,33 @@ function comTotal(
   return [...linhas, { codigo: null, rotulo, nivel: "TOTAL", valor: total }];
 }
 
-const COLUNAS: readonly ColunaTabela<LinhaFinanceira>[] = [
-  { chave: "codigo", cabecalho: "Fonte", celula: (l) => l.codigo ?? "" },
-  { chave: "rotulo", cabecalho: "Especificação", celula: (l) => l.rotulo },
-  { chave: "valor", cabecalho: "Valor", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.valor} /> },
-];
+/**
+ * V33 — a linha de FONTE abre a sua composição: as guias (ingressos) ou os empenhos (dispêndios)
+ * que a formam, com a soma conferida contra a própria linha. As linhas de restos a pagar e de
+ * depósitos não têm documento próprio aqui — têm as suas telas (Restos a pagar, Extraorçamentário).
+ */
+function colunasDo(lado: "BF_RECEITA" | "BF_DESPESA", exercicio: number): readonly ColunaTabela<LinhaFinanceira>[] {
+  return [
+    {
+      chave: "codigo",
+      cabecalho: "Fonte",
+      celula: (l) =>
+        l.nivel === "FONTE" && l.codigo !== null ? (
+          <Link
+            className="font-mono text-[color:var(--color-primary)] underline"
+            href={hrefDaComposicao({ tipo: lado, fonte: l.codigo }, exercicio)}
+            title="Abrir os documentos que formam esta linha"
+          >
+            {l.codigo}
+          </Link>
+        ) : (
+          (l.codigo ?? "")
+        ),
+    },
+    { chave: "rotulo", cabecalho: "Especificação", celula: (l) => l.rotulo },
+    { chave: "valor", cabecalho: "Valor", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.valor} /> },
+  ];
+}
 
 interface LinhaEspecie {
   readonly rotulo: string;

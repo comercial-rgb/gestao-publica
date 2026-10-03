@@ -12,6 +12,7 @@ import {
   type RestoAPagarNaLista,
 } from "../../../../lib/portas/restos-a-pagar";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { FiltroDosRestos } from "./FiltroDosRestos";
 import { FormApuracaoDoResultado, FormEncerramentoDoExercicio, FormEstornarApuracao } from "./FormEncerramento";
 import { dataBr } from "../../../../lib/recorte";
@@ -60,10 +61,12 @@ export default async function RestosAPagarPage({
 
   let linhas: readonly RestoAPagarNaLista[];
   let apuracoes: readonly ApuracaoFeitaParaTela[];
+  let permitidas: ReadonlySet<string>;
   try {
-    [linhas, apuracoes] = await Promise.all([
+    [linhas, apuracoes, permitidas] = await Promise.all([
       listarRestosAPagar({ exercicioOrigem: exercicio, tipo }),
       lerApuracoesFeitas(),
+      acoesPermitidas(["ENCERRAR_EXERCICIO", "APURAR_RESULTADO", "ESTORNAR_APURACAO"]),
     ]);
   } catch (erro) {
     return (
@@ -95,9 +98,7 @@ export default async function RestosAPagarPage({
           primeiro encerramento não existe inscrição nenhuma, e era exatamente essa a tela em que
           o operador não tinha como produzir a primeira. O serviço existia e só script o chamava.
         */}
-        <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
-        <FormApuracaoDoResultado exercicio={exercicio ?? EXERCICIO_PADRAO} />
-        <PainelDoEstorno apuracoes={apuracoes} />
+        <AtosDoEncerramento exercicio={exercicio ?? EXERCICIO_PADRAO} apuracoes={apuracoes} permitidas={permitidas} />
       </div>
     );
   }
@@ -112,9 +113,7 @@ export default async function RestosAPagarPage({
         legenda="Valores em R$ · pago e cancelado já descontam os estornos · saldo = inscrito − pago − cancelado"
       />
       <AvisoDasAcoes />
-      <FormEncerramentoDoExercicio exercicio={exercicio ?? EXERCICIO_PADRAO} />
-      <FormApuracaoDoResultado exercicio={exercicio ?? EXERCICIO_PADRAO} />
-      <PainelDoEstorno apuracoes={apuracoes} />
+      <AtosDoEncerramento exercicio={exercicio ?? EXERCICIO_PADRAO} apuracoes={apuracoes} permitidas={permitidas} />
     </div>
   );
 }
@@ -159,6 +158,36 @@ const COLUNAS: readonly ColunaTabela<RestoAPagarNaLista>[] = [
 ];
 
 /** O painel do estorno existe enquanto houver QUALQUER apuração — ver `FormEstornarApuracao`. */
+/**
+ * V33 — OS ATOS DO ENCERRAMENTO SÓ PARA QUEM PODE PRATICÁ-LOS. O servidor já recusava quem não tem a ação; o que
+ * a tela fazia era oferecer ao contador, que lê e fecha o mês mas não encerra o exercício, um botão que sempre
+ * falha. Quem não pode vê quem pode, em vez do botão. A recusa do servidor continua sendo a proteção.
+ */
+function AtosDoEncerramento({
+  exercicio,
+  apuracoes,
+  permitidas,
+}: {
+  readonly exercicio: number;
+  readonly apuracoes: readonly ApuracaoFeitaParaTela[];
+  readonly permitidas: ReadonlySet<string>;
+}): React.ReactElement {
+  const nenhum = !permitidas.has("ENCERRAR_EXERCICIO") && !permitidas.has("APURAR_RESULTADO") && !permitidas.has("ESTORNAR_APURACAO");
+  return (
+    <>
+      {permitidas.has("ENCERRAR_EXERCICIO") ? <FormEncerramentoDoExercicio exercicio={exercicio} /> : null}
+      {permitidas.has("APURAR_RESULTADO") ? <FormApuracaoDoResultado exercicio={exercicio} /> : null}
+      {permitidas.has("ESTORNAR_APURACAO") ? <PainelDoEstorno apuracoes={apuracoes} /> : null}
+      {nenhum ? (
+        <p className="text-xs text-[color:var(--color-ink-2)]" data-atos-do-encerramento="sem-permissao">
+          O encerramento do exercício, a apuração do resultado e o estorno da apuração são feitos por quem tem a permissão
+          de encerrar o exercício. O seu perfil consulta os restos a pagar.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 function PainelDoEstorno({
   apuracoes,
 }: {

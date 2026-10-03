@@ -98,3 +98,8 @@ export type {
   QuadroDaDvp,
   LinhaDaDvp,
 } from "./dvp.js";
+
+// V33 — a composição das linhas do Balanço Financeiro, do Orçamentário e da DFC (as mesmas linhas
+// que os três motores somam).
+export { composicaoDaLinha } from "./composicao.js";
+export type { Composicao, DocumentoDaComposicao, LinhaPedida } from "./composicao.js";

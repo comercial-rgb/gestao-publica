@@ -2,6 +2,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { z } from "zod";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { calcularInscricoes, type SituacaoDoEmpenho } from "./dominio.js";
 import type { Tx } from "./guard-exercicio.js";
@@ -37,25 +38,34 @@ export interface ResultadoEncerramento {
   }[];
 }
 
-/** SUM líquido: originais menos os que foram estornados. */
+/**
+ * SUM líquido pela régua única (`packages/estornaveis`): originais vivos, cada um descontado das
+ * suas anulações PARCIAIS vivas.
+ *
+ * ⚠️ V33 — A CÓPIA LOCAL QUE MORAVA AQUI SÓ CONHECIA O `estornoDeId`, o mesmo defeito que o Anexo 12
+ * teve (`m12-balanco-anulacao-parcial.test.ts`). A anulação parcial (TR 5.35) é uma linha nova com
+ * `anulacaoParcialDeId` e `estornoDeId` nulo: para aquela cópia, um fato original vivo. No empenho
+ * isso inscrevia a PRÓPRIA parcial como resto a pagar (um "empenho" de 1.000 que ninguém emitiu) e
+ * deixava o original sem o desconto — restos a pagar a maior pelo dobro da parcial, e o Anexo 13 do
+ * exercício encerrado sem fechar contra o caixa. Achado pela composição das linhas (V33,
+ * `m12-composicao.test.ts`); caracterizado em `m08-encerramento-parcial.test.ts`.
+ */
 function somaLiquida(
   linhas: readonly {
     readonly id: string;
     readonly valor: { toFixed(n: number): string };
     readonly estornoDeId: string | null;
+    readonly anulacaoParcialDeId?: string | null;
   }[]
 ): Money {
-  const estornados = new Set(
-    linhas.filter((l) => l.estornoDeId !== null).map((l) => l.estornoDeId!)
+  return somaLiquidaEstornaveis(
+    linhas.map((l) => ({
+      id: l.id,
+      valor: toMoney(l.valor.toFixed(2)),
+      estornoDeId: l.estornoDeId,
+      anulacaoParcialDeId: l.anulacaoParcialDeId ?? null,
+    }))
   );
-
-  let total = toMoney("0.00");
-  for (const l of linhas) {
-    if (l.estornoDeId !== null) continue; // o estorno em si não soma
-    if (estornados.has(l.id)) continue; // o estornado, tampouco
-    total = toMoney(total.plus(toMoney(l.valor.toFixed(2))));
-  }
-  return total;
 }
 
 /**
@@ -74,19 +84,24 @@ export async function situacaoDosEmpenhos(
   const empenhos = await tx.empenho.findMany({
     where: {
       ficha: { exercicio: ano },
-      estornoDeId: null, // a anulação em si não é um empenho a inscrever
+      // A anulação — total OU parcial — não é um empenho a inscrever: ela reduz o original.
+      estornoDeId: null,
+      anulacaoParcialDeId: null,
     },
     select: {
       id: true,
       numero: true,
       valor: true,
-      estornos: { select: { id: true } },
+      estornos: { select: { id: true, valor: true } },
+      // A parcial e o estorno DELA (que a neutraliza e devolve o valor ao empenho).
+      anulacoesParciais: { select: { id: true, valor: true, estornos: { select: { id: true, valor: true } } } },
       liquidacoes: {
         select: {
           id: true,
           valor: true,
           estornoDeId: true,
-          pagamentos: { select: { id: true, valor: true, estornoDeId: true } },
+          anulacaoParcialDeId: true,
+          pagamentos: { select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } },
         },
       },
     },
@@ -94,9 +109,16 @@ export async function situacaoDosEmpenhos(
 
   const situacoes: SituacaoDoEmpenho[] = [];
   for (const e of empenhos) {
-    // empenho anulado: nada a inscrever
-    const empenhado =
-      e.estornos.length > 0 ? toMoney("0.00") : toMoney(e.valor.toFixed(2));
+    // A família inteira do empenho pela régua única: anulado inteiro dá zero; parcial viva desconta;
+    // parcial estornada volta a não descontar.
+    const empenhado = somaLiquida([
+      { id: e.id, valor: e.valor, estornoDeId: null },
+      ...e.estornos.map((x) => ({ id: x.id, valor: x.valor, estornoDeId: e.id })),
+      ...e.anulacoesParciais.flatMap((p) => [
+        { id: p.id, valor: p.valor, estornoDeId: null, anulacaoParcialDeId: e.id },
+        ...p.estornos.map((x) => ({ id: x.id, valor: x.valor, estornoDeId: p.id })),
+      ]),
+    ]);
 
     const liquidado = somaLiquida(e.liquidacoes);
 
@@ -107,7 +129,7 @@ export async function situacaoDosEmpenhos(
     );
     let pago = toMoney("0.00");
     for (const l of e.liquidacoes) {
-      if (l.estornoDeId !== null) continue;
+      if (l.estornoDeId !== null || (l.anulacaoParcialDeId ?? null) !== null) continue;
       if (anuladas.has(l.id)) continue;
       pago = toMoney(pago.plus(somaLiquida(l.pagamentos)));
     }
