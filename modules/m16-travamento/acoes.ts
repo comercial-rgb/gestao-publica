@@ -823,6 +823,7 @@ export type NomeDeServico =
   | "arrecadarRecebendoDividaAtiva"
   | "arrecadarIngressoDaOperacaoDeCredito"
   | "fecharCompetenciaConferida"
+  | "declararRoteiroPatrimonial"
   | "anularArrecadacao"
   | "reconhecerReceita"
   | "estornarReconhecimento"
@@ -1607,6 +1608,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   travar: "TRAVAR_COMPETENCIA",
   // V32 — fechar o mês pela tela, depois da conferência de divergências: o MESMO ato de travar.
   fecharCompetenciaConferida: "TRAVAR_COMPETENCIA",
+  // V32 — o roteiro de precatório e de convênio declarado pela tela: dizer em que conta o movimento entra.
+  declararRoteiroPatrimonial: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   destravar: "DESTRAVAR_COMPETENCIA",
 
   // M16 — administração de usuários (7.14). A família ADMINISTRACAO — quem gerencia usuários não é
@@ -2263,6 +2266,8 @@ export const ACOES_DO_ENTE: readonly AcaoDoSistema[] = TODAS_AS_ACOES.filter(
  */
 export const FORA_DO_CENSO: Record<string, string> = {
   // ── V32 ──
+  roteiroPatrimonialVigente: "leitura (o roteiro declarado vigente de precatório ou convênio, com os ids das contas — não muta)",
+  listarRoteirosPatrimoniais: "leitura (os movimentos que precisam de roteiro e o que vale para cada um — não muta)",
   situacaoDoFechamento: "leitura (as doze competências do exercício e se cada uma está fechada para todos — não muta)",
   // ── V27 — frota e farmácia pública: leituras e os arquivos do SAGRES ──
   protocoloDaNorma: "puro (o protocolo do registro ou o informado depois)",

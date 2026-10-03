@@ -1,0 +1,182 @@
+import { z } from "zod";
+import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { autorizarNo } from "../m16-travamento/escopo.js";
+
+/**
+ * V32 — O ROTEIRO DE PRECATÓRIO E DE CONVÊNIO DECLARADO PELO ENTE.
+ *
+ * ⚠️ O QUE ISTO FECHA. `RoteiroPrecatorio` e `RoteiroConvenio` existiam, fail-closed, e só os testes os
+ * escreviam: numa instalação limpa, inscrever, atualizar e cancelar precatório, e aprovar, glosar e
+ * devolver convênio, eram recusados — e a recusa mandava "cadastrar o roteiro" num lugar que não existia.
+ *
+ * ⚠️ NENHUMA CONTA NO CÓDIGO. O contador escolhe as contas do plano carregado, com fundamento. O serviço só
+ * confere o que tornaria o lançamento impossível ou enganoso: a conta existe, é analítica, débito ≠ crédito,
+ * e as duas são do SUBSISTEMA em que o movimento lança (precatório no patrimonial, classes 1 a 4; convênio
+ * no de controle, classes 7 e 8) — sem isso o lançamento seria recusado no ato, longe da causa.
+ *
+ * ⚠️ APPEND-ONLY. Uma versão nova vale para os próximos movimentos; os lançados guardam as contas que usaram.
+ * A tabela antiga segue valendo enquanto não houver declaração (`roteiroPatrimonialVigente` cai nela).
+ */
+
+export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO";
+
+interface DefinicaoDaFamilia {
+  readonly rotulo: string;
+  readonly subsistema: "PATRIMONIAL" | "CONTROLE";
+  readonly classes: readonly string[];
+  readonly chaves: readonly { readonly chave: string; readonly rotulo: string }[];
+}
+
+export const FAMILIAS_DE_ROTEIRO: Readonly<Record<FamiliaDoRoteiro, DefinicaoDaFamilia>> = {
+  PRECATORIO: {
+    rotulo: "Precatórios",
+    subsistema: "PATRIMONIAL",
+    classes: ["1", "2", "3", "4"],
+    chaves: [
+      { chave: "INSCRICAO", rotulo: "Inscrição do precatório (reconhecimento do passivo)" },
+      { chave: "ATUALIZACAO", rotulo: "Atualização (juros e correção do período)" },
+      { chave: "CANCELAMENTO", rotulo: "Cancelamento por decisão judicial" },
+    ],
+  },
+  CONVENIO: {
+    rotulo: "Convênios",
+    subsistema: "CONTROLE",
+    classes: ["7", "8"],
+    chaves: [
+      { chave: "PRESTACAO_APROVADA/CONCEDENTE", rotulo: "Prestação de contas aprovada — o ente concede" },
+      { chave: "GLOSA/CONCEDENTE", rotulo: "Glosa — o ente concede" },
+      { chave: "DEVOLUCAO/CONCEDENTE", rotulo: "Devolução — o ente concede" },
+      { chave: "PRESTACAO_APROVADA/CONVENENTE", rotulo: "Prestação de contas aprovada — o ente recebe" },
+      { chave: "GLOSA/CONVENENTE", rotulo: "Glosa — o ente recebe" },
+      { chave: "DEVOLUCAO/CONVENENTE", rotulo: "Devolução — o ente recebe" },
+    ],
+  },
+};
+
+type TxDeLeitura = Pick<PrismaClient, "roteiroPatrimonialDeclarado" | "contaPcasp">;
+
+export interface RoteiroResolvido {
+  readonly contaDebito: { readonly id: string };
+  readonly contaCredito: { readonly id: string };
+  readonly historicoPadrao: string;
+}
+
+/**
+ * O roteiro DECLARADO vigente para (família, chave), já com os ids das contas — ou `null` se não houver
+ * declaração (aí o chamador cai na tabela antiga, e na recusa se ela também não tiver).
+ */
+export async function roteiroPatrimonialVigente(tx: TxDeLeitura, familia: FamiliaDoRoteiro, chave: string): Promise<RoteiroResolvido | null> {
+  const r = await tx.roteiroPatrimonialDeclarado.findFirst({
+    where: { familia, chave },
+    orderBy: { versao: "desc" },
+    select: { contaDebitoCodigo: true, contaCreditoCodigo: true, historicoPadrao: true },
+  });
+  if (r === null) return null;
+  const contas = await tx.contaPcasp.findMany({ where: { codigo: { in: [r.contaDebitoCodigo, r.contaCreditoCodigo] } }, select: { id: true, codigo: true } });
+  const id = (codigo: string): string => {
+    const c = contas.find((x) => x.codigo === codigo);
+    if (c === undefined) throw new Error(`A conta ${codigo} do roteiro declarado de ${familia} (${chave}) não está mais no plano carregado. Declare o roteiro de novo. Nada foi gravado.`);
+    return c.id;
+  };
+  return { contaDebito: { id: id(r.contaDebitoCodigo) }, contaCredito: { id: id(r.contaCreditoCodigo) }, historicoPadrao: r.historicoPadrao };
+}
+
+export interface RoteiroNaLista {
+  readonly familia: FamiliaDoRoteiro;
+  readonly chave: string;
+  readonly rotulo: string;
+  readonly contaDebitoCodigo: string | null;
+  readonly contaCreditoCodigo: string | null;
+  readonly historicoPadrao: string | null;
+  readonly fundamento: string | null;
+  readonly versao: number | null;
+  readonly criadoPor: string | null;
+  /** DECLARADO pela tela; ANTERIOR na tabela antiga (seed ou carga); PENDENTE: o movimento é recusado. */
+  readonly situacao: "DECLARADO" | "ANTERIOR" | "PENDENTE";
+}
+
+/** Todos os movimentos que precisam de roteiro, com o que vale hoje para cada um. Leitura pura. */
+export async function listarRoteirosPatrimoniais(prisma: PrismaClient): Promise<readonly RoteiroNaLista[]> {
+  const [declarados, precatorio, convenio] = await Promise.all([
+    prisma.roteiroPatrimonialDeclarado.findMany({
+      orderBy: [{ familia: "asc" }, { chave: "asc" }, { versao: "desc" }],
+      select: { familia: true, chave: true, contaDebitoCodigo: true, contaCreditoCodigo: true, historicoPadrao: true, fundamento: true, versao: true, criadoPor: true },
+    }),
+    prisma.roteiroPrecatorio.findMany({ select: { tipo: true, historicoPadrao: true, contaDebito: { select: { codigo: true } }, contaCredito: { select: { codigo: true } } } }),
+    prisma.roteiroConvenio.findMany({ select: { tipo: true, papelDoEnte: true, historicoPadrao: true, contaDebito: { select: { codigo: true } }, contaCredito: { select: { codigo: true } } } }),
+  ]);
+  const anteriores = new Map<string, { d: string; c: string; h: string }>([
+    ...precatorio.map((r) => [`PRECATORIO|${r.tipo}`, { d: r.contaDebito.codigo, c: r.contaCredito.codigo, h: r.historicoPadrao }] as const),
+    ...convenio.map((r) => [`CONVENIO|${r.tipo}/${r.papelDoEnte}`, { d: r.contaDebito.codigo, c: r.contaCredito.codigo, h: r.historicoPadrao }] as const),
+  ]);
+  const linhas: RoteiroNaLista[] = [];
+  for (const familia of Object.keys(FAMILIAS_DE_ROTEIRO) as FamiliaDoRoteiro[]) {
+    for (const { chave, rotulo } of FAMILIAS_DE_ROTEIRO[familia].chaves) {
+      const dec = declarados.find((x) => x.familia === familia && x.chave === chave);
+      const ant = anteriores.get(`${familia}|${chave}`);
+      linhas.push(
+        dec !== undefined
+          ? { familia, chave, rotulo, contaDebitoCodigo: dec.contaDebitoCodigo, contaCreditoCodigo: dec.contaCreditoCodigo, historicoPadrao: dec.historicoPadrao, fundamento: dec.fundamento, versao: dec.versao, criadoPor: dec.criadoPor, situacao: "DECLARADO" }
+          : ant !== undefined
+            ? { familia, chave, rotulo, contaDebitoCodigo: ant.d, contaCreditoCodigo: ant.c, historicoPadrao: ant.h, fundamento: null, versao: null, criadoPor: null, situacao: "ANTERIOR" }
+            : { familia, chave, rotulo, contaDebitoCodigo: null, contaCreditoCodigo: null, historicoPadrao: null, fundamento: null, versao: null, criadoPor: null, situacao: "PENDENTE" }
+      );
+    }
+  }
+  return linhas;
+}
+
+export const zDeclararRoteiroPatrimonial = z.object({
+  familia: z.enum(["PRECATORIO", "CONVENIO"]),
+  chave: z.string().trim().min(1, "Escolha o movimento."),
+  contaDebitoCodigo: z.string().trim().min(1, "Escolha a conta debitada."),
+  contaCreditoCodigo: z.string().trim().min(1, "Escolha a conta creditada."),
+  historicoPadrao: z.string().trim().min(5, "Escreva o histórico que acompanha o lançamento.").max(200),
+  fundamento: z.string().trim().min(20, "Diga POR QUE — citando a norma, o ato do ente ou a orientação do tribunal.").max(500),
+  criadoPor: z.string().min(1),
+});
+
+export async function declararRoteiroPatrimonial(
+  prisma: PrismaClient,
+  input: z.input<typeof zDeclararRoteiroPatrimonial>
+): Promise<{ readonly versao: number }> {
+  const d = zDeclararRoteiroPatrimonial.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.declararRoteiroPatrimonial, "ENTE");
+    const familia = FAMILIAS_DE_ROTEIRO[d.familia];
+    if (!familia.chaves.some((c) => c.chave === d.chave)) {
+      throw new Error(`O movimento "${d.chave}" não existe em ${familia.rotulo}. Escolha um da lista. Nada foi gravado.`);
+    }
+    if (d.contaDebitoCodigo === d.contaCreditoCodigo) {
+      throw new Error(`A conta debitada e a creditada são a mesma (${d.contaDebitoCodigo}); o lançamento não moveria nada. Nada foi gravado.`);
+    }
+    for (const [lado, codigo] of [["debitada", d.contaDebitoCodigo], ["creditada", d.contaCreditoCodigo]] as const) {
+      const conta = await tx.contaPcasp.findUnique({ where: { codigo }, select: { codigo: true, nome: true, analitica: true } });
+      if (conta === null) throw new Error(`A conta ${lado} ${codigo} não está no plano de contas carregado. Nada foi gravado.`);
+      if (!conta.analitica) throw new Error(`A conta ${lado} ${conta.codigo} (${conta.nome}) é sintética; o razão lança só em conta analítica. Nada foi gravado.`);
+      if (!familia.classes.includes(conta.codigo.charAt(0))) {
+        throw new Error(
+          `A conta ${lado} ${conta.codigo} (${conta.nome}) não é do subsistema ${familia.subsistema === "PATRIMONIAL" ? "patrimonial (classes 1 a 4)" : "de controle (classes 7 e 8)"}, ` +
+            `em que o movimento de ${familia.rotulo.toLowerCase()} lança. Nada foi gravado.`
+        );
+      }
+    }
+    const vigente = await tx.roteiroPatrimonialDeclarado.findFirst({
+      where: { familia: d.familia, chave: d.chave },
+      orderBy: { versao: "desc" },
+      select: { contaDebitoCodigo: true, contaCreditoCodigo: true, historicoPadrao: true, versao: true },
+    });
+    if (vigente !== null && vigente.contaDebitoCodigo === d.contaDebitoCodigo && vigente.contaCreditoCodigo === d.contaCreditoCodigo && vigente.historicoPadrao === d.historicoPadrao) {
+      throw new Error(`O roteiro de ${d.chave} já é este (versão ${String(vigente.versao)}). Nada foi gravado.`);
+    }
+    const r = await tx.roteiroPatrimonialDeclarado.create({
+      data: {
+        familia: d.familia, chave: d.chave, contaDebitoCodigo: d.contaDebitoCodigo, contaCreditoCodigo: d.contaCreditoCodigo,
+        historicoPadrao: d.historicoPadrao, fundamento: d.fundamento, versao: (vigente?.versao ?? 0) + 1, criadoPor: d.criadoPor,
+      },
+      select: { versao: true },
+    });
+    return { versao: r.versao };
+  });
+}
