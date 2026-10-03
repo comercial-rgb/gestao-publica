@@ -379,9 +379,29 @@ export async function provisionarPapelDeRuntime(
     END
     $$;
   `);
-  await cliente.query(
-    `ALTER ROLE ${id} NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS NOREPLICATION INHERIT`
+  // ⚠️ SÓ O QUE ESTÁ ERRADO, E ISSO NÃO AFROUXA NADA. No PostgreSQL 16+ mexer em BYPASSRLS ou
+  // REPLICATION (até para TIRAR) exige superusuário, e o dono do banco de uma implantação de verdade
+  // não é superusuário: o `ALTER ROLE ... NOBYPASSRLS NOREPLICATION` incondicional recusava a
+  // instalação na EC2 (V29) com "permission denied to alter role". Um papel recém-criado com LOGIN
+  // já nasce sem nenhum desses atributos; só um papel que JÁ os tem precisa do ALTER — e, nesse
+  // caso, se o dono não puder tirá-los, a instalação PARA (fail-closed), que é o certo.
+  const atual = await cliente.query(
+    `SELECT rolsuper, rolcreatedb, rolcreaterole, rolbypassrls, rolreplication, rolinherit
+       FROM pg_roles WHERE rolname = ${cliente.escapeLiteral(papel.usuario)}`
   );
+  const r = atual.rows[0] as
+    | { rolsuper: boolean; rolcreatedb: boolean; rolcreaterole: boolean; rolbypassrls: boolean; rolreplication: boolean; rolinherit: boolean }
+    | undefined;
+  if (r === undefined) throw new Error(`O papel ${papel.usuario} não existe depois de criado.`);
+  const ajustes = [
+    r.rolsuper ? "NOSUPERUSER" : "",
+    r.rolcreatedb ? "NOCREATEDB" : "",
+    r.rolcreaterole ? "NOCREATEROLE" : "",
+    r.rolbypassrls ? "NOBYPASSRLS" : "",
+    r.rolreplication ? "NOREPLICATION" : "",
+    r.rolinherit ? "" : "INHERIT",
+  ].filter((x) => x !== "");
+  if (ajustes.length > 0) await cliente.query(`ALTER ROLE ${id} ${ajustes.join(" ")}`);
 
   // (2) O schema: USAGE, nunca CREATE. Sem CREATE não há DDL — o runtime não cria
   //     tabela, não dropa índice e não altera coluna. É o que separa "a aplicação" de
