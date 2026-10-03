@@ -80,4 +80,17 @@ describe("a atualização no servidor, em simulação", () => {
     expect(ruim.codigo).toBe(2);
     expect(ruim.saida).toMatch(/commit inválido/);
   });
+
+  it("t5: com --compilado o servidor NÃO compila — confere o commit do pacote e extrai antes de subir", async () => {
+    const { codigo, saida } = await simular({ SIMULAR_PORTA_ATIVA: "3000" }, ["--commit", COMMIT, "--compilado", "/tmp/c.tgz"]);
+    expect(codigo).toBe(0);
+    expect(saida).not.toMatch(/next build/);
+    const confere = linha(saida, /conferir \.next\/COMMIT_COMPILADO de \/tmp\/c\.tgz contra 59ee6bbabcdef/);
+    const extrai = linha(saida, /tar -xzf \/tmp\/c\.tgz -C \/opt\/gestao-publica\/versoes\/59ee6bb/);
+    const migra = linha(saida, /prisma migrate deploy/);
+    const sobe = linha(saida, /systemctl restart gestao-publica@3001/);
+    expect(migra).toBeLessThan(confere);
+    expect(confere).toBeLessThan(extrai);
+    expect(extrai).toBeLessThan(sobe);
+  });
 });

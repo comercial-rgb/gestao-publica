@@ -17,8 +17,12 @@
 # os segundos da troca. Uma migration que removesse coluna quebraria essa garantia — e é proibida.
 #
 # USO (no servidor, como usuário com sudo):
-#   scripts/atualizar-no-servidor.sh --commit <sha> [--raiz /opt/gestao-publica] [--simular]
+#   scripts/atualizar-no-servidor.sh --commit <sha> [--compilado <arquivo.tgz>] [--raiz /opt/gestao-publica] [--simular]
 #
+#   --compilado  o `.next` JÁ COMPILADO pelo GitHub Actions para este commit (publicar.yml). O servidor
+#              de 2 GB levava 8,5 min compilando; o Actions leva poucos minutos. O pacote traz
+#              `.next/COMMIT_COMPILADO` e é RECUSADO se o commit dele não for o pedido (código 15) — nada
+#              é extraído nem trocado. Sem a opção, o servidor compila como antes.
 #   --simular  imprime cada comando em vez de executar (ensaio; ver test/atualizar-no-servidor.test.ts).
 #              Em simulação, SIMULAR_SAUDE=falha faz a versão nova não responder (prova do retorno).
 set -euo pipefail
@@ -28,12 +32,14 @@ USUARIO="gestao-publica"
 # Repositório privado: o servidor lê com uma CHAVE DE IMPLANTAÇÃO só de leitura (deploy key), nunca com senha.
 REPOSITORIO="git@github.com:comercial-rgb/gestao-publica.git"
 COMMIT=""
+COMPILADO=""
 SIMULAR=0
 MANTER_VERSOES=5
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --commit) COMMIT="${2:-}"; shift 2 ;;
+    --compilado) COMPILADO="${2:-}"; shift 2 ;;
     --raiz) RAIZ="${2:-}"; shift 2 ;;
     --repositorio) REPOSITORIO="${2:-}"; shift 2 ;;
     --simular) SIMULAR=1; shift ;;
@@ -92,7 +98,16 @@ x sudo -u "$USUARIO" ln -sfn "$ENV" "$VERSAO/.env"
 
 # ─────────────────────────────────────────────────────────────────────────────
 passo 4 "dependências, banco e permissões (a mesma ordem da instalação)"
-na_versao npm ci
+# Dependências: se o package-lock.json é o mesmo da versão no ar, as dela são copiadas (segundos, em vez
+# do npm ci de ~40 s). Cópia, não link: cada versão continua dona da própria pasta.
+ANTERIOR=""
+if [ "$SIMULAR" -eq 0 ] && [ -e "$RAIZ/ativa-$ATIVA" ]; then ANTERIOR="$(readlink -f "$RAIZ/ativa-$ATIVA")"; fi
+if [ -n "$ANTERIOR" ] && [ "$ANTERIOR" != "$VERSAO" ] && [ -d "$ANTERIOR/node_modules" ]    && cmp -s "$ANTERIOR/package-lock.json" "$VERSAO/package-lock.json"; then
+  echo "  package-lock.json igual ao da versão no ar: dependências copiadas dela"
+  x sudo -u "$USUARIO" cp -a "$ANTERIOR/node_modules" "$VERSAO/node_modules"
+else
+  na_versao npm ci
+fi
 na_versao npx prisma generate
 # ⚠️ ADITIVAS: a versão no ar continua funcionando sobre o banco migrado.
 na_versao npx prisma migrate deploy
@@ -107,6 +122,21 @@ passo 5 "a compilação — enquanto a versão antiga atende"
 # a roda na máquina de construção e commita a aprovação enxuta em scripts/implantacao/aprovacao-de-tipos.json.
 # Ela vai para onde o next.config procura; o build só dispensa o tsc se o DIGESTO do conteúdo desta versão
 # bater com o dela — senão PARA, nomeando o que mudou, e a versão no ar continua.
+if [ -n "$COMPILADO" ]; then
+  # ⚠️ O PACOTE TEM DE SER DESTE COMMIT. Conferido ANTES de extrair: um pacote de outro commit
+  # serviria código diferente do que o /release anuncia.
+  if [ "$SIMULAR" -eq 1 ]; then
+    echo "+ conferir .next/COMMIT_COMPILADO de $COMPILADO contra $COMMIT"
+  else
+    [ -f "$COMPILADO" ] || erro "pacote compilado não encontrado: $COMPILADO" 15
+    DO_PACOTE="$(tar -xzOf "$COMPILADO" .next/COMMIT_COMPILADO 2>/dev/null | tr -d '[:space:]')"
+    [ "$DO_PACOTE" = "$COMMIT" ] || erro "o pacote compilado é do commit '${DO_PACOTE:-desconhecido}', não de $COMMIT. Nada foi trocado." 15
+  fi
+  x sudo tar -xzf "$COMPILADO" -C "$VERSAO"
+  x sudo chown -R "$USUARIO:$USUARIO" "$VERSAO/.next"
+  x sudo rm -f "$COMPILADO"
+  echo "  compilado pelo GitHub Actions para $CURTO: extraído (sem compilar aqui)"
+else
 na_versao npx next typegen
 PULAR=""
 APROVACAO="$VERSAO/scripts/implantacao/aprovacao-de-tipos.json"
@@ -119,6 +149,7 @@ fi
 # A compilação do Next passa do heap padrão do Node numa máquina de 2 GB (medido: OOM no primeiro
 # deploy da EC2 t3.small). A memória de troca (4 GB) cobre o pico; HEAP_DO_BUILD ajusta sem editar o script.
 na_versao env $PULAR NODE_OPTIONS="--max-old-space-size=${HEAP_DO_BUILD:-3072}" NEXT_PUBLIC_BUILD_COMMIT="$CURTO" npx next build
+fi
 na_versao npx tsx scripts/preflight-navegador.ts
 
 # ─────────────────────────────────────────────────────────────────────────────

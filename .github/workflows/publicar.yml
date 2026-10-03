@@ -1,5 +1,9 @@
-# PUBLICAÇÃO AUTOMÁTICA (V22) — a cada push na `main`, o servidor monta a versão nova ao lado da antiga
-# e troca sem derrubar o site (`scripts/atualizar-no-servidor.sh`). Ver docs/operacao/ATUALIZACAO-AUTOMATICA.md.
+# PUBLICAÇÃO AUTOMÁTICA — a cada push na `main`, o GitHub COMPILA e o servidor só instala e troca, sem
+# derrubar o site (`scripts/atualizar-no-servidor.sh --compilado`). Ver docs/operacao/PRODUCAO-EC2.md.
+#
+# Por que compilar aqui: o servidor (t3.small, 2 GB) levava 8,5 min no `next build`, com troca de memória;
+# o runner do GitHub tem 16 GB. O que viaja é só o `.next` (sem cache, ~11 MB), marcado com o commit —
+# o servidor recusa pacote de outro commit.
 #
 # ⚠️ INERTE ATÉ SER LIGADO. Sem os segredos PRODUCAO_SSH_HOST, PRODUCAO_SSH_USUARIO e PRODUCAO_SSH_CHAVE
 # cadastrados no repositório (Settings > Secrets and variables > Actions), o job termina dizendo que a
@@ -34,7 +38,47 @@ jobs:
             echo "ligada=sim" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Atualizar no servidor
+      - uses: actions/checkout@v4
+        if: steps.alvo.outputs.ligada == 'sim'
+
+      - uses: actions/setup-node@v4
+        if: steps.alvo.outputs.ligada == 'sim'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Compilar
+        if: steps.alvo.outputs.ligada == 'sim'
+        env:
+          # O Chrome do PDF é o do servidor; aqui não se baixa navegador.
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          # O prisma.config exige a variável; a compilação não conecta em banco (nenhuma página
+          # pré-renderizada lê dados). Endereço que não existe: se algo tentar, falha na hora.
+          DATABASE_URL: postgresql://compilacao@127.0.0.1:1/nao-conecta
+          AMBIENTE_DE_EXECUCAO: producao
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: |
+          curto="$(echo '${{ github.sha }}' | cut -c1-7)"
+          # ⚠️ COMPILA NO MESMO CAMINHO DO SERVIDOR. O bundle grava caminhos absolutos (o cliente do Prisma
+          # calcula __dirname a partir deles); no mesmo caminho, o pacote é o que o servidor produziria.
+          pasta="/opt/gestao-publica/versoes/${{ github.sha }}"
+          sudo mkdir -p "$pasta" && sudo chown "$(id -u):$(id -g)" "$pasta"
+          git archive HEAD | tar -x -C "$pasta"
+          cd "$pasta"
+          npm ci --no-audit --no-fund
+          npx prisma generate
+          npx next typegen
+          # A mesma válvula do servidor: o tsc só é dispensado se a aprovação commitada bater com o
+          # DIGESTO do conteúdo deste commit (npm run publicar a gera); senão o build PARA.
+          digesto="$(node -p 'require("./scripts/implantacao/aprovacao-de-tipos.json").digesto')"
+          mkdir -p .registro-de-execucao/conferencia-de-tipos
+          cp scripts/implantacao/aprovacao-de-tipos.json ".registro-de-execucao/conferencia-de-tipos/$digesto.json"
+          PULAR_CONFERENCIA_DE_TIPOS_DO_BUILD=1 NEXT_PUBLIC_BUILD_COMMIT="$curto" npx next build
+          echo '${{ github.sha }}' > .next/COMMIT_COMPILADO
+          tar --exclude=.next/cache -czf "$RUNNER_TEMP/compilado.tgz" .next
+          ls -lh "$RUNNER_TEMP/compilado.tgz"
+
+      - name: Instalar no servidor
         if: steps.alvo.outputs.ligada == 'sim'
         env:
           HOST: ${{ secrets.PRODUCAO_SSH_HOST }}
@@ -46,8 +90,10 @@ jobs:
           printf '%s\n' "$CHAVE" > ~/.ssh/chave && chmod 600 ~/.ssh/chave
           # ⚠️ A identidade do servidor é conferida (known_hosts como segredo), nunca aceita às cegas.
           printf '%s\n' "$CONHECIDOS" > ~/.ssh/known_hosts
+          pacote="/tmp/gestao-publica-compilado-${{ github.sha }}.tgz"
+          scp -i ~/.ssh/chave -o StrictHostKeyChecking=yes "$RUNNER_TEMP/compilado.tgz" "$USUARIO@$HOST:$pacote"
           ssh -i ~/.ssh/chave -o StrictHostKeyChecking=yes "$USUARIO@$HOST" \
-            "cd /opt/gestao-publica/repositorio && sudo -u gestao-publica git fetch --quiet origin main && sudo -u gestao-publica git checkout --quiet --detach ${{ github.sha }} && sudo scripts/atualizar-no-servidor.sh --commit ${{ github.sha }}"
+            "cd /opt/gestao-publica/repositorio && sudo -u gestao-publica git fetch --quiet origin main && sudo -u gestao-publica git checkout --quiet --detach ${{ github.sha }} && sudo scripts/atualizar-no-servidor.sh --commit ${{ github.sha }} --compilado $pacote"
           # O script roda a partir do PRÓPRIO commit publicado (a cópia do servidor é atualizada antes).
 
       - name: A versão no ar é a deste commit?
