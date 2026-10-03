@@ -44,7 +44,9 @@ CHROMIUM="$(command -v chromium 2>/dev/null || command -v chromium-browser 2>/de
 echo "  chromium: $CHROMIUM"
 
 if command -v fc-list > /dev/null 2>&1; then
-  fc-list 2>/dev/null | grep -qi "liberation\|dejavu\|noto" || \
+  # ⚠️ SEM `grep -q`: com `pipefail`, o -q sai na primeira linha, o fc-list recebe SIGPIPE (141) e o
+  # encadeamento falha — o servidor com 295 fontes era recusado por "nenhuma fonte" (medido na EC2, V29).
+  fc-list 2>/dev/null | grep -i "liberation\|dejavu\|noto" > /dev/null || \
     erro "nenhuma fonte de texto encontrada (liberation/dejavu/noto): o PDF sai com caixas no lugar das letras." 12
   echo "  fontes: presentes"
 else
