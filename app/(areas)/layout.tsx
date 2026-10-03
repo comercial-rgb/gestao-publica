@@ -5,6 +5,7 @@ import { Header } from "../../components/ui/Header";
 import { PanoDoMenu, ShellProvider } from "../../components/ui/Shell";
 import { Sidebar } from "../../components/ui/Sidebar";
 import { VigiaDeEdicao } from "../../components/ui/VigiaDeEdicao";
+import { CabecalhoDeImpressao } from "../../components/ui/CabecalhoDeImpressao";
 import { ContextoNaNavegacao } from "../../components/ui/ContextoNaNavegacao";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
 import { identidadePublica, paraATela } from "../../lib/portas/identidade";
@@ -66,7 +67,7 @@ export default async function AreasLayout({
         <Suspense fallback={null}>
           <ContextoNaNavegacao />
         </Suspense>
-        <div className="flex h-screen overflow-hidden" data-tema={tela.tema}>
+        <div className="flex h-screen overflow-hidden" data-tema={tela.tema} data-moldura-da-aplicacao>
           <PanoDoMenu />
           <Sidebar
             colapsadaInicial={colapsada}
@@ -77,7 +78,10 @@ export default async function AreasLayout({
           />
           <div className="flex min-w-0 flex-1 flex-col">
             <Header destinosDaBusca={destinosDaBusca} identidade={tela} />
-            <main className="flex-1 overflow-y-auto p-4 md:p-8">{children}</main>
+            <main className="flex-1 overflow-y-auto p-4 md:p-8">
+              <CabecalhoDeImpressao ente={tela.enteNome} rotuloDoAmbiente={tela.rotuloDoAmbiente} />
+              {children}
+            </main>
             <Footer identidade={tela} />
           </div>
         </div>

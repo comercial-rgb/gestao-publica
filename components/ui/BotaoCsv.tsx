@@ -21,6 +21,7 @@ export function BotaoCsv({ csv, nomeArquivo }: { readonly csv: string; readonly 
       type="button"
       onClick={baixar}
       data-chrome
+      title="Arquivo para planilha: colunas separadas por ponto e vírgula, texto em UTF-8, valores como na tela. Abre direto no Excel e no LibreOffice."
       className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-xs font-medium text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)]"
     >
       Exportar CSV

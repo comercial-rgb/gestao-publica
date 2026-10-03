@@ -1,11 +1,14 @@
 import puppeteer, { type Browser } from "puppeteer";
 import {
+  avisoDoAmbiente,
   hashDoDocumento,
   nomeCanonico,
+  orientacaoDo,
   renderizarCorpo,
   rodapeTemplate,
   type DocumentoPdf,
 } from "./documento.js";
+import { ambienteDeExecucao } from "../identidade/produto.js";
 
 /**
  * O MOTOR DE PDF — o headless que transforma o corpo HTML (de `documento.ts`) em A4 (TR 7.5/5.120).
@@ -77,8 +80,9 @@ export async function gerarPdfDoDemonstrativo(
 ): Promise<ResultadoPdf> {
   const hash = hashDoDocumento(doc);
   const geradoEm = p.geradoEm ?? new Date();
-  const corpo = renderizarCorpo(doc);
-  const rodape = rodapeTemplate(hash, geradoEm);
+  const aviso = avisoDoAmbiente(ambienteDeExecucao());
+  const corpo = renderizarCorpo(doc, aviso);
+  const rodape = rodapeTemplate(hash, geradoEm, aviso);
 
   emVoo += 1;
   const browser = await obterBrowser();
@@ -89,6 +93,7 @@ export async function gerarPdfDoDemonstrativo(
     await page.setContent(corpo, { waitUntil: "load" });
     const pdf = await page.pdf({
       format: "A4",
+      landscape: orientacaoDo(doc) === "paisagem",
       printBackground: true,
       margin: { top: "16mm", bottom: "24mm", left: "14mm", right: "14mm" },
       displayHeaderFooter: true,

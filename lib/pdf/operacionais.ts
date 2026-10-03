@@ -26,6 +26,8 @@ import {
   type FiltroAtualizacoes,
 } from "../relatorios/atualizacoes-orcamentarias";
 import { nomeDoEnteParaDocumentos } from "./ente.js";
+import { ROTULO_DA_FASE, ROTULO_DA_SITUACAO, type APagarDaTela } from "../portas/a-pagar";
+import { formatarDocumento } from "../../packages/documento/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import { lerDocumentoFiscalParaPdf } from "../portas/recursos/documentos-fiscais-dados";
 import { verOrdem } from "../portas/recursos/compras-dados";
@@ -864,6 +866,65 @@ export async function montarPdfOrdemDeCompra(p: {
 }
 
 /** Imprime um documento montado — o mesmo motor/rodapé da publicação (7.15). */
+/**
+ * V33 — A PAGAR, EM PAPEL. Recebe o MESMO resultado que a tela leu (`lerAPagar`, com o recorte de fase, origem e
+ * credor já aplicado e os totais calculados lá): o PDF não refaz conta nenhuma. Uma seção por credor, com os
+ * subtotais das duas fases no título; os totais no fim, exigível e compromisso SEPARADOS.
+ */
+export async function montarPdfAPagar(
+  dados: APagarDaTela,
+  p: { readonly unidade?: string | undefined; readonly filtros: readonly string[] }
+): Promise<DocumentoPdf> {
+  const colunas = [
+    { rotulo: "Origem" }, { rotulo: "Fase" }, { rotulo: "Empenho" }, { rotulo: "Liquidação" }, { rotulo: "Unid. · fonte" },
+    { rotulo: "Base", alinhamento: "direita" as const }, { rotulo: "Pago (bruto)", alinhamento: "direita" as const },
+    { rotulo: "Retido", alinhamento: "direita" as const }, { rotulo: "Pago (líquido)", alinhamento: "direita" as const },
+    { rotulo: "Cancelado", alinhamento: "direita" as const }, { rotulo: "Saldo", alinhamento: "direita" as const }, { rotulo: "Vencimento" },
+  ];
+  const secoes: SecaoPdf[] = dados.credores.map((c) => ({
+    titulo: `${c.credorNome ?? "Credor sem cadastro de pessoa"} — ${formatarDocumento(c.credorCpfCnpj)} · liquidado a pagar ${brl(c.liquidadoAPagar.toFixed(2))} · a liquidar ${brl(c.aLiquidar.toFixed(2))}`,
+    colunas,
+    linhas: c.obrigacoes.map((o) => [
+      o.situacao === "EXERCICIO" ? ROTULO_DA_SITUACAO[o.situacao] : `${ROTULO_DA_SITUACAO[o.situacao]} de ${String(o.exercicioOrigem)}`,
+      ROTULO_DA_FASE[o.fase],
+      o.empenhoNumero,
+      o.liquidacaoNumero ?? "—",
+      `${o.unidadeCodigo} · ${o.fonteCodigo}`,
+      brl(o.base.toFixed(2)),
+      brl(o.pagoBruto.toFixed(2)),
+      brl(o.retido.toFixed(2)),
+      brl(o.pagoLiquido.toFixed(2)),
+      brl(o.cancelado.toFixed(2)),
+      brl(o.saldo.toFixed(2)),
+      o.vencimento === null ? "sem ordem" : dataBr(o.vencimento),
+    ]),
+  }));
+  secoes.push({
+    titulo: "Totais do documento",
+    colunas: [{ rotulo: "Especificação" }, { rotulo: "Valor", alinhamento: "direita" }],
+    linhas: [
+      ["Liquidado a pagar (obrigação exigível)", brl(dados.totais.liquidadoAPagar)],
+      ["Empenhado a liquidar (compromisso, ainda não exigível)", brl(dados.totais.aLiquidar)],
+    ],
+    totais: [0],
+  });
+  return {
+    ente: await nomeDoEnteParaDocumentos(),
+    titulo: "A pagar — obrigações por credor",
+    subtitulo: "Do exercício e de restos a pagar; liquidado a pagar e a liquidar nunca somados",
+    periodo: `Exercício ${String(dados.exercicio)}`,
+    ...(p.unidade !== undefined ? { unidade: p.unidade } : {}),
+    filtros: p.filtros,
+    secoes,
+    notas: [
+      "Valores em R$. O pago bruto quita a liquidação; o retido (consignações e retenções próprias vivas) é parte dele; o pago líquido é o que saiu para o credor.",
+      "A retenção do saldo ainda não pago é apurada no pagamento e não aparece antes dele.",
+      ...(dados.semInscricao.length > 0 ? [`${String(dados.semInscricao.length)} empenho(s) de exercícios encerrados com saldo e sem inscrição em restos ficam fora destes totais.`] : []),
+      ...(dados.credores.length === 0 ? ["Nenhuma obrigação aberta neste recorte."] : []),
+    ],
+  };
+}
+
 export async function emitir(doc: DocumentoPdf, nomeBase: string): Promise<ResultadoPdf> {
   return gerarPdfDoDemonstrativo(doc, { nomeBase });
 }

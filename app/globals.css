@@ -168,9 +168,51 @@ h3 {
   ⚠️ IMPRESSÃO — o relatório vai para papel/PDF (o 7.5 fará o PDF de verdade). Aqui já limpamos
   o cromo: sem sidebar, sem cabeçalho, sem rodapé de app. Só o conteúdo, em preto no branco.
 */
+/* V33 — o cabeçalho do papel só existe no papel. */
+.cabecalho-de-impressao {
+  display: none;
+}
 @media print {
   [data-chrome] {
     display: none !important;
+  }
+  /* V33 — A MOLDURA DA TELA NÃO PODE CORTAR O PAPEL. Na tela, a aplicação é uma caixa da altura da janela com rolagem
+     interna; no papel essa caixa cortava tudo o que passasse da primeira tela. */
+  [data-moldura-da-aplicacao],
+  [data-moldura-da-aplicacao] main,
+  [data-moldura-da-aplicacao] .overflow-x-auto,
+  [data-moldura-da-aplicacao] .overflow-y-auto {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+  .cabecalho-de-impressao {
+    display: block;
+    border-bottom: 2px solid #000;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    font-size: 9pt;
+    color: #000;
+  }
+  .cabecalho-de-impressao .ente {
+    font-weight: 700;
+    font-size: 11pt;
+  }
+  .cabecalho-de-impressao .aviso {
+    display: inline-block;
+    border: 1px solid #000;
+    padding: 1px 6px;
+    font-weight: 700;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
+  h2,
+  h3 {
+    break-after: avoid;
   }
   body {
     background: #ffffff;

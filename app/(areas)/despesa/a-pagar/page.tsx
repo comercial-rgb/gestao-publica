@@ -7,7 +7,8 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
-import { lerAPagar, type APagarDaTela, type ObrigacaoAPagar } from "../../../../lib/portas/a-pagar";
+import { faseDoFiltro, lerAPagar, origemDoFiltro, ROTULO_DA_FASE, ROTULO_DA_SITUACAO, type APagarDaTela } from "../../../../lib/portas/a-pagar";
+import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { EscopoDeLeituraError, ExercicioIlegivelError, recorteDePagina } from "../../../../lib/portas/contexto";
 import { PortaSemBancoError } from "../../../../lib/portas/empenho";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
@@ -15,7 +16,6 @@ import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { dataBr, descreverRecorte, type RecorteDaPagina } from "../../../../lib/recorte";
 import { formatarDocumento } from "../../../../packages/documento/index";
-import { toMoney } from "../../../../packages/contracts/index";
 
 /**
  * A PAGAR (V33) — o que o ente deve, por credor e por obrigação. A aritmética é do M05 e do M08
@@ -29,28 +29,23 @@ import { toMoney } from "../../../../packages/contracts/index";
 export const dynamic = "force-dynamic";
 
 const LINK = "text-[color:var(--color-primary)] underline";
-const SITUACAO: Readonly<Record<ObrigacaoAPagar["situacao"], string>> = {
-  EXERCICIO: "Exercício",
-  RP_PROCESSADO: "Restos processados",
-  RP_NAO_PROCESSADO: "Restos não processados",
-};
-const FASE: Readonly<Record<ObrigacaoAPagar["fase"], string>> = { A_LIQUIDAR: "A liquidar", LIQUIDADO_A_PAGAR: "Liquidado a pagar" };
+const SITUACAO = ROTULO_DA_SITUACAO;
+const FASE = ROTULO_DA_FASE;
 
 const umString = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? ""));
-const soma = (os: readonly { readonly saldo: { toFixed(n: number): string } }[]): string => os.reduce((s, o) => s.plus(o.saldo.toFixed(2)), toMoney("0")).toFixed(2);
 
 export default async function APagarPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<React.ReactElement> {
   const sp = await searchParams;
   const credor = umString(sp["credor"]).replace(/\D/g, "");
-  const fase = umString(sp["fase"]);
-  const origem = umString(sp["origem"]);
+  const fase = faseDoFiltro(umString(sp["fase"]));
+  const origem = origemDoFiltro(umString(sp["origem"]));
   let recorte: RecorteDaPagina;
   let dados: APagarDaTela;
   let permitidas: ReadonlySet<string>;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     [dados, permitidas] = await Promise.all([
-      lerAPagar({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo, ...(credor !== "" ? { credorCpfCnpj: credor } : {}) }),
+      lerAPagar({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo, fase, origem, ...(credor !== "" ? { credorCpfCnpj: credor } : {}) }),
       acoesPermitidas(["PAGAR", "LIQUIDAR"]),
     ]);
   } catch (erro) {
@@ -74,15 +69,11 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
     );
   }
 
-  // Os filtros de fase e de origem recortam a TELA (a posição inteira já veio do servidor, numa leitura só).
-  const passa = (o: ObrigacaoAPagar): boolean =>
-    (fase === "" || o.fase === fase) && (origem === "" || (origem === "exercicio" ? o.situacao === "EXERCICIO" : o.situacao !== "EXERCICIO"));
-  const credores = dados.credores
-    .map((c) => ({ ...c, obrigacoes: c.obrigacoes.filter(passa) }))
-    .filter((c) => c.obrigacoes.length > 0);
+  // O recorte de fase e origem e os totais vêm da porta: a tela, o CSV e o PDF leem o mesmo resultado.
+  const credores = dados.credores;
   const todas = credores.flatMap((c) => c.obrigacoes);
-  const exigivel = soma(todas.filter((o) => o.fase === "LIQUIDADO_A_PAGAR"));
-  const compromisso = soma(todas.filter((o) => o.fase === "A_LIQUIDAR"));
+  const exigivel = dados.totais.liquidadoAPagar;
+  const compromisso = dados.totais.aLiquidar;
   const nomeDe = new Map(dados.opcoesDeCredor.map((o) => [o.documento, o.nome]));
 
   const csv = paraCsv(
@@ -117,6 +108,7 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
           <div className="flex gap-2" data-chrome>
             <BotaoCsv csv={csv} nomeArquivo={`a-pagar-${String(recorte.exercicio)}.csv`} />
             <BotaoImprimir />
+            <BotaoPdf href={`/despesa/a-pagar/pdf?${new URLSearchParams({ exercicio: String(recorte.exercicio), ...(recorte.unidadeCodigo !== undefined ? { ug: recorte.unidadeCodigo } : {}), ...(credor !== "" ? { credor } : {}), ...(fase !== "" ? { fase } : {}), ...(origem !== "" ? { origem } : {}) }).toString()}`} />
           </div>
         }
       />
@@ -195,8 +187,8 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
                     <span className="font-semibold">{c.credorNome ?? "Credor sem cadastro de pessoa"}</span>{" "}
                     <span className="font-mono text-[color:var(--color-ink-3)]">{formatarDocumento(c.credorCpfCnpj)}</span>
                     <span className="ml-3 font-normal">
-                      liquidado a pagar <strong data-subtotal="liquidado-a-pagar"><ValorMonetario valor={soma(c.obrigacoes.filter((o) => o.fase === "LIQUIDADO_A_PAGAR"))} /></strong> · a liquidar{" "}
-                      <strong data-subtotal="a-liquidar"><ValorMonetario valor={soma(c.obrigacoes.filter((o) => o.fase === "A_LIQUIDAR"))} /></strong>
+                      liquidado a pagar <strong data-subtotal="liquidado-a-pagar"><ValorMonetario valor={c.liquidadoAPagar.toFixed(2)} /></strong> · a liquidar{" "}
+                      <strong data-subtotal="a-liquidar"><ValorMonetario valor={c.aLiquidar.toFixed(2)} /></strong>
                     </span>
                   </th>
                 </tr>
