@@ -1170,6 +1170,7 @@ export type NomeDeServico =
   | "registrarNormaNoTce"
   | "cadastrarUnidadeGestora"
   | "encerrarUnidadeGestora"
+  | "vincularUnidadeOrcamentariaAUg"
   | "definirContabilizacaoDaTransferenciaEntreUgs"
   | "registrarTransferenciaEntreUgs"
   | "estornarTransferenciaEntreUgs"
@@ -1920,6 +1921,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarNormaNoTce: "CRIAR_LEI_DE_CREDITO",
   cadastrarUnidadeGestora: "CADASTRAR_ENTIDADE_CONTABIL",
   encerrarUnidadeGestora: "CADASTRAR_ENTIDADE_CONTABIL",
+  // ⚠️ V33 — a mesma autoridade de cadastrar a UG: dizer quais unidades orçamentárias são dela é dado do cadastro.
+  vincularUnidadeOrcamentariaAUg: "CADASTRAR_ENTIDADE_CONTABIL",
   definirContabilizacaoDaTransferenciaEntreUgs: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   registrarTransferenciaEntreUgs: "TRANSFERIR_ENTRE_CONTAS",
   estornarTransferenciaEntreUgs: "ESTORNAR_MOVIMENTO_BANCARIO",

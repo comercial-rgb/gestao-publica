@@ -4,7 +4,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerUnidadesGestoras, ROTULO_DA_NATUREZA_DA_UG } from "../../../../lib/portas/unidades-gestoras";
-import { FormCadastrarUg, FormEncerrarUg } from "./Forms";
+import { FormCadastrarUg, FormEncerrarUg, FormVincularUo } from "./Forms";
 
 /**
  * V26 — AS UNIDADES GESTORAS DO MUNICÍPIO, como estão no cadastro do Tribunal: as escrituradas aqui e as de fora,
@@ -54,6 +54,28 @@ export default async function UnidadesGestorasPage(): Promise<React.ReactElement
                   <td className="py-1.5 pr-4 text-xs">{u.natureza}<span className="block text-[color:var(--color-ink-3)]">{u.escrituracao}</span></td>
                   <td className="py-1.5 pr-4 text-xs">desde {u.desde}{u.ate !== null ? <span className="block">até {u.ate}</span> : null}<span className="block text-[color:var(--color-ink-3)]">{u.fundamento}</span></td>
                   <td className="py-1.5 text-xs">{u.ate === null ? <FormEncerrarUg ugId={u.id} codigo={u.codigo} /> : null}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+      <FormVincularUo
+        unidades={dados.unidades.map((u) => ({ id: u.id, rotulo: `${u.codigo} — ${u.descricao}` }))}
+        ugs={dados.ugs.filter((u) => u.ate === null && u.escrituracao.startsWith("Escriturada aqui")).map((u) => ({ id: u.id, rotulo: `${u.codigo} — ${u.nome}` }))}
+      />
+      <Card>
+        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Unidades orçamentárias e a unidade gestora de cada uma</h2>
+        {dados.unidades.length === 0 ? (
+          <p className="text-xs text-[color:var(--color-ink-3)]">Nenhuma unidade orçamentária cadastrada.</p>
+        ) : (
+          <table className="w-full text-sm" data-lista="unidades-orcamentarias-por-ug">
+            <tbody>
+              {dados.unidades.map((u) => (
+                <tr key={u.id} className="border-b border-[color:var(--color-border)] align-top" data-unidade-orcamentaria={u.codigo} data-ug-hoje={u.ugHoje ?? ""}>
+                  <td className="py-1.5 pr-4"><strong className="font-mono">{u.codigo}</strong><span className="block">{u.descricao}</span></td>
+                  <td className="py-1.5 pr-4 text-xs">{u.ugHoje === null ? <span className="text-[color:var(--color-status-alerta-fg)]">Sem unidade gestora declarada</span> : <span>Hoje: <strong className="font-mono">{u.ugHoje}</strong></span>}</td>
+                  <td className="py-1.5 text-xs text-[color:var(--color-ink-3)]">{u.historico.map((h) => <span key={h} className="block">{h}</span>)}</td>
                 </tr>
               ))}
             </tbody>

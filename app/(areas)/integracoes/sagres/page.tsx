@@ -228,6 +228,7 @@ const ROTULO_DA_REGRA: Record<PreviewSagres["violacoes"][number]["regra"], strin
   RECORTE_POR_UG_INDISPONIVEL: "Dados de mais de uma unidade gestora: arquivo fora do pacote",
   ARQUIVO_SO_DA_PREFEITURA: "Arquivo do ente, remetido só pela Prefeitura",
   TABELA_SEM_ABRANGENCIA: "Abrangência do arquivo não declarada",
+  UNIDADE_SEM_UG_DECLARADA: "Unidade orçamentária sem unidade gestora declarada",
   RECEITA_EXTRA_FORA_DO_PACOTE: "Receita extra fora do pacote",
   RESTOS_FORA_DO_PACOTE: "Restos a pagar fora do pacote",
   RELACIONAMENTO_FORA_DO_PACOTE: "Fornecedores ou relacionamento fora do pacote",

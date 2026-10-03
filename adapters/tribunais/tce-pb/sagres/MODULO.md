@@ -311,3 +311,22 @@ recortados por UG).
   `incompleto: true` e a lista `foraDoPacote` no manifesto. Sem pendência, o pacote de sempre.
 - **"58 de 58" é cobertura de GERADOR, não remessa real.** As tabelas da frota e da farmácia dependem do cadastro do
   ente. O veículo depende ainda do número do modelo, da tabela do Tribunal que não está nos documentos obtidos.
+
+## V33 — abrangência por unidade gestora (`abrangencia.ts`)
+
+Com uma UG escriturada aqui, o pacote é o de sempre, byte a byte. Com duas ou mais, cada arquivo passa pela
+abrangência declarada da sua tabela antes de entrar no pacote (prévia e download pela mesma função):
+
+- **Cadeia da despesa e dos restos, unidade orçamentária:** recorte pelo código da unidade orçamentária QUE ESTÁ NA
+  LINHA, contra o vínculo declarado unidade → UG (`VinculoDaUnidadeOrcamentariaComUg`, tela em Contabilidade ›
+  Unidades gestoras). Unidade sem vínculo recusa o arquivo inteiro, nomeando o código.
+- **Dotação, atualização orçamentária e dotação do projeto:** só a Prefeitura envia (regra do leiaute), com a UG dona
+  da unidade em cada linha.
+- **Fornecedores:** ficam os credores dos empenhos que ficaram.
+- **Frota, farmácia, transferências e agrupamento da folha:** o leitor já filtra pela UG. A transferência sai se a
+  conta bancária sai.
+- **Contas bancárias, saldos, conciliação, extras, receita orçamentária e ordenador:** sem vínculo, fora do pacote,
+  com o motivo. A conta tem titular declarado (entidade → UG), e a numeração dos extras é do exercício inteiro. Os
+  dois pontos precisam ser decididos antes de recortar: pendência `SAGRES-CONTAS-E-EXTRAS-POR-UG`.
+
+O arquivo que fica fora não vai no ZIP. A prévia o nomeia como pendência, e o pacote sai como de conferência.

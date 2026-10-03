@@ -42,20 +42,20 @@ beforeEach(async () => {
 }, 120000);
 
 describe("as UGs do dia, para a abrangência do SAGRES", () => {
-  it("t1: duas operadas — a Prefeitura é a pedida só quando é ela; empenhos ficam fora para as duas", async () => {
+  it("t1: duas operadas — a Prefeitura é a pedida só quando é ela; as contas ficam fora para as duas", async () => {
     const pref = await contextoDasUgs(cliente(), D("2026-09-14"), "201001");
     const cam = await contextoDasUgs(cliente(), D("2026-09-14"), "201002");
-    expect(pref).toEqual({ operadas: 2, pedidaEhAPrefeitura: true });
-    expect(cam).toEqual({ operadas: 2, pedidaEhAPrefeitura: false });
-    expect(decidirArquivo("Empenhos", pref)).toMatchObject({ incluir: false, regra: "RECORTE_POR_UG_INDISPONIVEL" });
+    expect(pref).toMatchObject({ operadas: 2, pedidaEhAPrefeitura: true, ugPedida: "201001" });
+    expect(cam).toMatchObject({ operadas: 2, pedidaEhAPrefeitura: false, ugPedida: "201002" });
+    expect(decidirArquivo("CadastroContaBancaria", pref)).toMatchObject({ incluir: false, regra: "RECORTE_POR_UG_INDISPONIVEL" });
     expect(decidirArquivo("NormasOrcamentarias", pref)).toEqual({ incluir: true });
     expect(decidirArquivo("NormasOrcamentarias", cam)).toMatchObject({ incluir: false, regra: "ARQUIVO_SO_DA_PREFEITURA" });
   });
 
-  it("t2: a Câmara encerrada antes do dia — volta a uma operada, e os empenhos da Prefeitura entram", async () => {
+  it("t2: a Câmara encerrada antes do dia — volta a uma operada, e tudo entra inteiro", async () => {
     await encerrarUnidadeGestora(prisma, { ugId: ugCam, vigenteAte: D("2026-06-30"), ato: "Resolução 1/2026", criadoPor: POR });
     const depois = await contextoDasUgs(cliente(), D("2026-09-14"), "201001");
-    expect(depois).toEqual({ operadas: 1, pedidaEhAPrefeitura: true });
+    expect(depois).toMatchObject({ operadas: 1, pedidaEhAPrefeitura: true });
     expect(decidirArquivo("Empenhos", depois)).toEqual({ incluir: true });
     // Antes do encerramento, ainda eram duas.
     expect((await contextoDasUgs(cliente(), D("2026-06-15"), "201001")).operadas).toBe(2);
@@ -65,7 +65,7 @@ describe("as UGs do dia, para a abrangência do SAGRES", () => {
     await entidade("ent-sec", "0003", "Secretaria cadastrada como UG");
     await cadastrarUnidadeGestora(prisma, { ...base, codigoTce: "201003", nome: "Secretaria de Saúde", naturezaJuridica: "PREFEITURA_OU_SECRETARIA", entidadeContabilId: "ent-sec" });
     const pref = await contextoDasUgs(cliente(), D("2026-09-14"), "201001");
-    expect(pref).toEqual({ operadas: 3, pedidaEhAPrefeitura: false });
+    expect(pref).toMatchObject({ operadas: 3, pedidaEhAPrefeitura: false });
     expect(decidirArquivo("NormasOrcamentarias", pref)).toMatchObject({ incluir: false, regra: "ARQUIVO_SO_DA_PREFEITURA" });
   });
 });

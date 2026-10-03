@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
-import { cadastrarUgPelaTela, encerrarUgPelaTela } from "../../../../lib/portas/unidades-gestoras";
+import { cadastrarUgPelaTela, encerrarUgPelaTela, vincularUoPelaTela } from "../../../../lib/portas/unidades-gestoras";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 
 export interface EstadoDaUg {
@@ -49,5 +49,17 @@ export async function encerrarUgAction(_p: EstadoDaUg, f: FormData): Promise<Est
   return comComandoDoFormulario(f, async () => {
     if (t(f, "vigenteAte") === "") return { erro: "Informe o último dia da unidade gestora." };
     return ato(() => encerrarUgPelaTela({ ugId: t(f, "ugId"), vigenteAte: meioDiaCivil(t(f, "vigenteAte")), ato: t(f, "ato") }), "Não foi possível encerrar. Nada foi gravado.");
+  });
+}
+
+export async function vincularUoAction(_p: EstadoDaUg, f: FormData): Promise<EstadoDaUg> {
+  return comComandoDoFormulario(f, async () => {
+    if (t(f, "unidadeOrcId") === "") return { erro: "Escolha a unidade orçamentária." };
+    if (t(f, "ugId") === "") return { erro: "Escolha a unidade gestora." };
+    if (t(f, "vigenteDesde") === "") return { erro: "Informe desde quando a unidade pertence à unidade gestora." };
+    return ato(
+      () => vincularUoPelaTela({ unidadeOrcId: t(f, "unidadeOrcId"), ugId: t(f, "ugId"), vigenteDesde: meioDiaCivil(t(f, "vigenteDesde")), fundamento: t(f, "fundamento") }),
+      "Não foi possível declarar o vínculo. Nada foi gravado."
+    );
   });
 }

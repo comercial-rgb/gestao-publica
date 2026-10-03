@@ -41,6 +41,8 @@ model UnidadeGestora {
   veiculos                 VeiculoDaFrota[]                 @relation("VeiculosDaUg")
   maquinas                 MaquinaDaFrota[]                 @relation("MaquinasDaUg")
   farmacias                FarmaciaPublica[]                @relation("FarmaciasDaUg")
+  /// V33 — as unidades orçamentárias declaradas desta UG.
+  unidadesOrcamentarias    VinculoDaUnidadeOrcamentariaComUg[] @relation("UnidadesOrcamentariasDaUg")
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -132,4 +134,29 @@ model TransferenciaEntreUgs {
   @@index([data])
   @@index([ugOrigemId])
   @@index([ugDestinoId])
+}
+
+// ============================================================================
+// V33 — DE QUAL UG É CADA UNIDADE ORÇAMENTÁRIA. A remessa do SAGRES recorta a cadeia da despesa pelo código da
+// unidade orçamentária que está em cada linha; este é o vínculo que diz a qual UG aquela unidade pertence.
+//
+// ⚠️ DECLARADO, NUNCA INFERIDO. Nem pelo órgão, nem pela ordem de cadastro, nem pelo nome: quem conhece a estrutura
+// do ente (a LOA, o cadastro do Tribunal) declara, com o fundamento. Insert-only: mudar de UG é declarar outro
+// vínculo com vigência posterior; o que valia antes continua valendo para as remessas antigas.
+// ============================================================================
+/// A unidade orçamentária pertence à UG a partir de `vigenteDesde`. Vale o vínculo mais recente até o dia.
+model VinculoDaUnidadeOrcamentariaComUg {
+  id            String              @id @default(cuid())
+  unidadeOrcId  String
+  unidadeOrc    UnidadeOrcamentaria @relation("UgsDaUnidadeOrcamentaria", fields: [unidadeOrcId], references: [id])
+  ugId          String
+  ug            UnidadeGestora      @relation("UnidadesOrcamentariasDaUg", fields: [ugId], references: [id])
+  vigenteDesde  DateTime
+  /// De onde vem o vínculo (ex.: "LOA 2026, quadro de unidades; cadastro de UG do Tribunal").
+  fundamento    String
+  criadoEm      DateTime            @default(now())
+  criadoPor     String
+
+  @@unique([unidadeOrcId, vigenteDesde])
+  @@index([ugId])
 }

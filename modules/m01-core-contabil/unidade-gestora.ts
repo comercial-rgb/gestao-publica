@@ -116,3 +116,77 @@ export async function unidadesGestorasOperadas(prisma: PrismaClient, dia: Date):
   });
   return ugs.filter((u) => ugVigenteNoDia(u, dia)).map((u) => ({ id: u.id, codigoTce: u.codigoTce, nome: u.nome, cnpj: u.cnpj, naturezaJuridica: u.naturezaJuridica }));
 }
+
+// ═══ V33 — DE QUAL UG É CADA UNIDADE ORÇAMENTÁRIA ═══════════════════════════════════════════════════════════════
+
+export const zVincularUnidadeOrcamentaria = z.object({
+  unidadeOrcId: z.string().min(1, "Escolha a unidade orçamentária."),
+  ugId: z.string().min(1, "Escolha a unidade gestora."),
+  vigenteDesde: z.coerce.date(),
+  fundamento: z.string().trim().min(10, "Diga de onde vem o vínculo (o quadro de unidades da LOA, o cadastro de UG do Tribunal)."),
+  criadoPor: z.string().min(1),
+});
+export type VincularUnidadeOrcamentariaInput = z.input<typeof zVincularUnidadeOrcamentaria>;
+
+/**
+ * Declara que a unidade orçamentária pertence à UG a partir de um dia. Insert-only: trocar de UG é outra declaração
+ * com vigência posterior. Só UG ESCRITURADA AQUI recebe unidade: a contraparte de fora não tem despesa neste sistema.
+ * Repetir a mesma declaração (unidade, UG, dia) devolve a existente — o duplo clique não vira erro nem linha nova.
+ */
+export async function vincularUnidadeOrcamentariaAUg(prisma: PrismaClient, input: VincularUnidadeOrcamentariaInput): Promise<{ readonly id: string; readonly repetido: boolean }> {
+  const d = zVincularUnidadeOrcamentaria.parse(input);
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.vincularUnidadeOrcamentariaAUg, "ENTE");
+    const [uo, ug] = await Promise.all([
+      tx.unidadeOrcamentaria.findUnique({ where: { id: d.unidadeOrcId }, select: { codigo: true } }),
+      tx.unidadeGestora.findUnique({ where: { id: d.ugId }, select: { codigoTce: true, entidadeContabilId: true, vigenteDesde: true, encerramento: { select: { vigenteAte: true } } } }),
+    ]);
+    if (uo === null) throw new Error("Unidade orçamentária não encontrada. Nada foi gravado.");
+    if (ug === null) throw new Error("Unidade gestora não encontrada. Nada foi gravado.");
+    if (ug.entidadeContabilId === null) {
+      throw new Error(`A unidade gestora ${ug.codigoTce} é escriturada fora deste sistema; a despesa da unidade ${uo.codigo} não pode ser dela aqui. Nada foi gravado.`);
+    }
+    if (!ugVigenteNoDia(ug, d.vigenteDesde)) {
+      throw new Error(`A unidade gestora ${ug.codigoTce} não está vigente em ${diaCivilBr(d.vigenteDesde)}. Nada foi gravado.`);
+    }
+    const mesmoDia = await tx.vinculoDaUnidadeOrcamentariaComUg.findMany({
+      where: { unidadeOrcId: d.unidadeOrcId },
+      select: { id: true, ugId: true, vigenteDesde: true, ug: { select: { codigoTce: true } } },
+    });
+    const ja = mesmoDia.find((v) => diaCivil(v.vigenteDesde) === diaCivil(d.vigenteDesde));
+    if (ja !== undefined) {
+      if (ja.ugId === d.ugId) return { id: ja.id, repetido: true };
+      throw new Error(`A unidade ${uo.codigo} já foi declarada da unidade gestora ${ja.ug.codigoTce} a partir de ${diaCivilBr(d.vigenteDesde)}. Para mudar, declare a nova unidade gestora com outro dia de início. Nada foi gravado.`);
+    }
+    const c = await tx.vinculoDaUnidadeOrcamentariaComUg.create({
+      data: { unidadeOrcId: d.unidadeOrcId, ugId: d.ugId, vigenteDesde: d.vigenteDesde, fundamento: d.fundamento, criadoPor: d.criadoPor },
+      select: { id: true },
+    });
+    return { id: c.id, repetido: false };
+  });
+}
+
+/**
+ * Código da unidade orçamentária → código da UG, no dia civil `dia`: o vínculo mais recente que já valia, e só se a
+ * UG está vigente naquele dia. Unidade sem vínculo NÃO aparece no mapa — e quem recorta trata a ausência como recusa.
+ */
+export async function ugDasUnidadesOrcamentarias(prisma: PrismaClient, dia: Date): Promise<ReadonlyMap<string, string>> {
+  const vinculos = await prisma.vinculoDaUnidadeOrcamentariaComUg.findMany({
+    select: {
+      vigenteDesde: true,
+      unidadeOrc: { select: { codigo: true } },
+      ug: { select: { codigoTce: true, vigenteDesde: true, encerramento: { select: { vigenteAte: true } } } },
+    },
+  });
+  const d = diaCivil(dia);
+  const ultimo = new Map<string, { readonly desde: string; readonly ug: (typeof vinculos)[number]["ug"] }>();
+  for (const v of vinculos) {
+    const desde = diaCivil(v.vigenteDesde);
+    if (desde > d) continue;
+    const atual = ultimo.get(v.unidadeOrc.codigo);
+    if (atual === undefined || desde > atual.desde) ultimo.set(v.unidadeOrc.codigo, { desde, ug: v.ug });
+  }
+  const mapa = new Map<string, string>();
+  for (const [uo, v] of ultimo) if (ugVigenteNoDia(v.ug, dia)) mapa.set(uo, v.ug.codigoTce);
+  return mapa;
+}

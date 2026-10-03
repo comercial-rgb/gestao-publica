@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CampoCpfCnpj } from "../../../../components/ui/Campos";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO as PAINEL, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
-import { cadastrarUgAction, encerrarUgAction, type EstadoDaUg } from "./actions";
+import { cadastrarUgAction, encerrarUgAction, vincularUoAction, type EstadoDaUg } from "./actions";
 
 function Resultado({ estado, acao }: { readonly estado: EstadoDaUg; readonly acao: string }): React.ReactElement | null {
   if (estado.erro !== undefined) return <p role="alert" className="mt-2 text-xs text-[color:var(--color-status-erro-fg)]">{estado.erro}</p>;
@@ -60,5 +60,43 @@ export function FormEncerrarUg({ ugId, codigo }: { readonly ugId: string; readon
         <Resultado estado={estado} acao="encerrar-unidade-gestora" />
       </form>
     </details>
+  );
+}
+
+/** V33 — de qual UG é uma unidade orçamentária. Só UG escriturada aqui recebe unidade (o domínio recusa as de fora). */
+export function FormVincularUo({
+  unidades,
+  ugs,
+}: {
+  readonly unidades: readonly { readonly id: string; readonly rotulo: string }[];
+  readonly ugs: readonly { readonly id: string; readonly rotulo: string }[];
+}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaUg, FormData>(vincularUoAction, {});
+  return (
+    <form action={action} className={PAINEL} data-acao="vincular-unidade-orcamentaria" aria-label="Declarar a unidade gestora de uma unidade orçamentária">
+      <ChaveDeComando />
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">De qual unidade gestora é cada unidade orçamentária</h2>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Com mais de uma unidade gestora escriturada aqui, a remessa ao Tribunal só leva as linhas das unidades declaradas desta unidade gestora.</p>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="text-xs">
+          <span className={ROTULO}>Unidade orçamentária</span>
+          <select name="unidadeOrcId" required defaultValue="" className={CAMPO}>
+            <option value="">Escolha…</option>
+            {unidades.map((u) => <option key={u.id} value={u.id}>{u.rotulo}</option>)}
+          </select>
+        </label>
+        <label className="text-xs">
+          <span className={ROTULO}>Unidade gestora</span>
+          <select name="ugId" required defaultValue="" className={CAMPO}>
+            <option value="">Escolha…</option>
+            {ugs.map((u) => <option key={u.id} value={u.id}>{u.rotulo}</option>)}
+          </select>
+        </label>
+        <label className="text-xs"><span className={ROTULO}>Pertence desde</span><input name="vigenteDesde" type="date" required className={CAMPO} /></label>
+        <label className="text-xs sm:col-span-3"><span className={ROTULO}>De onde vem o vínculo</span><input name="fundamento" required minLength={10} placeholder="Ex.: LOA 2026, quadro de unidades orçamentárias" className={CAMPO} /></label>
+      </div>
+      <button type="submit" disabled={pendente} className={`${CLASSE_BOTAO_PRIMARIO} mt-3`}>{pendente ? "Gravando…" : "Declarar"}</button>
+      <Resultado estado={estado} acao="vincular-unidade-orcamentaria" />
+    </form>
   );
 }

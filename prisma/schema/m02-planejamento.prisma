@@ -89,6 +89,8 @@ model UnidadeOrcamentaria {
   fichas FichaOrcamentaria[]
   /// back-relation V21 — as declarações versionadas da unidade para a prestação de contas.
   declaracoes DeclaracaoDaUnidadeOrcamentaria[]
+  /// V33 — a UG a que esta unidade pertence (declarada, com vigência).
+  ugsDeclaradas VinculoDaUnidadeOrcamentariaComUg[] @relation("UgsDaUnidadeOrcamentaria")
   /// back-relation M02b (PPA) — a unidade EXECUTORA declarada na ação do plano. Campo VIRTUAL:
   /// classificação aprovada, não escopo de autorização (o plano é ato do ente).
   acoesPpa AcaoPpa[]

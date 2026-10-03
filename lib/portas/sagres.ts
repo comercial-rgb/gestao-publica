@@ -74,8 +74,8 @@ import type { LayoutArquivo } from "../../adapters/tribunais/tce-pb/sagres/regis
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
 import { anoCivil, competenciaCivil, diaCivil } from "../../packages/datas/index";
-import { unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
-import { aplicarAbrangencia, decidirArquivo, tabelaDoArquivo, type ContextoDasUgs } from "../../adapters/tribunais/tce-pb/sagres/abrangencia";
+import { ugDasUnidadesOrcamentarias, unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
+import { aplicarAbrangencia, type ContextoDasUgs } from "../../adapters/tribunais/tce-pb/sagres/abrangencia";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -221,9 +221,14 @@ function linhasDe(arq: ArquivoGerado): string[] {
  * como UG) e nenhuma é tratada como a Prefeitura — o arquivo do ente fica fora até o cadastro dizer qual é.
  */
 export async function contextoDasUgs(prisma: ReturnType<typeof cliente>, dia: Date, codUnidadeGestora: string): Promise<ContextoDasUgs> {
-  const operadas = await unidadesGestorasOperadas(prisma, dia);
+  const [operadas, ugDaUo] = await Promise.all([unidadesGestorasOperadas(prisma, dia), ugDasUnidadesOrcamentarias(prisma, dia)]);
   const prefeituras = operadas.filter((u) => u.naturezaJuridica === "PREFEITURA_OU_SECRETARIA");
-  return { operadas: operadas.length, pedidaEhAPrefeitura: operadas.length === 0 || (prefeituras.length === 1 && prefeituras[0]?.codigoTce === codUnidadeGestora) };
+  return {
+    operadas: operadas.length,
+    pedidaEhAPrefeitura: operadas.length === 0 || (prefeituras.length === 1 && prefeituras[0]?.codigoTce === codUnidadeGestora),
+    ugPedida: codUnidadeGestora,
+    ugDaUo,
+  };
 }
 
 /**
@@ -277,16 +282,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   // V33 — a abrangência de cada arquivo diante das UGs do dia (ver `abrangencia.ts`).
   const ugs = await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora);
-  // A decisão depende só da TABELA, então o que fica fora se nomeia antes de serializar: o núcleo fixo e os grupos.
-  const NUCLEO = ["Dotacao", "Empenhos", "Liquidacao", "Pagamentos", "EstornoPagamento", "Estornos", "EstornoLiquidacao", "EstornoRetencao", "EstornoDespesaExtra", "ReceitaOrcamentaria", "CadastroContaBancaria", "SaldoMensal", "MovimentacaoEntreContasBancarias", "Retencao", "DespesaExtra", "ConciliacaoBancaria", "UnidadeOrcamentaria", "ReceitaExtra", "EstornoReceitaExtra"];
-  const foraPorAbrangencia = aplicarAbrangencia(
-    [...NUCLEO.map((nome) => ({ nome })), ...[...restos.arquivos, ...relacionamentos.arquivos, ...v26.arquivos, ...frota.arquivos].map((r) => ({ nome: r.arquivo.nome }))],
-    ugs
-  ).fora;
-
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
-    ...foraPorAbrangencia.map((f) => ({ arquivo: f.arquivo, linha: 0, campo: "unidade gestora", regra: f.regra, detalhe: f.detalhe })),
     ...restos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "movimento", regra: "RESTOS_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...relacionamentos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "RELACIONAMENTO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
     ...v26.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "cadastro", regra: "CADASTRO_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
@@ -344,7 +341,13 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
   ]);
   const arquivosCandidatos = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : []), ...restos.arquivos.map((r) => r.arquivo), ...relacionamentos.arquivos.map((r) => r.arquivo)];
-  const arquivosGerados = aplicarAbrangencia(arquivosCandidatos, ugs).arquivos;
+  // V33 — a abrangência pelo CONTEÚDO (a unidade orçamentária de cada linha): o que entra, recortado, e o que fica
+  // fora, nomeado. Os grupos que a prévia não mostra (V26, frota) entram na conta só para a recusa ser dita aqui também.
+  const abr = aplicarAbrangencia([...arquivosCandidatos, ...v26.arquivos.map((r) => r.arquivo), ...frota.arquivos.map((r) => r.arquivo)], ugs);
+  violacoes.unshift(...abr.fora.map((f) => ({ arquivo: f.arquivo, linha: 0, campo: "unidade gestora", regra: f.regra, detalhe: f.detalhe })));
+  const recortadoPorNome = new Map(abr.arquivos.map((a) => [a.nome, a]));
+  const nomesDaPrevia = new Set(arquivosCandidatos.map((a) => a.nome));
+  const arquivosGerados = abr.arquivos.filter((a) => nomesDaPrevia.has(a.nome));
 
   // ⚠️ AS COMPETÊNCIAS SÃO CIVIS. Um pacote pedido para 10/07 tem de conter os fatos do
   // 10/07 DO ENTE — e o nome do arquivo tem de dizer o mesmo dia que o conteúdo.
@@ -379,7 +382,10 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     ...restos.arquivos.map((r) => ({ g: r.arquivo, l: r.layout as LayoutArquivo<unknown> })),
     ...relacionamentos.arquivos.map((r) => ({ g: r.arquivo, l: r.layout as LayoutArquivo<unknown> })),
   ];
-  const metaDentro = meta.filter((m) => decidirArquivo(tabelaDoArquivo(m.g.nome), ugs).incluir);
+  const metaDentro = meta.flatMap((m) => {
+    const r = recortadoPorNome.get(m.g.nome);
+    return r === undefined ? [] : [{ g: r, l: m.l }];
+  });
   const larguraMax = Math.max(0, ...metaDentro.map((m) => m.l.campos.reduce((mx, c) => Math.max(mx, c.posFinal), 0)));
 
   return {
