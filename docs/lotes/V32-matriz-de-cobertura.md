@@ -53,3 +53,29 @@ Notas explicativas; RPV; garantia contratual com vencimento; conciliação folha
 receita×tributário; inscrição automática do lançamento tributário vencido; CDA, protesto e execução fiscal;
 vínculo do ordenador com quem autoriza; reexecução de relatório com falha e trabalhador contínuo; dados abertos em
 JSON; consultas públicas de convênios, licitações e obras.
+
+## 4. V33 — integração e operação do contador (atualização desta matriz, não inventário novo)
+
+Pedido: `docs/lotes/V33-integracao-operacao-completa-e-documentos.md`. Branch `apresentacao/contabilidade`
+com `v28-integrado` integrada (merge 7a7a28a + 1dc584a). Evidência: teste de integração ou percurso desta rodada,
+saída bruta em `.registro-de-execucao/v33-*` e `.registro-de-execucao/percursos/v33-*`.
+
+| Pergunta do contador | Caminho de tela | Operação executada | Efeito persistido | Documento / exportação | Evidência | Situação |
+|---|---|---|---|---|---|---|
+| Por que o contador não via os livros? | Menu Contabilidade › Lançamentos e livros | Perfil do contador com CONSULTAR_RELATORIOS (e receita, tesouraria, patrimônio, TRAVAR_COMPETENCIA); sem DESTRAVAR e sem PAGAR | — (perfil) | Livros e demonstrações pela mesma regra na tela e no PDF | percurso v33 C.1–C.3, rastreio 19/19 (negação no planejamento) | OPERA |
+| Fechamento mensal e travamento são a mesma coisa? | Contabilidade › Encerramento e abertura › Fechamento mensal | Conferir e fechar; reabrir só com a ação, com motivo | `MovimentoTravamento` TRAVAR/DESTRAVAR (um fato só) | — | percurso v33 C.4–C.6, A.8 | OPERA |
+| Cada arquivo do SAGRES leva só a UG pedida? | Contabilidade › Unidades gestoras (vínculo unidade → UG); Integrações › SAGRES | Declarar de qual UG é cada unidade; prévia e download por UG | `VinculoDaUnidadeOrcamentariaComUg` (insert-only, vigência) | Pacote recortado pela unidade da linha; dotação pela Prefeitura com a UG dona; o que não tem vínculo fica fora do ZIP, nomeado | m15-abrangencia 10/10 + 5 mutações; sagres-recorte-por-ug 4/4 (gerador real, N=2); percurso v33 A.1–A.7 | PARCIAL: contas, saldos, conciliação, extras, receita e ordenador ainda fora com 2+ UGs (`SAGRES-CONTAS-E-EXTRAS-POR-UG`) |
+| Quanto devo, a quem, e o que já é exigível? | Orçamento e despesa › Execução › A pagar por credor | Consultar por credor, fase, origem | — (leitura pela régua do M05/M08) | CSV do resultado inteiro; impressão | m05-a-pagar 5/5 (N=2 credores, RP P/NP, retenções) + mutações; percurso v33 C.7–C.8, T.1 | OPERA |
+| Onde anulo, e o que muda? | Orçamento e despesa › Execução › Anulações e estornos | Conferir (objeto, valor, motivo, efeito) e confirmar pelo serviço do fato | Registro novo de anulação + lançamento | Links ao original e ao lançamento; registradas com saldo atual | anulacoes-registradas 1/1 + mutação; percurso v33 C.9–C.11 | OPERA (despesa); demais áreas pelo caminho até a tela delas |
+| De onde vem este número do balanço? | Relatórios › Demonstrações › Balanço Patrimonial / DVP | Abrir a conta da linha | — | Composição por conta com saldo → razão no período → lançamento → documento | periodo-das-demonstracoes 2/2; percurso v33 C.2–C.3 | PARCIAL: Balanço Financeiro, DFC e Balanço Orçamentário só levam ao balancete (`DRILL-COMPOSICAO-BF-DFC-BO`) |
+
+Dependências restantes (documento, credencial, configuração ou autorização):
+
+- **Vínculo unidade orçamentária → UG de Esperança** (configuração do ente): sem ele, com as 4 UGs operadas, a
+  cadeia da despesa sai fora do pacote. Registro: `VinculoDaUnidadeOrcamentariaComUg`. Operação: remessa SAGRES.
+- **CNPJ e entidade de cada UG de Esperança** (documento do Tribunal): `UnidadeGestora`. Operação: remessa.
+- **Ordenador designado por unidade** (ato do ente): `DesignacaoDeOrdenador`. Operação: arquivo de Empenhos.
+- **Mapeamento das linhas do Balanço Patrimonial** (configuração contábil): sem ele o balanço diz que falta.
+- **Credencial de transmissão ao Tribunal**: nenhuma remessa é transmitida nesta rodada.
+- **Destino externo da cópia de segurança** (do operador): a cópia local continua local.
+- **Autorização para publicar** (do usuário): nada foi enviado ao GitHub nem à produção.
