@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import * as LEIAUTES from "./layout-2026v11.js";
-import { ABRANGENCIA_DO_SAGRES, aplicarAbrangencia, decidirArquivo, posicaoDoCampo, tabelaDoArquivo, type ArquivoDoPacote, type ContextoDasUgs } from "./abrangencia.js";
+import { ABRANGENCIA_DO_SAGRES, aplicarAbrangencia, chaveDaConta, decidirArquivo, posicaoDoCampo, tabelaDoArquivo, type ArquivoDoPacote, type ContextoDasUgs } from "./abrangencia.js";
 
 /**
  * V33 — A ABRANGÊNCIA DE CADA ARQUIVO DIANTE DAS UGS DO DIA.
@@ -20,7 +20,7 @@ const VINCULOS: ReadonlyMap<string, string> = new Map([
   [UO_CAM, CAM],
 ]);
 
-const ctx = (c: Partial<ContextoDasUgs>): ContextoDasUgs => ({ operadas: 2, pedidaEhAPrefeitura: true, ugPedida: PREF, ugDaUo: VINCULOS, ...c });
+const ctx = (c: Partial<ContextoDasUgs>): ContextoDasUgs => ({ operadas: 2, pedidaEhAPrefeitura: true, ugPedida: PREF, ugDaUo: VINCULOS, ugDaConta: new Map(), ...c });
 const UMA_PREFEITURA = ctx({ operadas: 1 });
 const DUAS_PELA_PREFEITURA = ctx({});
 const DUAS_PELA_CAMARA = ctx({ pedidaEhAPrefeitura: false, ugPedida: CAM });
@@ -116,16 +116,54 @@ describe("abrangência do SAGRES por unidade gestora", () => {
     expect(daCam !== undefined ? linhasDe(daCam).map((l) => l.slice(6, 20)) : null).toEqual(["22222222000122"]);
   });
 
-  it("t8: duas UGs — sem vínculo (contas, extras) fica fora; o que cita a conta sai junto; o filtrado no modelo entra", () => {
+  it("t8: duas UGs — sem vínculo (extras, receita, ordenador) fica fora; contas e transferências entram para recortar", () => {
     const fora = (t: string): string | null => {
       const d = decidirArquivo(t, DUAS_PELA_PREFEITURA);
       return d.incluir ? null : d.regra;
     };
-    expect(fora("CadastroContaBancaria")).toBe("RECORTE_POR_UG_INDISPONIVEL");
     expect(fora("DespesaExtra")).toBe("RECORTE_POR_UG_INDISPONIVEL");
-    expect(fora("TransfConcedida")).toBe("RECORTE_POR_UG_INDISPONIVEL");
+    expect(fora("ReceitaOrcamentaria")).toBe("RECORTE_POR_UG_INDISPONIVEL");
+    expect(fora("CadastroContaBancaria")).toBeNull();
+    expect(fora("TransfConcedida")).toBeNull();
     expect(fora("Veiculos")).toBeNull();
     expect(fora("NormasOrcamentarias")).toBeNull();
+  });
+
+  // ── V33 — as contas bancárias pela conta da linha (titular declarado) ──
+  const CONTA_PREF = chaveDaConta("001", "12340", "111111");
+  const CONTA_CAM = chaveDaConta("104", "05678", "222222");
+  const comContas = (c: Partial<ContextoDasUgs>): ContextoDasUgs => ({ ...ctx(c), ugDaConta: new Map([[CONTA_PREF, PREF], [CONTA_CAM, CAM]]) });
+  /** Uma linha de saldo mensal: conta @7-19, agência @20-25, banco @26-28 (posições do leiaute real). */
+  const saldo = (conta: string, agencia: string, banco: string): string => linha(70, { conta: [7, conta.padStart(13, "0")], ag: [20, agencia.padStart(6, "0")], banco: [26, banco] });
+
+  it("t11: o saldo das contas se reparte pela conta da linha — zeros à esquerda não mudam a conta", () => {
+    expect(posicaoDoCampo("SaldoMensal", "numContaBancaria")).toEqual({ ini: 7, fim: 19 });
+    const s = arquivo("201001092026SaldoMensal.txt", [saldo("111111", "12340", "001"), saldo("222222", "5678", "104")]);
+    const daPref = aplicarAbrangencia([s], comContas({})).arquivos[0];
+    const daCam = aplicarAbrangencia([s], comContas({ pedidaEhAPrefeitura: false, ugPedida: CAM })).arquivos[0];
+    expect(daPref?.registros).toBe(1);
+    expect(daCam?.registros).toBe(1);
+    expect(linhasDe(daPref ?? arquivo("x", [])).map((l) => l.slice(6, 19))).toEqual(["0000000111111"]);
+  });
+
+  it("t12: conta sem titular declarado recusa o arquivo, nomeando a conta; e a transferência que a cita sai junto", () => {
+    const s = arquivo("201001092026CadastroContaBancaria.txt", [linha(120, { conta: [7, "0000000999999"], banco: [21, "237"], ag: [24, "000001"] })]);
+    const t = arquivo("201001092026TransfConcedida.txt", [linha(80, {})]);
+    const r = aplicarAbrangencia([t, s], comContas({}));
+    expect(r.arquivos).toEqual([]);
+    const fora = new Map(r.fora.map((f) => [f.arquivo, f]));
+    expect(fora.get("CadastroContaBancaria")?.regra).toBe("CONTA_SEM_TITULAR_DECLARADO");
+    expect(fora.get("CadastroContaBancaria")?.detalhe).toMatch(/237\/1\/999999/);
+    expect(fora.get("TransfConcedida")?.detalhe).toMatch(/cita registros de CadastroContaBancaria/);
+  });
+
+  it("t13: movimentação entre contas de UGs diferentes recusa o arquivo (o leiaute exige a mesma UG)", () => {
+    const m = arquivo("201001092026MovimentacaoEntreContasBancarias.txt", [
+      linha(80, { b1: [7, "001"], a1: [10, "012340"], c1: [16, "00000000111111"], b2: [31, "104"], a2: [34, "005678"], c2: [40, "0000000222222"] }),
+    ]);
+    const r = aplicarAbrangencia([m], comContas({}));
+    expect(r.arquivos).toEqual([]);
+    expect(r.fora[0]?.detalhe).toMatch(/unidades gestoras diferentes/);
   });
 
   it("t9: a Câmara não remete o arquivo do ente — com uma ou com duas UGs", () => {

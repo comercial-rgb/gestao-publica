@@ -74,8 +74,8 @@ import type { LayoutArquivo } from "../../adapters/tribunais/tce-pb/sagres/regis
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
 import { anoCivil, competenciaCivil, diaCivil } from "../../packages/datas/index";
-import { ugDasUnidadesOrcamentarias, unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
-import { aplicarAbrangencia, type ContextoDasUgs } from "../../adapters/tribunais/tce-pb/sagres/abrangencia";
+import { ugDasUnidadesOrcamentarias, ugVigenteNoDia, unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
+import { aplicarAbrangencia, chaveDaConta, type ContextoDasUgs } from "../../adapters/tribunais/tce-pb/sagres/abrangencia";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -220,14 +220,41 @@ function linhasDe(arq: ArquivoGerado): string[] {
  * "Prefeitura" é a ÚNICA operada com natureza PREFEITURA_OU_SECRETARIA; duas assim (uma secretaria cadastrada
  * como UG) e nenhuma é tratada como a Prefeitura — o arquivo do ente fica fora até o cadastro dizer qual é.
  */
+/**
+ * V33 — de qual UG é cada conta bancária, no dia: a ÚLTIMA declaração de titular dá a entidade, e a UG escriturada aqui
+ * com essa entidade, vigente no dia, é a dona. Conta sem titular, ou com titular sem UG vigente, não entra no mapa — e o
+ * recorte trata a ausência como recusa. A chave é a mesma régua da linha do leiaute (`chaveDaConta`).
+ */
+async function ugDasContas(prisma: ReturnType<typeof cliente>, dia: Date): Promise<ReadonlyMap<string, string>> {
+  const [ugs, contas] = await Promise.all([
+    prisma.unidadeGestora.findMany({
+      where: { entidadeContabilId: { not: null } },
+      select: { codigoTce: true, entidadeContabilId: true, vigenteDesde: true, encerramento: { select: { vigenteAte: true } } },
+    }),
+    prisma.contaBancaria.findMany({
+      select: { banco: true, agencia: true, digitoAgencia: true, conta: true, digitoConta: true, declaracoesDeTitular: { orderBy: { versao: "desc" }, take: 1, select: { entidadeId: true } } },
+    }),
+  ]);
+  const ugDaEntidade = new Map(ugs.filter((u) => ugVigenteNoDia(u, dia)).map((u) => [u.entidadeContabilId as string, u.codigoTce]));
+  const mapa = new Map<string, string>();
+  for (const c of contas) {
+    if (c.banco === null || c.agencia === null || c.conta === null) continue;
+    const entidade = c.declaracoesDeTitular[0]?.entidadeId;
+    const ug = entidade === undefined ? undefined : ugDaEntidade.get(entidade);
+    if (ug !== undefined) mapa.set(chaveDaConta(c.banco, `${c.agencia}${c.digitoAgencia ?? ""}`, `${c.conta}${c.digitoConta ?? ""}`), ug);
+  }
+  return mapa;
+}
+
 export async function contextoDasUgs(prisma: ReturnType<typeof cliente>, dia: Date, codUnidadeGestora: string): Promise<ContextoDasUgs> {
-  const [operadas, ugDaUo] = await Promise.all([unidadesGestorasOperadas(prisma, dia), ugDasUnidadesOrcamentarias(prisma, dia)]);
+  const [operadas, ugDaUo, ugDaConta] = await Promise.all([unidadesGestorasOperadas(prisma, dia), ugDasUnidadesOrcamentarias(prisma, dia), ugDasContas(prisma, dia)]);
   const prefeituras = operadas.filter((u) => u.naturezaJuridica === "PREFEITURA_OU_SECRETARIA");
   return {
     operadas: operadas.length,
     pedidaEhAPrefeitura: operadas.length === 0 || (prefeituras.length === 1 && prefeituras[0]?.codigoTce === codUnidadeGestora),
     ugPedida: codUnidadeGestora,
     ugDaUo,
+    ugDaConta,
   };
 }
 

@@ -325,8 +325,12 @@ abrangência declarada da sua tabela antes de entrar no pacote (prévia e downlo
 - **Fornecedores:** ficam os credores dos empenhos que ficaram.
 - **Frota, farmácia, transferências e agrupamento da folha:** o leitor já filtra pela UG. A transferência sai se a
   conta bancária sai.
-- **Contas bancárias, saldos, conciliação, extras, receita orçamentária e ordenador:** sem vínculo, fora do pacote,
-  com o motivo. A conta tem titular declarado (entidade → UG), e a numeração dos extras é do exercício inteiro. Os
-  dois pontos precisam ser decididos antes de recortar: pendência `SAGRES-CONTAS-E-EXTRAS-POR-UG`.
+- **Contas bancárias, saldos, conciliação, relacionamento conta × fonte e movimentação entre contas:** pela conta
+  da linha (banco, agência e conta, só dígitos), contra o titular declarado vigente (conta → entidade → UG). Conta
+  sem titular recusa o arquivo, nomeando a conta; movimentação entre contas de UGs diferentes também (o leiaute
+  exige a mesma UG). As transferências entram quando o cadastro de contas entra.
+- **Extras, receita orçamentária e ordenador:** sem vínculo, fora do pacote com o motivo. A numeração dos extras é
+  do exercício inteiro, e a conta arrecadadora da receita é um parâmetro da remessa: pendência
+  `SAGRES-EXTRAS-RECEITA-ORDENADOR-POR-UG`.
 
 O arquivo que fica fora não vai no ZIP. A prévia o nomeia como pendência, e o pacote sai como de conferência.

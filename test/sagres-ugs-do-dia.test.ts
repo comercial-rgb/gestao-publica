@@ -42,12 +42,12 @@ beforeEach(async () => {
 }, 120000);
 
 describe("as UGs do dia, para a abrangência do SAGRES", () => {
-  it("t1: duas operadas — a Prefeitura é a pedida só quando é ela; as contas ficam fora para as duas", async () => {
+  it("t1: duas operadas — a Prefeitura é a pedida só quando é ela; os extras ficam fora para as duas", async () => {
     const pref = await contextoDasUgs(cliente(), D("2026-09-14"), "201001");
     const cam = await contextoDasUgs(cliente(), D("2026-09-14"), "201002");
     expect(pref).toMatchObject({ operadas: 2, pedidaEhAPrefeitura: true, ugPedida: "201001" });
     expect(cam).toMatchObject({ operadas: 2, pedidaEhAPrefeitura: false, ugPedida: "201002" });
-    expect(decidirArquivo("CadastroContaBancaria", pref)).toMatchObject({ incluir: false, regra: "RECORTE_POR_UG_INDISPONIVEL" });
+    expect(decidirArquivo("DespesaExtra", pref)).toMatchObject({ incluir: false, regra: "RECORTE_POR_UG_INDISPONIVEL" });
     expect(decidirArquivo("NormasOrcamentarias", pref)).toEqual({ incluir: true });
     expect(decidirArquivo("NormasOrcamentarias", cam)).toMatchObject({ incluir: false, regra: "ARQUIVO_SO_DA_PREFEITURA" });
   });

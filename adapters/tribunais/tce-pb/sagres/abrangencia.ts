@@ -31,10 +31,18 @@ export type Base = "LEIAUTE" | "INFERENCIA";
 export type Recorte =
   | { readonly tipo: "FILTRA_POR_UG" }
   | { readonly tipo: "POR_UO_NA_LINHA"; readonly campo: string }
+  | { readonly tipo: "POR_CONTA_NA_LINHA"; readonly contas: readonly ContaNaLinha[] }
   | { readonly tipo: "DERIVADO"; readonly campo: string; readonly de: string; readonly campoDe: string }
   | { readonly tipo: "SEM_VINCULO" }
   | { readonly tipo: "CONSOLIDADO" }
   | { readonly tipo: "CONSOLIDADO_UG_NA_LINHA"; readonly campoUo: string };
+
+/** Os três campos que identificam uma conta bancária na linha do leiaute (banco, agência com dígito, conta com dígito). */
+export interface ContaNaLinha {
+  readonly banco: string;
+  readonly agencia: string;
+  readonly conta: string;
+}
 
 export interface AbrangenciaDaTabela {
   readonly abrangencia: Abrangencia;
@@ -53,6 +61,7 @@ const CONS: Recorte = { tipo: "CONSOLIDADO" };
 const UO: Recorte = { tipo: "POR_UO_NA_LINHA", campo: "codUnidadeOrcamentaria" };
 const porUg = (base: Base, recorte: Recorte, citaOs?: readonly string[]): AbrangenciaDaTabela => ({ abrangencia: "POR_UG", base, recorte, ...(citaOs !== undefined ? { citaOs } : {}) });
 const doEnte = (base: Base, recorte: Recorte): AbrangenciaDaTabela => ({ abrangencia: "DO_ENTE", base, recorte });
+const CONTA = (conta: string, agencia = "numAgencia", banco = "codBanco"): Recorte => ({ tipo: "POR_CONTA_NA_LINHA", contas: [{ banco, agencia, conta }] });
 const UG_NA_LINHA: Recorte = { tipo: "CONSOLIDADO_UG_NA_LINHA", campoUo: "codUnidadeOrcamentaria" };
 
 /**
@@ -112,18 +121,26 @@ export const ABRANGENCIA_DO_SAGRES: Readonly<Record<string, AbrangenciaDaTabela>
   RelacionamentoLiquidacaoPagamento: porUg("INFERENCIA", UO, ["Liquidacao", "Pagamentos"]),
   // o fornecedor do dia é o credor dos empenhos do dia: vale se o empenho dele ficou no arquivo desta UG
   Fornecedores: porUg("LEIAUTE", { tipo: "DERIVADO", campo: "cpfCnpj", de: "Empenhos", campoDe: "cpfCnpjFornecedor" }),
-  // ── por UG, sem vínculo: as contas bancárias e o que se move por elas, a receita, o ordenador ──
+  // ── por UG, pela conta bancária da linha (titular declarado: conta → entidade → UG) e, sem vínculo, os extras, a
+  //    receita (a conta arrecadadora é um parâmetro da remessa) e o ordenador ──
   ReceitaOrcamentaria: porUg("INFERENCIA", SEM),
   ReceitaExtra: porUg("INFERENCIA", SEM),
   DespesaExtra: porUg("INFERENCIA", SEM),
   EstornoReceitaExtra: porUg("INFERENCIA", SEM),
   EstornoDespesaExtra: porUg("INFERENCIA", SEM),
-  CadastroContaBancaria: porUg("LEIAUTE", SEM),
-  RelacionamentoCCorrenteFontePagadora: porUg("LEIAUTE", SEM),
-  SaldoInicial: porUg("INFERENCIA", SEM),
-  SaldoMensal: porUg("INFERENCIA", SEM),
-  ConciliacaoBancaria: porUg("INFERENCIA", SEM),
-  MovimentacaoEntreContasBancarias: porUg("LEIAUTE", SEM),
+  CadastroContaBancaria: porUg("LEIAUTE", CONTA("numero")),
+  RelacionamentoCCorrenteFontePagadora: porUg("LEIAUTE", CONTA("numContaBancaria")),
+  SaldoInicial: porUg("INFERENCIA", CONTA("numContaBancaria")),
+  SaldoMensal: porUg("INFERENCIA", CONTA("numContaBancaria")),
+  ConciliacaoBancaria: porUg("INFERENCIA", CONTA("numContaBancaria")),
+  // "as contas devem pertencer à mesma UG" (leiaute): as duas pontas da linha têm de ser da UG pedida.
+  MovimentacaoEntreContasBancarias: porUg("LEIAUTE", {
+    tipo: "POR_CONTA_NA_LINHA",
+    contas: [
+      { banco: "codBancoOrigem", agencia: "numAgenciaOrigem", conta: "numeroCtaOrigem" },
+      { banco: "codBancoDestino", agencia: "numAgenciaDestino", conta: "numeroCtaDestino" },
+    ],
+  }),
   Ordenador: porUg("INFERENCIA", SEM),
 };
 
@@ -143,9 +160,17 @@ export interface ContextoDasUgs {
   readonly ugPedida: string;
   /** Código da unidade orçamentária → código da UG, pelo vínculo declarado vigente no dia. Sem vínculo: ausente. */
   readonly ugDaUo: ReadonlyMap<string, string>;
+  /** Chave da conta (`chaveDaConta`) → código da UG, pelo titular declarado vigente. Sem titular: ausente. */
+  readonly ugDaConta: ReadonlyMap<string, string>;
 }
 
-export type RegraDaAbrangencia = "RECORTE_POR_UG_INDISPONIVEL" | "ARQUIVO_SO_DA_PREFEITURA" | "TABELA_SEM_ABRANGENCIA" | "UNIDADE_SEM_UG_DECLARADA";
+/** A chave de uma conta bancária: só dígitos, sem zeros à esquerda — a régua comum da linha e do cadastro. */
+export function chaveDaConta(banco: string, agencia: string, conta: string): string {
+  const n = (v: string): string => v.replace(/\D/g, "").replace(/^0+/, "");
+  return `${n(banco)}|${n(agencia)}|${n(conta)}`;
+}
+
+export type RegraDaAbrangencia = "RECORTE_POR_UG_INDISPONIVEL" | "ARQUIVO_SO_DA_PREFEITURA" | "TABELA_SEM_ABRANGENCIA" | "UNIDADE_SEM_UG_DECLARADA" | "CONTA_SEM_TITULAR_DECLARADO";
 
 export type DecisaoDoArquivo =
   | { readonly incluir: true }
@@ -310,6 +335,28 @@ function recortar(
       const sem = new Set(linhas.map((l) => ler(l, p)).filter((uo) => !ctx.ugDaUo.has(uo)));
       if (sem.size > 0) return { fora: semUg(tabela, sem) };
       return comLinhas(linhas.filter((l) => ctx.ugDaUo.get(ler(l, p)) === ctx.ugPedida));
+    }
+    case "POR_CONTA_NA_LINHA": {
+      const posicoes = recorte.contas.map((c) => ({ banco: posicaoDoCampo(tabela, c.banco), agencia: posicaoDoCampo(tabela, c.agencia), conta: posicaoDoCampo(tabela, c.conta) }));
+      const faltando = posicoes.find((p) => p.banco === null || p.agencia === null || p.conta === null);
+      if (faltando !== undefined) return semPosicao(recorte.contas.map((c) => c.conta).join("/"));
+      const chaves = (l: string): string[] => posicoes.map((p) => chaveDaConta(ler(l, p.banco as Posicao), ler(l, p.agencia as Posicao), ler(l, p.conta as Posicao)));
+      const linhas = linhasDo(arq.conteudo);
+      const semTitular = new Set(linhas.flatMap((l) => chaves(l).filter((k) => !ctx.ugDaConta.has(k))));
+      if (semTitular.size > 0) {
+        return {
+          fora: {
+            arquivo: tabela,
+            regra: "CONTA_SEM_TITULAR_DECLARADO",
+            detalhe: `Há linhas de ${tabela} de conta bancária sem titular declarado (${[...semTitular].map((k) => k.split("|").join("/")).sort().join(", ")}). Sem o titular não se sabe de que unidade gestora é a conta, e o arquivo fica fora. Declare o titular em Financeiro › Contas bancárias.`,
+          },
+        };
+      }
+      const misturadas = linhas.filter((l) => new Set(chaves(l).map((k) => ctx.ugDaConta.get(k))).size > 1);
+      if (misturadas.length > 0) {
+        return { fora: { arquivo: tabela, regra: "RECORTE_POR_UG_INDISPONIVEL", detalhe: `${tabela} tem ${String(misturadas.length)} linha(s) entre contas de unidades gestoras diferentes; o leiaute exige contas da mesma unidade. O arquivo fica fora.` } };
+      }
+      return comLinhas(linhas.filter((l) => ctx.ugDaConta.get(chaves(l)[0] ?? "") === ctx.ugPedida));
     }
     case "CONSOLIDADO_UG_NA_LINHA": {
       const p = posicaoDoCampo(tabela, recorte.campoUo);

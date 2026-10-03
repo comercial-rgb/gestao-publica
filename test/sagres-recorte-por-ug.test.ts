@@ -142,3 +142,32 @@ describe("recorte por UG dos empenhos do dia, pelo gerador real", () => {
     expect(await prisma.vinculoDaUnidadeOrcamentariaComUg.count()).toBe(0);
   });
 });
+
+describe("recorte por UG das contas bancárias, pelo titular declarado", () => {
+  async function titular(contaBancariaId: string, entidadeId: string, versao: number): Promise<void> {
+    await prisma.declaracaoDeTitularDaConta.create({
+      data: { contaBancariaId, entidadeId, versao, atoTipo: "LEI", atoNumero: "1", atoAno: 2000, atoDispositivo: "art. 1", atoCitacao: "Lei orgânica (fixture)", criadoPor: POR },
+    });
+  }
+
+  it("t5: conta sem titular recusa o cadastro de contas; com os dois titulares, cada UG recebe a sua conta — e vale a última declaração", async () => {
+    await titular("cb-poc-a", "ent-pref", 1);
+    const g = await import("../adapters/tribunais/tce-pb/sagres/gerador.js");
+    const antes = aplicarAbrangencia([await g.gerarCadastroContaBancaria(prisma, { codUnidadeGestora: PREF, cnpjGerenciadora: "12345678000195", dia: DIA })], await contextoDasUgs(cliente(), DIA, PREF));
+    expect(antes.arquivos).toEqual([]);
+    expect(antes.fora[0]).toMatchObject({ arquivo: "CadastroContaBancaria", regra: "CONTA_SEM_TITULAR_DECLARADO" });
+    expect(antes.fora[0]?.detalhe).toMatch(/1\/56780\/222222/);
+
+    await titular("cb-poc-b", "ent-pref", 1);
+    await titular("cb-poc-b", "ent-cam", 2);
+    const pPref = posicaoDoCampo("CadastroContaBancaria", "numero");
+    if (pPref === null) throw new Error("leiaute sem o campo");
+    const daUg = async (ug: string): Promise<string[]> => {
+      const r = aplicarAbrangencia([await g.gerarCadastroContaBancaria(prisma, { codUnidadeGestora: ug, cnpjGerenciadora: "12345678000195", dia: DIA })], await contextoDasUgs(cliente(), DIA, ug));
+      expect(r.fora).toEqual([]);
+      return linhasDe(r.arquivos[0]?.conteudo ?? Buffer.from("")).map((l) => l.slice(pPref.ini - 1, pPref.fim).trim().replace(/^0+/, ""));
+    };
+    expect(await daUg(PREF)).toEqual(["111111"]);
+    expect(await daUg(CAM)).toEqual(["222222"]);
+  });
+});
