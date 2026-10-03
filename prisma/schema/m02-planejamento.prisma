@@ -353,6 +353,8 @@ model FichaOrcamentaria {
   itensCredito ItemCredito[]
   /// back-relation M03 V21 — as pernas de realocação que tiram ou põem dotação nesta ficha.
   itensDeRealocacao ItemDeRealocacao[]
+  /// back-relation V29 — as linhas de proposta orçamentária importadas desta ficha. Campo VIRTUAL.
+  linhasDeProposta LinhaDeDespesaDaProposta[]
   // ---------------------------------------------------------------------------
 
   partidas PartidaContabil[]
@@ -428,6 +430,9 @@ model ReceitaPrevista {
   /// TipoReceitaSagres, feito só na exportação.
   tipoReceita       TipoReceita
   valorPrevisto     Decimal         @db.Decimal(18, 2)
+
+  /// back-relation V29 — as linhas de proposta orçamentária importadas desta previsão. Campo VIRTUAL.
+  linhasDeProposta LinhaDeReceitaDaProposta[]
 
   @@unique([exercicio, naturezaReceitaId, exercicioFonte, fonteId, tipoReceita], name: "uq_receita_prevista")
   @@index([exercicio])

@@ -373,6 +373,16 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO: os atos da farmácia não travam mais nada depois dela.
    */
   FarmaciaPublica: 35,
+  /**
+   * V29 — A PROPOSTA ORÇAMENTÁRIA (M02). A corrida é entre AJUSTAR e EFETIVAR: o ajuste confere "ainda não
+   * efetivada" e grava; a efetivação lê as linhas e cria as fichas. Sem trava, um ajuste gravado depois da leitura
+   * e antes do fim da efetivação fica como "valor vigente" de uma proposta cujo orçamento nasceu com o valor
+   * anterior. Os dois travam a proposta ANTES de ler.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: criar ficha e receita prevista não trava nada (o corpo da ficha não chama
+   * `travar`). Se a efetivação um dia passar a travar ficha ou exercício, este recurso tem de subir na fila.
+   */
+  PropostaOrcamentaria: 36,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

@@ -1,0 +1,141 @@
+// ============================================================================
+// V29 — A PROPOSTA ORÇAMENTÁRIA DO EXERCÍCIO SEGUINTE (M02).
+//
+// A proposta importa as receitas previstas e as fichas de um exercício (a ORIGEM) para montar
+// o orçamento de outro (o DESTINO), com a base e o percentual escolhidos. Ela NÃO toca o razão:
+// a ficha, ao nascer, grava a dotação inicial no razão (append-only), e uma proposta ainda se
+// altera antes de virar lei. Quem cria as fichas e a receita prevista do destino é a
+// EFETIVAÇÃO, uma vez por exercício.
+//
+// ⚠️ INSERT-ONLY EM TODAS AS TABELAS. O valor de uma linha muda por AJUSTE (linha nova, com
+// motivo); o vigente é o do ajuste mais recente, ou o projetado se não houver ajuste. Nenhuma
+// destas tabelas entra no censo de UPDATE/DELETE do papel de runtime.
+// ============================================================================
+
+/// A base da despesa: qual valor da ficha de origem a proposta lê.
+enum BaseDaDespesaDaProposta {
+  /// O `valorDotado` da ficha (a dotação da LOA de origem).
+  DOTACAO_INICIAL
+  /// A dotação inicial mais créditos e realocações, menos anulações (Σ dos movimentos).
+  DOTACAO_AUTORIZADA
+  /// O empenhado líquido (empenhos menos anulações).
+  EMPENHADO
+  /// Só a estrutura: a ficha vem com valor zero, para ser preenchida na proposta.
+  SEM_VALOR
+}
+
+/// A base da receita: qual valor da previsão de origem a proposta lê.
+enum BaseDaReceitaDaProposta {
+  /// O `valorPrevisto` da receita prevista (a previsão da LOA de origem).
+  PREVISAO_INICIAL
+  /// A previsão inicial mais a Σ das reprevisões da mesma natureza, fonte e tipo (LRF art. 12).
+  PREVISAO_ATUALIZADA
+  /// Só a estrutura: a previsão vem com valor zero, para ser preenchida na proposta.
+  SEM_VALOR
+}
+
+model PropostaOrcamentaria {
+  id                            String                  @id @default(cuid())
+  /// O exercício que a proposta orça (o destino).
+  exercicio                     Int
+  /// O exercício de onde as linhas foram importadas.
+  exercicioDeOrigem             Int
+  descricao                     String
+  baseDaReceita                 BaseDaReceitaDaProposta
+  /// Percentual aplicado sobre a base da receita (5.5 = mais 5,5 %; pode ser negativo).
+  percentualDaReceita           Decimal                 @db.Decimal(9, 6)
+  baseDaDespesa                 BaseDaDespesaDaProposta
+  percentualDaDespesa           Decimal                 @db.Decimal(9, 6)
+  /// O que a proposta aproveitou do exercício de origem (ao menos um dos dois).
+  aproveitaReceitas             Boolean
+  aproveitaFichas               Boolean
+  /// Falso: projetos e operações especiais entram pela base, sem o reajuste.
+  reajustaProjetos              Boolean
+  /// As fichas abertas na origem por crédito especial ou extraordinário (sem dotação na lei).
+  incluiFichasAbertasPorCredito Boolean
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  linhasDeReceita LinhaDeReceitaDaProposta[]
+  linhasDeDespesa LinhaDeDespesaDaProposta[]
+  efetivacao      EfetivacaoDaProposta?
+
+  @@index([exercicio])
+}
+
+model LinhaDeReceitaDaProposta {
+  id                     String               @id @default(cuid())
+  propostaOrcamentariaId String
+  proposta               PropostaOrcamentaria @relation(fields: [propostaOrcamentariaId], references: [id])
+  /// A previsão de origem: natureza, fonte, exercício da fonte e tipo vêm dela.
+  receitaDeOrigemId      String
+  receitaDeOrigem        ReceitaPrevista      @relation(fields: [receitaDeOrigemId], references: [id])
+  /// A previsão da lei de origem, para a comparação entre os exercícios.
+  valorNaLeiDeOrigem     Decimal              @db.Decimal(18, 2)
+  /// O valor da base no exercício de origem, congelado na importação.
+  valorBase              Decimal              @db.Decimal(18, 2)
+  /// Base mais o percentual da proposta, em 2 casas.
+  valorProjetado         Decimal              @db.Decimal(18, 2)
+
+  ajustes AjusteDeReceitaDaProposta[]
+
+  @@unique([propostaOrcamentariaId, receitaDeOrigemId])
+  @@index([propostaOrcamentariaId])
+}
+
+model AjusteDeReceitaDaProposta {
+  id        String                   @id @default(cuid())
+  linhaId   String
+  linha     LinhaDeReceitaDaProposta @relation(fields: [linhaId], references: [id])
+  /// O valor que a linha passa a ter (não a diferença).
+  valor     Decimal                  @db.Decimal(18, 2)
+  motivo    String
+  criadoEm  DateTime                 @default(now())
+  criadoPor String
+
+  @@index([linhaId, criadoEm])
+}
+
+model LinhaDeDespesaDaProposta {
+  id                     String               @id @default(cuid())
+  propostaOrcamentariaId String
+  proposta               PropostaOrcamentaria @relation(fields: [propostaOrcamentariaId], references: [id])
+  /// A ficha de origem: a classificação inteira e o número vêm dela.
+  fichaDeOrigemId        String
+  fichaDeOrigem          FichaOrcamentaria    @relation(fields: [fichaDeOrigemId], references: [id])
+  /// A dotação inicial da lei de origem, para a comparação entre os exercícios.
+  valorNaLeiDeOrigem     Decimal              @db.Decimal(18, 2)
+  valorBase              Decimal              @db.Decimal(18, 2)
+  valorProjetado         Decimal              @db.Decimal(18, 2)
+
+  ajustes AjusteDeDespesaDaProposta[]
+
+  @@unique([propostaOrcamentariaId, fichaDeOrigemId])
+  @@index([propostaOrcamentariaId])
+}
+
+model AjusteDeDespesaDaProposta {
+  id        String                   @id @default(cuid())
+  linhaId   String
+  linha     LinhaDeDespesaDaProposta @relation(fields: [linhaId], references: [id])
+  valor     Decimal                  @db.Decimal(18, 2)
+  motivo    String
+  criadoEm  DateTime                 @default(now())
+  criadoPor String
+
+  @@index([linhaId, criadoEm])
+}
+
+/// O FATO "esta proposta virou o orçamento do exercício". Um por proposta e um por exercício:
+/// a garantia é do banco (os dois `@unique`), e a recusa legível é do caso de uso.
+model EfetivacaoDaProposta {
+  id                     String               @id @default(cuid())
+  propostaOrcamentariaId String               @unique
+  proposta               PropostaOrcamentaria @relation(fields: [propostaOrcamentariaId], references: [id])
+  exercicio              Int                  @unique
+  fichasCriadas          Int
+  receitasCriadas        Int
+  criadoEm               DateTime             @default(now())
+  criadoPor              String
+}

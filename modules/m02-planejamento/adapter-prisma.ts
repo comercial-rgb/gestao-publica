@@ -127,6 +127,74 @@ export function criarClassificacaoRepositoryPrisma(
   };
 }
 
+/**
+ * A CRIAÇÃO DA FICHA DENTRO DE UMA TRANSAÇÃO QUE JÁ EXISTE — a mesma do `criar` do repositório.
+ *
+ * Exportada para a EFETIVAÇÃO DA PROPOSTA (V29), que cria o orçamento inteiro de um exercício numa
+ * transação só: ou todas as fichas e previsões nascem, ou nenhuma. Um segundo caminho que gravasse
+ * a ficha sem a dotação inicial no razão seria a volta do furo de 09406c1 — por isso o corpo é um só.
+ * A tradução da unicidade violada continua com quem chama.
+ */
+export async function criarFichaNaTransacao(tx: Tx, ficha: FichaParaPersistir, autor: string): Promise<string> {
+  // M08 — fail-closed: não se cria ficha em exercício inexistente ou
+  // encerrado. Dentro da transação, antes de qualquer INSERT.
+  await exigirExercicioAberto(
+    tx,
+    ficha.exercicio,
+    `criação da ficha ${ficha.numero}`
+  );
+
+  const criada = await tx.fichaOrcamentaria.create({
+    data: {
+      exercicio: ficha.exercicio,
+      numero: ficha.numero,
+      orgaoId: ficha.orgaoId,
+      unidadeOrcId: ficha.unidadeOrcId,
+      funcaoId: ficha.funcaoId,
+      subfuncaoId: ficha.subfuncaoId,
+      programaId: ficha.programaId,
+      acaoId: ficha.acaoId,
+      naturezaDespesaId: ficha.naturezaDespesaId,
+      fonteId: ficha.fonteId,
+      coId: ficha.coId ?? null,
+      exercicioFonte: ficha.exercicioFonte,
+      valorDotado: ficha.valorDotado.toFixed(2),
+    },
+    select: { id: true },
+  });
+
+  // INVARIANTE: ficha criada => exatamente UMA DotacaoInicial.
+  // Append-only: este movimento é imutável como todos os outros.
+  // ⚠️ O MOVIMENTO **E A PERNA NO RAZÃO**, na MESMA transação. Até 09406c1 a
+  // dotação da LOA vivia só aqui e NUNCA tocava o razão — o crédito disponível
+  // era debitado pelo empenho e nunca creditado pela LOA. Ver `dotacao-razao.ts`.
+  await registrarMovimentoDotacao(tx, {
+    fichaId: criada.id,
+    tipo: "DOTACAO_INICIAL",
+    valor: ficha.valorDotado.toFixed(2),
+    origemTipo: "LOA",
+    origemId: criada.id,
+    // ⚠️ QUEM ASSINA É QUEM ABRIU A FICHA — não o literal "LOA".
+    //
+    // Até a V17 esta linha era `criadoPor: "LOA"`, com a justificativa "quem dota é a
+    // LEI; a ficha não carrega autor". O funil do razão, porém, exige que a identidade
+    // EXISTA (`exigirUsuarioAtivo`), e `"LOA"` só existe em `test/usuarios-teste.ts`:
+    // criar ficha DOTADA passava na suíte e estourava em banco real. A ficha da TELA
+    // escapava por acidente, porque nasce com 0,00 e a dotação zero não toca o razão.
+    criadoPor: autor,
+    // ⚠️ A DOTAÇÃO É UM FATO DE 1º DE JANEIRO do exercício — não do dia da
+    // digitação. Pela data de digitação, a MSC de março mostraria a LOA
+    // "entrando" em março.
+    data: instanteCivil(ficha.exercicio, 1, 1, 12),
+    historico: `Dotação inicial da ficha ${ficha.numero} (LOA ${ficha.exercicio})`,
+  });
+
+  // Cache = SUM dos movimentos (regra do M05). Nunca `saldo = valor`.
+  await recalcularCache(tx, criada.id);
+
+  return criada.id;
+}
+
 export function criarFichaRepositoryPrisma(
   prisma: PrismaClient
 ): FichaRepositoryPort {
@@ -147,65 +215,7 @@ export function criarFichaRepositoryPrisma(
      */
     async criar(ficha: FichaParaPersistir, autor: string): Promise<string> {
       try {
-        const id = await prisma.$transaction(async (tx) => {
-          // M08 — fail-closed: não se cria ficha em exercício inexistente ou
-          // encerrado. Dentro da transação, antes de qualquer INSERT.
-          await exigirExercicioAberto(
-            tx,
-            ficha.exercicio,
-            `criação da ficha ${ficha.numero}`
-          );
-
-          const criada = await tx.fichaOrcamentaria.create({
-            data: {
-              exercicio: ficha.exercicio,
-              numero: ficha.numero,
-              orgaoId: ficha.orgaoId,
-              unidadeOrcId: ficha.unidadeOrcId,
-              funcaoId: ficha.funcaoId,
-              subfuncaoId: ficha.subfuncaoId,
-              programaId: ficha.programaId,
-              acaoId: ficha.acaoId,
-              naturezaDespesaId: ficha.naturezaDespesaId,
-              fonteId: ficha.fonteId,
-              coId: ficha.coId ?? null,
-              exercicioFonte: ficha.exercicioFonte,
-              valorDotado: ficha.valorDotado.toFixed(2),
-            },
-            select: { id: true },
-          });
-
-          // INVARIANTE: ficha criada => exatamente UMA DotacaoInicial.
-          // Append-only: este movimento é imutável como todos os outros.
-          // ⚠️ O MOVIMENTO **E A PERNA NO RAZÃO**, na MESMA transação. Até 09406c1 a
-          // dotação da LOA vivia só aqui e NUNCA tocava o razão — o crédito disponível
-          // era debitado pelo empenho e nunca creditado pela LOA. Ver `dotacao-razao.ts`.
-          await registrarMovimentoDotacao(tx, {
-            fichaId: criada.id,
-            tipo: "DOTACAO_INICIAL",
-            valor: ficha.valorDotado.toFixed(2),
-            origemTipo: "LOA",
-            origemId: criada.id,
-            // ⚠️ QUEM ASSINA É QUEM ABRIU A FICHA — não o literal "LOA".
-            //
-            // Até a V17 esta linha era `criadoPor: "LOA"`, com a justificativa "quem dota é a
-            // LEI; a ficha não carrega autor". O funil do razão, porém, exige que a identidade
-            // EXISTA (`exigirUsuarioAtivo`), e `"LOA"` só existe em `test/usuarios-teste.ts`:
-            // criar ficha DOTADA passava na suíte e estourava em banco real. A ficha da TELA
-            // escapava por acidente, porque nasce com 0,00 e a dotação zero não toca o razão.
-            criadoPor: autor,
-            // ⚠️ A DOTAÇÃO É UM FATO DE 1º DE JANEIRO do exercício — não do dia da
-            // digitação. Pela data de digitação, a MSC de março mostraria a LOA
-            // "entrando" em março.
-            data: instanteCivil(ficha.exercicio, 1, 1, 12),
-            historico: `Dotação inicial da ficha ${ficha.numero} (LOA ${ficha.exercicio})`,
-          });
-
-          // Cache = SUM dos movimentos (regra do M05). Nunca `saldo = valor`.
-          await recalcularCache(tx, criada.id);
-
-          return criada.id;
-        });
+        const id = await prisma.$transaction(async (tx) => criarFichaNaTransacao(tx, ficha, autor));
         return id;
       } catch (e) {
         // A integridade é do BANCO (uq_ficha_sagres / exercicio+numero);

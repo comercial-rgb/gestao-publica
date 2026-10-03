@@ -201,6 +201,8 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
   { href: "/planejamento/loa", numero: "LOA", rotulo: "Lei Orçamentária Anual", descricao: "Receita prevista, despesa fixada, equilíbrio e anexos da Lei 4.320/64 do exercício." },
   { href: "/planejamento/leis-orcamentarias", numero: "Leis", rotulo: "Projeto e Lei da LOA", descricao: "O projeto enviado ao Legislativo, a lei que o aprovou e os documentos anexos, por exercício." },
+  // V29: o orçamento do exercício seguinte, importado de um exercício executado e alterado antes de virar fichas.
+  { href: "/planejamento/proposta-orcamentaria", numero: "Proposta", rotulo: "Proposta Orçamentária", descricao: "O orçamento do exercício seguinte a partir das receitas e fichas de um exercício executado, com reajuste e alterações, até gerar as fichas." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },

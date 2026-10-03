@@ -248,3 +248,46 @@ fichas que já a tinham.
 - **Seed oficial da classificação** (Portaria 42/99, Portaria 163, naturezas de
   receita, fontes TCE-PB) → sessão M02a-seed.
 - **Gravar `fichaId` na partida a partir de um caso de uso** → M05.
+
+## V29 — a proposta orçamentária do exercício seguinte (`proposta-orcamentaria.ts`)
+
+Tela: Planejamento › Proposta Orçamentária (`/planejamento/proposta-orcamentaria`). Pedido em
+`docs/lotes/V29-proposta-orcamentaria.md`; a referência funcional é a "Implantação do Orçamento Programa para o
+Próximo Exercício" do sistema que o município usa hoje (ver `docs/lotes/V30-esperanca-dois-dias.md`).
+
+**Por que não é cópia de fichas.** Criar ficha grava a dotação inicial no razão (1º de janeiro). A proposta ainda
+muda até a votação; se ela fosse ficha, cada mudança seria crédito adicional. Então:
+
+1. **elaborar** importa o exercício de origem com escolhas explícitas: o que aproveitar (receitas, fichas ou as
+   duas), o valor de partida (receita: previsão inicial, atualizada com as reprevisões, ou só a estrutura; despesa:
+   dotação inicial, autorizada, empenhado até a importação, ou só a estrutura), o reajuste de cada lado, se projetos
+   e operações especiais levam o reajuste, e se entram as fichas exclusivas da origem (abertas por crédito especial
+   ou extraordinário com dotação inicial zero, e as de recurso de exercício anterior — fora por padrão). Cada linha
+   guarda a lei de origem, a partida e o projetado. Nada toca o razão.
+2. **ajustar** grava um ajuste append-only com motivo; o vigente é o último.
+3. **efetivar** cria a receita prevista e as fichas do destino pelo mesmo corpo da criação manual
+   (`criarFichaNaTransacao`), numa transação, uma vez por exercício (`EfetivacaoDaProposta` única por proposta e por
+   exercício). Pré-condições antes do primeiro `create`: exercício aberto, destino sem ficha nem receita, nenhuma
+   linha negativa. Linha com valor zero não entra.
+
+**Autorização.** Elaborar e ajustar: CADASTRAR_LOA no ente. Efetivar: CRIAR_FICHA em cada unidade que recebe ficha e
+CRIAR_RECEITA_PREVISTA no ente. Nenhuma ação nova. A abertura do exercício (M08 `abrirExercicio`, ABRIR_EXERCICIO)
+ganhou botão na própria proposta.
+
+**Concorrência.** Ajustar e efetivar travam a proposta (`packages/locks`, posto `PropostaOrcamentaria`).
+
+**A receita é líquida.** A dedução entra nos totais com o sinal de `SINAL_PREVISAO`.
+
+**Pendências nomeadas.**
+- `PROPOSTA-A-PARTIR-DO-PPA-OU-DA-LDO` — as opções "criar com base na LDO/PPA" da referência não existem.
+- `PROPOSTA-RECEITA-ARRECADADA-NAO-PREVISTA` — incluir receitas arrecadadas sem previsão (previsto = arrecadado):
+  a linha da proposta exige uma previsão de origem; precisaria de linha sem origem.
+- `PROPOSTA-SUBTIPO-DA-DEDUCAO` — o subtipo da dedução (SAGRES §5.23) não é copiado: ele é registrado no destino
+  pela tela da receita prevista, com o documento da lei nova; a proposta efetivada mostra quantas faltam.
+- `PROPOSTA-CONFERENCIA-ANTES-DA-VOTACAO` — a conferência do orçamento proposto (MDE, FUNDEB, Saúde, soma das fichas
+  por ação) ainda é feita pelas telas de consistência sobre as fichas, isto é, depois da efetivação.
+- `PROPOSTA-AJUSTE-EM-LOTE` — ajuste por filtro (unidade, fonte, natureza) com prévia ainda não existe; o ajuste é
+  por linha.
+- `PROPOSTA-VERSAO-DO-PROJETO` — a versão do projeto encaminhado (M02b) fotografa as fichas; antes da efetivação
+  ela ainda não fotografa a proposta.
+- O tempo da efetivação com a LOA real de Esperança não foi medido; o limite da transação é 120 s.

@@ -1166,6 +1166,10 @@ export type NomeDeServico =
   | "estornarTransferenciaEntreUgs"
   | "registrarAgrupamentoDaFolha"
   | "capturarVersaoDoProjetoDaLoa"
+  // V29 — a proposta orçamentária do exercício seguinte (importar, alterar, efetivar)
+  | "elaborarPropostaOrcamentaria"
+  | "ajustarLinhaDaProposta"
+  | "efetivarPropostaOrcamentaria"
   | "cadastrarVeiculo"
   | "publicarVersaoDoVeiculo"
   | "cadastrarMaquina"
@@ -1897,6 +1901,12 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   estornarTransferenciaEntreUgs: "ESTORNAR_MOVIMENTO_BANCARIO",
   registrarAgrupamentoDaFolha: "LIQUIDAR_FOLHA",
   capturarVersaoDoProjetoDaLoa: "CADASTRAR_LOA",
+  // ⚠️ V29 — NENHUMA AÇÃO NOVA. Importar e alterar a proposta é o poder de cadastrar o projeto da LOA;
+  // efetivá-la cria fichas, e cobra CRIAR_FICHA em cada unidade (mais CRIAR_RECEITA_PREVISTA no ENTE,
+  // conferida no corpo do serviço pela entrada `criarReceitaPrevista`) — o mesmo da criação manual.
+  elaborarPropostaOrcamentaria: "CADASTRAR_LOA",
+  ajustarLinhaDaProposta: "CADASTRAR_LOA",
+  efetivarPropostaOrcamentaria: "CRIAR_FICHA",
   // ── M36/M37 — V27: frota e farmácia pública ──
   cadastrarVeiculo: "CADASTRAR_FROTA",
   publicarVersaoDoVeiculo: "CADASTRAR_FROTA",
@@ -2884,6 +2894,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   movimentosPorConta: "leitura",
   previsaoPorFonte: "leitura",
   reprevisaoAcumuladaPorNatureza: "leitura (Σ dos ajustes de reprevisão por natureza — previsão atualizada)",
+  listarPropostasOrcamentarias: "leitura (as propostas orçamentárias com a contagem de linhas e a efetivação — não muta)",
+  detalharPropostaOrcamentaria: "leitura (as linhas da proposta com base, projetado, ajustes e a situação do exercício de destino — não muta)",
+  criarFichaNaTransacao: "composável interno (o corpo da criação da ficha numa transação existente; quem chama autoriza antes: o repositório do `criarFicha` e a `efetivarPropostaOrcamentaria`)",
   listarReprevisoes: "leitura (histórico append-only de reprevisões de um exercício)",
   previsaoPorNaturezaFonte: "leitura",
   arrecadadoPorFonte: "leitura",

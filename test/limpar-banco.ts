@@ -443,6 +443,13 @@ export const TABELAS = [
   "AcaoDoProjetoDaLoa",
   "UnidadeDoProjetoDaLoa",
   "VersaoDoProjetoDaLoa",
+  // V29 — a proposta orçamentária do exercício seguinte (antes da ficha e da receita prevista de origem).
+  "EfetivacaoDaProposta",
+  "AjusteDeReceitaDaProposta",
+  "LinhaDeReceitaDaProposta",
+  "AjusteDeDespesaDaProposta",
+  "LinhaDeDespesaDaProposta",
+  "PropostaOrcamentaria",
   "TransferenciaEntreUgs",
   "ContabilizacaoDaTransferenciaEntreUgs",
   // V27 — frota (M36) e farmácia pública (M37).
