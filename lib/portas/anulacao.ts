@@ -54,21 +54,21 @@ export async function anularExecucao(input: {
   readonly motivo: string;
   readonly data: Date;
   readonly total: boolean;
-}): Promise<void> {
+}): Promise<{ readonly lancamentoId: string }> {
+  // V33 — devolve o LANÇAMENTO do fato novo: a tela abre o original e a anulação depois de gravada.
   const acao = input.total ? ACAO[input.tipo].total : ACAO[input.tipo].parcial;
-  await comEscritaAutenticada(acao, async (criadoPor) => {
+  return comEscritaAutenticada(acao, async (criadoPor) => {
     const deps = criarM05Deps(cliente());
     if (input.total) {
       const base = { numero: input.numero, data: input.data, historico: input.motivo, criadoPor };
-      if (input.tipo === "empenho") await anularEmpenho({ empenhoId: input.id, ...base }, deps);
-      else if (input.tipo === "liquidacao") await anularLiquidacao({ liquidacaoId: input.id, ...base }, deps);
-      else await anularPagamento({ pagamentoId: input.id, ...base }, deps);
-    } else {
-      const base = { originalId: input.id, numero: input.numero, valor: input.valor, data: input.data, motivo: input.motivo, criadoPor };
-      if (input.tipo === "empenho") await anularEmpenhoParcial(base, deps);
-      else if (input.tipo === "liquidacao") await anularLiquidacaoParcial(base, deps);
-      else await anularPagamentoParcial(base, deps);
+      if (input.tipo === "empenho") return { lancamentoId: (await anularEmpenho({ empenhoId: input.id, ...base }, deps)).lancamentoId };
+      if (input.tipo === "liquidacao") return { lancamentoId: (await anularLiquidacao({ liquidacaoId: input.id, ...base }, deps)).lancamentoId };
+      return { lancamentoId: (await anularPagamento({ pagamentoId: input.id, ...base }, deps)).lancamentoId };
     }
+    const base = { originalId: input.id, numero: input.numero, valor: input.valor, data: input.data, motivo: input.motivo, criadoPor };
+    if (input.tipo === "empenho") return { lancamentoId: (await anularEmpenhoParcial(base, deps)).lancamentoId };
+    if (input.tipo === "liquidacao") return { lancamentoId: (await anularLiquidacaoParcial(base, deps)).lancamentoId };
+    return { lancamentoId: (await anularPagamentoParcial(base, deps)).lancamentoId };
   });
 }
 
@@ -124,4 +124,64 @@ export async function listarPagamentosDaExecucao(p: {
     credorCpfCnpj: l.credorCpfCnpj,
     fonteCodigo: l.fonteCodigo,
   }));
+}
+
+/**
+ * V33 — AS ANULAÇÕES REGISTRADAS NO EXERCÍCIO (empenho, liquidação, pagamento), cada uma com o original e o
+ * lançamento — a metade "depois" da central de anulações. Leitura direta das linhas de anulação: são fatos
+ * próprios (estorno total ou parcial apontando o original), nunca uma alteração do original.
+ */
+export interface AnulacaoRegistrada {
+  readonly tipo: TipoAnulavel;
+  readonly id: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: string;
+  readonly integral: boolean;
+  readonly motivo: string;
+  readonly lancamentoId: string;
+  readonly originalId: string;
+  readonly originalNumero: string;
+  /** Onde o original abre (o dossiê do empenho, na âncora da liquidação ou do pagamento). */
+  readonly originalHref: string;
+  readonly criadoPor: string;
+}
+
+export async function listarAnulacoesDoExercicio(p: { readonly exercicio: number; readonly unidadeCodigo?: string | undefined }): Promise<readonly AnulacaoRegistrada[]> {
+  const db = cliente();
+  const ficha = { exercicio: p.exercicio, ...(p.unidadeCodigo !== undefined ? { unidadeOrc: { codigo: p.unidadeCodigo } } : {}) };
+  const ehAnulacao = { OR: [{ estornoDeId: { not: null } }, { anulacaoParcialDeId: { not: null } }] };
+  const [emp, liq, pag] = await Promise.all([
+    db.empenho.findMany({
+      where: { ...ehAnulacao, ficha },
+      select: { id: true, numero: true, data: true, valor: true, historico: true, lancamentoId: true, criadoPor: true, estornoDe: { select: { id: true, numero: true, anulacaoParcialDeId: true } }, anulacaoParcialDe: { select: { id: true, numero: true } } },
+    }),
+    db.liquidacao.findMany({
+      where: { ...ehAnulacao, empenho: { ficha } },
+      select: { id: true, numero: true, data: true, valor: true, motivo: true, lancamentoId: true, criadoPor: true, empenhoId: true, estornoDe: { select: { id: true, numero: true } }, anulacaoParcialDe: { select: { id: true, numero: true } } },
+    }),
+    db.pagamento.findMany({
+      where: { ...ehAnulacao, liquidacao: { empenho: { ficha } } },
+      select: { id: true, numero: true, data: true, valor: true, motivo: true, lancamentoId: true, criadoPor: true, liquidacao: { select: { empenhoId: true } }, estornoDe: { select: { id: true, numero: true } }, anulacaoParcialDe: { select: { id: true, numero: true } } },
+    }),
+  ]);
+  const linhas: AnulacaoRegistrada[] = [
+    ...emp.flatMap((e) => {
+      // O estorno de uma anulação PARCIAL aponta a parcial; o original é o pai dela.
+      const original = e.anulacaoParcialDe ?? e.estornoDe;
+      if (original === null) return [];
+      return [{ tipo: "empenho" as const, id: e.id, numero: e.numero, data: e.data, valor: e.valor.toFixed(2), integral: e.estornoDe !== null, motivo: e.historico, lancamentoId: e.lancamentoId, originalId: original.id, originalNumero: original.numero, originalHref: `/despesa/empenhos/${e.estornoDe?.anulacaoParcialDeId ?? original.id}`, criadoPor: e.criadoPor }];
+    }),
+    ...liq.flatMap((l) => {
+      const original = l.anulacaoParcialDe ?? l.estornoDe;
+      if (original === null) return [];
+      return [{ tipo: "liquidacao" as const, id: l.id, numero: l.numero, data: l.data, valor: l.valor.toFixed(2), integral: l.estornoDe !== null, motivo: l.motivo ?? "", lancamentoId: l.lancamentoId, originalId: original.id, originalNumero: original.numero, originalHref: `/despesa/empenhos/${l.empenhoId}#liquidacao-${original.id}`, criadoPor: l.criadoPor }];
+    }),
+    ...pag.flatMap((x) => {
+      const original = x.anulacaoParcialDe ?? x.estornoDe;
+      if (original === null) return [];
+      return [{ tipo: "pagamento" as const, id: x.id, numero: x.numero, data: x.data, valor: x.valor.toFixed(2), integral: x.estornoDe !== null, motivo: x.motivo ?? "", lancamentoId: x.lancamentoId, originalId: original.id, originalNumero: original.numero, originalHref: `/despesa/empenhos/${x.liquidacao.empenhoId}#pagamento-${original.id}`, criadoPor: x.criadoPor }];
+    }),
+  ];
+  return linhas.sort((a, b) => b.data.getTime() - a.data.getTime() || a.numero.localeCompare(b.numero));
 }

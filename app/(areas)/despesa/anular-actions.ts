@@ -9,6 +9,9 @@ import { meioDiaCivil } from "../../../packages/datas/index";
 export interface EstadoAnulacao {
   readonly erro?: string;
   readonly sucesso?: string;
+  /** V33 — depois de gravada: o lançamento da anulação e o documento original, para abrir os dois. */
+  readonly lancamentoId?: string;
+  readonly originalHref?: string;
 }
 
 const TIPOS: readonly TipoAnulavel[] = ["empenho", "liquidacao", "pagamento"];
@@ -59,7 +62,7 @@ async function anularDespesa(formData: FormData): Promise<EstadoAnulacao> {
   const total = estornavel && valorCru === anulavelSaldo;
 
   try {
-    await anularExecucao({
+    const r = await anularExecucao({
       tipo,
       id,
       numero,
@@ -70,7 +73,12 @@ async function anularDespesa(formData: FormData): Promise<EstadoAnulacao> {
       total,
     });
     revalidatePath(CAMINHO[tipo]);
-    return { sucesso: `Anulação ${numero} registrada${total ? " (integral)" : " (parcial)"}.` };
+    revalidatePath("/despesa/anulacoes");
+    return {
+      sucesso: `Anulação ${numero} registrada${total ? " (integral)" : " (parcial)"}.`,
+      lancamentoId: r.lancamentoId,
+      originalHref: tipo === "empenho" ? `/despesa/empenhos/${id}` : `/despesa/documento/${tipo === "liquidacao" ? "LIQUIDACAO" : "PAGAMENTO"}/${id}`,
+    };
   } catch (e) {
     return { erro: e instanceof Error ? e.message : "Não foi possível registrar a anulação." };
   }
