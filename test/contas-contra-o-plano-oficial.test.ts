@@ -417,6 +417,11 @@ describe("as contas do código contra o PCASP oficial", () => {
     "1.2.3.8.1.01.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
     "3.3.3.1.1.00.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
     "4.5.9.1.1.00.00": "idem — plano do cenário SAGRES, sem roteiro que a use.",
+    "7.9.1.2.1.00.00":
+      "dado do percurso V32 (`scripts/demonstracao/percurso-v32-areas.ts`): é o que o contador " +
+      "DECLARA pela tela de roteiros para o adiantamento. Nenhum roteiro do código a usa — o " +
+      "adiantamento lê o roteiro declarado e recusa sem ele. Analítica no plano oficial.",
+    "8.9.1.2.1.01.00": "idem — contrapartida declarada pelo percurso V32. Analítica no plano oficial.",
   };
 
   /**
