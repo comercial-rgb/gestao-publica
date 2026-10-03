@@ -11,6 +11,7 @@ import {
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { SeletorExercicio } from "../SeletorExercicio";
 import { lerExercicio } from "../exercicio";
+import { LinkDoBalancete } from "../ContasDaLinha";
 
 /** ANEXO 12 — Balanço Orçamentário (Lei 4.320, art. 102). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -31,7 +32,12 @@ export default async function BalancoOrcamentarioPage({
     <PageHeader
       titulo="Balanço Orçamentário"
       subtitulo="Receita prevista e realizada, despesa fixada e executada (art. 102 da Lei 4.320)"
-      acoes={<SeletorExercicio exercicio={exercicioStr} />}
+      acoes={
+        <div className="flex flex-col items-end gap-1">
+          <SeletorExercicio exercicio={exercicioStr} />
+          <LinkDoBalancete desde={`${exercicioStr}-01-01`} ate={`${exercicioStr}-12-31`} />
+        </div>
+      }
     />
   );
 

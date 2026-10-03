@@ -16,6 +16,7 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { fimDoDiaCivil } from "../../../../../packages/datas/index";
 import { SeletorCorte } from "../SeletorCorte";
 import { lerCorteStr } from "../exercicio";
+import { ContasDaLinha, LinkDoBalancete } from "../ContasDaLinha";
 
 /** ANEXO 14 — Balanço Patrimonial (Lei 4.320, art. 105). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -49,7 +50,12 @@ export default async function BalancoPatrimonialPage({
     <PageHeader
       titulo="Balanço Patrimonial"
       subtitulo="Ativo, passivo e patrimônio líquido na data, com o quadro financeiro e permanente (art. 105 da Lei 4.320)"
-      acoes={<SeletorCorte corte={corteStr} />}
+      acoes={
+        <div className="flex flex-col items-end gap-1">
+          <SeletorCorte corte={corteStr} />
+          <LinkDoBalancete desde={`${corteStr.slice(0, 4)}-01-01`} ate={corteStr} />
+        </div>
+      }
     />
   );
 
@@ -109,7 +115,7 @@ export default async function BalancoPatrimonialPage({
       {dados.grupos.map((g) => (
         <TabelaDeDados
           key={g.grupo}
-          colunas={COLUNAS_LINHA}
+          colunas={colunasLinha(`${corteStr.slice(0, 4)}-01-01`, corteStr)}
           linhas={[...g.linhas, { codigoLinha: "TOTAL", rotulo: `Total do ${ROTULO_DO_GRUPO[g.grupo].toLowerCase()}`, valor: g.total, contas: [] }]}
           keyDe={(l) => `${g.grupo}-${l.codigoLinha}`}
           ehTotal={(l) => l.codigoLinha === "TOTAL"}
@@ -186,10 +192,11 @@ export default async function BalancoPatrimonialPage({
   );
 }
 
-const COLUNAS_LINHA: readonly ColunaTabela<LinhaDoBalanco>[] = [
+/** V33 — a coluna das contas abre o razão de cada uma no período do balanço (do 1º de janeiro do ano do corte até o corte). */
+const colunasLinha = (desde: string, ate: string): readonly ColunaTabela<LinhaDoBalanco>[] => [
   { chave: "codigoLinha", cabecalho: "Linha", celula: (l) => (l.codigoLinha === "TOTAL" ? "" : l.codigoLinha) },
   { chave: "rotulo", cabecalho: "Especificação", celula: (l) => l.rotulo },
-  { chave: "contas", cabecalho: "Contas", celula: (l) => l.contas.map((c) => c.codigo).join(", ") },
+  { chave: "contas", cabecalho: "Contas (saldo)", celula: (l) => <ContasDaLinha contas={l.contas} desde={desde} ate={ate} /> },
   { chave: "valor", cabecalho: "Valor", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.valor} /> },
 ];
 

@@ -15,6 +15,7 @@ import {
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { SeletorExercicio } from "../SeletorExercicio";
 import { lerExercicio } from "../exercicio";
+import { LinkDoBalancete } from "../ContasDaLinha";
 
 /** DEMONSTRAÇÃO DOS FLUXOS DE CAIXA (MCASP, Parte V). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -32,7 +33,12 @@ export default async function FluxosDeCaixaPage({
     <PageHeader
       titulo="Demonstração dos Fluxos de Caixa"
       subtitulo="Ingressos e desembolsos das atividades operacionais, de investimento e de financiamento, e a geração líquida de caixa"
-      acoes={<SeletorExercicio exercicio={exercicioStr} />}
+      acoes={
+        <div className="flex flex-col items-end gap-1">
+          <SeletorExercicio exercicio={exercicioStr} />
+          <LinkDoBalancete desde={`${exercicioStr}-01-01`} ate={`${exercicioStr}-12-31`} />
+        </div>
+      }
     />
   );
 

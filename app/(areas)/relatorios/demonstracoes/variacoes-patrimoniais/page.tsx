@@ -12,6 +12,7 @@ import {
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { SeletorPeriodo } from "../../livros/SeletorPeriodo";
 import { lerPeriodo } from "../../livros/periodo";
+import { ContasDaLinha, LinkDoBalancete } from "../ContasDaLinha";
 
 /** ANEXO 15 — Demonstração das Variações Patrimoniais. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
@@ -34,7 +35,12 @@ export default async function VariacoesPatrimoniaisPage({
     <PageHeader
       titulo="Demonstração das Variações Patrimoniais"
       subtitulo="Variações aumentativas e diminutivas do período, e o resultado patrimonial"
-      acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} />}
+      acoes={
+        <div className="flex flex-col items-end gap-1">
+          <SeletorPeriodo desde={desdeStr} ate={ateStr} />
+          <LinkDoBalancete desde={desdeStr} ate={ateStr} />
+        </div>
+      }
     />
   );
 
@@ -81,7 +87,7 @@ export default async function VariacoesPatrimoniaisPage({
       {dados.quadros.map((q) => (
         <TabelaDeDados
           key={q.grupo}
-          colunas={COLUNAS}
+          colunas={colunas(desdeStr, ateStr)}
           linhas={[
             ...q.linhas,
             { codigoLinha: "TOTAL", rotulo: `Total das ${(ROTULO_DO_QUADRO[q.grupo] ?? q.grupo).toLowerCase()}`, valor: q.total, contas: [] },
@@ -107,10 +113,11 @@ export default async function VariacoesPatrimoniaisPage({
   );
 }
 
-const COLUNAS: readonly ColunaTabela<LinhaDaDvp>[] = [
+/** V33 — a coluna das contas abre o razão de cada uma no período da DVP. */
+const colunas = (desde: string, ate: string): readonly ColunaTabela<LinhaDaDvp>[] => [
   { chave: "codigoLinha", cabecalho: "Linha", celula: (l) => (l.codigoLinha === "TOTAL" ? "" : l.codigoLinha) },
   { chave: "rotulo", cabecalho: "Especificação", celula: (l) => l.rotulo },
-  { chave: "contas", cabecalho: "Contas", celula: (l) => l.contas.map((c) => c.codigo).join(", ") },
+  { chave: "contas", cabecalho: "Contas (saldo)", celula: (l) => <ContasDaLinha contas={l.contas.map((c) => ({ codigo: c.codigo, saldo: c.valor }))} desde={desde} ate={ate} /> },
   { chave: "valor", cabecalho: "Valor", alinhamento: "direita", celula: (l) => <ValorMonetario valor={l.valor} /> },
 ];
 
