@@ -156,6 +156,7 @@ export default async function PagamentosPage({
         contas={contas}
         tiposDeConsignacao={tiposDeConsignacao}
         opcoesDaRetencao={opcoesDaRetencao}
+        liquidacaoInicial={typeof sp["liquidacao"] === "string" ? sp["liquidacao"] : undefined}
         ordensAutorizadas={ordens
           .filter((o) => o.estado === "AUTORIZADA")
           .map(

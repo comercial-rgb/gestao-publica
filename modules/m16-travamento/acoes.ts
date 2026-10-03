@@ -2937,6 +2937,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   itensDaDespesa: "leitura (as fichas de um exercício classificadas para a comparação — não muta)",
   itensDaReceita: "leitura (a receita prevista de um exercício, líquida, para a comparação — não muta)",
   compararExercicios: "leitura (dois exercícios lado a lado — não muta)",
+  posicaoAPagar: "leitura (V33 — o que se deve por credor e obrigação, pela aritmética do M05 e do M08 — não muta)",
+  ugDasUnidadesOrcamentarias: "leitura (V33 — de qual UG é cada unidade orçamentária no dia, pelo vínculo declarado — não muta)",
   criarFichaNaTransacao: "composável interno (o corpo da criação da ficha numa transação existente; quem chama autoriza antes: o repositório do `criarFicha` e a `efetivarPropostaOrcamentaria`)",
   listarReprevisoes: "leitura (histórico append-only de reprevisões de um exercício)",
   previsaoPorNaturezaFonte: "leitura",

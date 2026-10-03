@@ -85,8 +85,11 @@ export function FormPagamento({
   tiposDeConsignacao,
   ordensAutorizadas,
   opcoesDaRetencao,
+  liquidacaoInicial,
 }: {
   readonly liquidacoes: readonly LiquidacaoPagavel[];
+  /** V33 — a liquidação que veio escolhida de outra tela (a pagar, dossiê). Fora da fila, é ignorada. */
+  readonly liquidacaoInicial?: string | undefined;
   readonly contas: readonly ContaParaPagar[];
   readonly tiposDeConsignacao: readonly TipoDeConsignacaoParaTela[];
   readonly ordensAutorizadas: readonly OrdemAutorizadaParaTela[];
@@ -97,7 +100,8 @@ export function FormPagamento({
     {}
   );
   const ref = useRef<HTMLFormElement>(null);
-  const [escolhida, setEscolhida] = useState<string>("");
+  const inicial = liquidacaoInicial !== undefined && liquidacoes.some((l) => l.liquidacaoId === liquidacaoInicial) ? liquidacaoInicial : "";
+  const [escolhida, setEscolhida] = useState<string>(inicial);
   const [conta, setConta] = useState<string>("");
   /**
    * As linhas de retenção. Só o NÚMERO delas é estado; os valores vivem no DOM e chegam
@@ -157,7 +161,7 @@ export function FormPagamento({
           <select
             name="liquidacaoId"
             required
-            defaultValue=""
+            defaultValue={inicial}
             className={CAMPO}
             onChange={(e) => setEscolhida(e.target.value)}
           >
