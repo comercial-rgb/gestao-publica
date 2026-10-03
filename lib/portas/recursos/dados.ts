@@ -1,4 +1,5 @@
 import { Decimal, toMoney } from "../../../packages/contracts/index.js";
+import { parsearNaturezaReceita } from "../../../modules/m04-receita/natureza";
 import {
   competenciaCivil,
   diaCivil,
@@ -1599,6 +1600,28 @@ export async function acaoDaDividaAtiva(
         })
       );
       return;
+    case "reclassificar": {
+      // V32 — a inscrição do crédito JÁ LANÇADO (reclassificação). A conta do crédito a receber é a do roteiro
+      // de reconhecimento da origem da natureza — a mesma que o lançamento debitou. O saldo é conferido pelo M10.
+      const reconhecimentoId = t(c, "reconhecimentoId");
+      const rec = await cliente().receitaReconhecida.findUnique({ where: { id: reconhecimentoId }, select: { naturezaCodigo: true } });
+      if (rec === null) throw new Error("Escolha o crédito lançado na lista. Nada foi gravado.");
+      const origem = parsearNaturezaReceita(rec.naturezaCodigo).origem;
+      const roteiro = await cliente().roteiroReconhecimento.findUnique({ where: { origem }, select: { contaCreditoAReceberId: true } });
+      if (roteiro === null) throw new Error(`A origem ${origem} não tem roteiro de reconhecimento; não se sabe de qual crédito a receber a inscrição sai. Nada foi gravado.`);
+      await comEscritaAutenticada("INSCREVER_DIVIDA_ATIVA", (criadoPor) =>
+        inscreverDividaAtiva(cliente(), {
+          dividaAtivaId,
+          valor: t(c, "valor"),
+          dataMovimento,
+          motivo: t(c, "motivo"),
+          reconhecimentoId,
+          contaCreditoAReceberId: roteiro.contaCreditoAReceberId,
+          criadoPor,
+        })
+      );
+      return;
+    }
     case "atualizar":
       await comEscritaAutenticada("ATUALIZAR_DIVIDA_ATIVA", (criadoPor) =>
         atualizarDividaAtiva(cliente(), {
