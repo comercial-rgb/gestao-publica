@@ -26,7 +26,7 @@ export function CabecalhoDeImpressao({ ente, rotuloDoAmbiente }: { readonly ente
   }, []);
   return (
     <div className="cabecalho-de-impressao" aria-hidden="true" data-cabecalho-de-impressao>
-      {rotuloDoAmbiente !== null ? <p className="aviso">Documento de demonstração — sem valor oficial ({rotuloDoAmbiente.toLowerCase()})</p> : null}
+      {rotuloDoAmbiente !== null ? <p className="aviso">Documento de demonstração — sem valor oficial</p> : null}
       <p className="ente">{ente ?? "Ente não configurado"}</p>
       <p>
         Exercício {exercicio} · {unidade} · emitido em {emitidoEm} (horário de Brasília)

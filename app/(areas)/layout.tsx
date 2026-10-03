@@ -8,7 +8,7 @@ import { VigiaDeEdicao } from "../../components/ui/VigiaDeEdicao";
 import { CabecalhoDeImpressao } from "../../components/ui/CabecalhoDeImpressao";
 import { ContextoNaNavegacao } from "../../components/ui/ContextoNaNavegacao";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
-import { identidadePublica, paraATela } from "../../lib/portas/identidade";
+import { identidadePublica, nomeDoEnteParaDocumentos, paraATela } from "../../lib/portas/identidade";
 import { exigirSessao } from "../../lib/portas/sessao";
 import { COOKIE_EXERCICIO, COOKIE_UG, UiContextProvider } from "../../lib/ui-context";
 import { areasVisiveis } from "../../lib/portas/navegacao-permissoes";
@@ -38,9 +38,11 @@ export default async function AreasLayout({
   const ugPreferida = jarra.get(COOKIE_UG)?.value ?? null;
   // ⚠️ LIDO NO SERVIDOR, injetado por PROPS. O provider é client e só guarda a SELEÇÃO — quem
   // decide QUAIS unidades ele pode oferecer é a porta, contra as permissões reais do usuário.
-  const [contexto, identidade] = await Promise.all([
+  // V33 — o papel diz o ente pela MESMA fonte dos PDFs (apresentação; sem ela, o nome oficial do ente).
+  const [contexto, identidade, enteDoPapel] = await Promise.all([
     carregarContextoDoUsuario(Number.isInteger(preferido) && preferido > 0 ? preferido : null),
     identidadePublica(),
+    nomeDoEnteParaDocumentos(),
   ]);
   const tela = paraATela(identidade);
 
@@ -79,7 +81,7 @@ export default async function AreasLayout({
           <div className="flex min-w-0 flex-1 flex-col">
             <Header destinosDaBusca={destinosDaBusca} identidade={tela} />
             <main className="flex-1 overflow-y-auto p-4 md:p-8">
-              <CabecalhoDeImpressao ente={tela.enteNome} rotuloDoAmbiente={tela.rotuloDoAmbiente} />
+              <CabecalhoDeImpressao ente={enteDoPapel} rotuloDoAmbiente={tela.rotuloDoAmbiente} />
               {children}
             </main>
             <Footer identidade={tela} />
