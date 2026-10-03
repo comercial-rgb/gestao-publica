@@ -103,7 +103,20 @@ na_versao npm run licenciamento:instalar -- --aplicar
 
 # ─────────────────────────────────────────────────────────────────────────────
 passo 5 "a compilação — enquanto a versão antiga atende"
-na_versao env NEXT_PUBLIC_BUILD_COMMIT="$CURTO" npx next build
+# ⚠️ A CONFERÊNCIA DE TIPOS NÃO CABE NO SERVIDOR (mais de 6 GB; a máquina tem 2). `npm run publicar`
+# a roda na máquina de construção e commita a aprovação enxuta em scripts/implantacao/aprovacao-de-tipos.json.
+# Ela vai para onde o next.config procura; o build só dispensa o tsc se o DIGESTO do conteúdo desta versão
+# bater com o dela — senão PARA, nomeando o que mudou, e a versão no ar continua.
+na_versao npx next typegen
+PULAR=""
+APROVACAO="$VERSAO/scripts/implantacao/aprovacao-de-tipos.json"
+if [ "$SIMULAR" -eq 1 ] || [ -f "$APROVACAO" ]; then
+  DIGESTO_APROVADO="$( [ "$SIMULAR" -eq 1 ] && echo simulado || sed -n 's/.*"digesto": *"\([0-9a-f]*\)".*/\1/p' "$APROVACAO" )"
+  na_versao mkdir -p .registro-de-execucao/conferencia-de-tipos
+  na_versao cp scripts/implantacao/aprovacao-de-tipos.json ".registro-de-execucao/conferencia-de-tipos/$DIGESTO_APROVADO.json"
+  PULAR="PULAR_CONFERENCIA_DE_TIPOS_DO_BUILD=1"
+fi
+na_versao env $PULAR NEXT_PUBLIC_BUILD_COMMIT="$CURTO" npx next build
 na_versao npx tsx scripts/preflight-navegador.ts
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -121,6 +134,8 @@ User=$USUARIO
 Group=$USUARIO
 WorkingDirectory=$RAIZ/ativa-%i
 EnvironmentFile=$RAIZ/.env
+# O serviço conecta como o papel de runtime, não como o dono (ver instalar-no-servidor.sh, .env.runtime).
+EnvironmentFile=$RAIZ/.env.runtime
 EnvironmentFile=-$RAIZ/ativa-%i/.candidato
 ExecStart=/usr/bin/npx next start -H 127.0.0.1 -p %i
 Restart=always

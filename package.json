@@ -96,6 +96,7 @@
     "tipos:exigir": "node scripts/conferencia-de-tipos.mjs exigir",
     "tipos:digesto": "node scripts/conferencia-de-tipos.mjs digesto",
     "release:candidato": "tsx scripts/trinco-de-maquina.ts 'release do candidato' -- node scripts/release-do-candidato.mjs",
+    "publicar": "bash scripts/publicar.sh",
     "smoke:transparencia-publica": "tsx scripts/trinco-de-maquina.ts 'percurso da transparencia publica' -- npx tsx scripts/smoke-transparencia-publica.ts",
     "capturas:transparencia": "tsx scripts/trinco-de-maquina.ts 'capturas da transparencia publica' -- npx tsx scripts/capturas-da-transparencia-publica.ts",
     "smoke:encaminhamento-da-ouvidoria": "tsx scripts/trinco-de-maquina.ts 'percurso do encaminhamento da ouvidoria' -- npx tsx scripts/smoke-encaminhamento-da-ouvidoria.ts",
