@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decidirFuso, diffDoRepositorio } from "./fuso-do-diff.js";
 
@@ -99,13 +99,15 @@ const PASSOS: readonly Passo[] = [
   },
   {
     nome: "test:tudo",
-    comando: ["npx", "vitest", "run"],
+    // V35 — três workers: com o padrão, a suíte satura a máquina e arquivos diferentes estouram prazo a cada corrida
+    // (CLAUDE.md, "Saturação se reconhece pelo padrão").
+    comando: ["npx", "vitest", "run", "--maxWorkers=3"],
     protege: "a suíte inteira, contra banco",
     depende: ["prisma:validate"],
   },
   {
     nome: "test:fuso",
-    comando: ["npx", "vitest", "run"],
+    comando: ["npx", "vitest", "run", "--maxWorkers=3"],
     protege:
       "a suíte inteira sob TZ deslocado — a propriedade que pega leitura de relógio do hospedeiro",
     depende: ["test:tudo"],
@@ -188,8 +190,13 @@ function rodar(passo: Passo, registro: string): { ok: boolean; segundos: number 
   );
 
   const inicio = Date.now();
-  const [bin, ...args] = passo.comando;
-  const r = spawnSync(bin as string, args, {
+  const [bin, ...resto] = passo.comando;
+  // V35 — no Windows, npx/npm são .cmd e não sobem sem shell (spawn ENOENT): pelo próprio node, com o cli do npm.
+  const [exe, args] =
+    process.platform === "win32" && (bin === "npx" || bin === "npm")
+      ? [process.execPath, [join(dirname(process.execPath), "node_modules", "npm", "bin", `${bin}-cli.js`), ...resto]]
+      : [bin as string, resto];
+  const r = spawnSync(exe, args, {
     cwd: RAIZ,
     encoding: "utf8",
     env: {
