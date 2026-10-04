@@ -94,3 +94,36 @@ Dependências restantes (documento, credencial, configuração ou autorização)
 - **Credencial de transmissão ao Tribunal**: nenhuma remessa é transmitida nesta rodada.
 - **Destino externo da cópia de segurança** (do operador): a cópia local continua local.
 - **Autorização para publicar** (do usuário): nada foi enviado ao GitHub nem à produção.
+
+## 5. V34 — operações fechadas e versão integrada (atualização desta matriz, não inventário novo)
+
+Pedido: `docs/lotes/V34-fechar-operacoes-e-versao-integrada.md`. Versão de referência: **`bcf5f7a`**
+(`apresentacao/contabilidade`, local). Ela contém `bbd4972`, `0578fb6`, `9178237` e `6630add` (ancestralidade
+conferida), `main`, `origin/main` e `v28-integrado`. Os testes de cada linha estão nos commits citados. As saídas
+brutas dos percursos estão em `wt-v34/.registro-de-execucao/percursos/v34-*`.
+
+A situação de cada linha segue a mesma escala das seções anteriores:
+- **OPERA** só com operação executada e efeito conferido.
+- **MOTOR PROVADO** quando o teste roda em banco isolado, mas falta configuração ou percurso do ente.
+- **PREPARADO** quando está pronto e não foi executado.
+
+| Pergunta do contador | Caminho de tela | Operação executada | Efeito persistido | Documento / exportação | Evidência | Situação |
+|---|---|---|---|---|---|---|
+| Cada registro da receita, dos extras e do ordenador vai à UG certa? | Integrações › SAGRES | Prévia e download com 2+ UGs | — (leitura; nenhuma renumeração) | Linhas com a UG do fato; registro sem vínculo omitido e nomeado; pacote de conferência | sagres-por-registro 8/8 (duas UGs, pagamentos parciais, estorno, entre exercícios, troca posterior de titular), 4 mutações (`f7cfcb4`) | MOTOR PROVADO: em Esperança faltam os vínculos (ente) |
+| Este movimento extra é de quem? | Financeiro › Extraorçamentário › Movimentos sem titular | Atribuir entidade com ato, motivo e autor | `AtribuicaoDeEntidadeDoMovimentoExtra` (insert-only) | — | sagres-por-registro t2; percurso v34 S.1–S.5 na 3011 | OPERA |
+| A anulação parcial muda o que cada consumidor usa? | Ordem de pagamento, convênio, custos, parcela, ordem de serviço, encargos, compras, almoxarifado | Parcial e estorno da parcial | — | — | 10 cenários dirigidos, cada um vermelho com a regra mutada (`689996b`) | OPERA (regressão dos arquivos tocados 87/87) |
+| O encerramento inscreve o valor certo com parciais? | Encerramento e abertura | Encerrar, apurar, virar controles, abrir 2027, pagar resto | Inscrições 3.800/2.500 conferidas contra o razão; resultado 800; controles zerados | — | m08-encerramento-cadeia 5/5 + mutação (`63487db`); configuração de ensaio em `docs/operacao/ENSAIO-ENCERRAMENTO-V34.md` | MOTOR PROVADO: virada e resultado dependem da classificação do ente |
+| Restos inscritos a mais no passado? | — (operação) | Consulta diagnóstica somente leitura | — | Relação de fatos com esperado e inscrito | `docs/operacao/DIAGNOSTICO-RESTOS-ANULACAO-PARCIAL.sql`: ensaio 0 diferenças; clone alterado acusa; banco com parciais recalcula o inscrito | PREPARADO: não executado na produção (sem autorização direta) |
+| A diária e o suprimento chegam e se baixam? | Orçamento e despesa › Diárias e suprimento | Concessão → liquidação → pagamento → prestação → devolução (suprimento) → baixa | Controles 7.9.1.2.1/8.9.1.2.1.01 zerados; VPD e banco líquidos da devolução | — | m05-adiantamentos-movimento 2/2 + mutação (`40bf087`) | MOTOR PROVADO: devolução declarativa (lacuna nomeada no M05); roteiro de Esperança pendente |
+| O papel e a planilha dizem o número da tela? | Relatórios › Demonstrações › BO, BF, DFC e composição | Imprimir PDF / Exportar CSV | — | PDF e CSV das mesmas tabelas da apuração | m12-composicao 8/8; percurso v34 P.1–P.7 na 3011 (PDF real; recusa do motor com motivo) (`9fd6ae9`) | OPERA |
+| O MANAD de um período parcial sai certo? | Contabilidade › Exportações federais | Gerar o arquivo do período | — | L050/L100/L150 do período; L200/L250 com movimento do período; índice completo | m14-manad p1/p2 + 4 mutações; 24/24 nos três arquivos (`c9a0650`) | OPERA no gerador (não transmitido) |
+| A 3010 recebe a versão integrada? | — (operação) | Promoção ensaiada: cópia → 5 migrations → build `bcf5f7a` → 3011 | — | `docs/operacao/PROMOCAO-V34-3010.md` | percurso v33-promocao 10/10 e v34 10/10 na 3011 | PREPARADO, não executado (decisão do operador) |
+
+Mudanças nas dependências da seção 4:
+
+- **Numeração dos extras por UG: resolvida.** A numeração do exercício é mantida, porque a chave do leiaute é
+  (UG, número, exercício).
+- **Movimento sem titular e guia sem entidade: regularização pela tela.** O ato é do ente.
+- **Contas de controle do adiantamento, virada e conta de resultados: o motor está provado com configuração de
+  ensaio.** A configuração real continua sendo ato do ente.
+- **Achado:** a base da apresentação não tem entidade contábil cadastrada.
