@@ -10,7 +10,7 @@ import { admitirServidor, cadastrarCargo, cadastrarLotacao, cadastrarServidor } 
 import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarTabelaIrrf, calcularFolha, fecharFolha, lancarNaFolha } from "./servico.js";
 import { apropriarFolha, cadastrarGrupoDeEmpenhoDaFolha } from "./apropriacao.js";
 import { certificarFolha, designarNaFolha } from "./certificacao.js";
-import { anularEmpenhoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { anularEmpenhoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { reservarNumero } from "../m05-despesa/numerador.js";
 import { baixarGuiaDeRecolhimento, cancelarGuiaDeRecolhimento, guiasEObrigacoesDaFolha, registrarGuiaDeRecolhimento } from "./recolhimento.js";
 import { pagar } from "../m05-despesa/servico-bloco2.js";
@@ -486,6 +486,19 @@ describe("(6) ajuste para baixo: empenhado, liquidado não pago e já pago", () 
     expect(await liquidoDaFicha()).toBe("1189.00");
     // A liquidação original continua lá (a anulação é fato novo), valendo menos.
     expect(await prisma.liquidacao.count({ where: { anulacaoParcialDeId: { not: null } } })).toBe(1);
+  });
+
+  it("V34 — ESTORNADA a anulação parcial do ajuste, o empenhado volta a 1247 e a redução de 58 reaparece no plano", async () => {
+    await empenhado1247();
+    await reduzirRat();
+    await ajustarEncargosDaFolha(prisma, { folhaId, data: DATA_ATESTO, motivo: MOTIVO, criadoPor: RH });
+    const retrato = async () => (await retratoDosEncargos(prisma, folhaId, RH, { consultarDesignacao: false }))?.estado.gruposComReducao;
+    expect(await retrato()).toBe(0); // 1189 empenhado líquido = 1189 apurado
+    const parcial = await prisma.empenho.findFirstOrThrow({ where: { anulacaoParcialDeId: { not: null } }, select: { id: true } });
+    await estornarAnulacaoParcial({ nivel: "EMPENHO", anulacaoId: parcial.id, numero: "AJ-ENC-E", data: DATA_ATESTO, motivo: "anulação registrada antes da portaria publicada", criadoPor: RH }, criarM05DepsComContratos(prisma));
+    // O estorno aponta a PARCIAL, não o empenho: 1247 - 58 + 58 = 1247 empenhado, contra 1189 apurado.
+    expect(await liquidoDaFicha()).toBe("1247.00");
+    expect(await retrato()).toBe(1);
   });
 
   it("JÁ PAGO: nada se anula; fica a RESTITUIÇÃO A PROVIDENCIAR — uma só, mesmo repetindo", async () => {

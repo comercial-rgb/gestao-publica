@@ -16,6 +16,7 @@ import { certificarFolha, designarNaFolha, liquidarFolha } from "./certificacao.
 import { irDaFolhaPendente } from "./ir-da-folha.js";
 import { declararConsignacaoDaRubrica, descontosDaFolhaPendentes } from "./descontos-da-folha.js";
 import { apropriarCustoDaFolha } from "../m12-relatorios/custos-da-folha.js";
+import { anularLiquidacaoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { registrarMovimentacao } from "../m32-pessoal/servico.js";
 import { registrarAgrupamentoDaFolha } from "./agrupamento-no-tribunal.js";
 import { cadastrarUnidadeGestora } from "../m01-core-contabil/unidade-gestora.js";
@@ -350,6 +351,18 @@ describe("V28 — o custo da folha pelo centro de custo de cada vínculo", { tim
     expect(await prisma.apropriacaoDeCusto.count()).toBe(2);
     const porCentro = await prisma.itemDaApropriacaoDeCusto.groupBy({ by: ["centroId"], _sum: { valor: true }, orderBy: { centroId: "asc" } });
     expect(porCentro.map((x) => [x.centroId, x._sum.valor?.toFixed(2)])).toEqual([["cc-edu", "3000.00"], ["cc-sau", "2000.00"]]);
+  });
+
+  it("V34 — com anulação parcial viva a folha não se apropria (recusa com o líquido); ESTORNADA a parcial, apropria-se a liquidação inteira", async () => {
+    const c = await centros();
+    await registrarMovimentacao(prisma, { vinculoId: c.vinculoA, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2026, 1, 1), motivo: "lotacao na educacao", centroDeCustoId: c.edu, criadoPor: PREPARA });
+    const deps = criarM05DepsComContratos(prisma);
+    const ap = await anularLiquidacaoParcial({ originalId: liquidacaoDe["MAT-A"]!, numero: "NL-FOLHA-A-AP", valor: "500.00", data: D(2026, 6, 29), motivo: "glosa de rubrica lançada em duplicidade", criadoPor: PREPARA }, deps);
+    // à mão: 3.000 - 500 = 2.500
+    await expect(apropriarCustoDaFolha(prisma, { liquidacaoId: liquidacaoDe["MAT-A"]!, criadoPor: PREPARA })).rejects.toThrow(/tem anulação parcial \(vale 2500\.00 de 3000\.00\)/);
+    await estornarAnulacaoParcial({ nivel: "LIQUIDACAO", anulacaoId: ap.anulacaoId, numero: "NL-FOLHA-A-AP-E", data: D(2026, 6, 30), motivo: "glosa desfeita após a conferência da rubrica", criadoPor: PREPARA }, deps);
+    const a = await apropriarCustoDaFolha(prisma, { liquidacaoId: liquidacaoDe["MAT-A"]!, criadoPor: PREPARA });
+    expect(a.partes.map((x) => [x.centroId, x.valor.toFixed(2)])).toEqual([["cc-edu", "3000.00"]]);
   });
 
   it("vínculo sem centro de custo na competência: recusa nomeando a matrícula, e nada é gravado", async () => {

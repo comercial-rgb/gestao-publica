@@ -33,6 +33,7 @@ import { cadastrarDivida } from "../m10-patrimonial/divida.js";
 import {
   cadastrarClasseDeMaterial,
   conferirAlmoxarifadoContraRazao,
+  registrarEntradaAlmoxarifado,
   saldoDaClasseDeMaterial,
 } from "../m10-patrimonial/almoxarifado.js";
 
@@ -910,7 +911,33 @@ describe("V33 — a anulação parcial nos guards do núcleo", () => {
     ).resolves.toBeTruthy();
   });
 
-  // A (almoxarifado): o teto da entrada passou a ser a liquidação LÍQUIDA (`almoxarifado.ts`). Pelo serviço o caminho não
-  // se monta: a entrada nasce no ato de liquidar e iguala o liquidado, e a parcial abaixo do material é recusada pela
-  // cascata (t6) — o teto só alcança liquidação gravada antes da regra da entrada no ato. Fica como defesa, sem teste.
+  /**
+   * A (almoxarifado), V34 — FIXTURE DE LEGADO. Pelo serviço o caminho não se monta: a entrada nasce no ato de liquidar e
+   * iguala o liquidado, a parcial abaixo do material é recusada pela cascata (t6), e a entrada vinda de liquidação não se
+   * estorna avulsa. O estado que o teto protege é o de dados gravados antes dessas regras: uma liquidação com entrada
+   * PARCIALMENTE estornada. Ele é escrito aqui direto no banco isolado (um ESTORNO_ENTRADA sem lançamento, como o legado),
+   * e só ele; o resto passa pelos serviços. O razão do estoque fica à frente dos movimentos por construção — a conferência
+   * contra o razão não é chamada.
+   * Literais: liquidado 6.000, entrou 6.000, legado estornou 4.500 → entrou 1.500; glosa de 3.500 → líquido 2.500, cabe
+   * 1.000; glosa estornada → líquido 6.000, cabe 4.500.
+   */
+  it("A (almoxarifado, legado): a entrada tem como teto a liquidação LÍQUIDA; com a glosa estornada, o teto volta", async () => {
+    const classe = await cadastrarClasseDeMaterial(prisma, { codigo: "30.01", descricao: "Material de expediente", contaContabilId: "c-estoque", criadoPor: POR });
+    const e = await empenhaDe("10000.00", "1", FICHA_30);
+    const l = await liquidaDe(e, "6000.00", "1", R_LIQUIDACAO_MATERIAL, [{ classeDeMaterialId: classe.classeDeMaterialId, valor: "6000.00" }]);
+    const entrada = await prisma.movimentoAlmoxarifado.findFirstOrThrow({ where: { liquidacaoId: l, tipo: "ENTRADA" }, select: { id: true } });
+    await prisma.movimentoAlmoxarifado.create({
+      data: {
+        classeDeMaterialId: classe.classeDeMaterialId, tipo: "ESTORNO_ENTRADA", valor: "4500.00", liquidacaoId: l, estornoDeId: entrada.id,
+        dataMovimento: new Date("2026-03-02T12:00:00Z"), motivo: "legado: devolução parcial do material gravada antes da regra da entrada no ato",
+        criadoPor: "legado-v34",
+      },
+    });
+    const ap = await anularLiquidacaoParcial({ originalId: l, numero: "NL-1-AP1", valor: "3500.00", data: new Date("2026-03-06T12:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    const entrar = (valor: string) => registrarEntradaAlmoxarifado(prisma, { classeDeMaterialId: classe.classeDeMaterialId, liquidacaoId: l, valor, dataMovimento: new Date("2026-03-07T12:00:00Z"), criadoPor: POR });
+    // Pelo bruto (6.000) caberiam 4.500; pelo líquido (2.500), só 1.000.
+    await expect(entrar("1500.00")).rejects.toThrow(/ENTRADA MAIOR QUE A LIQUIDAÇÃO NL-1: ela liquidou 2500\.00, já deu entrada de 1500\.00/);
+    await estornarAnulacaoParcial({ nivel: "LIQUIDACAO", anulacaoId: ap.anulacaoId, numero: "NL-1-AP1-E", data: new Date("2026-03-08T12:00:00Z"), motivo: "glosa registrada em duplicidade", criadoPor: POR }, deps);
+    await expect(entrar("1500.00")).resolves.toBeTruthy();
+  });
 });

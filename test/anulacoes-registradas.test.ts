@@ -9,6 +9,8 @@ import { anularLiquidacao, liquidar } from "../modules/m05-despesa/servico-bloco
 import { anularEmpenhoParcial, estornarAnulacaoParcial } from "../modules/m05-despesa/anulacao-parcial.js";
 import { criarM05Deps } from "../modules/m05-despesa/adapter-prisma.js";
 import { listarAnulacoesDoExercicio } from "../lib/portas/anulacao.js";
+import { lerLiquidacoesApropriaveis } from "../lib/portas/custos.js";
+import { anularLiquidacaoParcial } from "../modules/m05-despesa/anulacao-parcial.js";
 
 /**
  * V33 — A METADE "DEPOIS" DA CENTRAL DE ANULAÇÕES: cada anulação registrada aponta o ORIGINAL certo e o próprio
@@ -79,5 +81,23 @@ describe("anulações registradas no exercício", () => {
     expect(por.get("1002")).toMatchObject({ tipo: "empenho", integral: true, originalId: ids.parcial, originalHref: `/despesa/empenhos/${ids.ne1}` });
     expect(por.get("1003")).toMatchObject({ tipo: "liquidacao", integral: true, originalId: ids.liq, originalHref: `/despesa/empenhos/${ids.ne2}#liquidacao-${ids.liq}`, motivo: "nota fiscal cancelada pelo emitente" });
     for (const a of r) expect(await prisma.lancamentoContabil.count({ where: { id: a.lancamentoId } })).toBe(1);
+  });
+});
+
+/**
+ * V34 — A LEITURA DA TELA DE CUSTOS: o disponível para apropriar de uma liquidação é o líquido dela. A parcial viva
+ * desconta; o estorno da parcial (que aponta a parcial) devolve. Literais: 2.000 - 500 = 1.500; estornada, 2.000.
+ */
+describe("V34 — liquidações apropriáveis na tela de custos", () => {
+  it("a parcial desconta do disponível, e o estorno dela devolve", async () => {
+    const deps = criarM05Deps(prisma);
+    const nl3 = (await liquidar({ empenhoId: ids.ne1, numero: "NL-3", valor: "2000.00", data: D("2026-05-01"), responsavelAtesto: "Fiscal", historico: "liquidação", criadoPor: POR }, R_LIQUIDACAO, deps)).liquidacaoId;
+    const ap = (await anularLiquidacaoParcial({ originalId: nl3, numero: "1004", valor: "500.00", data: D("2026-05-02"), motivo: "glosa do atesto por item não entregue", criadoPor: POR }, deps)).anulacaoId;
+    const disponivel = async (): Promise<string | undefined> => (await lerLiquidacoesApropriaveis({ exercicio: 2026 })).find((l) => l.id === nl3)?.disponivel;
+    expect(await disponivel()).toBe("1500.00");
+    // a linha da parcial não é oferecida como liquidação
+    expect((await lerLiquidacoesApropriaveis({ exercicio: 2026 })).some((l) => l.id === ap)).toBe(false);
+    await estornarAnulacaoParcial({ nivel: "LIQUIDACAO", anulacaoId: ap, numero: "1005", data: D("2026-05-03"), motivo: "glosa desfeita após o novo atesto", criadoPor: POR }, deps);
+    expect(await disponivel()).toBe("2000.00");
   });
 });

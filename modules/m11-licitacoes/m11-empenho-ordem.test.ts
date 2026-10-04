@@ -4,6 +4,7 @@ import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { anularEmpenho, empenhar } from "../m05-despesa/servico.js";
+import { anularEmpenhoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
@@ -310,5 +311,35 @@ describe("empenho a partir da ordem de compra", () => {
         documentoId, data: new Date("2026-03-18T12:00:00Z"), motivo: "já liquidada", criadoPor: POR,
       })
     ).rejects.toThrow(/já foi[\s\S]*utilizada|liquidação/);
+  });
+});
+
+/**
+ * V34 — A ANULAÇÃO PARCIAL NO ESTORNO DA ORDEM DE COMPRA. A parcial copia a ordem do empenho original; ela é a redução
+ * dele, não outro empenho da ordem. Com a parcial viva a ordem continua empenhada (pelo ORIGINAL), e a recusa nomeia só
+ * o original. Estornada a parcial e anulado o empenho, a ordem se estorna — nenhuma das linhas de anulação a prende.
+ */
+describe("V34 — a anulação parcial no estorno da ordem de compra", () => {
+  it("a parcial não figura como empenho vivo da ordem; anulado o original, a ordem se estorna", async () => {
+    const { ordemId } = await emitirOrdemDeCompra(prisma, {
+      numero: "OC-AP1", tipo: "ORDINARIA", fornecedorId, dataEmissao: new Date("2026-03-10T12:00:00Z"),
+      finalidade: "Serviço empenhável", fichaId: FICHA,
+      itens: [{ materialId, quantidade: "10", valorUnitario: "21.00" }], criadoPor: POR,
+    });
+    const r = await empenhar({
+      fichaId: FICHA, numero: "2026NE000301", tipo: "ORDINARIO", valor: "210.00", data: new Date("2026-03-11T12:00:00Z"),
+      credorCpfCnpj: CNPJ, historico: "Empenho da ordem OC-AP1", categoriaOrdemCronologica: "FORNECIMENTO_BENS", ordemDeCompraId: ordemId, criadoPor: POR,
+    }, R_EMP, deps);
+    const ap = await anularEmpenhoParcial({ originalId: r.empenhoId, numero: "2026NE000301-AP1", valor: "42.00", data: new Date("2026-03-12T12:00:00Z"), motivo: "redução de dois itens da ordem", criadoPor: POR }, deps);
+    expect((await prisma.empenho.findUniqueOrThrow({ where: { id: ap.anulacaoId }, select: { ordemDeCompraId: true } })).ordemDeCompraId).toBe(ordemId);
+
+    const estornar = () => estornarOrdemDeCompra(prisma, { ordemId, motivo: "cancelamento da ordem", criadoPor: POR });
+    let msg = "";
+    try { await estornar(); } catch (e) { msg = (e as Error).message; }
+    expect(msg).toMatch(/ORDEM-EMPENHADA: A ordem OC-AP1 está empenhada \(2026NE000301\);/);
+
+    await estornarAnulacaoParcial({ nivel: "EMPENHO", anulacaoId: ap.anulacaoId, numero: "2026NE000301-AP1-E", data: new Date("2026-03-13T12:00:00Z"), motivo: "redução desfeita pelo setor de compras", criadoPor: POR }, deps);
+    await anularEmpenho({ empenhoId: r.empenhoId, numero: "2026NE000301-A", data: new Date("2026-03-14T12:00:00Z"), historico: "anulação da ordem", criadoPor: POR }, deps);
+    expect((await estornar()).itensEstornados).toBe(1);
   });
 });

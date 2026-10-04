@@ -8,7 +8,7 @@ import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
-import { anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { anularLiquidacaoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { ratearPorPercentual, somaDasPartes } from "./custos.js";
 import { apropriarCustoDaLiquidacao, publicarCriterioDeRateio } from "./custos-servico.js";
@@ -143,6 +143,7 @@ async function semear(): Promise<void> {
     "EMPENHAR",
     "LIQUIDAR",
     "ANULAR_LIQUIDACAO_PARCIAL",
+    "ESTORNAR_ANULACAO_PARCIAL",
   ]);
   await usuarioComPerfil(SEM_CRACHA, "SO_CONSULTA", ["CONSULTAR_DESPESA"]);
 }
@@ -464,6 +465,23 @@ describe("a apropriacao do custo de uma liquidacao", () => {
 
     // e o bruto NÃO é o teto: pedir 1.000 sobre uma liquidação reduzida é recusado
     await expect(apropriar({ liquidacaoId, valor: "1000.00" })).rejects.toThrow(/ACIMA DA DESPESA/i);
+  });
+
+  it("t9b V34 — ESTORNADA a parcial, o teto volta ao valor da liquidacao (o estorno aponta a parcial)", async () => {
+    await publicar60_40();
+    const liquidacaoId = await despesaDe("1000.00", "C05");
+    const ap = await anularLiquidacaoParcial(
+      { originalId: liquidacaoId, numero: "NL-C05-ANUL", valor: "400.00", data: new Date("2026-08-20T12:00:00Z"), motivo: "Glosa parcial do atesto por servico nao prestado", criadoPor: POR },
+      deps
+    );
+    await estornarAnulacaoParcial(
+      { nivel: "LIQUIDACAO", anulacaoId: ap.anulacaoId, numero: "NL-C05-ANUL-E", data: new Date("2026-08-21T12:00:00Z"), motivo: "Glosa desfeita apos o novo atesto", criadoPor: POR },
+      deps
+    );
+    // sem valor informado, aproprie-se o LÍQUIDO: 1.000 - 400 + 400 = 1.000; 60% de 1.000 = 600 na educação
+    const r = await apropriar({ liquidacaoId });
+    expect(r.valor.toFixed(2)).toBe("1000.00");
+    expect(new Map(r.partes.map((p) => [p.centroId, p.valor.toFixed(2)])).get(EDU)).toBe("600.00");
   });
 
   it("t10 recusa apropriar SOBRE a linha de anulacao — o fato e a liquidacao original", async () => {

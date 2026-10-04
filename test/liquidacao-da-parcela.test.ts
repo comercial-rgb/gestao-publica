@@ -9,6 +9,7 @@ import { criarM05DepsComContratos } from "../modules/m11-licitacoes/adapter-m05.
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../modules/m05-despesa/dominio.js";
 import { empenhar } from "../modules/m05-despesa/servico.js";
 import { anularLiquidacao, pagar } from "../modules/m05-despesa/servico-bloco2.js";
+import { anularEmpenhoParcial, anularLiquidacaoParcial, estornarAnulacaoParcial } from "../modules/m05-despesa/anulacao-parcial.js";
 import type { M05Deps } from "../modules/m05-despesa/ports.js";
 import { conferirDocumentoFiscal, registrarDocumentoFiscal } from "../modules/m11-licitacoes/documento-fiscal.js";
 import { cadastrarItemDoContrato, designarNoContrato } from "../modules/m11-licitacoes/fiscalizacao.js";
@@ -378,4 +379,40 @@ describe("a parcela recebida vira liquidação no M05", () => {
     const liqB = await prisma.liquidacao.findMany({ where: { empenhoId: empB, estornoDeId: null }, select: { valor: true } });
     expect(liqB.map((l) => l.valor.toFixed(2)).sort()).toEqual(["100.00", "900.00"]);
   }, 180_000);
+});
+
+/**
+ * V34 — A ANULAÇÃO PARCIAL NOS DOIS CONSUMIDORES DO CONTRATO.
+ *
+ * (1) O CONSUMO DA PARCELA: o que um recebimento definitivo já lastreou é o LÍQUIDO da liquidação que o aloca. A
+ *     glosa (parcial) devolve elegível; o estorno da glosa (linha que aponta a parcial) consome de novo.
+ *     Literais: recebimento de 900, liquidado 900, glosa de 400 → consumido 500, resta 400; glosa estornada →
+ *     consumido 900, resta 0.
+ * (2) A ORDEM DE SERVIÇO: a linha da parcial do empenho copia o contrato do original, e por isso passaria pelo guard
+ *     "o empenho é deste contrato". Ela é a redução do empenho, não um empenho que suporte ordem.
+ */
+describe("V34 — a anulação parcial no consumo da parcela e na ordem de serviço", () => {
+  const MOTIVO = "glosa do atesto por visita não comprovada";
+
+  it("PA01: a glosa devolve elegível ao recebimento; estornada, o recebimento volta a estar todo liquidado", async () => {
+    const r = await liquidarP(await nota("7101", "900.00"), [{ recebimentoDefinitivoId: receb900, valor: "900.00" }]);
+    const ap = await anularLiquidacaoParcial({ originalId: r.liquidacaoId, numero: "NL-PA01-AP", valor: "400.00", data: inicioDoDiaCivil(HOJE), motivo: MOTIVO, criadoPor: POR }, deps);
+    const nf = await nota("7102", "400.01");
+    await expect(liquidarP(nf, [{ recebimentoDefinitivoId: receb900, valor: "400.01" }])).rejects.toThrow(/PARCELA-ACIMA-DO-ELEGIVEL: .* vale 900\.00, já foi liquidado em 500\.00 .*resta 400\.00/);
+
+    await estornarAnulacaoParcial({ nivel: "LIQUIDACAO", anulacaoId: ap.anulacaoId, numero: "NL-PA01-AP-E", data: inicioDoDiaCivil(HOJE), motivo: "glosa desfeita após a comprovação da visita", criadoPor: POR }, deps);
+    await expect(liquidarP(await nota("7103", "0.01"), [{ recebimentoDefinitivoId: receb900, valor: "0.01" }])).rejects.toThrow(/PARCELA-JA-LIQUIDADA: .* vale 900\.00, já foi liquidado em 900\.00/);
+  });
+
+  it("OS01: a linha da parcial do empenho não suporta ordem de serviço; o empenho original suporta", async () => {
+    const ap = await anularEmpenhoParcial({ originalId: empenhoServico, numero: "2026NE000100-AP", valor: "100.00", data: inicioDoDiaCivil(HOJE), motivo: "redução do objeto por acordo entre as partes", criadoPor: POR }, deps);
+    const parcial = await prisma.empenho.findUniqueOrThrow({ where: { id: ap.anulacaoId }, select: { contratoId: true } });
+    expect(parcial.contratoId).toBe("ctr-a"); // a premissa: a parcial carrega o contrato
+    const fiscal = await prisma.designacaoNoContrato.findFirstOrThrow({ where: { contratoId: "ctr-a", papel: "FISCAL" }, select: { id: true } });
+    const item = await prisma.itemDoContrato.findFirstOrThrow({ where: { contratoId: "ctr-a" }, orderBy: { numero: "asc" }, select: { id: true } });
+    const rascunho = (empenhoId: string) =>
+      criarRascunhoDeOrdemDeServico(prisma, { contratoId: "ctr-a", finalidade: "Visitas complementares", inicioPrevisto: dia(1), fimPrevisto: dia(10), condicoesDeRecebimento: "Relatório assinado", fiscalDesignacaoId: fiscal.id, itens: [{ itemDoContratoId: item.id, quantidade: "1" }], empenhoId, criadoPor: GESTORA });
+    await expect(rascunho(ap.anulacaoId)).rejects.toThrow(/EMPENHO-ANULADO: o empenho 2026NE000100-AP está anulado \(ou é uma anulação\)/);
+    await expect(rascunho(empenhoServico)).resolves.toMatchObject({ valor: "100.00" });
+  });
 });

@@ -7,6 +7,7 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
+import { anularEmpenhoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { pendenteDePrestacao, saldoALiberar } from "./dominio.js";
 import {
@@ -420,3 +421,38 @@ async function movimentos(
 }
 
 void OUTRO;
+
+/**
+ * V34 — A ANULAÇÃO PARCIAL NO EMPENHO DA LIBERAÇÃO. A parcial copia o convênio do original (é a mesma despesa,
+ * reduzida), e por isso passava pelo guard "o empenho é deste convênio". Ela não é empenho a liberar: é a redução
+ * dele. O mesmo vale para o ESTORNO da parcial. O original continua servindo, antes e depois do estorno.
+ */
+describe("V34 — a anulação parcial no empenho da liberação do convênio", () => {
+  it("a linha da parcial e a do estorno dela são recusadas com o motivo; o original libera", async () => {
+    const convenioId = await convenioDeTeste();
+    const e1 = await empenhoDoConvenio(convenioId, "2026NE000040", "40000.00");
+    const ap = await anularEmpenhoParcial(
+      { originalId: e1, numero: "2026NE000040-AP1", valor: "10000.00", data: new Date("2026-02-12T12:00:00Z"), motivo: "redução do cronograma de desembolso", criadoPor: POR },
+      deps
+    );
+    const daParcial = await prisma.empenho.findUniqueOrThrow({ where: { id: ap.anulacaoId }, select: { convenioId: true } });
+    expect(daParcial.convenioId).toBe(convenioId); // a premissa: a parcial carrega o convênio
+
+    const liberar = (empenhoId: string, parcela: number) =>
+      liberarParcela(prisma, {
+        convenioId, valor: "5000.00", parcela, diaMovimento: "2026-02-20", competencia: "2026-02", empenhoId,
+        motivo: "Parcela conforme cronograma de desembolso.", criadoPor: POR,
+      });
+    await expect(liberar(ap.anulacaoId, 1)).rejects.toThrow(/2026NE000040-AP1 é uma anulação, e não o empenho do convênio/);
+
+    const est = await estornarAnulacaoParcial(
+      { nivel: "EMPENHO", anulacaoId: ap.anulacaoId, numero: "2026NE000040-AP1-E", data: new Date("2026-02-14T12:00:00Z"), motivo: "redução registrada em duplicidade", criadoPor: POR },
+      deps
+    );
+    await expect(liberar(est.estornoId, 1)).rejects.toThrow(/é uma anulação, e não o empenho do convênio/);
+    expect(await prisma.movimentoConvenio.count({ where: { convenioId } })).toBe(0);
+
+    await liberar(e1, 1);
+    expect(await prisma.movimentoConvenio.count({ where: { convenioId, empenhoId: e1 } })).toBe(1);
+  });
+});

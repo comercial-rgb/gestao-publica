@@ -12,6 +12,7 @@ import {
 } from "./dominio.js";
 import { empenhar } from "./servico.js";
 import { liquidar, pagar, anularPagamento } from "./servico-bloco2.js";
+import { anularLiquidacaoParcial, estornarAnulacaoParcial } from "./anulacao-parcial.js";
 import {
   autorizarOrdemDePagamento,
   cancelarOrdemDePagamento,
@@ -403,5 +404,29 @@ describe("T07 — o teto da ordem", () => {
     expect(await estadoDe(id)).toBe("PAGA");
     const nova = await preparar("1000.00", "OP-REEMISSAO");
     expect(await estadoDe(nova)).toBe("PREPARADA");
+  });
+});
+
+/**
+ * V34 — A ANULAÇÃO PARCIAL NO TETO DA ORDEM. O teto que a ordem usa é o saldo a pagar da liquidação: a parcial viva o
+ * reduz, e o ESTORNO da parcial (linha que aponta a parcial, não a liquidação) o devolve. Literais por conta manual:
+ * 1.000 - 300 = 700; com a parcial estornada, 1.000 - 700 já comprometidos = 300.
+ */
+describe("V34 — a anulação parcial no teto da ordem de pagamento", () => {
+  const MOTIVO = "glosa registrada pela fiscalização do contrato";
+  it("a parcial reduz o teto; estornada, o teto volta — e o motivo diz o saldo", async () => {
+    const ap = await anularLiquidacaoParcial(
+      { originalId: liquidacaoId, numero: `NL-AP-${n}`, valor: "300.00", data: new Date("2026-05-10T12:00:00Z"), motivo: MOTIVO, criadoPor: ORDENADOR },
+      deps
+    );
+    await expect(preparar("800.00", "OP-A")).rejects.toThrow(/saldo a pagar 700\.00 menos 0\.00 já comprometido/);
+    await preparar("700.00", "OP-A");
+
+    await estornarAnulacaoParcial(
+      { nivel: "LIQUIDACAO", anulacaoId: ap.anulacaoId, numero: `NL-AP-${n}-E`, data: new Date("2026-05-12T12:00:00Z"), motivo: "glosa registrada em duplicidade", criadoPor: ORDENADOR },
+      deps
+    );
+    await expect(preparar("300.01", "OP-B")).rejects.toThrow(/saldo a pagar 1000\.00 menos 700\.00 já comprometido/);
+    expect(await estadoDe(await preparar("300.00", "OP-B"))).toBe("PREPARADA");
   });
 });
