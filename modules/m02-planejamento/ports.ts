@@ -119,7 +119,8 @@ export interface ReprevisaoParaPersistir {
 }
 
 export interface ReceitaPrevistaRepositoryPort {
-  criar(receita: ReceitaPrevistaParaPersistir): Promise<string>;
+  /** Cria a linha e, se ela for receita (não dedução) com valor, a previsão no razão, na mesma transação. */
+  criar(receita: ReceitaPrevistaParaPersistir, autor: string): Promise<string>;
   /** Grava uma reprevisão (append-only) — nunca edita/apaga. */
   reprevisar(r: ReprevisaoParaPersistir): Promise<string>;
 }

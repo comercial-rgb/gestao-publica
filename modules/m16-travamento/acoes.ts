@@ -1149,6 +1149,9 @@ export type NomeDeServico =
   // V35 — a carga do QDD da LOA aprovada (estrutura que falta + fichas pelo criarFicha)
   | "carregarQddDaLoa"
   | "carregarReceitaDaLoa"
+  // V35 — a dedução da receita realizada (FUNDEB) e o estorno dela
+  | "registrarDeducaoDaReceita"
+  | "estornarDeducaoDaReceita"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1900,6 +1903,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   carregarQddDaLoa: "CADASTRAR_LOA",
   // V35 — a receita prevista da LOA aprovada, pela mesma autoridade; cada previsão, dentro, pelo criarReceitaPrevista.
   carregarReceitaDaLoa: "CADASTRAR_LOA",
+  // V35 — registrar a retenção do FUNDEB é escriturar a receita que chegou líquida: a autoridade de quem arrecada.
+  // Estornar é a de quem anula a arrecadação — a mesma segregação de registrar × anular.
+  registrarDeducaoDaReceita: "REGISTRAR_ARRECADACAO",
+  estornarDeducaoDaReceita: "ANULAR_ARRECADACAO",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
@@ -2328,6 +2335,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
   fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
   ordenadorNaData: "leitura (o ordenador designado vigente na data, para a unidade da ficha; recusa a ambiguidade)",
+  deducoesRealizadas: "leitura (V35 — as deduções da receita realizadas no exercício, com o estorno com sinal; não muta)",
+  lancarPrevisaoDaReceita: "composável (V35 — o lançamento da previsão da receita no razão; chamado dentro de criarReceitaPrevista, detalharReceitaPrevista e efetivarPropostaOrcamentaria, que autorizam)",
   liquidacoesComSaldo: "leitura (V33 — as liquidações com saldo a pagar da fila do art. 141, por fonte e categoria, com a anulação parcial cortada no tempo; composável de quem paga e do lote, que autorizam)",
   lerFatosProgramas: "leitura (SAGRES §4.2: os programas do orçamento com a declaração vigente)",
   lerFatosAcao: "leitura (SAGRES §4.3: as ações do orçamento com a declaração vigente)",

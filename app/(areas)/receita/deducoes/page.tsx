@@ -1,0 +1,100 @@
+import { Card } from "../../../../components/ui/Card";
+import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
+import { PageHeader } from "../../../../components/ui/PageHeader";
+import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
+import { lerDeducoesDaReceita, lerEscolhasDaDeducao } from "../../../../lib/portas/deducoes-da-receita";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { exercicioAutorizado } from "../../../../lib/recorte";
+import { FormDeducao, FormEstornoDeducao } from "./Formularios";
+
+/**
+ * AS DEDUÇÕES DA RECEITA (V35, onda B1) — o FUNDEB retido na origem, registrado como dedução da receita arrecadada,
+ * pelo valor do documento do banco. A receita realizada do balanço, o banco e a disponibilidade da fonte passam a
+ * mostrar o líquido.
+ *
+ * ⚠️ `force-dynamic`: depende de SESSÃO.
+ */
+export const dynamic = "force-dynamic";
+
+const brl = (v: string): string => Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export default async function DeducoesDaReceitaPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | undefined>> }): Promise<React.ReactElement> {
+  const sp = await searchParams;
+  let exercicio = 0;
+  let titulo = <PageHeader titulo="Deduções da receita" subtitulo="FUNDEB retido na origem" />;
+  let dados: [Awaited<ReturnType<typeof lerDeducoesDaReceita>>, Awaited<ReturnType<typeof lerEscolhasDaDeducao>>];
+  try {
+    // o exercício do contexto, com a recusa do ilegível (nunca o ano do relógio do servidor)
+    exercicio = exercicioAutorizado(sp);
+    titulo = <PageHeader titulo="Deduções da receita" subtitulo={`FUNDEB retido na origem — exercício ${String(exercicio)}`} />;
+    await telaExigeLeituraDoEnte("CONSULTAR_RECEITA");
+    dados = await Promise.all([lerDeducoesDaReceita(exercicio), lerEscolhasDaDeducao(exercicio)]);
+  } catch (erro) {
+    return (
+      <div className="space-y-4">
+        <SincronizarContexto />
+        {titulo}
+        <EstadoVazio titulo="Não foi possível ler as deduções" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+      </div>
+    );
+  }
+  const [deducoes, escolhas] = dados;
+
+  return (
+    <div className="space-y-4">
+      <SincronizarContexto />
+      {titulo}
+      <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
+        O FPM, o ICMS, o IPVA, o ITR e o IPI-exportação chegam com 20% retidos para o FUNDEB. Registre a arrecadação pelo
+        valor bruto e aqui a retenção, pelo valor do demonstrativo do banco. A receita realizada do balanço passa a
+        mostrar o líquido, o banco fica com o que de fato entrou e a disponibilidade da fonte diminui na mesma medida.
+      </div>
+
+      <Card>
+        {escolhas.naturezas.length === 0 ? (
+          <EstadoVazio titulo="Nenhuma receita arrecadada no exercício" descricao="A dedução se registra sobre uma receita já arrecadada. Registre a arrecadação primeiro." />
+        ) : escolhas.contas.length === 0 ? (
+          <EstadoVazio titulo="Nenhuma conta bancária com conta contábil" descricao="Vincule a conta contábil da conta bancária antes de registrar a dedução." />
+        ) : (
+          <FormDeducao naturezas={escolhas.naturezas} fontes={escolhas.fontes} contas={escolhas.contas} />
+        )}
+      </Card>
+
+      <Card>
+        {deducoes.length === 0 ? (
+          <EstadoVazio titulo="Nenhuma dedução registrada" descricao="As deduções do exercício aparecem aqui, com o estorno ao lado." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <caption className="sr-only">Deduções da receita do exercício</caption>
+              <thead>
+                <tr className="text-[color:var(--color-ink-3)]">
+                  <th scope="col" className="py-2 pr-3">Data</th>
+                  <th scope="col" className="py-2 pr-3">Receita</th>
+                  <th scope="col" className="py-2 pr-3">Fonte</th>
+                  <th scope="col" className="py-2 pr-3 text-right">Valor</th>
+                  <th scope="col" className="py-2 pr-3">Documento</th>
+                  <th scope="col" className="py-2 pr-3">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {deducoes.map((d) => (
+                  <tr key={d.id} data-deducao={d.id} className="border-t border-[color:var(--color-border)] align-top">
+                    <td className="py-2 pr-3">{d.dia.split("-").reverse().join("/")}</td>
+                    <th scope="row" className="py-2 pr-3 font-normal">{d.natureza} — {d.naturezaDescricao}</th>
+                    <td className="py-2 pr-3">{d.fonte}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{d.ehEstorno ? "−" : ""}{brl(d.valor)}</td>
+                    <td className="py-2 pr-3">{d.documento}</td>
+                    <td className="py-2 pr-3">
+                      {d.ehEstorno ? "Estorno" : d.estorno !== null ? `Estornada em ${d.estorno.dia.split("-").reverse().join("/")}` : <FormEstornoDeducao deducaoId={d.id} rotulo={`${d.natureza} de ${d.dia}`} />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}

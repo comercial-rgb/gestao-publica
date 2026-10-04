@@ -169,7 +169,7 @@ export async function criarReceitaPrevista(
     exercicioFonte: dados.exercicioFonte,
     tipoReceita: dados.tipoReceita,
     valorPrevisto: dados.valorPrevisto,
-  });
+  }, dados.criadoPor);
 }
 
 /**

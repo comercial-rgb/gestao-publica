@@ -217,7 +217,8 @@ const TIPO_RECEITA_SAGRES: Readonly<Record<"ORCAMENTARIA" | "INTRA_ORCAMENTARIA"
 export async function lerFatosReceitaPrevista(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly exercicio: number }): Promise<ReceitaPrevistaFato[]> {
   const linhas = await prisma.receitaPrevista.findMany({
     where: { exercicio: p.exercicio },
-    orderBy: [{ naturezaReceita: { codigo: "asc" } }, { fonte: { codigo: "asc" } }],
+    // V35 — o tipo desempata (no enum, a receita vem antes da dedução): sem ele a ordem dependia da inserção.
+    orderBy: [{ naturezaReceita: { codigo: "asc" } }, { fonte: { codigo: "asc" } }, { tipoReceita: "asc" }, { id: "asc" }],
     select: { exercicioFonte: true, tipoReceita: true, valorPrevisto: true, naturezaReceita: { select: { codigo: true } }, fonte: { select: { codigo: true } }, detalhe: { select: { tipoDeducaoSagres: true } } },
   });
   const semSubtipo: string[] = [];

@@ -649,9 +649,10 @@ export const TIPO_LANCAMENTO_RECEITA_SAGRES: Record<"ARRECADACAO" | "ANULACAO" |
   ANULACAO: "2",
 };
 
-/** §5.23 TipoReceitaLancada — "1" = Lançamento de Receita. As deduções (3/4/5, Fundeb etc.) não são
- * modeladas: a POC lança receita normal. Constante nomeada (limitação no MODULO). */
+/** §5.23 TipoReceitaLancada — "1" = Lançamento de Receita; "3" = Dedução de Receita do Fundeb (V35: a dedução
+ * realizada, `DeducaoDaReceitaRealizada`). Os tipos 4 e 5 não têm fato no sistema e não saem. */
 export const TIPO_RECEITA_LANCAMENTO_NORMAL = "1";
+export const TIPO_RECEITA_DEDUCAO_FUNDEB = "3";
 
 export interface ReceitaOrcamentariaFato {
   readonly codUnidadeGestora: string; //  parâmetro export
@@ -663,6 +664,8 @@ export interface ReceitaOrcamentariaFato {
   readonly valor: Money; //               receita.valor
   readonly data: Date; //                 receita.dataArrecadacao
   readonly co: string | null; //          receita.co?.codigo (obrigatório no layout)
+  /** V35 — §5.23: "1" a receita; "3" a dedução do FUNDEB. Ausente = "1". */
+  readonly tipoReceitaLancada?: "1" | "3";
   readonly numeroConta: string; //        contaArrecadadora.conta+digito (parâmetro export)
   readonly codBanco: string; //           contaArrecadadora.banco
   readonly numeroAgencia: string; //      contaArrecadadora.agencia+digito
@@ -677,7 +680,7 @@ const camposReceitaOrcamentaria: readonly CampoLayout<ReceitaOrcamentariaFato>[]
   { nome: "tipoLancamento", posInicial: 22, posFinal: 22, tipo: "NUMERICO", obrigatorio: true, origem: "receita.tipo → §5.18", extrair: (f) => TIPO_LANCAMENTO_RECEITA_SAGRES[f.tipoLancamento] },
   { nome: "exercicioFonteRecurso", posInicial: 23, posFinal: 23, tipo: "NUMERICO", obrigatorio: true, origem: "receita.exercicioFonte", extrair: (f) => f.exercicioFonteRecurso },
   { nome: "codFonteRecurso", posInicial: 24, posFinal: 26, tipo: "NUMERICO", obrigatorio: true, origem: "receita.fonte.codigo", extrair: (f) => f.codFonteRecurso },
-  { nome: "tipoReceita", posInicial: 27, posFinal: 27, tipo: "NUMERICO", obrigatorio: true, origem: "§5.23 (default 1=Lançamento de Receita)", extrair: () => TIPO_RECEITA_LANCAMENTO_NORMAL },
+  { nome: "tipoReceita", posInicial: 27, posFinal: 27, tipo: "NUMERICO", obrigatorio: true, origem: "§5.23 (1=Lançamento de Receita; 3=Dedução do Fundeb)", extrair: (f) => f.tipoReceitaLancada ?? TIPO_RECEITA_LANCAMENTO_NORMAL },
   { nome: "valor", posInicial: 28, posFinal: 43, tipo: "VALOR", obrigatorio: true, origem: "receita.valor", extrair: (f) => f.valor },
   { nome: "data", posInicial: 44, posFinal: 51, tipo: "DATA", obrigatorio: true, origem: "receita.dataArrecadacao", extrair: (f) => f.data },
   { nome: "co", posInicial: 52, posFinal: 55, tipo: "NUMERICO", obrigatorio: true, origem: "receita.co?.codigo", extrair: (f) => f.co },

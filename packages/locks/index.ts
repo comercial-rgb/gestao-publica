@@ -401,6 +401,15 @@ export const ORDEM_DOS_LOCKS = {
    * que não usa estes trincos.
    */
   ImplantacaoDeSaldos: 38,
+  /**
+   * V35 — A DEDUÇÃO DA RECEITA (M04, `deducao-da-receita.ts`). A corrida é de saldo: duas deduções simultâneas da
+   * mesma natureza e fonte leriam o mesmo "ainda cabe" e passariam juntas do arrecadado. O trinco é pelo par
+   * (natureza, fonte).
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: a dedução confere o cadastro por leitura, trava aqui e grava o lançamento
+   * pelo funil do razão e a linha; não trava mais nada depois.
+   */
+  DeducaoDaReceita: 39,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

@@ -54,7 +54,8 @@ export async function janelaDoExercicio(prisma: PrismaClient, exercicio: number)
 export interface ParcelaDeReceita {
   readonly receitaId: string;
   readonly numero: string;
-  readonly tipo: "ARRECADACAO" | "ANULACAO";
+  /** V35 — DEDUCAO: a dedução da receita realizada (FUNDEB), negativa, com a natureza da receita deduzida. */
+  readonly tipo: "ARRECADACAO" | "ANULACAO" | "DEDUCAO";
   readonly data: Date;
   readonly naturezaCodigo: string;
   readonly naturezaDescricao: string;
@@ -116,6 +117,28 @@ export async function parcelasDaReceitaRealizada(
         valor: sinal === 1 ? p.valor : toMoney(p.valor.negated()),
       });
     }
+  }
+  // V35 — A DEDUÇÃO DA RECEITA REALIZADA (MCASP: a receita vai ao balanço líquida das deduções). Uma parcela negativa
+  // por dedução, com a natureza e a fonte da receita deduzida; o estorno da dedução volta positivo. O corte é o mesmo
+  // dos três motores (`criadoEm <= corte`).
+  const deducoes = await prisma.deducaoDaReceitaRealizada.findMany({
+    where: { exercicio, ...(corte !== null ? { criadoEm: { lte: corte } } : {}) },
+    select: { id: true, valor: true, data: true, documento: true, estornoDeId: true, naturezaReceita: { select: { codigo: true, descricao: true } }, fonte: { select: { codigo: true, descricao: true } } },
+    orderBy: [{ data: "asc" }, { id: "asc" }],
+  });
+  for (const d of deducoes) {
+    const valor = toMoney(d.valor.toFixed(2));
+    linhas.push({
+      receitaId: d.id,
+      numero: d.documento,
+      tipo: "DEDUCAO",
+      data: d.data,
+      naturezaCodigo: d.naturezaReceita.codigo,
+      naturezaDescricao: d.naturezaReceita.descricao,
+      fonteCodigo: d.fonte.codigo,
+      fonteDescricao: d.fonte.descricao,
+      valor: d.estornoDeId === null ? toMoney(valor.negated()) : valor,
+    });
   }
   return linhas;
 }
@@ -435,10 +458,10 @@ export async function composicaoDaLinha(prisma: PrismaClient, exercicio: number,
       const atual = porGuia.get(chave);
       porGuia.set(chave, {
         chave,
-        destino: { tipo: "ARRECADACAO", id: p.receitaId },
+        destino: p.tipo === "DEDUCAO" ? null : { tipo: "ARRECADACAO", id: p.receitaId },
         documento: p.numero,
         data: p.data,
-        descricao: p.tipo === "ANULACAO" ? "Anulação de receita" : "Arrecadação",
+        descricao: p.tipo === "ANULACAO" ? "Anulação de receita" : p.tipo === "DEDUCAO" ? "Dedução da receita para o FUNDEB" : "Arrecadação",
         classificacao: pedida.tipo === "BF_RECEITA" ? `${p.naturezaCodigo} ${p.naturezaDescricao}` : `${p.naturezaCodigo} ${p.naturezaDescricao} · fonte ${p.fonteCodigo}`,
         valores: [mais(atual?.valores[0] ?? zero(), p.valor)],
       });

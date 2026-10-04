@@ -282,6 +282,7 @@ export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
 /** A EXECUÇÃO DA RECEITA — fonte única da landing de /receita e do submenu. */
 export const EXECUCAO_RECEITA: readonly RelatorioNav[] = [
   { href: "/receita/arrecadacoes", numero: "Arrecadação", rotulo: "Arrecadação", descricao: "Guias de arrecadação e receita realizada no exercício." },
+  { href: "/receita/deducoes", numero: "Deduções", rotulo: "Deduções da receita", descricao: "Retenção do FUNDEB na origem, registrada como dedução da receita arrecadada, com estorno." },
   // V7 B1 — a primeira unidade tributária: cadastrar, parametrizar e SIMULAR (sem lançar nem constituir dívida).
   { href: "/receita/naturezas", numero: "Naturezas", rotulo: "Naturezas de receita", descricao: "Ementário da receita: os códigos em que a arrecadação é classificada." },
   { href: "/receita/imoveis", numero: "Imóveis", rotulo: "Cadastro imobiliário", descricao: "Cadastro imobiliário, proprietários e simulação do imposto." },
@@ -696,6 +697,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Arrecadação", itens: [
         { href: "/receita/arrecadacoes", rotulo: "Arrecadação, anulação e estorno" },
+        { href: "/receita/deducoes", rotulo: "Deduções da receita (FUNDEB)" },
         { href: "/receita/arrecadacoes/distribuir", rotulo: "Distribuição por fontes" },
         { href: "/financeiro/retencoes-proprias", rotulo: "Receitas de retenções" },
       ] },

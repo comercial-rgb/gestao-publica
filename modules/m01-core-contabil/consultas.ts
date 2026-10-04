@@ -240,6 +240,9 @@ export async function saldoDdrPorFonte(
               fonte: { select: { codigo: true } },
             },
           },
+          // V35 — a quinta origem: a DEDUÇÃO da receita (FUNDEB), que tira da disponibilidade da fonte o que o banco
+          // reteve. Relação rasa (um nível), sem o problema de profundidade descrito acima.
+          deducaoDaReceita: { select: { exercicio: true, fonteId: true, fonte: { select: { codigo: true } } } },
         },
       },
     },
@@ -321,7 +324,13 @@ export async function saldoDdrPorFonte(
                   fonteCodigo: l.receita.fonte.codigo,
                   exercicio: l.receita.exercicio,
                 }
-              : null;
+              : l.deducaoDaReceita !== null
+                ? {
+                    fonteId: l.deducaoDaReceita.fonteId,
+                    fonteCodigo: l.deducaoDaReceita.fonte.codigo,
+                    exercicio: l.deducaoDaReceita.exercicio,
+                  }
+                : null;
 
     // ⚠️ FAIL-CLOSED: perna de DDR num lançamento sem origem conhecida é um fato que
     // este leitor não sabe atribuir a fonte nenhuma. Somá-la em "outras" esconderia o

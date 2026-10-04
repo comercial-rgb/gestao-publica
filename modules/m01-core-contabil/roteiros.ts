@@ -245,6 +245,15 @@ export const CONTA_REALOCACAO_REDUCAO = "5.2.2.1.9.02.09";
  * movimento, que é o estado correto para uma classificação que ninguém decidiu.
  */
 export const CONTA_CREDITO_RESERVADO = "6.2.2.1.2.00.00";
+/**
+ * V35 — A PREVISÃO DA RECEITA NO RAZÃO (MCASP, Parte I: previsão inicial D 5.2.1.1.1 / C 6.2.1.1). Até aqui a
+ * previsão vivia só na tabela da LOA e a arrecadação debitava a receita a realizar que nada tinha creditado: a classe
+ * 6.2.1.1 andava negativa e a MSC saía sem a previsão. As contas são as analíticas do PCASP do TCE-PB 2025.
+ */
+export const CONTA_PREVISAO_INICIAL_RECEITA_BRUTA = "5.2.1.1.1.00.00";
+/** (-) Previsão de dedução para o FUNDEB (tipo 3 do Tribunal) e (-) Outras deduções (tipos 4 e 5). */
+export const CONTA_PREVISAO_DEDUCAO_FUNDEB = "5.2.1.1.2.01.01";
+export const CONTA_PREVISAO_OUTRAS_DEDUCOES = "5.2.1.1.2.99.00";
 export const CONTA_RECEITA_A_REALIZAR = "6.2.1.1.0.00.00";
 export const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00";
 

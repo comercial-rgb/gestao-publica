@@ -54,6 +54,8 @@ export function titularNoInstante(
 export interface ResolvedorDeUgs {
   ugDoMovimentoExtra(movimentoId: string): Promise<UgOuMotivo>;
   ugDaReceita(receitaId: string): Promise<UgOuMotivo>;
+  /** V35 — a dedução da receita (FUNDEB) é da UG do titular da conta em que a receita foi creditada. */
+  ugDaDeducao(deducaoId: string): Promise<UgOuMotivo>;
   /** As UGs a que a designação pertence no dia em que começa (vazio com motivo quando nenhuma). */
   ugsDaDesignacao(designacaoId: string): Promise<{ readonly ugs: readonly string[]; readonly motivo: string | null }>;
   omitir(o: DocumentoOmitido): void;
@@ -117,6 +119,17 @@ export function criarResolvedorDeUgs(prisma: PrismaClient): ResolvedorDeUgs {
     return p;
   };
 
+  const ugDaDeducao = async (id: string): Promise<UgOuMotivo> => {
+    const d = await prisma.deducaoDaReceitaRealizada.findUnique({
+      where: { id },
+      select: { data: true, criadoEm: true, contaBancaria: { select: { codigo: true, declaracoesDeTitular: { select: { entidadeId: true, versao: true, criadoEm: true } } } } },
+    });
+    if (d === null) return { ug: null, motivo: "a dedução não existe" };
+    const titular = titularNoInstante(d.contaBancaria.declaracoesDeTitular, d.criadoEm);
+    if (titular !== null) return ugDaEntidadeNoDia(titular, d.data);
+    return { ug: null, motivo: `a conta ${d.contaBancaria.codigo}, em que a receita deduzida foi creditada, não tem titular declarado` };
+  };
+
   const memoRec = new Map<string, Promise<UgOuMotivo>>();
   const ugDaReceita = (id: string): Promise<UgOuMotivo> => {
     let p = memoRec.get(id);
@@ -164,6 +177,7 @@ export function criarResolvedorDeUgs(prisma: PrismaClient): ResolvedorDeUgs {
   return {
     ugDoMovimentoExtra,
     ugDaReceita,
+    ugDaDeducao,
     ugsDaDesignacao,
     omitir(o) {
       const k = `${o.arquivo}|${o.documento}`;

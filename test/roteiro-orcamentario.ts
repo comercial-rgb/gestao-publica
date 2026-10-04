@@ -211,9 +211,25 @@ const ROTEIROS: readonly {
  * as contas que o teste já criou (o `upsert` é pelo CÓDIGO — o `id` de quem chegou
  * primeiro é preservado).
  */
+/**
+ * V35 — as contas da PREVISÃO DA RECEITA no razão (5.2.1.1.1 / 5.2.1.1.2.x / 6.2.1.1), com o código e a natureza do
+ * plano do TCE-PB. Quem cria receita prevista pelo serviço passa a lançar nelas; sem elas o lançamento recusa.
+ */
+export async function semearContasDaPrevisaoDaReceita(prisma: PrismaClient): Promise<void> {
+  for (const c of [
+    { codigo: "5.2.1.1.1.00.00", nome: "Previsão Inicial da Receita Bruta", naturezaSaldo: "DEVEDORA" as const },
+    { codigo: "5.2.1.1.2.01.01", nome: "(-) FUNDEB", naturezaSaldo: "CREDORA" as const },
+    { codigo: "5.2.1.1.2.99.00", nome: "(-) Outras Deduções", naturezaSaldo: "CREDORA" as const },
+    { codigo: "6.2.1.1.0.00.00", nome: "Receita a Realizar", naturezaSaldo: "CREDORA" as const },
+  ]) {
+    await prisma.contaPcasp.upsert({ where: { codigo: c.codigo }, update: {}, create: { ...c, nivel: 5, analitica: true } });
+  }
+}
+
 export async function semearRoteiroOrcamentario(
   prisma: PrismaClient
 ): Promise<void> {
+  await semearContasDaPrevisaoDaReceita(prisma);
   const jaTem = await prisma.roteiroOrcamentario.count();
   if (jaTem >= ROTEIROS.length) return;
 

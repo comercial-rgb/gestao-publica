@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { toMoney } from "../../packages/contracts/index.js";
+import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { semearRoteiroOrcamentario } from "../../test/roteiro-orcamentario.js";
@@ -139,6 +140,10 @@ describe("m02 — carga do QDD da LOA (V35)", () => {
       expect(v).toEqual(["DEDUCAO:17115111:200.00:3", "INTRA_ORCAMENTARIA:72150211:2000.00:-", "ORCAMENTARIA:17115111:1000.00:-", "ORCAMENTARIA:17115121:2200.00:-"]);
       expect(prev.find((p) => p.naturezaReceita.codigo === "17115121")?.detalhe?.documento).toMatch(/soma dos códigos 1\.7\.1\.1\.51\.2\.1\.01, 1\.7\.1\.1\.51\.2\.1\.02/);
       expect((await prisma.naturezaReceita.findUnique({ where: { codigo: "72150211" } }))?.descricao).toMatch(/Intraorçamentária$/);
+      // V35 — a previsão no razão: bruta (orçamentária + intra) 5.200,00 em 5.2.1.1.1; a dedução do FUNDEB (tipo 3)
+      // 200,00 em 5.2.1.1.2.01.01; a receita a realizar fica com o líquido, 5.000,00 (credora).
+      const saldo = async (c: string): Promise<string> => (await saldoDasContas(prisma, [c], null)).toFixed(2);
+      expect([await saldo("5.2.1.1.1.00.00"), await saldo("5.2.1.1.2.01.01"), await saldo("6.2.1.1.0.00.00")]).toEqual(["5200.00", "-200.00", "-5000.00"]);
       const r2 = await carregarReceitaDaLoa(prisma, { exercicio: 2026, linhas, descricaoOficial: (c) => descricaoOficialDaNatureza(c, EMENTARIO), documento: "Lei 613/2025, Anexo II", criadoPor: POR });
       expect(r2).toMatchObject({ naturezasCadastradas: 0, previsoesCriadas: 0, previsoesJaExistentes: 4 });
     });

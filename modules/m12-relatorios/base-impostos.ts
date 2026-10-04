@@ -206,6 +206,18 @@ export async function baseDeImpostos(
     porChave.set(chave, acc);
   }
 
+  // ── V35 — a dedução do FUNDEB REGISTRADA como dedução da receita (MCASP), na mesma janela da data do fato ──
+  // A natureza redutora acima continua lida (bases antigas); a dedução registrada soma-se a ela e, como ela, abate
+  // só o LÍQUIDO. O estorno da dedução volta com o sinal invertido.
+  const registradas = await leitor.deducaoDaReceitaRealizada.findMany({
+    where: { tipo: "FUNDEB", data: { lte: p.ate, ...(p.desde !== undefined ? { gte: p.desde } : {}) } },
+    select: { valor: true, estornoDeId: true },
+  });
+  for (const r of registradas) {
+    const v = toMoney(r.valor.toFixed(2));
+    deducaoFundeb = r.estornoDeId === null ? soma(deducaoFundeb, v) : toMoney(deducaoFundeb.minus(v));
+  }
+
   // ── monta as linhas, respeitando a estrutura (grupo/rótulo/ordem) e o filtro do IBS ──
   const impostos: LinhaBaseImposto[] = [];
   const transferencias: LinhaBaseImposto[] = [];

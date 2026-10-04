@@ -291,3 +291,16 @@ ganhou botão na própria proposta.
 - `PROPOSTA-VERSAO-DO-PROJETO` — a versão do projeto encaminhado (M02b) fotografa as fichas; antes da efetivação
   ela ainda não fotografa a proposta.
 - O tempo da efetivação com a LOA real de Esperança não foi medido; o limite da transação é 120 s.
+
+## V35 — fontes oficiais, carga da LOA aprovada e a previsão da receita no razão
+
+- **Fontes e CO** (`fontes-oficiais.ts`, tela Planejamento › Fontes de recurso): carga da tabela da STN 2026, só
+  acrescenta, natureza do controle pelo bloco oficial.
+- **Carga da LOA** (`carga-da-loa.ts`): QDD e receita prevista extraídos da lei e conferidos contra os totais dela
+  (Esperança: `docs/oficial/esperanca-pb/*-DERIVADO.csv`). Estrutura que falta é cadastrada; fichas pelo `criarFicha`.
+- **Previsão da receita no razão** (`previsao-no-razao.ts`): a receita (orçamentária e intra) lança D 5.2.1.1.1 /
+  C 6.2.1.1 ao ser criada; a dedução lança D 6.2.1.1 / C 5.2.1.1.2.01.01 (FUNDEB) ou .99.00 ao receber o detalhe
+  com o tipo; a efetivação da proposta faz o mesmo. Fato de 1º de janeiro, como a dotação. Antes a classe 6.2.1.1
+  ficava negativa na arrecadação e a MSC saía sem previsão.
+- **Pendente:** previsões de bases antigas (criadas antes da V35) não têm lançamento; a reprevisão (LRF art. 12)
+  continua fora do razão.

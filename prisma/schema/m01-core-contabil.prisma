@@ -158,6 +158,8 @@ enum NaturezaLancamento {
 /// entidade DONA do fato, com LEITOR NOMEADO. Ver `MODULO.md` (§ a competência) e a migração
 /// `*_remove_competencia_lancamento`.
 model LancamentoContabil {
+  /// V35 — a dedução da receita que este lançamento escritura. VIRTUAL.
+  deducaoDaReceita DeducaoDaReceitaRealizada? @relation("LancamentoDaDeducao")
   id             String               @id @default(cuid())
   numeroControle String
   dataTransacao  DateTime

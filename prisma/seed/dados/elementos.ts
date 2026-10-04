@@ -2,7 +2,10 @@
  * ELEMENTOS DE DESPESA — Anexo II da Portaria Interministerial STN/SOF
  * 163/2001 consolidada. 5º e 6º dígitos da natureza da despesa.
  *
- * ROL FECHADO: 78 elementos, confirmado contra o Anexo II.
+ * ROL FECHADO: 86 elementos — Anexo II da Portaria 163/2001 consolidada pela Portaria Conjunta 103/2021
+ * (docs/oficial/stn-sof/portaria-163-2001-consolidada-103-16-v11-11-25.pdf) e conferido contra a relação de
+ * elementos de 2026 do TCE-PB (docs/oficial/tce-pb/relacao_elemento_subelemento_2026.xlsx, 86 códigos). V35: a
+ * lista tinha 78 e não trazia 40, 59, 82, 83, 84, 85, 86 e 98 — o 98 apareceu na LOA real de Esperança.
  *
  * ⚠️ COLISÃO DE CÓDIGO com MODALIDADE DE APLICAÇÃO: os códigos
  * 32, 35, 45, 46, 67, 73, 93 e 94 existem nos DOIS domínios com significados
@@ -56,6 +59,7 @@ export const ELEMENTOS: readonly ElementoOficial[] = [
   { codigo: "37", nome: "Locação de Mão-de-Obra" },
   { codigo: "38", nome: "Arrendamento Mercantil" },
   { codigo: "39", nome: "Outros Serviços de Terceiros - Pessoa Jurídica" },
+  { codigo: "40", nome: "Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica" },
   { codigo: "41", nome: "Contribuições" },
   { codigo: "42", nome: "Auxílios" },
   { codigo: "43", nome: "Subvenções Sociais" },
@@ -72,6 +76,7 @@ export const ELEMENTOS: readonly ElementoOficial[] = [
   { codigo: "56", nome: "Pensões do RGPS - Área Urbana" },
   { codigo: "57", nome: "Outros Benefícios do RGPS - Área Rural" },
   { codigo: "58", nome: "Outros Benefícios do RGPS - Área Urbana" },
+  { codigo: "59", nome: "Pensões Especiais" },
   { codigo: "61", nome: "Aquisição de Imóveis" },
   { codigo: "62", nome: "Aquisição de Produtos para Revenda" },
   { codigo: "63", nome: "Aquisição de Títulos de Crédito" },
@@ -88,6 +93,11 @@ export const ELEMENTOS: readonly ElementoOficial[] = [
   { codigo: "76", nome: "Principal Corrigido da Dívida Mobiliária Refinanciado" },
   { codigo: "77", nome: "Principal Corrigido da Dívida Contratual Refinanciado" },
   { codigo: "81", nome: "Distribuição Constitucional ou Legal de Receitas" },
+  { codigo: "82", nome: "Aporte de Recursos pelo Parceiro Público em Favor do Parceiro Privado Decorrente de Contrato de Parceria Público-Privada - PPP" },
+  { codigo: "83", nome: "Despesas Decorrentes de Contrato de Parceria Público-Privada - PPP, exceto Subvenções Econômicas, Aporte e Fundo Garantidor" },
+  { codigo: "84", nome: "Despesas Decorrentes da Participação em Fundos, Organismos, ou Entidades Assemelhadas, Nacionais e Internacionais" },
+  { codigo: "85", nome: "Contrato de Gestão" },
+  { codigo: "86", nome: "Compensações a Regimes de Previdência" },
   { codigo: "91", nome: "Sentenças Judiciais" },
   { codigo: "92", nome: "Despesas de Exercícios Anteriores" },
   { codigo: "93", nome: "Indenizações e Restituições" },
@@ -95,5 +105,6 @@ export const ELEMENTOS: readonly ElementoOficial[] = [
   { codigo: "95", nome: "Indenização pela Execução de Trabalhos de Campo" },
   { codigo: "96", nome: "Ressarcimento de Despesas de Pessoal Requisitado" },
   { codigo: "97", nome: "Aporte para Cobertura do Déficit Atuarial do RPPS" },
+  { codigo: "98", nome: "Despesas do Orçamento de Investimento" },
   { codigo: "99", nome: "A Classificar" },
 ];

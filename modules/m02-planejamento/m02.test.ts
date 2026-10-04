@@ -86,7 +86,7 @@ function criarFakes(): {
       },
     },
     receitas: {
-      async criar(receita) {
+      async criar(receita, _autor) {
         receitas.push(receita);
         return `receita-${++seq}`;
       },

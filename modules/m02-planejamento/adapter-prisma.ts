@@ -10,6 +10,8 @@ import { recalcularCache } from "../m05-despesa/adapter-prisma.js";
 import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
 import { instanteCivil } from "../../packages/datas/index.js";
+import { lancarPrevisaoDaReceita } from "./previsao-no-razao.js";
+import { CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
 import type {
   ClassificacaoRepositoryPort,
   FichaParaPersistir,
@@ -262,20 +264,35 @@ export function criarReceitaPrevistaRepositoryPrisma(
   prisma: PrismaClient
 ): ReceitaPrevistaRepositoryPort {
   return {
-    async criar(receita: ReceitaPrevistaParaPersistir): Promise<string> {
+    async criar(receita: ReceitaPrevistaParaPersistir, autor: string): Promise<string> {
       try {
-        const criada = await prisma.receitaPrevista.create({
-          data: {
-            exercicio: receita.exercicio,
-            naturezaReceitaId: receita.naturezaReceitaId,
-            fonteId: receita.fonteId,
-            exercicioFonte: receita.exercicioFonte,
-            tipoReceita: receita.tipoReceita,
-            valorPrevisto: receita.valorPrevisto.toFixed(2),
-          },
-          select: { id: true },
+        return await prisma.$transaction(async (tx) => {
+          const criada = await tx.receitaPrevista.create({
+            data: {
+              exercicio: receita.exercicio,
+              naturezaReceitaId: receita.naturezaReceitaId,
+              fonteId: receita.fonteId,
+              exercicioFonte: receita.exercicioFonte,
+              tipoReceita: receita.tipoReceita,
+              valorPrevisto: receita.valorPrevisto.toFixed(2),
+            },
+            select: { id: true },
+          });
+          // V35 — a PREVISÃO no razão, como a dotação: fato de 1º de janeiro do exercício. A dedução não entra aqui —
+          // a conta dela depende do tipo (FUNDEB ou outra), que só o detalhe da linha diz (`detalharReceitaPrevista`).
+          if (receita.tipoReceita !== "DEDUCAO" && receita.valorPrevisto.greaterThan(0)) {
+            await lancarPrevisaoDaReceita(tx, {
+              receitaPrevistaId: criada.id,
+              exercicio: receita.exercicio,
+              valor: receita.valorPrevisto.toFixed(2),
+              debito: CONTA_PREVISAO_INICIAL_RECEITA_BRUTA,
+              credito: CONTA_RECEITA_A_REALIZAR,
+              historico: `Previsão inicial da receita (LOA ${String(receita.exercicio)})`,
+              autor,
+            });
+          }
+          return criada.id;
         });
-        return criada.id;
       } catch (e) {
         if (ehViolacaoDeUnicidade(e)) {
           throw new Error(

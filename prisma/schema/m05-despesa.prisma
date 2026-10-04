@@ -404,6 +404,8 @@ model Liquidacao {
 /// conta" é uma regra que não dá para checar. `Pagamento.contaBancaria` guarda
 /// o código, e o adapter confere a fonte contra esta tabela.
 model ContaBancaria {
+  /// V35 — as deduções retidas na origem desta conta. VIRTUAL.
+  deducoesRealizadas DeducaoDaReceitaRealizada[] @relation("DeducaoDaConta")
   /// V26 — as transferências entre UGs (m01-unidade-gestora.prisma).
   transferenciasEntreUgsConcedidas TransferenciaEntreUgs[] @relation("ContaOrigemDaTransferenciaEntreUgs")
   transferenciasEntreUgsRecebidas  TransferenciaEntreUgs[] @relation("ContaDestinoDaTransferenciaEntreUgs")

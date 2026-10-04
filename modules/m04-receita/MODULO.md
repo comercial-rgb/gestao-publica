@@ -200,3 +200,16 @@ receita.tipo == ANULACAO        => não se anula uma anulação
 - **Integração tributária real** (a arrecadação chegando de sistema externo) →
   módulo de integração; aqui a arrecadação é registrada pela borda.
 - **Matriz de eventos contábeis** — este módulo traz UM roteiro, não a matriz.
+
+## V35 — a dedução da receita realizada (FUNDEB) e o ementário oficial
+
+- `deducao-da-receita.ts` (tela Receitas › Deduções da receita): a retenção do FUNDEB registrada como dedução, com
+  a natureza e a fonte da receita deduzida (MCASP 11ª ed., Parte V 1.4.2). Três naturezas de informação:
+  6.2.1.3.1.01 × 6.2.1.1; 3.5.2.2.4 × banco; 8.2.1.1.1.01 × 8.2.1.1.4.04. Valor do documento do banco, nunca 20%
+  calculado. Cabe no arrecadado líquido até a data, sob o trinco `DeducaoDaReceita` (posto 39). Estorno append-only.
+- Leitores ensinados: composição da receita realizada (BO, BF, DFC — líquidos), DDR por fonte (quinta origem),
+  base de impostos dos Anexos 8/12 (abate só o líquido), SAGRES ReceitaOrcamentaria (§5.23 tipo 3, número
+  9.000.000 + ordem no exercício).
+- `ementario-oficial.ts`: descrição oficial de um código real pelo agregador do ementário STN 2026 + o Tipo.
+- **Pendente:** deduções de rendimentos (tipo 4) e outras (tipo 5) não têm fato; a natureza redutora antiga continua
+  lida pela base de impostos para bases anteriores.

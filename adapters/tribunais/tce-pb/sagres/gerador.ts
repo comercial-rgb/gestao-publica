@@ -32,6 +32,7 @@ import {
   LAYOUT_CONCILIACAO_BANCARIA,
   tipoConciliacaoDe,
   LAYOUT_RECEITA_ORCAMENTARIA,
+  TIPO_RECEITA_DEDUCAO_FUNDEB,
   LAYOUT_RETENCAO,
   LAYOUT_ESTORNO_RETENCAO,
   LAYOUT_ESTORNO_DESPESA_EXTRA,
@@ -1163,7 +1164,7 @@ export async function lerFatosReceitaOrcamentaria(
   // V34 — com várias UGs, cada guia leva a UG da entidade titular dela (carimbada no instante, ou atribuída).
   const ugDe = new Map<string, UgOuMotivo>();
   if (params.ugs !== undefined) for (const r of receitas) ugDe.set(r.id, await params.ugs.ugDaReceita(r.id));
-  return receitas.flatMap((r) => {
+  const dasGuias = receitas.flatMap((r) => {
     const u = ugDe.get(r.id);
     if (u !== undefined && u.ug === null) {
       params.ugs?.omitir({ arquivo: "ReceitaOrcamentaria", documento: `guia ${r.numeroReceita} (${r.tipo}) de ${diaBrUtc(r.dataArrecadacao)}`, motivo: u.motivo });
@@ -1200,6 +1201,62 @@ export async function lerFatosReceitaOrcamentaria(
       cnpjGerencia: params.cnpjGerenciadora,
     }));
   });
+  const base = {
+    codUnidadeGestora: params.codUnidadeGestora,
+    numeroConta: comDigito(t.conta, conta.digitoConta),
+    codBanco: t.banco,
+    numeroAgencia: comDigito(t.agencia, conta.digitoAgencia),
+    tipoContaBancaria: TIPO_CONTA_CORRENTE,
+    cnpjGerencia: params.cnpjGerenciadora,
+  };
+  return [...dasGuias, ...(await deducoesDoDia(prisma, gte, lt, base, params.ugs))];
+}
+
+/**
+ * V35 — AS DEDUÇÕES DO FUNDEB DO DIA (§5.23 tipo 3), com a natureza e a fonte da receita deduzida. O estorno sai com o
+ * tipo de lançamento 2 (§5.18). A dedução não é guia: o número (N7) é 9.000.000 + a ordem dela no exercício
+ * (criadoEm, id) — estável entre remessas, e fora da faixa das guias.
+ */
+async function deducoesDoDia(
+  prisma: PrismaClient,
+  gte: Date,
+  lt: Date,
+  base: Omit<ReceitaOrcamentariaFato, "numeroReceita" | "codReceitaOrcamentaria" | "tipoLancamento" | "exercicioFonteRecurso" | "codFonteRecurso" | "valor" | "data" | "co" | "tipoReceitaLancada">,
+  ugs: ResolvedorDeUgs | undefined
+): Promise<ReceitaOrcamentariaFato[]> {
+  const doDia = await prisma.deducaoDaReceitaRealizada.findMany({
+    where: { data: { gte, lt } },
+    select: { id: true, exercicio: true, valor: true, data: true, estornoDeId: true, exercicioFonte: true, naturezaReceita: { select: { codigo: true } }, fonte: { select: { codigo: true } } },
+    orderBy: [{ criadoEm: "asc" }, { id: "asc" }],
+  });
+  const fatos: ReceitaOrcamentariaFato[] = [];
+  for (const d of doDia) {
+    const ordem = await prisma.deducaoDaReceitaRealizada.findMany({ where: { exercicio: d.exercicio }, select: { id: true }, orderBy: [{ criadoEm: "asc" }, { id: "asc" }] });
+    const numero = String(9000000 + ordem.findIndex((x) => x.id === d.id) + 1);
+    let ug = base.codUnidadeGestora;
+    if (ugs !== undefined) {
+      const u = await ugs.ugDaDeducao(d.id);
+      if (u.ug === null) {
+        ugs.omitir({ arquivo: "ReceitaOrcamentaria", documento: `dedução ${numero} da receita ${d.naturezaReceita.codigo} de ${diaBrUtc(d.data)}`, motivo: u.motivo });
+        continue;
+      }
+      ug = u.ug;
+    }
+    fatos.push({
+      ...base,
+      codUnidadeGestora: ug,
+      numeroReceita: numero,
+      codReceitaOrcamentaria: d.naturezaReceita.codigo,
+      tipoLancamento: d.estornoDeId === null ? "ARRECADACAO" : "ANULACAO",
+      exercicioFonteRecurso: d.exercicioFonte,
+      codFonteRecurso: d.fonte.codigo,
+      valor: money(d.valor),
+      data: d.data,
+      co: null,
+      tipoReceitaLancada: TIPO_RECEITA_DEDUCAO_FUNDEB,
+    });
+  }
+  return fatos;
 }
 
 export async function gerarReceitaOrcamentaria(

@@ -241,6 +241,8 @@ model Subelemento {
 /// De-para TCE <-> STN embutido: exportar para o SAGRES ou para o SICONFI é
 /// escolher a coluna, não traduzir.
 model FonteRecurso {
+  /// V35 — as deduções realizadas desta fonte. VIRTUAL.
+  deducoesRealizadas DeducaoDaReceitaRealizada[] @relation("DeducaoDaFonte")
   id              String  @id @default(cuid())
   /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
   retencoesProprias ClassificacaoDaRetencaoPropria[] @relation("FonteDaRetencaoPropria")
@@ -382,6 +384,8 @@ model FichaOrcamentaria {
 
 /// Código de receita STN — 8 dígitos.
 model NaturezaReceita {
+  /// V35 — as deduções realizadas desta natureza (FUNDEB). VIRTUAL.
+  deducoesRealizadas DeducaoDaReceitaRealizada[] @relation("DeducaoDaNatureza")
   id            String  @id @default(cuid())
   /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
   retencoesProprias ClassificacaoDaRetencaoPropria[] @relation("NaturezaDaRetencaoPropria")

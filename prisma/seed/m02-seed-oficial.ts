@@ -116,12 +116,12 @@ function validarAntesDeGravar(): void {
     erros.push(`Elementos duplicados na fonte: ${dupElem.join(", ")}.`);
   }
 
-  // Rol FECHADO: 78 elementos no Anexo II. Se a lista mudar de tamanho sem
+  // Rol FECHADO: 86 elementos no Anexo II (consolidado; conferido contra a relação 2026 do TCE-PB). Se a lista mudar de tamanho sem
   // alguém mexer aqui de propósito, é erro — não silêncio.
-  if (ELEMENTOS.length !== 78) {
+  if (ELEMENTOS.length !== 86) {
     erros.push(
       `Lista de elementos tem ${ELEMENTOS.length} itens; o Anexo II da ` +
-        `163/2001 tem 78. Confira antes de semear.`
+        `163/2001 consolidada tem 86. Confira antes de semear.`
     );
   }
 

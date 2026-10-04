@@ -10,6 +10,8 @@ import type { TipoMovimentoDotacao } from "../m05-despesa/dominio.js";
 import { criarFichaNaTransacao } from "./adapter-prisma.js";
 import { SINAL_PREVISAO } from "./dominio.js";
 import { travar } from "../../packages/locks/index.js";
+import { CONTA_PREVISAO_DEDUCAO_FUNDEB, CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_PREVISAO_OUTRAS_DEDUCOES, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
+import { lancarPrevisaoDaReceita } from "./previsao-no-razao.js";
 
 /**
  * A PROPOSTA ORÇAMENTÁRIA DO EXERCÍCIO SEGUINTE (V29, M02).
@@ -478,6 +480,9 @@ export async function efetivarPropostaOrcamentaria(
                     exercicioFonte: true,
                     tipoReceita: true,
                     naturezaReceita: { select: { codigo: true } },
+                    // V35 — o tipo da dedução da linha de origem: a dedução nova nasce com o mesmo detalhe e a previsão
+                    // dela entra no razão na conta que o tipo decide.
+                    detalhe: { select: { tipoDeducaoSagres: true } },
                   },
                 },
               },
@@ -578,7 +583,7 @@ export async function efetivarPropostaOrcamentaria(
         if (receitasACriar.length > 0) await autorizarAReceitaDaEfetivacao(tx, d.criadoPor);
 
         for (const r of receitasACriar) {
-          await tx.receitaPrevista.create({
+          const criada = await tx.receitaPrevista.create({
             data: {
               exercicio,
               naturezaReceitaId: r.origem.naturezaReceitaId,
@@ -589,6 +594,25 @@ export async function efetivarPropostaOrcamentaria(
             },
             select: { id: true },
           });
+          // V35 — a previsão no razão, como na criação pela tela. A dedução só entra com o tipo da linha de origem;
+          // sem ele fica sem lançamento até o detalhe ser registrado (Planejamento › Receita prevista).
+          const tipoDeducao = r.origem.detalhe?.tipoDeducaoSagres ?? null;
+          if (r.origem.tipoReceita !== "DEDUCAO") {
+            await lancarPrevisaoDaReceita(tx, {
+              receitaPrevistaId: criada.id, exercicio, valor: r.valor.toFixed(2),
+              debito: CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, credito: CONTA_RECEITA_A_REALIZAR,
+              historico: `Previsão inicial da receita ${r.origem.naturezaReceita.codigo} (LOA ${String(exercicio)})`, autor: d.criadoPor,
+            });
+          } else if (tipoDeducao !== null) {
+            await tx.detalheDaReceitaPrevista.create({
+              data: { receitaPrevistaId: criada.id, tipoDeducaoSagres: tipoDeducao, codigoNoDocumento: null, documento: `Proposta orçamentária efetivada para ${String(exercicio)} (tipo da dedução da linha de origem)`, criadoPor: d.criadoPor },
+            });
+            await lancarPrevisaoDaReceita(tx, {
+              receitaPrevistaId: criada.id, exercicio, valor: r.valor.toFixed(2),
+              debito: CONTA_RECEITA_A_REALIZAR, credito: tipoDeducao === "3" ? CONTA_PREVISAO_DEDUCAO_FUNDEB : CONTA_PREVISAO_OUTRAS_DEDUCOES,
+              historico: `Previsão de dedução da receita ${r.origem.naturezaReceita.codigo} (LOA ${String(exercicio)})`, autor: d.criadoPor,
+            });
+          }
         }
         for (const r of despesasACriar) {
           await criarFichaNaTransacao(

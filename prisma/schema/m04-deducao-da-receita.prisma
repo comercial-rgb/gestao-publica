@@ -1,0 +1,40 @@
+/// V35 — A DEDUÇÃO DA RECEITA REALIZADA (MCASP 11ª ed., Parte I, cap. Receita Orçamentária; Parte V, cap. 1.4.2).
+///
+/// A transferência do município ao FUNDEB é retida na origem (o banco credita o líquido) e se registra como DEDUÇÃO da
+/// receita, com a MESMA natureza da receita arrecadada — não como uma natureza redutora. Três naturezas de informação:
+///   orçamentária  D 6.2.1.3.1.01.00 (-) FUNDEB              / C 6.2.1.1.0.00.00 Receita a realizar
+///   patrimonial   D 3.5.2.2.4.00.00 Transferências ao Fundeb / C a conta contábil do banco
+///   controle      D 8.2.1.1.1.01.00 Recursos disponíveis     / C 8.2.1.1.4.04.00 Utilizada por dedução da receita
+/// O valor é o do documento bancário (o demonstrativo da distribuição da arrecadação), não um percentual calculado:
+/// a retenção é um fato do banco. Append-only: o estorno é outra linha que aponta a original.
+enum TipoDeducaoDaReceita {
+  FUNDEB
+}
+
+model DeducaoDaReceitaRealizada {
+  id                String          @id @default(cuid())
+  exercicio         Int
+  naturezaReceitaId String
+  naturezaReceita   NaturezaReceita @relation("DeducaoDaNatureza", fields: [naturezaReceitaId], references: [id])
+  fonteId           String
+  fonte             FonteRecurso    @relation("DeducaoDaFonte", fields: [fonteId], references: [id])
+  exercicioFonte    Int             @default(1)
+  tipo              TipoDeducaoDaReceita
+  valor             Decimal         @db.Decimal(18, 2)
+  data              DateTime
+  /// O documento que prova a retenção (ex.: "Demonstrativo de distribuição da arrecadação BB, FPM 1º decêndio 03/2026").
+  documento         String
+  contaBancariaId   String
+  contaBancaria     ContaBancaria   @relation("DeducaoDaConta", fields: [contaBancariaId], references: [id])
+  lancamentoId      String          @unique
+  lancamento        LancamentoContabil @relation("LancamentoDaDeducao", fields: [lancamentoId], references: [id])
+  /// O estorno aponta a dedução original (uma só vez — índice único).
+  estornoDeId       String?         @unique
+  estornoDe         DeducaoDaReceitaRealizada?  @relation("EstornoDaDeducao", fields: [estornoDeId], references: [id])
+  estorno           DeducaoDaReceitaRealizada?  @relation("EstornoDaDeducao")
+  motivo            String?
+  criadoPor         String
+  criadoEm          DateTime        @default(now())
+
+  @@index([exercicio, naturezaReceitaId])
+}

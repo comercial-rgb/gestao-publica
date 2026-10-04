@@ -56,6 +56,14 @@ export const CONTAS_PCASP_STN: readonly ContaSeed[] = [
   // ── classe 5: controle da APROVAÇÃO do planejamento e orçamento ──
   { codigo: "5.0.0.0.0.00.00", nome: "Controles da Aprovação do Planejamento e Orçamento", naturezaSaldo: "DEVEDORA", nivel: 1, analitica: false },
   { codigo: "5.2.0.0.0.00.00", nome: "Orçamento Aprovado", naturezaSaldo: "DEVEDORA", nivel: 2, analitica: false, pai: "5.0.0.0.0.00.00" },
+  // V35 — a previsão da receita no razão (5.2.1.1.1 / 6.2.1.1), com as mesmas analíticas do plano do TCE-PB.
+  { codigo: "5.2.1.0.0.00.00", nome: "Previsão da Receita", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "5.2.0.0.0.00.00" },
+  { codigo: "5.2.1.1.0.00.00", nome: "Previsão Inicial da Receita", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "5.2.1.0.0.00.00" },
+  { codigo: "5.2.1.1.1.00.00", nome: "Previsão Inicial da Receita Bruta", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true, pai: "5.2.1.1.0.00.00" },
+  { codigo: "5.2.1.1.2.00.00", nome: "(-) Previsão de Deduções da Receita", naturezaSaldo: "CREDORA", nivel: 5, analitica: false, pai: "5.2.1.1.0.00.00" },
+  { codigo: "5.2.1.1.2.01.00", nome: "(-) Deduções por Transferências Constitucionais e Legais", naturezaSaldo: "CREDORA", nivel: 6, analitica: false, pai: "5.2.1.1.2.00.00" },
+  { codigo: "5.2.1.1.2.01.01", nome: "(-) FUNDEB", naturezaSaldo: "CREDORA", nivel: 7, analitica: true, pai: "5.2.1.1.2.01.00" },
+  { codigo: "5.2.1.1.2.99.00", nome: "(-) Outras Deduções", naturezaSaldo: "CREDORA", nivel: 6, analitica: true, pai: "5.2.1.1.2.00.00" },
   { codigo: "5.2.2.0.0.00.00", nome: "Fixação da Despesa", naturezaSaldo: "DEVEDORA", nivel: 3, analitica: false, pai: "5.2.0.0.0.00.00" },
   { codigo: "5.2.2.1.0.00.00", nome: "Dotação Orçamentária", naturezaSaldo: "DEVEDORA", nivel: 4, analitica: false, pai: "5.2.2.0.0.00.00" },
   // ⚠️ REALINHADO AO PLANO OFICIAL (V11 V6.2). `5.2.2.1.1.00.00` é SINTÉTICA no PCASP: ela

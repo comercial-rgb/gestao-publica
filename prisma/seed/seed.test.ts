@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { primeiraAba } from "../../packages/planilha/index.js";
 import { ELEMENTOS } from "./dados/elementos.js";
 import {
   CATEGORIAS_ECONOMICAS,
@@ -148,6 +151,15 @@ describe("rols oficiais — formato", () => {
   it("elementos: 2 dígitos, sem duplicata", () => {
     for (const e of ELEMENTOS) expect(e.codigo).toMatch(/^\d{2}$/);
     expect(new Set(ELEMENTOS.map((e) => e.codigo)).size).toBe(ELEMENTOS.length);
+  });
+
+  // V35 — o rol tinha 78 e faltavam oito (o 98 apareceu na LOA real de Esperança). A conferência é contra OUTRA
+  // publicação, a relação de elementos de 2026 do TCE-PB: um rol incompleto volta a ficar vermelho aqui.
+  it("elementos: exatamente os códigos da relação de 2026 do TCE-PB", () => {
+    const linhas = primeiraAba(readFileSync(resolve(import.meta.dirname, "../../docs/oficial/tce-pb/relacao_elemento_subelemento_2026.xlsx")));
+    const doTribunal = [...new Set(linhas.map((l) => (l[0] ?? "").trim()).filter((c) => /^\d{2}$/.test(c)))].sort();
+    expect(doTribunal.length).toBe(86);
+    expect(ELEMENTOS.map((e) => e.codigo).sort()).toEqual(doTribunal);
   });
 
   it("modalidades: 2 dígitos, sem duplicata, e SEM as revogadas 35/45", () => {
