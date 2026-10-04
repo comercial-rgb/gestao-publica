@@ -372,7 +372,9 @@ describe("M03 — superávit financeiro amarrado aos fatos", () => {
       const itens = await prisma.itemCredito.count({ where: { tipo: "SUPLEMENTACAO" } });
       expect(itens).toBe(1);
     }
-  });
+    // V35 — PRAZO EXPLÍCITO, MEDIDO: 5 rodadas × semear (limpar e montar o banco, ~1,3 s cada, medido em 04/10) não
+    // cabem no padrão de 5 s. A corrida em si leva milissegundos; o prazo cobre a montagem, não esconde lentidão dela.
+  }, 60000);
 });
 
 describe("M03 — o fail-open, e o que ele custa", () => {

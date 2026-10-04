@@ -276,7 +276,11 @@ async function semear(): Promise<void> {
   });
   await prisma.roteiroPatrimonial.createMany({
     data: [
-      { tipo: "AQUISICAO", contaDebitoId: "c-imob", contaCreditoId: "c-vpa-inc", criadoPor: POR },
+      // V35 — a aquisição RECLASSIFICA o que a liquidação lançou (guarda da V28 em adquirirBem): credita a VPD que a
+      // liquidação debitou, não uma VPA de incorporação. O PL não muda (7.500): a VPD líquida cai a 500 (só a depreciação)
+      // e a VPA fica nos 8.000 da receita — os comentários de cabeçalho com "VPA 14.000 − VPD 6.500" descrevem o desenho
+      // anterior, de mesmo total.
+      { tipo: "AQUISICAO", contaDebitoId: "c-imob", contaCreditoId: "c-vpd", criadoPor: POR },
       { tipo: "DEPRECIACAO", contaDebitoId: "c-vpd-dep", contaCreditoId: "c-dep-acum", criadoPor: POR },
     ],
   });

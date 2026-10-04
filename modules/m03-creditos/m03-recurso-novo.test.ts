@@ -450,7 +450,9 @@ describe("M03 — EXCESSO DE ARRECADAÇÃO (TR 4.37)", () => {
         await prisma.itemCredito.count({ where: { tipo: "SUPLEMENTACAO" } })
       ).toBe(1);
     }
-  });
+    // V35 — PRAZO EXPLÍCITO, MEDIDO: 5 rodadas × semear (limpar e montar o banco, ~1,3 s cada, medido em 04/10) não
+    // cabem no padrão de 5 s. A corrida em si leva milissegundos; o prazo cobre a montagem, não esconde lentidão dela.
+  }, 60000);
 });
 
 describe("M03 — OPERAÇÃO DE CRÉDITO (TR 4.37)", () => {
