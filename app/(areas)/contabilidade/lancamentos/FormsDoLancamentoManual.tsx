@@ -65,7 +65,7 @@ export function FormLancamentoManual(): React.ReactElement {
           {Array.from({ length: linhas }, (_, i) => (
             <tr key={i}>
               <td className="py-1 pr-2">
-                <input aria-label={`Conta da partida ${i + 1}`} name={`partidas.${i}.conta`} placeholder="0.0.0.0.0.00.00" className={`${CAMPO} font-mono`} />
+                <input aria-label={`Conta da partida ${i + 1}`} name={`partidas.${i}.conta`} placeholder="código da conta, com os 7 níveis" className={`${CAMPO} font-mono`} />
               </td>
               <td className="py-1 pr-2">
                 <select aria-label={`Débito ou crédito da partida ${i + 1}`} name={`partidas.${i}.tipo`} defaultValue={i % 2 === 0 ? "DEBITO" : "CREDITO"} className={CAMPO}>

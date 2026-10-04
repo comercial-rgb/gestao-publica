@@ -69,3 +69,13 @@ Derivado: sha256 `7e6585809659331cf6093c8ddf7dae0783f661e19171ffb42cc71520d9c7fb
 `513e61b31e26735acf5f96230f98cd9ea83790bbe68613dae2a2323a2c8eaa24`). Derivado: sha256
 `ecb19ce9e149f84e67943505139c0d5e4298e0843a91fe847800149d94be13df`. 30 fontes. Serve de conferência
 independente do leitor da tabela oficial da STN (`m02-fontes-oficiais.test.ts` t1).
+
+## Receitas de 2025 (V35, obtido em 04/10/2026) — base do limite do Legislativo
+
+`receitas-2025-DERIVADO.csv`: de
+`https://download.tce.pb.gov.br/dados-abertos/dados-por-municipio/078/receitas/receitas-2025.zip`
+(zip sha256 `5774cba870bd1b345fe05e1cd4a64da28d119df3c93105d1e58b754fec4bf546`; CSV interno
+`56a1dbc287bbdae37e6945f516008c54d313e924a3fc769c8b4982a17ae49b58`), somado por natureza, descrição e tipo de
+atualização, sem o consórcio (UG 701078), em centavos exatos. Derivado: sha256
+`35524f47d15d86f8cb75bed568b2faaefdd27c0ee81a0f9602346c2018405918`. É a base declarada do art. 29-A da CF para 2026
+(2025 não foi escriturado neste sistema). A população vem do IBGE: `docs/oficial/ibge/populacao-estimada-esperanca-2024-2025.json`.

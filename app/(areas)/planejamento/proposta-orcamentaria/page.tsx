@@ -1,3 +1,4 @@
+import { anoCivil } from "../../../../packages/datas/index";
 import Link from "next/link";
 import { Badge } from "../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
@@ -85,7 +86,7 @@ export default async function PropostaOrcamentariaPage(): Promise<React.ReactEle
   }
 
   const anos = exercicios.map((e) => e.ano);
-  const sugestao = (anos[0] ?? new Date().getFullYear()) + 1;
+  const sugestao = (anos[0] ?? anoCivil(new Date())) + 1;
 
   return (
     <div className="space-y-4">

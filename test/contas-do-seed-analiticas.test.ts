@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -74,11 +74,19 @@ const POSTA_PARTIDA: readonly string[] = [
   "sagres-poc.ts",
   "cenario-aceite.ts",
   "backfill-dotacao-inicial.ts",
+  // V35 — classificados (já existiam sem classe): a VPA da arrecadação e a conta de resultados do encerramento
+  // recebem partida, e as contas deles são conferidas como analíticas abaixo.
+  "m04-contas-da-receita.ts",
+  "roteiro-encerramento.ts",
 ];
 
 /** Não posta partida — e cada linha diz por quê, porque é a justificativa que envelhece. */
 const NAO_POSTA_PARTIDA: Readonly<Record<string, string>> = {
   "pcasp.ts": "DECLARA o plano mínimo: cita sintéticas porque elas são parte da hierarquia.",
+  // V35 — classificados (já existiam sem classe):
+  "m12-linhas-demonstrativos.ts": "grava as LINHAS dos Anexos 14 e 15 (derivadas do plano), não partida.",
+  "m12-indicador-superavit-demo.ts": "grava o indicador F/P (art. 105 da Lei 4.320) nas contas da demonstração, não partida.",
+  "poc-custos.ts": "apropriação de CUSTO gerencial (critério e rateio por centro), que não vai ao razão.",
   "pcasp-oficial.ts": "carrega o plano oficial inteiro; é a fonte contra a qual os outros são conferidos.",
   "oficial/pcasp-oficial.ts": "leitor do arquivo do TCE — nenhum código escrito à mão.",
   "oficial/procedencia.ts": "só procedência do arquivo (sha256, URL, data).",
@@ -119,7 +127,8 @@ function arquivosDeSeed(dir: string): readonly string[] {
 }
 
 const RAIZ_SEED = join(RAIZ, "prisma", "seed");
-const relativo = (caminho: string): string => caminho.slice(RAIZ_SEED.length + 1);
+// V35 — com "/" também no Windows: as listas abaixo são escritas com "/", e no Windows o caminho vinha com "\\".
+const relativo = (caminho: string): string => caminho.slice(RAIZ_SEED.length + 1).split(sep).join("/");
 
 function exigidasAnaliticas(): ReadonlyMap<string, string> {
   const m = new Map<string, string>();

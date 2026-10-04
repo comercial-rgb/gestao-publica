@@ -384,6 +384,7 @@ export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
   { href: "/relatorios/livros/diario", numero: "Diário", rotulo: "Livro Diário", descricao: "Livro Diário com todos os lançamentos em ordem cronológica." },
   { href: "/relatorios/livros/razao", numero: "Razão", rotulo: "Razão Analítico", descricao: "Razão de uma conta, com saldo anterior, movimentos e saldo final." },
   { href: "/relatorios/livros/balancete", numero: "Balancete", rotulo: "Balancete de Verificação", descricao: "Saldos e movimentos por conta, com a conferência de débitos e créditos." },
+  { href: "/relatorios/limite-do-legislativo", numero: "Limite do Legislativo", rotulo: "Limite do Legislativo", descricao: "Limite do repasse à Câmara (CF art. 29-A), duodécimo e repasses até o dia 20." },
   { href: "/relatorios/consistencia", numero: "Consistência", rotulo: "Relatório de Consistência", descricao: "Verificação da consistência entre os demonstrativos antes do envio aos órgãos de controle." },
   { href: "/relatorios/eliminacoes-intra", numero: "Eliminações", rotulo: "Eliminações Intragovernamentais", descricao: "Operações entre unidades do próprio ente, excluídas na consolidação." },
   { href: "/relatorios/atualizacoes-orcamentarias", numero: "Atualizações", rotulo: "Atualizações Orçamentárias", descricao: "Créditos adicionais por ficha, decreto, fonte e unidade gestora." },

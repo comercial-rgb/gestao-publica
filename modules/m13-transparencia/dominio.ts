@@ -206,6 +206,15 @@ export const EXPOSICAO_DO_BENEFICIARIO: Record<string, ExposicaoDoBeneficiario> 
   "94": "IDENTIFICA", // Indenizações e Restituições Trabalhistas
   "95": "IDENTIFICA", // Indenização pela Execução de Trabalhos de Campo
   "96": "IDENTIFICA", // Ressarcimento de Despesas de Pessoal Requisitado
+  // V35 — os oito do rol consolidado (Portaria 163 / relação 2026 do TCE-PB) que faltavam:
+  "40": "IDENTIFICA", // Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+  "59": "OMITE_FOLHA_OU_PREVIDENCIA", // Pensões Especiais (a pessoa física, como as pensões do 03)
+  "82": "IDENTIFICA", // Aporte ao parceiro privado de PPP
+  "83": "IDENTIFICA", // Despesas de contrato de PPP
+  "84": "IDENTIFICA", // Participação em fundos, organismos ou entidades
+  "85": "IDENTIFICA", // Contrato de Gestão
+  "86": "IDENTIFICA", // Compensações a Regimes de Previdência (pagas a outro regime, não a pessoa)
+  "98": "IDENTIFICA", // Despesas do Orçamento de Investimento
   "99": "IDENTIFICA", // A Classificar
 };
 

@@ -277,5 +277,7 @@ describe("V11 V4 (R) — a consulta pública de receitas", () => {
     // uma guia aparece em duas páginas e outra nunca aparece: o cidadão nunca a vê.
     expect(new Set(primeira).size).toBe(TOTAL);
     expect(segunda).toEqual(primeira);
-  });
+    // V35 — PRAZO EXPLÍCITO, MEDIDO: as 400 arrecadações em série levam ~13 ms cada (5,2 s medidos em 04/10, 5,7 s
+    // com a máquina ocupada) e o padrão de 5 s ficava no fio. O número 400 é a exigência do teste, acima.
+  }, 60000);
 });

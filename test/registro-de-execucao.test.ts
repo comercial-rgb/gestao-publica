@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import {
@@ -44,9 +44,12 @@ function rodar(
   extras: Readonly<Record<string, string>> = {}
 ): { saida: string; codigo: number } {
   try {
+    // V35 — no Windows o `npx` é `.cmd` e não sobe sem shell: o mesmo cli, pelo próprio node (ver o trinco).
+    const npx: [string, string[]] =
+      process.platform === "win32" ? [process.execPath, [join(dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js")]] : ["npx", []];
     const saida = execFileSync(
-      "npx",
-      ["tsx", "scripts/trinco-de-maquina.ts", TAREFA, "--", "node", "-e", script],
+      npx[0],
+      [...npx[1], "tsx", "scripts/trinco-de-maquina.ts", TAREFA, "--", "node", "-e", script],
       {
         cwd: RAIZ,
         encoding: "utf8",
@@ -130,7 +133,8 @@ describe("registro bruto da execução pesada", () => {
   it("o caminho do registro é ordenável e não tem dois-pontos", () => {
     const p = caminhoDoRegistro("suíte sob outro fuso", new Date("2026-09-11T12:00:00Z"));
     expect(p).toContain("suite-sob-outro-fuso-2026-09-11T12-00-00-000Z.log");
-    expect(p.split("/").pop()).not.toContain(":");
+    // V35 — o nome do arquivo, pelo separador da plataforma (no Windows o caminho inteiro tem "C:").
+    expect(basename(p)).not.toContain(":");
   });
 
   it("o filtro roda DEPOIS e nomeia o que falhou", () => {
@@ -171,7 +175,9 @@ describe("o desfecho do processo pesado", () => {
     return readFileSync((fs[0] as { f: string }).f, "utf8");
   }
 
-  it("morte por sinal: o NOME do sinal fica no registro e o código é 128 + sinal", () => {
+  // V35 — SÓ ONDE HÁ SINAL. O Windows não entrega sinais POSIX: process.abort() sai com o código 3, sem nome de
+  // sinal a registrar. A propriedade vale no Linux, onde roda a produção e o GitHub Actions (ubuntu).
+  it.skipIf(process.platform === "win32")("morte por sinal: o NOME do sinal fica no registro e o código é 128 + sinal", () => {
     // `process.abort()` levanta SIGABRT — o mesmo sinal com que o worker do Next morreu
     // por falta de heap. É a morte que se quer distinguir, reproduzida barata: um processo
     // curto, sem estourar a memória desta máquina de propósito.
@@ -214,8 +220,9 @@ describe("o desfecho do processo pesado", () => {
     const saida = (() => {
       try {
         execFileSync(
-          "npx",
+          process.platform === "win32" ? process.execPath : "npx",
           [
+            ...(process.platform === "win32" ? [join(dirname(process.execPath), "node_modules", "npm", "bin", "npx-cli.js")] : []),
             "tsx",
             "scripts/trinco-de-maquina.ts",
             TAREFA,

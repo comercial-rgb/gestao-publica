@@ -35,7 +35,7 @@ async function digitarEm(p: Page, seletor: string, valores: readonly string[]): 
   for (const [i, v] of valores.entries()) {
     const c = campos[i];
     if (c === undefined) break;
-    await c.click({ clickCount: 3 });
+    await c.click({ count: 3 });
     await c.type(v, { delay: 10 });
   }
   await new Promise((r) => setTimeout(r, 800));

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, janelaCivilDoMes } from "../../packages/datas/index.js";
 import { ugVigenteNoDia } from "../m01-core-contabil/unidade-gestora.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -78,10 +78,9 @@ export async function registrarAgrupamentoDaFolha(prisma: PrismaClient, input: R
 /** As liquidações de folha deste sistema no mês civil que ainda não têm o código — a pendência que o §4.39 nomeia. */
 export async function liquidacoesDeFolhaSemAgrupamento(prisma: PrismaClient, p: { readonly ano: number; readonly mes: number }): Promise<readonly { readonly liquidacaoId: string; readonly numero: string; readonly empenho: string; readonly competencia: string; readonly dia: string }[]> {
   const prefixo = `${String(p.ano)}-${String(p.mes).padStart(2, "0")}`;
-  const inicio = new Date(Date.UTC(p.ano, p.mes - 1, 1));
-  const fim = new Date(Date.UTC(p.ano, p.mes, 1, 6));
+  const { inicio, fim } = janelaCivilDoMes(prefixo);
   const ls = await prisma.liquidacaoDaFolha.findMany({
-    where: { liquidacao: { data: { gte: inicio, lt: fim }, agrupamentoDaFolha: null } },
+    where: { liquidacao: { data: { gte: inicio, lte: fim }, agrupamentoDaFolha: null } },
     select: { liquidacao: { select: { id: true, numero: true, data: true, empenho: { select: { numero: true } } } }, empenhoDaFolha: { select: { apropriacao: { select: { folha: { select: { competencia: true } } } } } } },
   });
   return ls

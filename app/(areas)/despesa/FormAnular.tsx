@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarMoeda } from "../../../packages/contracts/moeda";
 import { useActionState, useRef, useState } from "react";
 import { anularDespesaAction, type EstadoAnulacao } from "./anular-actions";
 import { CampoValor } from "../../../components/ui/Campos";
@@ -24,7 +25,7 @@ function centavos(v: string): number | null {
   const m = /^(\d+)\.(\d{2})$/.exec(cru);
   return m === null ? null : Number(m[1]) * 100 + Number(m[2]);
 }
-const reais = (c: number): string => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const reais = (c: number): string => `R$ ${formatarMoeda(`${String(Math.trunc(c / 100))}.${String(c % 100).padStart(2, "0")}`).texto}`;
 
 /**
  * O EFEITO PREVISTO, dito antes da confirmação. É texto: quem conta é o domínio, dentro da transação, e a

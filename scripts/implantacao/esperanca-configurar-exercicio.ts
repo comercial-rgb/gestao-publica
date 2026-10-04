@@ -11,6 +11,8 @@ import { carregarTabelaDeFontes } from "../../modules/m02-planejamento/fontes-of
 import { descricaoOficialDaNatureza, lerEmentarioDaReceita } from "../../modules/m04-receita/ementario-oficial.js";
 import { abrirExercicio } from "../../modules/m08-restos-a-pagar/exercicio.js";
 import { gerarDeParasDaLrf } from "../../modules/m12-relatorios/deparas-pelo-ementario.js";
+import { componenteDaBase, declararParametroDoLimiteDoLegislativo } from "../../modules/m12-relatorios/limite-do-legislativo.js";
+import { toMoney } from "../../packages/contracts/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 
 /**
@@ -236,6 +238,31 @@ async function deParasDaLrf(): Promise<void> {
   feito.push(`De-paras da LRF pelo ementário 2026: ${JSON.stringify(r)}.`);
 }
 
+/**
+ * O limite do repasse à Câmara (CF 29-A): a população pela estimativa do IBGE de 2025 (32.599 — API do IBGE, tabela
+ * 6579) e, como 2025 não foi escriturado neste sistema, a base declarada: os LANÇAMENTOS de receita de 2025 de
+ * Esperança nos dados abertos do TCE-PB, filtrados pelas mesmas regras do módulo (receita tributária e cotas-partes).
+ */
+async function limiteDoLegislativo(): Promise<void> {
+  if ((await prisma.parametroDoLimiteDoLegislativo.count({ where: { exercicio: 2026 } })) > 0) {
+    feito.push("Parâmetros do limite do Legislativo de 2026 já declarados.");
+    return;
+  }
+  let base = toMoney("0.00");
+  for (const l of csv("docs/oficial/tce-pb/esperanca-078/receitas-2025-DERIVADO.csv")) {
+    const [natureza, , tipo, valor] = l;
+    if (tipo !== "Lançamento de Receita" || componenteDaBase(natureza!) === null) continue;
+    base = toMoney(base.plus(valor!));
+  }
+  await declararParametroDoLimiteDoLegislativo(prisma, {
+    exercicio: 2026, populacao: 32599, fontePopulacao: "IBGE, população residente estimada 2025 (API de agregados, tabela 6579, variável 9324)",
+    baseDeclarada: base.toFixed(2),
+    documentoDaBase: "Receitas de 2025 de Esperança nos dados abertos do TCE-PB (receitas-2025.zip), lançamentos de receita tributária e cotas-partes; docs/oficial/tce-pb/esperanca-078/receitas-2025-DERIVADO.csv",
+    criadoPor: por,
+  });
+  feito.push(`Limite do Legislativo 2026: população 32.599, base 2025 declarada ${base.toFixed(2)}.`);
+}
+
 async function adiantamento(): Promise<void> {
   const FUNDAMENTO =
     "PCASP do TCE-PB 2025 (Pcasp_2025.xlsx): 7.9.1.2.1.00.00 Controle de adiantamentos/suprimentos de fundos concedidos (devedora) e 8.9.1.2.1.01.00 Adiantamentos concedidos a comprovar (credora); Lei 4.320, arts. 68 e 69.";
@@ -261,6 +288,7 @@ try {
   await loa();
   await vinculos();
   await deParasDaLrf();
+  await limiteDoLegislativo();
   await adiantamento();
   console.log("Feito:");
   for (const f of feito) console.log(`  - ${f}`);

@@ -1154,6 +1154,8 @@ export type NomeDeServico =
   | "estornarDeducaoDaReceita"
   // V35 — os de-paras da LRF gerados pelo ementário oficial de 2026
   | "gerarDeParasDaLrf"
+  // V35 — o parâmetro do limite do repasse ao Legislativo (CF 29-A)
+  | "declararParametroDoLimiteDoLegislativo"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1911,6 +1913,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   estornarDeducaoDaReceita: "ANULAR_ARRECADACAO",
   // V35 — dizer em que linha do demonstrativo cada receita entra é a autoridade de cadastrar as linhas dele.
   gerarDeParasDaLrf: "CADASTRAR_LINHA_DEMONSTRATIVO",
+  // V35 — a população e a base do art. 29-A são parâmetros de um demonstrativo: a mesma autoridade.
+  declararParametroDoLimiteDoLegislativo: "CADASTRAR_LINHA_DEMONSTRATIVO",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
@@ -2339,6 +2343,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
   fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
   ordenadorNaData: "leitura (o ordenador designado vigente na data, para a unidade da ficha; recusa a ambiguidade)",
+  apurarLimiteDoLegislativo: "leitura (V35 — o limite do art. 29-A, o duodécimo e os repasses do mês; não muta)",
   deducoesRealizadas: "leitura (V35 — as deduções da receita realizadas no exercício, com o estorno com sinal; não muta)",
   lancarPrevisaoDaReceita: "composável (V35 — o lançamento da previsão da receita no razão; chamado dentro de criarReceitaPrevista, detalharReceitaPrevista e efetivarPropostaOrcamentaria, que autorizam)",
   liquidacoesComSaldo: "leitura (V33 — as liquidações com saldo a pagar da fila do art. 141, por fonte e categoria, com a anulação parcial cortada no tempo; composável de quem paga e do lote, que autorizam)",

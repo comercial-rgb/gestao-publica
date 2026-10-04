@@ -1,3 +1,4 @@
+import { formatarMoeda } from "../../../../packages/contracts/moeda";
 import Link from "next/link";
 import { Badge } from "../../../../components/ui/Badge";
 import { Card } from "../../../../components/ui/Card";
@@ -211,7 +212,7 @@ export default async function AnulacoesPage({ searchParams }: { readonly searchP
                   <td className="py-1.5 pr-2 text-right"><ValorMonetario valor={a.valor} /></td>
                   <td className="py-1.5 pr-2">{a.motivo}<span className="block text-[color:var(--color-ink-3)]">por {a.criadoPor}</span></td>
                   <td className="py-1.5 pr-2"><Link className={LINK} href={a.originalHref}>{a.originalNumero}</Link></td>
-                  <td className="py-1.5 pr-2">{saldoAtual.get(a.originalId)?.replace(/(\d+)\.(\d{2})$/, (_m, i: string, c: string) => `R$ ${Number(i).toLocaleString("pt-BR")},${c}`) ?? "—"}</td>
+                  <td className="py-1.5 pr-2">{((v) => (v === undefined ? "—" : `R$ ${formatarMoeda(v).texto}`))(saldoAtual.get(a.originalId))}</td>
                   <td className="py-1.5"><Link className={LINK} href={`/contabilidade/lancamentos/${a.lancamentoId}`}>abrir</Link></td>
                 </tr>
               ))}

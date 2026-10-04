@@ -21,7 +21,8 @@ const zSemAspas = (max: number, oque: string) =>
     .trim()
     .min(3, `Informe ${oque}.`)
     .max(max, `${oque} vai à prestação de contas em até ${max} caracteres.`)
-    .refine((t) => !/["\u0000-\u001f]/.test(t), `${oque} não pode ter aspas nem quebra de linha.`);
+    // a aspa escrita como \u0022: com o caractere literal, o varredor de prosa dos testes de modelo entrava em modo texto
+    .refine((t) => !/[\u0022\u0000-\u001f]/.test(t), `${oque} não pode ter aspas nem quebra de linha.`);
 
 export const zDesignarOrdenador = z
   .object({

@@ -1,3 +1,4 @@
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import { cliente } from "./cliente";
 import { comEscritaAutenticada } from "./sessao";
 import { atribuirEntidadeAoMovimentoExtra } from "../../modules/m07-extraorcamentario/atribuicao-de-entidade";
@@ -27,7 +28,7 @@ export async function lerMovimentosSemTitular(p: { readonly exercicio: number })
       pagamentoId: null,
       atribuicaoDeEntidade: null,
       contaBancaria: { declaracoesDeTitular: { none: {} } },
-      data: { gte: new Date(Date.UTC(p.exercicio, 0, 1)), lt: new Date(Date.UTC(p.exercicio + 1, 0, 1)) },
+      data: { gte: janelaCivilDoAno(p.exercicio).inicio, lte: janelaCivilDoAno(p.exercicio).fim },
     },
     orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
     select: { id: true, tipo: true, data: true, valor: true, credorConsignatario: true, historico: true, contaBancaria: { select: { codigo: true } } },

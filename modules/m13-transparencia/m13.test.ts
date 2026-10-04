@@ -607,7 +607,7 @@ describe("M13 — as invariantes do módulo (sem banco)", () => {
     }
   });
 
-  it("o Record de exposição cobre os 78 elementos oficiais, e nenhum inventado", () => {
+  it("o Record de exposição cobre os 86 elementos oficiais, e nenhum inventado", () => {
     expect(() => conferirCoberturaDosElementos()).not.toThrow();
   });
 });

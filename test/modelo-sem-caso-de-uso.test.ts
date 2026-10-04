@@ -122,11 +122,17 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
   FaixaIrrf:
     "escrita por `faixas: { create: ... }` em cadastrarTabelaIrrf (modules/m33-folha/servico.ts); " +
     "LIDA pela relação `faixas` da tabela — mesma razão da faixa de contribuição",
-  RubricaDoGrupoDeEmpenho:
-    "escrita por `rubricas: { create: ... }` em cadastrarGrupoDeEmpenhoDaFolha " +
-    "(modules/m33-folha/apropriacao.ts); LIDA pela relação `rubricas` do grupo e pela relação " +
-    "inversa `grupoDeEmpenho` da rubrica (é ela que responde 'esta rubrica já empenha em algum " +
-    "grupo?'). A linha não existe fora do grupo que a declarou",
+  // V35 — RubricaDoGrupoDeEmpenho saiu daqui: o adiantamento salarial e a apropriação passaram a NOMEÁ-LA
+  // (rubricaDoGrupoDeEmpenho.findUnique/findMany). Entram as três que já eram aninhadas e estavam como órfãs:
+  ItemDoCriterioDeRateio:
+    "escrito por `itens: { create: ... }` em publicarCriterioDeRateio (modules/m12-relatorios/custos-servico.ts); " +
+    "o item (centro e percentual) não existe fora do critério que o publicou",
+  RubricaDaBaseDoDecimoTerceiro:
+    "escrita por `rubricasDaBase: { create: ... }` em cadastrarParametroDoDecimoTerceiro " +
+    "(modules/m33-folha/decimo-terceiro-servico.ts); LIDA pela relação `rubricasDaBase` do parâmetro",
+  ItemDoInformeDeEstoque:
+    "escrito por `itens: { create: ... }` em informarEstoqueDaFarmacia (modules/m37-farmacia/servico.ts); " +
+    "o item não existe fora do informe de estoque que o declarou",
   // ── V11 V8.2 — cinco tabelas que o censo do `af32666` acusava e que SÃO aninhadas ──
   //
   // ⚠️ AS CINCO ESTAVAM NA LISTA DE ÓRFÃS POR OMISSÃO, NÃO POR AUSÊNCIA. Cada uma é escrita por

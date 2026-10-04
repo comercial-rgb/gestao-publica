@@ -7,8 +7,18 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+
+/**
+ * V35 — `npx`/`npm` no Windows: pelo node, com o cli do npm que vem junto dele (`<pasta do node>/node_modules/npm/bin`).
+ * Qualquer outro comando, e qualquer comando fora do Windows, sobe como veio.
+ */
+export function resolverNoWindows(comando: string, args: readonly string[]): [string, string[]] {
+  if (process.platform !== "win32" || (comando !== "npx" && comando !== "npm")) return [comando, [...args]];
+  const cli = join(dirname(process.execPath), "node_modules", "npm", "bin", `${comando}-cli.js`);
+  return [process.execPath, [cli, ...args]];
+}
 
 /**
  * O TRINCO DE MÁQUINA — um trabalho pesado por vez, porque o recurso escasso é a RAM.
@@ -400,7 +410,11 @@ if (process.argv[1]?.endsWith("trinco-de-maquina.ts") === true) {
   console.error(`[registro] saida bruta em ${registro}`);
 
   const { spawn } = await import("node:child_process");
-  const filho = spawn(comando as string, args, {
+  // V35 — no Windows, `npx`/`npm` são `.cmd`, e desde o Node 20 um `.cmd` não sobe sem shell (medido: "o comando nao
+  // pode ser iniciado: spawn npx ENOENT"). Shell não serve: ele junta os argumentos sem escape e quebraria um
+  // `node -e "<script>"`. Então os dois sobem pelo próprio node, com o cli do npm ao lado dele. Fora do Windows, nada muda.
+  const [exe, argv] = resolverNoWindows(comando as string, args);
+  const filho = spawn(exe, argv, {
     stdio: ["inherit", "pipe", "pipe"],
   });
 

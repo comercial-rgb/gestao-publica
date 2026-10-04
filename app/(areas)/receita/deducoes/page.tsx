@@ -1,4 +1,5 @@
 import { Card } from "../../../../components/ui/Card";
+import { formatarMoeda } from "../../../../packages/contracts/moeda";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
@@ -16,7 +17,8 @@ import { FormDeducao, FormEstornoDeducao } from "./Formularios";
  */
 export const dynamic = "force-dynamic";
 
-const brl = (v: string): string => Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// o formatador contábil do repositório (textual, sem `number` e sem o hospedeiro decidir o formato)
+const brl = (v: string): string => formatarMoeda(v).texto;
 
 export default async function DeducoesDaReceitaPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | undefined>> }): Promise<React.ReactElement> {
   const sp = await searchParams;

@@ -75,8 +75,12 @@ function fontesDeProducao(dir: string, acc: string[] = []): string[] {
     }
     if (!/\.(ts|tsx)$/.test(e.name)) continue;
     if (/\.test\.tsx?$/.test(e.name)) continue;
-    // `test/` guarda helpers de fixture, que são tão "de teste" quanto os `.test.ts`.
-    if (relative(RAIZ, p).startsWith("test/")) continue;
+    // V35 — a fixture de módulo (`fixture-m06.ts`, `fixture-m08.ts`) é código de teste com outro nome: semeia as
+    // próprias contas no banco de teste, pelo mesmo motivo dos `.test.ts` acima.
+    if (/^fixture-.*\.tsx?$/.test(e.name)) continue;
+    // `test/` guarda helpers de fixture, que são tão "de teste" quanto os `.test.ts`. (V35: pelo separador da
+    // plataforma — com "/" fixo, no Windows a pasta nunca era reconhecida.)
+    if (relative(RAIZ, p).replace(/\\/g, "/").startsWith("test/")) continue;
     acc.push(p);
   }
   return acc;
@@ -139,6 +143,13 @@ const SINTETICAS_TOLERADAS: ReadonlySet<string> = new Set([
   // aponta para ele: o que é exportado são `CONTA_DOTACAO_POR_FONTE_*`, as quatro ANALÍTICAS.
   // Tirar o desenho do comentário faria a varredura ficar verde e a explicação, pior.
   "5.2.2.1.3.00.00",
+  // ── V35 — os nós de HIERARQUIA da previsão da receita no plano mínimo de teste (`prisma/seed/pcasp.ts`): pais das
+  // analíticas 5.2.1.1.1.00.00, 5.2.1.1.2.01.01 e 5.2.1.1.2.99.00; nenhuma partida os toca. ──
+  "5.2.1.0.0.00.00", "5.2.1.1.0.00.00", "5.2.1.1.2.00.00", "5.2.1.1.2.01.00",
+  // ── V35 — citadas só em PROSA: `5.2.2.1.9.00.00` no desenho do ramo do cancelamento (`roteiros.ts`), ao lado da
+  // analítica que a anulação usa (5.2.2.1.9.04.00); `2.1.3.1.1.01.00` no comentário do smoke dos restos que registra
+  // o erro de tê-la usado. Nenhum código aponta para elas. ──
+  "5.2.2.1.9.00.00", "2.1.3.1.1.01.00",
 ]);
 
 interface Uso {
@@ -406,6 +417,18 @@ describe("as contas do código contra o PCASP oficial", () => {
    * inalcançada, e o teste cobra a classificação — em vez de passar por omissão.
    */
   const NAO_E_PERNA: Readonly<Record<string, string>> = {
+    // ── V35 — PERNAS REAIS QUE A COLHEITA NÃO LÊ POR FORMA, todas ANALÍTICAS no Pcasp_2025 (conferido no banco de
+    // ensaio de Esperança com o plano oficial carregado, 04/10/2026): ──
+    "3.5.2.2.4.00.00": "perna da dedução do FUNDEB (`deducao-da-receita.ts`), lançada por id (`ids.get(...)`); analítica.",
+    "6.2.1.3.1.01.00": "idem — a dedução realizada (-) FUNDEB; analítica.",
+    "8.2.1.1.4.04.00": "idem — DDR utilizada por dedução da receita; analítica.",
+    "5.2.1.1.2.01.01": "perna da previsão da dedução, escolhida por ternário (credito: tipo 3 ? A : B); analítica.",
+    "5.2.1.1.2.99.00": "idem — o outro ramo do ternário, (-) outras deduções; analítica.",
+    "2.3.7.1.1.01.00": "a conta de resultados do roteiro de encerramento, gravada pelo seed como contaResultadosAcumuladosId; analítica.",
+    "6.2.2.1.2.02.00": "PRE_EMPENHADO do roteiro da reserva publicado por `parametrizar-demonstracao.ts` (contaCreditoCodigo); analítica.",
+    "2.1.1.1.1.01.01": "folha da demonstração (`semear-folha-da-demonstracao.ts`), conta da obrigação do grupo de empenho; analítica.",
+    "2.1.1.4.3.01.01": "idem — obrigação RGPS da folha da demonstração; analítica.",
+    "3.1.1.2.1.01.01": "idem — VPD de vencimentos da folha da demonstração; analítica.",
     "6.2.2.1.3.02.00":
       "CREDITO EMPENHADO EM LIQUIDAÇÃO — o estado que este sistema NÃO usa. A constante " +
       "existe para `m01-roteiros.test.ts` afirmar que ela não aparece no roteiro: a " +

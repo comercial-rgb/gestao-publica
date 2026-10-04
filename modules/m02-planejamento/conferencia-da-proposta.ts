@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { formatarMoeda } from "../../packages/contracts/moeda.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { metasAnuaisVigentes } from "../m02b-plurianual/comparativo.js";
 import { valorVigente } from "../m02b-plurianual/alteracao.js";
@@ -90,8 +91,7 @@ export interface FatosDoPlanejamento {
   } | null;
 }
 
-const reais = (v: Money | string): string =>
-  `R$ ${Number(typeof v === "string" ? v : v.toFixed(2)).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const reais = (v: Money | string): string => `R$ ${formatarMoeda(typeof v === "string" ? v : v.toFixed(2)).texto}`;
 
 /** A conferência em si — PURA: a proposta detalhada e os fatos do planejamento entram, o laudo sai. */
 export function conferirProposta(p: PropostaDetalhada, f: FatosDoPlanejamento): ConferenciaDaProposta {

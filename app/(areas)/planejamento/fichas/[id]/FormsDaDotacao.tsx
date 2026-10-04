@@ -1,5 +1,6 @@
 "use client";
 
+import { formatarMoeda } from "../../../../../packages/contracts/moeda";
 import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 import {
@@ -45,7 +46,7 @@ export function FormReservar({ fichaId, disponivel }: { readonly fichaId: string
           <span className={ROTULO}>Valor a reservar (R$)</span>
           <input className={CAMPO} name="valor" inputMode="decimal" required aria-describedby={`disp-${fichaId}`} />
           <span id={`disp-${fichaId}`} className="mt-1 block text-xs text-[color:var(--color-ink-3)]">
-            Disponível agora: {Number(disponivel).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}. O saldo é conferido de novo ao gravar.
+            Disponível agora: R$ {formatarMoeda(String(disponivel)).texto}. O saldo é conferido de novo ao gravar.
           </span>
         </label>
         <label className="block text-sm md:col-span-2">

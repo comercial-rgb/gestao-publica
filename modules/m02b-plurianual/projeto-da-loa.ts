@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, fimDoDiaCivil } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { vigenteNoCorte } from "../m02-planejamento/declaracao-da-unidade.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -48,7 +48,7 @@ export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: 
       if (Number(d.competenciaDaRemessa.slice(0, 4)) !== lei.exercicio - 1) {
         throw new Error(`A remessa do projeto da LOA de ${String(lei.exercicio)} é do ano anterior (${String(lei.exercicio - 1)}), não de ${d.competenciaDaRemessa.slice(0, 4)}. Nada foi gravado.`);
       }
-      const corte = new Date(`${diaCivil(d.dataDoEncaminhamento)}T23:59:59.999Z`);
+      const corte = fimDoDiaCivil(diaCivil(d.dataDoEncaminhamento));
 
       // A despesa: as fichas do exercício de destino, pela dotação inicial.
       const fichas = await tx.fichaOrcamentaria.findMany({

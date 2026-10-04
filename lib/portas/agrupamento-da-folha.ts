@@ -1,5 +1,5 @@
 import { liquidacoesDeFolhaSemAgrupamento, registrarAgrupamentoDaFolha } from "../../modules/m33-folha/agrupamento-no-tribunal.js";
-import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, janelaCivilDoMes } from "../../packages/datas/index.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
@@ -16,7 +16,7 @@ export async function lerAgrupamentosDaFolha(p: { readonly ano: number; readonly
   const [sem, registrados, ugs] = await Promise.all([
     liquidacoesDeFolhaSemAgrupamento(prisma, p),
     prisma.agrupamentoDaFolhaNaLiquidacao.findMany({
-      where: { liquidacao: { data: { gte: new Date(Date.UTC(p.ano, p.mes - 1, 1)), lt: new Date(Date.UTC(p.ano, p.mes, 1, 6)) } } },
+      where: { liquidacao: { data: { gte: janelaCivilDoMes(prefixo).inicio, lte: janelaCivilDoMes(prefixo).fim } } },
       select: { id: true, codigo: true, competencia: true, origem: true, sistemaDeOrigem: true, ug: { select: { codigoTce: true } }, liquidacao: { select: { numero: true, data: true, empenho: { select: { numero: true } } } } },
     }),
     prisma.unidadeGestora.findMany({ where: { entidadeContabilId: { not: null }, encerramento: null }, orderBy: { codigoTce: "asc" }, select: { id: true, codigoTce: true, nome: true } }),

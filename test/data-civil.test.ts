@@ -95,6 +95,14 @@ const EXCECOES: Readonly<Record<string, string>> = {
   "adapters/tribunais/tce-pb/index.ts": "leiaute do TCE-PB (SAGRES)",
   "adapters/tribunais/tce-pb/sagres/formatadores.ts": "leiaute do TCE-PB (SAGRES)",
   "adapters/tribunais/tce-pb/sagres/gerador.ts": "leiaute do TCE-PB (SAGRES)",
+  // V35 — os geradores irmãos do mesmo leiaute (§4.25 em diante; frota e farmácia), pelo mesmo motivo:
+  "adapters/tribunais/tce-pb/sagres/gerador-v26.ts": "leiaute do TCE-PB (SAGRES)",
+  "adapters/tribunais/tce-pb/sagres/gerador-frota-farmacia.ts": "leiaute do TCE-PB (SAGRES)",
+  // V35 — a vigência da classificação da retenção própria é `@db.Date`: a coluna guarda a data à meia-noite UTC,
+  // e é nessa âncora que o dia civil do ente tem de ser posto para comparar (lido por `diaCivil`).
+  "modules/m07-extraorcamentario/retencao-propria.ts": "âncora de coluna @db.Date (vigenteDesde), a partir do dia civil",
+  "lib/portas/retencoes-proprias.ts": "âncora de coluna @db.Date (vigenteDesde), a partir do dia civil",
+  "app/(areas)/financeiro/retencoes-proprias/actions.ts": "âncora de coluna @db.Date (vigenteDesde) digitada como dia",
   "adapters/tribunais/tce-pb/sagres/nomenclatura.ts": "nome de arquivo do leiaute SAGRES",
   "adapters/tribunais/tcm-ba/siga/writer.ts": "leiaute do TCM-BA (SIGA)",
   "adapters/tribunais/tcm-ba/validar.ts": "leiaute do TCM-BA (SIGA)",

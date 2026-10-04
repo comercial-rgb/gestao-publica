@@ -1,3 +1,4 @@
+import { competenciaCivil } from "../../../../packages/datas/index";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -20,7 +21,7 @@ const SUBTITULO = "O código da remessa de pessoal em cada liquidação da folha
 export default async function AgrupamentoNoTribunalPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<React.ReactElement> {
   const sp = await searchParams;
   const hoje = new Date();
-  const mesTexto = typeof sp.mes === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes) ? sp.mes : `${String(hoje.getFullYear())}-${String(hoje.getMonth() + 1).padStart(2, "0")}`;
+  const mesTexto = typeof sp.mes === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes) ? sp.mes : competenciaCivil(hoje);
   const ano = Number(mesTexto.slice(0, 4));
   const mes = Number(mesTexto.slice(5, 7));
   let dados: Awaited<ReturnType<typeof lerAgrupamentosDaFolha>>;

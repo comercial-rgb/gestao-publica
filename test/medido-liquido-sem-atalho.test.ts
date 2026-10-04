@@ -66,7 +66,7 @@ describe("o medido de um item da ordem passa sempre pela derivação única", ()
   it("nenhum arquivo do M11 seleciona `medidos` sem a conferência e a decisão", () => {
     const achados: string[] = [];
     for (const p of fontes(MODULO)) {
-      const rel = p.slice(RAIZ.length).replace(/^\//, "");
+      const rel = p.slice(RAIZ.length).replace(/\\/g, "/").replace(/^\//, "");
       if (rel in EXCECOES) continue;
       const fonte = codigo(p);
       // `medidosNaOrdem: { ... }` escrito à mão, em vez de `medidosNaOrdem: SELECAO_DO_MEDIDO`.
@@ -95,7 +95,7 @@ describe("o medido de um item da ordem passa sempre pela derivação única", ()
   it("nenhum arquivo do M11 soma `medidos` à mão fora da derivação", () => {
     const achados: string[] = [];
     for (const p of fontes(MODULO)) {
-      const rel = p.slice(RAIZ.length).replace(/^\//, "");
+      const rel = p.slice(RAIZ.length).replace(/\\/g, "/").replace(/^\//, "");
       if (rel in EXCECOES) continue;
       for (const [i, linha] of codigo(p).split("\n").entries()) {
         if (/\.medidosNaOrdem\.reduce\(/.test(linha)) achados.push(`${rel}:${i + 1}  ${linha.trim().slice(0, 90)}`);
@@ -116,7 +116,7 @@ describe("o medido de um item da ordem passa sempre pela derivação única", ()
     // recebimento correto, em silêncio. A derivação é `SELECAO_DOS_RECEBIDOS`.
     const achados: string[] = [];
     for (const p of fontes(MODULO)) {
-      const rel = p.slice(RAIZ.length).replace(/^\//, "");
+      const rel = p.slice(RAIZ.length).replace(/\\/g, "/").replace(/^\//, "");
       if (rel in EXCECOES) continue;
       for (const m of codigo(p).matchAll(/recebidos:\s*\{[^}]*\}/g)) {
         const trecho = m[0].replace(/\s+/g, " ");
@@ -245,7 +245,7 @@ describe("o filtro de estorno, derivado do schema", () => {
     const achados: string[] = [];
 
     for (const p of fontes(MODULO)) {
-      const rel = p.slice(RAIZ.length).replace(/^\//, "");
+      const rel = p.slice(RAIZ.length).replace(/\\/g, "/").replace(/^\//, "");
       if (rel in EXCECOES) continue;
       const fonte = codigo(p);
       for (const nome of relacoes) {

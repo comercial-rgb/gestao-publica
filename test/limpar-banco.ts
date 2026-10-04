@@ -332,6 +332,9 @@ export const TABELAS = [
   // apontada por `ReceitaArrecadada`, e por isso sai DEPOIS. Juntar as quatro num bloco só
   // quebraria a FK numa ponta ou na outra.
   "AtribuicaoDeEntidadeDaArrecadacao",
+  // V35 — a dedução da receita realizada e o parâmetro do limite do Legislativo (este sem FK nenhuma: só a lista o alcança)
+  "DeducaoDaReceitaRealizada",
+  "ParametroDoLimiteDoLegislativo",
   "DeclaracaoDeTitularDaConta",
   "VersaoDaEntidadeContabil",
   // V6 P2 — M32 pessoal (filhas antes das mães)

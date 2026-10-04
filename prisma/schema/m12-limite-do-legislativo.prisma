@@ -1,0 +1,19 @@
+/// V35 — O LIMITE DO REPASSE AO LEGISLATIVO (CF art. 29-A). Os dois fatos que o cálculo pede e que o razão do
+/// exercício não tem: a POPULAÇÃO do município (a faixa do percentual) e, quando o exercício anterior não foi
+/// escriturado neste sistema, a BASE de cálculo realizada nele (receita tributária + transferências do art. 153 § 5º e
+/// dos arts. 158 e 159), declarada com o documento de onde vem. Append-only por versão: uma correção é outra versão.
+model ParametroDoLimiteDoLegislativo {
+  id              String   @id @default(cuid())
+  exercicio       Int
+  versao          Int
+  populacao       Int
+  /// De onde vem a população (ex.: "IBGE, estimativa 2025, tabela 6579").
+  fontePopulacao  String
+  /// Base declarada (exercício anterior fora do sistema). Nula = a base é lida do próprio sistema.
+  baseDeclarada   Decimal? @db.Decimal(18, 2)
+  documentoDaBase String?
+  criadoPor       String
+  criadoEm        DateTime @default(now())
+
+  @@unique([exercicio, versao])
+}

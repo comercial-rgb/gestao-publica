@@ -5,7 +5,7 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerTransferenciasEntreUgs, ROTULO_DA_TRANSFERENCIA_ENTRE_UGS } from "../../../../lib/portas/transferencias-entre-ugs";
-import { inicioDoDiaCivil } from "../../../../packages/datas/index";
+import { anoCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
 import { FormContabilizacao, FormEstornar, FormTransferencia } from "./Forms";
 
 /**
@@ -21,7 +21,7 @@ const SUBTITULO = "Duodécimo, aportes e devoluções entre as unidades do munic
 
 export default async function TransferenciasEntreUgsPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<React.ReactElement> {
   const sp = await searchParams;
-  const ano = typeof sp.ano === "string" && /^\d{4}$/.test(sp.ano) ? sp.ano : String(new Date().getFullYear());
+  const ano = typeof sp.ano === "string" && /^\d{4}$/.test(sp.ano) ? sp.ano : String(anoCivil(new Date()));
   let dados: Awaited<ReturnType<typeof lerTransferenciasEntreUgs>>;
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");

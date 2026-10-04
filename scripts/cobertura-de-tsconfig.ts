@@ -64,16 +64,18 @@ const IGNORADOS = new Set([
 ]);
 
 function arquivosDoConfig(config: string): ReadonlySet<string> {
+  // V35 — o tsc local pelo próprio node (no Windows o `npx` é `.cmd` e não sobe sem shell).
   const saida = execFileSync(
-    "npx",
-    ["tsc", "-p", config, "--listFilesOnly", "--noEmit"],
+    process.execPath,
+    [join(RAIZ, "node_modules", "typescript", "bin", "tsc"), "-p", config, "--listFilesOnly", "--noEmit"],
     { cwd: RAIZ, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
   );
   const cobertos = new Set<string>();
   for (const linha of saida.split("\n")) {
     const p = linha.trim();
     if (p === "" || p.includes("/node_modules/")) continue;
-    if (!p.startsWith(`${RAIZ}/`)) continue;
+    // o tsc imprime com "/" também no Windows; a raiz vem com "\\" lá
+    if (!p.startsWith(`${RAIZ.replace(/\\/g, "/")}/`)) continue;
     cobertos.add(relative(RAIZ, p));
   }
   return cobertos;
