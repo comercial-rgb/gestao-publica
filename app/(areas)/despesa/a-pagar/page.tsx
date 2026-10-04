@@ -143,7 +143,7 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
             <option value="restos">Só restos a pagar</option>
           </select>
         </label>
-        <button type="submit" className="h-8 rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 font-semibold text-white">Filtrar</button>
+        <button type="submit" className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 font-semibold text-[color:var(--color-acao-tinta)]">Filtrar</button>
       </form>
 
       <div className="grid gap-3 sm:grid-cols-2" data-totais-a-pagar>

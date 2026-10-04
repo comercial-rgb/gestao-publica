@@ -142,7 +142,7 @@ export default async function Pagina({
           <input type="date" name="ate" defaultValue={filtros.ate} className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-2 py-1.5 text-sm" />
         </label>
         <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
-          <button type="submit" className="rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 py-1.5 text-sm text-[color:var(--color-on-primary)]">Consultar</button>
+          <button type="submit" className="rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 py-1.5 text-sm text-[color:var(--color-acao-tinta)]">Consultar</button>
           <a href={csv} className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-sm">Baixar CSV desta consulta</a>
         </div>
       </form>

@@ -44,7 +44,7 @@ export function SeletorPeriodo({ desde, ate, conta, comConta }: { readonly desde
           <input type="text" aria-label="Código da conta" placeholder="6.2.2.1.1.00.00" className={`${CLASSE} w-44`} value={c} onChange={(e) => setC(e.target.value)} />
         </label>
       ) : null}
-      <button type="button" onClick={aplicar} className="h-8 rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 text-sm font-medium text-[color:var(--color-primary-fg)] hover:opacity-90">Aplicar</button>
+      <button type="button" onClick={aplicar} className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 text-sm font-medium text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]">Aplicar</button>
     </div>
   );
 }

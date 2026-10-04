@@ -73,7 +73,7 @@ export default async function CentralIntegracoesPage(): Promise<React.ReactEleme
 
             {c.acaoHref !== null && c.acaoRotulo !== null && (
               <div className="mt-3">
-                <Link href={c.acaoHref} className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 text-sm font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]">
+                <Link href={c.acaoHref} className="inline-flex h-10 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-4 text-sm font-semibold text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]">
                   {c.acaoRotulo}
                 </Link>
               </div>

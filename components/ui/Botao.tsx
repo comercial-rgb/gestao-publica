@@ -13,7 +13,7 @@ import { CLASSE_BOTAO_PRIMARIO } from "./Formulario";
 export type VarianteBotao = "primario" | "secundario" | "perigo" | "texto";
 
 const CLASSE_BASE =
-  "inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-md)] px-5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex h-11 items-center justify-center gap-2 rounded-[var(--radius-pilula)] px-5 font-titulo text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60";
 
 const CLASSES: Record<VarianteBotao, string> = {
   // ⚠️ O `inline-flex … gap-2` É ACRESCENTADO, não substituído. `CLASSE_BOTAO_PRIMARIO` é a mesma
@@ -21,7 +21,9 @@ const CLASSES: Record<VarianteBotao, string> = {
   // deles. Mas ela não tem layout de flex — e sem isso o spinner do `carregando` encosta no texto
   // ("⟳Processando"). Foi a página de fumaça que mostrou; teste de comportamento não vê colisão.
   primario: `${CLASSE_BOTAO_PRIMARIO} inline-flex items-center justify-center gap-2`,
-  secundario: `${CLASSE_BASE} border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] text-[color:var(--color-ink)] hover:border-[color:var(--color-ink-3)]`,
+  // O secundário do manual: contorno de 2px no laranja da marca, fundo transparente. O texto vai no
+  // laranja forte, porque o oficial como texto sobre branco dá 2,9:1.
+  secundario: `${CLASSE_BASE} border-2 border-[color:var(--color-acao)] bg-transparent text-[color:var(--color-primary)] hover:bg-[color:var(--color-primary-soft)]`,
   // ⚠️ O PERIGO É CONTORNADO, NÃO PREENCHIDO. Um botão vermelho sólido ao lado de um azul sólido
   // compete pela atenção e vira o alvo do clique apressado — e a ação destrutiva é justamente a
   // que não pode ser clicada por reflexo.

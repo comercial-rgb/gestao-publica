@@ -33,7 +33,10 @@ export function CardEstatistica({
       <div className="text-xs font-medium uppercase tracking-wide text-[color:var(--color-ink-3)]">
         {rotulo}
       </div>
-      <div className="mt-2 text-xl font-semibold tabular text-[color:var(--color-ink)]">{children}</div>
+      {/* O número do painel no manual da marca: Exo 2 900 em laranja. Vai no laranja forte, porque o
+          oficial dá 2,9:1 sobre branco e reprova mesmo em texto grande. O sinal contábil de um valor
+          (positivo/negativo) continua vindo do próprio valor, que pinta por cima. */}
+      <div className="mt-2 font-titulo text-xl font-black tabular text-[color:var(--color-primary)]">{children}</div>
       {nota !== undefined ? (
         <div className="mt-2 text-sm leading-relaxed text-[color:var(--color-ink-2)]">{nota}</div>
       ) : null}
@@ -101,7 +104,8 @@ export function CardIndicador({
           <div className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">{rotulo}</div>
           <span aria-hidden className="text-lg text-[color:var(--color-ink-3)] transition-transform group-hover:translate-x-1 group-hover:text-[color:var(--color-primary)]">→</span>
         </div>
-        <div className="mt-3 text-xl font-semibold tabular text-[color:var(--color-ink)]">{valor}</div>
+        {/* O número de painel do manual da marca, como no CardEstatistica: Exo 2 900 no laranja forte. */}
+        <div className="mt-3 font-titulo text-xl font-black tabular text-[color:var(--color-primary)]">{valor}</div>
         <div className="mt-3 text-sm leading-relaxed text-[color:var(--color-ink-2)]">{descricao}</div>
       </Card>
     </Link>

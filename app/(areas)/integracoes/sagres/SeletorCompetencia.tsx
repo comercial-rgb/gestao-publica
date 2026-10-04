@@ -72,7 +72,7 @@ export function SeletorCompetencia({
       <button
         type="button"
         onClick={() => aplicar(d, m)}
-        className="h-11 rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 text-sm font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]"
+        className="h-11 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-4 text-sm font-semibold text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]"
       >
         Gerar para esta competência
       </button>

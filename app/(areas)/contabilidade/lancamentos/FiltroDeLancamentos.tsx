@@ -145,7 +145,7 @@ export function FiltroDeLancamentos({
       <button
         type="button"
         onClick={aplicar}
-        className="h-8 rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 text-sm font-medium text-[color:var(--color-primary-fg)] hover:opacity-90"
+        className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 text-sm font-medium text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]"
       >
         Aplicar
       </button>

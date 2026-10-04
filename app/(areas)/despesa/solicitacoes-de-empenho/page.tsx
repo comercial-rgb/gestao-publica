@@ -61,7 +61,7 @@ function tomDaSituacao(s: string): StatusBadge {
 }
 
 const CLASSE_ACAO_PRINCIPAL =
-  "inline-flex h-8 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 text-xs font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]";
+  "inline-flex h-8 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 text-xs font-semibold text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]";
 
 export default async function SolicitacoesDeEmpenhoPage({
   searchParams,

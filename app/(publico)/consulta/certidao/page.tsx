@@ -49,7 +49,7 @@ export default async function ConferirCertidaoPage({
         </label>
         <button
           type="submit"
-          className="rounded-[var(--radius-md)] bg-[color:var(--color-engine-forte)] px-4 py-2 text-sm font-medium text-white"
+          className="rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-4 py-2 text-sm font-medium text-[color:var(--color-acao-tinta)]"
         >
           Conferir
         </button>

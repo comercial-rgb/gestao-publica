@@ -70,7 +70,7 @@ export default async function Pagina({
                 {d.competenciasDisponiveis.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
-            <button type="submit" className="rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 py-1.5 text-sm text-[color:var(--color-on-primary)]">Consultar</button>
+            <button type="submit" className="rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 py-1.5 text-sm text-[color:var(--color-acao-tinta)]">Consultar</button>
             {d.temFolhaFechada ? <a href={csv} className="rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-1.5 text-sm">Baixar CSV</a> : null}
           </form>
 

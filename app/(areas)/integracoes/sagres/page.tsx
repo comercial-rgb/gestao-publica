@@ -512,7 +512,7 @@ export default async function SagresPage({
               <span className="ml-auto">
                 <a
                   href={hrefDownload}
-                  className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]"
+                  className="inline-flex h-10 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-4 font-semibold text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]"
                 >
                   {preview.violacoes.length === 0 ? "Baixar pacote (.zip com manifesto)" : "Baixar para conferência (incompleto)"}
                 </a>
