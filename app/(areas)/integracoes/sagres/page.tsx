@@ -230,6 +230,7 @@ const ROTULO_DA_REGRA: Record<PreviewSagres["violacoes"][number]["regra"], strin
   TABELA_SEM_ABRANGENCIA: "Abrangência do arquivo não declarada",
   UNIDADE_SEM_UG_DECLARADA: "Unidade orçamentária sem unidade gestora declarada",
   CONTA_SEM_TITULAR_DECLARADO: "Conta bancária sem titular declarado",
+  DOCUMENTO_SEM_UG_ATRIBUIDA: "Registro sem unidade gestora: fora do pacote até a regularização",
   RECEITA_EXTRA_FORA_DO_PACOTE: "Receita extra fora do pacote",
   RESTOS_FORA_DO_PACOTE: "Restos a pagar fora do pacote",
   RELACIONAMENTO_FORA_DO_PACOTE: "Fornecedores ou relacionamento fora do pacote",

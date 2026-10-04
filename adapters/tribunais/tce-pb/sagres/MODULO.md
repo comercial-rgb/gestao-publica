@@ -68,7 +68,7 @@ extra para várias receitas") — senão recusa nomeando.
 **Gaps que continuam, nomeados:** DespesaExtra manda `cpfCnpjFornecedor` e `co` zerados (obrigatórios; a
 prévia acusa em Obrigatoriedade); a liquidação de restos a pagar sai no arquivo Liquidacao (o leiaute a quer
 em LiquidacaoRestos §4.31, não gerado); as tabelas de restos (§4.28-4.34), PLOA, fornecedores, ordenador e
-relacionamentos não são geradas.
+relacionamentos não são geradas. *(Superado: restos, fornecedores, ordenador e relacionamentos passaram a ser gerados nas V24 a V26 — ver as seções delas.)*
 
 ## Matriz de cobertura — as 13 entidades da vertical slice pedida
 
@@ -329,8 +329,51 @@ abrangência declarada da sua tabela antes de entrar no pacote (prévia e downlo
   da linha (banco, agência e conta, só dígitos), contra o titular declarado vigente (conta → entidade → UG). Conta
   sem titular recusa o arquivo, nomeando a conta; movimentação entre contas de UGs diferentes também (o leiaute
   exige a mesma UG). As transferências entram quando o cadastro de contas entra.
-- **Extras, receita orçamentária e ordenador:** sem vínculo, fora do pacote com o motivo. A numeração dos extras é
-  do exercício inteiro, e a conta arrecadadora da receita é um parâmetro da remessa: pendência
-  `SAGRES-EXTRAS-RECEITA-ORDENADOR-POR-UG`.
+- **Extras, receita orçamentária e ordenador:** até a V33, fora do pacote com o motivo. Desde a V34, pela UG do fato
+  (seção seguinte).
 
 O arquivo que fica fora não vai no ZIP. A prévia o nomeia como pendência, e o pacote sai como de conferência.
+
+## V34 — a UG do fato na receita, nos extraorçamentários e no ordenador (`ug-do-registro.ts`)
+
+Fecha a pendência `SAGRES-EXTRAS-RECEITA-ORDENADOR-POR-UG`. Com duas ou mais UGs, a porta passa aos geradores um
+resolvedor (`criarResolvedorDeUgs`), e cada linha de ReceitaOrcamentaria, ReceitaExtra, DespesaExtra,
+EstornoReceitaExtra, EstornoDespesaExtra e Ordenador sai com a UG do FATO ORIGINAL; o recorte `POR_UG_DO_REGISTRO`
+guarda as linhas do código pedido. Sem o resolvedor (`ugPorRegistro` ausente), essas tabelas continuam fora com
+duas UGs — fail-closed. Com uma UG, nada muda, byte a byte.
+
+**De onde vem a UG de cada registro** (vínculo comprovado, lido como era no dia do fato; nunca o primeiro cadastro,
+o órgão, o nome ou o titular atual):
+
+| Registro | UG |
+|---|---|
+| Retenção (ingresso nascido num pagamento) | a da unidade orçamentária do empenho que reteve, pelo vínculo vigente no dia do fato; é também a `codUnidadeGestoraRetencao` |
+| Estorno de receita ou despesa extra | a do movimento que desfaz (recursivo) |
+| Ingresso avulso e recolhimento | a entidade atribuída ao movimento (regularização); senão o titular declarado da conta no instante da gravação |
+| Referência da despesa à receita extra | a UG DA RECEITA (campo próprio no leiaute), que pode não ser a de quem recolheu |
+| Guia de receita orçamentária | a entidade carimbada na guia (`entidadeTitularId`) ou atribuída a ela (M04); a anulação herda a da guia |
+| Designação de ordenador | a de unidade orçamentária: a UG da unidade; a do ente: as UGs cujos empenhos do dia a citariam (`ordenadorNaData`) |
+
+Entidade → UG: a UG escriturada aqui com aquela entidade, vigente no dia; nenhuma ou mais de uma é motivo nomeado.
+
+**O titular da conta no tempo** (`titularNoInstante`): vale a última declaração gravada até o instante; antes da
+primeira, a primeira. Uma troca de titular gravada depois não reescreve fato de antes. A mesma régua passou a valer
+para o recorte das contas (`ugDasContas`, fim do dia do pacote), que até a V33 usava a última declaração.
+
+**Numeração preservada.** Os números dos extraorçamentários continuam derivados (`numeracaoNoExercicio`: ordem de
+gravação no exercício do ente inteiro), contados antes de qualquer recorte. A chave do leiaute é (UG, número,
+exercício), e um número único no ente já é único em cada UG: não houve necessidade de identificador de exportação
+separado. A UG vê buracos na própria sequência; nenhum número já remetido muda. Estabilidade verificada entre a
+exportação completa, a recortada por UG, outro dia do mesmo exercício e a reexecução
+(`test/sagres-por-registro.test.ts`). Limite conhecido e não exercido: a ordem de gravação (`criadoEm`, `id`) é
+estável enquanto as linhas não são reimportadas com outro `criadoEm` (restauração por dump preserva).
+
+**Sem UG, omitido e nomeado.** O registro sem vínculo não sai em pacote nenhum; a prévia o lista um a um (regra
+`DOCUMENTO_SEM_UG_ATRIBUIDA`, com o documento e o motivo), e o ZIP sai como de conferência. Regularização: a guia,
+em Receita › Arrecadação por entidade; o movimento extraorçamentário sem titular, em Financeiro › Extraorçamentário ›
+Movimentos sem titular (`atribuirEntidadeAoMovimentoExtra`, M07, sob ATRIBUIR_ENTIDADE_A_ARRECADACAO, com ato,
+motivo e autor; retenção, estorno e conta com titular são recusados nomeando o vínculo que já existe); a unidade
+orçamentária, em Contabilidade › Unidades gestoras.
+
+**Ainda não coberto:** a conta arrecadadora da ReceitaOrcamentaria continua parâmetro da remessa (cada UG informa a
+sua ao pedir); a guia não é recortada pela conta em que entrou.

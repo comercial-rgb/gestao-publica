@@ -81,6 +81,7 @@
     // (o motivo está no `exclude` de `tsconfig.backend.json`).
     "test/anulacoes-registradas.test.ts",
     "test/sagres-recorte-por-ug.test.ts",
+    "test/sagres-por-registro.test.ts",
     "test/sagres-ugs-do-dia.test.ts",
     "test/exportacoes-federais-leitura.test.ts",
     "test/ui/contexto-do-trabalho.test.ts",

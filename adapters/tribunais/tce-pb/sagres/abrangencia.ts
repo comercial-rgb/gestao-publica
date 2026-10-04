@@ -16,6 +16,9 @@
  *                               unidade → UG (`VinculoDaUnidadeOrcamentariaComUg`). O recorte é o que o Tribunal lê;
  *       DERIVADO                as linhas valem se o documento delas está num arquivo que ficou (fornecedor do empenho);
  *       SEM_VINCULO             POR_UG, e nem o modelo nem a linha dizem de que UG é o registro;
+ *       POR_UG_DO_REGISTRO      POR_UG, e o GERADOR carimba em cada linha a UG do fato original (`ug-do-registro.ts`):
+ *                               o recorte guarda as linhas com o código pedido. Só vale quando a porta passou o
+ *                               resolvedor aos geradores (`ugPorRegistro`); sem ele, o arquivo fica fora (V34);
  *       CONSOLIDADO             DO_ENTE, e a linha leva o código de quem envia (a Prefeitura);
  *       CONSOLIDADO_UG_NA_LINHA DO_ENTE, e CADA LINHA leva a UG dona da unidade orçamentária da linha (a dotação da
  *                               Câmara sai pela Prefeitura com o código da Câmara — regra do leiaute).
@@ -34,6 +37,7 @@ export type Recorte =
   | { readonly tipo: "POR_CONTA_NA_LINHA"; readonly contas: readonly ContaNaLinha[] }
   | { readonly tipo: "DERIVADO"; readonly campo: string; readonly de: string; readonly campoDe: string }
   | { readonly tipo: "SEM_VINCULO" }
+  | { readonly tipo: "POR_UG_DO_REGISTRO" }
   | { readonly tipo: "CONSOLIDADO" }
   | { readonly tipo: "CONSOLIDADO_UG_NA_LINHA"; readonly campoUo: string };
 
@@ -56,7 +60,7 @@ export interface AbrangenciaDaTabela {
 }
 
 const FILTRA: Recorte = { tipo: "FILTRA_POR_UG" };
-const SEM: Recorte = { tipo: "SEM_VINCULO" };
+const POR_REGISTRO: Recorte = { tipo: "POR_UG_DO_REGISTRO" };
 const CONS: Recorte = { tipo: "CONSOLIDADO" };
 const UO: Recorte = { tipo: "POR_UO_NA_LINHA", campo: "codUnidadeOrcamentaria" };
 const porUg = (base: Base, recorte: Recorte, citaOs?: readonly string[]): AbrangenciaDaTabela => ({ abrangencia: "POR_UG", base, recorte, ...(citaOs !== undefined ? { citaOs } : {}) });
@@ -121,13 +125,15 @@ export const ABRANGENCIA_DO_SAGRES: Readonly<Record<string, AbrangenciaDaTabela>
   RelacionamentoLiquidacaoPagamento: porUg("INFERENCIA", UO, ["Liquidacao", "Pagamentos"]),
   // o fornecedor do dia é o credor dos empenhos do dia: vale se o empenho dele ficou no arquivo desta UG
   Fornecedores: porUg("LEIAUTE", { tipo: "DERIVADO", campo: "cpfCnpj", de: "Empenhos", campoDe: "cpfCnpjFornecedor" }),
-  // ── por UG, pela conta bancária da linha (titular declarado: conta → entidade → UG) e, sem vínculo, os extras, a
-  //    receita (a conta arrecadadora é um parâmetro da remessa) e o ordenador ──
-  ReceitaOrcamentaria: porUg("INFERENCIA", SEM),
-  ReceitaExtra: porUg("INFERENCIA", SEM),
-  DespesaExtra: porUg("INFERENCIA", SEM),
-  EstornoReceitaExtra: porUg("INFERENCIA", SEM),
-  EstornoDespesaExtra: porUg("INFERENCIA", SEM),
+  // ── V34 — por UG, pela UG do FATO que o gerador carimba em cada linha: a receita (a entidade titular da guia), os
+  //    extraorçamentários (retenção pelo empenho, estorno pelo original, avulso e recolhimento pelo titular da conta no
+  //    instante) e o ordenador (a unidade da designação) ──
+  ReceitaOrcamentaria: porUg("INFERENCIA", POR_REGISTRO),
+  ReceitaExtra: porUg("INFERENCIA", POR_REGISTRO),
+  DespesaExtra: porUg("INFERENCIA", POR_REGISTRO),
+  EstornoReceitaExtra: porUg("INFERENCIA", POR_REGISTRO),
+  EstornoDespesaExtra: porUg("INFERENCIA", POR_REGISTRO),
+  // ── por UG, pela conta bancária da linha (titular declarado: conta → entidade → UG) ──
   CadastroContaBancaria: porUg("LEIAUTE", CONTA("numero")),
   RelacionamentoCCorrenteFontePagadora: porUg("LEIAUTE", CONTA("numContaBancaria")),
   SaldoInicial: porUg("INFERENCIA", CONTA("numContaBancaria")),
@@ -141,7 +147,7 @@ export const ABRANGENCIA_DO_SAGRES: Readonly<Record<string, AbrangenciaDaTabela>
       { banco: "codBancoDestino", agencia: "numAgenciaDestino", conta: "numeroCtaDestino" },
     ],
   }),
-  Ordenador: porUg("INFERENCIA", SEM),
+  Ordenador: porUg("INFERENCIA", POR_REGISTRO),
 };
 
 /** A entidade do leiaute a partir do nome do arquivo: `201078` + data + `Empenhos` + `.txt`, ou o PDF do decreto. */
@@ -162,6 +168,11 @@ export interface ContextoDasUgs {
   readonly ugDaUo: ReadonlyMap<string, string>;
   /** Chave da conta (`chaveDaConta`) → código da UG, pelo titular declarado vigente. Sem titular: ausente. */
   readonly ugDaConta: ReadonlyMap<string, string>;
+  /**
+   * V34 — a porta passou o resolvedor de UG aos geradores, e cada linha das tabelas POR_UG_DO_REGISTRO leva a UG do
+   * fato. Ausente ou falso: aquelas tabelas ficam fora com duas ou mais UGs (a linha levaria o código de quem pediu).
+   */
+  readonly ugPorRegistro?: boolean;
 }
 
 /** A chave de uma conta bancária: só dígitos, sem zeros à esquerda — a régua comum da linha e do cadastro. */
@@ -180,7 +191,7 @@ export type DecisaoDoArquivo =
  * A decisão que não depende do CONTEÚDO: entra (inteiro ou para recortar) ou fica fora, e por quê. O recorte pela
  * linha (`aplicarAbrangencia`) ainda pode recusar um arquivo que aqui "entra" — a unidade da linha sem vínculo.
  */
-export function decidirArquivo(tabela: string, ctx: Pick<ContextoDasUgs, "operadas" | "pedidaEhAPrefeitura">): DecisaoDoArquivo {
+export function decidirArquivo(tabela: string, ctx: Pick<ContextoDasUgs, "operadas" | "pedidaEhAPrefeitura" | "ugPorRegistro">): DecisaoDoArquivo {
   const a = ABRANGENCIA_DO_SAGRES[tabela];
   if (a === undefined) {
     return { incluir: false, regra: "TABELA_SEM_ABRANGENCIA", detalhe: `O arquivo ${tabela} não tem a abrangência declarada (por unidade gestora ou do ente). Fica fora até a declaração.` };
@@ -193,7 +204,7 @@ export function decidirArquivo(tabela: string, ctx: Pick<ContextoDasUgs, "operad
     };
   }
   if (ctx.operadas <= 1) return { incluir: true };
-  if (a.recorte.tipo === "SEM_VINCULO") {
+  if (a.recorte.tipo === "SEM_VINCULO" || (a.recorte.tipo === "POR_UG_DO_REGISTRO" && ctx.ugPorRegistro !== true)) {
     return {
       incluir: false,
       regra: "RECORTE_POR_UG_INDISPONIVEL",
@@ -328,6 +339,12 @@ function recortar(
     case "SEM_VINCULO":
       // `decidirArquivo` já recusou com duas ou mais; aqui só chega com uma.
       return { arquivo: arq };
+    case "POR_UG_DO_REGISTRO": {
+      // O gerador carimbou cada linha com a UG do fato (o que não tinha vínculo foi omitido e nomeado por ele).
+      const pUg = posicaoDoCampo(tabela, "codUnidadeGestora");
+      if (pUg === null || pUg.fim - pUg.ini + 1 !== 6) return semPosicao("codUnidadeGestora");
+      return comLinhas(linhasDo(arq.conteudo).filter((l) => ler(l, pUg) === ctx.ugPedida));
+    }
     case "POR_UO_NA_LINHA": {
       const p = posicaoDoCampo(tabela, recorte.campo);
       if (p === null) return semPosicao(recorte.campo);

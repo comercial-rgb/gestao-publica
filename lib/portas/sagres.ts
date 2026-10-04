@@ -73,9 +73,10 @@ import {
 import type { LayoutArquivo } from "../../adapters/tribunais/tce-pb/sagres/registry";
 import { resolverTribunal, type ExportadorTribunal } from "../../packages/tribunais-core";
 import { enteDoContexto } from "../../modules/m01-core-contabil/contexto-do-ente";
-import { anoCivil, competenciaCivil, diaCivil } from "../../packages/datas/index";
+import { anoCivil, competenciaCivil, diaCivil, fimDoDiaCivil } from "../../packages/datas/index";
 import { ugDasUnidadesOrcamentarias, ugVigenteNoDia, unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora";
 import { aplicarAbrangencia, chaveDaConta, type ContextoDasUgs } from "../../adapters/tribunais/tce-pb/sagres/abrangencia";
+import { criarResolvedorDeUgs, titularNoInstante, type ResolvedorDeUgs } from "../../adapters/tribunais/tce-pb/sagres/ug-do-registro";
 
 /**
  * PORTA — SAGRES TXT (M15). A ÚNICA superfície que a UI enxerga; o domínio (adapters/tribunais/tce-pb/sagres) nunca
@@ -221,7 +222,8 @@ function linhasDe(arq: ArquivoGerado): string[] {
  * como UG) e nenhuma é tratada como a Prefeitura — o arquivo do ente fica fora até o cadastro dizer qual é.
  */
 /**
- * V33 — de qual UG é cada conta bancária, no dia: a ÚLTIMA declaração de titular dá a entidade, e a UG escriturada aqui
+ * V33 — de qual UG é cada conta bancária, no dia: a declaração de titular VIGENTE NO DIA (V34: a última gravada até o fim
+ * do dia; antes da primeira, a primeira — `titularNoInstante`) dá a entidade, e a UG escriturada aqui
  * com essa entidade, vigente no dia, é a dona. Conta sem titular, ou com titular sem UG vigente, não entra no mapa — e o
  * recorte trata a ausência como recusa. A chave é a mesma régua da linha do leiaute (`chaveDaConta`).
  */
@@ -232,15 +234,16 @@ async function ugDasContas(prisma: ReturnType<typeof cliente>, dia: Date): Promi
       select: { codigoTce: true, entidadeContabilId: true, vigenteDesde: true, encerramento: { select: { vigenteAte: true } } },
     }),
     prisma.contaBancaria.findMany({
-      select: { banco: true, agencia: true, digitoAgencia: true, conta: true, digitoConta: true, declaracoesDeTitular: { orderBy: { versao: "desc" }, take: 1, select: { entidadeId: true } } },
+      select: { banco: true, agencia: true, digitoAgencia: true, conta: true, digitoConta: true, declaracoesDeTitular: { select: { entidadeId: true, versao: true, criadoEm: true } } },
     }),
   ]);
   const ugDaEntidade = new Map(ugs.filter((u) => ugVigenteNoDia(u, dia)).map((u) => [u.entidadeContabilId as string, u.codigoTce]));
   const mapa = new Map<string, string>();
   for (const c of contas) {
     if (c.banco === null || c.agencia === null || c.conta === null) continue;
-    const entidade = c.declaracoesDeTitular[0]?.entidadeId;
-    const ug = entidade === undefined ? undefined : ugDaEntidade.get(entidade);
+    // V34 — o titular declarado ATÉ O FIM DO DIA do pacote: uma troca gravada depois não reescreve a remessa de antes.
+    const entidade = titularNoInstante(c.declaracoesDeTitular, fimDoDiaCivil(diaCivil(dia)));
+    const ug = entidade === null ? undefined : ugDaEntidade.get(entidade);
     if (ug !== undefined) mapa.set(chaveDaConta(c.banco, `${c.agencia}${c.digitoAgencia ?? ""}`, `${c.conta}${c.digitoConta ?? ""}`), ug);
   }
   return mapa;
@@ -270,6 +273,10 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   // do dia — quem pede o dia 31/12 e o mês 01 de outro ano precisa das duas coisas certas.
   const mesRef = competenciaMensalDe(p);
   const exercicio = anoCivil(mesRef);
+  // V34 — com duas ou mais UGs, os geradores carimbam a UG do fato em cada linha (e nomeiam o que não tem vínculo).
+  const ugs0 = await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora);
+  const r = ugs0.operadas > 1 ? criarResolvedorDeUgs(prisma) : undefined;
+  const comUgs = r === undefined ? {} : { ugs: r };
 
   // (1) LER OS FATOS (uma vez) — para validar antes de serializar.
   const [dotacao, empenhos, liquidacoes, pagamentos, estornosDePagamento, estornosDeEmpenho, estornosDeLiquidacao, estornosDeRetencao, estornosDeDespesaExtra, receitas, cadastro, saldos, movimentacoes, retencoes, despesasExtra] = await Promise.all([
@@ -281,13 +288,13 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     lerFatosEstornos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosEstornoLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosEstornoRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    lerFatosEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    lerFatosReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
+    lerFatosEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia, ...comUgs }),
+    lerFatosReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia, ...comUgs }),
     lerFatosCadastroConta(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora }),
     lerFatosSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
     lerFatosMovimentacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     lerFatosRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    lerFatosDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
+    lerFatosDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia, ...comUgs }),
   ]);
 
   // V21 — a CONCILIAÇÃO (§4.27): o arquivo, ou a recusa nomeada. Ver `gerarConciliacaoBancariaOuRecusa`.
@@ -295,8 +302,8 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   // V21 — a UNIDADE ORÇAMENTÁRIA (§4.1), no mesmo regime: o arquivo, ou a recusa nomeada.
   const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: mesRef });
   // V23 — a RECEITA EXTRA (§4.19) e o estorno dela (§4.21), no mesmo regime.
-  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia });
-  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia });
+  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia, ...comUgs });
+  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia, ...comUgs });
   const semPlano = despesasExtra.length > 0 && (await planoVigenteDoTribunal(prisma, anoCivil(p.dia))) === null;
   // V24 — o grupo dos restos a pagar (§4.28 a §4.34; §4.40 em dezembro), com a recusa nomeada quando houver.
   const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
@@ -304,11 +311,11 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
   const relacionamentos = await gerarArquivosDeRelacionamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
   // V26 — o cadastro que dependia de decisão (programas, ações, ordenador, licitação no Tramita; em janeiro, o responsável
   // pelo sistema, a receita prevista e o saldo inicial), no mesmo regime: o arquivo, ou a recusa nomeada.
-  const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
+  const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef, ...comUgs });
   // V27 — frota e farmácia pública (§4.50 a §4.57), do mês, no mesmo regime.
   const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   // V33 — a abrangência de cada arquivo diante das UGs do dia (ver `abrangencia.ts`).
-  const ugs = await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora);
+  const ugs = { ...ugs0, ugPorRegistro: r !== undefined };
   // (2) VALIDAR — obrigatoriedade (por layout) + domínio (Empenhos) + integridade referencial.
   const violacoes: Violacao[] = [
     ...restos.recusas.map((r) => ({ arquivo: r.arquivo, linha: 0, campo: "movimento", regra: "RESTOS_FORA_DO_PACOTE" as const, detalhe: `${r.detalhe} O arquivo fica FORA do pacote.` })),
@@ -359,19 +366,21 @@ export async function montarPreviewSagres(p: ParamsSagres): Promise<PreviewSagre
     gerarEstornos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornoLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornoRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
+    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia, ...comUgs }),
+    gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia, ...comUgs }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
     gerarMovimentacaoEntreContas(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
+    gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia, ...comUgs }),
   ]);
   const arquivosCandidatos = [aDotacao, aEmpenhos, aLiquidacao, aPagamentos, aEstornoPagamento, aEstornos, aEstornoLiquidacao, aEstornoRetencao, aEstornoDespesaExtra, aReceita, aCadastro, aSaldo, aMovimentacao, aRetencao, aDespesaExtra, ...("arquivo" in conciliacao ? [conciliacao.arquivo] : []), ...("arquivo" in unidades ? [unidades.arquivo] : []), ...("arquivo" in receitaExtra ? [receitaExtra.arquivo] : []), ...("arquivo" in estornoReceitaExtra ? [estornoReceitaExtra.arquivo] : []), ...restos.arquivos.map((r) => r.arquivo), ...relacionamentos.arquivos.map((r) => r.arquivo)];
   // V33 — a abrangência pelo CONTEÚDO (a unidade orçamentária de cada linha): o que entra, recortado, e o que fica
   // fora, nomeado. Os grupos que a prévia não mostra (V26, frota) entram na conta só para a recusa ser dita aqui também.
   const abr = aplicarAbrangencia([...arquivosCandidatos, ...v26.arquivos.map((r) => r.arquivo), ...frota.arquivos.map((r) => r.arquivo)], ugs);
   violacoes.unshift(...abr.fora.map((f) => ({ arquivo: f.arquivo, linha: 0, campo: "unidade gestora", regra: f.regra, detalhe: f.detalhe })));
+  // V34 — cada registro omitido por não ter UG, nomeado: o pacote é de conferência, não a remessa completa.
+  violacoes.unshift(...omitidosComoViolacao(r));
   const recortadoPorNome = new Map(abr.arquivos.map((a) => [a.nome, a]));
   const nomesDaPrevia = new Set(arquivosCandidatos.map((a) => a.nome));
   const arquivosGerados = abr.arquivos.filter((a) => nomesDaPrevia.has(a.nome));
@@ -447,6 +456,9 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   // Mesma normalização da prévia — o ZIP baixado TEM de ser o que a tela mostrou.
   const mesRef = competenciaMensalDe(p);
   const exercicio = anoCivil(mesRef);
+  const ugs0 = await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora);
+  const r = ugs0.operadas > 1 ? criarResolvedorDeUgs(prisma) : undefined;
+  const comUgs = r === undefined ? {} : { ugs: r };
   const arquivos: ArquivoGerado[] = await Promise.all([
     gerarDotacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, exercicio, competencia: mesRef }),
     gerarEmpenhos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
@@ -456,22 +468,22 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
     gerarEstornos(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornoLiquidacao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarEstornoRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia }),
+    gerarEstornoDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia, ...comUgs }),
+    gerarReceitaOrcamentaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codContaArrecadadora: p.codContaArrecadadora, dia: p.dia, ...comUgs }),
     gerarCadastroContaBancaria(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia }),
     gerarSaldoMensal(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef }),
     gerarMovimentacaoEntreContas(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
     gerarRetencao(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }),
-    gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia }),
+    gerarDespesaExtra(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia, ...comUgs }),
   ]);
   // V21 — a conciliação entra quando fecha; quando não, a prévia já disse por quê.
   const conciliacao = await gerarConciliacaoBancariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   if ("arquivo" in conciliacao) arquivos.push(conciliacao.arquivo);
   const unidades = await gerarUnidadeOrcamentariaOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, competencia: mesRef });
   if ("arquivo" in unidades) arquivos.push(unidades.arquivo);
-  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia });
+  const receitaExtra = await gerarReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, codFonteRecursoExtra: p.codFonteRecursoExtra, dia: p.dia, ...comUgs });
   if ("arquivo" in receitaExtra) arquivos.push(receitaExtra.arquivo);
-  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia });
+  const estornoReceitaExtra = await gerarEstornoReceitaExtraOuRecusa(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia, ...comUgs });
   if ("arquivo" in estornoReceitaExtra) arquivos.push(estornoReceitaExtra.arquivo);
   // V24 — o grupo dos restos: os mesmos arquivos da prévia (a recusa nomeada fica fora, como lá).
   const restos = await gerarArquivosDeRestos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
@@ -480,13 +492,13 @@ export async function baixarPacoteSagres(p: ParamsSagres): Promise<PacoteParaDow
   const relacionamentos = await gerarArquivosDeRelacionamentos(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
   arquivos.push(...relacionamentos.arquivos.map((r) => r.arquivo));
   // V26 — o mesmo grupo da prévia (a recusa nomeada fica fora, como lá).
-  const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef });
+  const v26 = await gerarArquivosDaV26(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, dia: p.dia, competencia: mesRef, ...comUgs });
   arquivos.push(...v26.arquivos.map((r) => r.arquivo));
   // V27 — frota e farmácia: os mesmos da prévia.
   const frota = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: p.codUnidadeGestora, cnpjGerenciadora: p.cnpjGerenciadora, competencia: mesRef });
   arquivos.push(...frota.arquivos.map((r) => r.arquivo));
   // V33 — o que mistura UGs fica FORA do ZIP (não só marcado): a prévia abaixo nomeia cada um como pendência.
-  const dentro = aplicarAbrangencia(arquivos, await contextoDasUgs(prisma, p.dia, p.codUnidadeGestora)).arquivos;
+  const dentro = aplicarAbrangencia(arquivos, { ...ugs0, ugPorRegistro: r !== undefined }).arquivos;
 
   // V27 — as pendências da MESMA prévia que a tela mostrou: com alguma, o pacote é de conferência (nome e manifesto
   // dizem isso) e não a remessa pronta. A preparação e a consulta continuam; o que falta fica nomeado.
@@ -831,4 +843,16 @@ export function exigirUgEscolhida(ug: UgDaRemessa): void {
   if (ug.opcoes.length > 1 && !ug.escolhidaNoPedido) {
     throw new Error(`Há ${String(ug.opcoes.length)} unidades gestoras escrituradas aqui (${ug.opcoes.map((o) => o.codigo).join(", ")}). Escolha a unidade da remessa; nenhum pacote sai de uma escolha implícita.`);
   }
+}
+
+/** V34 — os registros que o gerador omitiu por não ter UG, como pendência nomeada da prévia (e do manifesto do ZIP). */
+function omitidosComoViolacao(r: ResolvedorDeUgs | undefined): Violacao[] {
+  if (r === undefined) return [];
+  return r.omitidos().map((o) => ({
+    arquivo: o.arquivo,
+    linha: 0,
+    campo: "unidade gestora",
+    regra: "DOCUMENTO_SEM_UG_ATRIBUIDA" as const,
+    detalhe: `${o.documento}: ${o.motivo}. O registro fica FORA do pacote de todas as unidades gestoras até a regularização do vínculo.`,
+  }));
 }

@@ -67,6 +67,8 @@ model EntidadeContabil {
   declaracoesDeTitular DeclaracaoDeTitularDaConta[]
   arrecadacoes         ReceitaArrecadada[]
   atribuicoes          AtribuicaoDeEntidadeDaArrecadacao[]
+  /// V34 — back-relation VIRTUAL: os movimentos extraorçamentários atribuídos a esta entidade (regularização).
+  atribuicoesDeMovimentoExtra AtribuicaoDeEntidadeDoMovimentoExtra[]
 }
 
 /// OS ATRIBUTOS DA ENTIDADE, versionados. A vigente é a de maior `versao`.

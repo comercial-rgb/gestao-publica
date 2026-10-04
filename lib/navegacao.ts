@@ -227,6 +227,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
   { href: "/financeiro/transferencias-entre-ugs", numero: "Transferências entre unidades", rotulo: "Transferências entre unidades gestoras", descricao: "Duodécimo à Câmara, aportes e devoluções entre as unidades do município, com estorno e conciliação." },
   { href: "/financeiro/extraorcamentario", numero: "Extraorçamentário", rotulo: "Extraorçamentário", descricao: "Retenções, consignações e demais ingressos e dispêndios extraorçamentários." },
   { href: "/financeiro/extraorcamentario/recolher", numero: "Recolher consignações", rotulo: "Recolher consignações", descricao: "Recolhimento das retenções do exercício e de exercícios anteriores." },
+  { href: "/financeiro/extraorcamentario/sem-titular", numero: "Movimentos sem titular", rotulo: "Movimentos sem titular", descricao: "Ingressos avulsos e recolhimentos em conta sem titular declarado, para atribuir a entidade." },
   { href: "/financeiro/conciliacao", numero: "Conciliação", rotulo: "Conciliação Bancária", descricao: "Conciliação entre o extrato bancário e os lançamentos contábeis." },
   // ⚠️ A CONCILIAÇÃO POR PERÍODO é entrada PRÓPRIA, e não uma aba da de cima. São duas
   // perguntas diferentes: aquela responde "como está agora?"; esta responde "qual foi a
@@ -737,6 +738,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Movimento", itens: [
         { href: "/financeiro/extraorcamentario", rotulo: "Ingressos, dispêndios e estornos" },
         { href: "/financeiro/extraorcamentario/recolher", rotulo: "Recolhimentos, inclusive de exercícios anteriores" },
+        { href: "/financeiro/extraorcamentario/sem-titular", rotulo: "Movimentos sem titular" },
       ] },
       { rotulo: "Consignações e retenções", itens: [
         { href: "/financeiro/consignacoes", rotulo: "Consignações" },

@@ -144,13 +144,14 @@ describe("recorte por UG dos empenhos do dia, pelo gerador real", () => {
 });
 
 describe("recorte por UG das contas bancárias, pelo titular declarado", () => {
-  async function titular(contaBancariaId: string, entidadeId: string, versao: number): Promise<void> {
+  // V34 — a declaração vale do instante em que foi gravada: `criadoEm` explícito para pôr cada uma antes ou depois do dia.
+  async function titular(contaBancariaId: string, entidadeId: string, versao: number, criadoEm = new Date()): Promise<void> {
     await prisma.declaracaoDeTitularDaConta.create({
-      data: { contaBancariaId, entidadeId, versao, atoTipo: "LEI", atoNumero: "1", atoAno: 2000, atoDispositivo: "art. 1", atoCitacao: "Lei orgânica (fixture)", criadoPor: POR },
+      data: { contaBancariaId, entidadeId, versao, atoTipo: "LEI", atoNumero: "1", atoAno: 2000, atoDispositivo: "art. 1", atoCitacao: "Lei orgânica (fixture)", criadoPor: POR, criadoEm },
     });
   }
 
-  it("t5: conta sem titular recusa o cadastro de contas; com os dois titulares, cada UG recebe a sua conta — e vale a última declaração", async () => {
+  it("t5: conta sem titular recusa o cadastro de contas; com os dois titulares, cada UG recebe a sua conta — e vale a declaração vigente no dia", async () => {
     await titular("cb-poc-a", "ent-pref", 1);
     const g = await import("../adapters/tribunais/tce-pb/sagres/gerador.js");
     const antes = aplicarAbrangencia([await g.gerarCadastroContaBancaria(prisma, { codUnidadeGestora: PREF, cnpjGerenciadora: "12345678000195", dia: DIA })], await contextoDasUgs(cliente(), DIA, PREF));
@@ -158,8 +159,9 @@ describe("recorte por UG das contas bancárias, pelo titular declarado", () => {
     expect(antes.fora[0]).toMatchObject({ arquivo: "CadastroContaBancaria", regra: "CONTA_SEM_TITULAR_DECLARADO" });
     expect(antes.fora[0]?.detalhe).toMatch(/1\/56780\/222222/);
 
-    await titular("cb-poc-b", "ent-pref", 1);
-    await titular("cb-poc-b", "ent-cam", 2);
+    await titular("cb-poc-b", "ent-pref", 1, D(1, 2));
+    await titular("cb-poc-b", "ent-cam", 2, D(6, 1)); // a troca antes do dia vale no dia
+    await titular("cb-poc-b", "ent-pref", 3); // V34 — a troca gravada DEPOIS do dia não reescreve o pacote do dia
     const pPref = posicaoDoCampo("CadastroContaBancaria", "numero");
     if (pPref === null) throw new Error("leiaute sem o campo");
     const daUg = async (ug: string): Promise<string[]> => {

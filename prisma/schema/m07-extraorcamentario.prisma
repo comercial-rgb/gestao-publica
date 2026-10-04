@@ -184,6 +184,9 @@ model MovimentoExtraorcamentario {
   /// V24 — back-relation VIRTUAL: a memória do cálculo, quando esta retenção foi calculada.
   calculoDaRetencao CalculoDaRetencao?
 
+  /// V34 — back-relation VIRTUAL: a atribuição de entidade do movimento sem titular derivável (regularização).
+  atribuicaoDeEntidade AtribuicaoDeEntidadeDoMovimentoExtra?
+
   criadoEm  DateTime @default(now())
   criadoPor String
 
@@ -250,4 +253,42 @@ model AlocacaoDoRecolhimento {
   /// uma parcela só, e somá-las em duas linhas esconderia a duplicidade.
   @@unique([recolhimentoId, ingressoId])
   @@index([ingressoId])
+}
+
+// ----------------------------------------------------------------------------
+// V34 — DE QUEM É O MOVIMENTO EXTRAORÇAMENTÁRIO QUE NADA DIZ (regularização)
+//
+// A unidade gestora de um movimento extraorçamentário sai de vínculo comprovado: a retenção
+// pela unidade orçamentária do empenho que reteve; o estorno, pelo movimento que desfaz; o
+// ingresso avulso e o recolhimento, pelo titular declarado da conta em que o dinheiro passou.
+// Quando a conta não tem titular declarado, o movimento fica SEM unidade gestora — e o SAGRES
+// de um ente com várias UGs o nomeia como omitido, em vez de carimbá-lo em quem pediu.
+//
+// Esta tabela é a entrada autorizada para regularizar UM movimento: alguém atribui a entidade,
+// por ato próprio, com motivo, autor e o ato do ente que fundamenta. Espelho de
+// `AtribuicaoDeEntidadeDaArrecadacao` (M04). Insert-only; UMA por movimento (@unique) — o
+// histórico é a própria linha, e corrigir uma atribuição não é UPDATE.
+// ----------------------------------------------------------------------------
+
+model AtribuicaoDeEntidadeDoMovimentoExtra {
+  id String @id @default(cuid())
+
+  movimentoId String                     @unique
+  movimento   MovimentoExtraorcamentario @relation(fields: [movimentoId], references: [id])
+
+  entidadeId String
+  entidade   EntidadeContabil @relation(fields: [entidadeId], references: [id])
+
+  motivo String
+
+  atoTipo        TipoDeAtoDeclarado
+  atoNumero      String
+  atoAno         Int
+  atoDispositivo String
+  atoCitacao     String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([entidadeId])
 }

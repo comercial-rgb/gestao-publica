@@ -1019,6 +1019,7 @@ export type NomeDeServico =
   | "cadastrarCampanhaPublicitaria"
   | "declararTitularDaContaBancaria"
   | "atribuirEntidadeAArrecadacao"
+  | "atribuirEntidadeAoMovimentoExtra"
   // ── V6 (P2) — M32 pessoal ──
   | "cadastrarCargo"
   // V11 V9.4 — a FUNÇÃO (TR 5.12.50). Serviço novo, ação REUSADA; ver o mapa.
@@ -1677,6 +1678,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   removerFonteDoRol: "GERIR_ROL_DE_FONTES_DA_CONTA",
   // Atribuir entidade a uma guia do LEGADO — espelho exato de `atribuirContaAArrecadacao`.
   atribuirEntidadeAArrecadacao: "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
+  // ⚠️ V34 — o mesmo poder: dizer de quem é o dinheiro que passou por uma conta sem titular declarado.
+  atribuirEntidadeAoMovimentoExtra: "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
   // V6 P2 — M32 pessoal (mapa da origem, mantido): dependente e finalidade são o mesmo poder
   // (lançar o que o servidor entregou); contrato e prorrogação também.
   cadastrarCargo: "CADASTRAR_CARGO",
@@ -2311,6 +2314,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // ── V26 — o IR e o ISS retidos pelo próprio Tesouro ──
   fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
   ordenadorNaData: "leitura (o ordenador designado vigente na data, para a unidade da ficha; recusa a ambiguidade)",
+  liquidacoesComSaldo: "leitura (V33 — as liquidações com saldo a pagar da fila do art. 141, por fonte e categoria, com a anulação parcial cortada no tempo; composável de quem paga e do lote, que autorizam)",
   lerFatosProgramas: "leitura (SAGRES §4.2: os programas do orçamento com a declaração vigente)",
   lerFatosAcao: "leitura (SAGRES §4.3: as ações do orçamento com a declaração vigente)",
   gerarProgramas: "leitura (SAGRES §4.2: o arquivo)",

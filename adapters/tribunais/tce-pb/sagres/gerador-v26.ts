@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../../../prisma/generated/client/client.js";
+import type { ResolvedorDeUgs } from "./ug-do-registro.js";
 import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
 import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
@@ -148,15 +149,28 @@ export async function gerarAcao(prisma: PrismaClient, p: { readonly codUnidadeGe
 // ── §4.36 Ordenador (diário) e §4.48 ResponsavelSiafic (balancete de janeiro) ───────────────────────
 
 /** Os ordenadores cuja designação começa no dia (a relação do Tribunal cresce por designação, não por mês). */
-export async function lerFatosOrdenador(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<OrdenadorFato[]> {
+export async function lerFatosOrdenador(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly dia: Date; readonly ugs?: ResolvedorDeUgs }): Promise<OrdenadorFato[]> {
   const dia = p.dia.toISOString().slice(0, 10);
-  const todas = await prisma.designacaoDeOrdenador.findMany({ select: { cpf: true, nome: true, vigenteDesde: true }, orderBy: [{ cpf: "asc" }] });
+  const todas = await prisma.designacaoDeOrdenador.findMany({ select: { id: true, cpf: true, nome: true, vigenteDesde: true }, orderBy: [{ cpf: "asc" }, { id: "asc" }] });
   const doDia = todas.filter((g) => diaCivil(g.vigenteDesde) === dia);
-  const porCpf = new Map<string, OrdenadorFato>();
-  for (const g of doDia) if (!porCpf.has(g.cpf)) porCpf.set(g.cpf, { codUnidadeGestora: p.codUnidadeGestora, cpf: g.cpf, nome: g.nome });
-  return [...porCpf.values()];
+  // A chave do leiaute é (UG, CPF, nome): com várias UGs, a mesma pessoa pode ser ordenadora de mais de uma.
+  const porChave = new Map<string, OrdenadorFato>();
+  for (const g of doDia) {
+    // V34 — com várias UGs, a designação vai à UG da unidade dela, ou (a do ente) às UGs cujos empenhos a citariam.
+    let ugs: readonly string[] = [p.codUnidadeGestora];
+    if (p.ugs !== undefined) {
+      const r = await p.ugs.ugsDaDesignacao(g.id);
+      if (r.ugs.length === 0) {
+        p.ugs.omitir({ arquivo: "Ordenador", documento: `ordenador ${g.nome} (CPF ${g.cpf}), designado a partir de ${dia.split("-").reverse().join("/")}`, motivo: r.motivo ?? "sem unidade gestora" });
+        continue;
+      }
+      ugs = r.ugs;
+    }
+    for (const ug of ugs) if (!porChave.has(`${ug}|${g.cpf}`)) porChave.set(`${ug}|${g.cpf}`, { codUnidadeGestora: ug, cpf: g.cpf, nome: g.nome });
+  }
+  return [...porChave.values()];
 }
-export async function gerarOrdenador(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly dia: Date }): Promise<ArquivoV26> {
+export async function gerarOrdenador(prisma: PrismaClient, p: { readonly codUnidadeGestora: string; readonly dia: Date; readonly ugs?: ResolvedorDeUgs }): Promise<ArquivoV26> {
   return empacotar(LAYOUT_ORDENADOR, nomeArquivo({ codUnidadeGestora: p.codUnidadeGestora, periodicidade: "DIARIO", entidade: "Ordenador", competencia: p.dia }), await lerFatosOrdenador(prisma, p));
 }
 
@@ -784,7 +798,7 @@ async function remessaDoProjeto(prisma: PrismaClient, competencia: Date): Promis
  */
 export async function gerarArquivosDaV26(
   prisma: PrismaClient,
-  p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date; readonly competencia: Date }
+  p: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly dia: Date; readonly competencia: Date; readonly ugs?: ResolvedorDeUgs }
 ): Promise<{ readonly arquivos: readonly { readonly arquivo: ArquivoV26; readonly layout: LayoutArquivo<never> }[]; readonly recusas: readonly { readonly arquivo: string; readonly detalhe: string }[] }> {
   const mensal = { codUnidadeGestora: p.codUnidadeGestora, competencia: p.competencia };
   const comProjeto = await remessaDoProjeto(prisma, p.competencia);
@@ -799,7 +813,7 @@ export async function gerarArquivosDaV26(
     { entidade: "Acao", layout: LAYOUT_ACAO as LayoutArquivo<never>, gerar: () => gerarAcao(prisma, mensal) },
     { entidade: "RelacionamentoLiquidacaoCodigoAgrupamentoFolhaPagamento", layout: LAYOUT_RELACIONAMENTO_LIQUIDACAO_AGRUPAMENTO_FOLHA as LayoutArquivo<never>, gerar: () => gerarRelacionamentoLiquidacaoAgrupamentoFolha(prisma, mensal) },
     { entidade: "RelacionamentoEmpenhoLicitacao", layout: LAYOUT_RELACIONAMENTO_EMPENHO_LICITACAO as LayoutArquivo<never>, gerar: () => gerarRelacionamentoEmpenhoLicitacao(prisma, mensal) },
-    { entidade: "Ordenador", layout: LAYOUT_ORDENADOR as LayoutArquivo<never>, gerar: () => gerarOrdenador(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia }) },
+    { entidade: "Ordenador", layout: LAYOUT_ORDENADOR as LayoutArquivo<never>, gerar: () => gerarOrdenador(prisma, { codUnidadeGestora: p.codUnidadeGestora, dia: p.dia, ...(p.ugs !== undefined ? { ugs: p.ugs } : {}) }) },
     // O projeto da LOA: no pacote do mês da remessa (setembro, ou o mês em que a versão foi registrada para ir).
     ...(comProjeto
       ? [

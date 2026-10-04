@@ -6,6 +6,7 @@ import { versaoVigente } from "../../../../modules/m19-pessoas/dominio.js";
 import { planoVigenteDoTribunal, type PlanoVigente } from "./plano-do-tribunal.js";
 import { vigenteNoCorte } from "../../../../modules/m02-planejamento/declaracao-da-unidade.js";
 import { ordenadorNaData } from "../../../../modules/m05-despesa/ordenador.js";
+import type { ResolvedorDeUgs, UgOuMotivo } from "./ug-do-registro.js";
 import { licitacaoNoTramita } from "../../../../modules/m11-licitacoes/identificacao-no-tramita.js";
 import {
   conciliacaoBancaria,
@@ -884,7 +885,7 @@ export async function gerarEstornoRetencao(
 // ── ESTORNODESPESAEXTRA (§4.22, Diário, V23) — o ESTORNO_DISPENDIO. ────────────────────────────
 export async function lerFatosEstornoDespesaExtra(
   prisma: PrismaClient,
-  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+  params: { readonly codUnidadeGestora: string; readonly dia: Date; readonly ugs?: ResolvedorDeUgs }
 ): Promise<EstornoDespesaExtraFato[]> {
   const { gte, lt } = intervaloDoDia(params.dia);
   const movs = await prisma.movimentoExtraorcamentario.findMany({
@@ -911,8 +912,14 @@ export async function lerFatosEstornoDespesaExtra(
     if (numDespesaExtra === undefined || numero === undefined) {
       throw new Error(`SAGRES/EstornoDespesaExtra — o estorno ${m.id} ou o dispêndio que ele desfaz ficou fora da numeração.`);
     }
+    // V34 — o estorno é da UG do dispêndio que desfaz.
+    const u = params.ugs === undefined ? null : await params.ugs.ugDoMovimentoExtra(m.id);
+    if (u !== null && u.ug === null) {
+      params.ugs?.omitir({ arquivo: "EstornoDespesaExtra", documento: `estorno nº ${numero} da despesa extra nº ${numDespesaExtra}`, motivo: u.motivo });
+      continue;
+    }
     fatos.push({
-      codUnidadeGestora: params.codUnidadeGestora,
+      codUnidadeGestora: u?.ug ?? params.codUnidadeGestora,
       numDespesaExtra,
       numero,
       data: m.data,
@@ -938,7 +945,7 @@ function motivoExportavelExtra(id: string, motivo: string | null, arquivo = "Est
 
 export async function gerarEstornoDespesaExtra(
   prisma: PrismaClient,
-  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+  params: { readonly codUnidadeGestora: string; readonly dia: Date; readonly ugs?: ResolvedorDeUgs }
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosEstornoDespesaExtra(prisma, params);
   return empacotar(LAYOUT_ESTORNO_DESPESA_EXTRA, nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoDespesaExtra", competencia: params.dia }), fatos);
@@ -979,7 +986,7 @@ function contaDoIngresso(m: {
 
 export async function gerarReceitaExtraOuRecusa(
   prisma: PrismaClient,
-  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly codFonteRecursoExtra: string; readonly dia: Date }
+  params: { readonly codUnidadeGestora: string; readonly cnpjGerenciadora: string; readonly codFonteRecursoExtra: string; readonly dia: Date; readonly ugs?: ResolvedorDeUgs }
 ): Promise<ReceitaExtraOuRecusa> {
   const nome = nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "ReceitaExtra", competencia: params.dia });
   const { gte, lt } = intervaloDoDia(params.dia);
@@ -1008,9 +1015,17 @@ export async function gerarReceitaExtraOuRecusa(
   }
   try {
     const numeros = await numeracaoNoExercicio(prisma, { tipo: "INGRESSO" }, exercicio);
-    const fatos = movs.map((m): ReceitaExtraFato => {
+    // V34 — com várias UGs, cada linha leva a UG do FATO (`ug-do-registro.ts`); sem vínculo, o registro é omitido e nomeado.
+    const ugDe = await ugsDosMovimentos(params.ugs, movs);
+    const fatosOuOmitidos = movs.map((m): ReceitaExtraFato | null => {
       const numero = numeros.get(m.id);
       if (numero === undefined) throw new Error(`o ingresso ${m.id} ficou fora da numeração do exercício.`);
+      const u = ugDe.get(m.id);
+      if (u !== undefined && u.ug === null) {
+        params.ugs?.omitir({ arquivo: "ReceitaExtra", documento: `receita extra nº ${numero} de ${diaBrUtc(m.data)} (${m.valor.toFixed(2)})`, motivo: u.motivo });
+        return null;
+      }
+      const ugDoFato = u?.ug ?? params.codUnidadeGestora;
       const codConta = contaDoIngresso(m);
       const exig = plano.contas.get(codConta);
       if (exig === undefined) throw new Error(`a conta ${codConta} não está no plano do Tribunal importado para ${String(exercicio)} (tabela de ${String(plano.anoDaTabela)}).`);
@@ -1024,7 +1039,7 @@ export async function gerarReceitaExtraOuRecusa(
       }
       const t = exigirTripla(m.contaBancaria);
       return {
-        codUnidadeGestora: params.codUnidadeGestora,
+        codUnidadeGestora: ugDoFato,
         numero,
         codContaContabil: codConta,
         data: m.data,
@@ -1042,7 +1057,8 @@ export async function gerarReceitaExtraOuRecusa(
         retencao:
           exig.exigeRetencao && m.pagamento !== null && empenho !== null
             ? {
-                codUnidadeGestora: params.codUnidadeGestora,
+                // a retenção é da UG do empenho que reteve — a mesma do ingresso
+                codUnidadeGestora: ugDoFato,
                 codUnidadeOrcamentaria: empenho.ficha.unidadeOrc.codigo,
                 anoEmissaoEmpenho: empenho.ficha.exercicio,
                 numEmpenho: empenho.numero,
@@ -1053,6 +1069,7 @@ export async function gerarReceitaExtraOuRecusa(
         cnpjGerencia: params.cnpjGerenciadora,
       };
     });
+    const fatos = fatosOuOmitidos.filter((f): f is ReceitaExtraFato => f !== null);
     return { arquivo: empacotar(LAYOUT_RECEITA_EXTRA, nome, fatos), fatos };
   } catch (e) {
     return { recusa: `Receita extra de ${params.dia.toISOString().slice(0, 10)}: ${(e as Error).message}` };
@@ -1068,7 +1085,7 @@ export type EstornoReceitaExtraOuRecusa =
 
 export async function gerarEstornoReceitaExtraOuRecusa(
   prisma: PrismaClient,
-  params: { readonly codUnidadeGestora: string; readonly dia: Date }
+  params: { readonly codUnidadeGestora: string; readonly dia: Date; readonly ugs?: ResolvedorDeUgs }
 ): Promise<EstornoReceitaExtraOuRecusa> {
   const nome = nomeArquivo({ codUnidadeGestora: params.codUnidadeGestora, periodicidade: "DIARIO", entidade: "EstornoReceitaExtra", competencia: params.dia });
   const { gte, lt } = intervaloDoDia(params.dia);
@@ -1096,7 +1113,13 @@ export async function gerarEstornoReceitaExtraOuRecusa(
       const numReceitaExtra = nums.get(m.estornoDe.id);
       const numero = numeros.get(m.id);
       if (numReceitaExtra === undefined || numero === undefined) throw new Error(`o estorno ${m.id} ou o ingresso que ele desfaz ficou fora da numeração.`);
-      fatos.push({ codUnidadeGestora: params.codUnidadeGestora, numReceitaExtra, numero, data: m.data, valor: money(m.valor), motivo: motivoExportavelExtra(m.id, m.motivo, "EstornoReceitaExtra") });
+      // V34 — o estorno é da UG do ingresso que desfaz (a mesma régua, recursiva).
+      const u = params.ugs === undefined ? null : await params.ugs.ugDoMovimentoExtra(m.id);
+      if (u !== null && u.ug === null) {
+        params.ugs?.omitir({ arquivo: "EstornoReceitaExtra", documento: `estorno nº ${numero} da receita extra nº ${numReceitaExtra}`, motivo: u.motivo });
+        continue;
+      }
+      fatos.push({ codUnidadeGestora: u?.ug ?? params.codUnidadeGestora, numReceitaExtra, numero, data: m.data, valor: money(m.valor), motivo: motivoExportavelExtra(m.id, m.motivo, "EstornoReceitaExtra") });
     }
     return { arquivo: empacotar(LAYOUT_ESTORNO_RECEITA_EXTRA, nome, fatos), fatos };
   } catch (e) {
@@ -1114,6 +1137,7 @@ export async function lerFatosReceitaOrcamentaria(
     readonly cnpjGerenciadora: string;
     readonly codContaArrecadadora: string;
     readonly dia: Date;
+    readonly ugs?: ResolvedorDeUgs;
   }
 ): Promise<ReceitaOrcamentariaFato[]> {
   const { gte, lt } = intervaloDoDia(params.dia);
@@ -1136,7 +1160,15 @@ export async function lerFatosReceitaOrcamentaria(
     },
     orderBy: [{ numeroReceita: "asc" }, { tipo: "asc" }],
   });
+  // V34 — com várias UGs, cada guia leva a UG da entidade titular dela (carimbada no instante, ou atribuída).
+  const ugDe = new Map<string, UgOuMotivo>();
+  if (params.ugs !== undefined) for (const r of receitas) ugDe.set(r.id, await params.ugs.ugDaReceita(r.id));
   return receitas.flatMap((r) => {
+    const u = ugDe.get(r.id);
+    if (u !== undefined && u.ug === null) {
+      params.ugs?.omitir({ arquivo: "ReceitaOrcamentaria", documento: `guia ${r.numeroReceita} (${r.tipo}) de ${diaBrUtc(r.dataArrecadacao)}`, motivo: u.motivo });
+      return [];
+    }
     const parcelas =
       r.distribuicao.length > 0
         ? r.distribuicao.map((d) => ({
@@ -1152,7 +1184,7 @@ export async function lerFatosReceitaOrcamentaria(
             },
           ];
     return parcelas.map((parcela) => ({
-      codUnidadeGestora: params.codUnidadeGestora,
+      codUnidadeGestora: u?.ug ?? params.codUnidadeGestora,
       numeroReceita: r.numeroReceita,
       codReceitaOrcamentaria: r.naturezaReceita.codigo,
       tipoLancamento: r.tipo,
@@ -1177,6 +1209,7 @@ export async function gerarReceitaOrcamentaria(
     readonly cnpjGerenciadora: string;
     readonly codContaArrecadadora: string;
     readonly dia: Date;
+    readonly ugs?: ResolvedorDeUgs;
   }
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosReceitaOrcamentaria(prisma, params);
@@ -1302,6 +1335,7 @@ export async function lerFatosDespesaExtra(
     readonly cnpjGerenciadora: string;
     readonly codFonteRecursoExtra: string;
     readonly dia: Date;
+    readonly ugs?: ResolvedorDeUgs;
   }
 ): Promise<DespesaExtraFato[]> {
   // V23 — o plano do Tribunal diz se a conta da despesa extra EXIGE o vínculo com a receita extra.
@@ -1332,6 +1366,12 @@ export async function lerFatosDespesaExtra(
   for (const m of doDia) {
     const numero = numeros.get(m.id);
     if (numero === undefined) throw new Error(`SAGRES/DespesaExtra — o dispêndio ${m.id} ficou fora da numeração do exercício.`);
+    // V34 — o recolhimento é da UG do titular da conta pela qual saiu (no instante dele), ou da entidade atribuída.
+    const u = params.ugs === undefined ? null : await params.ugs.ugDoMovimentoExtra(m.id);
+    if (u !== null && u.ug === null) {
+      params.ugs?.omitir({ arquivo: "DespesaExtra", documento: `despesa extra nº ${numero} de ${diaBrUtc(m.data)} (${m.valor.toFixed(2)})`, motivo: u.motivo });
+      continue;
+    }
     const t = exigirTripla(m.contaBancaria);
     // A conta contábil da despesa extra é a do DÉBITO patrimonial (baixa do passivo de consignação).
     const debito = m.lancamento.partidas.find((p) => p.tipo === "DEBITO" && p.subsistema === "PATRIMONIAL");
@@ -1362,7 +1402,13 @@ export async function lerFatosDespesaExtra(
       }
       const n = nums.get(ingresso.id);
       if (n === undefined) throw new Error(`SAGRES/DespesaExtra — a receita extra do recolhimento ${numero} ficou fora da numeração.`);
-      receitaExtra = { codUnidadeGestora: params.codUnidadeGestora, exercicio: ano, numero: n };
+      // V34 — a referência leva a UG DA RECEITA (o leiaute tem campo próprio para ela), que pode não ser a do recolhimento.
+      const ur = params.ugs === undefined ? null : await params.ugs.ugDoMovimentoExtra(ingresso.id);
+      if (ur !== null && ur.ug === null) {
+        params.ugs?.omitir({ arquivo: "DespesaExtra", documento: `despesa extra nº ${numero} de ${diaBrUtc(m.data)} (${m.valor.toFixed(2)})`, motivo: `a receita extra nº ${n}/${String(ano)} que ela recolhe não tem unidade gestora: ${ur.motivo}` });
+        continue;
+      }
+      receitaExtra = { codUnidadeGestora: ur?.ug ?? params.codUnidadeGestora, exercicio: ano, numero: n };
     }
     // V24 — o CO "representará também o detalhamento da fonte real que se deu o pagamento" (§4.20): o da
     // ficha do pagamento que reteve. Retenções de fichas com CO diferente num recolhimento só não cabem
@@ -1375,7 +1421,7 @@ export async function lerFatosDespesaExtra(
       );
     }
     fatos.push({
-      codUnidadeGestora: params.codUnidadeGestora,
+      codUnidadeGestora: u?.ug ?? params.codUnidadeGestora,
       numero,
       receitaExtra,
       codContaContabil: codConta,
@@ -1406,6 +1452,7 @@ export async function gerarDespesaExtra(
     readonly cnpjGerenciadora: string;
     readonly codFonteRecursoExtra: string;
     readonly dia: Date;
+    readonly ugs?: ResolvedorDeUgs;
   }
 ): Promise<ArquivoGerado> {
   const fatos = await lerFatosDespesaExtra(prisma, params);
@@ -1963,4 +2010,18 @@ export async function gerarArquivosDeRelacionamentos(
     }
   }
   return { arquivos, recusas };
+}
+
+// ── V34 — auxiliares do recorte por registro ─────────────────────────────────────────────────────────
+
+/** A UG de cada movimento (com o resolvedor); sem resolvedor, mapa vazio — o regime de uma UG, byte a byte. */
+async function ugsDosMovimentos(ugs: ResolvedorDeUgs | undefined, movs: readonly { readonly id: string }[]): Promise<ReadonlyMap<string, UgOuMotivo>> {
+  const m = new Map<string, UgOuMotivo>();
+  if (ugs !== undefined) for (const x of movs) m.set(x.id, await ugs.ugDoMovimentoExtra(x.id));
+  return m;
+}
+
+/** dd/mm/aaaa da data do fato, na régua UTC dos leitores do leiaute (formato externo). */
+function diaBrUtc(d: Date): string {
+  return d.toISOString().slice(0, 10).split("-").reverse().join("/");
 }
