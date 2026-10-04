@@ -1,0 +1,123 @@
+MCASP 11a edicao (STN, Portaria Conjunta STN/SOF 26/2024), PDF obtido em 04/10/2026 de
+https://cnm.org.br/storage/noticias/2024/Links/MCASP%20-%2011%C2%AA%20Edi%C3%A7%C3%A3o.pdf
+sha256 2a520efe8575b2dd647fd2351c6b6d6bddeb2dbfd866a0f475bf3d88b218c065. Texto: pdftotext -layout. Trecho: Parte V, cap. 1.4 (Contabilizacao do Fundeb), pp. 375-377.
+
+       1.4. CONTABILIZAÇÃO DO FUNDEB
+
+       1.4.1. Contabilização dos Impostos e Transferências que compõem a base de Cálculo
+             do Fundeb
+
+              As receitas que compõem a base de cálculo do Fundeb (impostos e transferências
+       constitucionais e legais) deverão ser registradas contabilmente pelos seus valores brutos (não
+       líquidos dos valores destinados ao Fundeb), de acordo com o disposto no Capítulo sobre
+       Transações Sem Contraprestação, da Parte II - Procedimentos Contábeis Patrimoniais deste
+       manual.
+
+       1.4.2. Contabilização das Transferências ao Fundeb
+
+              Os fundos têm como agente financeiro o Banco do Brasil. Isso implica que os recursos
+       transferidos ao fundo não ficarão contabilizados na contabilidade do estado, na forma de caixa ou
+       equivalente de caixa ou qualquer outro direito, e sim em uma conta bancária específica de cada
+       estado junto à instituição financeira.
+
+              Os valores destinados à formação do Fundeb pelos estados, Distrito Federal e municípios
+       deverão ser registrados patrimonialmente como variação patrimonial diminutiva (VPD) e
+       orçamentariamente como dedução da receita orçamentária realizada.
+
+              A operacionalização das deduções das receitas orçamentárias é descrita no Capítulo sobre
+       Receita Orçamentária da Parte I - Procedimentos Contábeis Orçamentários (PCO) deste Manual.
+
+              As variações patrimoniais referentes às transferências concedidas ao Fundeb e
+       transacionadas diretamente com o fundo devem ser classificadas como "Inter OFSS - Estado",
+       independentemente de quemseja o ente transferidor. No momento da consolidação das contas
+       nacionais, será excluído o valor registrado nas contas "3.5.2.2.4.XX.XX - Transferências ao Fundeb
+       - Inter OFSS - Estado", tendo em vista tratar-se de operações que não envolvem agentes externos
+       ao setor público nacional, conforme estabelecido na Parte IV - Plano de Contas Aplicado ao Setor
+       Público deste manual.
+
+              Destaca-se que os lançamentos a seguir foram realizados conforme o nível de padronização
+       definido no PCASP Federação, e que representam a contabilização no ente que aporta recursos ao
+       Fundeb.
+
+       Lançamentos:
+
+       Transferência dos estados, DF ou municípios ao Fundeb
+
+       Natureza de informação: patrimonial
+
+       D 3.5.2.2.4.xx.xx  Transferências ao Fundeb - Inter OFSS - Estado
+
+       C 1.1.1.1.1.xx.xx  Caixa e Equivalentes de Caixa em Moeda Nacional - Consolidação (F)
+
+       Transferência dos estados, DF ou municípios ao Fundeb
+
+       Natureza de informação: orçamentária
+
+       D 6.2.1.3.x.xx.xx  (-) Deduções da Receita Orçamentária
+
+       C 6.2.1.1.x.xx.xx  Receita a Realizar
+
+       A natureza de receita deduzida reflete a receita originalmente arrecadada.
+
+       Transferência dos estados, DF ou municípios ao Fundeb
+
+       Natureza da informação: controle
+
+       D 8.2.1.1.1.xx.xx  Disponibilidade por Destinação de Recursos (DDR)
+
+       C 8.2.1.1.4.xx.xx  DDR Utilizada
+
+                          Secretaria do Tesouro Nacional - Manual de Contabilidade Aplicada ao Setor Público - 11ª Edição  375
+MCAMSCPASP  PartePIaIIr-tePIrIoI c-ePdriomceendtiomseCnotonstáCboenistáEbsepiescEífsipcoescíficos
+   2025     ManuMaladneuaClodnetaCboilnidtaabdielidAapdliecaAdpaliacaodSaeatoorSPeútbolricPoúblico
+
+ 2025                                                  e e
+
+               A transferência da complementação da União, deverá ser realizada por meio de despesa
+            orçamentária. Ressalta-se que, neste caso, a transferência é realizada diretamente ao ente público
+            (DF ou estados), sem trânsito pelo fundo.
+
+            1.4.3. Contabilização dos Recursos Recebidos do Fundeb
+
+                   As variações patrimoniais referentes às transferências recebidas relacionadas ao Fundeb e
+            transacionadas diretamente com o fundo devem ser classificadas como "Inter OFSS - Estado",
+            ainda que o ente recebedor seja um estado. Para fins de consolidação das contas nacionais, é
+            necessário excluir as contas "4.5.2.2.4.xx.xx - Transferência do Fundeb - Inter OFSS - Estado" para
+            serem eliminadas duplicidades, conforme estabelecido na Parte IV - Plano de Contas Aplicado ao
+            Setor Público deste manual.
+
+                   Por outro lado, as VPA referentes às transferências recebidas da União a título de
+            complementação do Fundeb devem ser classificadas como "4.5.2.2.3.xx.xx - Transferências do
+            Fundeb - Inter OFSS - União", visto que se tratam de transferências diretas, sem trânsito pela conta
+            do Fundeb.
+
+                   Ressalte-se que todos os recursos recebidos do fundo devem ser controlados separadamente
+            por fonte ou destinação de recursos de acordo com a origem dos recursos, para identificar os gastos
+            que a legislação determina que sejam realizados com educação4.
+
+                   Destaca-se que os lançamentos a seguir foram realizados conforme o nível de padronização
+            definido no PCASP Federação, e que representam a contabilização no ente que recebe recursos do
+            Fundeb, bem como complementação da União de mesma natureza.
+
+            Lançamentos:
+
+            Transferências do Fundeb
+
+            Recebimento das transferências do Fundeb pelos estados, DF e municípios
+
+            Natureza da informação: patrimonial
+
+            D 1.1.1.1.1.xx.xx   Caixa e Equivalentes de Caixa em Moeda Nacional - Consolidação (F)
+
+            C 4.5.2.2.4.xx.xx   Transferências do Fundeb - Inter OFSS - Estado
+
+            Natureza da informação: orçamentária
+
+            D 6.2.1.1.x.xx.xx   Receita a Realizar
+
+            C 6.2.1.2.x.xx.xx   Receita Realizada
+
+            NR: 1.7.5.1.50.0.0
+
+            Natureza da informação: controle
+

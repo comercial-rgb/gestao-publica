@@ -191,3 +191,41 @@ fonte é igual à despesa e o saldo é 0,00.
 
 As 22 funções batem com o "Anexo - Consolidado por função (P, A)", conferido pelo script. Comparei a olho a lista
 por função da última página do QDD (linhas 2616–2637), que o script não lê, e ela também bate.
+
+## Cadastros usados pelo QDD: programas e órgãos
+
+```
+node scripts/fontes/extrair-cadastros-loa-esperanca-2026.mjs    # gera programas-2026-DERIVADO.csv e orgaos-2026-DERIVADO.csv
+node scripts/fontes/conferir-cadastros-loa-esperanca-2026.mjs   # conferência independente
+```
+
+| Arquivo | Linhas | sha256 |
+|---|---:|---|
+| `programas-2026-DERIVADO.csv` (`programa;descricao`) | 32 | `4aa38358ab5b866acf097e9e29b8fcea81b731d1f3a9779671102080895f635c` |
+| `orgaos-2026-DERIVADO.csv` (`orgao;descricao;codigo_na_lei`) | 2 | `841fe293f9eb9a911373bf9c1d43418df6c94603619dcc40a2bcd1b5862228f5` |
+
+- **Programas.** O nome vem do "CONSOLIDADO POR PROGRAMA (P, A)" (linhas 5131–5165), com o código de 4 dígitos do
+  QDD. São 32 programas, exatamente os 32 que o `qdd-2026-DERIVADO.csv` usa: nenhum programa do QDD fica sem nome e
+  nenhum nome sobra. O nome fica como a lei imprime, e o sistema emissor corta em 50 caracteres. Alguns nomes
+  saem cortados ou com erro de digitação, e nenhum foi completado ou corrigido, porque a lei não traz o nome
+  inteiro em lugar nenhum:
+  - 1003 "GARANTIR O ACESSO A EDUCAÇÃO (EDUCAÇÃO DE QUALIDAD"
+  - 1006 "SERVIÇOS DE PROTEÇÃO SOCIAL E POSSIB DE GERAÇÃO DE"
+  - 1035 "ATENDIMENTO, PROCESSAMENTO E FISCALIZAÇÃO DOS DIRE"
+  - 1004 "EDUCAÇÃO PARA JOVENS E DULTOS"
+  - 1015 "DESNVOLVIMENTO ARTÍSTICO E CULTURAL"
+- **Órgãos.** O nome vem dos cabeçalhos `10.0000 - LEGISLATIVO` e `20.0000 - EXECUTIVO` do quadro por unidade e
+  ação. O código segue a convenção do QDD derivado, `01` e `02`, e o código impresso vai em `codigo_na_lei`.
+- **Conferência, sem nenhuma diferença:**
+  - Os 32 nomes são iguais aos do "Demonstrativo dos macro objetivos e programas" (linhas 2700–2754).
+  - Nesse demonstrativo, o valor de cada programa é igual à soma do `qdd-2026-DERIVADO.csv` (32 de 32). O
+    consolidado por programa já tinha batido, 32 de 32, na conferência do QDD acima. São dois quadros da lei
+    contra o CSV.
+  - Em 29 programas, a linha `ff.sss.pppp NOME` dos quadros por função, subfunção e programa traz o nome inteiro
+    numa linha só, e esse nome também é igual. Os outros 3 programas têm a descrição quebrada em duas linhas nesses
+    quadros e não entram nessa comparação.
+  - O rótulo que o QDD imprime antes das unidades `1xxx` é LEGISLATIVO, e antes das `2xxx` é EXECUTIVO.
+  - A soma dos "Total da Unidade Orçamentária" sob `10.0000` dá 6.400.000,00, e sob `20.0000` dá 238.600.000,00.
+    As duas são iguais à soma do QDD derivado por órgão.
+  - Para mostrar que a conferência detecta erro, alterei o nome de um programa e o de um órgão, e as duas
+    alterações foram apontadas.

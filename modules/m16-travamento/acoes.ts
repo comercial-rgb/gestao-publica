@@ -1146,6 +1146,9 @@ export type NomeDeServico =
   | "declararNaturezaDaFonte"
   // V35 — a carga da tabela oficial de fontes e CO da STN (até aqui só seed e fixture criavam fonte)
   | "carregarTabelaDeFontes"
+  // V35 — a carga do QDD da LOA aprovada (estrutura que falta + fichas pelo criarFicha)
+  | "carregarQddDaLoa"
+  | "carregarReceitaDaLoa"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1892,6 +1895,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // cadastra a LOA. A natureza que a carga declara pelo bloco da STN passa, dentro, pelo serviço da natureza, que
   // cobra a autoridade dele (PARAMETRIZAR_ROTEIRO_ORCAMENTARIO).
   carregarTabelaDeFontes: "CADASTRAR_LOA",
+  // V35 — carregar o QDD da lei aprovada é cadastrar a LOA; cada ficha, dentro, passa pelo criarFicha, que cobra
+  // CRIAR_FICHA na unidade dela.
+  carregarQddDaLoa: "CADASTRAR_LOA",
+  // V35 — a receita prevista da LOA aprovada, pela mesma autoridade; cada previsão, dentro, pelo criarReceitaPrevista.
+  carregarReceitaDaLoa: "CADASTRAR_LOA",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
