@@ -452,3 +452,23 @@ Levantamento aberto pela composição do M12: 19 pontos tratavam a anulação pa
 **Ainda abertos, nomeados:**
 - MANAD L150 em período menor que o exercício: a parcial dentro da janela com o original fora dela.
 - `totaisDoEmpenho` (status) pelo valor de emissão. É deliberado, ver `consultas.ts`.
+
+## V34 — diária e suprimento com movimento (ensaio) e a devolução que só se declara
+
+`m05-adiantamentos-movimento.test.ts` exercita com dados sintéticos de ensaio a cadeia inteira:
+
+- **Diária:** concessão de 2 × 250, empenho no elemento 14, liquidação, pagamento, prestação de 500 e baixa.
+- **Suprimento:** concessão de 1.000 no elemento 39, liquidação e pagamento; gasto de 700 e devolução de 300 pela anulação parcial do pagamento, da liquidação e do empenho, nessa ordem; prestação de 700 + 300 e baixa.
+- **O que confere:** os controles 7.9.1.2.1 e 8.9.1.2.1.01 (contas do plano oficial, as do percurso V32) zeram na baixa. VPD 1.200, banco −1.200, obrigação zerada. Quatro lançamentos de controle, dois por concessão.
+- **Prova:** uma mutação na baixa acusa.
+
+**Lacuna real, nomeada.** `valorDevolvido` é declarativo. A prestação confere comprovado + devolvido = concedido, mas não confere se o valor devolvido de fato voltou, isto é, se as anulações do pagamento, da liquidação e do empenho existem. No ensaio, as anulações são feitas à mão antes da prestação.
+
+Para fechar a lacuna, há dois caminhos:
+
+- **Guarda:** Σ devolvido ≤ Σ anulado do pagamento do empenho. É ambígua com várias concessões no mesmo empenho e com concessão ainda não paga.
+- **Ato composto:** a prestação com devolução registra as três anulações.
+
+Os dois são decisão de produto e não foram construídos.
+
+A configuração real de Esperança (contas do roteiro ADIANTAMENTO) continua pendente de implantação; o motor está provado.
