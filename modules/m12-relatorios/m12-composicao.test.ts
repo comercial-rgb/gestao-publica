@@ -20,6 +20,7 @@ import { balancoOrcamentario } from "./balanco-orcamentario.js";
 import { demonstracaoFluxosDeCaixa } from "./dfc.js";
 import { composicaoDaLinha, type Composicao, type LinhaPedida } from "./composicao.js";
 import { lerComposicao, linhaDaDfc, linhaPedidaDaUrl } from "../../lib/portas/composicao.js";
+import { csvDasTabelas, tabelasDaComposicao, tabelasDoBalancoOrcamentario } from "../../lib/relatorios/tabelas-dos-demonstrativos.js";
 
 /**
  * ═══ V33 — A COMPOSIÇÃO DE CADA LINHA SOMA A PRÓPRIA LINHA ═══
@@ -309,5 +310,21 @@ describe("M12 V33 — a composição das linhas do Balanço Financeiro, do Orça
     for (const ruim of ["bo-despesa:3.3;drop", "xx:1", "bf-receita:abc", "dfc-despesa:33", "bo-receita:1.12", undefined]) {
       expect(linhaPedidaDaUrl(ruim), String(ruim)).toBeNull();
     }
+  });
+
+  it("V34 — o PDF e o CSV saem da mesma apuração: a linha 3.3 do Balanço Orçamentário e a composição dela, nos dois", async () => {
+    // A tela mostra 9.000 / 7.000 / 6.000 na linha 3.3 (caso acima); o papel e a planilha trazem os mesmos números.
+    const t = tabelasDoBalancoOrcamentario(await balancoOrcamentario(prisma, 2026));
+    const linha33 = t.secoes[1]!.linhas.find((l) => l[1] === "3.3");
+    expect(linha33?.slice(6, 9)).toEqual(["9.000,00", "7.000,00", "6.000,00"]);
+    const csvBo = csvDasTabelas(t);
+    expect(csvBo).toContain("9.000,00");
+
+    const tela = await lerComposicao({ exercicio: 2026, linha: { tipo: "BO_DESPESA", codigo: "3.3" } });
+    const c = tabelasDaComposicao(tela, 2026);
+    const total = c.secoes[0]!.linhas.at(-1)!;
+    expect(total.slice(4)).toEqual(["9.000,00", "7.000,00", "6.000,00"]);
+    expect(c.notas[0]).toBe("A soma dos documentos confere com a linha da demonstração.");
+    expect(csvDasTabelas(c)).toContain("Total dos documentos");
   });
 });

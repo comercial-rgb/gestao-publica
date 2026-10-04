@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { Badge } from "../../../../../components/ui/Badge";
+import { BotaoCsv } from "../../../../../components/ui/BotaoCsv";
+import { BotaoPdf } from "../../../../../components/ui/BotaoPdf";
+import { csvDasTabelas, tabelasDoBalancoOrcamentario } from "../../../../../lib/relatorios/tabelas-dos-demonstrativos";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
@@ -65,6 +68,11 @@ export default async function BalancoOrcamentarioPage({
   return (
     <div className="space-y-4">
       {cabecalho}
+      {/* V34 — o PDF e o CSV saem da MESMA apuração desta tela (as tabelas de `lib/relatorios/tabelas-dos-demonstrativos.ts`). */}
+      <div className="flex justify-end gap-2" data-chrome>
+        <BotaoPdf href={`/relatorios/demonstracoes/balanco-orcamentario/pdf?exercicio=${String(exercicio)}`} />
+        <BotaoCsv csv={csvDasTabelas(tabelasDoBalancoOrcamentario(dados))} nomeArquivo={`balanco-orcamentario-${String(exercicio)}.csv`} />
+      </div>
       <div>
         <Badge status={dados.parcial ? "alerta" : "ok"}>
           {dados.parcial

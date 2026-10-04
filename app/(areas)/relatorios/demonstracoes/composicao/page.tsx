@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Badge } from "../../../../../components/ui/Badge";
 import { BotaoCsv } from "../../../../../components/ui/BotaoCsv";
+import { BotaoPdf } from "../../../../../components/ui/BotaoPdf";
+import { csvDasTabelas, tabelasDaComposicao } from "../../../../../lib/relatorios/tabelas-dos-demonstrativos";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
-import { paraCsv } from "../../../../../lib/csv/csv";
-import { formatarMoeda } from "../../../../../lib/format/moeda";
-import { lerComposicao, linhaPedidaDaUrl, type ComposicaoDaTela, type DocumentoDaTela } from "../../../../../lib/portas/composicao";
+import { chaveDaLinha, lerComposicao, linhaPedidaDaUrl, type ComposicaoDaTela, type DocumentoDaTela } from "../../../../../lib/portas/composicao";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { dataBr } from "../../../../../lib/recorte";
 import { lerExercicio } from "../exercicio";
@@ -56,16 +56,8 @@ export default async function ComposicaoPage({
     ...dados.documentos.map((d) => ({ ...d, total: false })),
     { chave: "total", href: null, documento: "", data: null, descricao: "Total dos documentos", classificacao: "", valores: dados.totais, total: true },
   ];
-  const csv = paraCsv(
-    ["Data", "Documento", "Descrição", "Classificação", ...dados.colunas],
-    dados.documentos.map((d) => [
-      d.data === null ? "" : dataBr(d.data),
-      d.documento,
-      d.descricao,
-      d.classificacao,
-      ...d.valores.map((v) => formatarMoeda(v).texto),
-    ])
-  );
+  // V34 — o CSV e o PDF saem das MESMAS tabelas (`lib/relatorios/tabelas-dos-demonstrativos.ts`).
+  const csv = csvDasTabelas(tabelasDaComposicao(dados, exercicio));
 
   return (
     <div className="space-y-4">
@@ -77,7 +69,10 @@ export default async function ComposicaoPage({
             <Link className="text-xs text-[color:var(--color-primary)] underline" href={dados.demonstracao.href}>
               Voltar para {dados.demonstracao.nome}
             </Link>
-            <BotaoCsv csv={csv} nomeArquivo={`composicao-${String(exercicio)}.csv`} />
+            <div className="flex gap-2">
+              <BotaoPdf href={`/relatorios/demonstracoes/composicao/pdf?linha=${encodeURIComponent(chaveDaLinha(pedida))}&exercicio=${String(exercicio)}`} />
+              <BotaoCsv csv={csv} nomeArquivo={`composicao-${String(exercicio)}.csv`} />
+            </div>
           </div>
         }
       />
@@ -85,7 +80,13 @@ export default async function ComposicaoPage({
       <Conferencia dados={dados} />
 
       {dados.documentos.length === 0 ? (
-        <EstadoVazio titulo="Nenhum documento nesta linha" descricao="Não há arrecadação, empenho ou pagamento que forme esta linha no exercício." />
+        // V34 — "sem movimento" não é "demonstração recusada": quando o motor recusou (rol de caixa não informado, item sem
+        // atividade definida), a ausência de documentos é falta de configuração, e a tela diz qual.
+        dados.linha !== null && "indisponivel" in dados.linha ? (
+          <EstadoVazio titulo="A demonstração foi recusada" descricao={`Sem a demonstração emitida, a linha não tem como ser composta: ${dados.linha.indisponivel}`} />
+        ) : (
+          <EstadoVazio titulo="Sem movimento nesta linha" descricao="Não há arrecadação, empenho ou pagamento que forme esta linha no exercício." />
+        )
       ) : (
         <TabelaDeDados
           colunas={colunas(dados.colunas)}
