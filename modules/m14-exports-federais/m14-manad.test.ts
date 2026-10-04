@@ -18,7 +18,7 @@ import {
 } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import { liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
-import { anularEmpenhoParcial } from "../m05-despesa/anulacao-parcial.js";
+import { anularEmpenhoParcial, anularLiquidacaoParcial, anularPagamentoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { abrirExercicio } from "../m08-restos-a-pagar/exercicio.js";
 import { encerrarExercicioComRestos } from "../m08-restos-a-pagar/encerramento.js";
 import {
@@ -949,5 +949,92 @@ describe("M14 — MANAD: as invariantes do módulo", () => {
       expect(ESCRITA.test(efetivo), `${f} tem ESCRITA`).toBe(false);
       expect(SUM_BRUTO.test(efetivo), `${f} tem SUM bruto`).toBe(false);
     }
+  });
+});
+
+/**
+ * V34 — O RECORTE MENOR QUE O EXERCÍCIO (maio de 2026), com fatos ANTERIORES, INTERNOS e POSTERIORES.
+ *
+ * O manual: DT_INI/DT_FIN são as datas "das informações contidas no arquivo" (0000); cada anulação é um registro de
+ * movimento (orientação c); o L200 traz a receita "Realizada no Período". Então:
+ *   · L050/L100/L150 trazem os fatos datados em maio — a anulação de maio cujo original é de antes aponta o ORIGINAL
+ *     (NM_EMP/NM_LIQUID/NM_PGTO) e sai com o sinal certo; nada de antes nem de depois entra;
+ *   · L250: a dotação continua a do exercício; a execução é o movimento com sinal de maio (= Σ D − C dos L050/L100/L150);
+ *   · L200: a orçada do exercício, a realizada de maio.
+ * Antes da V34, a anulação parcial do pagamento de maio saía com o próprio número no NM_PGTO, e o estorno de uma parcial
+ * de abril derrubava o arquivo (o sinal exige o alvo).
+ *
+ * Contas à mão (maio): empenhado = 2.000 (NE-2) − 1.000 (parcial do NE-1) = 1.000; liquidado = 500 (o estorno da
+ * parcial de abril devolve) + 2.000 (NL-2) = 2.500; pago = 300 (NP-3) − 200 (parcial do NP-1) = 100; realizada = 300.
+ */
+describe("M14 — MANAD em período menor que o exercício (V34)", () => {
+  beforeEach(semear);
+  const MAIO = { dtInicio: new Date(Date.UTC(2026, 4, 1)), dtFim: new Date(Date.UTC(2026, 4, 31)), codFinalidade: "62" as const };
+  const D = (iso: string): Date => new Date(`${iso}T12:00:00Z`);
+  const MOTIVO = "glosa registrada pela fiscalizacao";
+
+  it("p1: os fatos de maio, com referências ao original de antes, sinais e totalizadores do período", async () => {
+    const emp = (numero: string, valor: string, data: string, categoria: "PRESTACAO_SERVICOS" | "FORNECIMENTO_BENS") =>
+      empenhar({ fichaId: FICHA, numero, tipo: "ORDINARIO", valor, data: D(data), credorCpfCnpj: CREDOR_PJ, historico: `empenho ${numero}`, categoriaOrdemCronologica: categoria, criadoPor: POR }, R_EMPENHO, deps);
+    const liq = (empenhoId: string, numero: string, valor: string, data: string) =>
+      liquidar({ empenhoId, numero, valor, data: D(data), responsavelAtesto: "Fiscal", historico: `liquidacao ${numero}`, criadoPor: POR }, R_LIQUIDACAO, deps);
+    const pag = (liquidacaoId: string, numero: string, valor: string, data: string) =>
+      pagar({ liquidacaoId, numero, valor, data: D(data), contaBancaria: "CC-001", fonteId: FONTE, historico: `pagamento ${numero}`, criadoPor: POR }, R_PAGAMENTO, deps);
+
+    // antes de maio
+    const ne1 = await emp("NE-1", "6000.00", "2026-02-10", "PRESTACAO_SERVICOS");
+    const nl1 = await liq(ne1.empenhoId, "NL-1", "3000.00", "2026-03-01");
+    const np1 = await pag(nl1.liquidacaoId, "NP-1", "1000.00", "2026-04-01");
+    const anl1 = await anularLiquidacaoParcial({ originalId: nl1.liquidacaoId, numero: "ANL-1", valor: "500.00", data: D("2026-04-15"), motivo: MOTIVO, criadoPor: POR }, deps);
+    const rec = (numeroReceita: string, valor: string, data: string) =>
+      registrarArrecadacao({ exercicio: 2026, naturezaReceita: NAT_IPTU, fonte: "500", exercicioFonte: 1, valor, dataArrecadacao: D(data), numeroReceita, contaBancaria: "CC-001", criadoPor: POR }, R_ARRECADACAO, criarM04Deps(prisma));
+    await rec("7", "100.00", "2026-04-10");
+    // maio
+    await estornarAnulacaoParcial({ nivel: "LIQUIDACAO", anulacaoId: anl1.anulacaoId, numero: "ANL-1-E", data: D("2026-05-10"), motivo: "glosa desfeita", criadoPor: POR }, deps);
+    await anularPagamentoParcial({ originalId: np1.pagamentoId, numero: "APG-1", valor: "200.00", data: D("2026-05-12"), motivo: MOTIVO, criadoPor: POR }, deps);
+    const ne2 = await emp("NE-2", "2000.00", "2026-05-15", "FORNECIMENTO_BENS");
+    await anularEmpenhoParcial({ originalId: ne1.empenhoId, numero: "ANE-1", valor: "1000.00", data: D("2026-05-20"), motivo: MOTIVO, criadoPor: POR }, deps);
+    const nl2 = await liq(ne2.empenhoId, "NL-2", "2000.00", "2026-05-25");
+    await pag(nl2.liquidacaoId, "NP-3", "300.00", "2026-05-28");
+    await rec("8", "300.00", "2026-05-12");
+    // depois de maio
+    await emp("NE-3", "500.00", "2026-06-10", "FORNECIMENTO_BENS");
+    await pag(nl2.liquidacaoId, "NP-4", "100.00", "2026-06-05");
+    await rec("9", "50.00", "2026-06-06");
+
+    const r = await gerarManad(prisma, MAIO);
+    const campos = (reg: string, n: number) => textoDe(r, reg).map((l) => l.split("|").slice(1, n + 1).join("|"));
+    // L050: só os empenhos de maio; a parcial de maio do NE-1 (de fevereiro) aponta o NE-1, com C.
+    expect(campos("L050", 14).map((l) => l.split("|").slice(10).join("|"))).toEqual([
+      "NE-2/2026.1|15052026|2000,00|D",
+      "NE-1/2026.1|20052026|1000,00|C",
+    ]);
+    // L100: o estorno de maio da parcial de abril devolve (D) e aponta a NL-1; a NL-2 de maio. A NL-1 (março) não entra.
+    expect(campos("L100", 5)).toEqual([
+      "NE-1/2026.1|NE-1-NL-1/2026.1|10052026|500,00|D",
+      "NE-2/2026.1|NE-2-NL-2/2026.1|25052026|2000,00|D",
+    ]);
+    // L150: a parcial de maio do NP-1 (abril) aponta o NP-1 (não o número dela) com C; o NP-3 de maio. O NP-4 (junho) não.
+    expect(campos("L150", 5)).toEqual([
+      "NE-1/2026.1|NE-1-NL-1-NP-1/2026.1|12052026|200,00|C",
+      "NE-2/2026.1|NE-2-NL-2-NP-3/2026.1|28052026|300,00|D",
+    ]);
+    // L250: dotação do exercício; execução de maio (campos 21, 22 e 23).
+    const l250 = textoDe(r, "L250")[0]!.split("|");
+    expect([l250[12], l250[20], l250[21], l250[22]]).toEqual(["2000000,00", "1000,00", "2500,00", "100,00"]);
+    // L200: a realizada de maio (300); as guias de abril e junho não entram.
+    expect(textoDe(r, "L200").map((l) => l.split("|")[5])).toEqual(["300,00"]);
+    // Os totalizadores: a execução do L250 é o D − C dos registros de movimento do período.
+    const dc = (reg: string, iValor: number, iDc: number) =>
+      textoDe(r, reg).reduce((acc, l) => { const c = l.split("|"); const v = toMoney(c[iValor]!.replace(",", ".")); return c[iDc] === "D" ? acc.plus(v) : acc.minus(v); }, toMoney("0"));
+    expect([dc("L050", 13, 14).toFixed(2), dc("L100", 4, 5).toFixed(2), dc("L150", 4, 5).toFixed(2)]).toEqual(["1000.00", "2500.00", "100.00"]);
+    expect(r.pendencias.filter((p) => p.registro === "L250" && /no período/.test(p.motivo))).toEqual([]);
+  });
+
+  it("p2: o exercício inteiro continua o de sempre sobre os mesmos fatos (nenhum corte no início)", async () => {
+    await ciclo2026();
+    const anual = await gerarManad(prisma, PERIODO_2026);
+    const l250 = textoDe(anual, "L250")[0]!.split("|");
+    expect([l250[20], l250[21], l250[22]]).toEqual(["5000,00", "5000,00", "2500,00"]);
   });
 });

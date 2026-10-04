@@ -517,7 +517,14 @@ async function blocoL(
     indDebCred: "D" | "C";
   }[] = [];
 
-  for (const e of todosEmpenhos) {
+  // ⚠️ V34 — O PERÍODO DO ARQUIVO (0000: DT_INI e DT_FIN são as datas "das informações contidas no arquivo").
+  // O empenho do exercício sai pela DATA DO FATO no período, como a liquidação e o pagamento já saíam; o de restos a
+  // pagar continua pela orientação (b) (valor original, com saldo ou movimento). No arquivo do exercício inteiro nada
+  // muda. O índice (`empenhoPorId`) segue COMPLETO: é dele que saem a raiz (NM_EMP) e o sinal (D/C) da anulação cujo
+  // original ficou fora do período.
+  const noPeriodo = (d: Date): boolean => d.getTime() >= entrada.dtInicio.getTime() && d.getTime() <= entrada.dtFim.getTime();
+  const doArquivoL050 = todosEmpenhos.filter((e) => empenhosDeRpIds.has(e.id) || noPeriodo(e.data));
+  for (const e of doArquivoL050) {
     const ficha = fichaPorId.get(e.fichaId);
     if (ficha === undefined) {
       throw new Error(`MANAD — empenho ${e.id} sem ficha legível. Base quebrada.`);
@@ -775,7 +782,14 @@ async function blocoL(
     },
     orderBy: { data: "asc" },
   });
-  const pagPorId = new Map(pagamentos.map((x) => [x.id, x]));
+  // ⚠️ V34 — O ÍNDICE PRECISA DE TODOS os pagamentos, como o das liquidações: num período menor que o exercício, a
+  // anulação parcial de dentro do período apontava um original de fora, e saía com o PRÓPRIO número no NM_PGTO (não o
+  // do pagamento que ela anula); o estorno de uma parcial de fora derrubava o arquivo (o sinal exige o alvo).
+  const todosPagamentos = await leitor.pagamento.findMany({
+    where: { liquidacao: { empenhoId: { in: [...empenhoPorId.keys()] } } },
+    select: { id: true, numero: true, estornoDeId: true, anulacaoParcialDeId: true },
+  });
+  const pagPorId = new Map<string, FatoAppendOnly & { readonly numero: string }>(todosPagamentos.map((x) => [x.id, x]));
 
   for (const p of pagamentos) {
     const liq = liqPorId.get(p.liquidacaoId)!;
@@ -783,7 +797,7 @@ async function blocoL(
     const raizE = raizDo(e, empenhoPorId);
     const raizFicha = fichaPorId.get(raizE.fichaId)!;
     const raizLiq = raizDo(liq, liqPorId);
-    const raizPag = raizDo(p, pagPorId);
+    const raizPag = raizDo<FatoAppendOnly & { readonly numero: string }>(p, pagPorId);
     const ficha = fichaPorId.get(e.fichaId)!;
 
     const orgUn = `${ficha.orgao.codigo}${ficha.unidadeOrc.codigo}`;
@@ -812,7 +826,7 @@ async function blocoL(
   }
 
   // ═══ L200 — BALANCETE DA RECEITA (Anexo 10) ═══
-  linhas.push(...(await l200(leitor, exercicio)));
+  linhas.push(...(await l200(leitor, exercicio, entrada)));
 
   // ═══ L250 — BALANCETE DA DESPESA ═══
   const balancetes = await l250(leitor, entrada, exercicio, fichas, pendencias);
@@ -853,17 +867,20 @@ async function blocoL(
   // `Empenho` — o `somaLiquidaEstornaveis` do M05 não o vê. O lado direito vai buscá-lo no
   // dono (o M08). Ver a nota no domínio: a cura de emitir o cancelamento não foi afrouxar
   // a identidade, foi COMPÔ-LA — agora ela amarra dois módulos em vez de um.
+  // ⚠️ V34 — O LÍQUIDO DO DONO NO PERÍODO, pela régua dele em DOIS CORTES: o empenhado líquido até o fim do período
+  // menos o empenhado líquido antes do início. É outro caminho para o mesmo número que o arquivo emite com sinal (a
+  // anulação de dentro do período sobre um empenho de antes reduz o "até o fim" e não o "antes do início"); no arquivo do
+  // exercício inteiro, o corte "antes do início" é vazio e o número é o de sempre.
+  const liquidoAte = (fichaId: string, ate: (d: Date) => boolean): Money =>
+    somaLiquidaEstornaveis(
+      todosEmpenhos
+        .filter((e) => e.fichaId === fichaId && ate(e.data))
+        .map((e) => ({ id: e.id, valor: m(e.valor), estornoDeId: e.estornoDeId, anulacaoParcialDeId: e.anulacaoParcialDeId }))
+    );
   const dosDonos = fichas.map((f) => ({
     fichaId: f.id,
-    liquido: somaLiquidaEstornaveis(
-      todosEmpenhos
-        .filter((e) => e.fichaId === f.id)
-        .map((e) => ({
-          id: e.id,
-          valor: m(e.valor),
-          estornoDeId: e.estornoDeId,
-          anulacaoParcialDeId: e.anulacaoParcialDeId,
-        }))
+    liquido: toMoney(
+      liquidoAte(f.id, (d) => d.getTime() <= entrada.dtFim.getTime()).minus(liquidoAte(f.id, (d) => d.getTime() < entrada.dtInicio.getTime()))
     ),
     canceladoRp: todosEmpenhos
       .filter((e) => e.fichaId === f.id)
@@ -1162,7 +1179,7 @@ export function pernasDoPagamento(
 // L200 — balancete da receita
 // ───────────────────────────────────────────────────────────────────────────
 
-async function l200(leitor: Leitor, exercicio: number): Promise<readonly LinhaManad[]> {
+async function l200(leitor: Leitor, exercicio: number, entrada: EntradaManad): Promise<readonly LinhaManad[]> {
   const previstas = await leitor.receitaPrevista.findMany({
     where: { exercicio },
     select: {
@@ -1179,8 +1196,14 @@ async function l200(leitor: Leitor, exercicio: number): Promise<readonly LinhaMa
     },
   });
 
+  // ⚠️ V34 — "VL_REC_REALIZADA: Receita Realizada no Período" (manual, L200): as guias datadas no período. A orçada
+  // continua sendo a do exercício ("Receita Orçada no Exercício"). O índice de TODAS as guias do exercício só dá o sinal
+  // da anulação de dentro do período cuja guia ficou fora — ela entra negativa, em vez de sumir.
+  const sinalDasGuias = new Map<string, FatoAppendOnly>(
+    (await leitor.receitaArrecadada.findMany({ where: { exercicio }, select: { id: true, estornoDeId: true } })).map((x) => [x.id, { ...x, anulacaoParcialDeId: null }])
+  );
   const arrecadadas = await leitor.receitaArrecadada.findMany({
-    where: { exercicio },
+    where: { exercicio, dataArrecadacao: { gte: entrada.dtInicio, lte: entrada.dtFim } },
     select: {
       id: true,
       valor: true,
@@ -1283,7 +1306,8 @@ async function l200(leitor: Leitor, exercicio: number): Promise<readonly LinhaMa
         // ⚠️ A SOMA É DO DONO. `somaLiquidaEstornaveis` — a mesma do Anexo 12 e do
         // superávit por fonte. Uma anulação de receita NÃO é uma receita negativa: ela
         // NEUTRALIZA a original, e as duas somem da soma.
-        valor(somaLiquidaEstornaveis(g.arrecadadas)),
+        // V34 — o movimento com sinal do período (no exercício inteiro, o mesmo que a soma líquida: os pares se encontram).
+        valor(g.arrecadadas.reduce((acc, x) => toMoney(sinalDoFato({ id: x.id, estornoDeId: x.estornoDeId, anulacaoParcialDeId: null }, sinalDasGuias) === 1 ? acc.plus(x.valor) : acc.minus(x.valor)), toMoney("0.00"))),
         numero(g.fonte, onde("L200", "COD_REC_VINC")),
         alfa(g.natureza.descricao, onde("L200", "DESC_RECEITA")),
         alfa(g.natureza.indTipoContaManad, onde("L200", "IND_TIPO_CONTA")),
@@ -1328,8 +1352,20 @@ async function l250(
 
   const empenhos = await leitor.empenho.findMany({
     where: { ficha: { exercicio } },
-    select: { id: true, fichaId: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true },
+    select: { id: true, fichaId: true, valor: true, data: true, estornoDeId: true, anulacaoParcialDeId: true },
   });
+  // ⚠️ V34 — os índices COMPLETOS da execução da ficha, só para o sinal (D/C) de cada fato do período: a anulação de
+  // dentro do período cujo original ficou fora entra NEGATIVA. Somar só as linhas do período pela régua dos estornáveis
+  // descartava essa anulação (o par não se encontra) e o período saía inflado.
+  const sinalDasLiquidacoes = new Map<string, FatoAppendOnly>(
+    (await leitor.liquidacao.findMany({ where: { empenho: { ficha: { exercicio } } }, select: { id: true, estornoDeId: true, anulacaoParcialDeId: true } })).map((x) => [x.id, x])
+  );
+  const sinalDosPagamentos = new Map<string, FatoAppendOnly>(
+    (await leitor.pagamento.findMany({ where: { liquidacao: { empenho: { ficha: { exercicio } } } }, select: { id: true, estornoDeId: true, anulacaoParcialDeId: true } })).map((x) => [x.id, x])
+  );
+  const sinalDosEmpenhos = new Map<string, FatoAppendOnly>(empenhos.map((x) => [x.id, x]));
+  const movimento = (fatos: readonly (FatoAppendOnly & { readonly valor: { toFixed(c: number): string } })[], porId: ReadonlyMap<string, FatoAppendOnly>): Money =>
+    fatos.reduce((acc, x) => toMoney(sinalDoFato(x, porId) === 1 ? acc.plus(m(x.valor)) : acc.minus(m(x.valor))), toMoney("0.00"));
   // ⚠️ O EMPENHADO é de TODOS os empenhos da ficha (a N3 o amarra ao L050). Já o
   // LIQUIDADO e o PAGO levam o corte pela DATA DO FATO: um RP da ficha de 2026 liquidado
   // e pago em 2027 é execução de RESTOS, e não pode voltar a contar como despesa
@@ -1403,36 +1439,21 @@ async function l250(
       );
     const reducoes = somaDe((mv) => mv.tipo === "ANULACAO_CREDITO");
 
-    const empenhado = somaLiquidaEstornaveis(
-      empenhos
-        .filter((e) => e.fichaId === f.id)
-        .map((e) => ({
-          id: e.id,
-          valor: m(e.valor),
-          estornoDeId: e.estornoDeId,
-          anulacaoParcialDeId: e.anulacaoParcialDeId,
-        }))
+    // V34 — a execução do PERÍODO: o movimento com sinal dos fatos datados nele (no arquivo anual, o mesmo valor de
+    // antes: dentro do exercício todo par original/anulação se encontra).
+    const empenhado = movimento(
+      empenhos.filter((e) => e.fichaId === f.id && e.data.getTime() >= entrada.dtInicio.getTime() && e.data.getTime() <= entrada.dtFim.getTime()),
+      sinalDosEmpenhos
     );
-    const liquidado = somaLiquidaEstornaveis(
-      liquidacoes
-        .filter((x) => x.empenho.fichaId === f.id)
-        .map((x) => ({
-          id: x.id,
-          valor: m(x.valor),
-          estornoDeId: x.estornoDeId,
-          anulacaoParcialDeId: x.anulacaoParcialDeId,
-        }))
-    );
-    const pago = somaLiquidaEstornaveis(
-      pagamentos
-        .filter((x) => x.liquidacao.empenho.fichaId === f.id)
-        .map((x) => ({
-          id: x.id,
-          valor: m(x.valor),
-          estornoDeId: x.estornoDeId,
-          anulacaoParcialDeId: x.anulacaoParcialDeId,
-        }))
-    );
+    const liquidado = movimento(liquidacoes.filter((x) => x.empenho.fichaId === f.id), sinalDasLiquidacoes);
+    const pago = movimento(pagamentos.filter((x) => x.liquidacao.empenho.fichaId === f.id), sinalDosPagamentos);
+    // ⚠️ No período, as anulações podem superar os fatos (um mês só de estornos). O valor sai com o sinal, e a pendência
+    // diz isso: o manual não trata valor negativo no balancete, e a decisão de como apresentá-lo é de quem requisitou.
+    for (const [campo, v] of [["VL_EMPENHADO", empenhado], ["VL_LIQUIDADO", liquidado], ["VL_PAGO", pago]] as const) {
+      if (v.isNegative()) {
+        pendencias.push({ registro: "L250", motivo: `${campo} da ficha ${f.numero}/${String(f.exercicio)} é ${v.toFixed(2)} no período: as anulações do período superam os fatos dele. O valor sai com o sinal; confira com quem requisitou o arquivo.` });
+      }
+    }
 
     linhas.push({
       reg: "L250",

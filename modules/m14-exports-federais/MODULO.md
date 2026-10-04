@@ -574,6 +574,30 @@ o nome da obra. É a "terceira via" do M14: quem publica, avisa.
   elemento 39). Eles precisam de um **rol próprio (ASTEC)** e de um gatilho que não é o elemento
   51. É território de M15 — **não é escopo deste bloco**, e o L800 não os cobre.
 
+## V34 — o período menor que o exercício
+
+Fonte: MANAD v1.0.0.2 (Receita Federal), lido do PDF oficial: o 0000 define DT_INI e DT_FIN como as datas "das
+informações contidas no arquivo"; a orientação (c) do bloco L faz de cada anulação ou cancelamento um registro de
+movimento; o L200 traz a "Receita Orçada no Exercício" e a "Receita Realizada no Período". O L250 não qualifica as
+colunas de execução.
+
+- **L050, L100, L150:** os fatos datados no período. O empenho do exercício passou a ser cortado pela data (antes saíam
+  todos os do exercício, inclusive os posteriores a DT_FIN); o de restos a pagar continua pela orientação (b).
+- **O índice é completo.** Raiz (NM_EMP, NM_LIQUID, NM_PGTO) e sinal (D/C) saem de TODOS os fatos, não só dos do
+  período. Defeito corrigido: no L150 o índice era só o do período — a anulação parcial de dentro, cujo pagamento era de
+  antes, saía com o próprio número no NM_PGTO, e o estorno de uma parcial de antes derrubava o arquivo.
+- **L250:** dotação do exercício; VL_EMPENHADO, VL_LIQUIDADO e VL_PAGO são o movimento com sinal do período — o D − C
+  dos L050/L100/L150, o mesmo critério da realizada do L200. Decisão por analogia com o L200, nomeada aqui porque o
+  manual não a fixa para o L250. Valor negativo no período (anulações maiores que os fatos) sai com o sinal e vira
+  pendência nomeada.
+- **L200:** a realizada é a das guias datadas no período, com sinal (a anulação de dentro de uma guia de antes entra
+  negativa); a orçada continua a do exercício.
+- **N2:** o líquido do dono no período pela régua dele em dois cortes (até DT_FIN menos antes de DT_INI) — caminho
+  independente da soma com sinal do arquivo.
+- No arquivo do exercício inteiro nada muda (`m14-manad` 13/13 antes do teste novo). Teste: `p1`/`p2` em
+  `m14-manad.test.ts` (maio de 2026 com fatos de antes, de dentro e de depois), quatro mutações vermelhas.
+- O arquivo não é transmitido: a geração é local.
+
 ---
 
 # eSocial — o REGISTRO do leiaute, e por que não há gerador (V11 V2.1)
