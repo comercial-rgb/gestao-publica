@@ -472,3 +472,17 @@ Para fechar a lacuna, há dois caminhos:
 Os dois são decisão de produto e não foram construídos.
 
 A configuração real de Esperança (contas do roteiro ADIANTAMENTO) continua pendente de implantação; o motor está provado.
+
+## V35 — a devolução do adiantamento conferida
+
+A lacuna da V34 está fechada pela **guarda** na aprovação da prestação (`aprovarPrestacaoDeAdiantamento`), sob o
+trinco `AdiantamentoDoEmpenho` que a decisão já toma:
+
+- Σ devolvido (prestações aprovadas do empenho + a atual) ≤ o **anulado** em cada fase do empenho: pagamento,
+  liquidação e empenho (valor original menos líquido, pelas anulações parciais e estornos de sempre).
+- Comparar com o anulado, e não com o pago líquido, resolve a ambiguidade nomeada na V34: uma concessão ainda não
+  paga no mesmo empenho não mascara a devolução de outra (`m05-adiantamentos-movimento` m3, N=2).
+- A recusa nomeia cada fase que falta e quanto já foi anulado. Duas mutações (guarda desligada; fase lida da fase
+  errada) acusam.
+- O ato composto (a prestação executar as três anulações) continua não construído: a guarda basta para que a baixa
+  não aconteça sem o dinheiro de volta.

@@ -143,7 +143,9 @@ describe("V32 — diárias e suprimento de fundos", () => {
     await expect(registrar("400.00", "0.00")).rejects.toThrow(/em análise/);
     await rejeitarPrestacaoDeAdiantamento(prisma, { prestacaoId: p1.prestacaoId, motivo: "Falta o certificado assinado.", diaDecisao: "2026-03-16", criadoPor: POR });
     expect(await saldo(A_COMPROVAR)).toBe("900.00");
-    const p2 = await registrar("300.00", "100.00");
+    // V35: a aprovação confere a devolução contra as anulações; aqui não há pagamento, então a prestação aprovada
+    // comprova o valor inteiro (a devolução conferida é medida em m05-adiantamentos-movimento m3).
+    const p2 = await registrar("400.00", "0.00");
     await aprovarPrestacaoDeAdiantamento(prisma, { prestacaoId: p2.prestacaoId, motivo: "Comprovantes conferidos.", diaDecisao: "2026-03-18", criadoPor: POR });
     await expect(aprovarPrestacaoDeAdiantamento(prisma, { prestacaoId: p2.prestacaoId, motivo: "Segunda aprovação.", diaDecisao: "2026-03-18", criadoPor: POR })).rejects.toThrow(/já foi decidida/);
     expect(await saldo(A_COMPROVAR)).toBe("500.00");

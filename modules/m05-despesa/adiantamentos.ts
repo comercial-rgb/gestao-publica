@@ -54,6 +54,29 @@ async function empenhadoLiquidoDoEmpenho(tx: Tx, empenhoId: string): Promise<Mon
   );
 }
 
+/**
+ * V35 — O QUE JÁ VOLTOU AO CAIXA, por fase, no empenho: o valor original menos o líquido, no empenho, nas liquidações e
+ * nos pagamentos (as anulações parciais e os estornos de sempre). É o que a devolução declarada na prestação tem de
+ * caber: devolver é anular o pagamento, a liquidação e o empenho — sem as três, o dinheiro não voltou.
+ */
+async function anuladoNoEmpenho(tx: Tx, empenhoId: string): Promise<{ readonly empenho: Money; readonly liquidacao: Money; readonly pagamento: Money }> {
+  const original = await tx.empenho.findUnique({ where: { id: empenhoId }, select: { valor: true } });
+  const empenhoBruto = toMoney(original === null ? "0.00" : original.valor.toFixed(2));
+  const empenhoLiquido = await empenhadoLiquidoDoEmpenho(tx, empenhoId);
+  const comoLinha = (x: { id: string; valor: { toFixed(n: number): string }; estornoDeId: string | null; anulacaoParcialDeId: string | null }) => ({
+    id: x.id, valor: toMoney(x.valor.toFixed(2)), estornoDeId: x.estornoDeId, anulacaoParcialDeId: x.anulacaoParcialDeId,
+  });
+  const bruto = (ls: readonly ReturnType<typeof comoLinha>[]): Money =>
+    ls.filter((l) => l.estornoDeId === null && l.anulacaoParcialDeId === null).reduce((s, l) => toMoney(s.plus(l.valor)), toMoney("0.00"));
+  const liquidacoes = (await tx.liquidacao.findMany({ where: { empenhoId }, select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } })).map(comoLinha);
+  const pagamentos = (await tx.pagamento.findMany({ where: { liquidacao: { empenhoId } }, select: { id: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true } })).map(comoLinha);
+  return {
+    empenho: toMoney(empenhoBruto.minus(empenhoLiquido)),
+    liquidacao: toMoney(bruto(liquidacoes).minus(somaLiquidaEstornaveis(liquidacoes))),
+    pagamento: toMoney(bruto(pagamentos).minus(somaLiquidaEstornaveis(pagamentos))),
+  };
+}
+
 /** COMPROVADA: prestação aprovada. EM_ANALISE: apresentada sem decisão. EM_ATRASO: prazo vencido. A_COMPROVAR. */
 export type SituacaoDoAdiantamento = "A_COMPROVAR" | "EM_ANALISE" | "EM_ATRASO" | "COMPROVADA";
 
@@ -305,6 +328,34 @@ export async function aprovarPrestacaoDeAdiantamento(
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.aprovarPrestacaoDeAdiantamento, "ENTE");
     const p = await prestacaoParaDecidir(tx, d.prestacaoId);
+    // V35 — A DEVOLUÇÃO CONFERIDA (fecha a lacuna nomeada na V34). Sob o trinco do empenho (tomado acima): o devolvido
+    // de todas as prestações aprovadas deste empenho, mais esta, cabe no que foi de fato anulado em cada fase. Comparar
+    // com o ANULADO (e não com o pago líquido) é o que impede uma concessão ainda não paga de mascarar a devolução de
+    // outra no mesmo empenho.
+    const devolvidoAgora = toMoney(p.valorDevolvido.toFixed(2));
+    if (devolvidoAgora.greaterThan(0)) {
+      const aprovadas = await tx.prestacaoDeContasDoAdiantamento.findMany({
+        where: { concessao: { empenhoId: p.concessao.empenhoId }, decisao: { aprovada: true } },
+        select: { valorDevolvido: true },
+      });
+      const devolvido = aprovadas.reduce((s, a) => toMoney(s.plus(a.valorDevolvido.toFixed(2))), devolvidoAgora);
+      const anulado = await anuladoNoEmpenho(tx, p.concessao.empenhoId);
+      const faltam = (
+        [
+          ["o pagamento", anulado.pagamento],
+          ["a liquidação", anulado.liquidacao],
+          ["o empenho", anulado.empenho],
+        ] as const
+      ).filter(([, v]) => devolvido.greaterThan(v));
+      if (faltam.length > 0) {
+        throw new Error(
+          `A prestação da concessão ${p.concessao.numero} declara ${devolvidoAgora.toFixed(2)} devolvidos ` +
+            `(${devolvido.toFixed(2)} no empenho, com as prestações já aprovadas), mas a devolução não voltou ao caixa: ` +
+            faltam.map(([fase, v]) => `${fase} tem ${v.toFixed(2)} anulados`).join("; ") +
+            `. Anule o pagamento, a liquidação e o empenho no valor devolvido, nessa ordem, e aprove depois. Nada foi gravado.`
+        );
+      }
+    }
     const roteiro = await roteiroPatrimonialVigente(tx, "ADIANTAMENTO", `BAIXA/${p.concessao.especie}`);
     if (roteiro === null) {
       throw new Error(

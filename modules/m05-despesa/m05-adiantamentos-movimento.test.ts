@@ -157,4 +157,37 @@ describe("V34 — diária e suprimento com movimento (ensaio)", () => {
     const lancamentos = await prisma.lancamentoContabil.count({ where: { partidas: { some: { conta: { codigo: CONTROLE_D } } } } });
     expect(lancamentos).toBe(4);
   });
+
+  // V35 — a devolução CONFERIDA (a lacuna da V34). N=2 no mesmo empenho, de propósito: a concessão B ainda não foi paga.
+  // Uma guarda pelo pago líquido (pago ≤ concedido − devolvido) passaria aqui: 1000 pagos ≤ 2000 − 400. A guarda pelo
+  // ANULADO recusa, porque nada voltou ao caixa.
+  it("m3: a devolução declarada sem as anulações é recusada nomeando a fase; com as três, a baixa passa", async () => {
+    const e = (await empenhar({ fichaId: "ficha-39", numero: "2026NE000003", tipo: "ORDINARIO", valor: "2000.00", data: D("2026-06-01"), credorCpfCnpj: SERVIDORA, historico: "Dois suprimentos da secretaria", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMPENHO, deps())).empenhoId;
+    const conceder = async (numero: string, dia: string): Promise<string> => (await concederAdiantamento(prisma, {
+      especie: "SUPRIMENTO_DE_FUNDOS", numero, empenhoId: e, beneficiarioNome: "Servidora de ensaio", beneficiarioDocumento: SERVIDORA,
+      finalidade: "Pequenas compras de pronto pagamento da secretaria", diaInicio: dia, diaFim: "2026-06-30", valor: "1000.00",
+      atoAutorizativo: "Decreto Municipal de ensaio 3/2026", diaPrazoDePrestacao: "2026-07-10", diaConcessao: dia, criadoPor: POR,
+    })).concessaoId;
+    const a = await conceder("S-ENSAIO-A", "2026-06-02");
+    await conceder("S-ENSAIO-B", "2026-06-03"); // B fica sem liquidação nem pagamento
+    const l = (await liquidar({ empenhoId: e, numero: "NL-SA", valor: "1000.00", data: D("2026-06-03"), responsavelAtesto: "Secretária", historico: "Suprimento A liquidado", criadoPor: POR }, R_LIQUIDACAO, deps())).liquidacaoId;
+    const pg = (await pagar({ liquidacaoId: l, numero: "NP-SA", valor: "1000.00", data: D("2026-06-04"), contaBancaria: "CC-001", fonteId: "f500", historico: "Entrega do suprimento A", criadoPor: POR }, R_PAGAMENTO, deps())).pagamentoId;
+
+    const pr = await registrarPrestacaoDeAdiantamento(prisma, { concessaoId: a, valorComprovado: "600.00", valorDevolvido: "400.00", relatorio: "Notas fiscais das compras e a guia de devolução do saldo.", diaApresentacao: "2026-07-01", criadoPor: POR });
+    const aprovar = () => aprovarPrestacaoDeAdiantamento(prisma, { prestacaoId: pr.prestacaoId, motivo: "Despesas comprovadas e saldo devolvido", diaDecisao: "2026-07-02", criadoPor: POR });
+    await expect(aprovar()).rejects.toThrow(/o pagamento tem 0\.00 anulados; a liquidação tem 0\.00 anulados; o empenho tem 0\.00 anulados/);
+
+    const MOTIVO = "Saldo do suprimento A devolvido pela servidora (guia de devolução)";
+    await anularPagamentoParcial({ originalId: pg, numero: "NP-SA-DEV", valor: "400.00", data: D("2026-07-01"), motivo: MOTIVO, criadoPor: POR }, deps());
+    // só o pagamento anulado: ainda faltam a liquidação e o empenho, e a recusa diz quais
+    const recusa = await aprovar().then(() => "", (e: unknown) => (e instanceof Error ? e.message : String(e)));
+    expect(recusa).toMatch(/devolução não voltou ao caixa: a liquidação tem 0\.00 anulados; o empenho tem 0\.00 anulados\./);
+    expect(recusa).not.toMatch(/o pagamento tem/); // o pagamento anulado saiu da lista: a fase é lida da fase certa
+    expect([await saldo(CONTROLE_D), await saldo(CONTROLE_C)]).toEqual(["2000.00", "-2000.00"]); // nada baixou
+
+    await anularLiquidacaoParcial({ originalId: l, numero: "NL-SA-DEV", valor: "400.00", data: D("2026-07-01"), motivo: MOTIVO, criadoPor: POR }, deps());
+    await anularEmpenhoParcial({ originalId: e, numero: "2026NE000003-DEV", valor: "400.00", data: D("2026-07-01"), motivo: MOTIVO, criadoPor: POR }, deps());
+    await aprovar();
+    expect([await saldo(CONTROLE_D), await saldo(CONTROLE_C)]).toEqual(["1000.00", "-1000.00"]); // B continua a comprovar
+  });
 });
