@@ -181,7 +181,7 @@ export default async function BensPublicosPage({
         <div className="flex items-end gap-2 sm:col-span-2">
           <button
             type="submit"
-            className="rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 py-1.5 text-sm font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)]"
+            className="rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 py-1.5 text-sm font-semibold text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]"
           >
             Consultar
           </button>

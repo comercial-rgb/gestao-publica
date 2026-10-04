@@ -43,7 +43,7 @@ export default async function Pagina({ params }: { readonly params: Promise<{ re
           }
           return (
             <ul className="mt-2 flex flex-wrap gap-2">
-              {passos.map((p) => <li key={p.href}><a href={p.href} className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 text-sm font-semibold text-[color:var(--color-primary-fg)]">{p.texto}</a></li>)}
+              {passos.map((p) => <li key={p.href}><a href={p.href} className="inline-flex min-h-11 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-4 text-sm font-semibold text-[color:var(--color-acao-tinta)]">{p.texto}</a></li>)}
             </ul>
           );
         })()}

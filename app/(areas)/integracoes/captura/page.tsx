@@ -127,7 +127,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
               <ChaveDeComando />
               <input type="hidden" name="entidade" value={p.entidade} />
               <button type="submit" disabled={p.registros === 0}
-                className="inline-flex h-10 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-4 font-semibold text-[color:var(--color-primary-fg)] hover:bg-[color:var(--color-primary-hover)] disabled:opacity-40">
+                className="inline-flex h-10 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-4 font-semibold text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)] disabled:opacity-40">
                 Simular submissão
               </button>
             </form>

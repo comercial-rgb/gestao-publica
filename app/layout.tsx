@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Exo_2, Inter } from "next/font/google";
 import { identidadePublica } from "../lib/portas/identidade";
 import "./globals.css";
@@ -13,9 +13,13 @@ const inter = Inter({
 const exo = Exo_2({
   subsets: ["latin"],
   display: "swap",
-  weight: ["600", "700", "800"],
+  // 900 é o peso dos títulos de destaque e dos números de painel no manual da marca.
+  weight: ["600", "700", "800", "900"],
   variable: "--font-exo",
 });
+
+/** A cor da barra do navegador no celular: o laranja oficial da marca (manual Engine). */
+export const viewport: Viewport = { themeColor: "#FE6902" };
 
 /**
  * O TÍTULO DA ABA vem da identidade (V6 P0.1): "Gestão Pública · <ente>" — ou o ambiente,

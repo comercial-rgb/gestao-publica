@@ -22,6 +22,12 @@ export const CORES = {
   primaryHover: "var(--color-primary-hover)",
   primaryFg: "var(--color-primary-fg)",
   primarySoft: "var(--color-primary-soft)",
+  /** O botão de ação do manual da marca: fundo laranja oficial, texto grafite. */
+  acao: "var(--color-acao)",
+  acaoHover: "var(--color-acao-hover)",
+  acaoTinta: "var(--color-acao-tinta)",
+  /** "Cinza Claro" do manual: fundo de área grande, sem link. */
+  cinzaClaro: "var(--color-cinza-claro)",
   /** ⚠️ SÓ para sinal contábil (valor positivo/negativo). Nunca decoração. */
   positivo: "var(--color-positivo)",
   negativo: "var(--color-negativo)",

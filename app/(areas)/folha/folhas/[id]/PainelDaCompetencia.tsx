@@ -51,7 +51,7 @@ export function PainelDaCompetencia({ etapas, acoes, disponibilidade, permitidas
             <p className="text-sm font-semibold text-[color:var(--color-ink)]">O que você pode fazer agora</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {disponiveis.map((a) => (
-                <li key={a.nome}><a href={`#ato-${a.nome}`} className="inline-flex min-h-9 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 text-xs font-semibold text-[color:var(--color-primary-fg)]">{a.rotulo}</a></li>
+                <li key={a.nome}><a href={`#ato-${a.nome}`} className="inline-flex min-h-9 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 text-xs font-semibold text-[color:var(--color-acao-tinta)]">{a.rotulo}</a></li>
               ))}
             </ul>
           </>

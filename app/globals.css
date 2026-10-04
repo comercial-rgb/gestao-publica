@@ -12,16 +12,27 @@
   tokens.ts` (acesso tipado no TS). O `@theme` gera as utilitárias.
 */
 @theme {
-  /* ── superfícies e tinta (cinzas frios) ── */
-  --color-canvas: #f4f3f2; /* fundo da aplicação (cinza claro da marca, levemente quente) */
+  /* ── superfícies e tinta — a paleta do manual da marca Engine (tema claro) ──
+     Fundo #FEFEFE ("Laranja Técnico", o branco da marca), superfície #FFFFFF, borda #E2E0E0, texto
+     #1A1A1A ("Preto Grafite"), texto apagado #5A5A5E.
+
+     ⚠️ O "Cinza Claro" #ECEBEB do manual NÃO vira a superfície 2. A superfície 2 é a faixa zebra e o
+     cabeçalho das tabelas, onde mora link — e o link (#C24F00) sobre #ECEBEB dá 4,0:1, reprovado
+     em texto normal. A faixa continua no cinza quase branco; o #ECEBEB fica em `--color-cinza-claro`,
+     para fundo de área grande sem link (a entrada do sistema).
+
+     O terciário não está no manual: é o mesmo cinza neutro um tom acima, escolhido para continuar
+     legível (5,1:1 sobre branco). O anterior, #8A8480, dava 3,6:1 e reprovava em texto normal. */
+  --color-canvas: #fefefe; /* fundo da aplicação */
   --color-surface: #ffffff; /* cartões, tabelas, painéis */
   --color-surface-2: #faf9f8; /* faixas zebra, cabeçalhos de tabela */
-  --color-border: #e6e3e1; /* divisórias */
-  --color-border-strong: #cfcac7; /* divisória de ênfase */
+  --color-cinza-claro: #ecebeb; /* "Cinza Claro" do manual: fundo de área grande, sem link */
+  --color-border: #e2e0e0; /* divisórias */
+  --color-border-strong: #cfcac7; /* divisória de ênfase, contorno de campo */
 
   --color-ink: #1a1a1a; /* texto principal (grafite da marca) */
-  --color-ink-2: #4f4a47; /* texto secundário */
-  --color-ink-3: #8a8480; /* texto terciário / desabilitado */
+  --color-ink-2: #5a5a5e; /* texto secundário (6,9:1) */
+  --color-ink-3: #6e6e73; /* texto terciário / desabilitado (5,1:1) */
 
   /* ── cor de ação (V21-A: marca Engine no sistema inteiro, decisão de 2026-09-28) ──
      A ação usa o laranja FORTE da marca, não o oficial: é o único tom que aceita texto branco
@@ -33,6 +44,16 @@
   /* 8 telas usam `--color-acento` para link, e ele nunca foi definido: o link saía na cor do texto.
      Fica como apelido da cor de ação (V22). */
   --color-acento: #c24f00;
+
+  /* ── O BOTÃO DE AÇÃO, como o manual o desenha ──
+     Fundo no laranja OFICIAL e texto em grafite (6,0:1 — aprova). É o "texto sobre laranja é
+     sempre grafite" do manual. O link continua em `--color-primary` (#C24F00): o laranja oficial
+     como TEXTO sobre branco dá 2,9:1 e reprova. */
+  --color-acao: #fe6902;
+  --color-acao-hover: #e55e00;
+  --color-acao-tinta: #1a1a1a;
+  /* O anel de foco do campo (manual: borda laranja + anel a 25%). */
+  --color-anel-de-foco: rgb(254 105 2 / 0.25);
 
   /* ── A MARCA DO FORNECEDOR (Engine Sistemas) ──
 
@@ -83,11 +104,15 @@
   --text-2xl: 1.5rem;
   --text-3xl: 1.875rem;
 
-  /* ── raios e sombra (um único nível, discreto) ── */
-  --radius-sm: 0.5rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --shadow-card: 0 1px 3px rgb(15 23 42 / 0.08);
+  /* ── raios e sombra — os do manual: campo e botão 10px, cartão 16px, pílula para o botão de ação ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pilula: 999px;
+  --shadow-card: 0 1px 3px rgb(26 26 26 / 0.08);
+  /* A sombra de destaque do manual (passar o mouse no botão de ação). */
+  --shadow-destaque: 0 8px 40px rgb(254 105 2 / 0.35);
 }
 
 html,
@@ -126,12 +151,20 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Títulos na fonte da marca (Exo 2); o texto corrido continua em Inter. */
+/* Títulos na fonte da marca (Exo 2), nos pesos do manual: 800 nos dois primeiros níveis, 700 no
+   terceiro. O texto corrido continua em Inter. */
 h1,
 h2,
 h3 {
   font-family: var(--font-titulo);
   letter-spacing: -0.01em;
+}
+h1,
+h2 {
+  font-weight: 800;
+}
+h3 {
+  font-weight: 700;
 }
 
 /*
@@ -162,6 +195,18 @@ h3 {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
+}
+
+/*
+  O FOCO DO CAMPO, como o manual o desenha: borda no laranja da marca e anel a 25%. Vale para todo
+  campo de texto, lista e área de texto — inclusive os escritos à mão fora de `CLASSE_CAMPO`. O
+  contorno de foco acima continua: o anel claro sozinho não dá o contraste que o foco exige.
+*/
+input:not([type="checkbox"], [type="radio"], [type="file"], [type="range"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--color-acao);
+  box-shadow: 0 0 0 3px var(--color-anel-de-foco);
 }
 
 /*

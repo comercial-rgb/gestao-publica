@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Marca } from "../../components/ui/Marca";
+import { MotivoDaMarca } from "../../components/ui/MotivoDaMarca";
 import { identidadePublica, paraATela } from "../../lib/portas/identidade";
 import { sessaoAtual } from "../../lib/portas/sessao";
 import { FormLogin } from "./FormLogin";
@@ -38,13 +39,16 @@ export default async function LoginPage({
   const canaisPublicos = id.canais.filter((c) => c.id !== "gestao-interna");
 
   return (
-    <div className="flex min-h-screen flex-col bg-[color:var(--color-surface-2)]" data-tema={tela.tema}>
+    <div className="flex min-h-screen flex-col bg-[color:var(--color-cinza-claro)]" data-tema={tela.tema}>
       <main className="flex flex-1 items-center justify-center p-4 sm:p-6">
         <div className="grid w-full max-w-3xl overflow-hidden rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow-[var(--shadow-card)] md:grid-cols-[1.1fr_1fr]">
           {/* a instituição e o produto */}
-          <section aria-label="Identificação" data-superficie="grafite" className="flex min-w-0 flex-col gap-5 border-b-4 border-[color:var(--color-engine)] bg-[color:var(--color-surface)] p-6 md:border-b-0 md:border-l-4">
-            <Marca identidade={tela} tamanho="lg" />
-            <div className="space-y-1">
+          <section aria-label="Identificação" data-superficie="grafite" className="relative flex min-w-0 flex-col gap-5 overflow-hidden border-b-4 border-[color:var(--color-engine)] bg-[color:var(--color-surface)] p-6 md:border-b-0 md:border-l-4">
+            <MotivoDaMarca />
+            <div className="relative">
+              <Marca identidade={tela} tamanho="lg" />
+            </div>
+            <div className="relative space-y-1">
               <p className="text-sm text-[color:var(--color-ink-2)]">{id.produto.descricao}.</p>
               {id.ente !== null && id.ente.orgao !== null ? (
                 <p className="text-xs text-[color:var(--color-ink-3)]">{id.ente.orgao}</p>
@@ -56,7 +60,7 @@ export default async function LoginPage({
               ) : null}
             </div>
             {canaisPublicos.length > 0 ? (
-              <nav aria-label="Canais públicos" className="mt-auto">
+              <nav aria-label="Canais públicos" className="relative mt-auto">
                 <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Acesso público</h2>
                 <ul className="space-y-1">
                   {canaisPublicos.map((c) => (
@@ -71,14 +75,14 @@ export default async function LoginPage({
               </nav>
             ) : null}
             {id.ente !== null && (id.ente.contatoEmail !== null || id.ente.contatoTelefone !== null || id.ente.horarioDeAtendimento !== null) ? (
-              <dl className="text-xs text-[color:var(--color-ink-3)]">
+              <dl className="relative text-xs text-[color:var(--color-ink-3)]">
                 {id.ente.contatoEmail !== null ? <div><dt className="inline">E-mail: </dt><dd className="inline">{id.ente.contatoEmail}</dd></div> : null}
                 {id.ente.contatoTelefone !== null ? <div><dt className="inline">Telefone: </dt><dd className="inline">{id.ente.contatoTelefone}</dd></div> : null}
                 {id.ente.horarioDeAtendimento !== null ? <div><dt className="inline">Atendimento: </dt><dd className="inline">{id.ente.horarioDeAtendimento}</dd></div> : null}
               </dl>
             ) : null}
             {/* V22: a assinatura da Engine na entrada — ativo oficial, versão para fundo escuro. */}
-            <img src="/marca/engine-horizontal-fundo-escuro.svg" alt="Engine Sistemas" className="mt-auto h-8 w-auto self-start pt-2" />
+            <img src="/marca/engine-horizontal-fundo-escuro.svg" alt="Engine Sistemas" className="relative mt-auto h-8 w-auto self-start pt-2" />
           </section>
 
           {/* o acesso */}
@@ -89,7 +93,7 @@ export default async function LoginPage({
           </section>
         </div>
       </main>
-      <footer className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 pb-4 text-center text-[11px] leading-tight text-[color:var(--color-ink-3)]">
+      <footer className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 pb-4 text-center text-[11px] leading-tight text-[color:var(--color-ink-2)]">
         <span>{id.assinaturaDoFornecedor !== null ? `${id.produto.nome} · ${id.assinaturaDoFornecedor}` : id.produto.nome}</span>
         {id.versao !== null ? <span className="tabular" data-rodape-versao>versão {id.versao}</span> : null}
       </footer>

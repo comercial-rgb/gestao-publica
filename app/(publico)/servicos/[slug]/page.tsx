@@ -102,14 +102,14 @@ export default async function ServicoPublicoPage({ params }: { readonly params: 
       <p className="mt-6 flex flex-wrap items-center gap-3">
         {s.exigeAutenticacao ? (
           <>
-            <Link href={`/meus-servicos/solicitar/${s.slug}`} data-pedir className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-5 text-sm font-semibold text-[color:var(--color-primary-fg)]">
+            <Link href={`/meus-servicos/solicitar/${s.slug}`} data-pedir className="inline-flex min-h-11 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-5 text-sm font-semibold text-[color:var(--color-acao-tinta)]">
               Pedir este serviço
             </Link>
             <span className="text-xs text-[color:var(--color-ink-3)]">É necessário acessar com a sua conta.</span>
           </>
         ) : (
           <>
-            <Link href={`/ouvidoria/${s.slug}`} data-manifestar className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-5 text-sm font-semibold text-[color:var(--color-primary-fg)]">
+            <Link href={`/ouvidoria/${s.slug}`} data-manifestar className="inline-flex min-h-11 items-center rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-5 text-sm font-semibold text-[color:var(--color-acao-tinta)]">
               Registrar manifestação
             </Link>
             <span className="text-xs text-[color:var(--color-ink-3)]">Não é necessário cadastro nem identificação.</span>
