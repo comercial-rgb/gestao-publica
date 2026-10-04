@@ -10,6 +10,7 @@ import { carregarQddDaLoa, carregarReceitaDaLoa, lerQdd, lerReceitaDaLoa } from 
 import { carregarTabelaDeFontes } from "../../modules/m02-planejamento/fontes-oficiais.js";
 import { descricaoOficialDaNatureza, lerEmentarioDaReceita } from "../../modules/m04-receita/ementario-oficial.js";
 import { abrirExercicio } from "../../modules/m08-restos-a-pagar/exercicio.js";
+import { gerarDeParasDaLrf } from "../../modules/m12-relatorios/deparas-pelo-ementario.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 
 /**
@@ -229,6 +230,12 @@ async function vinculos(): Promise<void> {
   feito.push(`Vínculos unidade → UG: ${String(novos)} novos, de ${String(uos.length)} unidades.`);
 }
 
+/** Os de-paras da RCL, da base de impostos e do FUNDEB pelo ementário 2026, sobre as naturezas e fontes já carregadas. */
+async function deParasDaLrf(): Promise<void> {
+  const r = await gerarDeParasDaLrf(prisma, { criadoPor: por });
+  feito.push(`De-paras da LRF pelo ementário 2026: ${JSON.stringify(r)}.`);
+}
+
 async function adiantamento(): Promise<void> {
   const FUNDAMENTO =
     "PCASP do TCE-PB 2025 (Pcasp_2025.xlsx): 7.9.1.2.1.00.00 Controle de adiantamentos/suprimentos de fundos concedidos (devedora) e 8.9.1.2.1.01.00 Adiantamentos concedidos a comprovar (credora); Lei 4.320, arts. 68 e 69.";
@@ -253,6 +260,7 @@ try {
   await entidadesEUgs();
   await loa();
   await vinculos();
+  await deParasDaLrf();
   await adiantamento();
   console.log("Feito:");
   for (const f of feito) console.log(`  - ${f}`);

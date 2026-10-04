@@ -227,11 +227,19 @@ export async function anexo3(
       tipoReceita: true,
       valorPrevisto: true,
       naturezaReceita: { select: { codigo: true } },
+      detalhe: { select: { tipoDeducaoSagres: true } },
     },
   });
   const previsaoPorNatureza = new Map<string, Money>();
+  // V35 — a dedução do FUNDEB prevista (tipo 3 do Tribunal) vai à linha própria da II, como o MDF pede; a receita da
+  // natureza fica BRUTA na I. As demais deduções continuam abatidas na natureza, como antes.
+  let previsaoDedFundeb = zero();
   for (const r of previstas) {
     const v = toMoney(r.valorPrevisto.toFixed(2));
+    if (r.tipoReceita === "DEDUCAO" && r.detalhe?.tipoDeducaoSagres === "3") {
+      previsaoDedFundeb = soma(previsaoDedFundeb, v);
+      continue;
+    }
     const assinado = r.tipoReceita === "DEDUCAO" ? toMoney(v.negated()) : v;
     const cod = r.naturezaReceita.codigo;
     previsaoPorNatureza.set(cod, soma(previsaoPorNatureza.get(cod) ?? zero(), assinado));
@@ -313,6 +321,22 @@ export async function anexo3(
     // então nas deduções a previsão entra negada; nas correntes, com o sinal que veio.
     const valor = destino.mapa === deducoes ? toMoney(prev.negated()) : prev;
     linha.previsao = soma(linha.previsao, valor);
+  }
+
+  // ═══ V35 — A DEDUÇÃO DO FUNDEB REGISTRADA (DeducaoDaReceitaRealizada), mês a mês, na linha própria da II ═══
+  const deducoesFundeb = await leitor.deducaoDaReceitaRealizada.findMany({
+    where: { tipo: "FUNDEB", data: { gte: janelas[0]!.desde, lte: janelas[11]!.ate } },
+    select: { valor: true, data: true, estornoDeId: true },
+  });
+  if (deducoesFundeb.length > 0 || !previsaoDedFundeb.isZero()) {
+    const linhaDed = pega(deducoes, CHAVE_DED_FUNDEB_RCL, rotuloDeChave(CHAVE_DED_FUNDEB_RCL), "item");
+    linhaDed.previsao = soma(linhaDed.previsao, previsaoDedFundeb);
+    for (const d of deducoesFundeb) {
+      const m = janelas.findIndex((j) => d.data.getTime() >= j.desde.getTime() && d.data.getTime() <= j.ate.getTime());
+      if (m < 0) continue;
+      const v = toMoney(d.valor.toFixed(2));
+      linhaDed.meses[m] = d.estornoDeId === null ? soma(linhaDed.meses[m]!, v) : toMoney(linhaDed.meses[m]!.minus(v));
+    }
   }
 
   // ═══ AS EMENDAS (IV, VI) — soma das arrecadações marcadas, mês a mês ═══
@@ -460,6 +484,9 @@ const ROTULO_CHAVE: Record<string, string> = {
   DED_FPM: "(−) Dedução — FPM",
   DED_ICMS: "(−) Dedução — ICMS",
 };
+
+/** A chave da linha da dedução para o FUNDEB na II (a mesma do de-para da natureza redutora antiga). */
+const CHAVE_DED_FUNDEB_RCL = "DED_FUNDEB";
 
 function rotuloDeChave(chave: string): string {
   return ROTULO_CHAVE[chave] ?? chave;

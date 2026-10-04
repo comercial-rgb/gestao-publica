@@ -944,3 +944,15 @@ derruba os dois relatórios com "DISTRIBUIÇÃO INCONSISTENTE", nomeando a guia.
 valor da guia e não viam o defeito; o Anexo 13 já recusava. É fail-closed e é a mesma recusa nos três.
 A escrita (motor de partidas e `distribuicao.ts`) já impede essa guia; a recusa cobre importador,
 manutenção e caminho futuro.
+
+## V35 — os de-paras da LRF pelo ementário 2026 e a dedução do FUNDEB na RCL
+
+- `deparas-pelo-ementario.ts` (`gerarDeParasDaLrf`, CADASTRAR_LINHA_DEMONSTRATIVO): os seeds de RCL, base de impostos
+  e FUNDEB listavam códigos de ementários antigos (IPTU 11180111, FPM 17210151) inexistentes em 2026; com a base real
+  quase toda receita caía em "Outras". As regras agora são prefixos dos agregadores oficiais de 2026 (o MDF 15ª ed.
+  define cada linha pelo conceito que o agregador cobre) aplicados às naturezas cadastradas; só acrescenta. IR de
+  qualquer espécie é IRRF para município (CF art. 158, I). Classes de fonte (saúde, educação) pela tabela da STN.
+- RREO Anexo 3: a previsão da dedução do FUNDEB (tipo 3) e a dedução registrada vão à linha própria da II; a receita
+  da natureza fica bruta na I.
+- Os seeds antigos (`m12-depara-rcl`, `m12-asps-deparas`, `m12-mde-deparas`) ficam para a demonstração; uma base real
+  usa o gerador.

@@ -5,6 +5,8 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { lerFatosReceitaOrcamentaria } from "../../adapters/tribunais/tce-pb/sagres/gerador.js";
 import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
 import { parcelasDaReceitaRealizada } from "../m12-relatorios/composicao.js";
+import { gerarDeParasDaLrf } from "../m12-relatorios/deparas-pelo-ementario.js";
+import { anexo3 } from "../m12-relatorios/rreo-anexo3.js";
 import { criarM04Deps } from "./adapter-prisma.js";
 import { estornarDeducaoDaReceita, registrarDeducaoDaReceita } from "./deducao-da-receita.js";
 import { roteiroArrecadacao } from "./dominio.js";
@@ -107,5 +109,15 @@ describe("M04 — a dedução da receita realizada (FUNDEB)", () => {
     expect(fatos.map((f) => [f.numeroReceita, f.codReceitaOrcamentaria, f.codFonteRecurso, f.tipoReceitaLancada, f.tipoLancamento, f.valor.toFixed(2)])).toEqual([
       ["9000001", "17115111", "500", "3", "ARRECADACAO", "300.00"],
     ]);
+  });
+
+  it("t6: a RCL (RREO Anexo 3) mostra o FPM bruto na I, a dedução na linha própria da II, e a RCL líquida", async () => {
+    await deduzir("300.00");
+    await gerarDeParasDaLrf(prisma, { criadoPor: POR });
+    const a = await anexo3(prisma, { exercicio: 2026, bimestre: 2 });
+    const linha = (chave: string) => a.linhas.find((l) => l.chave === chave);
+    expect(linha("FPM")?.total12m).toBe("1500.00");
+    expect(linha("DED_FUNDEB")?.total12m).toBe("300.00");
+    expect(a.rcl.total12m).toBe("1200.00");
   });
 });

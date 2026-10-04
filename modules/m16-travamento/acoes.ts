@@ -1152,6 +1152,8 @@ export type NomeDeServico =
   // V35 — a dedução da receita realizada (FUNDEB) e o estorno dela
   | "registrarDeducaoDaReceita"
   | "estornarDeducaoDaReceita"
+  // V35 — os de-paras da LRF gerados pelo ementário oficial de 2026
+  | "gerarDeParasDaLrf"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1907,6 +1909,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // Estornar é a de quem anula a arrecadação — a mesma segregação de registrar × anular.
   registrarDeducaoDaReceita: "REGISTRAR_ARRECADACAO",
   estornarDeducaoDaReceita: "ANULAR_ARRECADACAO",
+  // V35 — dizer em que linha do demonstrativo cada receita entra é a autoridade de cadastrar as linhas dele.
+  gerarDeParasDaLrf: "CADASTRAR_LINHA_DEMONSTRATIVO",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
