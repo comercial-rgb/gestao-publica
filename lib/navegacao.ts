@@ -197,6 +197,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "Alterações do PPA e da LDO por lei ou decreto, com o valor original e o vigente." },
   { href: "/planejamento/unidades-orcamentarias", numero: "Unidades", rotulo: "Unidades orçamentárias", descricao: "Natureza jurídica, secretário responsável e ato de nomeação de cada unidade orçamentária, com histórico." },
   { href: "/planejamento/programas-e-acoes", numero: "Programas e ações", rotulo: "Programas e ações", descricao: "Objetivo, objetivo da Agenda 2030, meta e unidade de medida dos programas e ações do orçamento, com histórico." },
+  { href: "/planejamento/fontes-de-recurso", numero: "Fontes", rotulo: "Fontes de recurso", descricao: "Fontes de recurso e códigos de acompanhamento da tabela oficial da STN, com a natureza de cada fonte." },
   { href: "/planejamento/receita-prevista", numero: "Receita prevista", rotulo: "Receita prevista", descricao: "As linhas da previsão da receita da LOA, com o tipo de cada dedução e o documento de origem." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
   { href: "/planejamento/loa", numero: "LOA", rotulo: "Lei Orçamentária Anual", descricao: "Receita prevista, despesa fixada, equilíbrio e anexos da Lei 4.320/64 do exercício." },
@@ -627,6 +628,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/planejamento/receita-prevista", rotulo: "Receitas previstas" },
         { href: "/planejamento/fichas", rotulo: "Fichas e dotações" },
         { href: "/planejamento/unidades-orcamentarias", rotulo: "Unidades orçamentárias" },
+        { href: "/planejamento/fontes-de-recurso", rotulo: "Fontes de recurso" },
         { href: "/planejamento/leis-orcamentarias", rotulo: "Projeto de lei e aprovação" },
       ] },
       { rotulo: "Próximo exercício", itens: [
@@ -894,7 +896,8 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Credores", itens: deLista(CADASTROS) },
       { rotulo: "Classificações e fontes", itens: [
-        { href: "/contabilidade/natureza-das-fontes", rotulo: "Fontes de recurso" },
+        { href: "/planejamento/fontes-de-recurso", rotulo: "Fontes de recurso" },
+        { href: "/contabilidade/natureza-das-fontes", rotulo: "Natureza das fontes" },
         { href: "/receita/naturezas", rotulo: "Naturezas de receita" },
         { href: "/contabilidade/exportacoes-federais/classificacao", rotulo: "Classificação para a Receita" },
       ] },

@@ -1,0 +1,31 @@
+codigo_fonte;descricao_fonte;usada_na_despesa;usada_na_receita
+500;Recursos não Vinculados de Impostos;sim;sim
+540;Transferências do FUNDEB - Impostos e Transferências de Impostos;sim;sim
+541;Transferências do FUNDEB - Complementação da União - VAAF;sim;sim
+542;Transferências do FUNDEB - Complementação da União - VAAT;sim;sim
+546;Transferências do FUNDEB - Complementação da União - ETI;sim;sim
+550;Transferência do Salário-Educação;sim;sim
+551;Transferências de Recursos do FNDE referentes ao Programa Dinheiro Direto na Escola (PDDE);não;sim
+552;Transferências de Recursos do FNDE referentes ao Programa Nacional de Alimentação Escolar (PNAE);sim;sim
+553;Transferências de Recursos do FNDE Referentes ao Programa Nacional de Apoio ao Transporte Escolar (PNATE);sim;sim
+569;Outras Transferências de Recursos do FNDE;não;sim
+570;Transferências do Governo Federal referentes a Convênios e Instrumentos Congêneres vinculados à Educação;não;sim
+571;Transferências do Estado referentes a Convênios e Instrumentos Congêneres vinculados à Educação;sim;sim
+600;Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Manutenção das Ações e Serviços Públicos de Saúde;sim;sim
+601;Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Federal - Bloco de Estruturação da Rede de Serviços Públicos de Saúde;sim;sim
+604;Transferências provenientes do Governo Federal destinadas ao vencimento dos agentes comunitários de saúde e dos agentes de combate às endemias;sim;não
+605;Assistência financeira da União destinada à complementação ao pagamento dos pisos salariais para profissionais da enfermagem.;sim;sim
+621;Transferências Fundo a Fundo de Recursos do SUS provenientes do Governo Estadual;sim;sim
+632;Transferências do Estado referentes a Convênios e Instrumentos Congêneres vinculados à Saúde;sim;não
+660;Transferência de Recursos do Fundo Nacional de Assistência Social - FNAS;sim;sim
+669;Outros Recursos Vinculados à Assistência Social;não;sim
+700;Outras Transferências de Convênios ou Instrumentos Congêneres da União;sim;sim
+701;Outras Transferências de Convênios ou Instrumentos Congêneres dos Estados;sim;sim
+706;Transferência Especial da União;sim;sim
+710;Transferência Especial dos Estados;sim;sim
+719;Transferências da Política Nacional Aldir Blanc de Fomento à Cultura - Lei nº 14.399/2022;sim;sim
+750;Recursos da Contribuição de Intervenção no Domínio Econômico - CIDE;não;sim
+751;Recursos da Contribuição para o Custeio do Serviço de Iluminação Pública - COSIP;sim;sim
+800;Recursos Vinculados ao RPPS - Fundo em Capitalização (Plano Previdenciário);sim;sim
+802;Recursos Vinculados ao RPPS - Taxa de Administração;sim;não
+880;Recursos Próprios dos Consórcios;sim;sim

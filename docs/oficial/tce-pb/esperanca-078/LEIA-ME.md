@@ -45,3 +45,27 @@ saem. Derivado: sha256 `32027bab275c90db03d98095dd56495cb2ed4f3ee7f95e268075d73b
 - Banco de legislação do TCE-PB (`legislacao.tce.pb.gov.br`): respondeu HTTP 403. O protocolo da Lei 613/2025 no
   banco de legislação não foi localizado; ele vem do comprovante de envio que o município recebeu.
 - Consulta ao Tramita por jurisdicionado: exige sessão (login). Não usada.
+
+## Unidades orçamentárias por UG (V35, obtido em 04/10/2026)
+
+`unidades-orcamentarias-2026-DERIVADO.csv`: derivado de
+`https://download.tce.pb.gov.br/dados-abertos/dados-por-municipio/078/despesas/despesas-2026.zip`
+(zip sha256 `1662422b5ff424f3e210a5c81a462632334c22f7cbdaab06c60e6a0d945787f5`; CSV interno sha256
+`9ad5686f5fcee233ebfe673985bbfbab005f583a8399b0e26d7b9d4d2a0c8e57`), colunas `codigo_unidade_gestora`,
+`codigo_unidade_orcamentaria`, `descricao_unidade_orcamentaria` e a contagem de empenhos. Credores não saem.
+Derivado: sha256 `7e6585809659331cf6093c8ddf7dae0783f661e19171ffb42cc71520d9c7fb35`.
+
+- 17 unidades orçamentárias; **cada uma aparece em exatamente uma UG** no exercício de 2026 (conferido por contagem).
+- É o que o próprio município declarou ao Tribunal no SAGRES de 2026: serve de fonte para o vínculo unidade → UG
+  (`VinculoDaUnidadeOrcamentariaComUg`), com vigência desde 01/01/2026 e esta evidência como fundamento.
+- O código da unidade no SAGRES (`02016`) é órgão (2) + unidade (3); o cadastro local precisa usar a mesma
+  codificação da LOA 2026 (Lei 613/2025) para o vínculo casar.
+
+## Fontes de recurso usadas em 2026 (V35, obtido em 04/10/2026)
+
+`fontes-2026-DERIVADO.csv`: código e nome de cada fonte nas despesas (`despesas-2026.zip`, acima) e nas receitas
+(`https://download.tce.pb.gov.br/dados-abertos/dados-por-municipio/078/receitas/receitas-2026.zip`, zip sha256
+`6b18c19d54d7540444b0009c82785437cd381a134927cde9ec215b1f326ad59f`, CSV interno
+`513e61b31e26735acf5f96230f98cd9ea83790bbe68613dae2a2323a2c8eaa24`). Derivado: sha256
+`ecb19ce9e149f84e67943505139c0d5e4298e0843a91fe847800149d94be13df`. 30 fontes. Serve de conferência
+independente do leitor da tabela oficial da STN (`m02-fontes-oficiais.test.ts` t1).

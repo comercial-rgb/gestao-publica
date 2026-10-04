@@ -87,7 +87,7 @@ export default async function NaturezaDasFontesPage(): Promise<React.ReactElemen
           {fontes.length === 0 ? (
             <EstadoVazio
               titulo="Nenhuma fonte de recurso cadastrada"
-              descricao="Cadastre as fontes de recurso do ente para declarar a natureza de cada uma."
+              descricao="Carregue a tabela oficial em Planejamento › Fontes de recurso para declarar a natureza de cada uma."
             />
           ) : (
             <div className="overflow-x-auto">

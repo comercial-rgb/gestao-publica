@@ -1144,6 +1144,8 @@ export type NomeDeServico =
   | "publicarPoliticaDaDotacaoAdicional"
   | "publicarRoteiroDaDotacaoPorFonte"
   | "declararNaturezaDaFonte"
+  // V35 — a carga da tabela oficial de fontes e CO da STN (até aqui só seed e fixture criavam fonte)
+  | "carregarTabelaDeFontes"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1886,6 +1888,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // movimento entra, exatamente como as três acima. Um crachá próprio aqui seria o quarto para a
   // mesma decisão contábil.
   declararNaturezaDaFonte: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V35 — carregar as fontes e os CO da tabela oficial é montar a estrutura do orçamento: a autoridade de quem
+  // cadastra a LOA. A natureza que a carga declara pelo bloco da STN passa, dentro, pelo serviço da natureza, que
+  // cobra a autoridade dele (PARAMETRIZAR_ROTEIRO_ORCAMENTARIO).
+  carregarTabelaDeFontes: "CADASTRAR_LOA",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
