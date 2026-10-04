@@ -62,7 +62,16 @@ encerramento, MANAD, adiantamento); **superfície** (PDF/CSV dos demonstrativos,
 - `docs/operacao/PROMOCAO-V34-3010.md`, com 5 migrations aditivas.
 - Cópia local de 04/10, sem mudança desde 29/09.
 - Ensaio na 3011: 10/10 + 10/10.
-- A 3010 continua fora do ar e **não foi ativada**. Nada foi enviado ao GitHub nem à produção.
+- A 3010 continua fora do ar e **não foi ativada**.
+
+**9. Produção (por ordem direta do usuário, 04/10/2026).**
+- Antes: cópia do banco no próprio servidor, `/var/backups/gestao-publica/esperanca-antes-v34-20261004T040832Z.dump`
+  (1.985.356 bytes, sha256 `3ad13f18…5002`). Fica na mesma máquina: não é proteção externa.
+- `npm run publicar`: tipos aprovados (`df24f0d5…`, 298 s), commit `f360c8f` (aprovação sobre `08248d0`) enviado à `main`.
+- Actions 37176400129: compilar, instalar no servidor e conferência da versão, todos verdes.
+- Conferido depois: `/release` responde `f360c8f` em produção; as 5 migrations (V29 a V34) estão aplicadas no banco
+  de Esperança; `/login` 200; a fila sem titular e o PDF do BO redirecionam ao login sem sessão.
+- Não houve percurso autenticado em produção, nem o diagnóstico dos restos (leitura do banco não autorizada para isso).
 
 **Não rodaram:** suíte completa, test:fuso, portão integral (por ordem).
 
