@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { acertar13, apropriar, apropriarEncargos, declararFerias } from "../../../../lib/portas/apropriacao-por-competencia";
+import { acertar13, apropriar, apropriarEncargos, baixarAdiantamento13, declararFerias } from "../../../../lib/portas/apropriacao-por-competencia";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 
@@ -52,6 +52,18 @@ export async function apropriarEncargosAction(_p: EstadoDaApropriacao, f: FormDa
       return { sucesso };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível apropriar os encargos da competência. Nada foi gravado.") };
+    }
+  });
+}
+
+export async function baixarAdiantamentoAction(_p: EstadoDaApropriacao, f: FormData): Promise<EstadoDaApropriacao> {
+  return comComandoDoFormulario(f, async () => {
+    try {
+      const sucesso = await baixarAdiantamento13(Number(t(f, "exercicio")), t(f, "data"));
+      revalidatePath(CAMINHO);
+      return { sucesso };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível baixar o adiantamento do 13º. Nada foi gravado.") };
     }
   });
 }

@@ -5,8 +5,8 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { lerApropriacoes, type ApropriacaoNaLista } from "../../../../lib/portas/apropriacao-por-competencia";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
-import { anoCivil, competenciaCivil } from "../../../../packages/datas/index";
-import { FormAcerto, FormApropriar, FormEncargos, FormParametroDeFerias } from "./Formularios";
+import { anoCivil, competenciaCivil, diaCivil } from "../../../../packages/datas/index";
+import { FormAcerto, FormApropriar, FormBaixaDoAdiantamento, FormEncargos, FormParametroDeFerias } from "./Formularios";
 
 /**
  * V35 — APROPRIAÇÃO MENSAL DO 13º E DAS FÉRIAS (MCASP 11ª ed., Parte II, item 18). A folha fechada de cada
@@ -39,7 +39,7 @@ export default async function ApropriacaoPorCompetenciaPage({
   const bruto = Array.isArray(sp["exercicio"]) ? sp["exercicio"][0] : sp["exercicio"];
   const hoje = new Date();
   const exercicio = bruto !== undefined && /^\d{4}$/.test(bruto) ? Number(bruto) : anoCivil(hoje);
-  const [linhas, permitidas] = await Promise.all([lerApropriacoes(exercicio), acoesPermitidas(["APROPRIAR_FOLHA", "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO"])]);
+  const [linhas, permitidas] = await Promise.all([lerApropriacoes(exercicio), acoesPermitidas(["APROPRIAR_FOLHA", "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO", "LIQUIDAR_FOLHA"])]);
   return (
     <div className="space-y-4">
       <PageHeader
@@ -68,6 +68,13 @@ export default async function ApropriacaoPorCompetenciaPage({
             <FormAcerto exercicio={exercicio} />
           </section>
         </>
+      ) : null}
+      {permitidas.has("LIQUIDAR_FOLHA") ? (
+        <section aria-label="Baixa do adiantamento do 13º" className="space-y-2">
+          <h2 className="text-sm font-semibold">Baixa do adiantamento da 1ª parcela do 13º</h2>
+          <p className="text-xs text-[color:var(--color-text-muted)]">Depois de fechar a folha do 13º e antes do acerto: o que ela abateu sai do adiantamento concedido.</p>
+          <FormBaixaDoAdiantamento exercicio={exercicio} data={diaCivil(hoje)} />
+        </section>
       ) : null}
       {linhas.length === 0 ? (
         <EstadoVazio titulo="Nenhuma competência apropriada" descricao="Feche a folha mensal, declare o parâmetro das férias e o roteiro da apropriação, e aproprie a competência." />

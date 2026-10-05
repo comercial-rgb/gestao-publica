@@ -6,6 +6,7 @@ import {
   declararParametroDeFerias,
   type ApropriacaoNaLista,
 } from "../../modules/m33-folha/apropriacao-por-competencia.js";
+import { baixarAdiantamentoDoDecimoTerceiro } from "../../modules/m33-folha/baixa-do-adiantamento-do-13.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
@@ -38,6 +39,11 @@ export async function apropriar(competencia: string): Promise<string> {
 export async function apropriarEncargos(competencia: string): Promise<string> {
   const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarEncargosPorCompetencia(cliente(), { competencia, criadoPor }));
   return `Encargos patronais de ${competencia.split("-").reverse().join("/")} apropriados: sobre o 13º ${r.decimoTerceiro}, sobre as férias ${r.ferias}, ${String(r.vinculos)} vínculos.`;
+}
+
+export async function baixarAdiantamento13(exercicio: number, data: string): Promise<string> {
+  const r = await comEscritaAutenticada("LIQUIDAR_FOLHA", (criadoPor) => baixarAdiantamentoDoDecimoTerceiro(cliente(), { exercicio, data, criadoPor }));
+  return `Adiantamento da 1ª parcela do 13º de ${String(exercicio)} baixado: ${r.total} abatidos na folha do 13º.`;
 }
 
 export async function acertar13(exercicio: number): Promise<string> {

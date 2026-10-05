@@ -87,3 +87,16 @@ model AcertoDoDecimoTerceiro {
   criadoEm     DateTime            @default(now())
   criadoPor    String
 }
+
+/// V35 — a baixa do adiantamento da 1ª parcela do 13º (MCASP 11ª ed., Parte II, 18.1, item 3.2): o que a folha do 13º
+/// abateu sai do adiantamento concedido. Um por exercício.
+model BaixaDoAdiantamentoDoDecimoTerceiro {
+  id           String             @id @default(cuid())
+  exercicio    Int                @unique
+  /// Σ dos abatimentos da folha do 13º fechada.
+  total        Decimal            @db.Decimal(18, 2)
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation("LancamentoDaBaixaDoAdiantamentoDo13", fields: [lancamentoId], references: [id])
+  criadoEm     DateTime           @default(now())
+  criadoPor    String
+}

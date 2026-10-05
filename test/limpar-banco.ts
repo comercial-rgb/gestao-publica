@@ -346,6 +346,7 @@ export const TABELAS = [
   "ItemDaApropriacaoPorCompetencia",
   "ApropriacaoPorCompetencia",
   "ParametroDaApropriacaoDeFerias",
+  "BaixaDoAdiantamentoDoDecimoTerceiro",
   "AcertoDoDecimoTerceiro",
   "DeclaracaoDeTitularDaConta",
   "VersaoDaEntidadeContabil",

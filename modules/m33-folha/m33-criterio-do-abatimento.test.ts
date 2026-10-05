@@ -24,6 +24,7 @@ import {
   criterioDoAbatimentoNoCalculo,
   EstadoPagoNaoVerificavelError,
 } from "./decimo-terceiro-servico.js";
+import { baixarAdiantamentoDoDecimoTerceiro } from "./baixa-do-adiantamento-do-13.js";
 
 /**
  * ═══ M33 / V11 V9.3 — O CRITÉRIO DO ABATIMENTO É DECLARADO PELO ENTE ═══
@@ -834,5 +835,99 @@ describe("c5 · a colisão do número do empenho entre folhas de tipos diferente
     const r = await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
     expect([r.empenhados, r.jaExistiam]).toEqual([0, 2]);
     expect(await prisma.empenho.count()).toBe(2);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// c7 · V35 — O 13º EMPENHA O BRUTO MENOS A 1ª PARCELA (MCASP 11ª ed., Parte II, 18.1)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe("c7 · a 1ª parcela não se empenha duas vezes", () => {
+  /**
+   * MCASP 18.1: a 1ª parcela é empenhada e liquidada no adiantamento (D 1.1.3.1.1 adiantamento / C 13º a pagar);
+   * a 2ª parcela empenha o que falta. Empenhar o 13º BRUTO na folha de dezembro conta a 1ª parcela duas vezes na
+   * despesa orçamentária.
+   *   MAT-A: 13º 3.000,00 − 1ª parcela 1.500,00 = 1.500,00      MAT-B: 2.250,00 − 1.125,00 = 1.125,00
+   *   adiantamento 2.625,00 + 13º 2.625,00 = 5.250,00 = o 13º bruto do ano (3.000,00 + 2.250,00)
+   */
+  it("a folha do 13º empenha, por servidor, o 13º apurado menos o abatimento; a soma das duas folhas é o 13º do ano", async () => {
+    await grupoDoAdiantamento(true);
+    await grupoDoDecimoTerceiro();
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    const adi = await adiantamentoFechado();
+    await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
+    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
+    await apropriarFolha(prisma, { folhaId, dataDoEmpenho: D(2026, 12, 10), criadoPor: FECHA });
+
+    const empenhos = async (f: string) =>
+      (await prisma.empenhoDaFolha.findMany({ where: { apropriacao: { folhaId: f } }, select: { valor: true, empenho: { select: { valor: true } }, vinculo: { select: { matricula: true } } } }))
+        .map((e) => `${e.vinculo?.matricula}=${e.empenho.valor.toFixed(2)}${e.valor.equals(e.empenho.valor) ? "" : " (elo diverge)"}`)
+        .sort();
+    expect(await empenhos(adi)).toEqual(["MAT-A=1500.00", "MAT-B=1125.00"]);
+    expect(await empenhos(folhaId)).toEqual(["MAT-A=1500.00", "MAT-B=1125.00"]);
+  });
+
+  /** O grupo da 1ª parcela liquidando contra o ADIANTAMENTO CONCEDIDO, como o MCASP 18.1 manda. */
+  async function grupoDoAdiantamentoNoAtivo(): Promise<void> {
+    await prisma.contaPcasp.create({ data: { id: "c-adi-13", codigo: "1.1.3.1.1.01.02", nome: "13 SALÁRIO - ADIANTAMENTO", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true } });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
+      codigo: "FP-ADI", descricao: "Adiantamento do 13o", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPA",
+      porServidor: true, contaVariacaoId: "c-adi-13", contaObrigacaoId: CONTAS.contaObrigacaoId, rubricaIds: [ids["D13ADI"]!], criadoPor: PREPARA,
+    });
+  }
+
+  async function saldoDevedor(codigo: string): Promise<string> {
+    const ps = await prisma.partidaContabil.findMany({ where: { conta: { codigo } }, select: { tipo: true, valor: true } });
+    let c = 0n;
+    for (const p of ps) c += (p.tipo === "DEBITO" ? 1n : -1n) * BigInt(p.valor.toFixed(2).replace(".", ""));
+    const t = (c < 0n ? -c : c).toString().padStart(3, "0");
+    return `${c < 0n ? "-" : ""}${t.slice(0, -2)}.${t.slice(-2)}`;
+  }
+
+  /**
+   * A cadeia inteira pelo caminho real: a 1ª parcela liquidada contra o adiantamento (2.625,00), a folha do 13º fechada
+   * abatendo 2.625,00, e a baixa: D VPD do 13º (a conta do grupo do 13º) / C adiantamento. O adiantamento fecha em zero e
+   * a VPD do 13º soma o ano inteiro só depois da liquidação da 2ª parcela — aqui, a baixa leva 2.625,00 a ela.
+   */
+  it("a baixa do adiantamento: recusa antes da liquidação da 1ª parcela; depois, zera o adiantamento contra a conta do grupo do 13º", async () => {
+    await grupoDoAdiantamentoNoAtivo();
+    await grupoDoDecimoTerceiro();
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    const adi = await adiantamentoFechado();
+    await apropriarFolha(prisma, { folhaId: adi, dataDoEmpenho: DATA_EMPENHO, criadoPor: FECHA });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
+    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
+
+    const baixar = (criadoPor = PAGA) => baixarAdiantamentoDoDecimoTerceiro(prisma, { exercicio: 2026, data: "2026-12-20", criadoPor });
+    await expect(baixar()).rejects.toThrow(/1\.1\.3\.1\.1\.01\.02 tem saldo de 0\.00 .* menor que o abatido na folha do 13º \(2625\.00\)/);
+
+    await designarAtestador();
+    await certificarFolha(prisma, { folhaId: adi, data: DATA_ATESTO, criadoPor: ATESTADOR });
+    await liquidarFolha(prisma, { folhaId: adi, data: DATA_LIQUIDACAO, criadoPor: FECHA });
+    expect(await saldoDevedor("1.1.3.1.1.01.02")).toBe("2625.00");
+    const vpdAntes = await saldoDevedor("3.1.1.1.1.01.00");
+
+    await expect(baixar("estagiario.rh@cg.pb.gov.br")).rejects.toThrow(/LIQUIDAR_FOLHA/);
+    expect(await baixar()).toMatchObject({ total: "2625.00" });
+    expect(await saldoDevedor("1.1.3.1.1.01.02")).toBe("0.00");
+    expect(Number(await saldoDevedor("3.1.1.1.1.01.00")) - Number(vpdAntes)).toBe(2625);
+    await expect(baixar()).rejects.toThrow(/já foi baixado/);
+  });
+
+  it("a 1ª parcela liquidada contra a VPD não tem adiantamento a baixar: recusa nomeando o ramo e o manual", async () => {
+    await grupoDoAdiantamento(true); // contaVariacao = VPD de pessoal
+    await grupoDoDecimoTerceiro();
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    await adiantamentoFechado();
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
+    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
+    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
+    await expect(baixarAdiantamentoDoDecimoTerceiro(prisma, { exercicio: 2026, data: "2026-12-20", criadoPor: PAGA })).rejects.toThrow(
+      /3\.1\.1\.1\.1\.01\.00, que não é adiantamento concedido \(1\.1\.3\.1\.x\).*MCASP \(Parte II, 18\.1\)/
+    );
+    expect(await prisma.baixaDoAdiantamentoDoDecimoTerceiro.count()).toBe(0);
   });
 });

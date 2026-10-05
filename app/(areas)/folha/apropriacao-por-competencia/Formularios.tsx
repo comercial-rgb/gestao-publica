@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
-import { acertarAction, apropriarAction, apropriarEncargosAction, declararFeriasAction, type EstadoDaApropriacao } from "./actions";
+import { acertarAction, apropriarAction, apropriarEncargosAction, baixarAdiantamentoAction, declararFeriasAction, type EstadoDaApropriacao } from "./actions";
 
 function Resultado({ estado, acao }: { readonly estado: EstadoDaApropriacao; readonly acao: string }): React.ReactElement | null {
   if (estado.sucesso !== undefined) return <p role="status" data-resultado-da-acao={acao} className="text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>;
@@ -85,6 +85,29 @@ export function FormEncargos({ competencia }: { readonly competencia: string }):
       </div>
       <div className="sm:col-span-3">
         <Resultado estado={estado} acao="apropriar-encargos-da-competencia" />
+      </div>
+    </form>
+  );
+}
+
+export function FormBaixaDoAdiantamento({ exercicio, data }: { readonly exercicio: number; readonly data: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaApropriacao, FormData>(baixarAdiantamentoAction, {});
+  return (
+    <form action={action} data-acao="baixar-adiantamento-do-13" className="grid gap-3 text-xs sm:grid-cols-3" aria-label="Baixar o adiantamento da 1ª parcela do 13º">
+      <ChaveDeComando />
+      <label>
+        <span className={ROTULO}>Exercício</span>
+        <input name="exercicio" required inputMode="numeric" defaultValue={exercicio} className={CAMPO} />
+      </label>
+      <label>
+        <span className={ROTULO}>Data da baixa</span>
+        <input name="data" type="date" required defaultValue={data} className={CAMPO} />
+      </label>
+      <div className="flex flex-col justify-end gap-2">
+        <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Baixando…" : "Baixar o adiantamento"}</button>
+      </div>
+      <div className="sm:col-span-3">
+        <Resultado estado={estado} acao="baixar-adiantamento-do-13" />
       </div>
     </form>
   );

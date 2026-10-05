@@ -500,6 +500,38 @@ export async function parcelasDoCalculo(prisma: PrismaClient, calculoId: string)
     }
   }
 
+  /**
+   * ═══ V35 — NA FOLHA DO 13º, A 1ª PARCELA SAI DO EMPENHO (MCASP 11ª ed., Parte II, 18.1) ═══
+   * A 1ª parcela já foi empenhada e liquidada na folha de adiantamento (D adiantamento concedido / C 13º a pagar).
+   * Empenhar aqui o 13º BRUTO a contaria duas vezes na despesa orçamentária: medido, 3.000,00 + 1.500,00 para um
+   * 13º de 3.000,00. O abatimento de cada vínculo sai da parcela que carrega a rubrica do 13º desse vínculo — a
+   * declarada no parâmetro do exercício —, e por ser AQUI, o atesto descreve a mesma distribuição que o empenho faz.
+   */
+  const folhaDoCalculo = await prisma.calculoDaFolha.findUnique({ where: { id: calculoId }, select: { folha: { select: { tipo: true, exercicio: true } } } });
+  if (folhaDoCalculo?.folha.tipo === "DECIMO_TERCEIRO") {
+    const abatimentos = await prisma.linhaDoContracheque.findMany({
+      where: { contracheque: { calculoId }, tipo: "DESCONTO", rubrica: { natureza: "ABATIMENTO_DO_ADIANTAMENTO_DO_13" } },
+      select: { valor: true, contracheque: { select: { vinculoId: true, vinculo: { select: { matricula: true } } } } },
+    });
+    if (abatimentos.length > 0) {
+      const rubricasDo13 = new Set(
+        (await prisma.parametroDoDecimoTerceiro.findMany({ where: { exercicio: folhaDoCalculo.folha.exercicio ?? -1 }, select: { rubricaDoDecimoTerceiroId: true } })).map((p) => p.rubricaDoDecimoTerceiroId)
+      );
+      for (const a of abatimentos) {
+        const linha13 = linhas.find((l) => l.contracheque.vinculoId === a.contracheque.vinculoId && rubricasDo13.has(l.rubricaId) && grupoDaRubrica.has(l.rubricaId));
+        const g = linha13 === undefined ? undefined : grupoDaRubrica.get(linha13.rubricaId);
+        const parcela = g === undefined ? undefined : porChave.get(g.porServidor ? `${g.id}::${a.contracheque.vinculoId}` : g.id);
+        if (parcela === undefined || parcela.valor.lt(toMoney(a.valor))) {
+          throw new Error(
+            `ABATIMENTO-SEM-PARCELA-DO-13: a matrícula ${a.contracheque.vinculo.matricula} abate ${toMoney(a.valor).toFixed(2)} da 1ª parcela, ` +
+              `e o 13º dela não está em grupo de empenho com valor que comporte o abatimento. Nada foi gravado.`
+          );
+        }
+        parcela.valor = toMoney(parcela.valor.minus(toMoney(a.valor)));
+      }
+    }
+  }
+
   // ⚠️ A PARCELA ZERADA NÃO É PARCELA, e o filtro fica AQUI — não no laço do empenho.
   // Achado do teste do atesto: com o filtro só na apropriação, o manifesto do atestador listava
   // uma alocação ("grupo X, 1 empenho, 0.00") que a apropriação nunca empenhava. O atesto

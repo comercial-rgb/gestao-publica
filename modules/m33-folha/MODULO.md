@@ -1373,7 +1373,6 @@ da apuração dos encargos da folha fechada:
 
 **Pendências nomeadas:**
 - o acerto de fim de ano do passivo dos encargos sobre o 13º (o do 13º já existe);
-- adiantamento da 1ª parcela em conta de adiantamento (1.1.3.1.1). Hoje a 1ª parcela baixa o passivo direto;
 - para Esperança: o parâmetro de férias depende do Estatuto dos Servidores do município (não obtido). O roteiro
   depende do regime: 3.1.1.1 para o RPPS, 3.1.1.2 para o RGPS.
 
@@ -1386,3 +1385,30 @@ Teste: `m33-apropriacao-por-competencia.test.ts`, em folha real:
 
 Três mutações provadas: a seleção da base, a recusa sem baixa e a remuneração do período. Encargos (t5, t6): duas
 mutações provadas, a recusa da apuração incompleta e a soma das alíquotas dos componentes (só a primeira).
+
+## V35 — a 1ª parcela do 13º não se empenha duas vezes, e o adiantamento se baixa (MCASP 11ª ed., Parte II, 18.1)
+
+**O defeito, medido** (`m33-criterio-do-abatimento.test.ts`, c7, vermelho antes do conserto): a folha de adiantamento
+empenhava a 1ª parcela, e a folha do 13º empenhava o 13º BRUTO, porque o abatimento é desconto e o empenho só soma
+provento. Para MAT-A, 1.500,00 + 3.000,00 de despesa orçamentária para um 13º de 3.000,00.
+
+**O conserto, em dois pedaços:**
+- `parcelasDoCalculo` (a função única do atesto e do empenho): na folha DECIMO_TERCEIRO, o abatimento de cada vínculo
+  sai da parcela que carrega a rubrica do 13º desse vínculo (a declarada nos parâmetros do exercício). Sem parcela que
+  comporte o abatimento: `ABATIMENTO-SEM-PARCELA-DO-13`. Agora MAT-A empenha 1.500,00 em cada folha.
+- `baixarAdiantamentoDoDecimoTerceiro` (LIQUIDAR_FOLHA), em `baixa-do-adiantamento-do-13.ts`: depois de fechada a
+  folha do 13º, D a conta que o grupo do 13º debita na liquidação / C a conta que o grupo do adiantamento debita, pelo
+  total abatido. Nenhuma conta no código. Recusa: folha não fechada; sem abatimento; grupo sem conta ou ambíguo;
+  adiantamento fora do ramo 1.1.3.1 (o manual manda liquidar a 1ª parcela contra o adiantamento concedido); saldo do
+  adiantamento menor que o abatido (a 1ª parcela não foi liquidada). Um por exercício. Tela:
+  `/folha/apropriacao-por-competencia`, antes do acerto do 13º.
+
+Com a apropriação mensal, o 13º apropriado (P) recebe a liquidação líquida e a baixa, e fecha no bruto; o acerto vem
+depois. Sem ela, a baixa leva a 1ª parcela à VPD do 13º.
+
+Mutações provadas: sem a subtração, c7 vermelho (era o estado medido); sem a recusa do ramo, e sem a recusa do saldo,
+cada caso vermelho.
+
+**Pendência nomeada:** `apropriarFolha` da folha de adiantamento do 13º ainda aceita grupo cuja conta debitada não é
+adiantamento concedido; a recusa está só na baixa. Levá-la à apropriação muda o comportamento de folhas já cadastradas
+e pede caracterização própria.

@@ -1168,6 +1168,7 @@ export type NomeDeServico =
   | "apropriarPorCompetencia"
   | "acertarDecimoTerceiro"
   | "apropriarEncargosPorCompetencia"
+  | "baixarAdiantamentoDoDecimoTerceiro"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1942,6 +1943,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   acertarDecimoTerceiro: "APROPRIAR_FOLHA",
   // V35 — os encargos patronais sobre o 13º e as férias apropriados (MCASP 18.3): o mesmo ato de apropriar a folha.
   apropriarEncargosPorCompetencia: "APROPRIAR_FOLHA",
+  // V35 — baixar o adiantamento da 1ª parcela quando a 2ª o abate é parte da liquidação do 13º (MCASP 18.1): a mesma autoridade.
+  baixarAdiantamentoDoDecimoTerceiro: "LIQUIDAR_FOLHA",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.
