@@ -126,7 +126,7 @@ model EventoDoLeiaute {
   id String @id @default(cuid())
 
   leiauteId String
-  leiaute   LeiauteDoESocial @relation(fields: [leiauteId], references: [id])
+  leiaute   LeiauteDoESocial @relation(fields: [leiauteId], references: [id], onDelete: Cascade)
 
   /// O código como o leiaute o escreve: "S-1200", "S-2200". TEXTO DA FONTE.
   codigo String
@@ -155,7 +155,7 @@ model CampoDoEvento {
   id String @id @default(cuid())
 
   eventoId String
-  evento   EventoDoLeiaute @relation(fields: [eventoId], references: [id])
+  evento   EventoDoLeiaute @relation(fields: [eventoId], references: [id], onDelete: Cascade)
 
   /// O caminho no XML, como o leiaute o escreve: "evtRemun/ideTrabalhador/cpfTrab".
   caminho String

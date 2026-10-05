@@ -19,7 +19,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
  * A tabela antiga segue valendo enquanto não houver declaração (`roteiroPatrimonialVigente` cai nela).
  */
 
-export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO";
+export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO" | "PERDAS_DIVIDA_ATIVA";
 
 interface DefinicaoDaFamilia {
   readonly rotulo: string;
@@ -62,6 +62,19 @@ export const FAMILIAS_DE_ROTEIRO: Readonly<Record<FamiliaDoRoteiro, DefinicaoDaF
       { chave: "BAIXA/DIARIA", rotulo: "Prestação de contas da diária aprovada" },
       { chave: "CONCESSAO/SUPRIMENTO_DE_FUNDOS", rotulo: "Concessão de suprimento de fundos (responsabilidade a comprovar)" },
       { chave: "BAIXA/SUPRIMENTO_DE_FUNDOS", rotulo: "Prestação de contas do suprimento aprovada" },
+    ],
+  },
+  // V35 — o ajuste para perdas da dívida ativa (MCASP 11ª ed., Parte III, 5.2.5): constituição D VPD 3.6.1.7 / C retificadora
+  // (1.1.2.9 curto prazo ou 1.2.1.1.1.99 longo prazo); reversão D retificadora / C VPA 4.9.7.2.
+  PERDAS_DIVIDA_ATIVA: {
+    rotulo: "Ajuste para perdas da dívida ativa",
+    subsistema: "PATRIMONIAL",
+    classes: ["1", "3", "4"],
+    chaves: [
+      { chave: "CONSTITUICAO/TRIBUTARIA", rotulo: "Constituição ou aumento do ajuste — dívida ativa tributária" },
+      { chave: "REVERSAO/TRIBUTARIA", rotulo: "Reversão do ajuste — dívida ativa tributária" },
+      { chave: "CONSTITUICAO/NAO_TRIBUTARIA", rotulo: "Constituição ou aumento do ajuste — dívida ativa não tributária" },
+      { chave: "REVERSAO/NAO_TRIBUTARIA", rotulo: "Reversão do ajuste — dívida ativa não tributária" },
     ],
   },
 };
@@ -140,7 +153,7 @@ export async function listarRoteirosPatrimoniais(prisma: PrismaClient): Promise<
 }
 
 export const zDeclararRoteiroPatrimonial = z.object({
-  familia: z.enum(["PRECATORIO", "CONVENIO", "ADIANTAMENTO"]),
+  familia: z.enum(["PRECATORIO", "CONVENIO", "ADIANTAMENTO", "PERDAS_DIVIDA_ATIVA"]),
   chave: z.string().trim().min(1, "Escolha o movimento."),
   contaDebitoCodigo: z.string().trim().min(1, "Escolha a conta debitada."),
   contaCreditoCodigo: z.string().trim().min(1, "Escolha a conta creditada."),

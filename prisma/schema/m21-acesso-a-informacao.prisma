@@ -185,10 +185,10 @@ model FatoDoPedidoDeAcesso {
   fundamentoInterno    String?
 
   setorDestinoId String?
-  setorDestino   Setor?  @relation("SetorDestinoDeAcesso", fields: [setorDestinoId], references: [id])
+  setorDestino   Setor?  @relation("SetorDestinoDeAcesso", fields: [setorDestinoId], references: [id], onDelete: Restrict)
 
   documentoId String?
-  documento   Anexo?  @relation("DocumentoDeFatoDeAcesso", fields: [documentoId], references: [id])
+  documento   Anexo?  @relation("DocumentoDeFatoDeAcesso", fields: [documentoId], references: [id], onDelete: Restrict)
 
   classificacao      ClassificacaoDaRespostaDeAcesso?
   instancia          Int?

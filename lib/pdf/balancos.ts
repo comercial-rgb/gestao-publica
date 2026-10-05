@@ -3,6 +3,8 @@ import { nomeDoEnteParaDocumentos } from "./ente.js";
 import { gerarBalancoFinanceiro, gerarBalancoOrcamentario } from "../portas/demonstrativos";
 import { gerarFluxosDeCaixa } from "../portas/fluxos-de-caixa";
 import { lerComposicao, type LinhaPedida } from "../portas/composicao";
+import { gerarAnexo16, gerarAnexo17, gerarTermoDeCaixa } from "../portas/demonstrativos-da-pca";
+import { tabelasDoAnexo16, tabelasDoAnexo17, tabelasDoTermoDeCaixa } from "../relatorios/tabelas-da-pca";
 import {
   tabelasDaComposicao,
   tabelasDoBalancoFinanceiro,
@@ -31,4 +33,15 @@ export async function montarPdfFluxosDeCaixa(p: { readonly exercicio: number }):
 }
 export async function montarPdfComposicao(p: { readonly exercicio: number; readonly linha: LinhaPedida }): Promise<DocumentoPdf> {
   return documento(tabelasDaComposicao(await lerComposicao({ exercicio: p.exercicio, linha: p.linha }), p.exercicio));
+}
+
+// V35 — os demonstrativos da prestação de contas anual (Anexos 16 e 17, termo de caixa): as mesmas tabelas da tela e do CSV.
+export async function montarPdfAnexo16(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
+  return documento(tabelasDoAnexo16(await gerarAnexo16({ exercicio: p.exercicio })));
+}
+export async function montarPdfAnexo17(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
+  return documento(tabelasDoAnexo17(await gerarAnexo17({ exercicio: p.exercicio })));
+}
+export async function montarPdfTermoDeCaixa(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
+  return documento(tabelasDoTermoDeCaixa(await gerarTermoDeCaixa({ exercicio: p.exercicio })));
 }

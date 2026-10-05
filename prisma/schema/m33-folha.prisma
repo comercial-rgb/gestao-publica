@@ -346,7 +346,7 @@ model FolhaDePagamento {
   /// Nulo quando o ente não pagou 1ª parcela no exercício; o cálculo RECUSA se um adiantamento
   /// aparecer depois da abertura, em vez de abater zero em silêncio.
   folhaDoAdiantamentoId String?
-  folhaDoAdiantamento   FolhaDePagamento?  @relation("AdiantamentoAbatido", fields: [folhaDoAdiantamentoId], references: [id])
+  folhaDoAdiantamento   FolhaDePagamento?  @relation("AdiantamentoAbatido", fields: [folhaDoAdiantamentoId], references: [id], onDelete: Restrict)
   folhasQueAbatem       FolhaDePagamento[] @relation("AdiantamentoAbatido")
 
   criadoEm  DateTime @default(now())

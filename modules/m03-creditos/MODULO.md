@@ -167,8 +167,7 @@ JSON estruturado — é o único ponto do sistema que loga. Quando houver logger
   funciona porque ali não há sinal a aplicar; a `previsaoPorFonte` (M02) **não** podia usar,
   porque a DEDUÇÃO subtrai, e um `_sum` inflaria o previsto da fonte e **esconderia** o
   excesso de arrecadação.
-- `LeiCredito.percentualLimite` é gravado mas **não é usado** em nenhuma validação
-  (o teto validado é o `valorAutorizado` em reais).
+- ~~`LeiCredito.percentualLimite` é gravado mas não é usado~~ — **V35: usado.** Ver a seção do limite da LOA abaixo.
 
 ## Arquivos deste módulo
 
@@ -226,3 +225,30 @@ outro, só com autorização legislativa prévia. Arquivos: `realocacao.ts` (dom
   permissões v37, só para quem administra permissões no global).
 - **Fora do escopo, nomeado**: a alteração do quadro de detalhamento sem lei (`5.2.2.1.9.01`,
   modalidade e elemento dentro da mesma programação) — outro fato, ainda não representado.
+
+## V35 — o limite percentual de suplementação da LOA (Lei 4.320, art. 7º, I)
+
+`limite-de-suplementacao.ts`. Quando a lei de crédito é SUPLEMENTAR e tem `percentualLimite`, o `executarCredito`
+confere, depois do teto em reais e na mesma transação com as fichas travadas:
+
+- **o limite:** `percentualLimite` × Σ `DOTACAO_INICIAL` das fichas do exercício do decreto;
+- **o consumido:** a mesma `suplementacaoLiquida` do teto, sobre os decretos da lei, fora as fichas de fonte declarada em
+  `FonteForaDoLimiteDeSuplementacao` para o exercício;
+- **a recusa:** quando o suplementado agora, fora as fontes excluídas, passa do restante. A mensagem diz o percentual, a
+  despesa fixada, o limite, o já suplementado e o restante.
+
+Fonte não declarada conta no limite. Exercício sem dotação inicial é recusado: sem base não há limite.
+
+**A fonte excluída é declaração do ente**, com fundamento (`declararFonteForaDoLimiteDeSuplementacao`, sob
+CRIAR_LEI_DE_CREDITO). Para Esperança, o `esperanca-configurar-exercicio.ts` declara as fontes da tabela da STN 2026 cujo
+nome diz origem em terceiro (Lei 613/2025, art. 5º, § 2º). A 540, FUNDEB de impostos, continua no limite.
+
+**Pendência nomeada:** o inciso III da Lei 613 submete remanejamento, transposição e transferência ao mesmo percentual,
+e `realocacao.ts` ainda não o confere.
+
+Teste: `m03-limite-da-loa.test.ts`:
+- acúmulo de dois decretos, e o valor exato do limite passa;
+- a fonte excluída, nas duas direções;
+- anulação devolve o limite;
+- lei sem percentual;
+- recusa nomeada.

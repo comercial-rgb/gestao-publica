@@ -335,6 +335,11 @@ export const TABELAS = [
   // V35 — a dedução da receita realizada e o parâmetro do limite do Legislativo (este sem FK nenhuma: só a lista o alcança)
   "DeducaoDaReceitaRealizada",
   "ParametroDoLimiteDoLegislativo",
+  // V35 — filha de FonteRecurso: sai antes dela
+  "FonteForaDoLimiteDeSuplementacao",
+  // V35 — o ajuste para perdas: a apuração aponta o percentual e o lançamento; sai antes dos dois
+  "ApuracaoDoAjusteDePerdas",
+  "PercentualDePerdaDaDividaAtiva",
   "DeclaracaoDeTitularDaConta",
   "VersaoDaEntidadeContabil",
   // V6 P2 — M32 pessoal (filhas antes das mães)

@@ -401,6 +401,9 @@ export const RELATORIOS_DEMONSTRACOES: readonly RelatorioNav[] = [
   { href: "/relatorios/demonstracoes/balanco-financeiro", numero: "Anexo 13", rotulo: "Balanço Financeiro", descricao: "Ingressos, dispêndios e saldos de caixa do exercício (Lei 4.320, art. 103)." },
   { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro financeiro e permanente (Lei 4.320, art. 105)." },
   { href: "/relatorios/demonstracoes/variacoes-patrimoniais", numero: "Anexo 15", rotulo: "Variações Patrimoniais", descricao: "Variações patrimoniais aumentativas e diminutivas e o resultado do exercício." },
+  { href: "/relatorios/demonstracoes/divida-fundada", numero: "Anexo 16", rotulo: "Dívida Fundada", descricao: "Dívida fundada interna e externa: saldo anterior, contratação, atualização, amortização e saldo seguinte (Lei 4.320, art. 98)." },
+  { href: "/relatorios/demonstracoes/divida-flutuante", numero: "Anexo 17", rotulo: "Dívida Flutuante", descricao: "Restos a pagar, serviços da dívida, depósitos e débitos de tesouraria (Lei 4.320, art. 92)." },
+  { href: "/relatorios/demonstracoes/conferencia-de-caixa", numero: "Caixa", rotulo: "Conferência de Caixa e Bancos", descricao: "Saldo de cada conta bancária em 31/12 contra o extrato, para a prestação de contas anual." },
   { href: "/relatorios/demonstracoes/fluxos-de-caixa", numero: "DFC", rotulo: "Fluxos de Caixa", descricao: "Ingressos e desembolsos das atividades operacionais, de investimento e de financiamento, e a geração líquida de caixa." },
 ];
 
@@ -504,6 +507,7 @@ export const DIVIDA: readonly RelatorioNav[] = [
   { href: "/divida/precatorios", numero: "Precatórios", rotulo: "Precatórios Judiciais", descricao: "Ordem de pagamento de precatórios judiciais (CF art. 100)." },
   { href: "/divida/fundada", numero: "Dívida fundada", rotulo: "Dívida Fundada", descricao: "Dívida consolidada: contratação, amortização e atualização monetária." },
   { href: "/divida/ativa", numero: "Dívida ativa", rotulo: "Dívida Ativa", descricao: "Inscrição, atualização e cancelamento da dívida ativa (Lei 4.320, art. 39)." },
+  { href: "/divida/ativa/perdas", numero: "Perdas", rotulo: "Ajuste para Perdas da Dívida Ativa", descricao: "Perda esperada declarada com a metodologia, e a apuração que lança a diferença na conta redutora." },
 ];
 
 /**

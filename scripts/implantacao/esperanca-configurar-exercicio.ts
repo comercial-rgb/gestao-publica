@@ -7,7 +7,10 @@ import { cadastrarEntidadeContabil } from "../../modules/m01-core-contabil/entid
 import { declararRoteiroPatrimonial } from "../../modules/m01-core-contabil/roteiro-patrimonial-declarado.js";
 import { cadastrarUnidadeGestora, vincularUnidadeOrcamentariaAUg } from "../../modules/m01-core-contabil/unidade-gestora.js";
 import { carregarQddDaLoa, carregarReceitaDaLoa, lerQdd, lerReceitaDaLoa } from "../../modules/m02-planejamento/carga-da-loa.js";
-import { carregarTabelaDeFontes } from "../../modules/m02-planejamento/fontes-oficiais.js";
+import { carregarTabelaDeFontes, lerTabelaDeFontes } from "../../modules/m02-planejamento/fontes-oficiais.js";
+import { criarM03Deps } from "../../modules/m03-creditos/adapter-prisma.js";
+import { declararFonteForaDoLimiteDeSuplementacao } from "../../modules/m03-creditos/limite-de-suplementacao.js";
+import { criarLei } from "../../modules/m03-creditos/servico.js";
 import { descricaoOficialDaNatureza, lerEmentarioDaReceita } from "../../modules/m04-receita/ementario-oficial.js";
 import { abrirExercicio } from "../../modules/m08-restos-a-pagar/exercicio.js";
 import { gerarDeParasDaLrf } from "../../modules/m12-relatorios/deparas-pelo-ementario.js";
@@ -263,6 +266,72 @@ async function limiteDoLegislativo(): Promise<void> {
   feito.push(`Limite do Legislativo 2026: população 32.599, base 2025 declarada ${base.toFixed(2)}.`);
 }
 
+/**
+ * O poder de cada órgão, para o RREO Anexo 7 (restos a pagar por poder e órgão), que recusa órgão sem poder. A fonte é a
+ * própria LOA 2026 (Lei 613/2025): órgão 10 LEGISLATIVO e 20 EXECUTIVO, cadastrados aqui como 01 e 02
+ * (docs/oficial/esperanca-pb/orgaos-2026-DERIVADO.csv).
+ */
+async function poderDosOrgaos(): Promise<void> {
+  const PODER: Readonly<Record<string, string>> = { LEGISLATIVO: "LEGISLATIVO", EXECUTIVO: "EXECUTIVO" };
+  for (const [codigo, descricao] of csv("docs/oficial/esperanca-pb/orgaos-2026-DERIVADO.csv")) {
+    const poder = PODER[descricao!];
+    if (poder === undefined) throw new Error(`Órgão ${codigo} (${descricao}) sem poder reconhecível na LOA; nada foi gravado para ele.`);
+    if ((await prisma.orgao.findFirst({ where: { codigo: codigo! }, select: { id: true } })) === null) {
+      falta.push(`Órgão ${codigo!} da LOA não está cadastrado; o poder dele não foi gravado.`);
+      continue;
+    }
+    const ja = await prisma.deParaOrgaoPoder.findUnique({ where: { orgaoCodigo: codigo! }, select: { poder: true } });
+    if (ja !== null) {
+      if (ja.poder !== poder) falta.push(`Órgão ${codigo!} já está no poder ${ja.poder}, e a LOA diz ${poder}: confira antes de alterar.`);
+      continue;
+    }
+    await prisma.deParaOrgaoPoder.create({ data: { orgaoCodigo: codigo!, poder, criadoPor: por } });
+  }
+  feito.push("Poder de cada órgão (Anexo 7 do RREO) pela LOA 2026: 01 Legislativo, 02 Executivo.");
+}
+
+/**
+ * A autorização de suplementar da LOA (Lei 613/2025, art. 5º, II): 50% do total da despesa fixada. A lei vira a lei de
+ * crédito SUPLEMENTAR contra a qual os decretos do Executivo correm; o teto em reais é o mesmo 50% da dotação inicial
+ * carregada do QDD, e o percentual é conferido a cada decreto contra a dotação inicial do exercício.
+ *
+ * O § 2º exclui do limite os créditos com recursos postos à disposição pela União, pelo Estado, por municípios e por
+ * instituições privadas. As fontes são as da tabela oficial da STN cujo NOME diz essa origem (transferência, convênio,
+ * complementação ou apoio da União, auxílio financeiro). A 540, transferência do FUNDEB de impostos, continua no
+ * limite: o fundo é formado com a receita de impostos do próprio município, e na dúvida o limite aperta, não afrouxa.
+ */
+async function autorizacaoDeSuplementar(): Promise<void> {
+  const ja = await prisma.leiCredito.findUnique({ where: { ano_numero: { ano: 2025, numero: "613" } }, select: { id: true } });
+  if (ja === null) {
+    const fixada = await prisma.movimentoDotacao.aggregate({ where: { tipo: "DOTACAO_INICIAL", ficha: { exercicio: 2026 } }, _sum: { valor: true } });
+    const total = toMoney(fixada._sum.valor?.toFixed(2) ?? "0.00");
+    if (total.isZero()) throw new Error("Sem dotação inicial de 2026: a autorização de suplementar da LOA não tem base. Carregue o QDD antes.");
+    const teto = toMoney(total.times(50).dividedBy(100));
+    await criarLei(
+      { numero: "613", ano: 2025, tipoCredito: "SUPLEMENTAR", valorAutorizado: teto.toFixed(2), percentualLimite: "50", dataPublicacao: meioDiaCivil("2025-12-19"), criadoPor: por },
+      criarM03Deps(prisma)
+    );
+    feito.push(`Lei 613/2025 como autorização de suplementar: 50% de ${total.toFixed(2)} = ${teto.toFixed(2)}.`);
+  } else {
+    feito.push("Lei 613/2025 já cadastrada como autorização de suplementar.");
+  }
+  const ORIGEM_EXTERNA = /transfer[eê]ncia|conv[eê]nio|complementa[cç][aã]o da uni[aã]o|apoio financeiro da uni[aã]o|assist[eê]ncia financeira da uni[aã]o|aux[ií]lio financeiro/i;
+  const tabela = lerTabelaDeFontes(readFileSync(resolve(RAIZ, "docs/oficial/stn-sof/fonte-ou-destinacao-de-recursos-2026.xlsx")));
+  const declaradas: string[] = [];
+  for (const f of tabela.fontes) {
+    if (f.codigo === "540" || !ORIGEM_EXTERNA.test(f.nomenclatura)) continue;
+    if ((await prisma.fonteRecurso.findFirst({ where: { codigo: f.codigo }, select: { id: true } })) === null) continue;
+    const r = await declararFonteForaDoLimiteDeSuplementacao(prisma, {
+      exercicio: 2026, fonteCodigo: f.codigo,
+      fundamento: `Lei 613/2025, art. 5º, § 2º: recurso posto à disposição do município por terceiro (STN 2026: ${f.nomenclatura}).`,
+      criadoPor: por,
+    });
+    if (!r.jaDeclarada) declaradas.push(f.codigo);
+  }
+  feito.push(`Fontes fora do limite de suplementação (art. 5º, § 2º): ${declaradas.length === 0 ? "nenhuma nova" : declaradas.join(", ")}.`);
+  falta.push("Remanejamento, transposição e transferência (Lei 613/2025, art. 5º, III) têm o mesmo percentual, e as realocações ainda não o conferem.");
+}
+
 async function adiantamento(): Promise<void> {
   const FUNDAMENTO =
     "PCASP do TCE-PB 2025 (Pcasp_2025.xlsx): 7.9.1.2.1.00.00 Controle de adiantamentos/suprimentos de fundos concedidos (devedora) e 8.9.1.2.1.01.00 Adiantamentos concedidos a comprovar (credora); Lei 4.320, arts. 68 e 69.";
@@ -290,6 +359,8 @@ try {
   await deParasDaLrf();
   await limiteDoLegislativo();
   await adiantamento();
+  await poderDosOrgaos();
+  await autorizacaoDeSuplementar();
   console.log("Feito:");
   for (const f of feito) console.log(`  - ${f}`);
   console.log("Falta:");

@@ -212,7 +212,7 @@ model ReservaDeAtendimento {
   ///   A identificação de verdade acontece no guichê, com o documento na mão. Aqui é um lugar na
   ///   fila, não um cadastro.
   pessoaId String?
-  pessoa   Pessoa? @relation("ReservasDeAtendimentoDaPessoa", fields: [pessoaId], references: [id])
+  pessoa   Pessoa? @relation("ReservasDeAtendimentoDaPessoa", fields: [pessoaId], references: [id], onDelete: Restrict)
 
   nomeDeclarado      String?
   documentoDeclarado String? @db.VarChar(14)

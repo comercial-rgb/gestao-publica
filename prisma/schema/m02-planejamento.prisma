@@ -241,6 +241,8 @@ model Subelemento {
 /// De-para TCE <-> STN embutido: exportar para o SAGRES ou para o SICONFI é
 /// escolher a coluna, não traduzir.
 model FonteRecurso {
+  /// V35 — exclusões do limite de suplementação da LOA (m03-limite-de-suplementacao.prisma). VIRTUAL.
+  forasDoLimiteDeSuplementacao FonteForaDoLimiteDeSuplementacao[] @relation("FonteForaDoLimite")
   /// V35 — as deduções realizadas desta fonte. VIRTUAL.
   deducoesRealizadas DeducaoDaReceitaRealizada[] @relation("DeducaoDaFonte")
   id              String  @id @default(cuid())

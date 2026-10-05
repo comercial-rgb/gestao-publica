@@ -1,4 +1,6 @@
 import { diaCivil } from "../../packages/datas/index.js";
+import { conferirLimiteDaLoa } from "./limite-de-suplementacao.js";
+import { toPercentual } from "../../packages/contracts/index.js";
 import { criarAutorizacaoPortPrisma } from "../m16-travamento/porta.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
@@ -441,7 +443,7 @@ export function criarCreditoRepositoryPrisma(
             // ⚠️ E O ANO E A PUBLICAÇÃO DA LEI VÊM JUNTO (V11 V8.8): é deles, contra o ano do
             // DECRETO, que sai ABERTO ou REABERTO — a dimensão que o plano parte em contas
             // diferentes. Derivada aqui, e não gravada, pelo mesmo motivo do tipo de crédito.
-            lei: { select: { valorAutorizado: true, tipoCredito: true, ano: true, dataPublicacao: true } },
+            lei: { select: { numero: true, valorAutorizado: true, percentualLimite: true, tipoCredito: true, ano: true, dataPublicacao: true } },
           },
         });
         if (decreto.encerramento !== null) {
@@ -497,6 +499,17 @@ export function criarCreditoRepositoryPrisma(
               `da lei: autorizado ${teto.toFixed(2)}, já consumido ` +
               `${jaConsumido.toFixed(2)}, restante ${restante.toFixed(2)}.`
           );
+        }
+
+        // V35 — o limite PERCENTUAL da LOA (Lei 4.320, art. 7º, I), além do teto em reais. Ver limite-de-suplementacao.ts.
+        if (decreto.lei.tipoCredito === "SUPLEMENTAR" && decreto.lei.percentualLimite !== null) {
+          await conferirLimiteDaLoa(tx, {
+            leiId: decreto.leiId,
+            leiNumero: decreto.lei.numero,
+            exercicio: decreto.ano,
+            percentual: toPercentual(decreto.lei.percentualLimite.toFixed(6)),
+            itens: p.itens.map((i) => ({ fonteId: i.fonteId, tipo: i.tipo, valor: toMoney(i.valor) })),
+          });
         }
 
         // Recurso NOVO: valida contra a disponibilidade declarada da fonte — e,

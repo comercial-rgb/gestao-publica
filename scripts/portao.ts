@@ -142,15 +142,20 @@ const TZ_DO_PASSO: Readonly<Record<string, string>> = {
  * 3 GB é o teto medido nesta máquina de 8 GB — e ele cabe porque o trinco garante que
  * nada pesado roda junto. Se um dia não couber, o sinal é o mesmo: o passo morre, e a
  * resposta é medir de novo, nunca baixar o número até "passar".
+ *
+ * V35 — MEDIDO DE NOVO. O portão de 2026-10-04 morreu nos três typechecks com 3 GB
+ * ("Ineffective mark-compacts near heap limit", nenhum erro de tipo reportado), e o
+ * `typecheck:scripts` já estourava com os 5,3 GB do package.json. A máquina de hoje tem
+ * 31 GB; os passos rodam um de cada vez (spawnSync) sob o trinco. 12 GB é o teto declarado.
  */
 const HEAP_DO_PASSO: Readonly<Record<string, number>> = {
-  "typecheck:backend": 3072,
-  "typecheck:app": 3072,
-  "typecheck:scripts": 3072,
+  "typecheck:backend": 12288,
+  "typecheck:app": 12288,
+  "typecheck:scripts": 12288,
   // ⚠️ O `next build` ESTOUROU PELO MESMO MOTIVO, e no mesmo lote: ele typechecka o app
   // inteiro durante a compilação. O log dizia apenas "Ineffective mark-compacts near heap
   // limit" — nenhuma linha sobre qual arquivo, porque o processo morre antes de reportar.
-  build: 4096,
+  build: 8192,
 };
 
 interface Resultado {

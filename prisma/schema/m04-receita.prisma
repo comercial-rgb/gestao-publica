@@ -81,7 +81,7 @@ model ReceitaArrecadada {
   /// justamente o número que se quer poder conferir. A retificação é
   /// `AtribuicaoDeEntidadeDaArrecadacao`, nunca UPDATE aqui.
   entidadeTitularId String?
-  entidadeTitular   EntidadeContabil? @relation(fields: [entidadeTitularId], references: [id])
+  entidadeTitular   EntidadeContabil? @relation(fields: [entidadeTitularId], references: [id], onDelete: Restrict)
   atribuicaoDeEntidade AtribuicaoDeEntidadeDaArrecadacao?
 
   /// A contabilização desta arrecadação. 1-1: um lançamento por receita.

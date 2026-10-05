@@ -410,6 +410,12 @@ export const ORDEM_DOS_LOCKS = {
    * pelo funil do razão e a linha; não trava mais nada depois.
    */
   DeducaoDaReceita: 39,
+  /**
+   * V35 — O AJUSTE PARA PERDAS DA DÍVIDA ATIVA (M10, `ajuste-de-perdas.ts`). A corrida é de saldo: duas apurações
+   * simultâneas da mesma origem, em cortes diferentes, leriam o mesmo saldo da retificadora e lançariam a mesma
+   * diferença duas vezes. O trinco é pela origem. Último posto: depois dele só o funil do razão e a linha.
+   */
+  AjusteDePerdasDaDividaAtiva: 40,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

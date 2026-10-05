@@ -956,3 +956,32 @@ manutenção e caminho futuro.
   da natureza fica bruta na I.
 - Os seeds antigos (`m12-depara-rcl`, `m12-asps-deparas`, `m12-mde-deparas`) ficam para a demonstração; uma base real
   usa o gerador.
+
+## V35 — Anexo 16, Anexo 17 e o termo de conferência de caixa (prestação de contas anual)
+
+`demonstrativos-da-pca.ts`. Os três estão no rol do TCE-PB (`docs/oficial/tce-pb/PCA-ROL-RN-TC-03-2010.md`). Leitura
+pura e composta: nenhuma soma nova sobre o fato.
+
+- **Anexo 16 (Lei 4.320, art. 98).** Por dívida do M10: saldo anterior, contratação, atualização, amortização, saldo
+  seguinte, pelo dia civil do movimento. O estorno fica na coluna do movimento que estorna. **Interna ou externa sai do
+  nome da conta de passivo no plano**, subindo pelos pais ("EMPRÉSTIMOS INTERNOS", "... - EXTERNO"), e nunca do
+  documento do credor. Conta sem nenhum dos dois termos na cadeia: recusa nomeando a dívida. O saldo seguinte total é
+  conferido contra Σ(valor × SINAL) até 31/12; se divergir, o demonstrativo não sai.
+- **Anexo 17 (art. 92).** Restos a pagar pelo `restosParaAnexo7` do M08, a mesma fonte do RREO Anexo 7:
+  - saldo anterior: abertura das inscrições de anos anteriores;
+  - baixa: pago e cancelado no ano;
+  - inscrição: as inscrições com `exercicioOrigem == ref`, lidas pelo recorte de ref+1.
+  - **Serviço da dívida a pagar** (inciso II): restos dos grupos 2 e 6. Para isso entrou `grupoDaDespesa` em
+    `InscricaoParaAnexo7` (campo aditivo).
+  - **Depósitos** (inciso III): analíticas de `2.1.8.8.` (valores restituíveis).
+  - **Débitos de tesouraria** (inciso IV): a conta de passivo cujo nome é "ANTECIPAÇÃO DA RECEITA ORÇAMENTÁRIA".
+  - Nos incisos III e IV, crédito no ano é inscrição e débito é baixa, pela data do fato.
+- **Termo de conferência de caixa.** É a `conciliacaoBancaria` de cada conta bancária em 31/12, com a contagem das
+  linhas de extrato ("sem extrato": o banco não foi conferido) e das pendências.
+  - As disponibilidades de `1.1.1.` que não são contábil de conta bancária nenhuma (o caixa em espécie) saem à parte.
+  - `naoAtribuido` fecha contra o total de 1.1.1 no razão.
+  - Conta bancária sem conta contábil: recusa nomeada.
+
+Tela, PDF e CSV saem das mesmas tabelas (`lib/relatorios/tabelas-da-pca.ts`), em Relatórios › Demonstrações.
+Teste: `m12-demonstrativos-da-pca.test.ts`. Fixture de duas dívidas, quatro inscrições de dois grupos e dois anos, e um
+dia civil de borda. As negações afirmam o motivo.

@@ -1,0 +1,52 @@
+// ============================================================================
+// V35 — O AJUSTE PARA PERDAS DA DÍVIDA ATIVA (MCASP 11ª ed., Parte III, 5.2.5).
+//
+// O MCASP não fixa metodologia: "caberá a cada ente a escolha da metodologia que melhor retrate a
+// expectativa de recebimento", divulgada em notas explicativas, revista ao menos anualmente. Por isso o
+// PERCENTUAL de perda esperada é DECLARAÇÃO DO ENTE, por exercício e origem (tributária ou não), com o
+// texto da metodologia — nunca constante no código.
+//
+// A APURAÇÃO é o fato: numa data de corte, ajuste esperado = percentual × saldo da dívida ativa da origem;
+// lança-se só a DIFERENÇA para o saldo da retificadora no razão — constituição (D VPD / C retificadora)
+// se maior, reversão (D retificadora / C VPA) se menor. As contas vêm do roteiro declarado da família
+// PERDAS_DIVIDA_ATIVA. Append-only; uma apuração por origem e dia de corte.
+// ============================================================================
+
+model PercentualDePerdaDaDividaAtiva {
+  id          String            @id @default(cuid())
+  exercicio   Int
+  origem      OrigemDividaAtiva
+  /// Perda esperada, em % do saldo (0 a 100).
+  percentual  Decimal           @db.Decimal(9, 6)
+  /// A metodologia e as premissas — o texto que vai às notas explicativas.
+  metodologia String
+  versao      Int
+  criadoEm    DateTime          @default(now())
+  criadoPor   String
+
+  apuracoes ApuracaoDoAjusteDePerdas[]
+
+  @@unique([exercicio, origem, versao])
+  @@index([exercicio, origem])
+}
+
+model ApuracaoDoAjusteDePerdas {
+  id                 String                        @id @default(cuid())
+  origem             OrigemDividaAtiva
+  /// O dia civil do corte, gravado como o fim desse dia no fuso do ente.
+  dataCorte          DateTime
+  saldoDaDividaAtiva Decimal                       @db.Decimal(18, 2)
+  percentualId       String
+  percentual         PercentualDePerdaDaDividaAtiva @relation(fields: [percentualId], references: [id])
+  ajusteEsperado     Decimal                       @db.Decimal(18, 2)
+  /// Saldo credor da retificadora no razão até o corte, antes desta apuração.
+  saldoAnterior      Decimal                       @db.Decimal(18, 2)
+  /// ajusteEsperado − saldoAnterior: positivo constitui, negativo reverte, zero não lança.
+  diferenca          Decimal                       @db.Decimal(18, 2)
+  lancamentoId       String?                       @unique
+  lancamento         LancamentoContabil?           @relation("LancamentoDoAjusteDePerdas", fields: [lancamentoId], references: [id])
+  criadoEm           DateTime                      @default(now())
+  criadoPor          String
+
+  @@unique([origem, dataCorte])
+}

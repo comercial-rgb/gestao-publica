@@ -76,7 +76,7 @@ model DecisaoDoTipoDeConsignacao {
   ativo Boolean
 
   contaPassivoId String?
-  contaPassivo   ContaPcasp? @relation("PassivoDecididoDaConsignacao", fields: [contaPassivoId], references: [id])
+  contaPassivo   ContaPcasp? @relation("PassivoDecididoDaConsignacao", fields: [contaPassivoId], references: [id], onDelete: Restrict)
 
   /// Por que ESTA conta, ou por que desativar. Obrigatório: a classificação é do ente, e uma
   /// escolha contábil sem fundamento é a mesma coisa que uma conta inventada — só que com a

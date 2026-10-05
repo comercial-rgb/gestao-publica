@@ -287,6 +287,11 @@ export interface InscricaoParaAnexo7 {
   readonly orgaoCodigo: string;
   /** Modalidade de aplicação 91 — o MESMO teste do Anexo 2. */
   readonly ehIntra: boolean;
+  /**
+   * V35 — o GRUPO de natureza da despesa (2 juros e encargos, 6 amortização). O Anexo 17 da Lei 4.320
+   * separa os "serviços da dívida a pagar" (art. 92, II) dos demais restos (art. 92, I) por ele.
+   */
+  readonly grupoDaDespesa: string;
   readonly fonteId: string;
   readonly inscrito: Money;
   /** Pago LÍQUIDO (PAGAMENTO − ESTORNO_PAGAMENTO) com data do fato em ano < ref. */
@@ -349,7 +354,7 @@ export async function restosParaAnexo7(
             select: {
               fonteId: true,
               orgao: { select: { codigo: true } },
-              naturezaDespesa: { select: { codModalidade: true } },
+              naturezaDespesa: { select: { codModalidade: true, codNatureza: true } },
             },
           },
           // As liquidações de RP do empenho (LIQUIDACAO_RP), para decidir o bloco.
@@ -406,6 +411,7 @@ export async function restosParaAnexo7(
       exercicioOrigem: i.exercicioOrigem,
       orgaoCodigo: i.empenho.ficha.orgao.codigo,
       ehIntra: i.empenho.ficha.naturezaDespesa.codModalidade === "91",
+      grupoDaDespesa: i.empenho.ficha.naturezaDespesa.codNatureza,
       fonteId: i.empenho.ficha.fonteId,
       inscrito: toMoney(i.valorInscrito.toFixed(2)),
       pagoAntes: antes.pago,

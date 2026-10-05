@@ -1,0 +1,27 @@
+// ============================================================================
+// V35 — AS FONTES FORA DO LIMITE PERCENTUAL DE SUPLEMENTAÇÃO DA LOA.
+//
+// A LOA autoriza o Executivo a abrir créditos suplementares até um percentual da despesa
+// fixada (Lei 4.320, art. 7º, I; em Esperança, Lei 613/2025, art. 5º, II: 50%). O percentual
+// mora em `LeiCredito.percentualLimite`. A mesma lei costuma excluir do limite os créditos
+// abertos com recursos postos à disposição do município pela União, pelo Estado, por outros
+// municípios e por instituições privadas (Lei 613/2025, art. 5º, § 2º).
+//
+// Quais fontes são essas é DECLARAÇÃO DO ENTE, com fundamento, por exercício — nunca uma
+// lista no código. Fonte não declarada CONTA no limite (fail-closed: a dúvida aperta o limite,
+// não o afrouxa). Append-only.
+// ============================================================================
+
+model FonteForaDoLimiteDeSuplementacao {
+  id         String       @id @default(cuid())
+  exercicio  Int
+  fonteId    String
+  fonte      FonteRecurso @relation("FonteForaDoLimite", fields: [fonteId], references: [id])
+  /// O dispositivo da LOA e a razão (ex.: "Lei 613/2025, art. 5º, § 2º: convênio da União").
+  fundamento String
+  criadoEm   DateTime     @default(now())
+  criadoPor  String
+
+  @@unique([exercicio, fonteId])
+  @@index([exercicio])
+}
