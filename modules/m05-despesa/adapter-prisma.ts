@@ -2015,6 +2015,8 @@ export function criarDespesaRepositoryPrisma(
           where: { id: p.empenhoId },
           select: {
             id: true,
+            numero: true,
+            tipo: true,
             fichaId: true,
             valor: true,
             obraId: true,
@@ -2071,6 +2073,16 @@ export function criarDespesaRepositoryPrisma(
         // parciais vivas (V33): pelo bruto, liquidava-se a parte que a parcial já tinha devolvido à ficha.
         const empenhado = await empenhadoLiquidoDoEmpenho(tx, p.empenhoId);
         const jaLiquidado = await liquidadoLiquido(tx, p.empenhoId);
+        // V35 — O EMPENHO ORDINÁRIO SE LIQUIDA DE UMA VEZ (MCASP 11ª ed., Parte I, 4.4.2.1: "despesas de valor fixo e
+        // previamente determinado, cujo pagamento deva ocorrer de uma só vez"). Despesa em parcelas é empenho GLOBAL;
+        // montante indeterminado, ESTIMATIVO. Liquidação estornada não conta: o líquido é zero e a despesa se refaz.
+        if (empenho.tipo === "ORDINARIO" && jaLiquidado.greaterThan(0)) {
+          throw new Error(
+            `O empenho ${empenho.numero} é ORDINÁRIO e já tem liquidação de ${jaLiquidado.toFixed(2)}: o empenho ordinário é de valor fixo, ` +
+              "pago de uma só vez (MCASP, Parte I, 4.4.2.1). Despesa em parcelas se empenha como GLOBAL; de montante indeterminado, como ESTIMATIVO. " +
+              "Se a liquidação anterior está errada, estorne-a e liquide de novo. Nada foi gravado."
+          );
+        }
         const depois = toMoney(jaLiquidado.plus(p.valor));
 
         if (depois.greaterThan(empenhado)) {

@@ -249,7 +249,8 @@ describe("M05 — concorrência no saldo da ficha", () => {
   it("t5: duas liquidações concorrentes de 700 contra um empenho de 1.000 — UMA só grava", async () => {
     for (let i = 0; i < RODADAS; i++) {
       await semear();
-      const e = await empenhar(empenho("NE-1", "1000.00"), R_EMPENHO, deps);
+      // GLOBAL (V35): duas parcelas de 700 são despesa em parcelas; o ordinário recusaria a segunda pelo tipo, antes do limite.
+      const e = await empenhar({ ...empenho("NE-1", "1000.00"), tipo: "GLOBAL" as const }, R_EMPENHO, deps);
       const liquidacao = (numero: string) =>
         liquidar(
           { empenhoId: e.empenhoId, numero, valor: "700.00", data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "Fulano", historico: "liquidação concorrente", criadoPor: POR },

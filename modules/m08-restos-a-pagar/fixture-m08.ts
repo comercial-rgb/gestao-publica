@@ -110,11 +110,13 @@ export async function semearM08(): Promise<void> {
 export async function empenharDe2026(
   deps: M05Deps,
   numero: string,
-  valor: string
+  valor: string,
+  /** V35: GLOBAL quando o caso liquida em parcelas (o ordinário se liquida de uma vez, MCASP Parte I, 4.4.2.1). */
+  tipo: "ORDINARIO" | "GLOBAL" = "ORDINARIO"
 ): Promise<string> {
   const e = await empenhar(
     {
-      fichaId: FICHA, numero, tipo: "ORDINARIO", valor,
+      fichaId: FICHA, numero, tipo, valor,
       data: new Date("2026-06-01T12:00:00Z"), credorCpfCnpj: "12345678000195",
       historico: `empenho ${numero}`,
       categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR,

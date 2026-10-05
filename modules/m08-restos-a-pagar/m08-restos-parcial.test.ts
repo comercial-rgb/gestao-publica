@@ -53,14 +53,14 @@ describe("M08 V33 — pagamento de restos a pagar com anulação parcial feita a
     await semearM08();
     const deps = criarM05Deps(prisma);
 
-    const e1 = await empenharDe2026(deps, "NE-1", "10000.00");
+    const e1 = await empenharDe2026(deps, "NE-1", "10000.00", "GLOBAL");
     nl1 = await liquidarDe2026(deps, e1, "NL-1", "5000.00");
     nl1Parcial = (
       await anularLiquidacaoParcial({ originalId: nl1, numero: "NL-1-AP1", valor: "1000.00", data: dia("2026-08-10"), motivo: MOTIVO, criadoPor: POR }, deps)
     ).anulacaoId;
     await liquidarDe2026(deps, e1, "NL-2", "3000.00");
 
-    const e2 = await empenharDe2026(deps, "NE-2", "6000.00");
+    const e2 = await empenharDe2026(deps, "NE-2", "6000.00", "GLOBAL");
     // Liquidada antes da NL-1 e da NL-2: é a cabeça da fila do art. 141, e o pagamento dela em 2026 não fura a ordem.
     nl3 = await liquidarDe2026(deps, e2, "NL-3", "5000.00", "2026-07-01T12:00:00Z");
     const p = await pagarDe2026(deps, nl3, "NP-3", "3000.00");

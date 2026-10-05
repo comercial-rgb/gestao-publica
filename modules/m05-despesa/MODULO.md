@@ -486,3 +486,21 @@ trinco `AdiantamentoDoEmpenho` que a decisão já toma:
   errada) acusam.
 - O ato composto (a prestação executar as três anulações) continua não construído: a guarda basta para que a baixa
   não aconteça sem o dinheiro de volta.
+
+## V35 B6 — o tipo do empenho tem regra (MCASP 11ª ed., Parte I, 4.4.2.1)
+
+O manual define os três tipos:
+- **ordinário:** "despesas de valor fixo e previamente determinado, cujo pagamento deva ocorrer de uma só vez";
+- **estimativo:** "despesas cujo montante não se pode determinar previamente" (água, energia, combustível);
+- **global:** "despesas contratuais ou outras de valor determinado, sujeitas a parcelamento" (aluguéis).
+
+A única regra que a definição permite conferir é a do ordinário: **uma liquidação viva**. O adapter recusa a segunda
+liquidação de empenho ordinário dentro da transação, depois do trinco da ficha, e a mensagem diz o tipo certo para
+parcelas. A liquidação estornada não conta: o líquido volta a zero e a despesa se refaz. Estimativo e global aceitam
+parcelas e reforço, como antes.
+
+O que o manual **não** manda, e por isso não se impõe: vínculo obrigatório do global a contrato ("despesas contratuais
+ou outras"), anulação automática do saldo do estimativo no fim do ano (a inscrição em restos segue a norma do ente).
+
+Teste: `m05-tipo-do-empenho.test.ts` (N=2 parcelas, os três tipos, o estorno). Fixtures que liquidavam ordinário em
+parcelas (`m05b`, `m05-concorrencia` t5) passaram a GLOBAL, com o motivo no comentário.

@@ -125,7 +125,10 @@ async function semear(): Promise<void> {
   });
 }
 
-/** Empenha 1000 e devolve o id. */
+/**
+ * Empenha 1000 e devolve o id. GLOBAL (V35): os casos deste arquivo liquidam e pagam em parcelas (600 + 400), e o
+ * empenho ORDINÁRIO se liquida de uma vez (MCASP, Parte I, 4.4.2.1) — ver `m05-tipo-do-empenho.test.ts`.
+ */
 async function empenhar1000(
   deps: M05Deps,
   fichaId: string = FICHA_ID
@@ -134,7 +137,7 @@ async function empenhar1000(
     {
       fichaId,
       numero: "2026NE0001",
-      tipo: "ORDINARIO",
+      tipo: "GLOBAL",
       valor: "1000.00",
       data: new Date("2026-04-10T12:00:00Z"),
       credorCpfCnpj: "12345678000195",

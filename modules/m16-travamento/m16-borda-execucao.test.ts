@@ -183,7 +183,7 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
     const criadoPor = await entrar();
     const e = await empenhar(
       {
-        fichaId: FICHA_SERVICO, numero: "2026NE000001", tipo: "ORDINARIO",
+        fichaId: FICHA_SERVICO, numero: "2026NE000001", tipo: "GLOBAL", // V35: duas liquidações no mesmo empenho são parcelas
         valor: "10000.00", data: new Date("2026-02-01T12:00:00Z"),
         credorCpfCnpj: CREDOR, historico: "serviços", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
         criadoPor,
@@ -242,7 +242,7 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
     // duas liquidações na MESMA fila (fonte 500 × PRESTACAO_SERVICOS): A é mais antiga.
     const e = await empenhar(
       {
-        fichaId: FICHA_SERVICO, numero: "2026NE000001", tipo: "ORDINARIO",
+        fichaId: FICHA_SERVICO, numero: "2026NE000001", tipo: "GLOBAL", // V35: duas liquidações no mesmo empenho são parcelas
         valor: "10000.00", data: new Date("2026-02-01T12:00:00Z"),
         credorCpfCnpj: CREDOR, historico: "serviços", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
         criadoPor,
@@ -301,7 +301,7 @@ describe("M16 — a borda da EXECUÇÃO (as 4 telas da 7.3)", () => {
 
     const e = await empenhar(
       {
-        fichaId: FICHA_SERVICO, numero: "2026NE000001", tipo: "ORDINARIO",
+        fichaId: FICHA_SERVICO, numero: "2026NE000001", tipo: "GLOBAL", // V35: duas liquidações no mesmo empenho são parcelas
         valor: "10000.00", data: new Date("2026-02-01T12:00:00Z"),
         credorCpfCnpj: CREDOR, historico: "serviços", categoriaOrdemCronologica: "PRESTACAO_SERVICOS",
         criadoPor,

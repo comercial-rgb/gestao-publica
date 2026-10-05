@@ -234,7 +234,7 @@ describe("empenho a partir da ordem de compra", () => {
 
   it("liquidação N=2: recusa nota não conferida; duas parcelas cabem; a terceira e o cancelamento recusam", async () => {
     const { ordemId } = await emitirOrdemDeCompra(prisma, {
-      numero: "OC-E5", tipo: "ORDINARIA", fornecedorId,
+      numero: "OC-E5", tipo: "GLOBAL", fornecedorId, // V35: a nota liquidada em duas parcelas é despesa em parcelas
       dataEmissao: new Date("2026-03-10T12:00:00Z"),
       finalidade: "Serviço com nota", fichaId: FICHA,
       itens: [
@@ -244,7 +244,7 @@ describe("empenho a partir da ordem de compra", () => {
       criadoPor: POR,
     });
     const emp = await empenhar({
-      fichaId: FICHA, numero: "2026NE000501", tipo: "ORDINARIO", valor: "210.00",
+      fichaId: FICHA, numero: "2026NE000501", tipo: "GLOBAL", valor: "210.00",
       data: new Date("2026-03-11T12:00:00Z"), credorCpfCnpj: CNPJ,
       historico: "Empenho da ordem OC-E5", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
       ordemDeCompraId: ordemId, criadoPor: POR,
