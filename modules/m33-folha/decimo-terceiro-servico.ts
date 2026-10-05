@@ -2,6 +2,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { Decimal, emProsa } from "../../packages/contracts/index.js";
+import { RAMO_DO_ADIANTAMENTO_CONCEDIDO } from "./baixa-do-adiantamento-do-13.js";
 import {
   conferirReferenciaNormativa,
   zCadastrarParametroDoDecimoTerceiroInput,
@@ -169,6 +170,20 @@ export async function cadastrarParametroDoDecimoTerceiro(
             `use um grupo próprio para a rubrica do adiantamento.`
         );
       }
+    }
+
+    // V35 — a mesma regra do cadastro do grupo, pelo outro lado: o grupo veio antes do parâmetro (MCASP, Parte II, 18.1).
+    const grupoDoAdiantamento = await tx.rubricaDoGrupoDeEmpenho.findUnique({
+      where: { rubricaId: d.rubricaDoAdiantamentoId },
+      select: { rubrica: { select: { codigo: true } }, grupo: { select: { codigo: true, contaVariacao: { select: { codigo: true } } } } },
+    });
+    const debitada = grupoDoAdiantamento?.grupo.contaVariacao?.codigo;
+    if (grupoDoAdiantamento !== null && debitada !== undefined && !debitada.startsWith(RAMO_DO_ADIANTAMENTO_CONCEDIDO)) {
+      throw new Error(
+        `ADIANTAMENTO-FORA-DO-RAMO: a rubrica do adiantamento (${grupoDoAdiantamento.rubrica.codigo}) está no grupo ${grupoDoAdiantamento.grupo.codigo}, ` +
+          `que debita ${debitada}. A 1ª parcela é adiantamento concedido (MCASP, Parte II, 18.1): o grupo tem de debitar o ramo ` +
+          `${RAMO_DO_ADIANTAMENTO_CONCEDIDO}. Use um grupo próprio para a rubrica do adiantamento. Nada foi gravado.`
+      );
     }
 
     const ultima = await tx.parametroDoDecimoTerceiro.findFirst({

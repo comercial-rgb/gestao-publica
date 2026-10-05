@@ -15,6 +15,7 @@ import { zCompetencia, type TipoDeFolha } from "./dominio.js";
  * decide o que fazer com a resposta.
  */
 import { criterioDoAbatimentoNoCalculo } from "./decimo-terceiro-servico.js";
+import { RAMO_DO_ADIANTAMENTO_CONCEDIDO } from "./baixa-do-adiantamento-do-13.js";
 
 /**
  * ═══ M33 — A APROPRIAÇÃO CONTÁBIL DA FOLHA (V6 P2.3b; TR 5.12.71/72) ═══
@@ -283,6 +284,19 @@ export async function cadastrarGrupoDeEmpenhoDaFolha(prisma: PrismaClient, input
         `RUBRICA-JA-EM-OUTRO-GRUPO: ${jaEmOutro.map((r) => `${r.codigo} (no grupo ${r.grupoDeEmpenho?.grupo.codigo ?? "?"})`).join(", ")}. ` +
           `Uma rubrica empenha numa ficha só — em duas, a mesma verba viraria despesa duas vezes. Nada foi gravado.`
       );
+    }
+    // V35 — a 1ª parcela do 13º é ADIANTAMENTO CONCEDIDO (MCASP, Parte II, 18.1): o grupo que a empenha debita o ramo
+    // 1.1.3.1. Antes a conta errada só era recusada no fim do ano, na baixa, com nove meses de liquidações já feitas.
+    const doAdiantamento = await tx.parametroDoDecimoTerceiro.findMany({ where: { rubricaDoAdiantamentoId: { in: d.rubricaIds } }, select: { rubricaDoAdiantamento: { select: { codigo: true } } }, distinct: ["rubricaDoAdiantamentoId"] });
+    if (doAdiantamento.length > 0) {
+      const debitada = await tx.contaPcasp.findUniqueOrThrow({ where: { id: d.contaVariacaoId }, select: { codigo: true } });
+      if (!debitada.codigo.startsWith(RAMO_DO_ADIANTAMENTO_CONCEDIDO)) {
+        throw new Error(
+          `ADIANTAMENTO-FORA-DO-RAMO: a rubrica ${doAdiantamento.map((p) => p.rubricaDoAdiantamento.codigo).join(", ")} é o adiantamento do 13º, e o grupo ` +
+            `debitaria ${debitada.codigo}. A 1ª parcela é adiantamento concedido (MCASP, Parte II, 18.1): escolha uma conta do ramo ` +
+            `${RAMO_DO_ADIANTAMENTO_CONCEDIDO} (por exemplo, 13º salário - adiantamento). Nada foi gravado.`
+        );
+      }
     }
 
     const g = await tx.grupoDeEmpenhoDaFolha.create({

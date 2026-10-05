@@ -79,6 +79,8 @@ const CAIXA = "1.1.1.1.2.00.00";
 const C_LIQUIDADO = "6.2.2.1.3.03.00";
 const C_PAGO = "6.2.2.1.3.04.00";
 const CONTAS = { contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar" } as const;
+/** A 1ª parcela do 13º é adiantamento concedido (MCASP, Parte II, 18.1): o grupo dela debita o ramo 1.1.3.1. */
+const CONTAS_DO_ADIANTAMENTO = { contaVariacaoId: "c-adi-13", contaObrigacaoId: "c-pessoal-pagar" } as const;
 
 const ATO = {
   atoEsfera: "MUNICIPAL",
@@ -127,6 +129,7 @@ async function semear(): Promise<void> {
       { id: "c-ddr-liq", codigo: "8.2.1.1.3.01.00", nome: "DDR comprometida por liquidacao", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
       { id: "c-vpd-pessoal", codigo: "3.1.1.1.1.01.00", nome: "Vencimentos e vantagens fixas - pessoal civil", naturezaSaldo: "DEVEDORA", nivel: 5, analitica: true },
       { id: "c-pessoal-pagar", codigo: "2.1.1.1.1.01.01", nome: "Salarios, remuneracoes e beneficios", naturezaSaldo: "CREDORA", nivel: 5, analitica: true },
+      { id: "c-adi-13", codigo: "1.1.3.1.1.01.02", nome: "13 SALÁRIO - ADIANTAMENTO", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true },
     ],
   });
   await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
@@ -181,12 +184,12 @@ async function semear(): Promise<void> {
 }
 
 /** O grupo que empenha a 1ª parcela. `porServidor` é o eixo de todos os casos do critério PAGO. */
-async function grupoDoAdiantamento(porServidor: boolean): Promise<string> {
+async function grupoDoAdiantamento(porServidor: boolean, contas: { readonly contaVariacaoId: string; readonly contaObrigacaoId: string } = CONTAS_DO_ADIANTAMENTO): Promise<string> {
   return (
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
       codigo: "FP-ADI", descricao: "Adiantamento do 13o", fichaId: FICHA,
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPA",
-      porServidor, ...CONTAS, rubricaIds: [ids["D13ADI"]!], criadoPor: PREPARA,
+      porServidor, ...contas, rubricaIds: [ids["D13ADI"]!], criadoPor: PREPARA,
       ...(porServidor ? {} : { credorId: await pessoa("39053344705", "Sindicato dos Servidores") }),
     })
   ).grupoId;
@@ -729,11 +732,18 @@ describe("c5 · a colisão do número do empenho entre folhas de tipos diferente
    * motor que empenhasse "o primeiro que achasse" passaria; com valores iguais, um que empenhasse
    * o valor errado passaria também.
    */
+  // V35: o vencimento e o adiantamento não cabem num grupo só (a conta debitada difere: VPD e adiantamento concedido).
+  // A colisão continua possível com DOIS grupos na MESMA série, e é ela que este bloco vigia.
   async function grupoQueMisturaMensalEAdiantamento(): Promise<void> {
     await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
-      codigo: "FP-TUDO", descricao: "Pessoal — vencimento e adiantamento do 13o", fichaId: FICHA,
+      codigo: "FP-VENC", descricao: "Pessoal — vencimento", fichaId: FICHA,
       categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP",
-      porServidor: true, ...CONTAS, rubricaIds: [ids["VENC"]!, ids["D13ADI"]!], criadoPor: PREPARA,
+      porServidor: true, ...CONTAS, rubricaIds: [ids["VENC"]!], criadoPor: PREPARA,
+    });
+    await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
+      codigo: "FP-ADI-FP", descricao: "Pessoal — adiantamento do 13o, mesma serie", fichaId: FICHA,
+      categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FP",
+      porServidor: true, ...CONTAS_DO_ADIANTAMENTO, rubricaIds: [ids["D13ADI"]!], criadoPor: PREPARA,
     });
   }
 
@@ -871,11 +881,7 @@ describe("c7 · a 1ª parcela não se empenha duas vezes", () => {
 
   /** O grupo da 1ª parcela liquidando contra o ADIANTAMENTO CONCEDIDO, como o MCASP 18.1 manda. */
   async function grupoDoAdiantamentoNoAtivo(): Promise<void> {
-    await prisma.contaPcasp.create({ data: { id: "c-adi-13", codigo: "1.1.3.1.1.01.02", nome: "13 SALÁRIO - ADIANTAMENTO", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true } });
-    await cadastrarGrupoDeEmpenhoDaFolha(prisma, {
-      codigo: "FP-ADI", descricao: "Adiantamento do 13o", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPA",
-      porServidor: true, contaVariacaoId: "c-adi-13", contaObrigacaoId: CONTAS.contaObrigacaoId, rubricaIds: [ids["D13ADI"]!], criadoPor: PREPARA,
-    });
+    await grupoDoAdiantamento(true);
   }
 
   async function saldoDevedor(codigo: string): Promise<string> {
@@ -917,17 +923,21 @@ describe("c7 · a 1ª parcela não se empenha duas vezes", () => {
     await expect(baixar()).rejects.toThrow(/já foi baixado/);
   });
 
-  it("a 1ª parcela liquidada contra a VPD não tem adiantamento a baixar: recusa nomeando o ramo e o manual", async () => {
-    await grupoDoAdiantamento(true); // contaVariacao = VPD de pessoal
-    await grupoDoDecimoTerceiro();
-    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
-    await adiantamentoFechado();
-    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-12", tipo: "DECIMO_TERCEIRO", criadoPor: PREPARA });
-    await calcularFolha(prisma, { folhaId, criadoPor: PREPARA });
-    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
-    await expect(baixarAdiantamentoDoDecimoTerceiro(prisma, { exercicio: 2026, data: "2026-12-20", criadoPor: PAGA })).rejects.toThrow(
-      /3\.1\.1\.1\.1\.01\.00, que não é adiantamento concedido \(1\.1\.3\.1\.x\).*MCASP \(Parte II, 18\.1\)/
+  /**
+   * V35 — a conta errada no grupo do adiantamento é recusada NO CADASTRO, e não mais só no fim do ano, na baixa (quando
+   * nove meses de liquidações já teriam debitado a VPD). N=2: grupo antes do parâmetro, e parâmetro antes do grupo.
+   */
+  it("o grupo do adiantamento que debita a VPD é recusado no cadastro, nas duas ordens, nomeando o ramo e o manual", async () => {
+    await grupoDoAdiantamento(true, CONTAS); // grupo primeiro: quem recusa é o parâmetro
+    await expect(parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" })).rejects.toThrow(
+      /ADIANTAMENTO-FORA-DO-RAMO: a rubrica do adiantamento \(D13ADI\) está no grupo FP-ADI, que debita 3\.1\.1\.1\.1\.01\.00.*MCASP, Parte II, 18\.1/
     );
-    expect(await prisma.baixaDoAdiantamentoDoDecimoTerceiro.count()).toBe(0);
+    expect(await prisma.parametroDoDecimoTerceiro.count()).toBe(0);
+
+    await semear(); // parâmetro primeiro: quem recusa é o grupo
+    await parametro({ estadoMinimoDoAdiantamentoParaAbater: "FECHADO" });
+    await expect(grupoDoAdiantamento(true, CONTAS)).rejects.toThrow(/ADIANTAMENTO-FORA-DO-RAMO: a rubrica D13ADI é o adiantamento do 13º, e o grupo debitaria 3\.1\.1\.1\.1\.01\.00/);
+    expect(await prisma.grupoDeEmpenhoDaFolha.count()).toBe(0);
+    expect(await grupoDoAdiantamento(true)).toBeTruthy();
   });
 });

@@ -1409,6 +1409,11 @@ depois. Sem ela, a baixa leva a 1ª parcela à VPD do 13º.
 Mutações provadas: sem a subtração, c7 vermelho (era o estado medido); sem a recusa do ramo, e sem a recusa do saldo,
 cada caso vermelho.
 
-**Pendência nomeada:** `apropriarFolha` da folha de adiantamento do 13º ainda aceita grupo cuja conta debitada não é
-adiantamento concedido; a recusa está só na baixa. Levá-la à apropriação muda o comportamento de folhas já cadastradas
-e pede caracterização própria.
+**A conta do adiantamento no cadastro (V35, fechada):** a recusa do ramo, antes só na baixa, agora está no CADASTRO,
+pelos dois lados, porque a ordem varia: `cadastrarGrupoDeEmpenhoDaFolha` recusa o grupo que contém a rubrica do
+adiantamento de algum parâmetro do 13º e debita fora de `1.1.3.1.`; `cadastrarParametroDoDecimoTerceiro` recusa o
+parâmetro cuja rubrica do adiantamento já está num grupo assim. Código `ADIANTAMENTO-FORA-DO-RAMO`, com o MCASP. A
+apropriação não ganhou a recusa: com o cadastro guardado, o único caminho até ela é grupo já gravado antes desta regra,
+e para esse a baixa continua recusando. Na produção, nenhum grupo existia antes da regra (base limpa). Teste c7 "o grupo
+do adiantamento que debita a VPD", N=2 nas ordens; mutação de cada lado provada vermelha. A colisão do c5, que usava um
+grupo misturando vencimento e adiantamento (hoje inválido), passou a usar dois grupos na mesma série.
