@@ -172,8 +172,17 @@ app, `test/ui` (38 arquivos, 289 testes; os 2 de PDF só passam com o Chrome ins
   percurso `scripts/percurso-v35-anexo10.mts` (3011, base fictícia) verde. Em produção ainda NÃO publicado.
 - `3329fdfb` M12 — DMPL (MCASP Parte V, item 7) lida do razão, tela e PDF `/relatorios/demonstracoes/dmpl`.
 - Censo: 527 serviços (+2 do Anexo 10); leituras `anexo10` e `dmpl` em FORA_DO_CENSO.
+- `0e2aacb5` M08 A3 — os restos a pagar no controle 5.3/6.3 (MCASP Parte I 4.7.4–4.7.6). Inventário antes (a inscrição não
+  lançava nada; nenhum leitor de 5.3/6.3; a MSC lê o razão). Declaração das contas por papel (20, tudo-ou-nada, pelo título do
+  manual; tela Contabilidade › Contas dos restos a pagar); com ela o encerramento do exercício lança encerramento das anteriores,
+  inscrição (com 6.2.2.1.3.05/.07) e abertura de E+1; execução e anulações movem/invertem o estágio; MSC pela inscrição. Auditoria
+  de invariantes achou 6 defeitos, todos corrigidos com teste e mutação (ver MODULO.md do M08). Migration aditiva
+  `20261105200000_v35_controle_dos_restos`. Teste com 10 casos e contas à mão; 14 mutações; regressão de 41 arquivos/441 testes
+  (os que encerram exercício ou anulam liquidação, o censo e o guard do plano oficial). Censo 528. Percurso de navegador da
+  declaração na 3011 (base fictícia): 18 de 20 pré-preenchidas, os dois "cancelados" pela escolha do ente, declarada, "ligado".
+  Intermitência registrada: `m14-msc` estourou o hook de 10 s numa corrida de 42 arquivos e passou 15/15 sozinho (carga).
 
-**Próximo:** A3 (restos a pagar no controle 5.3/6.3 pela norma), unidade própria; depois publicar e marcar o catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
+**Próximo:** publicar (anexo 10, DMPL, dedução, adiantamento, A3) e marcar o catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
