@@ -1,9 +1,9 @@
 {
- "digesto": "df24f0d5de880851c2de047787a3b0dba21af91b5bb0b0d6e021e0b863ec9966",
- "quando": "2026-10-04T04:13:44.943Z",
+ "digesto": "10c3c4b470b232a30cf08dc903caacc8fe724a7e9c1998cc7f12837640a8a789",
+ "quando": "2026-10-05T04:29:06.303Z",
  "comando": "npx tsc --noEmit -p tsconfig.app-sem-rotas.json && npx tsc --noEmit -p tsconfig.rotas-geradas.json",
- "duracaoMs": 298351,
+ "duracaoMs": 304703,
  "heapMb": 12288,
  "node": "v24.18.0",
- "sha": "08248d0c2a2522c081c0a781d0cc205e8f287430"
+ "sha": "81314fb069f7f9c3a015479afb0ee15a812b9695"
 }
