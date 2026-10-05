@@ -70,6 +70,8 @@ model LeiCredito {
   dataPublicacao   DateTime
 
   decretos DecretoCredito[]
+  /// V35 — as realocações por decreto que correm contra o percentual desta autorização da LOA. VIRTUAL.
+  realocacoes AtoDeRealocacao[] @relation("AutorizacaoDaRealocacao")
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -259,6 +261,11 @@ model AtoDeRealocacao {
   /// nasce.
   leiNumero          String
   leiDataPublicacao  DateTime
+  /// V35 — quando o ato é feito por decreto sob a autorização percentual da LOA (Lei 4.320, art. 7º; em Esperança,
+  /// Lei 613/2025, art. 5º, III), a lei de crédito dessa autorização: os acréscimos correm contra o mesmo percentual.
+  /// Nulo: realocação por lei específica (CF, art. 167, VI), fora do percentual.
+  autorizacaoDaLoaId String?
+  autorizacaoDaLoa   LeiCredito? @relation("AutorizacaoDaRealocacao", fields: [autorizacaoDaLoaId], references: [id], onDelete: Restrict)
 
   /// Por que a dotação muda de lugar — o que a prestação de contas lê.
   justificativa String

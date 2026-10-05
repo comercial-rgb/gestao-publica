@@ -6,6 +6,8 @@ import { criarFichasDeTeste } from "../../test/ficha-teste.js";
 import { criarM03Deps } from "./adapter-prisma.js";
 import { anularCredito, criarDecreto, criarLei, executarCredito } from "./servico.js";
 import { declararFonteForaDoLimiteDeSuplementacao } from "./limite-de-suplementacao.js";
+import { criarRealocacaoDeps } from "./adapter-realocacao.js";
+import { anularRealocacao, registrarRealocacao } from "./realocacao.js";
 import type { M03Deps } from "./ports.js";
 
 /**
@@ -140,5 +142,37 @@ describe("M03 — limite percentual de suplementação da LOA", () => {
     await expect(
       declararFonteForaDoLimiteDeSuplementacao(prisma, { exercicio: 2026, fonteCodigo: "999", fundamento: "Lei 613/2025, art. 5º, § 2º", criadoPor: POR })
     ).rejects.toThrow(/Fonte 999 não cadastrada/);
+  });
+
+  it("realocação por decreto sob a autorização da LOA: o mesmo percentual, num limite próprio; anular devolve; a de lei específica fica fora", async () => {
+    const leiId = await lei(deps, "10");
+    const rdeps = criarRealocacaoDeps(prisma);
+    let k = 0;
+    const realocar = (valor: string, autorizacaoDaLoaId: string | null) => {
+      k += 1;
+      return registrarRealocacao(
+        {
+          especie: "REMANEJAMENTO", numero: `DR-${String(k)}`, data: new Date("2026-04-10T15:00:00Z"),
+          leiNumero: autorizacaoDaLoaId === null ? "Lei 55/2026" : "Lei 613/2025", leiDataPublicacao: new Date("2025-12-19T15:00:00Z"),
+          ...(autorizacaoDaLoaId === null ? {} : { autorizacaoDaLoaId }),
+          justificativa: "Remanejamento entre programas por decreto, na forma da LOA.",
+          pernas: [
+            { fichaId: "A", tipo: "REDUCAO", valor, fonteId: F500 },
+            { fichaId: "B", tipo: "ACRESCIMO", valor, fonteId: F500 },
+          ],
+          criadoPor: POR,
+        },
+        rdeps
+      );
+    };
+    const r1 = await realocar("1500.00", leiId);
+    await expect(realocar("1100.00", leiId)).rejects.toThrow(/REALOCAÇÃO ACIMA DO LIMITE DA LOA: 1100\.00 excede o restante de 1000\.00/);
+    expect(await prisma.atoDeRealocacao.count()).toBe(1);
+    // limite próprio: a suplementação da mesma lei ainda tem os 2.500 inteiros
+    await remanejar(deps, leiId, "A", "B", F500, "2500.00");
+    await anularRealocacao({ atoId: r1.atoId, data: new Date("2026-04-20T15:00:00Z"), motivo: "Decreto revogado pelo Executivo.", criadoPor: POR }, rdeps);
+    await realocar("2500.00", leiId);
+    // a realocação por lei específica (CF, art. 167, VI) não corre contra o percentual
+    await realocar("3000.00", null);
   });
 });

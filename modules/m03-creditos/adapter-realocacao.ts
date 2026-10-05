@@ -12,6 +12,7 @@ import {
 } from "../m05-despesa/adapter-prisma.js";
 import { estornarMovimentoDotacao, registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
 import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
+import { conferirLimiteDaRealocacao } from "./limite-de-suplementacao.js";
 import { criarAutorizacaoPortPrisma } from "../m16-travamento/porta.js";
 import type {
   AtoParaAnular,
@@ -107,6 +108,12 @@ export function criarRealocacaoRepositoryPrisma(prisma: PrismaClient): Realocaca
           }
         }
 
+        // V35 — sob a autorização percentual da LOA, os acréscimos correm contra o mesmo percentual (limite-de-suplementacao.ts).
+        if (p.autorizacaoDaLoaId !== null) {
+          const acrescimo = p.pernas.filter((x) => x.tipo === "ACRESCIMO").reduce((a, x) => toMoney(a.plus(x.valor)), toMoney("0.00"));
+          await conferirLimiteDaRealocacao(tx, { autorizacaoId: p.autorizacaoDaLoaId, exercicio: ano, acrescimoAgora: acrescimo });
+        }
+
         // ── A GRAVAÇÃO ──────────────────────────────────────────────────────────────────────
         await tx.atoDeRealocacao.create({
           data: {
@@ -117,6 +124,7 @@ export function criarRealocacaoRepositoryPrisma(prisma: PrismaClient): Realocaca
             data: p.data,
             leiNumero: p.leiNumero,
             leiDataPublicacao: p.leiDataPublicacao,
+            autorizacaoDaLoaId: p.autorizacaoDaLoaId,
             justificativa: p.justificativa,
             criadoPor: p.criadoPor,
           },

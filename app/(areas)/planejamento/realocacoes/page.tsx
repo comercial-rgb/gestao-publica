@@ -11,6 +11,7 @@ import {
   type RecorteDaPagina,
 } from "../../../../lib/portas/contexto";
 import {
+  lerAutorizacoesDaLoa,
   lerFichasParaRealocacao,
   lerRealocacoes,
   PortaSemBancoError,
@@ -99,13 +100,15 @@ export default async function RealocacoesPage({
   let recorte: RecorteDaPagina;
   let atos: readonly AtoDeRealocacaoNaLista[];
   let fichas: readonly FichaParaRealocacao[];
+  let autorizacoes: readonly { readonly id: string; readonly rotulo: string }[];
   let anexos: ReadonlyMap<string, readonly AnexoNaLista[]>;
   let podeAnexar: boolean;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_PLANEJAMENTO");
-    [atos, fichas] = await Promise.all([
+    [atos, fichas, autorizacoes] = await Promise.all([
       lerRealocacoes({ exercicio: recorte.exercicio }),
       lerFichasParaRealocacao({ exercicio: recorte.exercicio }),
+      lerAutorizacoesDaLoa(),
     ]);
     // V27 — o PDF de cada decreto: vai ao Tribunal com os itens do dia (tipos 12 e 13 da atualização orçamentária).
     [anexos, podeAnexar] = await Promise.all([
@@ -152,7 +155,7 @@ export default async function RealocacoesPage({
         reservado. A <strong>dotação atualizada</strong> das fichas muda na hora, no quadro de detalhamento da despesa.
       </div>
 
-      <FormRealocacao exercicio={exercicio} fichas={fichas} />
+      <FormRealocacao exercicio={exercicio} fichas={fichas} autorizacoes={autorizacoes} />
 
       {atos.length === 0 ? (
         <EstadoVazio

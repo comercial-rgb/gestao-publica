@@ -34,6 +34,7 @@ export async function registrarRealocacaoAction(
     const leiNumero = String(formData.get("leiNumero") ?? "").trim();
     const leiData = String(formData.get("leiData") ?? "").trim();
     const justificativa = String(formData.get("justificativa") ?? "").trim();
+    const autorizacao = String(formData.get("autorizacaoDaLoaId") ?? "").trim();
 
     let pernas: readonly PernaRascunho[];
     try {
@@ -61,6 +62,7 @@ export async function registrarRealocacaoAction(
         data: meioDiaCivil(data),
         leiNumero,
         leiDataPublicacao: meioDiaCivil(leiData),
+        autorizacaoDaLoaId: autorizacao === "" ? null : autorizacao,
         justificativa,
         pernas: pernas.map((p) => ({
           fichaId: p.fichaId,

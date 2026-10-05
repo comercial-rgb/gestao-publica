@@ -329,7 +329,7 @@ async function autorizacaoDeSuplementar(): Promise<void> {
     if (!r.jaDeclarada) declaradas.push(f.codigo);
   }
   feito.push(`Fontes fora do limite de suplementação (art. 5º, § 2º): ${declaradas.length === 0 ? "nenhuma nova" : declaradas.join(", ")}.`);
-  falta.push("Remanejamento, transposição e transferência (Lei 613/2025, art. 5º, III) têm o mesmo percentual, e as realocações ainda não o conferem.");
+  feito.push("Realocação por decreto (Lei 613/2025, art. 5º, III): na tela de realocações, escolher a autorização da Lei 613 faz o ato correr contra os mesmos 50%.");
 }
 
 async function adiantamento(): Promise<void> {

@@ -57,6 +57,8 @@ export const zRegistrarRealocacaoInput = z.object({
   data: z.coerce.date(),
   leiNumero: z.string().trim().min(1, "Informe o número da lei que autorizou a realocação."),
   leiDataPublicacao: z.coerce.date(),
+  /** V35 — a autorização percentual da LOA, quando o ato é decreto sob ela (os acréscimos correm contra o percentual). */
+  autorizacaoDaLoaId: z.string().min(1).nullable().optional(),
   justificativa: z.string().trim().min(10, {
     message:
       "Explique por que a dotação muda de lugar (ex.: 'Reorganização da Secretaria de Obras, Lei 123/2026'). " +
@@ -185,6 +187,7 @@ export interface RealocacaoParaPersistir {
   readonly data: Date;
   readonly leiNumero: string;
   readonly leiDataPublicacao: Date;
+  readonly autorizacaoDaLoaId: string | null;
   readonly justificativa: string;
   readonly pernas: readonly (PernaDeRealocacao & { readonly itemId: string })[];
   readonly criadoPor: string;
@@ -243,6 +246,7 @@ export async function registrarRealocacao(
     data: d.data,
     leiNumero: d.leiNumero,
     leiDataPublicacao: d.leiDataPublicacao,
+    autorizacaoDaLoaId: d.autorizacaoDaLoaId ?? null,
     justificativa: d.justificativa,
     pernas: d.pernas.map((p) => ({ ...p, itemId: deps.ids.novo() })),
     criadoPor: d.criadoPor,

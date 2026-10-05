@@ -75,9 +75,12 @@ function rotuloDaFicha(f: FichaDoForm): string {
 export function FormRealocacao({
   exercicio,
   fichas,
+  autorizacoes,
 }: {
   readonly exercicio: number;
   readonly fichas: readonly FichaDoForm[];
+  /** V35 — as autorizações percentuais da LOA; o ato por decreto sob uma delas corre contra o percentual. */
+  readonly autorizacoes: readonly { readonly id: string; readonly rotulo: string }[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaRealocacao, FormData>(registrarRealocacaoAction, {});
   const [aberto, setAberto] = useState(false);
@@ -186,6 +189,15 @@ export function FormRealocacao({
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Lei que autorizou</span>
           <input name="leiNumero" value={leiNumero} onChange={(e) => setLeiNumero(e.target.value)} placeholder="Lei 1.234/2026" className={CAMPO} />
+        </label>
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-4">
+          <span className={ROTULO}>Autorização do ato</span>
+          <select name="autorizacaoDaLoaId" defaultValue="" className={CAMPO}>
+            <option value="">Lei específica para esta realocação (fora do percentual da LOA)</option>
+            {autorizacoes.map((a) => (
+              <option key={a.id} value={a.id}>Decreto sob a LOA, {a.rotulo}</option>
+            ))}
+          </select>
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Data de publicação da lei</span>

@@ -2367,6 +2367,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   anexo17: "leitura (V35 — Anexo 17 da Lei 4.320, dívida flutuante; compõe M08 e razão, não muta)",
   termoDeConferenciaDeCaixa: "leitura (V35 — a conciliação de cada conta bancária em 31/12; não muta)",
   situacaoDoLimiteDaLoa: "leitura (V35 — despesa fixada, limite e consumido da suplementação; não muta)",
+  conferirLimiteDaRealocacao: "composável interno (V35 — o limite da LOA para a realocação por decreto, chamado dentro do registro da realocação, que já autorizou REGISTRAR_REALOCACAO_DE_DOTACAO)",
   conferirLimiteDaLoa: "composável interno (V35 — o guard do limite da LOA, chamado dentro do executarCredito, que já autorizou EXECUTAR_CREDITO)",
   apuracoesDoAjusteDePerdas: "leitura (V35 — as apurações do ajuste para perdas, com a metodologia; não muta)",
   apropriacoesDoExercicio: "leitura (V35 — as apropriações do 13º e das férias do exercício; não muta)",

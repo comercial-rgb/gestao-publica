@@ -116,3 +116,45 @@ export async function conferirLimiteDaLoa(
     );
   }
 }
+
+/**
+ * V35 — O MESMO PERCENTUAL PARA A REALOCAÇÃO POR DECRETO (Lei 4.320, art. 7º; em Esperança, Lei 613/2025, art. 5º, III:
+ * "no mesmo percentual autorizado para o inciso anterior, mediante decreto, transpor, remanejar ou transferir").
+ *
+ * É um limite PRÓPRIO, do mesmo tamanho, e não o saldo da suplementação: a lei dá o percentual a cada uma das duas
+ * autorizações. Conta os acréscimos líquidos dos atos ligados a esta autorização (o estorno de um acréscimo, na anulação
+ * do ato, devolve o limite). A exclusão de fontes do § 2º vale para os créditos suplementares, e não é aplicada aqui.
+ */
+export async function conferirLimiteDaRealocacao(
+  tx: Tx,
+  p: { readonly autorizacaoId: string; readonly exercicio: number; readonly acrescimoAgora: Money }
+): Promise<void> {
+  const lei = await tx.leiCredito.findUnique({ where: { id: p.autorizacaoId }, select: { numero: true, ano: true, tipoCredito: true, percentualLimite: true } });
+  if (lei === null) throw new Error("A autorização da LOA informada não existe. Nada foi gravado.");
+  if (lei.tipoCredito !== "SUPLEMENTAR" || lei.percentualLimite === null) {
+    throw new Error(`A lei ${lei.numero}/${String(lei.ano)} não é uma autorização percentual da LOA: a realocação por decreto precisa dela. Nada foi gravado.`);
+  }
+  const fixada = await tx.movimentoDotacao.aggregate({ where: { tipo: "DOTACAO_INICIAL", ficha: { exercicio: p.exercicio } }, _sum: { valor: true } });
+  const despesaFixada = toMoney(fixada._sum.valor?.toFixed(2) ?? "0.00");
+  if (despesaFixada.isZero()) {
+    throw new Error(`O exercício ${String(p.exercicio)} não tem dotação inicial lançada: sem a base não há limite a conferir. Nada foi gravado.`);
+  }
+  const pct = lei.percentualLimite.toFixed(6);
+  const limite = toMoney(despesaFixada.times(pct).dividedBy(100));
+  const itens = await tx.itemDeRealocacao.findMany({
+    where: { ato: { autorizacaoDaLoaId: p.autorizacaoId } },
+    select: { tipo: true, valor: true, estornoDe: { select: { tipo: true } } },
+  });
+  let consumido = toMoney("0.00");
+  for (const i of itens) {
+    if (i.estornoDe === null && i.tipo === "ACRESCIMO") consumido = toMoney(consumido.plus(i.valor.toFixed(2)));
+    if (i.estornoDe !== null && i.estornoDe.tipo === "ACRESCIMO") consumido = toMoney(consumido.minus(i.valor.toFixed(2)));
+  }
+  const restante = toMoney(limite.minus(consumido));
+  if (p.acrescimoAgora.greaterThan(restante)) {
+    throw new Error(
+      `REALOCAÇÃO ACIMA DO LIMITE DA LOA: ${p.acrescimoAgora.toFixed(2)} excede o restante de ${restante.toFixed(2)} ` +
+        `(${Number(pct).toFixed(2)}% de ${despesaFixada.toFixed(2)} fixados = ${limite.toFixed(2)}; já realocado ${consumido.toFixed(2)} sob a lei ${lei.numero}/${String(lei.ano)}). Nada foi gravado.`
+    );
+  }
+}

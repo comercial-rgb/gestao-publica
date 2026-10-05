@@ -243,8 +243,10 @@ Fonte não declarada conta no limite. Exercício sem dotação inicial é recusa
 CRIAR_LEI_DE_CREDITO). Para Esperança, o `esperanca-configurar-exercicio.ts` declara as fontes da tabela da STN 2026 cujo
 nome diz origem em terceiro (Lei 613/2025, art. 5º, § 2º). A 540, FUNDEB de impostos, continua no limite.
 
-**Pendência nomeada:** o inciso III da Lei 613 submete remanejamento, transposição e transferência ao mesmo percentual,
-e `realocacao.ts` ainda não o confere.
+**Realocação por decreto (V35, inciso III da Lei 613):** o ato pode apontar a autorização da LOA (`AtoDeRealocacao.autorizacaoDaLoaId`).
+- Quando aponta, os acréscimos correm contra o mesmo percentual, num limite próprio (`conferirLimiteDaRealocacao`).
+- O limite é líquido das anulações, sem as exclusões do § 2º.
+- A realocação por lei específica (CF 167, VI) segue sem o vínculo.
 
 Teste: `m03-limite-da-loa.test.ts`:
 - acúmulo de dois decretos, e o valor exato do limite passa;

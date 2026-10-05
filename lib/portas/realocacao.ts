@@ -65,12 +65,28 @@ export async function lerFichasParaRealocacao(p: {
   }));
 }
 
+/** V35 — as autorizações percentuais da LOA (lei de crédito suplementar com percentual), para o ato por decreto. */
+export interface AutorizacaoDaLoa {
+  readonly id: string;
+  readonly rotulo: string;
+}
+export async function lerAutorizacoesDaLoa(): Promise<readonly AutorizacaoDaLoa[]> {
+  await exigirLeituraEmAlgumEscopo("CONSULTAR_PLANEJAMENTO");
+  const leis = await cliente().leiCredito.findMany({
+    where: { tipoCredito: "SUPLEMENTAR", percentualLimite: { not: null } },
+    orderBy: [{ ano: "desc" }, { numero: "asc" }],
+    select: { id: true, numero: true, ano: true, percentualLimite: true },
+  });
+  return leis.map((l) => ({ id: l.id, rotulo: `Lei ${l.numero}/${String(l.ano)}: até ${l.percentualLimite!.toFixed(2).replace(".", ",")}% da despesa fixada` }));
+}
+
 export async function registrarAtoDeRealocacao(input: {
   readonly especie: EspecieDeRealocacao;
   readonly numero: string;
   readonly data: Date;
   readonly leiNumero: string;
   readonly leiDataPublicacao: Date;
+  readonly autorizacaoDaLoaId: string | null;
   readonly justificativa: string;
   readonly pernas: readonly {
     readonly fichaId: string;
