@@ -182,7 +182,9 @@ app, `test/ui` (38 arquivos, 289 testes; os 2 de PDF só passam com o Chrome ins
   declaração na 3011 (base fictícia): 18 de 20 pré-preenchidas, os dois "cancelados" pela escolha do ente, declarada, "ligado".
   Intermitência registrada: `m14-msc` estourou o hook de 10 s numa corrida de 42 arquivos e passou 15/15 sozinho (carga).
 
-**Próximo:** publicar (anexo 10, DMPL, dedução, adiantamento, A3) e marcar o catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
+- **Publicado em 05/10/2026**: versão `8b63c84` na 3001 (Actions run 37377182892 verde); backup antes `/var/backups/gestao-publica/esperanca-antes-v35d-20261005T213422Z.dump`; migrations 190000 e 200000 aplicadas, 0 pendentes; conferido logado como a contadora fictícia: Anexo 10, DMPL (resultado −58.740,17) e a seção do controle dos restos ("não ligado" — a declaração das contas é do contador do ente).
+
+**Próximo:** marcar o catálogo com as evidências da V35. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
