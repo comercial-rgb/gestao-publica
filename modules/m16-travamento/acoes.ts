@@ -2387,6 +2387,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   notasExplicativas: "leitura (V35 C2 — as notas explicativas às DCASP, redigidas e do sistema; não muta)",
   apropriacoesDoExercicio: "leitura (V35 — as apropriações do 13º e das férias do exercício; não muta)",
   deducoesRealizadas: "leitura (V35 — as deduções da receita realizadas no exercício, com o estorno com sinal; não muta)",
+  lancarReprevisaoDaReceita: "composável (V35 — o lançamento da reprevisão da receita no razão; chamado dentro de reprevisar, na transação da linha, sob a autorização de reprevisarReceita)",
   lancarPrevisaoDaReceita: "composável (V35 — o lançamento da previsão da receita no razão; chamado dentro de criarReceitaPrevista, detalharReceitaPrevista e efetivarPropostaOrcamentaria, que autorizam)",
   liquidacoesComSaldo: "leitura (V33 — as liquidações com saldo a pagar da fila do art. 141, por fonte e categoria, com a anulação parcial cortada no tempo; composável de quem paga e do lote, que autorizam)",
   lerFatosProgramas: "leitura (SAGRES §4.2: os programas do orçamento com a declaração vigente)",

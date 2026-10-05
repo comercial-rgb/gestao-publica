@@ -330,6 +330,8 @@ describe("as contas do código contra o PCASP oficial", () => {
     "creditoEmpenhado", "creditoLiquidado", "creditoPago", "contaDisponibilidade",
     // a conta de passivo de uma consignação: a retenção credita nela no meio do pagamento
     "contaPassivo", "contaConsignacaoAPagar",
+    // V35 — as pernas da reprevisão da receita no razão (`lancarReprevisaoDaReceita`): aumento e redução
+    "reestimativa", "anulacao",
   ] as const;
   const PERNA = new RegExp(
     `\\b(?:${CHAVES_DE_PERNA.join("|")}):\\s*(?:"(\\d\\.\\d\\.\\d\\.\\d\\.\\d\\.\\d{2}\\.\\d{2})"|([A-Z][A-Z0-9_]{3,}))`,
