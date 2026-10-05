@@ -1,5 +1,97 @@
 # Estado da execução
 
+## V35 — estado em 05/10/2026 (vale sobre o "Resumo atual" abaixo)
+
+Pedido: `docs/lotes/V35-contabilidade-publica-completa.md`: contabilidade pública completa para um município real
+(Esperança/PB). Decisões normativas por pesquisa, com fonte. Fatos do ente só de dado oficial.
+
+Regime de rigor:
+- profundidade: limite da LOA, ajuste para perdas e Anexos 16/17;
+- superfície: telas, PDF e CSV.
+
+| Campo | Valor |
+|---|---|
+| HEAD | `f01544a` em `apresentacao/contabilidade` (este registro vem no commit seguinte) |
+| Último resultado | Ver a tabela de medições abaixo. |
+| Pendências | Ver a lista de pendências abaixo. |
+| Próximo passo | Ver a lista de próximos passos abaixo. |
+
+### Medições em `f01544a` (worktree fixada)
+
+| Medição | Resultado |
+|---|---|
+| Suíte completa, 3 workers | 432 arquivos e 4.435 testes passaram, 1 pulado, 0 falhas, 4.786 s. Saída bruta em `%TEMP%/v35-tudo.log`. |
+| `next build` (8 GB de heap) | Saída 0. Registro em `.registro-de-execucao/build-v35-*.log`. |
+| Typecheck backend, app-sem-rotas e scripts | Limpos, com 12 GB de heap. |
+| Deriva | Limpa: migrations × modelo e banco completo × modelo, só os 39 objetos de `prisma/sql/`. |
+| Fuso (Pacific/Kiritimati) | Os quatro arquivos novos ou afetados: 16 de 16. |
+| Mutações | Três provadas: o guard do limite, a exclusão de fonte e o sentido do ajuste. Cada uma vermelha mutada e verde revertida. |
+
+### O que passou a funcionar, e a rota
+
+- **Prestação de contas anual (TCE-PB, RN-TC 03/2010, art. 15).** Rol em `docs/oficial/tce-pb/PCA-ROL-RN-TC-03-2010.md`.
+  Em Relatórios › Demonstrações, cada um com PDF e CSV:
+  - Anexo 16, dívida fundada (`/relatorios/demonstracoes/divida-fundada`);
+  - Anexo 17, dívida flutuante (`/divida-flutuante`);
+  - termo de conferência de caixa e bancos (`/conferencia-de-caixa`).
+- **Limite da LOA para suplementar** (Lei 4.320, art. 7º, I):
+  - o percentual da lei de crédito é conferido no `executarCredito` contra a dotação inicial do exercício;
+  - as fontes excluídas são declaradas pelo ente.
+  - Esperança: Lei 613/2025 cadastrada com 50%, teto em reais de 122.500.000,00. As 56 fontes do art. 5º, § 2º saem
+    da tabela da STN pelo nome, e a 540 (FUNDEB de impostos) continua no limite.
+- **Ajuste para perdas da dívida ativa** (MCASP 11ª ed., Parte III, 5.2.5), em `/divida/ativa/perdas`:
+  - percentual e metodologia declarados pelo ente;
+  - a apuração lança só a diferença, pelo roteiro declarado `PERDAS_DIVIDA_ATIVA`.
+- **Configuração de Esperança** (`esperanca-configurar-exercicio.ts`): poder de cada órgão (RREO Anexo 7) e autorização
+  de suplementar. Ensaio do zero no banco `gestao_publica_esperanca_ensaio_v35`.
+- **Schema:** oito FKs declaradas com o ON DELETE que as migrations já aplicaram. Antes, a deriva acusava.
+- **DCA (C5):** gerada no Siconfi a partir da MSC de encerramento, que o M14 já produz. Fonte: Regras Gerais da DCA
+  2022, Siconfi.
+
+Migrations novas, aditivas:
+- `20261105120000_v35_fonte_fora_do_limite_de_suplementacao`
+- `20261105130000_v35_ajuste_de_perdas_da_divida_ativa`
+
+### Intermitência registrada, com o motivo
+
+`m03-recurso-novo` t1 e t2 estouraram 5 s com 3 workers no conjunto dirigido.
+- Sozinho, o arquivo passa 8 de 8 (~3 s por teste).
+- Na suíte completa passou.
+- Motivo: carga da máquina. Essas leis não têm percentual, e o guard novo não roda para elas.
+
+### Portão anterior, interrompido
+
+Rodava sobre `d1d2271` com o heap antigo:
+- os três typechecks estouraram memória;
+- a deriva acusou as FKs;
+- a suíte ficou 7 h num arquivo sem saída em disco.
+
+Foi parado depois de conferir que todos os processos eram dele, e substituído pelas medições acima, em `f01544a`.
+
+### Pendências reais (nomeadas)
+
+- **B5, provisão mensal de férias e 13º.** Inventário feito, nada construído. Falta:
+  - parâmetro de férias;
+  - família de roteiro;
+  - serviço de apropriação por contracheque;
+  - variante da liquidação da folha que baixa o passivo.
+- **Lei 613/2025, art. 5º, III:** remanejamento, transposição e transferência no mesmo percentual. A realocação guarda
+  a lei como texto, não como `LeiCredito`.
+- **C1 DMPL (facultativa), C2 notas explicativas, C4 RREO anexos 4 e 10 (RPPS do FUNPREVE), C6 SIOPE, C7 SIOPS,
+  C9 publicação de PPA/LDO/LOA.**
+- **B6 empenho estimativo e global; A3 classificação da virada; reprevisão no razão; previsão para bases antigas.**
+- **Marcação do catálogo** com as evidências desta rodada.
+
+### Próximo passo exato
+
+1. Publicar `f01544a` + este registro.
+   - Backup: `/var/backups/gestao-publica/esperanca-antes-v35-20261005T042309Z.dump`, 2 MB, 511 tabelas, lido pelo
+     `pg_restore`.
+2. No servidor, rodar `esperanca-configurar-exercicio.ts` com `CARGA_POR` = o administrador de produção.
+3. Conferir o resultado.
+4. Depois, B5.
+
+
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
 | Campo | Valor |
