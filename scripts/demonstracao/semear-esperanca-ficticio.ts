@@ -66,9 +66,16 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
  */
 
 const BANCO = "gestao_publica_esperanca_ficticio";
+/**
+ * A base de PRODUÇÃO de Esperança só por pedido expresso do usuário (05/10/2026: "lançar na base real, para apresentarmos;
+ * depois iremos apagar geral"), com backup antes e a confirmação abaixo no ambiente. A marca de dados fictícios entra no
+ * cabeçalho do sistema e do portal enquanto eles estiverem lá.
+ */
+const BANCO_DE_PRODUCAO = "gestao_publica_esperanca";
+const CONFIRMACAO_DE_PRODUCAO = "dados ficticios para apresentar, apagar depois";
 const RAIZ = resolve(import.meta.dirname, "../..");
-const ADMIN = "admin@cg.pb.gov.br";
-const SENHA = process.env["FICTICIO_SENHA"] ?? "Ficticio#2026";
+const ADMIN = process.env["FICTICIO_ADMIN"] ?? "admin@cg.pb.gov.br";
+let SENHA = process.env["FICTICIO_SENHA"] ?? "Ficticio#2026";
 const MARCA = "FICTÍCIO — base de demonstração";
 const EXERCICIO = 2026;
 const MESES_FECHADOS = ["2026-01", "2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08", "2026-09"] as const;
@@ -108,7 +115,12 @@ function exigirBanco(): string {
   } catch {
     throw new Error("DATABASE_URL ausente ou ilegível. Nada foi gravado.");
   }
-  if (nome !== BANCO) throw new Error(`Recusado: este script só semeia o banco "${BANCO}", e o DATABASE_URL aponta para "${nome}". Nada foi gravado.`);
+  if (nome === BANCO_DE_PRODUCAO) {
+    if (process.env["FICTICIO_EM_PRODUCAO"] !== CONFIRMACAO_DE_PRODUCAO) throw new Error(`Recusado: "${nome}" é a base de produção. Só com FICTICIO_EM_PRODUCAO="${CONFIRMACAO_DE_PRODUCAO}" e backup feito. Nada foi gravado.`);
+    const senha = process.env["FICTICIO_SENHA"] ?? "";
+    if (senha.length < 16) throw new Error("Em produção os usuários fictícios ficam na internet: informe FICTICIO_SENHA com 16 caracteres ou mais. Nada foi gravado.");
+    SENHA = senha;
+  } else if (nome !== BANCO) throw new Error(`Recusado: este script só semeia o banco "${BANCO}", e o DATABASE_URL aponta para "${nome}". Nada foi gravado.`);
   if ((process.env["ANEXOS_DIR"] ?? "").trim() === "") throw new Error("Informe ANEXOS_DIR (a pasta dos anexos desta base, a mesma que o servidor vai usar). Nada foi gravado.");
   return url;
 }
@@ -589,8 +601,20 @@ async function main(): Promise<void> {
     console.log("\n[1] usuários por papel");
     await semearUsuarios(prisma);
     await passo("Apresentação: Prefeitura Municipal de Esperança (base fictícia)", async () => {
-      if ((await apresentacaoVigente(prisma)) !== null) return { estado: "existente", valor: null };
-      await registrarApresentacaoDoEnte(prisma, { nomeDeExibicao: "Prefeitura Municipal de Esperança (base fictícia)", orgao: "Base de demonstração — dados fictícios", tema: "PADRAO", manterImagem: false, canalTransparencia: true, canalConsultaPublica: true, criadoPor: ADMIN });
+      // Com identificação já cadastrada (produção), uma versão nova com a marca, mantendo o resto; a anterior fica no histórico.
+      const v = await apresentacaoVigente(prisma);
+      if (v?.orgao?.includes("dados fictícios") === true) return { estado: "existente", valor: null };
+      await registrarApresentacaoDoEnte(prisma, {
+        nomeDeExibicao: v === null ? "Prefeitura Municipal de Esperança (base fictícia)" : `${v.nomeDeExibicao.slice(0, 95)} (base fictícia)`,
+        orgao: "Base de demonstração — dados fictícios", tema: v?.tema ?? "PADRAO", manterImagem: v?.temImagem ?? false,
+        canalTransparencia: v?.canalTransparencia ?? true, canalConsultaPublica: v?.canalConsultaPublica ?? true,
+        ...(v?.assinaturaDoFornecedor != null ? { assinaturaDoFornecedor: v.assinaturaDoFornecedor } : {}),
+        ...(v?.contatoEmail != null ? { contatoEmail: v.contatoEmail } : {}),
+        ...(v?.contatoTelefone != null ? { contatoTelefone: v.contatoTelefone } : {}),
+        ...(v?.horarioDeAtendimento != null ? { horarioDeAtendimento: v.horarioDeAtendimento } : {}),
+        ...(v?.sitio != null ? { sitio: v.sitio } : {}),
+        criadoPor: ADMIN,
+      });
       return { estado: "criado", valor: null };
     });
     console.log("\n[2] planejamento");

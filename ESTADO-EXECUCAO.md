@@ -146,6 +146,17 @@ servidores, credores, empenhos, reprevisão, nota NE-1. Usuários: contador, ate
   acerto OK. O acerto sem as competências 10 a 12 apropriadas sai com saldo devedor (1.214,46): apropriar antes.
 - Servido em `next dev -p 3011` com `DATABASE_URL` e `ANEXOS_DIR` da base fictícia; portal, LOA 2026, apropriação por
   competência e notas conferidos logado. `tsc -p tsconfig.scripts.json` verde.
+- **EM PRODUÇÃO (05/10/2026, pedido expresso do usuário: "lançar na base real, para apresentarmos depois iremos apagar
+  geral").** Backup antes: `/var/backups/gestao-publica/esperanca-antes-ficticios-20261005T174741Z.dump` (522 tabelas) e
+  `anexos-antes-ficticios.tgz`. Semeado por túnel SSH com `FICTICIO_EM_PRODUCAO` (confirmação no script),
+  `FICTICIO_ADMIN=admin@gestaopublica.enginesistemas.com.br` e senha aleatória dos 4 usuários em
+  `~/.gestao-publica-local/producao-credenciais.txt` (`FICTICIO_SENHA`): 175 itens, 0 recusas. PDF da LOA copiado para
+  `/opt/gestao-publica/anexos/cm/cmuvjmusu001bpwxphe5qxizb`. Cabeçalho e portal com "(base fictícia) / Base de
+  demonstração — dados fictícios" (versão nova da apresentação). Conferido no ar: portal 200, LOA 2026 200, PDF 200
+  (5.150.520 bytes), apropriação por competência e notas explicativas logado como a contadora fictícia.
+  **Para apagar geral** (o razão é append-only: a volta é a restauração, não estorno): parar `gestao-publica@3000`,
+  `sudo -u postgres pg_restore --clean --if-exists -d gestao_publica_esperanca <dump acima>`, restaurar o tgz dos anexos
+  sobre `/opt/gestao-publica/anexos`, religar e conferir `/transparencia/planejamento` sem a marca.
 - Fora do alcance de dado fictício: o leiaute do SIOPE e o do SIOPS (formato de arquivo, não dado — inventá-lo seria
   inventar norma) e o Anexo 10 do RREO, que não tem tela; a projeção fictícia aparece no anexo da LDO.
 
