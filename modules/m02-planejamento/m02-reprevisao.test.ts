@@ -31,6 +31,10 @@ const CONTAS = [
   { id: "c-vpa", codigo: "4.1.1.1.1.00.00", nome: "VPA", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
   { id: "c-rar", codigo: "5.2.1.1.1.00.00", nome: "RaR", naturezaSaldo: "DEVEDORA" as const, nivel: 5, analitica: true },
   { id: "c-rr", codigo: "6.2.1.1.1.00.00", nome: "RR", naturezaSaldo: "CREDORA" as const, nivel: 5, analitica: true },
+  // V35 — as contas da reprevisão no razão (PCASP do TCE-PB 2025)
+  { id: "c-reest", codigo: "5.2.1.2.1.01.00", nome: "REESTIMATIVA", naturezaSaldo: "DEVEDORA" as const, nivel: 7, analitica: true },
+  { id: "c-anul", codigo: "5.2.1.2.9.00.00", nome: "(-) ANULAÇÃO DA PREVISÃO DA RECEITA", naturezaSaldo: "CREDORA" as const, nivel: 7, analitica: true },
+  { id: "c-areal", codigo: "6.2.1.1.0.00.00", nome: "RECEITA A REALIZAR", naturezaSaldo: "CREDORA" as const, nivel: 7, analitica: true },
 ];
 const R_ARREC = roteiroArrecadacao({ disponibilidade: "1.1.1.1.2.00.00", variacaoAumentativa: "4.1.1.1.1.00.00", receitaARealizar: "5.2.1.1.1.00.00", receitaRealizada: "6.2.1.1.1.00.00" });
 
@@ -103,5 +107,22 @@ describe("M02 — reprevisão de receita (destrava a previsão atualizada)", () 
 
   it("t4: ajuste zero é REJEITADO (ruído)", async () => {
     await expect(reprevisar("0.00", "sem efeito")).rejects.toThrow(/não pode ser zero/);
+  });
+
+  it("t-razão (V35): o aumento vai à reestimativa e a redução à anulação da previsão, contra a receita a realizar", async () => {
+    await reprevisar("20000.00", "reestimativa do IPTU");
+    await reprevisar("-3000.00", "frustração de parte da reestimativa");
+    const saldo = async (codigo: string): Promise<string> => {
+      const ps = await prisma.partidaContabil.findMany({ where: { conta: { codigo } }, select: { tipo: true, valor: true } });
+      let c = 0n;
+      for (const p of ps) c += (p.tipo === "DEBITO" ? 1n : -1n) * BigInt(p.valor.toFixed(2).replace(".", ""));
+      const t = (c < 0n ? -c : c).toString().padStart(3, "0");
+      return `${c < 0n ? "-" : ""}${t.slice(0, -2)}.${t.slice(-2)}`;
+    };
+    expect(await saldo("5.2.1.2.1.01.00")).toBe("20000.00");
+    expect(await saldo("5.2.1.2.9.00.00")).toBe("-3000.00");
+    expect(await saldo("6.2.1.1.0.00.00")).toBe("-17000.00");
+    const lancs = await prisma.lancamentoContabil.findMany({ where: { origemTipo: "REPREVISAO_DA_RECEITA" }, select: { dataTransacao: true } });
+    expect(lancs.map((l) => l.dataTransacao.toISOString())).toEqual(["2026-03-01T12:00:00.000Z", "2026-03-01T12:00:00.000Z"]);
   });
 });

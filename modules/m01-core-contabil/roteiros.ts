@@ -255,6 +255,13 @@ export const CONTA_PREVISAO_INICIAL_RECEITA_BRUTA = "5.2.1.1.1.00.00";
 export const CONTA_PREVISAO_DEDUCAO_FUNDEB = "5.2.1.1.2.01.01";
 export const CONTA_PREVISAO_OUTRAS_DEDUCOES = "5.2.1.1.2.99.00";
 export const CONTA_RECEITA_A_REALIZAR = "6.2.1.1.0.00.00";
+/**
+ * V35 — A REPREVISÃO NO RAZÃO. PCASP do TCE-PB 2025: 5.2.1.2 ALTERAÇÃO DA PREVISÃO DA RECEITA, com
+ * 5.2.1.2.1.01.00 REESTIMATIVA (a previsão adicional) e 5.2.1.2.9.00.00 (-) ANULAÇÃO DA PREVISÃO DA RECEITA.
+ * Aumento: D reestimativa / C receita a realizar. Redução: D receita a realizar / C anulação da previsão.
+ */
+export const CONTA_PREVISAO_ADICIONAL_REESTIMATIVA = "5.2.1.2.1.01.00";
+export const CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA = "5.2.1.2.9.00.00";
 export const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00";
 
 // ── PATRIMONIAIS (inventário das fixtures — MAPA-ELEMENTO-CONTA) ─────────────

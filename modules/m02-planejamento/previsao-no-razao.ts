@@ -47,3 +47,36 @@ export async function lancarPrevisaoDaReceita(
     ],
   });
 }
+
+/**
+ * V35 — A REPREVISÃO DA RECEITA NO RAZÃO, datada no dia civil do ato. O ajuste com sinal escolhe a perna: aumento
+ * D previsão adicional (reestimativa) / C receita a realizar; redução D receita a realizar / C anulação da previsão.
+ */
+export async function lancarReprevisaoDaReceita(
+  tx: Tx,
+  p: { readonly reprevisaoId: string; readonly data: Date; readonly ajuste: string; readonly historico: string; readonly autor: string; readonly contas: { readonly reestimativa: string; readonly anulacao: string; readonly aRealizar: string } }
+): Promise<void> {
+  const negativo = p.ajuste.startsWith("-");
+  const valor = negativo ? p.ajuste.slice(1) : p.ajuste;
+  const [debito, credito] = negativo ? [p.contas.aRealizar, p.contas.anulacao] : [p.contas.reestimativa, p.contas.aRealizar];
+  const contas = await tx.contaPcasp.findMany({ where: { codigo: { in: [debito, credito] } }, select: { id: true, codigo: true, analitica: true } });
+  const conta = (codigo: string): string => {
+    const c = contas.find((x) => x.codigo === codigo);
+    if (c === undefined) throw new Error(`A conta ${codigo} da reprevisão da receita não está no plano carregado. Nada foi gravado.`);
+    if (!c.analitica) throw new Error(`A conta ${codigo} da reprevisão da receita é sintética no plano carregado e não recebe partida. Nada foi gravado.`);
+    return c.id;
+  };
+  await lancarNoRazao(tx, {
+    id: randomUUID(),
+    numeroControle: `REPREV-${p.reprevisaoId.slice(-10)}`,
+    dataTransacao: p.data,
+    historico: p.historico,
+    origemTipo: "REPREVISAO_DA_RECEITA",
+    origemId: p.reprevisaoId,
+    criadoPor: p.autor,
+    partidas: [
+      { contaId: conta(debito), tipo: "DEBITO", subsistema: "ORCAMENTARIO", valor },
+      { contaId: conta(credito), tipo: "CREDITO", subsistema: "ORCAMENTARIO", valor },
+    ],
+  });
+}

@@ -10,8 +10,8 @@ import { recalcularCache } from "../m05-despesa/adapter-prisma.js";
 import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js";
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
 import { instanteCivil } from "../../packages/datas/index.js";
-import { lancarPrevisaoDaReceita } from "./previsao-no-razao.js";
-import { CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
+import { lancarPrevisaoDaReceita, lancarReprevisaoDaReceita } from "./previsao-no-razao.js";
+import { CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA, CONTA_PREVISAO_ADICIONAL_REESTIMATIVA, CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
 import type {
   ClassificacaoRepositoryPort,
   FichaParaPersistir,
@@ -307,7 +307,11 @@ export function criarReceitaPrevistaRepositoryPrisma(
 
     async reprevisar(r): Promise<string> {
       // APPEND-ONLY: cada reprevisão é uma linha nova (sem unique — corrigir é lançar outra).
-      const criada = await prisma.receitaReprevista.create({
+      // V35 — e vai ao razão na MESMA transação: a linha sem o lançamento deixaria a previsão atualizada dos relatórios
+      // diferente do saldo da 6.2.1.1 que a MSC publica. A reprevisão de DEDUÇÃO não lança: a conta depende do tipo da
+      // dedução (FUNDEB ou outra), que a reprevisão não carrega — pendência nomeada no MODULO.md do M02.
+      return prisma.$transaction(async (tx) => {
+      const criada = await tx.receitaReprevista.create({
         data: {
           exercicio: r.exercicio,
           naturezaCodigo: r.naturezaCodigo,
@@ -320,7 +324,18 @@ export function criarReceitaPrevistaRepositoryPrisma(
         },
         select: { id: true },
       });
+      if (r.tipoReceita !== "DEDUCAO" && !r.valorAjuste.isZero()) {
+        await lancarReprevisaoDaReceita(tx, {
+          reprevisaoId: criada.id,
+          data: r.data,
+          ajuste: r.valorAjuste.toFixed(2),
+          historico: `Reprevisão da receita ${r.naturezaCodigo}, fonte ${r.fonteCodigo}: ${r.motivo}`,
+          autor: r.criadoPor,
+          contas: { reestimativa: CONTA_PREVISAO_ADICIONAL_REESTIMATIVA, anulacao: CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA, aRealizar: CONTA_RECEITA_A_REALIZAR },
+        });
+      }
       return criada.id;
+      });
     },
   };
 }

@@ -25,6 +25,13 @@ async function semear(): Promise<string> {
   await prisma.naturezaReceita.create({ data: { id: "nr-iptu", codigo: N_IPTU, descricao: "IPTU" } });
   await prisma.fonteRecurso.create({ data: { id: "fnt-500", codigo: "500", descricao: "Livre", codigoTce: "500" } });
   await prisma.exercicio.upsert({ where: { ano: 2026 }, update: {}, create: { ano: 2026, criadoPor: "TESTE" } });
+  // V35 — a reprevisão vai ao razão: as contas dela (PCASP do TCE-PB 2025)
+  await prisma.contaPcasp.createMany({
+    data: [
+      { codigo: "5.2.1.2.1.01.00", nome: "REESTIMATIVA", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true },
+      { codigo: "6.2.1.1.0.00.00", nome: "RECEITA A REALIZAR", naturezaSaldo: "CREDORA", nivel: 7, analitica: true },
+    ],
+  });
   const u = await prisma.usuario.findUniqueOrThrow({ where: { identificador: IDENT }, select: { id: true } });
   await definirSenha(prisma, { usuarioId: u.id, senha: SENHA, criadoPor: "TESTE" });
   return u.id;

@@ -304,3 +304,22 @@ ganhou botão na própria proposta.
   ficava negativa na arrecadação e a MSC saía sem previsão.
 - **Pendente:** previsões de bases antigas (criadas antes da V35) não têm lançamento; a reprevisão (LRF art. 12)
   continua fora do razão.
+
+## V35 — a reprevisão da receita no razão
+
+Antes, a reprevisão só gravava a linha (`ReceitaReprevista`): os relatórios somavam a previsão atualizada, e o razão
+ficava na previsão inicial. A 6.2.1.1 da MSC divergia da coluna "previsão atualizada" do RREO.
+
+Agora `reprevisar` grava a linha e o lançamento na mesma transação (`lancarReprevisaoDaReceita`, origem
+`REPREVISAO_DA_RECEITA`, na data do ato). Contas do PCASP do TCE-PB 2025:
+- aumento: D 5.2.1.2.1.01.00 REESTIMATIVA / C 6.2.1.1.0.00.00 RECEITA A REALIZAR;
+- redução: D 6.2.1.1.0.00.00 / C 5.2.1.2.9.00.00 (-) ANULAÇÃO DA PREVISÃO DA RECEITA.
+
+Fail-closed: conta ausente ou sintética no plano recusa, sem gravar a linha. Teste `m02-reprevisao.test.ts` t-razão
+(+20.000 e −3.000), mutação provada (redução lançada como aumento: vermelho).
+
+**Pendências nomeadas:**
+- reprevisão de DEDUÇÃO não vai ao razão: a conta (5.2.1.2.1.03.01 FUNDEB ou 5.2.1.2.1.99.00) depende do tipo da
+  dedução, que a reprevisão não carrega;
+- bases anteriores à V35: previsões e reprevisões gravadas sem lançamento não são reprocessadas. A produção de
+  Esperança foi configurada já com a previsão no razão.
