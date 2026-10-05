@@ -409,6 +409,7 @@ export const RELATORIOS_DEMONSTRACOES: readonly RelatorioNav[] = [
   { href: "/relatorios/demonstracoes/divida-flutuante", numero: "Anexo 17", rotulo: "Dívida Flutuante", descricao: "Restos a pagar, serviços da dívida, depósitos e débitos de tesouraria (Lei 4.320, art. 92)." },
   { href: "/relatorios/demonstracoes/conferencia-de-caixa", numero: "Caixa", rotulo: "Conferência de Caixa e Bancos", descricao: "Saldo de cada conta bancária em 31/12 contra o extrato, para a prestação de contas anual." },
   { href: "/relatorios/demonstracoes/fluxos-de-caixa", numero: "DFC", rotulo: "Fluxos de Caixa", descricao: "Ingressos e desembolsos das atividades operacionais, de investimento e de financiamento, e a geração líquida de caixa." },
+  { href: "/relatorios/demonstracoes/dmpl", numero: "DMPL", rotulo: "Mutações do Patrimônio Líquido", descricao: "Evolução do patrimônio líquido no exercício, coluna por grupo do PL e linha pelo par do lançamento (MCASP, Parte V, item 7)." },
   { href: "/relatorios/demonstracoes/notas-explicativas", numero: "NE", rotulo: "Notas Explicativas", descricao: "Informações gerais, políticas contábeis, detalhamento e outras informações, com os temas que o manual manda divulgar." },
 ];
 

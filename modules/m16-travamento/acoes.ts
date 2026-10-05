@@ -2388,6 +2388,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferirLimiteDaLoa: "composável interno (V35 — o guard do limite da LOA, chamado dentro do executarCredito, que já autorizou EXECUTAR_CREDITO)",
   apuracoesDoAjusteDePerdas: "leitura (V35 — as apurações do ajuste para perdas, com a metodologia; não muta)",
   baixarAnexoPublicoDaLoa: "leitura pública (V35 C9 — o documento de LOA com lei de aprovação, sem sessão; qualquer outro anexo responde inexistente; não muta)",
+  dmpl: "leitura (V35 — a DMPL, MCASP Parte V item 7, lida do razão do grupo 2.3 e das classes 3 e 4; não muta)",
   anexo10: "leitura (V35 — RREO Anexo 10, a projeção atuarial registrada com o resultado e o saldo derivados; não muta)",
   notasExplicativas: "leitura (V35 C2 — as notas explicativas às DCASP, redigidas e do sistema; não muta)",
   apropriacoesDoExercicio: "leitura (V35 — as apropriações do 13º e das férias do exercício; não muta)",

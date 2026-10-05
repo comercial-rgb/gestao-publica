@@ -5,6 +5,8 @@ import { gerarFluxosDeCaixa } from "../portas/fluxos-de-caixa";
 import { lerComposicao, type LinhaPedida } from "../portas/composicao";
 import { gerarAnexo16, gerarAnexo17, gerarTermoDeCaixa } from "../portas/demonstrativos-da-pca";
 import { lerNotasExplicativas, ROTULO_DA_DEMONSTRACAO } from "../portas/notas-explicativas";
+import { gerarDmpl } from "../portas/dmpl";
+import { formatarMoeda } from "../format/moeda";
 import { tabelasDoAnexo16, tabelasDoAnexo17, tabelasDoTermoDeCaixa } from "../relatorios/tabelas-da-pca";
 import {
   tabelasDaComposicao,
@@ -65,5 +67,25 @@ export async function montarPdfNotasExplicativas(p: { readonly exercicio: number
         linhas: s.notas.map((x) => [`${String(x.numero)}. ${x.titulo}`, `${x.texto.join(" ")} [${ROTULO_DA_DEMONSTRACAO[x.demonstracao]}]`]),
       })),
     notas: n.temasPendentes.map((t) => `Tema ainda não redigido: ${t.titulo} (${t.fonte}).`),
+  };
+}
+
+/** V35 — o PDF da DMPL: o mesmo leitor da tela, a matriz em paisagem e as pendências nas notas. */
+export async function montarPdfDmpl(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
+  const d = await gerarDmpl(p.exercicio);
+  const brl = (v: string): string => formatarMoeda(v).texto;
+  return {
+    ente: await nomeDoEnteParaDocumentos(),
+    titulo: "Demonstração das Mutações no Patrimônio Líquido",
+    subtitulo: "MCASP 11ª ed., Parte V, item 7",
+    orientacao: "paisagem",
+    periodo: `Exercício de ${String(p.exercicio)}`,
+    secoes: [
+      {
+        colunas: [{ rotulo: "Especificação" }, ...d.colunas.map((c) => ({ rotulo: c, alinhamento: "direita" as const }))],
+        linhas: d.linhas.map((l) => [l.rotulo, ...l.valores.map(brl)]),
+      },
+    ],
+    notas: [...d.semLinha.map((s) => `Sem linha definida: lançamento ${s.numeroControle}, conta ${s.conta}, ${brl(s.valor)}.`), ...d.notas],
   };
 }

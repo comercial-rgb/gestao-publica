@@ -1005,3 +1005,16 @@ dia civil de borda. As negações afirmam o motivo.
   - a última apuração do ajuste no exercício, por origem.
 - Teste `m12-notas-explicativas.test.ts`, 3 testes. Mutações provadas vermelhas: a versão vigente pela menor versão,
   e a lista de pendências sem filtro.
+
+## V35 — DMPL (MCASP 11ª ed., Parte V, item 7)
+
+`dmpl.ts`, tela `/relatorios/demonstracoes/dmpl` (com PDF). Facultativa para o município (7.1), construída porque o
+pacote anual a pede com frequência. Colunas pelo grupo 2.3 do PCASP (7.4/7.5); linhas pelo PAR do lançamento, que o
+manual deixa ao ente identificar (7.2): aqui, regras escritas e ordenadas no cabeçalho do arquivo (mesma coluna → não
+aparece; 2.3.7.x.x.03 → ajustes de exercícios anteriores; contrapartida em 3/4 → resultado; 2.3.4 → ajuste de avaliação;
+2.3.9 → resgate/reemissão; PL contra reserva → reservas; 2.3.1/2.3.2 contra fora do PL → aumento de capital). O que
+nenhuma regra alcança vai a "movimentos sem linha definida (pendência)", com o lançamento — juros sobre capital próprio
+e dividendos ficam assim até haver conta que os identifique sem adivinhar. O resultado não encerrado (classes 3 e 4)
+entra em Resultados Acumulados como no Balanço Patrimonial. Amarração por coluna: inicial + mutações = final lido do
+saldo, senão recusa. Teste `m12-dmpl.test.ts` (contas à mão; N=2 encerrado/não encerrado; as regras uma a uma), quatro
+mutações provadas.
