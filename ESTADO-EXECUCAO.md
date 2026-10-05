@@ -160,7 +160,20 @@ servidores, credores, empenhos, reprevisão, nota NE-1. Usuários: contador, ate
 - Fora do alcance de dado fictício: o leiaute do SIOPE e o do SIOPS (formato de arquivo, não dado — inventá-lo seria
   inventar norma) e o Anexo 10 do RREO, que não tem tela; a projeção fictícia aparece no anexo da LDO.
 
-**Próximo:** A3 (restos a pagar no controle 5.3/6.3 pela norma), unidade própria; marcação do catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
+### O que falta construir, fechado em 05/10/2026 (pedido "continue para fechar estes")
+
+Regime de profundidade nos quatro. Verificação dirigida: testes do domínio, mutação de cada regra, typecheck backend e
+app, `test/ui` (38 arquivos, 289 testes; os 2 de PDF só passam com o Chrome instalado, `spawn UNKNOWN` sem ele) e censo.
+- `6e539334` M33 — a conta do adiantamento do 13º conferida no CADASTRO (grupo e parâmetro), `ADIANTAMENTO-FORA-DO-RAMO`.
+- `16cddc27` M02 — a reprevisão de DEDUÇÃO no razão (5.2.1.2.1.03.01 FUNDEB / 5.2.1.2.1.99.00 outras), pelo tipo do
+  detalhe da linha da LOA; sem detalhe, recusa com o motivo (antes gravava sem lançamento).
+- `408e3ebf` M12 — RREO Anexo 10 (projeção atuarial), regras do Siconfi/STN 2025; migration aditiva
+  `20261105190000_v35_projecao_atuarial_do_rreo`; tela `/relatorios/rreo/anexo10` com registro por tabela colada;
+  percurso `scripts/percurso-v35-anexo10.mts` (3011, base fictícia) verde. Em produção ainda NÃO publicado.
+- `3329fdfb` M12 — DMPL (MCASP Parte V, item 7) lida do razão, tela e PDF `/relatorios/demonstracoes/dmpl`.
+- Censo: 527 serviços (+2 do Anexo 10); leituras `anexo10` e `dmpl` em FORA_DO_CENSO.
+
+**Próximo:** A3 (restos a pagar no controle 5.3/6.3 pela norma), unidade própria; depois publicar e marcar o catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
