@@ -63,6 +63,9 @@ export interface Dimensoes {
    * `anoInscricao` na partida criaria uma SEGUNDA verdade sobre o mesmo ano — e o dia em
    * que ela divergisse, o RP de 2026 apareceria como de 2027 num arquivo fiscal.
    *
+   * V35 A3: com o controle 5.3/6.3 ligado, a inscrição, o encerramento e a abertura TÊM lançamento, cada um de uma
+   * inscrição (`controleDoResto`), e a AI sai por ele. O texto abaixo vale para o controle desligado.
+   *
    * ⚠️ E ELA SÓ EXISTE ONDE HÁ MOVIMENTO DE RP. A INSCRIÇÃO em si **não tem lançamento
    * contábil** (o M08 a grava só em `InscricaoRestosAPagar` — o RP tem razão próprio).
    * Logo a AI aparece quando o RP se MOVE: quando é liquidado, pago ou cancelado. É a
@@ -301,6 +304,19 @@ export async function resolverDimensoes(
         },
       },
 
+      // ── V35 A3: o lançamento de CONTROLE 5.3/6.3 de um resto a pagar é de UMA inscrição — a mesma cadeia
+      //    (inscrição -> empenho -> ficha) dá a fonte e o ano de inscrição de cada linha de 5.3/6.3.
+      controleDoResto: {
+        select: {
+          inscricao: {
+            select: {
+              exercicioOrigem: true,
+              empenho: { select: { ficha: FICHA_DIMENSOES } },
+            },
+          },
+        },
+      },
+
       // ── M10: os movimentos patrimoniais. A dimensão vem de QUEM os originou — a
       //    liquidação (almoxarifado, aquisição) ou a receita (alienação, dívida).
       movimentosPatrimoniais: {
@@ -350,7 +366,9 @@ export async function resolverDimensoes(
     // três valores que o `filtroDoLancamento` do M01 resolve no SQL.
     const natureza: NaturezaLancamento = l.natureza ?? "NORMAL";
 
-    if (DIMENSAO_DA_NATUREZA[natureza] === "SEM_DIMENSAO_POR_DESIGN") {
+    // V35 A3 — a EXCEÇÃO: a virada dos restos (inscrição, encerramento e abertura em 5.3/6.3) é ENCERRAMENTO, mas ela não
+    // transfere resultado: move o saldo de UMA inscrição, e a MSC precisa da fonte e do ano dela em cada linha de 5.3/6.3.
+    if (DIMENSAO_DA_NATUREZA[natureza] === "SEM_DIMENSAO_POR_DESIGN" && l.controleDoResto === null) {
       resolucoes.set(l.id, {
         tipo: "SEM_DIMENSAO_POR_DESIGN",
         motivo: MOTIVO_ENCERRAMENTO,
@@ -445,7 +463,7 @@ export async function resolverDimensoes(
     // é o mesmo empenho de pagamento -> liquidação -> empenho). O que só este braço sabe
     // é o ANO. Então ele acrescenta o ano, e deixa o resto como está.
     const anosDeInscricao: number[] = [];
-    for (const m of l.movimentosRestos) {
+    for (const m of [...l.movimentosRestos, ...(l.controleDoResto === null ? [] : [l.controleDoResto])]) {
       const f = m.inscricao.empenho.ficha;
       anosDeInscricao.push(m.inscricao.exercicioOrigem);
       candidatas.push({

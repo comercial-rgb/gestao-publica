@@ -1,0 +1,52 @@
+// ============================================================================
+// V35 A3 — OS RESTOS A PAGAR NO CONTROLE ORÇAMENTÁRIO (classes 5.3 e 6.3), MCASP 11ª ed., Parte I, 4.7.4 a 4.7.6.
+//
+// As contas vêm de uma DECLARAÇÃO do contador, por papel (um papel = uma conta do roteiro do manual), versionada e
+// tudo-ou-nada: sem declaração o controle não liga, e o encerramento diz isso no resultado. Com ela, cada inscrição nova
+// é acompanhada da inscrição à baixa. Inscrição gravada antes da declaração não é controlada (não há saldo dela a mover).
+//
+// Cada lançamento de controle é de UMA inscrição (`ControleDoRestoAPagar`): é por aí que a MSC acha a fonte e o ano de
+// inscrição (IC "AI") de cada linha de 5.3/6.3. `lancamentoDoFatoId` liga ao lançamento do ato (liquidação, pagamento,
+// cancelamento) — é ele que a anulação procura para inverter.
+// ============================================================================
+
+model DeclaracaoDoControleDosRestos {
+  id         String                      @id @default(cuid())
+  versao     Int                         @unique
+  fundamento String
+  contas     ContaDoControleDosRestos[]
+  criadoEm   DateTime                    @default(now())
+  criadoPor  String
+}
+
+model ContaDoControleDosRestos {
+  id           String                        @id @default(cuid())
+  declaracaoId String
+  declaracao   DeclaracaoDoControleDosRestos @relation(fields: [declaracaoId], references: [id])
+  /// O papel no roteiro do manual (ex.: RPNP_A_LIQUIDAR); ver `PAPEIS_DO_CONTROLE` no M08.
+  papel        String                        @db.VarChar(40)
+  contaId      String
+  conta        ContaPcasp                    @relation("ContaDoControleDosRestos", fields: [contaId], references: [id])
+
+  @@unique([declaracaoId, papel])
+}
+
+model ControleDoRestoAPagar {
+  id                 String                @id @default(cuid())
+  inscricaoId        String
+  inscricao          InscricaoRestosAPagar @relation(fields: [inscricaoId], references: [id])
+  lancamentoId       String                @unique
+  lancamento         LancamentoContabil    @relation("LancamentoDoControleDoResto", fields: [lancamentoId], references: [id])
+  /// INSCRICAO, ABERTURA, ENCERRAMENTO, LIQUIDACAO, PAGAMENTO, CANCELAMENTO, ANULACAO_PAGAMENTO, ANULACAO_CANCELAMENTO.
+  evento             String                @db.VarChar(30)
+  /// O lançamento do ato que gerou este controle (liquidação, pagamento, cancelamento ou a anulação deles).
+  lancamentoDoFatoId String?
+  lancamentoDoFato   LancamentoContabil?   @relation("FatoDoControleDoResto", fields: [lancamentoDoFatoId], references: [id])
+  /// O exercício em que o controle foi lançado.
+  exercicio          Int
+  criadoEm           DateTime              @default(now())
+  criadoPor          String
+
+  @@index([inscricaoId, evento])
+  @@index([lancamentoDoFatoId])
+}

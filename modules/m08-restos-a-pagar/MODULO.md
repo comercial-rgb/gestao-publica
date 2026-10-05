@@ -16,7 +16,8 @@
 1. **Decimal(18,2). APPEND-ONLY** em tudo. Estado **derivado**, nunca coluna.
 2. **RP NÃO CONSOME DOTAÇÃO.** A dotação do ano que fechou já foi consumida pelo
    empenho — criar `MovimentoDotacao` aqui seria **gastar duas vezes o mesmo
-   dinheiro**. Por isso **nenhum roteiro contábil de RP tem perna orçamentária**.
+   dinheiro**. Por isso **nenhum roteiro contábil de RP toca a dotação** (`MovimentoDotacao`). As classes 5.3 e 6.3
+   são outra coisa — o CONTROLE da inscrição e da execução dos restos — e, desde a V35 A3, recebem lançamento (abaixo).
    Testado: toda operação de RP compara a tabela `MovimentoDotacao` inteira
    antes/depois e exige que seja idêntica.
 3. **A VERDADE É O SUM.** `valorInscrito` é calculado por SUM **no momento da
@@ -497,3 +498,43 @@ encerramento, então o caso real é a parcial feita no exercício de origem e at
 
 Agora o liquidado é o líquido das parciais vivas, o pago passa pela régua e a linha de anulação é
 recusada. Caracterização: `m08-restos-parcial.test.ts`.
+
+
+## V35 A3 — os restos a pagar no controle 5.3/6.3 (MCASP 11ª ed., Parte I, 4.7.4 a 4.7.6)
+
+`controle-dos-restos.ts`. O controle liga com a DECLARAÇÃO das contas por papel (20 papéis, todos de uma vez, versionada;
+tela Contabilidade › Contas dos restos a pagar, seção Controle orçamentário; ação PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR). Cada
+campo só oferece as analíticas do plano sob o título do manual, pré-preenchido com a conta que o manual nomeia; os dois
+"cancelados" (6.3.1.9.x e 6.3.2.9.x) ficam sem sugestão: o plano tem insuficiência de recursos/indevidos e outros, e a escolha
+é do ente. Trocar a conta de um papel com restos já controlados é recusado (o saldo antigo ficaria órfão).
+
+Com o controle ligado, `encerrarExercicioComRestos(E)` faz, na mesma transação: (1) o ENCERRAMENTO das inscrições de anos
+anteriores (pagos e cancelados contra a inscrição; RPNP liquidado e não pago vira RPP); (2) as INSCRIÇÕES do ano, cada uma com
+D 6.2.2.1.3.01/.03 / C 6.2.2.1.3.05/.07 e D 5.3.x.7 / C 6.3.x.7; (3) a ABERTURA de E+1, datada de 1º de janeiro (as de E−1 vão a
+"exercícios anteriores"; as de E, de "inscrição no exercício" a "inscritos" e "a liquidar"/"a pagar"). Sem a declaração, o
+resultado traz o aviso nomeado e nada é lançado nos controles. Liquidar, pagar e cancelar RP lançam o controle do estágio
+(a liquidação leva os dois pares do manual, a liquidar → em liquidação → liquidados, num lançamento: o sistema não tem o
+estágio "em liquidação" separado); as anulações invertem o controle do ato original.
+
+Cada lançamento de controle é de UMA inscrição (`ControleDoRestoAPagar`), e é por ele que a MSC acha a fonte e a IC "AI".
+Inscrição gravada antes da declaração não é controlada (regra explícita: nada a mover). Na virada (`encerrarControlesOrcamentarios`),
+6.2.2.1.3.05/.07 são ENCERRA pela sugestão e 5.3/6.3 TRANSFERE. Teste `m08-controle-dos-restos.test.ts`: três exercícios com
+contas à mão e o oráculo do cadastro (saldo de E1 = 300 a liquidar + 200 RPP), sem declaração, anulação, recusas da declaração,
+a virada e a resolução da MSC ("500/2026"); oito mutações provadas (transferência, abertura, ordem do pagamento, regra da
+inscrição anterior, anulação, troca de conta, par 6.2.2.1.3 da inscrição, braço da MSC).
+
+**Regras acrescentadas depois da auditoria de invariantes (cada uma com teste e mutação provada):**
+- **Ato de RP datado em Y exige Y−1 encerrado** (t6). Os estágios de Y só existem depois do encerramento e da abertura de Y−1;
+  um pagamento de janeiro antes deles cairia em "RPNP liquidados a pagar", que a transferência para RPP, lançada depois com data
+  de 31/12, ainda vai mover — e o estágio ficaria negativo. Recusa nomeando o ano a encerrar. Só para inscrição controlada.
+- **O encerramento e a abertura leem o saldo até 31/12 do ano que fecha** e travam as inscrições que leem (a mesma trava dos atos).
+  O corte é defesa: com a regra acima, não há fato posterior a cortar.
+- **A anulação inverte o controle do ato só com o exercício do ato aberto** (t8). Depois do encerramento, as partidas já foram
+  levadas à inscrição ou a RPP, e a cópia invertida deixaria estágio negativo: recusa com o motivo. A anulação TOTAL da
+  liquidação de RP pelo M05 (`anularLiquidacao`) também inverte o controle (t7); a parcial o M05 já recusa para RP.
+- **Saldo invertido para o lançamento** (t10, com divergência gravada por fora): antes, o par negativo era descartado em silêncio.
+- **A virada dos restos (inscrição, encerramento, abertura) é natureza ENCERRAMENTO** (t9): isenta da competência travada, como
+  os demais lançamentos da virada — com dezembro travado, encerrar o exercício passava antes do controle e continua passando. A
+  MSC abre exceção para ela: o lançamento de ENCERRAMENTO que é de uma inscrição (`controleDoResto`) mantém fonte e ano. A
+  execução (liquidação, pagamento, cancelamento) é NORMAL.
+Regressão: os arquivos que encerram exercício ou anulam liquidação, verdes com o controle desligado.

@@ -6,6 +6,7 @@ import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { calcularInscricoes, type SituacaoDoEmpenho } from "./dominio.js";
 import type { Tx } from "./guard-exercicio.js";
+import { abrirControleDoExercicio, AVISO_CONTROLE_NAO_LIGADO, contasVigentes, controlarInscricao, encerrarControleDoExercicio } from "./controle-dos-restos.js";
 
 /**
  * ENCERRAMENTO DE EXERCÍCIO — inscreve os restos a pagar (Lei 4.320/64, art. 36).
@@ -36,6 +37,11 @@ export interface ResultadoEncerramento {
     readonly tipo: "PROCESSADO" | "NAO_PROCESSADO";
     readonly valorInscrito: Money;
   }[];
+  /**
+   * V35 A3 — o controle 5.3/6.3 (MCASP, Parte I, 4.7): LIGADO quando há contas declaradas (a inscrição, o encerramento
+   * das anteriores e a abertura do exercício seguinte foram lançados); senão, o aviso nomeado.
+   */
+  readonly controleOrcamentario: { readonly ligado: true } | { readonly ligado: false; readonly aviso: string };
 }
 
 /**
@@ -176,6 +182,10 @@ export async function encerrarExercicioComRestos(
     }
 
     const situacoes = await situacaoDosEmpenhos(tx, dados.ano);
+    // V35 A3 — primeiro o encerramento das inscrições de anos anteriores (pagos e cancelados contra a inscrição; RPNP
+    // liquidado e não pago para RPP), depois as inscrições do ano, por fim a abertura do ano seguinte.
+    const contas = await contasVigentes(tx);
+    if (contas !== null) await encerrarControleDoExercicio(tx, contas, dados.ano, dados.encerradoPor);
 
     const inscricoes: ResultadoEncerramento["inscricoes"][number][] = [];
 
@@ -191,8 +201,11 @@ export async function encerrarExercicioComRestos(
             valorInscrito: calc.valorInscrito.toFixed(2),
             criadoPor: dados.encerradoPor,
           },
-          select: { id: true },
+          select: { id: true, empenho: { select: { fichaId: true } } },
         });
+        if (contas !== null) {
+          await controlarInscricao(tx, contas, { id: criada.id, tipo: calc.tipo, valor: calc.valorInscrito, fichaId: criada.empenho.fichaId, ano: dados.ano, criadoPor: dados.encerradoPor });
+        }
         inscricoes.push({
           id: criada.id,
           empenhoId: calc.empenhoId,
@@ -211,6 +224,11 @@ export async function encerrarExercicioComRestos(
       select: { id: true },
     });
 
-    return { encerramentoId: enc.id, ano: dados.ano, inscricoes };
+    if (contas !== null) await abrirControleDoExercicio(tx, contas, dados.ano + 1, dados.encerradoPor);
+
+    return {
+      encerramentoId: enc.id, ano: dados.ano, inscricoes,
+      controleOrcamentario: contas !== null ? { ligado: true as const } : { ligado: false as const, aviso: AVISO_CONTROLE_NAO_LIGADO },
+    };
   });
 }

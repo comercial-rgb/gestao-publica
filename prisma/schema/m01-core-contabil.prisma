@@ -60,6 +60,7 @@ model ContaPcasp {
   /// back-relations M10 — campos VIRTUAIS, não geram coluna.
   classesDeBens      ClasseDeBens[]       @relation("AtivoDaClasse")
   roteirosDebito     RoteiroPatrimonial[] @relation("DebitoPatrimonial")
+  contasDoControleDosRestos ContaDoControleDosRestos[] @relation("ContaDoControleDosRestos")
   roteirosCredito    RoteiroPatrimonial[] @relation("CreditoPatrimonial")
   roteirosResultadoDebito  RoteiroResultadoAlienacao[] @relation("DebitoResultado")
   roteirosResultadoCredito RoteiroResultadoAlienacao[] @relation("CreditoResultado")
@@ -162,6 +163,9 @@ model LancamentoContabil {
   apropriacaoDePessoal ApropriacaoPorCompetencia? @relation("LancamentoDaApropriacaoDePessoal")
   acertoDo13 AcertoDoDecimoTerceiro? @relation("LancamentoDoAcertoDo13")
   baixaDoAdiantamentoDo13 BaixaDoAdiantamentoDoDecimoTerceiro? @relation("LancamentoDaBaixaDoAdiantamentoDo13")
+  /// V35 A3 — o controle 5.3/6.3 de um resto a pagar (o lançamento é dele) e os controles que este fato gerou.
+  controleDoResto        ControleDoRestoAPagar?  @relation("LancamentoDoControleDoResto")
+  controlesDoRestoPorFato ControleDoRestoAPagar[] @relation("FatoDoControleDoResto")
   /// V35 — a apuração do ajuste para perdas da dívida ativa que gerou este lançamento. VIRTUAL.
   ajusteDePerdas ApuracaoDoAjusteDePerdas? @relation("LancamentoDoAjusteDePerdas")
   /// V35 — a dedução da receita que este lançamento escritura. VIRTUAL.

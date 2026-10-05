@@ -696,7 +696,10 @@ export async function encerrarExercicioComRestosAPagar(input: {
   return (
     `Exercício ${String(r.ano)} encerrado. Restos a pagar inscritos: ${String(processados)} ` +
     `processado(s) e ${String(naoProcessados)} não processado(s). A competência do exercício está ` +
-    `travada — fatos com data nele passam a ser recusados.`
+    `travada — fatos com data nele passam a ser recusados.` +
+    (r.controleOrcamentario.ligado
+      ? ` Inscrição, encerramento e abertura dos restos lançados no controle orçamentário (5.3 e 6.3).`
+      : ` ${r.controleOrcamentario.aviso}`)
   );
 }
 

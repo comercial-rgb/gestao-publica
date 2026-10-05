@@ -99,6 +99,8 @@ model InscricaoRestosAPagar {
   valorInscrito Decimal @db.Decimal(18, 2)
 
   movimentos MovimentoRestosAPagar[]
+  /// V35 A3 — os lançamentos de controle (5.3/6.3) desta inscrição.
+  controles  ControleDoRestoAPagar[]
 
   criadoEm  DateTime @default(now())
   criadoPor String

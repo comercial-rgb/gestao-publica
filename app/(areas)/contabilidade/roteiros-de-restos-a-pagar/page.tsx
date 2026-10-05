@@ -7,6 +7,9 @@ import {
   listarRoteirosDeRestos,
 } from "../../../../lib/portas/roteiro-restos";
 import { ContasDasOperacoes, FormDaOperacao } from "./FormRoteiroDeRestos";
+import { lerControleDosRestos } from "../../../../lib/portas/controle-dos-restos";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { FormControleDosRestos } from "./FormControleDosRestos";
 
 /**
  * AS CONTAS DAS OPERAÇÕES DE RESTOS A PAGAR — onde o ente diz em que contas cada ato lança (V15).
@@ -38,9 +41,11 @@ const EXPLICACAO: Record<string, string> = {
 export default async function Page(): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_CONTABILIDADE");
 
-  const [linhas, contas] = await Promise.all([
+  const [linhas, contas, controle, permitidas] = await Promise.all([
     listarRoteirosDeRestos(),
     contasParaRoteiroDeRestos(),
+    lerControleDosRestos(),
+    acoesPermitidas(["PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR"]),
   ]);
 
   const faltando = linhas.filter((l) => l.vigente === null).length;
@@ -120,6 +125,27 @@ export default async function Page(): Promise<React.ReactElement> {
           ))}
         </>
       </ContasDasOperacoes>
+
+      <section aria-label="Controle orçamentário dos restos a pagar" className="mt-8 space-y-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-base font-semibold">Controle orçamentário dos restos a pagar (classes 5.3 e 6.3)</h2>
+          {controle.ligado ? <Badge status="ok">Ligado · versão {controle.versao}</Badge> : <Badge status="alerta">Não ligado</Badge>}
+        </div>
+        <p className="text-sm text-[color:var(--color-ink-2)]">
+          A inscrição, a execução, o encerramento e a abertura dos restos a pagar nas contas de controle, como o MCASP manda (Parte I, 4.7). O
+          controle liga com todas as contas declaradas e vale a partir do próximo encerramento de exercício; restos inscritos antes dele seguem só no
+          cadastro. Cada campo oferece as contas analíticas do plano sob o título do manual.
+        </p>
+        {permitidas.has("PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR") ? (
+          <FormControleDosRestos papeis={controle.papeis} />
+        ) : (
+          <ul className="list-disc pl-5 text-sm">
+            {controle.papeis.map((p) => (
+              <li key={p.papel}>{p.titulo}: {controle.ligado ? p.escolhida : "não declarada"}</li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <p className="mt-6 text-sm text-[color:var(--color-ink-2)]">
         Uma nova versão vale para os lançamentos seguintes e não altera os lançamentos já

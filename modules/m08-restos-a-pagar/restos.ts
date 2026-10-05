@@ -1,4 +1,5 @@
 import { exigirFonteNoRolDaConta } from "../m05-despesa/guard-fonte.js";
+import { controlarExecucao, inverterControleDoFato } from "./controle-dos-restos.js";
 import { exigirUsoDoNumero } from "../m05-despesa/numerador.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -313,6 +314,8 @@ export async function liquidarRestosAPagar(
     });
 
     // NENHUM MovimentoDotacao. RP não consome dotação.
+    // V35 A3 — o controle 5.3/6.3 (a liquidar → em liquidação → liquidados a pagar), se a inscrição é controlada.
+    await controlarExecucao(tx, { inscricaoId: inscricao.id, evento: "LIQUIDACAO", valor: dados.valor, data: dados.data, lancamentoDoFatoId: lancamentoId, criadoPor: dados.criadoPor });
     return { liquidacaoId: liq.id, lancamentoId };
   });
 }
@@ -544,6 +547,7 @@ export async function pagarRestosAPagar(
     }
 
     // NENHUM MovimentoDotacao.
+    await controlarExecucao(tx, { inscricaoId: inscricao.id, evento: "PAGAMENTO", valor: dados.valor, data: dados.data, lancamentoDoFatoId: lancamentoId, criadoPor: dados.criadoPor });
     return { pagamentoId: pag.id, lancamentoId };
   });
 }
@@ -644,6 +648,7 @@ export async function cancelarRestosAPagar(
     });
 
     // NENHUM MovimentoDotacao.
+    await controlarExecucao(tx, { inscricaoId: inscricao.id, evento: "CANCELAMENTO", valor: dados.valor, data: dados.data, lancamentoDoFatoId: lancamentoId, criadoPor: dados.criadoPor });
     return { movimentoId: mov.id, lancamentoId };
   });
 }
@@ -850,6 +855,7 @@ export async function anularPagamentoRestosAPagar(
       criadoPor: dados.criadoPor,
     });
 
+    await inverterControleDoFato(tx, { lancamentoOriginalId: lancOriginal.id, lancamentoDaAnulacaoId: lancEstornoId, evento: "ANULACAO_PAGAMENTO", data: dados.data, criadoPor: dados.criadoPor });
     // NENHUM MovimentoDotacao — nem na anulação.
     return {
       pagamentoId: pagEstorno.id,
@@ -1015,6 +1021,7 @@ export async function anularCancelamentoRestosAPagar(
       select: { id: true },
     });
 
+    await inverterControleDoFato(tx, { lancamentoOriginalId: lancOriginal.id, lancamentoDaAnulacaoId: lancEstornoId, evento: "ANULACAO_CANCELAMENTO", data: dados.data, criadoPor: dados.criadoPor });
     // NENHUM MovimentoDotacao.
     return { movimentoId: mov.id, lancamentoId: lancEstornoId };
   });

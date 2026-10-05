@@ -1,4 +1,5 @@
 import { criarAutorizacaoPortPrisma } from "../m16-travamento/porta.js";
+import { inverterControleDoFato } from "../m08-restos-a-pagar/controle-dos-restos.js";
 import { elementoDebitaEstoque } from "../m01-core-contabil/roteiros.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { travar } from "../../packages/locks/index.js";
@@ -2490,6 +2491,7 @@ export function criarDespesaRepositoryPrisma(
             anulacaoParcialDeId: true,
             anulacoesParciais: { select: { estornos: { select: { id: true } } } },
             estornos: { select: { id: true } },
+            lancamentoId: true,
           },
         });
         if (original === null) {
@@ -2540,6 +2542,10 @@ export function criarDespesaRepositoryPrisma(
         // declarado em e9cf648.
         if (aoAnularLiquidacao !== undefined) {
           await aoAnularLiquidacao.aoAnularTotal(tx, original.id);
+        }
+        // V35 A3 — a liquidação de um resto a pagar controlado (5.3/6.3) desfaz o seu controle junto.
+        if (original.lancamentoId !== null) {
+          await inverterControleDoFato(tx, { lancamentoOriginalId: original.lancamentoId, lancamentoDaAnulacaoId: lancamento.id, evento: "ANULACAO_LIQUIDACAO", data: p.data, criadoPor: p.criadoPor });
         }
 
         return anulacao.id;

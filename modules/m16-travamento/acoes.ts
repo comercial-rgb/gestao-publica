@@ -1165,6 +1165,7 @@ export type NomeDeServico =
   | "retirarNotaExplicativa"
   | "registrarProjecaoAtuarialDoRreo"
   | "retirarProjecaoAtuarialDoRreo"
+  | "declararContasDoControleDosRestos"
   // V35 — a apropriação mensal do 13º e das férias
   | "declararParametroDeFerias"
   | "apropriarPorCompetencia"
@@ -1940,6 +1941,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   retirarNotaExplicativa: "CADASTRAR_LINHA_DEMONSTRATIVO",
   registrarProjecaoAtuarialDoRreo: "CADASTRAR_LINHA_DEMONSTRATIVO",
   retirarProjecaoAtuarialDoRreo: "CADASTRAR_LINHA_DEMONSTRATIVO",
+  declararContasDoControleDosRestos: "PARAMETRIZAR_ROTEIRO_RESTOS_A_PAGAR",
   // V35 — o parâmetro das férias é o par do parâmetro do 13º: o mesmo ato do ente (o estatuto) sobre o mesmo benefício anual.
   declararParametroDeFerias: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO",
   // V35 — apropriar o 13º e as férias por competência, e acertar o 13º no fim do ano, é apropriar a folha na contabilidade.
@@ -2388,6 +2390,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferirLimiteDaLoa: "composável interno (V35 — o guard do limite da LOA, chamado dentro do executarCredito, que já autorizou EXECUTAR_CREDITO)",
   apuracoesDoAjusteDePerdas: "leitura (V35 — as apurações do ajuste para perdas, com a metodologia; não muta)",
   baixarAnexoPublicoDaLoa: "leitura pública (V35 C9 — o documento de LOA com lei de aprovação, sem sessão; qualquer outro anexo responde inexistente; não muta)",
+  contasVigentes: "leitura (V35 A3 — as contas da última declaração do controle 5.3/6.3 dos restos; não muta)",
+  controlarInscricao: "composável (V35 A3 — o controle 5.3/6.3 da inscrição, chamado DENTRO de encerrarExercicioComRestos, que autoriza)",
+  encerrarControleDoExercicio: "composável (V35 A3 — o encerramento 5.3/6.3 das inscrições anteriores, dentro de encerrarExercicioComRestos)",
+  abrirControleDoExercicio: "composável (V35 A3 — a abertura 5.3/6.3 do exercício seguinte, dentro de encerrarExercicioComRestos)",
+  controlarExecucao: "composável (V35 A3 — o controle 5.3/6.3 da liquidação, pagamento e cancelamento de RP, dentro dos serviços do M08 que autorizam)",
+  inverterControleDoFato: "composável (V35 A3 — a anulação do pagamento ou do cancelamento de RP inverte o controle, dentro das anulações do M08)",
   dmpl: "leitura (V35 — a DMPL, MCASP Parte V item 7, lida do razão do grupo 2.3 e das classes 3 e 4; não muta)",
   anexo10: "leitura (V35 — RREO Anexo 10, a projeção atuarial registrada com o resultado e o saldo derivados; não muta)",
   notasExplicativas: "leitura (V35 C2 — as notas explicativas às DCASP, redigidas e do sistema; não muta)",

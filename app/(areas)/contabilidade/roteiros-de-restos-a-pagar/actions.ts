@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import { publicarRoteiroDeRestos } from "../../../../lib/portas/roteiro-restos";
+import { declararControleDosRestos } from "../../../../lib/portas/controle-dos-restos";
 
 /**
  * A AÇÃO DAS CONTAS DAS OPERAÇÕES DE RESTOS A PAGAR (V15).
@@ -44,6 +45,21 @@ export async function publicarRoteiroDeRestosAction(
       return { sucesso };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível publicar as contas. Nada foi gravado.") };
+    }
+  });
+}
+
+/** V35 A3 — a declaração das contas do controle 5.3/6.3 (todas de uma vez). */
+export async function declararControleDosRestosAction(_p: EstadoDoRoteiroDeRestos, f: FormData): Promise<EstadoDoRoteiroDeRestos> {
+  return comComandoDoFormulario(f, async () => {
+    try {
+      const contas: Record<string, string> = {};
+      for (const [k, v] of f.entries()) if (k.startsWith("papel:")) contas[k.slice(6)] = String(v).trim();
+      const sucesso = await declararControleDosRestos({ contas, fundamento: t(f, "fundamento") });
+      revalidatePath("/contabilidade/roteiros-de-restos-a-pagar");
+      return { sucesso };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível declarar as contas. Nada foi gravado.") };
     }
   });
 }
