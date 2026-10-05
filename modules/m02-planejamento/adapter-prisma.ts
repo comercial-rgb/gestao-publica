@@ -11,7 +11,7 @@ import { exigirExercicioAberto } from "../m08-restos-a-pagar/guard-exercicio.js"
 import { registrarMovimentoDotacao } from "../m05-despesa/dotacao-razao.js";
 import { instanteCivil } from "../../packages/datas/index.js";
 import { lancarPrevisaoDaReceita, lancarReprevisaoDaReceita } from "./previsao-no-razao.js";
-import { CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA, CONTA_PREVISAO_ADICIONAL_REESTIMATIVA, CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
+import { CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA, CONTA_PREVISAO_ADICIONAL_DEDUCAO_FUNDEB, CONTA_PREVISAO_ADICIONAL_OUTRAS_DEDUCOES, CONTA_PREVISAO_ADICIONAL_REESTIMATIVA, CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
 import type {
   ClassificacaoRepositoryPort,
   FichaParaPersistir,
@@ -308,9 +308,29 @@ export function criarReceitaPrevistaRepositoryPrisma(
     async reprevisar(r): Promise<string> {
       // APPEND-ONLY: cada reprevisão é uma linha nova (sem unique — corrigir é lançar outra).
       // V35 — e vai ao razão na MESMA transação: a linha sem o lançamento deixaria a previsão atualizada dos relatórios
-      // diferente do saldo da 6.2.1.1 que a MSC publica. A reprevisão de DEDUÇÃO não lança: a conta depende do tipo da
-      // dedução (FUNDEB ou outra), que a reprevisão não carrega — pendência nomeada no MODULO.md do M02.
+      // diferente do saldo da 6.2.1.1 que a MSC publica. A de DEDUÇÃO também lança, na conta do tipo da dedução (FUNDEB ou
+      // outra), que vem do detalhe da linha da LOA — o mesmo que escolhe a conta da previsão inicial dela.
       return prisma.$transaction(async (tx) => {
+      let contasDaDeducao: { readonly reestimativa: string; readonly anulacao: string } | null = null;
+      if (r.tipoReceita === "DEDUCAO") {
+        const linha = await tx.receitaPrevista.findFirst({
+          where: { exercicio: r.exercicio, tipoReceita: "DEDUCAO", naturezaReceita: { codigo: r.naturezaCodigo }, fonte: { codigo: r.fonteCodigo } },
+          select: { detalhe: { select: { tipoDeducaoSagres: true } } },
+        });
+        const tipo = linha?.detalhe?.tipoDeducaoSagres ?? null;
+        if (tipo === null) {
+          throw new Error(
+            `A reprevisão da dedução ${r.naturezaCodigo}, fonte ${r.fonteCodigo}, precisa do tipo da dedução (FUNDEB ou outra) para ir ao razão, ` +
+              `e ele vem do detalhe da linha da LOA, que ${linha === null ? "não existe para esta natureza e fonte" : "ainda não foi registrado"}. ` +
+              `Registre o detalhe em Planejamento › Receita prevista. Nada foi gravado.`
+          );
+        }
+        // a redutora recebe as duas pernas (aumento e redução da dedução): a mesma conta nos dois papéis
+        contasDaDeducao =
+          tipo === "3"
+            ? { reestimativa: CONTA_PREVISAO_ADICIONAL_DEDUCAO_FUNDEB, anulacao: CONTA_PREVISAO_ADICIONAL_DEDUCAO_FUNDEB }
+            : { reestimativa: CONTA_PREVISAO_ADICIONAL_OUTRAS_DEDUCOES, anulacao: CONTA_PREVISAO_ADICIONAL_OUTRAS_DEDUCOES };
+      }
       const criada = await tx.receitaReprevista.create({
         data: {
           exercicio: r.exercicio,
@@ -324,7 +344,7 @@ export function criarReceitaPrevistaRepositoryPrisma(
         },
         select: { id: true },
       });
-      if (r.tipoReceita !== "DEDUCAO" && !r.valorAjuste.isZero()) {
+      if (contasDaDeducao === null && !r.valorAjuste.isZero()) {
         await lancarReprevisaoDaReceita(tx, {
           reprevisaoId: criada.id,
           data: r.data,
@@ -332,6 +352,17 @@ export function criarReceitaPrevistaRepositoryPrisma(
           historico: `Reprevisão da receita ${r.naturezaCodigo}, fonte ${r.fonteCodigo}: ${r.motivo}`,
           autor: r.criadoPor,
           contas: { reestimativa: CONTA_PREVISAO_ADICIONAL_REESTIMATIVA, anulacao: CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA, aRealizar: CONTA_RECEITA_A_REALIZAR },
+        });
+      } else if (contasDaDeducao !== null && !r.valorAjuste.isZero()) {
+        // A dedução é redutora: aumentá-la REDUZ a previsão líquida. Com o sinal invertido, o aumento sai
+        // D receita a realizar / C (-) previsão adicional de dedução, e a redução, o inverso — o espelho da previsão inicial.
+        await lancarReprevisaoDaReceita(tx, {
+          reprevisaoId: criada.id,
+          data: r.data,
+          ajuste: r.valorAjuste.negated().toFixed(2),
+          historico: `Reprevisão da dedução ${r.naturezaCodigo}, fonte ${r.fonteCodigo}: ${r.motivo}`,
+          autor: r.criadoPor,
+          contas: { ...contasDaDeducao, aRealizar: CONTA_RECEITA_A_REALIZAR },
         });
       }
       return criada.id;

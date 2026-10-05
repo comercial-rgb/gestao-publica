@@ -262,6 +262,13 @@ export const CONTA_RECEITA_A_REALIZAR = "6.2.1.1.0.00.00";
  */
 export const CONTA_PREVISAO_ADICIONAL_REESTIMATIVA = "5.2.1.2.1.01.00";
 export const CONTA_ANULACAO_DA_PREVISAO_DA_RECEITA = "5.2.1.2.9.00.00";
+/**
+ * V35 — A REPREVISÃO DE DEDUÇÃO. PCASP do TCE-PB 2025, sob 5.2.1.2.1 PREVISÃO ADICIONAL DA RECEITA: 5.2.1.2.1.03.01
+ * (-) FUNDEB e 5.2.1.2.1.99.00 (-) PREVISÃO DE OUTRAS DEDUÇÕES DA RECEITA — as irmãs das contas da previsão inicial
+ * (5.2.1.1.2.01.01 e 5.2.1.1.2.99.00), com a mesma escolha pelo tipo da dedução (3 = FUNDEB; os demais, outras).
+ */
+export const CONTA_PREVISAO_ADICIONAL_DEDUCAO_FUNDEB = "5.2.1.2.1.03.01";
+export const CONTA_PREVISAO_ADICIONAL_OUTRAS_DEDUCOES = "5.2.1.2.1.99.00";
 export const CONTA_RECEITA_REALIZADA = "6.2.1.2.0.00.00";
 
 // ── PATRIMONIAIS (inventário das fixtures — MAPA-ELEMENTO-CONTA) ─────────────

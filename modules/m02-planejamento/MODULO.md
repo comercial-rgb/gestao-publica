@@ -318,8 +318,16 @@ Agora `reprevisar` grava a linha e o lançamento na mesma transação (`lancarRe
 Fail-closed: conta ausente ou sintética no plano recusa, sem gravar a linha. Teste `m02-reprevisao.test.ts` t-razão
 (+20.000 e −3.000), mutação provada (redução lançada como aumento: vermelho).
 
-**Pendências nomeadas:**
-- reprevisão de DEDUÇÃO não vai ao razão: a conta (5.2.1.2.1.03.01 FUNDEB ou 5.2.1.2.1.99.00) depende do tipo da
-  dedução, que a reprevisão não carrega;
+**A reprevisão de DEDUÇÃO (V35, fechada):** vai ao razão na conta do tipo da dedução, lido do detalhe da linha da LOA
+(o mesmo que escolhe a conta da previsão inicial): tipo 3 → 5.2.1.2.1.03.01 (-) FUNDEB; os demais → 5.2.1.2.1.99.00
+(-) PREVISÃO DE OUTRAS DEDUÇÕES DA RECEITA, ambas sob 5.2.1.2.1 PREVISÃO ADICIONAL no PCASP do TCE-PB 2025. Como a
+dedução é redutora, o aumento sai D 6.2.1.1 / C a dedução e a redução, o inverso (espelho da previsão inicial
+D 6.2.1.1 / C 5.2.1.1.2.xx). O MCASP não traz o lançamento da reestimativa de dedução; a conta vem do plano e o sentido,
+da natureza credora da redutora. Sem detalhe (ou sem linha de dedução para a natureza e fonte), RECUSA com o motivo —
+antes, a linha era gravada sem lançamento. Teste t-dedução (N=2 no tipo; negação com o motivo nos dois casos);
+mutações provadas: sinal, escolha do tipo e recusa. O guard do plano oficial colhe as duas contas (`reestimativa:`/
+`anulacao:`), mutação provada.
+
+**Pendência nomeada:**
 - bases anteriores à V35: previsões e reprevisões gravadas sem lançamento não são reprocessadas. A produção de
   Esperança foi configurada já com a previsão no razão.

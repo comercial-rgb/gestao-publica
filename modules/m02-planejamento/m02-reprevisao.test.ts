@@ -125,4 +125,48 @@ describe("M02 — reprevisão de receita (destrava a previsão atualizada)", () 
     const lancs = await prisma.lancamentoContabil.findMany({ where: { origemTipo: "REPREVISAO_DA_RECEITA" }, select: { dataTransacao: true } });
     expect(lancs.map((l) => l.dataTransacao.toISOString())).toEqual(["2026-03-01T12:00:00.000Z", "2026-03-01T12:00:00.000Z"]);
   });
+
+  /**
+   * V35 — A REPREVISÃO DE DEDUÇÃO NO RAZÃO. N=2 no tipo: a dedução para o FUNDEB (tipo 3) vai a 5.2.1.2.1.03.01 e a outra
+   * (tipo 5) a 5.2.1.2.1.99.00, contra a receita a realizar, com o sinal da redutora (aumento credita a dedução).
+   *   FUNDEB: +8.000 e −1.000 → (-) FUNDEB credor 7.000      outras: +500 → credor 500
+   *   receita a realizar: D 8.000 − C 1.000 + D 500 → devedor 7.500
+   */
+  it("t-dedução (V35): a reprevisão da dedução vai à conta do tipo, e sem o detalhe da linha é recusada com o motivo", async () => {
+    await prisma.contaPcasp.createMany({
+      data: [
+        { codigo: "5.2.1.2.1.03.01", nome: "(-) FUNDEB", naturezaSaldo: "CREDORA", nivel: 7, analitica: true },
+        { codigo: "5.2.1.2.1.99.00", nome: "(-) PREVISÃO DE OUTRAS DEDUÇÕES DA RECEITA", naturezaSaldo: "CREDORA", nivel: 7, analitica: true },
+      ],
+    });
+    await prisma.naturezaReceita.create({ data: { id: "nr-fpm", codigo: "17115111", descricao: "FPM" } });
+    await prisma.naturezaReceita.create({ data: { id: "nr-itbi", codigo: "11125001", descricao: "ITBI (sem linha de dedução na LOA)" } });
+    const fundeb = await prisma.receitaPrevista.create({ data: { exercicio: 2026, naturezaReceitaId: "nr-fpm", fonteId: "fnt-500", tipoReceita: "DEDUCAO", valorPrevisto: "40000.00" }, select: { id: true } });
+    const outra = await prisma.receitaPrevista.create({ data: { exercicio: 2026, naturezaReceitaId: "nr-iptu", fonteId: "fnt-500", tipoReceita: "DEDUCAO", valorPrevisto: "2000.00" }, select: { id: true } });
+    const dedu = (natureza: string, ajuste: string) =>
+      reprevisarReceita({ exercicio: 2026, naturezaReceita: natureza, fonte: "500", tipoReceita: "DEDUCAO", valorAjuste: ajuste, motivo: "reestimativa da dedução", data: new Date("2026-04-01T12:00:00Z"), criadoPor: POR }, criarM02Deps(prisma));
+
+    // sem o detalhe, o tipo não é conhecido: recusa nomeando o motivo, e nada é gravado
+    await expect(dedu("17115111", "8000.00")).rejects.toThrow(/precisa do tipo da dedução \(FUNDEB ou outra\).*ainda não foi registrado/);
+    await expect(dedu("11125001", "100.00")).rejects.toThrow(/não existe para esta natureza e fonte/);
+    expect(await prisma.receitaReprevista.count({ where: { tipoReceita: "DEDUCAO" } })).toBe(0);
+
+    await prisma.detalheDaReceitaPrevista.create({ data: { receitaPrevistaId: fundeb.id, tipoDeducaoSagres: "3", documento: "LOA (fixture)", criadoPor: POR } });
+    await prisma.detalheDaReceitaPrevista.create({ data: { receitaPrevistaId: outra.id, tipoDeducaoSagres: "5", documento: "LOA (fixture)", criadoPor: POR } });
+    await dedu("17115111", "8000.00");
+    await dedu("17115111", "-1000.00");
+    await dedu(N_IPTU, "500.00");
+
+    const saldoCredor = async (codigo: string): Promise<string> => {
+      const ps = await prisma.partidaContabil.findMany({ where: { conta: { codigo } }, select: { tipo: true, valor: true } });
+      let c = 0n;
+      for (const p of ps) c += (p.tipo === "CREDITO" ? 1n : -1n) * BigInt(p.valor.toFixed(2).replace(".", ""));
+      const t = (c < 0n ? -c : c).toString().padStart(3, "0");
+      return `${c < 0n ? "-" : ""}${t.slice(0, -2)}.${t.slice(-2)}`;
+    };
+    expect(await saldoCredor("5.2.1.2.1.03.01")).toBe("7000.00");
+    expect(await saldoCredor("5.2.1.2.1.99.00")).toBe("500.00");
+    expect(await saldoCredor("6.2.1.1.0.00.00")).toBe("-7500.00");
+    expect(await saldoCredor("5.2.1.2.1.01.00")).toBe("0.00");
+  });
 });
