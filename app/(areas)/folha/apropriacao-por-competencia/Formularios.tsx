@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
-import { acertarAction, apropriarAction, declararFeriasAction, type EstadoDaApropriacao } from "./actions";
+import { acertarAction, apropriarAction, apropriarEncargosAction, declararFeriasAction, type EstadoDaApropriacao } from "./actions";
 
 function Resultado({ estado, acao }: { readonly estado: EstadoDaApropriacao; readonly acao: string }): React.ReactElement | null {
   if (estado.sucesso !== undefined) return <p role="status" data-resultado-da-acao={acao} className="text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>;
@@ -66,6 +66,25 @@ export function FormApropriar({ competencia }: { readonly competencia: string })
       </div>
       <div className="sm:col-span-3">
         <Resultado estado={estado} acao="apropriar-competencia" />
+      </div>
+    </form>
+  );
+}
+
+export function FormEncargos({ competencia }: { readonly competencia: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaApropriacao, FormData>(apropriarEncargosAction, {});
+  return (
+    <form action={action} data-acao="apropriar-encargos-da-competencia" className="grid gap-3 text-xs sm:grid-cols-3" aria-label="Apropriar os encargos patronais sobre o 13º e as férias da competência">
+      <ChaveDeComando />
+      <label>
+        <span className={ROTULO}>Competência</span>
+        <input name="competencia" type="month" required defaultValue={competencia} className={CAMPO} />
+      </label>
+      <div className="flex flex-col justify-end gap-2">
+        <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Apropriando…" : "Apropriar os encargos"}</button>
+      </div>
+      <div className="sm:col-span-3">
+        <Resultado estado={estado} acao="apropriar-encargos-da-competencia" />
       </div>
     </form>
   );

@@ -1361,8 +1361,18 @@ O `roteiroLiquidacaoDaFolha` lança o que o grupo declara.
 - sem a folha do 13º fechada;
 - sem nenhuma baixa no passivo no exercício. Acertar estornaria o ano inteiro e esconderia um grupo mal configurado.
 
+**Os encargos patronais** (`apropriarEncargosPorCompetencia`, MCASP 18.3) vêm depois da apropriação da competência e
+da apuração dos encargos da folha fechada:
+- alíquota do vínculo = soma das alíquotas efetivas que a apuração aplicou a ele (componentes aprovados do regime do
+  contracheque, com o FAP quando há). Nenhuma alíquota nova;
+- encargo = 13º (ou férias) apropriado do vínculo × essa alíquota, ao centavo por vínculo; a alíquota fica no item;
+- o teto de base do componente não se aplica ao duodécimo: a incidência sobre o 13º e as férias se apura no pagamento;
+- roteiros `APROPRIACAO/ENCARGOS_DECIMO_TERCEIRO` e `APROPRIACAO/ENCARGOS_FERIAS` (D 3.1.2 / C 2.1.1.4, P);
+- recusa sem a apropriação-base, sem roteiro, sem apuração sobre o cálculo fechado, com apuração incompleta, ou com
+  vínculo apropriado fora da apuração.
+
 **Pendências nomeadas:**
-- encargos patronais sobre 13º e férias (MCASP 18.3);
+- o acerto de fim de ano do passivo dos encargos sobre o 13º (o do 13º já existe);
 - adiantamento da 1ª parcela em conta de adiantamento (1.1.3.1.1). Hoje a 1ª parcela baixa o passivo direto;
 - para Esperança: o parâmetro de férias depende do Estatuto dos Servidores do município (não obtido). O roteiro
   depende do regime: 3.1.1.1 para o RPPS, 3.1.1.2 para o RGPS.
@@ -1374,4 +1384,5 @@ Teste: `m33-apropriacao-por-competencia.test.ts`, em folha real:
 - recusas nomeadas e autorização;
 - o acerto em zero.
 
-Três mutações provadas: a seleção da base, a recusa sem baixa e a remuneração do período.
+Três mutações provadas: a seleção da base, a recusa sem baixa e a remuneração do período. Encargos (t5, t6): duas
+mutações provadas, a recusa da apuração incompleta e a soma das alíquotas dos componentes (só a primeira).

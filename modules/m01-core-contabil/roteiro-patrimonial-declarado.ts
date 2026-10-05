@@ -85,6 +85,9 @@ export const FAMILIAS_DE_ROTEIRO: Readonly<Record<FamiliaDoRoteiro, DefinicaoDaF
     chaves: [
       { chave: "APROPRIACAO/DECIMO_TERCEIRO", rotulo: "Duodécimo do 13º salário (VPD contra pessoal a pagar)" },
       { chave: "APROPRIACAO/FERIAS", rotulo: "Duodécimo das férias e do abono constitucional (VPD contra férias a pagar)" },
+      // V35 — os encargos patronais sobre o 13º e as férias (MCASP 18.3): D VPD 3.1.2 / C encargos sociais a pagar 2.1.1.4 (P).
+      { chave: "APROPRIACAO/ENCARGOS_DECIMO_TERCEIRO", rotulo: "Encargos patronais sobre o 13º apropriado (VPD contra encargos a pagar)" },
+      { chave: "APROPRIACAO/ENCARGOS_FERIAS", rotulo: "Encargos patronais sobre as férias apropriadas (VPD contra encargos a pagar)" },
     ],
   },
 };

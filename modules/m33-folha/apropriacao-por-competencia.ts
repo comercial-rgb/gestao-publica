@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { serializar, toMoney, type Dinheiro, type Money } from "../../packages/contracts/index.js";
+import { Decimal, serializar, toMoney, type Dinheiro, type Money } from "../../packages/contracts/index.js";
 import { janelaCivilDoAno, janelaCivilDoMes } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somasPorConta } from "../m01-core-contabil/adapter-prisma.js";
@@ -8,6 +8,7 @@ import { roteiroPatrimonialVigente } from "../m01-core-contabil/roteiro-patrimon
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { parametroVigenteDoExercicio } from "./decimo-terceiro-servico.js";
+import type { ItemDaApuracao } from "./encargos.js";
 
 /**
  * V35 — A APROPRIAÇÃO MENSAL DO 13º E DAS FÉRIAS POR COMPETÊNCIA (MCASP 11ª ed., Parte II, item 18).
@@ -189,6 +190,121 @@ export async function apropriarPorCompetencia(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// OS ENCARGOS PATRONAIS SOBRE O 13º E AS FÉRIAS APROPRIADOS (MCASP 18.3)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * "Os encargos patronais incidentes sobre [13º] e férias [...] enquadram-se igualmente na condição de passivo
+ * apropriado por competência" (MCASP 11ª ed., Parte II, 18.3): D VPD encargos patronais / C encargos sociais a pagar (P).
+ *
+ * NENHUMA ALÍQUOTA NOVA. A alíquota de cada vínculo é a soma das alíquotas efetivas que a APURAÇÃO DOS ENCARGOS da
+ * folha fechada da competência aplicou a ele — os componentes que o ente cadastrou e outra pessoa aprovou, do regime
+ * do contracheque, com o FAP quando o componente o aplica. Componente de outro regime não entra; o teto de base do
+ * componente, quando há, não se aplica ao duodécimo (a incidência sobre o 13º e as férias se apura no pagamento).
+ *   encargo do vínculo = (13º ou férias apropriado do vínculo) × Σ alíquotas efetivas, ao centavo, por vínculo.
+ *
+ * Fail-closed: a apropriação do 13º e das férias da competência tem de existir; cada folha fechada da competência
+ * tem de ter apuração dos encargos sobre o cálculo fechado, e completa; o roteiro tem de estar declarado; um vínculo
+ * apropriado que a apuração não alcança é recusado. Idempotência: uma apropriação por competência e tipo.
+ */
+export async function apropriarEncargosPorCompetencia(
+  prisma: PrismaClient,
+  input: z.input<typeof zApropriarPorCompetencia>
+): Promise<{ readonly competencia: string; readonly decimoTerceiro: Dinheiro; readonly ferias: Dinheiro; readonly vinculos: number }> {
+  const d = zApropriarPorCompetencia.parse(input);
+  const exercicio = Number(d.competencia.slice(0, 4));
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.apropriarEncargosPorCompetencia, "ENTE");
+
+    // ── pré-condições, todas antes de qualquer escrita ──
+    const ja = await tx.apropriacaoPorCompetencia.findMany({ where: { competencia: d.competencia, tipo: { in: ["ENCARGOS_DECIMO_TERCEIRO", "ENCARGOS_FERIAS"] } }, select: { id: true } });
+    if (ja.length > 0) throw new Error(`Os encargos sobre o 13º e as férias de ${d.competencia} já foram apropriados. Nada foi gravado.`);
+    const bases = await tx.apropriacaoPorCompetencia.findMany({
+      where: { competencia: d.competencia, tipo: { in: ["DECIMO_TERCEIRO", "FERIAS"] } },
+      select: { tipo: true, parametroDoDecimoTerceiroId: true, itens: { select: { vinculoId: true, valor: true } } },
+    });
+    const ap13 = bases.find((b) => b.tipo === "DECIMO_TERCEIRO");
+    const apFe = bases.find((b) => b.tipo === "FERIAS");
+    if (ap13 === undefined || apFe === undefined) {
+      throw new Error(`O 13º e as férias de ${d.competencia} ainda não foram apropriados: os encargos incidem sobre o que foi apropriado. Nada foi gravado.`);
+    }
+    const r13 = await roteiroPatrimonialVigente(tx, "APROPRIACAO_PESSOAL", "APROPRIACAO/ENCARGOS_DECIMO_TERCEIRO");
+    const rFe = await roteiroPatrimonialVigente(tx, "APROPRIACAO_PESSOAL", "APROPRIACAO/ENCARGOS_FERIAS");
+    if (r13 === null || rFe === null) {
+      throw new Error("O roteiro dos encargos sobre o 13º e as férias não está declarado. Declare-o em Contabilidade, Roteiros patrimoniais. Nada foi gravado.");
+    }
+    const folhas = await tx.folhaDePagamento.findMany({
+      where: { competencia: d.competencia, tipo: { in: ["MENSAL", "MENSAL_COMPLEMENTAR"] }, fechamento: { isNot: null } },
+      orderBy: { tipo: "asc" },
+      select: { id: true, tipo: true, fechamento: { select: { calculoId: true } } },
+    });
+    // alíquota efetiva por vínculo e componente; o mesmo componente em duas folhas tem de dar a mesma alíquota
+    const aliquotas = new Map<string, Map<string, Decimal>>();
+    const alcancados = new Set<string>();
+    for (const f of folhas) {
+      const a = await tx.apuracaoDeEncargos.findFirst({ where: { folhaId: f.id, calculoId: f.fechamento!.calculoId }, orderBy: { numero: "desc" }, select: { numero: true, completa: true, memoria: true } });
+      if (a === null) {
+        throw new Error(`Os encargos da folha ${f.tipo === "MENSAL" ? "mensal" : "complementar"} de ${d.competencia} não foram apurados: a alíquota de cada vínculo vem dessa apuração. Apure-os primeiro. Nada foi gravado.`);
+      }
+      if (!a.completa) {
+        throw new Error(`A apuração nº ${String(a.numero)} dos encargos de ${d.competencia} está incompleta (há componente sem parâmetro vigente aprovado): a alíquota de algum vínculo não é conhecida. Nada foi gravado.`);
+      }
+      for (const i of (a.memoria as { itens?: readonly ItemDaApuracao[] }).itens ?? []) {
+        alcancados.add(i.vinculoId);
+        if (i.situacao !== "CALCULADO" && i.situacao !== "ZERO_CALCULADO") continue;
+        const efetiva = new Decimal(i.aliquotaAjustada ?? i.aliquota ?? "0");
+        const doVinculo = aliquotas.get(i.vinculoId) ?? new Map<string, Decimal>();
+        const anterior = doVinculo.get(i.componente);
+        if (anterior !== undefined && !anterior.equals(efetiva)) {
+          throw new Error(`O componente ${i.componente} tem alíquotas diferentes para a matrícula ${i.matricula} nas folhas de ${d.competencia}. Nada foi gravado.`);
+        }
+        doVinculo.set(i.componente, efetiva);
+        aliquotas.set(i.vinculoId, doVinculo);
+      }
+    }
+    const fora = [...new Set([...ap13.itens, ...apFe.itens].map((i) => i.vinculoId))].filter((v) => !alcancados.has(v));
+    if (fora.length > 0) {
+      throw new Error(`${String(fora.length)} vínculo(s) apropriado(s) em ${d.competencia} não constam da apuração dos encargos da folha fechada. Nada foi gravado.`);
+    }
+    const taxa = (vinculoId: string): Decimal => [...(aliquotas.get(vinculoId)?.values() ?? [])].reduce((s, x) => s.plus(x), new Decimal(0));
+
+    const fim = janelaCivilDoMes(d.competencia).fim;
+    const gravar = async (tipo: "ENCARGOS_DECIMO_TERCEIRO" | "ENCARGOS_FERIAS", origem: typeof ap13, r: NonNullable<typeof r13>): Promise<Money> => {
+      const itens = origem.itens.map((i) => {
+        const base = toMoney(i.valor.toFixed(2));
+        const t = taxa(i.vinculoId);
+        return { vinculoId: i.vinculoId, base, aliquota: t, valor: toMoney(base.times(t)) };
+      });
+      const total = itens.reduce((a, i) => toMoney(a.plus(i.valor)), toMoney("0.00"));
+      let lancamentoId: string | null = null;
+      if (!total.isZero()) {
+        lancamentoId = await lancarNoRazao(tx, {
+          numeroControle: `APC-${tipo === "ENCARGOS_DECIMO_TERCEIRO" ? "EN13" : "ENFE"}-${d.competencia}`,
+          dataTransacao: fim,
+          historico: `${r.historicoPadrao} — competência ${d.competencia.split("-").reverse().join("/")}`,
+          origemTipo: "APROPRIACAO_POR_COMPETENCIA",
+          criadoPor: d.criadoPor,
+          partidas: [
+            { contaId: r.contaDebito.id, tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: total.toFixed(2) },
+            { contaId: r.contaCredito.id, tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: total.toFixed(2) },
+          ],
+        });
+      }
+      await tx.apropriacaoPorCompetencia.create({
+        data: {
+          competencia: d.competencia, exercicio, tipo, total: total.toFixed(2), parametroDoDecimoTerceiroId: origem.parametroDoDecimoTerceiroId, lancamentoId, criadoPor: d.criadoPor,
+          itens: { create: itens.map((i) => ({ vinculoId: i.vinculoId, base: i.base.toFixed(2), valor: i.valor.toFixed(2), aliquotaDosEncargos: i.aliquota.toFixed(6) })) },
+        },
+      });
+      return total;
+    };
+    const total13 = await gravar("ENCARGOS_DECIMO_TERCEIRO", ap13, r13);
+    const totalFe = await gravar("ENCARGOS_FERIAS", apFe, rFe);
+    return { competencia: d.competencia, decimoTerceiro: serializar(total13), ferias: serializar(totalFe), vinculos: new Set([...ap13.itens, ...apFe.itens].map((i) => i.vinculoId)).size };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // O ACERTO DO 13º NO FIM DO EXERCÍCIO
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -249,7 +365,7 @@ export async function acertarDecimoTerceiro(
 
 export interface ApropriacaoNaLista {
   readonly competencia: string;
-  readonly tipo: "DECIMO_TERCEIRO" | "FERIAS";
+  readonly tipo: "DECIMO_TERCEIRO" | "FERIAS" | "ENCARGOS_DECIMO_TERCEIRO" | "ENCARGOS_FERIAS";
   readonly total: Dinheiro;
   readonly vinculos: number;
   readonly lancou: boolean;

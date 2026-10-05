@@ -34,6 +34,9 @@ model ParametroDaApropriacaoDeFerias {
 enum TipoDaApropriacaoDePessoal {
   DECIMO_TERCEIRO
   FERIAS
+  /// V35 — encargos patronais sobre o 13º e as férias apropriados (MCASP 11ª ed., Parte II, 18.3).
+  ENCARGOS_DECIMO_TERCEIRO
+  ENCARGOS_FERIAS
 }
 
 model ApropriacaoPorCompetencia {
@@ -65,6 +68,9 @@ model ItemDaApropriacaoPorCompetencia {
   vinculo       Vinculo                   @relation("ApropriacaoDoVinculo", fields: [vinculoId], references: [id])
   base          Decimal                   @db.Decimal(18, 2)
   valor         Decimal                   @db.Decimal(18, 2)
+  /// Só nos encargos: a soma das alíquotas efetivas dos componentes que a apuração dos encargos da folha
+  /// aplicou ao vínculo na competência (com o FAP, quando há). valor = base × esta alíquota.
+  aliquotaDosEncargos Decimal?              @db.Decimal(9, 6)
 
   @@unique([apropriacaoId, vinculoId])
   @@index([vinculoId])

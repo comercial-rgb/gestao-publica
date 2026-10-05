@@ -1167,6 +1167,7 @@ export type NomeDeServico =
   | "declararParametroDeFerias"
   | "apropriarPorCompetencia"
   | "acertarDecimoTerceiro"
+  | "apropriarEncargosPorCompetencia"
   | "declararContaDaLiquidacao"
   | "declararConsignacaoDaRubrica"
   | "apropriarCustoDaFolha"
@@ -1939,6 +1940,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V35 — apropriar o 13º e as férias por competência, e acertar o 13º no fim do ano, é apropriar a folha na contabilidade.
   apropriarPorCompetencia: "APROPRIAR_FOLHA",
   acertarDecimoTerceiro: "APROPRIAR_FOLHA",
+  // V35 — os encargos patronais sobre o 13º e as férias apropriados (MCASP 18.3): o mesmo ato de apropriar a folha.
+  apropriarEncargosPorCompetencia: "APROPRIAR_FOLHA",
   // V28 — a conta da liquidação por elemento: a MESMA autoridade de dizer em que conta do plano o movimento entra.
   declararContaDaLiquidacao: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V28 — a VPA da arrecadação por natureza: a mesma autoridade de dizer em que conta do plano o movimento entra.

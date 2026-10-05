@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { acertar13, apropriar, declararFerias } from "../../../../lib/portas/apropriacao-por-competencia";
+import { acertar13, apropriar, apropriarEncargos, declararFerias } from "../../../../lib/portas/apropriacao-por-competencia";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 
@@ -40,6 +40,18 @@ export async function apropriarAction(_p: EstadoDaApropriacao, f: FormData): Pro
       return { sucesso };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível apropriar a competência. Nada foi gravado.") };
+    }
+  });
+}
+
+export async function apropriarEncargosAction(_p: EstadoDaApropriacao, f: FormData): Promise<EstadoDaApropriacao> {
+  return comComandoDoFormulario(f, async () => {
+    try {
+      const sucesso = await apropriarEncargos(t(f, "competencia"));
+      revalidatePath(CAMINHO);
+      return { sucesso };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível apropriar os encargos da competência. Nada foi gravado.") };
     }
   });
 }

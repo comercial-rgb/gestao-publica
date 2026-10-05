@@ -6,7 +6,7 @@ import { lerApropriacoes, type ApropriacaoNaLista } from "../../../../lib/portas
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { anoCivil, competenciaCivil } from "../../../../packages/datas/index";
-import { FormAcerto, FormApropriar, FormParametroDeFerias } from "./Formularios";
+import { FormAcerto, FormApropriar, FormEncargos, FormParametroDeFerias } from "./Formularios";
 
 /**
  * V35 — APROPRIAÇÃO MENSAL DO 13º E DAS FÉRIAS (MCASP 11ª ed., Parte II, item 18). A folha fechada de cada
@@ -15,9 +15,16 @@ import { FormAcerto, FormApropriar, FormParametroDeFerias } from "./Formularios"
  */
 export const dynamic = "force-dynamic";
 
+const ROTULO_DO_TIPO: Readonly<Record<ApropriacaoNaLista["tipo"], string>> = {
+  DECIMO_TERCEIRO: "13º salário",
+  FERIAS: "Férias",
+  ENCARGOS_DECIMO_TERCEIRO: "Encargos sobre o 13º",
+  ENCARGOS_FERIAS: "Encargos sobre as férias",
+};
+
 const COLUNAS: readonly ColunaTabela<ApropriacaoNaLista>[] = [
   { chave: "competencia", cabecalho: "Competência", celula: (l) => l.competencia.split("-").reverse().join("/") },
-  { chave: "tipo", cabecalho: "Apropriação", celula: (l) => (l.tipo === "DECIMO_TERCEIRO" ? "13º salário" : "Férias") },
+  { chave: "tipo", cabecalho: "Apropriação", celula: (l) => ROTULO_DO_TIPO[l.tipo] },
   { chave: "vinculos", cabecalho: "Vínculos", alinhamento: "direita", celula: (l) => String(l.vinculos) },
   { chave: "total", cabecalho: "Total apropriado", alinhamento: "direita", celula: (l) => (l.lancou ? <ValorMonetario valor={l.total} /> : "sem valor a lançar") },
 ];
@@ -50,6 +57,11 @@ export default async function ApropriacaoPorCompetenciaPage({
           <section aria-label="Apropriação da competência" className="space-y-2">
             <h2 className="text-sm font-semibold">Apropriação da competência</h2>
             <FormApropriar competencia={competenciaCivil(hoje)} />
+          </section>
+          <section aria-label="Encargos patronais da competência" className="space-y-2">
+            <h2 className="text-sm font-semibold">Encargos patronais sobre o 13º e as férias</h2>
+            <p className="text-xs text-[color:var(--color-text-muted)]">Depois de apropriar a competência e de apurar os encargos da folha fechada: cada servidor recebe as alíquotas que a apuração aplicou a ele.</p>
+            <FormEncargos competencia={competenciaCivil(hoje)} />
           </section>
           <section aria-label="Acerto do 13º" className="space-y-2">
             <h2 className="text-sm font-semibold">Acerto do 13º no fim do exercício</h2>

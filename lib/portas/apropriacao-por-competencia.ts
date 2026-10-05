@@ -1,6 +1,7 @@
 import {
   acertarDecimoTerceiro,
   apropriacoesDoExercicio,
+  apropriarEncargosPorCompetencia,
   apropriarPorCompetencia,
   declararParametroDeFerias,
   type ApropriacaoNaLista,
@@ -32,6 +33,11 @@ export async function declararFerias(input: {
 export async function apropriar(competencia: string): Promise<string> {
   const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarPorCompetencia(cliente(), { competencia, criadoPor }));
   return `Competência ${competencia.split("-").reverse().join("/")} apropriada: 13º ${r.decimoTerceiro}, férias ${r.ferias}, ${String(r.vinculos)} vínculos.`;
+}
+
+export async function apropriarEncargos(competencia: string): Promise<string> {
+  const r = await comEscritaAutenticada("APROPRIAR_FOLHA", (criadoPor) => apropriarEncargosPorCompetencia(cliente(), { competencia, criadoPor }));
+  return `Encargos patronais de ${competencia.split("-").reverse().join("/")} apropriados: sobre o 13º ${r.decimoTerceiro}, sobre as férias ${r.ferias}, ${String(r.vinculos)} vínculos.`;
 }
 
 export async function acertar13(exercicio: number): Promise<string> {

@@ -6,7 +6,8 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
 import { declararRoteiroPatrimonial } from "../m01-core-contabil/roteiro-patrimonial-declarado.js";
 import { admitirServidor, cadastrarCargo, cadastrarLotacao, cadastrarServidor } from "../m32-pessoal/servico.js";
-import { acertarDecimoTerceiro, apropriacoesDoExercicio, apropriarPorCompetencia, declararParametroDeFerias } from "./apropriacao-por-competencia.js";
+import { acertarDecimoTerceiro, apropriacoesDoExercicio, apropriarEncargosPorCompetencia, apropriarPorCompetencia, declararParametroDeFerias } from "./apropriacao-por-competencia.js";
+import { apurarEncargosDaFolha, aprovarVersaoDoEncargo, cadastrarComponenteDeEncargo, cadastrarVersaoDoEncargo } from "./encargos-servico.js";
 import { cadastrarParametroDoDecimoTerceiro } from "./decimo-terceiro-servico.js";
 import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarTabelaIrrf, calcularFolha, fecharFolha, lancarNaFolha } from "./servico.js";
 
@@ -35,6 +36,7 @@ afterAll(async () => {
 const AUTOR = "contabilidade@cg.pb.gov.br";
 const FECHA = "tesouraria@cg.pb.gov.br";
 const SEM_PODER = "estagiario.rh@cg.pb.gov.br";
+const APROVADOR = "juridico@cg.pb.gov.br";
 const D = (a: number, m: number, d: number): Date => meioDiaCivil(`${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`);
 const ATO = { atoEsfera: "MUNICIPAL", atoTipo: "ESTATUTO_DOS_SERVIDORES", atoNumero: "1.234", atoAno: 2010, atoDispositivo: "art. 78", atoEmenta: "Dispoe sobre a gratificacao natalina" } as const;
 const FUNDAMENTO = "MCASP 11ª ed., Parte II, item 18 — apropriação por competência; contas do PCASP 2025.";
@@ -45,6 +47,8 @@ const CONTAS = [
   ["2.1.1.1.1.01.01", "SALÁRIOS, REMUNERAÇÕES E BENEFÍCIOS", "CREDORA"],
   ["2.1.1.1.1.01.02", "DÉCIMO TERCEIRO SALÁRIO", "CREDORA"],
   ["2.1.1.1.1.01.03", "FÉRIAS", "CREDORA"],
+  ["3.1.2.1.2.01.00", "CONTRIBUIÇÃO PATRONAL PARA O RPPS", "DEVEDORA"],
+  ["2.1.1.4.2.01.00", "CONTRIBUIÇÃO A REGIME PRÓPRIO DE PREVIDÊNCIA (RPPS)", "CREDORA"],
 ] as const;
 
 let rub: Record<string, string> = {};
@@ -94,6 +98,32 @@ async function folhaFechada(competencia: string): Promise<void> {
 async function roteiros(): Promise<void> {
   await declararRoteiroPatrimonial(prisma, { familia: "APROPRIACAO_PESSOAL", chave: "APROPRIACAO/DECIMO_TERCEIRO", contaDebitoCodigo: "3.1.1.1.1.01.22", contaCreditoCodigo: "2.1.1.1.1.01.02", historicoPadrao: "Apropriação do 13º salário", fundamento: FUNDAMENTO, criadoPor: AUTOR });
   await declararRoteiroPatrimonial(prisma, { familia: "APROPRIACAO_PESSOAL", chave: "APROPRIACAO/FERIAS", contaDebitoCodigo: "3.1.1.1.1.01.24", contaCreditoCodigo: "2.1.1.1.1.01.03", historicoPadrao: "Apropriação das férias", fundamento: FUNDAMENTO, criadoPor: AUTOR });
+}
+
+async function roteirosDosEncargos(): Promise<void> {
+  for (const chave of ["APROPRIACAO/ENCARGOS_DECIMO_TERCEIRO", "APROPRIACAO/ENCARGOS_FERIAS"]) {
+    await declararRoteiroPatrimonial(prisma, { familia: "APROPRIACAO_PESSOAL", chave, contaDebitoCodigo: "3.1.2.1.2.01.00", contaCreditoCodigo: "2.1.1.4.2.01.00", historicoPadrao: "Encargos patronais apropriados", fundamento: "MCASP 11ª ed., Parte II, 18.3; contas do plano do TCE-PB", criadoPor: AUTOR });
+  }
+}
+
+/** Componentes do ente, aprovados por outra pessoa: dois do RPPS (o regime dos vínculos) e um do RGPS, que não entra. */
+async function componentes(opcoes: { readonly semVersaoNoSuplementar?: boolean } = {}): Promise<void> {
+  const comp = async (codigo: string, tipo: "PREVIDENCIA_PATRONAL" | "PREVIDENCIA_SUPLEMENTAR", regime: "RPPS" | "RGPS", aliquota: string | null) => {
+    const { componenteId } = await cadastrarComponenteDeEncargo(prisma, { codigo, descricao: `${codigo} (sintetico)`, tipo, regime, criadoPor: AUTOR });
+    if (aliquota === null) return;
+    const { versaoId } = await cadastrarVersaoDoEncargo(prisma, { componenteId, competenciaInicio: "2026-01", aliquota, fundamentacaoLegal: "perfil SINTETICO de teste", sintetica: true, rubricaIds: [rub["VENC"]!, rub["HEXT"]!], criadoPor: AUTOR });
+    await aprovarVersaoDoEncargo(prisma, { versaoId, criadoPor: APROVADOR });
+  };
+  await comp("RPPS-PATRONAL", "PREVIDENCIA_PATRONAL", "RPPS", "0.14");
+  await comp("RPPS-SUPLEMENTAR", "PREVIDENCIA_SUPLEMENTAR", "RPPS", opcoes.semVersaoNoSuplementar === true ? null : "0.05");
+  await comp("RGPS-PATRONAL", "PREVIDENCIA_PATRONAL", "RGPS", "0.20");
+}
+
+async function folhaFechadaComEncargos(competencia: string): Promise<void> {
+  const { folhaId } = await abrirFolha(prisma, { competencia, criadoPor: AUTOR });
+  await calcularFolha(prisma, { folhaId, criadoPor: AUTOR });
+  await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
+  await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: AUTOR });
 }
 
 async function parametroDeFerias(incluiRemuneracaoDoPeriodo: boolean): Promise<void> {
@@ -187,5 +217,53 @@ describe("M33 — apropriação mensal do 13º e das férias por competência", 
     expect(await saldoCredor("2.1.1.1.1.01.02")).toBe("0.00");
     expect(await saldoCredor("3.1.1.1.1.01.22")).toBe("-400.00");
     await expect(acertarDecimoTerceiro(prisma, { exercicio: 2026, criadoPor: AUTOR })).rejects.toThrow(/já foi acertado/);
+  });
+
+  /**
+   * t5 — ENCARGOS (MCASP 18.3). Alíquota de cada vínculo = 0,14 + 0,05 = 0,19 (o RGPS de 0,20 não entra: os vínculos são RPPS).
+   *   13º:    A 250,00 × 0,19 = 47,50          B 166,67 × 0,19 = 31,6673 → 31,67     total 79,17
+   *   férias: A 83,33 × 0,19 = 15,8327 → 15,83  B 55,56 × 0,19 = 10,5564 → 10,56      total 26,39
+   */
+  it("t5: os encargos sobre o 13º e as férias apropriados saem da alíquota que a apuração da folha aplicou a cada vínculo", async () => {
+    await roteiros();
+    await roteirosDosEncargos();
+    await parametroDeFerias(false);
+    await componentes();
+    await folhaFechadaComEncargos("2026-05");
+    await apropriarPorCompetencia(prisma, { competencia: "2026-05", criadoPor: AUTOR });
+    const r = await apropriarEncargosPorCompetencia(prisma, { competencia: "2026-05", criadoPor: AUTOR });
+    expect(r).toEqual({ competencia: "2026-05", decimoTerceiro: "79.17", ferias: "26.39", vinculos: 2 });
+
+    const itens = await prisma.itemDaApropriacaoPorCompetencia.findMany({ where: { apropriacao: { tipo: { in: ["ENCARGOS_DECIMO_TERCEIRO", "ENCARGOS_FERIAS"] } } }, select: { vinculoId: true, base: true, valor: true, aliquotaDosEncargos: true, apropriacao: { select: { tipo: true } } } });
+    const de = (v: string, t: string) => itens.find((i) => i.vinculoId === v && i.apropriacao.tipo === t)!;
+    expect([de(vA, "ENCARGOS_DECIMO_TERCEIRO").base.toFixed(2), de(vA, "ENCARGOS_DECIMO_TERCEIRO").aliquotaDosEncargos?.toFixed(6), de(vA, "ENCARGOS_DECIMO_TERCEIRO").valor.toFixed(2)]).toEqual(["250.00", "0.190000", "47.50"]);
+    expect(de(vB, "ENCARGOS_DECIMO_TERCEIRO").valor.toFixed(2)).toBe("31.67");
+    expect([de(vA, "ENCARGOS_FERIAS").valor.toFixed(2), de(vB, "ENCARGOS_FERIAS").valor.toFixed(2)]).toEqual(["15.83", "10.56"]);
+    expect(await saldoCredor("2.1.1.4.2.01.00")).toBe("105.56");
+    expect(await saldoCredor("3.1.2.1.2.01.00")).toBe("-105.56");
+
+    await expect(apropriarEncargosPorCompetencia(prisma, { competencia: "2026-05", criadoPor: AUTOR })).rejects.toThrow(/encargos sobre o 13º e as férias de 2026-05 já foram apropriados/);
+    expect((await apropriacoesDoExercicio(prisma, 2026)).map((a) => a.tipo).sort()).toEqual(["DECIMO_TERCEIRO", "ENCARGOS_DECIMO_TERCEIRO", "ENCARGOS_FERIAS", "FERIAS"]);
+  });
+
+  it("t6: sem a apropriação-base, sem roteiro, sem apuração dos encargos ou com apuração incompleta — recusa nomeada, e nada gravado", async () => {
+    await roteiros();
+    await parametroDeFerias(false);
+    await componentes({ semVersaoNoSuplementar: true });
+    const { folhaId } = await abrirFolha(prisma, { competencia: "2026-05", criadoPor: AUTOR });
+    await calcularFolha(prisma, { folhaId, criadoPor: AUTOR });
+    await fecharFolha(prisma, { folhaId, criadoPor: FECHA });
+    const enc = () => apropriarEncargosPorCompetencia(prisma, { competencia: "2026-05", criadoPor: AUTOR });
+
+    await expect(enc()).rejects.toThrow(/13º e as férias de 2026-05 ainda não foram apropriados/);
+    await apropriarPorCompetencia(prisma, { competencia: "2026-05", criadoPor: AUTOR });
+    await expect(enc()).rejects.toThrow(/roteiro dos encargos sobre o 13º e as férias não está declarado/);
+    await roteirosDosEncargos();
+    await expect(enc()).rejects.toThrow(/encargos da folha mensal de 2026-05 não foram apurados/);
+    await apurarEncargosDaFolha(prisma, { folhaId, criadoPor: AUTOR });
+    await expect(enc()).rejects.toThrow(/apuração nº 1 dos encargos de 2026-05 está incompleta/);
+    await expect(apropriarEncargosPorCompetencia(prisma, { competencia: "2026-05", criadoPor: SEM_PODER })).rejects.toThrow(/APROPRIAR_FOLHA/);
+    expect(await prisma.apropriacaoPorCompetencia.count({ where: { tipo: { in: ["ENCARGOS_DECIMO_TERCEIRO", "ENCARGOS_FERIAS"] } } })).toBe(0);
+    expect(await saldoCredor("2.1.1.4.2.01.00")).toBe("0.00");
   });
 });
