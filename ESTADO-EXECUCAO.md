@@ -108,7 +108,25 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
 - Migrations aplicadas em produção: `20261105130000`, `20261105140000`, `20261105150000`; nenhuma inacabada.
 - `/relatorios/rreo/anexo4`, `/relatorios/rreo/anexo9` e `/folha/apropriacao-por-competencia` respondem 307 (login), como esperado sem sessão.
 
-**Próximo:** C2 notas explicativas; depois as pendências da lista acima. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
+**Terceira publicação, 05/10/2026:**
+
+- Publicado `7212d15` (notas explicativas, encargos sobre 13º e férias, 1ª parcela do 13º e baixa do adiantamento, empenho
+  ordinário de uma liquidação, planejamento no portal, reprevisão no razão). Tipos aprovados nos dois recortes
+  (app-sem-rotas 281 s, rotas-geradas 243 s); Actions 37338516222 verde; `/release` = 7212d15.
+- Backup antes: `/var/backups/gestao-publica/esperanca-antes-v35c-20261005T155938Z.dump` (2,29 MB, 520 tabelas).
+  Na produção, antes: 0 reprevisões, 0 folhas, 0 liquidações; nenhuma mudança de comportamento alcança dado existente.
+- Migrations aplicadas: `20261105160000`, `20261105170000`, `20261105180000`; nenhuma inacabada.
+- `/transparencia/planejamento` 200 sem sessão; `/transparencia/planejamento/loa/2026` 404, porque a produção não tem a
+  LOA cadastrada como lei: o cadastro exige número e data do projeto, e o original do projeto não foi localizado
+  (`docs/oficial/esperanca-pb/PROJETO-LOA-2026-BUSCA.md`). A lei é conhecida (Lei 613, de 19/12/2025, Quinzenário
+  Oficial, edição extra de 19/12/2025). A LDO 2026 (Lei 576, de 16/06/2025) também não está cadastrada: faltam as datas
+  de vigência. Pendência de terceiro, sem dado inventado.
+- Medições desta rodada: dirigidos de cada unidade verdes; os 91 arquivos que liquidam, rodados depois da regra do
+  ordinário (6 fixtures de parcelas passaram a GLOBAL); `test:rapido` com os guards verdes, exceto timeouts de 5 s por
+  carga. `descritores-consistentes` estoura 5 s mesmo sozinho: medido 5,9 a 7,1 s também no commit de início da sessão
+  (`61e9a1d`), então não é efeito desta rodada.
+
+**Próximo:** A3 (restos a pagar no controle 5.3/6.3 pela norma), unidade própria; marcação do catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
