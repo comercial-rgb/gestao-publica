@@ -1,5 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { anexo3, type Anexo3 } from "../../modules/m12-relatorios/rreo-anexo3";
+import { anexo4, type Anexo4 } from "../../modules/m12-relatorios/rreo-anexo4";
 import { anexo7, type Anexo7 } from "../../modules/m12-relatorios/rreo-anexo7";
 import { anexo12, type Anexo12 } from "../../modules/m12-relatorios/rreo-anexo12";
 import { anexo8, type Anexo8 } from "../../modules/m12-relatorios/rreo-anexo8";
@@ -88,6 +89,11 @@ export async function gerarRreoAnexo3(p: {
   readonly bimestre: Bimestre;
 }): Promise<Anexo3> {
   return anexo3(cliente(), { exercicio: p.exercicio, bimestre: p.bimestre });
+}
+
+/** V35 — a LEITURA do RREO Anexo 4 (receitas e despesas previdenciárias do RPPS) para a tela. */
+export async function gerarRreoAnexo4(p: { readonly exercicio: number; readonly bimestre: Bimestre }): Promise<Anexo4> {
+  return anexo4(cliente(), { exercicio: p.exercicio, bimestre: p.bimestre });
 }
 
 /**

@@ -20,6 +20,7 @@ import { anexo8 } from "./rreo-anexo8.js";
 import { anexo11 } from "./rreo-anexo11.js";
 import { anexo12 } from "./rreo-anexo12.js";
 import { rreoAnexo14 } from "./rreo-anexo14.js";
+import { anexo4 } from "./rreo-anexo4.js";
 
 /**
  * RREO — ANEXO 14: DEMONSTRATIVO SIMPLIFICADO. Teste de IDENTIDADE: cada bloco == o campo do anexo
@@ -136,11 +137,15 @@ describe("M12 — RREO Anexo 14 (Demonstrativo Simplificado)", () => {
     expect(bloco(a14, "RCL").valor).toBe(a3.rcl.total12m);
   });
 
-  it("t4 (declara a ausência): o bloco RPPS é interruptor ANEXO4-PENDENTE, não zero", async () => {
+  it("t4 (V35): o bloco RPPS repete o Anexo 4 — receitas, despesas e resultado de cada fundo, sem recalcular", async () => {
     const a14 = await rreoAnexo14(prisma, { exercicio: 2026, bimestre: 1 });
-    const rpps = bloco(a14, "RPPS");
-    expect(rpps.interruptor).toBe(true);
-    expect(rpps.valor).toBe("—"); // declarado ausente, não "0.00"
-    expect(a14.notas.some((n) => n.startsWith("ANEXO4-PENDENTE"))).toBe(true);
+    const a4 = await anexo4(prisma, { exercicio: 2026, bimestre: 1 });
+    const total = <T extends { readonly chave: string }>(ls: readonly T[]) => ls.find((l) => l.chave === "TOTAL")!;
+    expect(bloco(a14, "RPPS_CAP_RECEITAS").valor).toBe(total(a4.capitalizacao.receitas).realizadaAteBimestre);
+    expect(bloco(a14, "RPPS_CAP_DESPESAS").valor).toBe(total(a4.capitalizacao.despesas).liquidadaAteBimestre);
+    expect(bloco(a14, "RPPS_CAP_RESULTADO").valor).toBe(a4.capitalizacao.resultado.executado);
+    expect(bloco(a14, "RPPS_REP_RESULTADO").valor).toBe(a4.reparticao.resultado.executado);
+    expect(bloco(a14, "RPPS_CAP_RECEITAS").interruptor).toBe(false);
+    expect(a14.notas.some((n) => n.startsWith("ANEXO4-PENDENTE"))).toBe(false);
   });
 });

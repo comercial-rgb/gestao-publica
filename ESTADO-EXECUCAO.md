@@ -75,8 +75,10 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
   - a 1ª parcela do 13º em conta de adiantamento;
   - para Esperança, o parâmetro de férias, que depende do Estatuto dos Servidores, e o roteiro, que depende do regime (RPPS ou RGPS).
 - **Lei 613/2025, art. 5º, III, feito depois do registro:** a realocação pode apontar a autorização da LOA e corre contra o mesmo percentual, num limite próprio.
-- **C1 DMPL (facultativa), C2 notas explicativas, C4 RREO anexos 4 e 10 (RPPS do FUNPREVE), C6 SIOPE, C7 SIOPS,
-  C9 publicação de PPA/LDO/LOA.**
+- **C4, feito depois do registro:** RREO Anexo 4 (RPPS) pelo mapeamento oficial da STN, e o bloco RPPS do Anexo 14. Resta:
+  - o Anexo 10 (projeção atuarial), que depende da avaliação atuarial do FUNPREVE, documento de terceiro;
+  - o Anexo 9 do RREO (operações de crédito e despesas de capital), ainda não construído.
+- **C1 DMPL (facultativa), C2 notas explicativas, C6 SIOPE, C7 SIOPS, C9 publicação de PPA/LDO/LOA.**
 - **B6 empenho estimativo e global; A3 classificação da virada; reprevisão no razão; previsão para bases antigas.**
 - **Marcação do catálogo** com as evidências desta rodada.
 

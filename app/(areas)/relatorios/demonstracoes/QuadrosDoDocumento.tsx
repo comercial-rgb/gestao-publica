@@ -49,6 +49,15 @@ export function QuadrosDoDocumento({
         <BotaoPdf href={`${rotaPdf}?exercicio=${String(exercicio)}`} />
         <BotaoCsv csv={csvDasTabelas(t)} nomeArquivo={`${nomeArquivo}-${String(exercicio)}.csv`} />
       </div>
+      <SecoesDoDocumento tabelas={t} />
+    </div>
+  );
+}
+
+/** V35 — as seções e as notas de um documento já montado em tabelas, com a tabela padrão (também usada pelo RREO). */
+export function SecoesDoDocumento({ tabelas: t }: { readonly tabelas: TabelasDoDocumento }): React.ReactElement {
+  return (
+    <>
       {t.secoes.map((s, n) => {
         const colunas: readonly ColunaTabela<LinhaDaSecao>[] = s.colunas.map((c, k) => ({
           chave: `c${String(k)}`,
@@ -64,7 +73,7 @@ export function QuadrosDoDocumento({
             linhas={s.linhas.map((celulas, i) => ({ i, celulas }))}
             keyDe={(l) => String(l.i)}
             ehTotal={(l) => totais.has(l.i)}
-            legenda={s.titulo ?? titulo}
+            legenda={s.titulo ?? t.titulo}
           />
         );
       })}
@@ -73,7 +82,7 @@ export function QuadrosDoDocumento({
           <li key={nota}>{nota}</li>
         ))}
       </ul>
-    </div>
+    </>
   );
 }
 

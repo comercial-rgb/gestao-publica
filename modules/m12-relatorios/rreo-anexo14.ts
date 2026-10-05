@@ -6,6 +6,7 @@ import { anexo6AbaixoDaLinha } from "./rreo-anexo6-abaixo.js";
 import { anexo7 } from "./rreo-anexo7.js";
 import { anexo8 } from "./rreo-anexo8.js";
 import { anexo11 } from "./rreo-anexo11.js";
+import { anexo4 } from "./rreo-anexo4.js";
 import { anexo12 } from "./rreo-anexo12.js";
 import type { Bimestre } from "./rreo-anexo1.js";
 import { situacaoDePiso, type LinhaSimplificada } from "./simplificado.js";
@@ -23,7 +24,7 @@ import { situacaoDePiso, type LinhaSimplificada } from "./simplificado.js";
  * ═══ ⚠️ OS DOIS FUROS QUE O SIMPLIFICADO DECLARA (não zera) ═══
  * · RESULTADO NOMINAL ACIMA (XXVII) é `null` (o XXV é interruptor desde a 7.8-a). O simplificado usa
  *   o nominal CONCRETO do abaixo-da-linha (variação da DCL) e nomeia que o de-cima não fecha.
- * · RPPS (o Anexo 4, previdenciário) não existe ainda — `ANEXO4-PENDENTE`. O simplificado DECLARA a
+ * · RPPS: V35 — vem do Anexo 4 (receitas realizadas, despesas e resultado de cada fundo). Antes, `ANEXO4-PENDENTE`: o simplificado DECLARAVA a
  *   ausência do bloco em vez de publicá-lo zerado, que afirmaria "não há RPPS" quando o que há é
  *   "ainda não medimos".
  * · MDE-25: o Anexo 8 expõe o indicador dos PROFISSIONAIS (FUNDEB, 70%), não o % aplicado no mínimo
@@ -54,7 +55,7 @@ export async function rreoAnexo14(
   leitor: Tx,
   p: { readonly exercicio: number; readonly bimestre: Bimestre }
 ): Promise<Anexo14Rreo> {
-  const [a1, a6, a6b, a7, a8, a12, a3, a11] = await Promise.all([
+  const [a1, a6, a6b, a7, a8, a12, a3, a11, a4] = await Promise.all([
     anexo1(leitor, p),
     anexo6(leitor, p),
     anexo6AbaixoDaLinha(leitor, p),
@@ -63,6 +64,7 @@ export async function rreoAnexo14(
     anexo12(leitor, p),
     anexo3(leitor, p),
     anexo11(leitor, p),
+    anexo4(leitor, p),
   ]);
 
   const RREO1 = { fonte: "RREO Anexo 1", href: "/relatorios/rreo/anexo1" };
@@ -72,6 +74,10 @@ export async function rreoAnexo14(
   const RREO12 = { fonte: "RREO Anexo 12", href: "/relatorios/rreo/anexo12" };
   const RREO3 = { fonte: "RREO Anexo 3", href: "/relatorios/rreo/anexo3" };
   const RREO11 = { fonte: "RREO Anexo 11", href: "/relatorios/rreo/anexo11" };
+  const RREO4 = { fonte: "RREO Anexo 4", href: "/relatorios/rreo/anexo4" };
+  // a despesa do resultado previdenciário: liquidada do 1º ao 5º bimestre, empenhada no 6º (MDF, Tabela 4, nota 2)
+  const despesaDoResultado = (l: { readonly liquidadaAteBimestre: string; readonly empenhadaAteBimestre: string }) => (p.bimestre === 6 ? l.empenhadaAteBimestre : l.liquidadaAteBimestre);
+  const totalDe = <T extends { readonly chave: string }>(ls: readonly T[]) => ls.find((l) => l.chave === "TOTAL")!;
 
   const linhas: LinhaSimplificada[] = [
     // ── BALANÇO ORÇAMENTÁRIO (← Anexo 1) ──
@@ -123,8 +129,13 @@ export async function rreoAnexo14(
     // ── RCL (← Anexo 3) ──
     valor("RCL", "Receita Corrente Líquida (RCL)", RREO3.fonte, RREO3.href, a3.rcl.total12m),
 
-    // ── RPPS — o Anexo 4 (previdenciário) ainda não existe: DECLARA a ausência ──
-    valor("RPPS", "Regime Próprio de Previdência (RPPS) — Anexo 4", "— (pendente)", "", "—", true),
+    // ── RPPS (← Anexo 4): receitas realizadas, despesas e resultado de cada fundo ──
+    valor("RPPS_CAP_RECEITAS", "RPPS, fundo em capitalização — receitas previdenciárias realizadas", RREO4.fonte, RREO4.href, totalDe(a4.capitalizacao.receitas).realizadaAteBimestre),
+    valor("RPPS_CAP_DESPESAS", p.bimestre === 6 ? "RPPS, fundo em capitalização — despesas previdenciárias empenhadas" : "RPPS, fundo em capitalização — despesas previdenciárias liquidadas", RREO4.fonte, RREO4.href, despesaDoResultado(totalDe(a4.capitalizacao.despesas))),
+    valor("RPPS_CAP_RESULTADO", "RPPS, fundo em capitalização — resultado previdenciário", RREO4.fonte, RREO4.href, a4.capitalizacao.resultado.executado),
+    valor("RPPS_REP_RECEITAS", "RPPS, fundo em repartição — receitas previdenciárias realizadas", RREO4.fonte, RREO4.href, totalDe(a4.reparticao.receitas).realizadaAteBimestre),
+    valor("RPPS_REP_DESPESAS", p.bimestre === 6 ? "RPPS, fundo em repartição — despesas previdenciárias empenhadas" : "RPPS, fundo em repartição — despesas previdenciárias liquidadas", RREO4.fonte, RREO4.href, despesaDoResultado(totalDe(a4.reparticao.despesas))),
+    valor("RPPS_REP_RESULTADO", "RPPS, fundo em repartição — resultado previdenciário", RREO4.fonte, RREO4.href, a4.reparticao.resultado.executado),
   ];
 
   const notas: string[] = [
@@ -136,9 +147,6 @@ export async function rreoAnexo14(
     "MDE-25-NAO-CONSOLIDADO: o Anexo 8 é dono do indicador dos PROFISSIONAIS da educação (FUNDEB, " +
       "70%), não do percentual aplicado no mínimo de 25% (CF 212) — este não é campo do Anexo 8. O " +
       "simplificado mostra o que o dono tem e não recalcula o 25% por conta própria.",
-    "ANEXO4-PENDENTE: o demonstrativo previdenciário (RREO Anexo 4, RPPS/IPSEM) aguarda o universo " +
-      "de dados do regime próprio. O bloco RPPS é DECLARADO ausente, não publicado zerado — zero " +
-      "afirmaria que não há regime próprio, quando o que há é que ainda não o medimos.",
   ];
 
   return { exercicio: p.exercicio, bimestre: p.bimestre, linhas, notas };
