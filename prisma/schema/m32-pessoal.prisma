@@ -560,6 +560,8 @@ model Servidor {
 /// `dataAdmissao` fica porque é o INSTANTE DE NASCIMENTO do vínculo, não um
 /// estado que muda; é o mesmo papel de `Convenio.vigenciaInicio`.
 model Vinculo {
+  /// V35 — os duodécimos de 13º e férias apropriados a este vínculo. VIRTUAL.
+  apropriacoesPorCompetencia ItemDaApropriacaoPorCompetencia[] @relation("ApropriacaoDoVinculo")
   id String @id @default(cuid())
 
   servidorId String

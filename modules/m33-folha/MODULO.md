@@ -1334,3 +1334,44 @@ O código da remessa de pessoal (MM + oito posições) de cada liquidação de f
 por empenho da folha; cada uma recebe o seu. O mês do código é o da competência da folha (conferido também por
 CHECK). Folha de outro sistema: a liquidação é achada pelo número no exercício, e o código preservado.
 Tela: Folha › Agrupamento no Tribunal (o que falta no mês e o que foi informado).
+
+## V35 — a apropriação mensal do 13º e das férias (MCASP 11ª ed., Parte II, item 18)
+
+`apropriacao-por-competencia.ts`. O MCASP trata o 13º e as férias como passivos apropriados por competência:
+- a cada mês, o duodécimo: D VPD / C pessoal a pagar;
+- a liquidação da folha que os paga baixa o passivo, em vez de lançar VPD de novo;
+- o 13º apropriado fecha o ano em zero.
+
+**A conta, por vínculo, sobre a folha mensal (e a complementar) da competência, já fechadas:**
+- **base:** as linhas do contracheque fechado cujas rubricas são as da base do 13º vigente. É a mesma base do 13º,
+  sem uma segunda.
+- **13º:** base / `avosNoExercicio` do parâmetro do 13º.
+- **férias:** base × (inclui remuneração ? denominador : 0 + numerador) / (meses × denominador). Os números vêm do
+  `ParametroDaApropriacaoDeFerias`, declarado pelo ente com o ato. A conta é razão de inteiros, sem float.
+- Um lançamento por tipo, pelo roteiro declarado `APROPRIACAO_PESSOAL`, no último instante do mês civil.
+- Os itens por vínculo ficam gravados: são os saldos por servidor.
+
+**A baixa** é configuração, não código. O grupo de empenho da folha que paga o 13º (ou o abono) declara:
+- como conta debitada, o passivo apropriado (2.1.1.1.1.01.02 ou .03);
+- como creditada, a obrigação a pagar (outra conta, por exemplo 2.1.1.1.1.01.01).
+
+O `roteiroLiquidacaoDaFolha` lança o que o grupo declara.
+
+**O acerto** (`acertarDecimoTerceiro`) zera o 13º apropriado em 31/12, para mais ou para menos. Recusa:
+- sem a folha do 13º fechada;
+- sem nenhuma baixa no passivo no exercício. Acertar estornaria o ano inteiro e esconderia um grupo mal configurado.
+
+**Pendências nomeadas:**
+- encargos patronais sobre 13º e férias (MCASP 18.3);
+- adiantamento da 1ª parcela em conta de adiantamento (1.1.3.1.1). Hoje a 1ª parcela baixa o passivo direto;
+- para Esperança: o parâmetro de férias depende do Estatuto dos Servidores do município (não obtido). O roteiro
+  depende do regime: 3.1.1.1 para o RPPS, 3.1.1.2 para o RGPS.
+
+Teste: `m33-apropriacao-por-competencia.test.ts`, em folha real:
+- dois vínculos; a hora extra fora da base prova a seleção das rubricas;
+- arredondamento por vínculo;
+- versão 2 do parâmetro;
+- recusas nomeadas e autorização;
+- o acerto em zero.
+
+Três mutações provadas: a seleção da base, a recusa sem baixa e a remuneração do período.

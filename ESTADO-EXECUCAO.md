@@ -70,11 +70,10 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
 
 ### Pendências reais (nomeadas)
 
-- **B5, provisão mensal de férias e 13º.** Inventário feito, nada construído. Falta:
-  - parâmetro de férias;
-  - família de roteiro;
-  - serviço de apropriação por contracheque;
-  - variante da liquidação da folha que baixa o passivo.
+- **B5, feito depois do registro:** apropriação do 13º e das férias por competência, em `/folha/apropriacao-por-competencia`. Restam:
+  - encargos sobre 13º e férias (MCASP 18.3);
+  - a 1ª parcela do 13º em conta de adiantamento;
+  - para Esperança, o parâmetro de férias, que depende do Estatuto dos Servidores, e o roteiro, que depende do regime (RPPS ou RGPS).
 - **Lei 613/2025, art. 5º, III:** remanejamento, transposição e transferência no mesmo percentual. A realocação guarda
   a lei como texto, não como `LeiCredito`.
 - **C1 DMPL (facultativa), C2 notas explicativas, C4 RREO anexos 4 e 10 (RPPS do FUNPREVE), C6 SIOPE, C7 SIOPS,

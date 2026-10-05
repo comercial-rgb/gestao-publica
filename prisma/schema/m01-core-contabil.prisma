@@ -158,6 +158,9 @@ enum NaturezaLancamento {
 /// entidade DONA do fato, com LEITOR NOMEADO. Ver `MODULO.md` (§ a competência) e a migração
 /// `*_remove_competencia_lancamento`.
 model LancamentoContabil {
+  /// V35 — a apropriação do 13º e das férias, e o acerto do 13º, que geraram este lançamento. VIRTUAIS.
+  apropriacaoDePessoal ApropriacaoPorCompetencia? @relation("LancamentoDaApropriacaoDePessoal")
+  acertoDo13 AcertoDoDecimoTerceiro? @relation("LancamentoDoAcertoDo13")
   /// V35 — a apuração do ajuste para perdas da dívida ativa que gerou este lançamento. VIRTUAL.
   ajusteDePerdas ApuracaoDoAjusteDePerdas? @relation("LancamentoDoAjusteDePerdas")
   /// V35 — a dedução da receita que este lançamento escritura. VIRTUAL.

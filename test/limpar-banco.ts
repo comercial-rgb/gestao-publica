@@ -340,6 +340,11 @@ export const TABELAS = [
   // V35 — o ajuste para perdas: a apuração aponta o percentual e o lançamento; sai antes dos dois
   "ApuracaoDoAjusteDePerdas",
   "PercentualDePerdaDaDividaAtiva",
+  // V35 — a apropriação do 13º e das férias: itens antes da apropriação, ela antes do parâmetro e do lançamento
+  "ItemDaApropriacaoPorCompetencia",
+  "ApropriacaoPorCompetencia",
+  "ParametroDaApropriacaoDeFerias",
+  "AcertoDoDecimoTerceiro",
   "DeclaracaoDeTitularDaConta",
   "VersaoDaEntidadeContabil",
   // V6 P2 — M32 pessoal (filhas antes das mães)

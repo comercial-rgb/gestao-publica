@@ -1,0 +1,83 @@
+// ============================================================================
+// V35 — A APROPRIAÇÃO MENSAL DO 13º SALÁRIO E DAS FÉRIAS (MCASP 11ª ed., Parte II, item 18).
+//
+// "O 13º salário e férias são passivos derivados de apropriações por competência": a cada mês trabalhado
+// reconhece-se o duodécimo (D VPD / C pessoal a pagar), e a liquidação da folha que os paga BAIXA o
+// passivo apropriado em vez de lançar VPD de novo. No encerramento não deve sobrar saldo do 13º apropriado.
+//
+// Nenhum número no código: a fração do 13º é o `avosNoExercicio` do parâmetro do 13º, e a base são as
+// rubricas da base dele; a fração das férias, o abono constitucional e a inclusão da remuneração do período
+// vêm do parâmetro de férias abaixo, declarado com o ato do ente. Append-only.
+// ============================================================================
+
+model ParametroDaApropriacaoDeFerias {
+  id                         String   @id @default(cuid())
+  exercicio                  Int
+  versao                     Int
+  /// Meses do período aquisitivo (o divisor do duodécimo).
+  mesesDoPeriodoAquisitivo   Int
+  /// O abono constitucional como fração: numerador / denominador (CF, art. 7º, XVII: "um terço a mais").
+  abonoNumerador             Int
+  abonoDenominador           Int
+  /// true: apropria também a remuneração do período de férias (MCASP 18.2); false: só o abono, quando a
+  /// remuneração do mês de gozo é paga pela rubrica ordinária da folha e já é VPD da sua competência.
+  incluiRemuneracaoDoPeriodo Boolean
+  fundamento                 String
+  criadoEm                   DateTime @default(now())
+  criadoPor                  String
+
+  apropriacoes ApropriacaoPorCompetencia[]
+
+  @@unique([exercicio, versao])
+}
+
+enum TipoDaApropriacaoDePessoal {
+  DECIMO_TERCEIRO
+  FERIAS
+}
+
+model ApropriacaoPorCompetencia {
+  id                          String                          @id @default(cuid())
+  competencia                 String                          @db.VarChar(7)
+  exercicio                   Int
+  tipo                        TipoDaApropriacaoDePessoal
+  total                       Decimal                         @db.Decimal(18, 2)
+  parametroDoDecimoTerceiroId String
+  parametroDeFeriasId         String?
+  parametroDeFerias           ParametroDaApropriacaoDeFerias? @relation(fields: [parametroDeFeriasId], references: [id])
+  lancamentoId                String?                         @unique
+  lancamento                  LancamentoContabil?             @relation("LancamentoDaApropriacaoDePessoal", fields: [lancamentoId], references: [id])
+  criadoEm                    DateTime                        @default(now())
+  criadoPor                   String
+
+  itens ItemDaApropriacaoPorCompetencia[]
+
+  @@unique([competencia, tipo])
+  @@index([exercicio, tipo])
+}
+
+/// O duodécimo de cada vínculo — os saldos por servidor que a prestação de contas pede.
+model ItemDaApropriacaoPorCompetencia {
+  id            String                    @id @default(cuid())
+  apropriacaoId String
+  apropriacao   ApropriacaoPorCompetencia @relation(fields: [apropriacaoId], references: [id])
+  vinculoId     String
+  vinculo       Vinculo                   @relation("ApropriacaoDoVinculo", fields: [vinculoId], references: [id])
+  base          Decimal                   @db.Decimal(18, 2)
+  valor         Decimal                   @db.Decimal(18, 2)
+
+  @@unique([apropriacaoId, vinculoId])
+  @@index([vinculoId])
+}
+
+/// O acerto de fim de exercício do 13º apropriado: o que sobrou (ou faltou) depois da baixa pela folha do 13º.
+model AcertoDoDecimoTerceiro {
+  id           String              @id @default(cuid())
+  exercicio    Int                 @unique
+  /// Saldo credor do passivo apropriado em 31/12, antes do acerto.
+  saldoAntes   Decimal             @db.Decimal(18, 2)
+  lancamentoId String?             @unique
+  lancamento   LancamentoContabil? @relation("LancamentoDoAcertoDo13", fields: [lancamentoId], references: [id])
+  criadoEm     DateTime            @default(now())
+  criadoPor    String
+}
