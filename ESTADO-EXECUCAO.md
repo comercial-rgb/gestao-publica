@@ -126,6 +126,29 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
   carga. `descritores-consistentes` estoura 5 s mesmo sozinho: medido 5,9 a 7,1 s também no commit de início da sessão
   (`61e9a1d`), então não é efeito desta rodada.
 
+### Base fictícia de Esperança (local, pedido do usuário em 05/10/2026)
+
+Para ver e executar o que, na base real, espera documento de terceiro. Banco `gestao_publica_esperanca_ficticio`, cópia
+local de `gestao_publica_esperanca_ensaio_v35` (a LOA real carregada) com migrations, SQL manual, tipos de consignação e
+licença de demonstração `DEMO-FICTICIO-2026`. **Nunca em produção**: o portal é público. Semeador
+`scripts/demonstracao/semear-esperanca-ficticio.ts` (recusa outro banco; exige `ANEXOS_DIR`; idempotente, segunda
+execução criou 0 itens), tudo pelos serviços das telas. Real: Lei 613/2025 (número, data, veículo, PDF pelo SHA-256 do
+manifesto), sanção da LDO (16/06/2025), tabelas IRRF/RGPS 2026, alíquotas da Lei 8.212. Fictício e marcado no registro:
+projeto da LOA, vigência e protocolo da LDO, lei do PPA, projeção atuarial do RPPS, estatuto (13º e férias), FAP,
+servidores, credores, empenhos, reprevisão, nota NE-1. Usuários: contador, atestador, liquidante e aprovador
+`@ficticio.local` (senha em `FICTICIO_SENHA`, padrão no script); o administrador é o da base.
+- Estado semeado: folhas mensais 01 a 09/2026 fechadas, empenhadas, atestadas e liquidadas, com encargos; adiantamento
+  do 13º (06/2026, 2.250,00); apropriação do 13º, das férias e dos encargos de 01 a 08; empenhos FIC-001 (ordinário,
+  liquidado 2.000 de 3.000), FIC-002 (ordinário, sem liquidação), FIC-003 (global, 4.000 de 12.000); reprevisão
+  +500.000,00 em 17115111/500, no razão (D 5.2.1.2.1.01.00 / C 6.2.1.1.0.00.00).
+- Ensaio numa cópia descartável (apagada): apropriação e encargos de 09 OK; 2ª liquidação do FIC-001 recusada com o
+  motivo do MCASP; folha do 13º (4.500,00, empenha 2.250,00), atesto, liquidação, baixa do adiantamento (2.250,00) e
+  acerto OK. O acerto sem as competências 10 a 12 apropriadas sai com saldo devedor (1.214,46): apropriar antes.
+- Servido em `next dev -p 3011` com `DATABASE_URL` e `ANEXOS_DIR` da base fictícia; portal, LOA 2026, apropriação por
+  competência e notas conferidos logado. `tsc -p tsconfig.scripts.json` verde.
+- Fora do alcance de dado fictício: o leiaute do SIOPE e o do SIOPS (formato de arquivo, não dado — inventá-lo seria
+  inventar norma) e o Anexo 10 do RREO, que não tem tela; a projeção fictícia aparece no anexo da LDO.
+
 **Próximo:** A3 (restos a pagar no controle 5.3/6.3 pela norma), unidade própria; marcação do catálogo. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
