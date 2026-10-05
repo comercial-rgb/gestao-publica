@@ -78,8 +78,16 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
 - **C4, feito depois do registro:** RREO Anexo 4 (RPPS) pelo mapeamento oficial da STN, e o bloco RPPS do Anexo 14. Resta:
   - o Anexo 10 (projeção atuarial), que depende da avaliação atuarial do FUNPREVE, documento de terceiro;
 - **RREO Anexo 9, feito depois do registro:** regra de ouro, pelo mapeamento oficial. Os incentivos fiscais a contribuinte ficam em zero, com nota: é informação gerencial que a MSC não carrega.
-- **C1 DMPL (facultativa), C2 notas explicativas, C6 SIOPE, C7 SIOPS, C9 publicação de PPA/LDO/LOA.**
-- **B6 empenho estimativo e global; A3 classificação da virada; reprevisão no razão; previsão para bases antigas.**
+- **C2 notas explicativas, feito depois do registro** (`b9d2b4f`): `/relatorios/demonstracoes/notas-explicativas`, MCASP Parte V, item 8.
+- **Encargos sobre 13º e férias, feito** (`173a0d7f`, MCASP 18.3), com a alíquota de cada vínculo tirada da apuração dos encargos da folha.
+- **1ª parcela do 13º, feito** (`5cdfa7f4`, MCASP 18.1). Defeito medido e corrigido: a folha do 13º empenhava o bruto e a 1ª parcela entrava duas vezes na despesa. Agora há também a baixa do adiantamento concedido.
+- **B6, feito no que o manual permite conferir:** o empenho ordinário se liquida uma vez (MCASP, Parte I, 4.4.2.1); global e estimativo aceitam parcelas.
+- **C9, feito:** `/transparencia/planejamento` (LRF, art. 48) com PPA, LDO sancionada (oito anexos em PDF) e LOA aprovada (resumo, anexos da Lei 4.320 e documentos).
+- **C6 SIOPE, bloqueado por terceiro:** o arquivo de importação da remuneração tem leiaute contraditório no manual (Quadro 11 lista 18 campos; o exemplo traz 19, com um texto a mais depois da situação). O manual manda gerar o leiaute exportando do próprio SIOPE: falta um arquivo exportado pelo SIOPE de Esperança. As planilhas de valores ("V") dependem da Tabela 2 do FNDE, também não obtida. Os dados de MDE já saem no RREO Anexo 8.
+- **C7 SIOPS:** sem leiaute de importação obtido; os dados de saúde saem no RREO Anexo 12.
+- **A3, a virada dos restos a pagar pela norma:** o MCASP (Parte I, 4.7.6) manda, no encerramento, zerar os RP pagos e cancelados contra a inscrição, transferir os RPNP liquidados para RPP, e na abertura levar 5.3.1.1 a 5.3.1.2 e 5.3.1.7 a 5.3.1.1. Medido: a inscrição de restos a pagar (`encerrarExercicioComRestos`) não lança nas classes 5.3/6.3; os restos vivem no razão próprio (`MovimentoRestosAPagar`), e a classificação da virada só ENCERRA ou deixa o saldo (TRANSFERE). Levar os restos ao controle 5.3/6.3 pela norma pede uma família de roteiro declarado com os pares de contas, e a conferência com a MSC: unidade própria.
+- **C1 DMPL (facultativa); reprevisão no razão; previsão para bases antigas.**
+- **Pendência nomeada (M33):** a apropriação da folha de adiantamento do 13º ainda aceita grupo cuja conta não é adiantamento concedido; a recusa está só na baixa.
 - **Marcação do catálogo** com as evidências desta rodada.
 
 ### Próximo passo exato

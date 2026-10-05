@@ -2383,6 +2383,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferirLimiteDaRealocacao: "composável interno (V35 — o limite da LOA para a realocação por decreto, chamado dentro do registro da realocação, que já autorizou REGISTRAR_REALOCACAO_DE_DOTACAO)",
   conferirLimiteDaLoa: "composável interno (V35 — o guard do limite da LOA, chamado dentro do executarCredito, que já autorizou EXECUTAR_CREDITO)",
   apuracoesDoAjusteDePerdas: "leitura (V35 — as apurações do ajuste para perdas, com a metodologia; não muta)",
+  baixarAnexoPublicoDaLoa: "leitura pública (V35 C9 — o documento de LOA com lei de aprovação, sem sessão; qualquer outro anexo responde inexistente; não muta)",
   notasExplicativas: "leitura (V35 C2 — as notas explicativas às DCASP, redigidas e do sistema; não muta)",
   apropriacoesDoExercicio: "leitura (V35 — as apropriações do 13º e das férias do exercício; não muta)",
   deducoesRealizadas: "leitura (V35 — as deduções da receita realizadas no exercício, com o estorno com sinal; não muta)",

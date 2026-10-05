@@ -61,6 +61,12 @@ const ABERTAS: readonly Familia[] = [
     href: "/transparencia/contratos",
   },
   {
+    titulo: "Planejamento e orçamento",
+    descricao:
+      "Plano Plurianual, Lei de Diretrizes Orçamentárias com seus anexos e Lei Orçamentária Anual aprovada, com receita prevista, despesa fixada e os anexos da Lei 4.320/1964.",
+    href: "/transparencia/planejamento",
+  },
+  {
     titulo: "Demonstrativos fiscais",
     descricao:
       "Relatório Resumido da Execução Orçamentária (RREO) e Relatório de Gestão Fiscal (RGF), em PDF (LC 131/2009).",

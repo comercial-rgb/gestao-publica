@@ -457,6 +457,21 @@ export async function baixarAnexo(
 }
 
 /**
+ * V35 C9 — O DOCUMENTO DA LOA APROVADA, SEM SESSÃO (LRF, art. 48: os orçamentos são instrumentos de transparência,
+ * com ampla divulgação). Só sai o anexo que pertence a uma LOA com lei de aprovação registrada; qualquer outro
+ * anexo — de processo, de pessoa, de LOA ainda em projeto — responde como inexistente.
+ */
+export async function baixarAnexoPublicoDaLoa(prisma: PrismaClient, anexoId: string): Promise<AnexoEntregue | null> {
+  const a = await prisma.anexo.findUnique({
+    where: { id: anexoId },
+    select: { id: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, leiOrcamentariaAnual: { select: { aprovacao: { select: { id: true } } } } },
+  });
+  if (a === null || a.leiOrcamentariaAnual?.aprovacao == null) return null;
+  const conteudo = await lerArquivo(a.id, a.sha256);
+  return { id: a.id, nomeOriginal: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, conteudo };
+}
+
+/**
  * QUEM PODE VER UM COMUNICADO: o setor remetente, os destinatários e quem tem
  * permissão global. É a regra do M23, e ela mora aqui porque é aqui que o anexo
  * pergunta — quando o M23 crescer, ela se muda para lá inteira, não se duplica.

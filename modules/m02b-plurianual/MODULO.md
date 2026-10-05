@@ -245,3 +245,19 @@ demonstrativos de valor, e não foram gerados.
 
 Limite de fonte: o leiaute segue a Lei 4.320/64 e os títulos oficiais; o modelo gráfico oficial não
 está transcrito aqui.
+
+## V35 C9 — o planejamento no portal da transparência (LRF, art. 48)
+
+`/transparencia/planejamento`, sem sessão (porta `lib/portas/planejamento-publico.ts`). Só o que virou lei:
+- **PPA:** quadriênio, lei e data de publicação;
+- **LDO sancionada** (`dataSancao` registrada): os oito anexos em PDF, pelo mesmo motor da rota interna
+  (`/transparencia/planejamento/ldo/<id>/<anexo>`);
+- **LOA com lei de aprovação:** número da lei, sanção, publicação e veículo; o resumo e os anexos da Lei 4.320/1964
+  pela mesma montagem e conferência da tela interna (`loaParaTela`, em `/transparencia/planejamento/loa/<exercício>`);
+  e os documentos anexados à LOA (`/transparencia/planejamento/documento/<id>`).
+
+O documento público passa por `baixarAnexoPublicoDaLoa` (M22): só sai anexo de LOA aprovada; qualquer outro anexo
+responde 404, como "não existe". `attachment` e `nosniff`, como na rota interna. Projeto em tramitação, LDO sem
+sanção e exercício sem lei: fora do portal.
+
+Pendência: PPA e LDO não têm documentos anexados no cadastro (só a LOA tem); a lei do PPA aparece pela referência.

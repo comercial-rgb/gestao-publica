@@ -60,7 +60,11 @@ export interface LoaDaTela {
 
 export async function lerLoa(p: { readonly exercicio: number }): Promise<LoaDaTela> {
   await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
-  const l = await loaDoExercicio(cliente(), { exercicio: p.exercicio });
+  return loaParaTela(await loaDoExercicio(cliente(), { exercicio: p.exercicio }));
+}
+
+/** V35 C9 — a mesma conversão para a tela interna e para o portal da transparência: uma LOA, uma forma. */
+export function loaParaTela(l: Awaited<ReturnType<typeof loaDoExercicio>>): LoaDaTela {
   return {
     exercicio: l.exercicio,
     resumo: {
