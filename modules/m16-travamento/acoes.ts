@@ -1163,6 +1163,8 @@ export type NomeDeServico =
   | "apurarAjusteDePerdas"
   | "redigirNotaExplicativa"
   | "retirarNotaExplicativa"
+  | "registrarProjecaoAtuarialDoRreo"
+  | "retirarProjecaoAtuarialDoRreo"
   // V35 — a apropriação mensal do 13º e das férias
   | "declararParametroDeFerias"
   | "apropriarPorCompetencia"
@@ -1936,6 +1938,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V35 C2 — redigir e retirar notas explicativas é configurar o conjunto das demonstrações: a mesma autoridade.
   redigirNotaExplicativa: "CADASTRAR_LINHA_DEMONSTRATIVO",
   retirarNotaExplicativa: "CADASTRAR_LINHA_DEMONSTRATIVO",
+  registrarProjecaoAtuarialDoRreo: "CADASTRAR_LINHA_DEMONSTRATIVO",
+  retirarProjecaoAtuarialDoRreo: "CADASTRAR_LINHA_DEMONSTRATIVO",
   // V35 — o parâmetro das férias é o par do parâmetro do 13º: o mesmo ato do ente (o estatuto) sobre o mesmo benefício anual.
   declararParametroDeFerias: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO",
   // V35 — apropriar o 13º e as férias por competência, e acertar o 13º no fim do ano, é apropriar a folha na contabilidade.
@@ -2384,6 +2388,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferirLimiteDaLoa: "composável interno (V35 — o guard do limite da LOA, chamado dentro do executarCredito, que já autorizou EXECUTAR_CREDITO)",
   apuracoesDoAjusteDePerdas: "leitura (V35 — as apurações do ajuste para perdas, com a metodologia; não muta)",
   baixarAnexoPublicoDaLoa: "leitura pública (V35 C9 — o documento de LOA com lei de aprovação, sem sessão; qualquer outro anexo responde inexistente; não muta)",
+  anexo10: "leitura (V35 — RREO Anexo 10, a projeção atuarial registrada com o resultado e o saldo derivados; não muta)",
   notasExplicativas: "leitura (V35 C2 — as notas explicativas às DCASP, redigidas e do sistema; não muta)",
   apropriacoesDoExercicio: "leitura (V35 — as apropriações do 13º e das férias do exercício; não muta)",
   deducoesRealizadas: "leitura (V35 — as deduções da receita realizadas no exercício, com o estorno com sinal; não muta)",

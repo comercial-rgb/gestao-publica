@@ -1,0 +1,57 @@
+// ============================================================================
+// V35 — RREO, ANEXO 10: DEMONSTRATIVO DA PROJEÇÃO ATUARIAL DO REGIME PRÓPRIO DE PREVIDÊNCIA (LRF, art. 53, § 1º, II).
+//
+// Regras do Siconfi (STN, "Regras Gerais e Instruções de Preenchimento — RREO", 2025, Anexo 10):
+//   1. só no último bimestre;
+//   2. projeção de pelo menos 75 anos, a partir do ano ANTERIOR ao do demonstrativo;
+//   3. saldo financeiro (d) = (d do exercício anterior) + resultado (c); na primeira linha, o "d anterior" é o valor
+//      registrado nos controles do ente;
+//   4. com segregação da massa, uma tabela para o FUNDO EM CAPITALIZAÇÃO (Plano Previdenciário) e outra para o FUNDO EM
+//      REPARTIÇÃO (Plano Financeiro); sem segregação, só a de capitalização.
+//
+// Os números vêm da AVALIAÇÃO ATUARIAL (documento do atuário), não do razão: por isso o ente os registra aqui, com o
+// documento. O resultado (c) e o saldo (d) NÃO são gravados — saem da soma, como no Anexo de Metas da LDO.
+// Append-only: corrigir é gravar a versão seguinte do (exercício, plano); retirar é gravar uma versão `retirada`.
+// ============================================================================
+
+enum PlanoDoRegimeProprio {
+  /// Fundo em capitalização (Plano Previdenciário). O único, sem segregação da massa.
+  CAPITALIZACAO
+  /// Fundo em repartição (Plano Financeiro), quando há segregação da massa.
+  REPARTICAO
+}
+
+model ProjecaoAtuarialDoRreo {
+  id                      String                          @id @default(cuid())
+  /// O exercício do RREO (o do 6º bimestre em que o anexo é publicado).
+  exercicio               Int
+  plano                   PlanoDoRegimeProprio
+  versao                  Int
+  /// A data da avaliação atuarial de onde a projeção foi tirada.
+  dataDaAvaliacao         DateTime
+  /// O documento: relatório da avaliação atuarial, atuário responsável, envio à Secretaria de Previdência.
+  documento               String
+  /// O "d" do exercício anterior à primeira linha, como está nos controles do ente.
+  saldoFinanceiroAnterior Decimal                         @db.Decimal(18, 2)
+  /// Versão que tira a projeção do plano do demonstrativo, sem apagar o histórico.
+  retirada                Boolean                         @default(false)
+  linhas                  LinhaDaProjecaoAtuarialDoRreo[]
+  criadoEm                DateTime                        @default(now())
+  criadoPor               String
+
+  @@unique([exercicio, plano, versao])
+  @@index([exercicio, plano])
+}
+
+model LinhaDaProjecaoAtuarialDoRreo {
+  id         String                 @id @default(cuid())
+  projecaoId String
+  projecao   ProjecaoAtuarialDoRreo @relation(fields: [projecaoId], references: [id])
+  ano        Int
+  /// (a) Receitas previdenciárias do ano.
+  receitas   Decimal                @db.Decimal(18, 2)
+  /// (b) Despesas previdenciárias do ano.
+  despesas   Decimal                @db.Decimal(18, 2)
+
+  @@unique([projecaoId, ano])
+}

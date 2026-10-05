@@ -339,6 +339,9 @@ export const TABELAS = [
   "FonteForaDoLimiteDeSuplementacao",
   // V35 C2 — as notas explicativas: sem FK
   "NotaExplicativa",
+  // V35 — o Anexo 10 do RREO: as linhas antes da projeção
+  "LinhaDaProjecaoAtuarialDoRreo",
+  "ProjecaoAtuarialDoRreo",
   // V35 — o ajuste para perdas: a apuração aponta o percentual e o lançamento; sai antes dos dois
   "ApuracaoDoAjusteDePerdas",
   "PercentualDePerdaDaDividaAtiva",

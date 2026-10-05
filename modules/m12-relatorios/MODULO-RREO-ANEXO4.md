@@ -63,4 +63,10 @@ A LOA 2026 já se separa pelas fontes:
   pensões 3.118.500,00, demais 6.600.000,00) e reserva de 330.000,00;
 - **administração (802):** 1.234.200,00.
 
-O Anexo 10 (projeção atuarial) depende da avaliação atuarial do FUNPREVE, documento de terceiro não obtido.
+O Anexo 10 (projeção atuarial) existe desde a V35 (`rreo-anexo10.ts`, tela `/relatorios/rreo/anexo10`), pelas regras do
+Siconfi (STN, "Regras Gerais e Instruções de Preenchimento — RREO", 2025): só no 6º bimestre; 75 anos ou mais a partir
+do ano anterior; (c) = (a) − (b) e (d) = (d anterior) + (c), com o primeiro d anterior dos controles do ente; uma tabela
+por plano (capitalização; repartição só com segregação da massa). Os números são do ente, colados da avaliação atuarial
+com o documento; o resultado e o saldo são calculados, nunca gravados. Teste `m12-rreo-anexo10.test.ts` (N=2 nos
+planos, contas à mão; negações com o motivo; parser contra valores escritos à mão), três mutações provadas; percurso
+`scripts/percurso-v35-anexo10.mts`. O que continua de terceiro é só o DADO: a avaliação atuarial do FUNPREVE.

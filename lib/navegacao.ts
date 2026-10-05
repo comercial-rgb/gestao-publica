@@ -127,6 +127,7 @@ export const RELATORIOS_RREO: readonly RelatorioNav[] = [
   { href: "/relatorios/rreo/anexo7", numero: "Anexo 7", rotulo: "Restos a Pagar por Poder e Órgão", descricao: "RP processados e não processados (LRF art. 53, V)." },
   { href: "/relatorios/rreo/anexo8", numero: "Anexo 8", rotulo: "Educação (MDE)", descricao: "Mínimo de 25% e FUNDEB (CF art. 212/212-A)." },
   { href: "/relatorios/rreo/anexo9", numero: "Anexo 9", rotulo: "Operações de Crédito e Despesas de Capital", descricao: "Regra de ouro: operações de crédito contra a despesa de capital (CF art. 167, III; LRF art. 53 §1º I)." },
+  { href: "/relatorios/rreo/anexo10", numero: "Anexo 10", rotulo: "Projeção Atuarial do RPPS", descricao: "Projeção de 75 anos do regime próprio, da avaliação atuarial (LRF art. 53 §1º II); só no 6º bimestre." },
   { href: "/relatorios/rreo/anexo11", numero: "Anexo 11", rotulo: "Alienação de Ativos", descricao: "Receitas de alienação e aplicação dos recursos (LRF art. 53 §1º III)." },
   { href: "/relatorios/rreo/anexo12", numero: "Anexo 12", rotulo: "Saúde (ASPS)", descricao: "Aplicação mínima de 15% em saúde (LC 141/2012)." },
   { href: "/relatorios/rreo/anexo13", numero: "Anexo 13", rotulo: "Parcerias Público-Privadas", descricao: "Contratos de PPP e o teto de 5% da RCL (Lei 11.079/2004)." },
