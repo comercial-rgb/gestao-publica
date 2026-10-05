@@ -77,7 +77,7 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
 - **Lei 613/2025, art. 5º, III, feito depois do registro:** a realocação pode apontar a autorização da LOA e corre contra o mesmo percentual, num limite próprio.
 - **C4, feito depois do registro:** RREO Anexo 4 (RPPS) pelo mapeamento oficial da STN, e o bloco RPPS do Anexo 14. Resta:
   - o Anexo 10 (projeção atuarial), que depende da avaliação atuarial do FUNPREVE, documento de terceiro;
-  - o Anexo 9 do RREO (operações de crédito e despesas de capital), ainda não construído.
+- **RREO Anexo 9, feito depois do registro:** regra de ouro, pelo mapeamento oficial. Os incentivos fiscais a contribuinte ficam em zero, com nota: é informação gerencial que a MSC não carrega.
 - **C1 DMPL (facultativa), C2 notas explicativas, C6 SIOPE, C7 SIOPS, C9 publicação de PPA/LDO/LOA.**
 - **B6 empenho estimativo e global; A3 classificação da virada; reprevisão no razão; previsão para bases antigas.**
 - **Marcação do catálogo** com as evidências desta rodada.

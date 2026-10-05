@@ -2363,6 +2363,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   fatosDaOrigemDoPagamento: "leitura (os fatos de retenção possíveis pela origem do pagamento: folha ou fornecedor)",
   ordenadorNaData: "leitura (o ordenador designado vigente na data, para a unidade da ficha; recusa a ambiguidade)",
   apurarLimiteDoLegislativo: "leitura (V35 — o limite do art. 29-A, o duodécimo e os repasses do mês; não muta)",
+  anexo9: "leitura (V35 — RREO Anexo 9, regra de ouro: operações de crédito contra a despesa de capital; não muta)",
   anexo4: "leitura (V35 — RREO Anexo 4, receitas e despesas previdenciárias do RPPS pelo mapeamento da STN; não muta)",
   anexo16: "leitura (V35 — Anexo 16 da Lei 4.320, dívida fundada; compõe o M10, não muta)",
   anexo17: "leitura (V35 — Anexo 17 da Lei 4.320, dívida flutuante; compõe M08 e razão, não muta)",
