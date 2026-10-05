@@ -84,13 +84,16 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
 
 ### Próximo passo exato
 
-1. Publicar `f01544a` + este registro.
-   - Backup: `/var/backups/gestao-publica/esperanca-antes-v35-20261005T042309Z.dump`, 2 MB, 511 tabelas, lido pelo
-     `pg_restore`.
-2. No servidor, rodar `esperanca-configurar-exercicio.ts` com `CARGA_POR` = o administrador de produção.
-3. Conferir o resultado.
-4. Depois, B5.
+**Feito em 05/10/2026:**
 
+- Publicado `6cbcc2a` (Actions 37263724899 verde; `/release` = 6cbcc2a, `/login` 200).
+- Backup antes: `/var/backups/gestao-publica/esperanca-antes-v35-20261005T042309Z.dump`.
+- No servidor, com `CARGA_POR=admin@gestaopublica.enginesistemas.com.br`:
+  - `esperanca-instalar-base.ts`: identidade gravada, PO 10131;
+  - `esperanca-configurar-exercicio.ts`, 40 s: 98 fontes, 4 entidades e UGs, 1.054 fichas (245.000.000,00), 65 previsões (bruto 258.517.240,00, deduções 13.517.240,00), de-paras da LRF, limite do Legislativo, poderes, Lei 613 com 50% e as 56 fontes do § 2º.
+- Razão em produção: 5.2.1.1.1 = 258.517.240,00; 5.2.1.1.2.01.01 = −13.517.240,00; 6.2.1.1 = −245.000.000,00; 5.2.2.1.1.01 = 245.000.000,00; 6.2.2.1.1 = −245.000.000,00; 1.119 lançamentos; D − C = 0 no total e no orçamentário.
+
+**Próximo:** B5, provisão de férias e 13º. Depois as pendências da lista acima. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
