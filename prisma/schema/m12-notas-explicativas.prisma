@@ -1,0 +1,57 @@
+// ============================================================================
+// V35 C2 — NOTAS EXPLICATIVAS ÀS DCASP (MCASP 11ª ed., Parte V, item 8).
+//
+// "Notas explicativas são informações adicionais às apresentadas nos quadros das DCASP e são consideradas
+// parte integrante das demonstrações contábeis." A ordem sugerida (8.2) é a das quatro seções do enum.
+//
+// O TEXTO é do ente (natureza jurídica, domicílio, declaração de conformidade, julgamentos, contingências):
+// o sistema não o redige. O que o sistema já sabe por cadastro — parâmetros de depreciação, metodologia do
+// ajuste para perdas, parâmetro das férias, apurações — entra no documento lido na hora, com a origem.
+//
+// Append-only: editar é gravar a versão seguinte da mesma chave; retirar é gravar uma versão `retirada`.
+// A vigente é a de maior versão. Uma nota por (exercício, chave, versão).
+// ============================================================================
+
+enum SecaoDaNotaExplicativa {
+  /// 8.2 a — natureza jurídica, domicílio, operações, declaração de conformidade.
+  INFORMACOES_GERAIS
+  /// 8.2 b — bases de mensuração, normas novas, julgamentos.
+  POLITICAS_CONTABEIS
+  /// 8.2 c — suporte e detalhamento dos itens, na ordem das demonstrações.
+  DETALHAMENTO
+  /// 8.2 d — contingências, riscos, inconformidades, ajustes de erros.
+  OUTRAS_INFORMACOES
+}
+
+/// A demonstração a que a nota faz referência cruzada (8.2: "Cada quadro ou item [...] deverá ter referência cruzada").
+enum DemonstracaoDaNota {
+  BALANCO_ORCAMENTARIO
+  BALANCO_FINANCEIRO
+  BALANCO_PATRIMONIAL
+  DVP
+  DFC
+  DMPL
+  /// Nota que não se prende a uma demonstração (informações gerais, políticas).
+  CONJUNTO
+}
+
+model NotaExplicativa {
+  id           String                 @id @default(cuid())
+  exercicio    Int
+  /// Identifica a nota entre versões: um tema recomendado do MCASP (ex.: NATUREZA_JURIDICA) ou NE-<n>.
+  chave        String                 @db.VarChar(40)
+  versao       Int
+  secao        SecaoDaNotaExplicativa
+  demonstracao DemonstracaoDaNota
+  /// Posição dentro da seção.
+  ordem        Int
+  titulo       String
+  texto        String
+  /// Versão que tira a nota do documento, sem apagar o histórico.
+  retirada     Boolean                @default(false)
+  criadoEm     DateTime               @default(now())
+  criadoPor    String
+
+  @@unique([exercicio, chave, versao])
+  @@index([exercicio, chave])
+}

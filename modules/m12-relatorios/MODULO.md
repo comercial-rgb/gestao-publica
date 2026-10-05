@@ -985,3 +985,23 @@ pura e composta: nenhuma soma nova sobre o fato.
 Tela, PDF e CSV saem das mesmas tabelas (`lib/relatorios/tabelas-da-pca.ts`), em Relatórios › Demonstrações.
 Teste: `m12-demonstrativos-da-pca.test.ts`. Fixture de duas dívidas, quatro inscrições de dois grupos e dois anos, e um
 dia civil de borda. As negações afirmam o motivo.
+
+## V35 C2 — notas explicativas às DCASP
+
+`notas-explicativas.ts`. Fonte: MCASP 11ª ed., Parte V, item 8. Tela: `/relatorios/demonstracoes/notas-explicativas`
+(PDF). Escrita sob CADASTRAR_LINHA_DEMONSTRATIVO; leitura sob CONSULTAR_RELATORIOS.
+
+- **Quatro seções, na ordem de 8.2:** informações gerais; políticas contábeis; detalhamento dos itens; outras
+  informações. A numeração é corrida, para a referência cruzada com os quadros.
+- **O ente redige.** Cada nota é versionada e append-only (`NotaExplicativa`): revisar grava a versão seguinte da
+  chave, retirar grava uma versão `retirada`. Vale a de maior versão.
+- **Temas obrigatórios.** Os que o manual manda divulgar (8.2.4 a, b, c; 8.2 a iv; 8.2.1 a) e ainda não têm nota saem
+  como pendência na tela e no PDF. Cada tema tem a sua seção, e a nota em outra seção é recusada.
+- **O sistema escreve o que já sabe**, lido na hora e com a origem:
+  - identificação (`EnteConfig`);
+  - depreciação, amortização e exaustão por classe (`parametroVigenteEm` de dezembro);
+  - metodologia do ajuste para perdas (Parte III, 5.2.5 manda divulgar);
+  - parâmetro das férias;
+  - a última apuração do ajuste no exercício, por origem.
+- Teste `m12-notas-explicativas.test.ts`, 3 testes. Mutações provadas vermelhas: a versão vigente pela menor versão,
+  e a lista de pendências sem filtro.

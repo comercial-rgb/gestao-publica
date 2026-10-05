@@ -1,6 +1,6 @@
 import type { SecaoPdf } from "../pdf/documento";
 import { formatarMoeda } from "../format/moeda";
-import type { Anexo4, FundoAnexo4, LinhaDespesaAnexo4, LinhaReceitaAnexo4, ResultadoAnexo4, SaldoAnexo4 } from "../../modules/m12-relatorios/rreo-anexo4";
+import type { Anexo4, FundoAnexo4, LinhaDespesaAnexo4, LinhaReceitaAnexo4, ResultadoAnexo4, SaldoAnexo4 } from "../portas/rreo";
 import type { TabelasDoDocumento } from "./tabelas-dos-demonstrativos";
 
 /**

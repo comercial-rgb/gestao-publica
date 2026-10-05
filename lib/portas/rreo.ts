@@ -214,6 +214,8 @@ export type { LinhaContratoPPP } from "../../modules/m12-relatorios/rreo-anexo13
 export type { LinhaReceitaAlienacao, LinhaAplicacaoAlienacao } from "../../modules/m12-relatorios/rreo-anexo11";
 export type { LinhaReceitaRreo, LinhaDespesaRreo } from "../../modules/m12-relatorios/rreo-anexo1";
 export type { LinhaFuncional } from "../../modules/m12-relatorios/rreo-anexo2";
+export type { Anexo4, Anexo9 };
+export type { FundoAnexo4, LinhaDespesaAnexo4, LinhaReceitaAnexo4, ResultadoAnexo4, SaldoAnexo4 } from "../../modules/m12-relatorios/rreo-anexo4";
 export type {
   LinhaReceitaMde,
   LinhaFundebReceita,

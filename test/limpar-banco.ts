@@ -337,6 +337,8 @@ export const TABELAS = [
   "ParametroDoLimiteDoLegislativo",
   // V35 — filha de FonteRecurso: sai antes dela
   "FonteForaDoLimiteDeSuplementacao",
+  // V35 C2 — as notas explicativas: sem FK
+  "NotaExplicativa",
   // V35 — o ajuste para perdas: a apuração aponta o percentual e o lançamento; sai antes dos dois
   "ApuracaoDoAjusteDePerdas",
   "PercentualDePerdaDaDividaAtiva",

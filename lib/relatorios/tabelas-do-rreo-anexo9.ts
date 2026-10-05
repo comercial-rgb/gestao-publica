@@ -1,5 +1,5 @@
 import { formatarMoeda } from "../format/moeda";
-import type { Anexo9 } from "../../modules/m12-relatorios/rreo-anexo9";
+import type { Anexo9 } from "../portas/rreo";
 import type { TabelasDoDocumento } from "./tabelas-dos-demonstrativos";
 
 /** V35 — as tabelas do RREO Anexo 9 (regra de ouro) para a tela e o CSV. Os valores vêm do motor. */

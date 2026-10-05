@@ -1161,6 +1161,8 @@ export type NomeDeServico =
   // V35 — o ajuste para perdas da dívida ativa
   | "declararPercentualDePerda"
   | "apurarAjusteDePerdas"
+  | "redigirNotaExplicativa"
+  | "retirarNotaExplicativa"
   // V35 — a apropriação mensal do 13º e das férias
   | "declararParametroDeFerias"
   | "apropriarPorCompetencia"
@@ -1929,6 +1931,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V35 — medir a perda esperada da dívida ativa é mensurar o ativo: a autoridade de atualizá-lo (MCASP, Parte III, 5.2.5).
   declararPercentualDePerda: "ATUALIZAR_DIVIDA_ATIVA",
   apurarAjusteDePerdas: "ATUALIZAR_DIVIDA_ATIVA",
+  // V35 C2 — redigir e retirar notas explicativas é configurar o conjunto das demonstrações: a mesma autoridade.
+  redigirNotaExplicativa: "CADASTRAR_LINHA_DEMONSTRATIVO",
+  retirarNotaExplicativa: "CADASTRAR_LINHA_DEMONSTRATIVO",
   // V35 — o parâmetro das férias é o par do parâmetro do 13º: o mesmo ato do ente (o estatuto) sobre o mesmo benefício anual.
   declararParametroDeFerias: "CONFIGURAR_PARAMETRO_DO_DECIMO_TERCEIRO",
   // V35 — apropriar o 13º e as férias por competência, e acertar o 13º no fim do ano, é apropriar a folha na contabilidade.
@@ -2372,6 +2377,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferirLimiteDaRealocacao: "composável interno (V35 — o limite da LOA para a realocação por decreto, chamado dentro do registro da realocação, que já autorizou REGISTRAR_REALOCACAO_DE_DOTACAO)",
   conferirLimiteDaLoa: "composável interno (V35 — o guard do limite da LOA, chamado dentro do executarCredito, que já autorizou EXECUTAR_CREDITO)",
   apuracoesDoAjusteDePerdas: "leitura (V35 — as apurações do ajuste para perdas, com a metodologia; não muta)",
+  notasExplicativas: "leitura (V35 C2 — as notas explicativas às DCASP, redigidas e do sistema; não muta)",
   apropriacoesDoExercicio: "leitura (V35 — as apropriações do 13º e das férias do exercício; não muta)",
   deducoesRealizadas: "leitura (V35 — as deduções da receita realizadas no exercício, com o estorno com sinal; não muta)",
   lancarPrevisaoDaReceita: "composável (V35 — o lançamento da previsão da receita no razão; chamado dentro de criarReceitaPrevista, detalharReceitaPrevista e efetivarPropostaOrcamentaria, que autorizam)",

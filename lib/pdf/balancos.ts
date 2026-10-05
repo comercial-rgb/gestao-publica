@@ -4,6 +4,7 @@ import { gerarBalancoFinanceiro, gerarBalancoOrcamentario } from "../portas/demo
 import { gerarFluxosDeCaixa } from "../portas/fluxos-de-caixa";
 import { lerComposicao, type LinhaPedida } from "../portas/composicao";
 import { gerarAnexo16, gerarAnexo17, gerarTermoDeCaixa } from "../portas/demonstrativos-da-pca";
+import { lerNotasExplicativas, ROTULO_DA_DEMONSTRACAO } from "../portas/notas-explicativas";
 import { tabelasDoAnexo16, tabelasDoAnexo17, tabelasDoTermoDeCaixa } from "../relatorios/tabelas-da-pca";
 import {
   tabelasDaComposicao,
@@ -44,4 +45,25 @@ export async function montarPdfAnexo17(p: { readonly exercicio: number }): Promi
 }
 export async function montarPdfTermoDeCaixa(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
   return documento(tabelasDoTermoDeCaixa(await gerarTermoDeCaixa({ exercicio: p.exercicio })));
+}
+
+// V35 C2 — as notas explicativas: uma seção por item da ordem do MCASP (Parte V, 8.2), uma linha por nota, numeradas
+// como na tela; o texto é o da versão vigente, sem nada recalculado.
+export async function montarPdfNotasExplicativas(p: { readonly exercicio: number }): Promise<DocumentoPdf> {
+  const n = await lerNotasExplicativas(p.exercicio);
+  return {
+    ente: await nomeDoEnteParaDocumentos(),
+    titulo: "Notas Explicativas às Demonstrações Contábeis",
+    subtitulo: "MCASP 11ª ed., Parte V, item 8",
+    periodo: `Exercício de ${String(p.exercicio)}`,
+    orientacao: "retrato",
+    secoes: n.secoes
+      .filter((s) => s.notas.length > 0)
+      .map((s) => ({
+        titulo: s.rotulo,
+        colunas: [{ rotulo: "Nota" }, { rotulo: "Texto" }],
+        linhas: s.notas.map((x) => [`${String(x.numero)}. ${x.titulo}`, `${x.texto.join(" ")} [${ROTULO_DA_DEMONSTRACAO[x.demonstracao]}]`]),
+      })),
+    notas: n.temasPendentes.map((t) => `Tema ainda não redigido: ${t.titulo} (${t.fonte}).`),
+  };
 }
