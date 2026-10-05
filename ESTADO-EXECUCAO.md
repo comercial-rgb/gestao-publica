@@ -93,7 +93,14 @@ Foi parado depois de conferir que todos os processos eram dele, e substituído p
   - `esperanca-configurar-exercicio.ts`, 40 s: 98 fontes, 4 entidades e UGs, 1.054 fichas (245.000.000,00), 65 previsões (bruto 258.517.240,00, deduções 13.517.240,00), de-paras da LRF, limite do Legislativo, poderes, Lei 613 com 50% e as 56 fontes do § 2º.
 - Razão em produção: 5.2.1.1.1 = 258.517.240,00; 5.2.1.1.2.01.01 = −13.517.240,00; 6.2.1.1 = −245.000.000,00; 5.2.2.1.1.01 = 245.000.000,00; 6.2.2.1.1 = −245.000.000,00; 1.119 lançamentos; D − C = 0 no total e no orçamentário.
 
-**Próximo:** B5, provisão de férias e 13º. Depois as pendências da lista acima. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
+**Segunda publicação, 05/10/2026:**
+
+- Publicado `a09937c` (B5, realocação sob o limite da LOA, RREO Anexos 4 e 9). Actions 37319935118 verde; `/release` = a09937c.
+- Backup antes: `/var/backups/gestao-publica/esperanca-antes-v35b-20261005T134608Z.dump` (2,27 MB, 516 tabelas).
+- Migrations aplicadas em produção: `20261105130000`, `20261105140000`, `20261105150000`; nenhuma inacabada.
+- `/relatorios/rreo/anexo4`, `/relatorios/rreo/anexo9` e `/folha/apropriacao-por-competencia` respondem 307 (login), como esperado sem sessão.
+
+**Próximo:** C2 notas explicativas; depois as pendências da lista acima. Pendências de terceiro: protocolo da Lei 613 no TCE-PB; data de início de cada UG com fundamento; razão social pelo comprovante da Receita.
 
 ## Resumo atual (orquestração V3 — atualizado a cada unidade)
 
