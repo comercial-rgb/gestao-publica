@@ -211,6 +211,11 @@ Catálogo da contabilidade (285): **64 validadas** (eram 57), 28 implementadas s
 - Dados fictícios criados nesta rodada na base local: dívidas `FIC-FINISA-*` (uma por corrida do percurso) e propostas
   2027 "de demonstração" (uma por corrida), todas pelos serviços.
 
+**Publicado em 06/10/2026 (fim da tarde):** `d4d10049` (Actions 37520688995 verde), backup antes
+`/var/backups/gestao-publica/esperanca-antes-v36g-20261006T193555Z.dump`. Em produção: as quatro migrations aplicadas e a
+v44 com 2 concessões; `/relatorios/divida`, `/planejamento/emendas` e a página de documentos de um pagamento com 200
+(formulário de anexo presente para o administrador); PDF da dívida 200, application/pdf.
+
 Ausentes que seguem e por quê: retorno bancário, cheques e borderô do movimento (arquivo ou convênio do banco);
 prestação de contas online, portal do fornecedor, SEFIP/eSocial, multas de trânsito (outro domínio ou regra do ente);
 importações de peça anterior do PPA/LDO (decisão de cópia × versão); emendas do PPA e da LDO; PPP (não há cadastro);
