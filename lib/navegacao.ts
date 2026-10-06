@@ -280,6 +280,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
 /** Os relatórios GERENCIAIS — consulta livre com export aberto (TR 7.48). */
 export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
   { href: "/relatorios/gerenciais", numero: "Gerenciais", rotulo: "Relatórios Gerenciais", descricao: "Consulta de empenhos por credor e fonte, com exportação em PDF e CSV." },
+  { href: "/relatorios/pagamentos", numero: "Pagamentos", rotulo: "Pagamentos Efetuados", descricao: "Pagamentos do período, do exercício e de restos a pagar, com retido e líquido, filtros e agrupamento." },
 ];
 
 /** A EXECUÇÃO DA RECEITA — fonte única da landing de /receita e do submenu. */
@@ -743,6 +744,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Consultas", itens: [
         { href: "/relatorios/gerenciais", rotulo: "Consulta por credor e fonte" },
+        { href: "/relatorios/pagamentos", rotulo: "Pagamentos efetuados" },
       ] },
     ],
   },

@@ -96,6 +96,7 @@
     "test/ui/nota-de-estorno.test.ts",
     "test/ui/livros-com-termos.test.ts",
     "test/ui/busca-da-ficha.test.ts",
+    "test/ui/pagamentos-efetuados-pdf.test.ts",
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
     "test/ui/demonstrativo-das-obrigacoes.test.ts",

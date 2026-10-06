@@ -85,7 +85,7 @@ const zero = (): Money => toMoney("0.00");
 const m = (d: { toFixed(n: number): string }): Money => toMoney(d.toFixed(2));
 
 /** Retido vivo por pagamento: consignação (ingresso extra sem estorno) + retenção própria sem estorno. */
-async function retidoPorPagamento(prisma: Tx, pagamentoIds: readonly string[]): Promise<ReadonlyMap<string, Money>> {
+export async function retidoPorPagamento(prisma: Pick<Tx, "movimentoExtraorcamentario" | "retencaoPropriaDoPagamento">, pagamentoIds: readonly string[]): Promise<ReadonlyMap<string, Money>> {
   const por = new Map<string, Money>();
   if (pagamentoIds.length === 0) return por;
   const [extras, proprias] = await Promise.all([
