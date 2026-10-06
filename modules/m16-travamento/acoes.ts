@@ -3554,5 +3554,6 @@ export const FORA_DO_CENSO: Record<string, string> = {
   retidoPorPagamento: "leitura (V36 — o retido vivo de cada pagamento, para o líquido do relatório; não muta)",
   pagamentosEfetuados: "leitura (V36 — o relatório de pagamentos efetuados do exercício e de restos; não muta)",
   listarIngressosAvulsos: "leitura (V36 — os ingressos extraorçamentários avulsos, com o estorno; não muta)",
+  dispendiosEfetuados: "leitura (V36 — os dispêndios extraorçamentários do período, com o estorno descontado, para o relatório de pagamentos; não muta)",
   contasContabeisDeDisponibilidade: "leitura (V36 — as contas analíticas do grupo 1.1.1 que o cadastro da conta bancária oferece; não muta)",
 };

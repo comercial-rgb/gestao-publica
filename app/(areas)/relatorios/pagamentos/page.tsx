@@ -11,6 +11,7 @@ import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { EscopoDeLeituraError, ExercicioIlegivelError, recorteDePagina, type RecorteDaPagina } from "../../../../lib/portas/contexto";
 import {
+  type DispendiosDaTela,
   filtroDosPagamentos,
   lerPagamentosEfetuados,
   type PagamentoEfetuadoDaTela,
@@ -167,7 +168,76 @@ export default async function PagamentosEfetuadosPage({
           )}
         </>
       )}
+
+      <SecaoDosDispendios extra={dados.extra} periodo={`${f.desde}-a-${f.ate}`} />
     </div>
+  );
+}
+
+/**
+ * V36 — os dispêndios extraorçamentários do mesmo período (recolhimento ao consignatário, devolução de caução), numa
+ * seção própria: não são pagamento de despesa e não somam no total acima. Sem a leitura do financeiro, ou com recorte
+ * por unidade, a seção diz por que não está aqui.
+ */
+function SecaoDosDispendios({ extra, periodo }: { readonly extra: DispendiosDaTela; readonly periodo: string }): React.ReactElement {
+  return (
+    <Card>
+      <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]" id="dispendios-extra">
+        Dispêndios extraorçamentários
+        {extra.disponivel ? <> — <span data-total="extra">R$ {formatarMoeda(extra.total).texto}</span></> : null}
+      </h2>
+      {!extra.disponivel ? (
+        <p className="text-xs text-[color:var(--color-ink-2)]" data-extra-indisponivel>{extra.motivo}</p>
+      ) : extra.linhas.length === 0 ? (
+        <p className="text-xs text-[color:var(--color-ink-2)]">Nenhum dispêndio extraorçamentário no período com os filtros escolhidos.</p>
+      ) : (
+        <>
+          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
+            Recolhimentos a consignatários e devoluções de depósitos de terceiros. Não são pagamento de despesa e não entram no total acima. O estorno é descontado e a linha permanece.
+          </p>
+          <div className="mb-2 flex justify-end">
+            <BotaoCsv csv={csvDosDispendios(extra.linhas)} nomeArquivo={`dispendios-extra-${periodo}.csv`} />
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs" data-lista="dispendios-extra">
+              <thead>
+                <tr className="text-[color:var(--color-ink-3)]">
+                  <th scope="col" className="py-1.5 pr-3">Data</th>
+                  <th scope="col" className="py-1.5 pr-3">Tipo</th>
+                  <th scope="col" className="py-1.5 pr-3">Consignatário</th>
+                  <th scope="col" className="py-1.5 pr-3">Fonte</th>
+                  <th scope="col" className="py-1.5 pr-3">Conta</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right">Valor</th>
+                  <th scope="col" className="py-1.5 pr-3 text-right">Estornado</th>
+                  <th scope="col" className="py-1.5 text-right">Efetivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {extra.linhas.map((l) => (
+                  <tr key={l.id} className="border-t border-[color:var(--color-border)]" data-dispendio={l.id}>
+                    <td className="py-1.5 pr-3">{dataBr(l.data)}</td>
+                    <td className="py-1.5 pr-3">{l.tipoCodigo}</td>
+                    <td className="py-1.5 pr-3"><Link className="underline" href={`/contabilidade/lancamentos/${l.lancamentoId}`}>{l.consignatario}</Link></td>
+                    <td className="py-1.5 pr-3">{l.fonteCodigo ?? "não declarada"}</td>
+                    <td className="py-1.5 pr-3">{l.contaBancaria}</td>
+                    <td className="py-1.5 pr-3 text-right"><ValorMonetario valor={l.valor} /></td>
+                    <td className="py-1.5 pr-3 text-right"><ValorMonetario valor={l.estornado} /></td>
+                    <td className="py-1.5 text-right"><ValorMonetario valor={l.vivo} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
+function csvDosDispendios(linhas: Extract<DispendiosDaTela, { disponivel: true }>["linhas"]): string {
+  return paraCsv(
+    ["Data", "Tipo", "Consignatário", "Fonte", "Conta bancária", "Histórico", "Valor", "Estornado", "Efetivo"],
+    linhas.map((l) => [dataBr(l.data), l.tipoCodigo, l.consignatario, l.fonteCodigo ?? "", l.contaBancaria, l.historico, formatarMoeda(l.valor).texto, formatarMoeda(l.estornado).texto, formatarMoeda(l.vivo).texto])
   );
 }
 

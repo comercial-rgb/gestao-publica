@@ -8,6 +8,8 @@ import {
   type AgrupamentoDosPagamentos,
   type OrigemDoPagamento,
 } from "../../modules/m05-despesa/pagamentos-efetuados";
+import { dispendiosEfetuados, totalDosDispendios } from "../../modules/m07-extraorcamentario/dispendios-efetuados";
+import { temLeituraDoEnte } from "./leitura";
 
 /**
  * V36 — PORTA DO RELATÓRIO DE PAGAMENTOS EFETUADOS. O filtro é lido da URL pela tela e pelo PDF do mesmo jeito
@@ -68,7 +70,31 @@ export interface TotaisDaTela {
   readonly liquido: string;
 }
 
+export interface DispendioDaTela {
+  readonly id: string;
+  readonly data: Date;
+  readonly tipoCodigo: string;
+  readonly consignatario: string;
+  readonly fonteCodigo: string | null;
+  readonly contaBancaria: string;
+  readonly historico: string;
+  readonly lancamentoId: string;
+  readonly valor: string;
+  readonly estornado: string;
+  readonly vivo: string;
+}
+
+/**
+ * V36 — OS DISPÊNDIOS EXTRAORÇAMENTÁRIOS do mesmo período, numa seção própria. Eles são do FINANCEIRO e do ENTE: só
+ * aparecem a quem lê o financeiro no ente inteiro, e não se recortam por unidade orçamentária (o movimento extra não
+ * tem unidade). Fora disso, a seção diz por que não está ali — nunca some calada.
+ */
+export type DispendiosDaTela =
+  | { readonly disponivel: true; readonly linhas: readonly DispendioDaTela[]; readonly total: string }
+  | { readonly disponivel: false; readonly motivo: string };
+
 export interface PagamentosEfetuadosDaTela {
+  readonly extra: DispendiosDaTela;
   readonly linhas: readonly PagamentoEfetuadoDaTela[];
   readonly grupos: readonly { readonly chave: string; readonly rotulo: string; readonly linhas: readonly PagamentoEfetuadoDaTela[]; readonly totais: TotaisDaTela }[];
   readonly totais: TotaisDaTela;
@@ -90,6 +116,7 @@ export async function lerPagamentosEfetuados(f: FiltroDosPagamentos, unidadeCodi
     filtrado ? pagamentosEfetuados(prisma, periodo) : null,
   ]);
   const base = todas ?? linhas;
+  const { extra, opcoesDoExtra } = await lerDispendios(f, periodo, unidadeCodigo);
   const nomes = await nomesDosCredores([...new Set(base.map((l) => l.credorCpfCnpj))]);
   const tela = linhas.map((l) => ({
     id: l.id,
@@ -121,13 +148,53 @@ export async function lerPagamentosEfetuados(f: FiltroDosPagamentos, unidadeCodi
           totais: emTexto({ pagoVivo: g.pagoVivo, retido: g.retido, liquido: g.liquido }),
         }));
   return {
+    extra,
     linhas: tela,
     grupos,
     totais: emTexto(totaisDosPagamentos(linhas)),
     opcoes: {
       credores: [...new Set(base.map((l) => l.credorCpfCnpj))].map((d) => ({ documento: d, nome: nomes.get(d) ?? null })).sort((a, b) => (a.nome ?? a.documento).localeCompare(b.nome ?? b.documento)),
-      fontes: [...new Set(base.map((l) => l.fonteCodigo))].sort(),
-      contas: [...new Set(base.map((l) => l.contaBancaria))].sort(),
+      fontes: [...new Set([...base.map((l) => l.fonteCodigo), ...opcoesDoExtra.fontes])].sort(),
+      contas: [...new Set([...base.map((l) => l.contaBancaria), ...opcoesDoExtra.contas])].sort(),
     },
   };
+}
+
+async function lerDispendios(
+  f: FiltroDosPagamentos,
+  periodo: { readonly de: Date; readonly ate: Date },
+  unidadeCodigo: string | undefined
+): Promise<{ readonly extra: DispendiosDaTela; readonly opcoesDoExtra: { readonly fontes: readonly string[]; readonly contas: readonly string[] } }> {
+  const nenhuma = { fontes: [], contas: [] };
+  if (unidadeCodigo !== undefined) {
+    return { opcoesDoExtra: nenhuma, extra: { disponivel: false, motivo: "Os dispêndios extraorçamentários são do ente e não se recortam por unidade orçamentária; escolha o consolidado para vê-los." } };
+  }
+  if (!(await temLeituraDoEnte("CONSULTAR_FINANCEIRO"))) {
+    return { opcoesDoExtra: nenhuma, extra: { disponivel: false, motivo: "Os dispêndios extraorçamentários pedem a consulta do financeiro no ente inteiro, que o seu perfil não tem." } };
+  }
+  // Os filtros valem também aqui; as opções dos selects saem das linhas SEM filtro, como as dos pagamentos.
+  const filtrado = f.credor !== "" || f.fonte !== "" || f.conta !== "";
+  const todas = filtrado ? await dispendiosEfetuados(cliente(), periodo) : null;
+  const linhas = await dispendiosEfetuados(cliente(), {
+    de: periodo.de,
+    ate: periodo.ate,
+    ...(f.credor !== "" ? { consignatario: f.credor } : {}),
+    ...(f.fonte !== "" ? { fonteCodigo: f.fonte } : {}),
+    ...(f.conta !== "" ? { contaBancaria: f.conta } : {}),
+  });
+  const base = todas ?? linhas;
+  const opcoesDoExtra = {
+    fontes: base.flatMap((l) => (l.fonteCodigo === null ? [] : [l.fonteCodigo])),
+    contas: base.map((l) => l.contaBancaria),
+  };
+  const extra: DispendiosDaTela = {
+    disponivel: true,
+    total: totalDosDispendios(linhas).toFixed(2),
+    linhas: linhas.map((l) => ({
+      id: l.id, data: l.data, tipoCodigo: l.tipoCodigo, consignatario: l.consignatario, fonteCodigo: l.fonteCodigo,
+      contaBancaria: l.contaBancaria, historico: l.historico, lancamentoId: l.lancamentoId,
+      valor: l.valor.toFixed(2), estornado: l.estornado.toFixed(2), vivo: l.vivo.toFixed(2),
+    })),
+  };
+  return { extra, opcoesDoExtra };
 }

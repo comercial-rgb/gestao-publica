@@ -10,7 +10,17 @@ const linha = (numero: string, conta: string, pago: string, retido: string, liqu
 });
 const a = linha("P-1", "CC-1", "1000.00", "40.00", "960.00");
 const b = linha("P-2", "CC-2", "300.00", "0.00", "300.00");
-const dados = (agrupado: boolean): PagamentosEfetuadosDaTela => ({
+const dispendio = (id: string, valor: string, estornado: string, vivo: string, fonte: string | null) => ({
+  id, data: new Date("2026-07-12T15:00:00Z"), tipoCodigo: "INSS", consignatario: "INSS", fonteCodigo: fonte, contaBancaria: "CC-1",
+  historico: "recolhimento", lancamentoId: "l", valor, estornado, vivo,
+});
+const comExtra: PagamentosEfetuadosDaTela["extra"] = {
+  disponivel: true,
+  linhas: [dispendio("d1", "200.00", "0.00", "200.00", "500"), dispendio("d2", "50.00", "50.00", "0.00", null)],
+  total: "200.00",
+};
+const dados = (agrupado: boolean, extra: PagamentosEfetuadosDaTela["extra"] = comExtra): PagamentosEfetuadosDaTela => ({
+  extra,
   linhas: [a, b],
   grupos: agrupado
     ? [
@@ -26,16 +36,33 @@ const filtro = (agrupar: FiltroDosPagamentos["agrupar"], comRetencoes = true): F
 describe("PDF dos pagamentos efetuados", () => {
   it("sem grupo: uma seção, com a linha de total; sem retenções, as colunas somem", () => {
     const d = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro(""), dados: dados(false) });
-    expect(d.secoes).toHaveLength(1);
+    expect(d.secoes).toHaveLength(2);
     expect(d.secoes[0]?.linhas.at(-1)).toEqual(["", "", "", "", "Total", "", "", "1.300,00", "40,00", "1.260,00"]);
     const sem = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro("", false), dados: dados(false) });
     expect(sem.secoes[0]?.colunas.map((c) => c.rotulo)).not.toContain("Retido");
   });
   it("agrupado: uma seção por grupo com o subtotal, e o total geral", () => {
     const d = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro("conta"), dados: dados(true) });
-    expect(d.secoes.map((s) => s.titulo)).toEqual(["conta CC-1", "conta CC-2", "Total geral"]);
+    expect(d.secoes.map((s) => s.titulo)).toEqual(["conta CC-1", "conta CC-2", "Total geral", "Dispêndios extraorçamentários"]);
     expect(d.secoes[0]?.linhas.at(-1)?.slice(7)).toEqual(["1.000,00", "40,00", "960,00"]);
     expect(d.secoes[2]?.linhas).toEqual([["", "", "", "", "Total", "", "", "1.300,00", "40,00", "1.260,00"]]);
     expect(d.filtros).toEqual(["Agrupado por conta bancária"]);
+  });
+  it("os dispêndios extraorçamentários: seção própria com o estornado e o total, fora do total dos pagamentos; sem acesso, o motivo", () => {
+    const d = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro(""), dados: dados(false) });
+    const extra = d.secoes.at(-1);
+    expect(extra?.titulo).toBe("Dispêndios extraorçamentários");
+    expect(extra?.linhas).toEqual([
+      ["12/07/2026", "INSS", "INSS", "500", "CC-1", "200,00", "0,00", "200,00"],
+      ["12/07/2026", "INSS", "INSS", "não declarada", "CC-1", "50,00", "50,00", "0,00"],
+      ["", "", "Total", "", "", "", "", "200,00"],
+    ]);
+    // O total dos pagamentos não absorveu o extra.
+    expect(d.secoes[0]?.linhas.at(-1)?.[7]).toBe("1.300,00");
+    const sem = documentoDosPagamentosEfetuados({
+      ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro(""),
+      dados: dados(false, { disponivel: false, motivo: "Os dispêndios extraorçamentários pedem a consulta do financeiro." }),
+    });
+    expect(sem.secoes.at(-1)?.linhas).toEqual([["Os dispêndios extraorçamentários pedem a consulta do financeiro."]]);
   });
 });

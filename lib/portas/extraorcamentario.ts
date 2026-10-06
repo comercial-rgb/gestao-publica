@@ -11,6 +11,7 @@ import {
 } from "../../modules/m07-extraorcamentario/consultas";
 import { estornarMovimentoExtra, registrarDispendioExtra, registrarIngressoExtra } from "../../modules/m07-extraorcamentario/extraorcamentario";
 import { roteiroDispendioExtra, roteiroIngressoExtra } from "../../modules/m07-extraorcamentario/dominio";
+import { formatarMoeda } from "../../packages/contracts/moeda";
 import { toMoney } from "../../packages/contracts/index";
 import { meioDiaCivil } from "../../packages/datas/index";
 import { comEscritaAutenticada } from "./sessao";
@@ -224,7 +225,7 @@ export async function registrarRecolhimento(input: {
     )
   );
   return (
-    `Recolhimento de ${total.toFixed(2)} registrado, composto de ${valores.length} ` +
+    `Recolhimento de R$ ${formatarMoeda(total.toFixed(2)).texto} registrado, composto de ${valores.length} ` +
     `retenç${valores.length === 1 ? "ão" : "ões"}. O que cada uma ainda tem a recolher já reflete esta guia.`
   );
 }

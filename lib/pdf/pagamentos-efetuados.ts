@@ -50,6 +50,21 @@ export function documentoDosPagamentosEfetuados(p: {
           secao("Total geral", [], p.dados.totais, f.comRetencoes),
         ]
       : [secao(undefined, p.dados.linhas, p.dados.totais, f.comRetencoes)];
+  const extra = p.dados.extra;
+  const secaoExtra: SecaoPdf = extra.disponivel
+    ? {
+        titulo: "Dispêndios extraorçamentários",
+        colunas: [
+          { rotulo: "Data" }, { rotulo: "Tipo" }, { rotulo: "Consignatário" }, { rotulo: "Fonte" }, { rotulo: "Conta" },
+          { rotulo: "Valor", alinhamento: "direita" }, { rotulo: "Estornado", alinhamento: "direita" }, { rotulo: "Efetivo", alinhamento: "direita" },
+        ],
+        linhas: [
+          ...extra.linhas.map((l) => [dataBr(l.data), l.tipoCodigo, l.consignatario, l.fonteCodigo ?? "não declarada", l.contaBancaria, brl(l.valor), brl(l.estornado), brl(l.vivo)]),
+          ["", "", "Total", "", "", "", "", brl(extra.total)],
+        ],
+        totais: [extra.linhas.length],
+      }
+    : { titulo: "Dispêndios extraorçamentários", colunas: [{ rotulo: "Situação" }], linhas: [[extra.motivo]] };
   const credor = p.dados.opcoes.credores.find((c) => c.documento === f.credor);
   return {
     ente: p.ente,
@@ -62,10 +77,11 @@ export function documentoDosPagamentosEfetuados(p: {
       f.conta !== "" ? `Conta bancária: ${f.conta}` : null,
       f.agrupar !== "" ? `Agrupado por ${f.agrupar === "conta" ? "conta bancária" : f.agrupar}` : null,
     ].filter((x): x is string => x !== null),
-    secoes,
+    secoes: [...secoes, secaoExtra],
     notas: [
       "Pago = valor pago menos as anulações; retido = retenções na fonte e próprias vivas; líquido = pago menos retido.",
       "Pagamento anulado por inteiro continua listado, com pago zero.",
+      "Dispêndios extraorçamentários (recolhimento a consignatário, devolução de depósito de terceiro) não são pagamento de despesa e não somam no total dos pagamentos; o estorno é descontado e a linha permanece.",
     ],
   };
 }

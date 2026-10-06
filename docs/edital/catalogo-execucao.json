@@ -3374,9 +3374,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-pagamentos-efetuados.mts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos do exercício; desde a V36 o relatório de pagamentos efetuados (/relatorios/pagamentos) traz na mesma consulta os pagamentos de RESTOS A PAGAR, com o retido e o líquido de cada pagamento (percurso-v36-pagamentos-efetuados.mts). FALTA: os dispêndios extraorçamentários na mesma consulta (estão em /financeiro/extraorcamentario).",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percursos scripts/percurso-v36-pagamentos-efetuados.mts e scripts/percurso-v36-dispendios-extra.mts (4/4: recolhimento registrado pela tela, seção com o total do domínio, total dos pagamentos intacto, motivo com unidade).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos do exercício; o relatório de pagamentos efetuados (/relatorios/pagamentos) traz na mesma consulta os de RESTOS A PAGAR, com retido e líquido, e desde a V36 os DISPÊNDIOS EXTRAORÇAMENTÁRIOS do período numa seção própria (recolhimento a consignatário, devolução de caução), com o estorno descontado, fora do total dos pagamentos, também no CSV e no PDF; só a quem lê o financeiro do ente, e com recorte por unidade a seção diz o motivo (modules/m07-extraorcamentario/dispendios-efetuados.ts; m07-dispendios-efetuados.test.ts, dia civil em hora de borda, mutação do estorno acusada; test/ui/pagamentos-efetuados-pdf.test.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.3",
