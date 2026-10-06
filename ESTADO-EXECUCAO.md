@@ -142,6 +142,39 @@ movimento diário, id literal) corrigidas; `test/ui` 306/309, as 3 do `contexto-
 - Das 79 ausentes, as que pedem modelo novo ou regra do ente: emendas parlamentares (PPA, LDO, LOA), importações do
   PPA, cheque, retorno bancário, portal do fornecedor, subempenho, parcelas da dívida, PPP.
 
+**Integrado depois da quarta rodada:** o cadastro a partir do aviso, da sessão gestao-publica-86 (`57df6ec0`): o
+credor que a busca do empenho não acha se cadastra ali e volta escolhido. Na revisão, o caminho de volta aceitava
+tabulação — o navegador a apaga e "/<TAB>/golpe.example" chegaria como "//golpe.example" (redirecionamento aberto).
+`lib/retorno-seguro.ts` recusa agora todo caractere de controle (`a60d0997`, teste com mutação). Publicado em
+`79d16a0b`, backup `esperanca-antes-v36e-20261006T142756Z.dump`.
+
+**Quinta rodada (06/10/2026, pedido "agora continue pelo que falta"):**
+- **Impressão do extrato importado** (`be51649d`): `/financeiro/conciliacao/extratos` lista os extratos do exercício
+  e mostra as linhas como o banco as mandou — créditos, débitos, movimento do arquivo e a situação de cada linha na
+  conciliação, derivada dos vínculos vivos — com PDF em `/financeiro/conciliacao/extratos/pdf?id=`. Sem saldo corrido:
+  o extrato gravado não guarda o saldo inicial, e a tela e o papel dizem isso. `modules/m09-tesouraria/
+  extrato-importado.ts` (classificado no censo como leitura); `m09-extrato-importado.test.ts` 3/3, três mutações
+  acusadas (regra da conciliada, ordem natural do FITID, estorno do vínculo). Percurso 5/5, com a negação do atestador
+  (tela em `/sem-acesso?acao=CONSULTAR_FINANCEIRO`, PDF 403). O percurso acusou um falso positivo dele mesmo: os seis
+  dígitos da conta fictícia coincidiam com um número de tempo do React no HTML bruto; passou a ler o texto visível.
+  Catálogo 5.10.2.44 segue PARCIAL só pelo leiaute OFC próprio.
+- **Percurso do resto a pagar e do cancelamento** (`1201c8d6`), numa CÓPIA da fictícia
+  (`gestao_publica_esperanca_ficticio_restos`, local, por `pg_dump | pg_restore` + `db:papel`): o administrador
+  encerra 2026 pela tela (18 inscrições, 9 e 9); o detalhe do FIC-003/2026 mostra processados R$ 2.000,00 e não
+  processados R$ 8.000,00, iguais aos inscritos; o cancelamento sem as contas da operação é recusado com o motivo e
+  nada é gravado. O cancelamento efetivo não se mede aqui: as contas do roteiro são decisão do ente (o mecanismo está
+  no `smoke-restos-a-pagar-operacoes`). **Defeito achado:** a recusa dizia "A cancelamento de restos a pagar..." — o
+  artigo vem agora da operação, no serviço e no aviso da tela (`m08-rotulo-do-evento.test.ts`, vermelho no código
+  antigo; `m08-roteiro-de-restos` 13/13). Catálogo 5.10.1.28 validado localmente.
+- Testes e guardas: censo 5/5, `leitura-exige-acao` 5/5, `fronteira-ui` 3/3, `formularios-na-mesma-pagina` 6/6;
+  typecheck do app e do backend limpos.
+- **Carga, com o motivo:** com 620 MB livres (um processo de 2,6 GB alheio), o teste novo estourou o gancho de 10 s em
+  testes diferentes a cada corrida; o Docker Desktop caiu e o contêiner do banco reiniciou duas vezes (recuperação
+  limpa no log). Depois de religar, tudo passou. Nada foi marcado como aprovado durante a queda.
+
+Pendências que seguem: leiaute OFC próprio (arquivo real do banco do ente), resumo por fonte no Razão (decisão de
+modelo), contas do roteiro de cancelamento de restos (decisão contábil do ente), e as ausentes que pedem modelo novo.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.
