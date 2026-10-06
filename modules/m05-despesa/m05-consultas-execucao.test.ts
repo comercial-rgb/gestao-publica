@@ -129,11 +129,11 @@ async function semear(): Promise<void> {
   });
 }
 
-async function empenhaDe(valor: string, n: string, obraId?: string): Promise<string> {
+async function empenhaDe(valor: string, n: string, obraId?: string, tipo: "ORDINARIO" | "GLOBAL" | "ESTIMATIVO" = "ORDINARIO"): Promise<string> {
   const e = await empenhar(
     {
       ...(obraId !== undefined ? { obraId } : {}),
-      fichaId: FICHA, numero: `NE-${n}`, tipo: "ORDINARIO", valor,
+      fichaId: FICHA, numero: `NE-${n}`, tipo, valor,
       data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: CREDOR,
       historico: `empenho ${n}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS",
       criadoPor: POR,
@@ -366,5 +366,29 @@ describe("M05 — as leituras da execução (TR 5.17)", () => {
     expect((await listarEmpenhos(prisma, RECORTE)).length).toBe(3);
     // Registro sem empenho: lista vazia, não a lista inteira.
     expect(await listarEmpenhos(prisma, { ...RECORTE, vinculo: { dimensao: "convenioId", id: "conv-sem-empenho" } })).toEqual([]);
+  });
+
+  /**
+   * t7 — OS EMPENHOS DE UM TIPO (V36: o encerramento lista os estimativos com saldo antes de inscrever).
+   * Conta à mão: NE-1 estimativo 1.000 com anulação parcial de 400 → 600 a liquidar; NE-2 estimativo 500;
+   * NE-3 ordinário 700. Filtrar ESTIMATIVO devolve NE-1 (600,00, não 1.000,00: a parcial é alcançada pelo
+   * original) e NE-2; ORDINARIO devolve só NE-3.
+   */
+  it("t7: o recorte por TIPO alcança as anulações pelo original", async () => {
+    const ne1 = await empenhaDe("1000.00", "1", undefined, "ESTIMATIVO");
+    await empenhaDe("500.00", "2", undefined, "ESTIMATIVO");
+    await empenhaDe("700.00", "3");
+    await anularEmpenhoParcial(
+      { originalId: ne1, numero: "NEA-1", valor: "400.00", data: new Date("2026-02-10T12:00:00Z"), motivo: "estimativa revista antes do encerramento do exercício", criadoPor: POR },
+      deps
+    );
+    const estimativos = await listarEmpenhos(prisma, { ...RECORTE, tipoDoEmpenho: "ESTIMATIVO" });
+    expect(estimativos.map((e) => e.numero).sort()).toEqual(["NE-1", "NE-2"]);
+    expect(estimativos.find((e) => e.numero === "NE-1")?.saldoALiquidar.toFixed(2)).toBe("600.00");
+    const ordinarios = await listarEmpenhos(prisma, { ...RECORTE, tipoDoEmpenho: "ORDINARIO" });
+    expect(ordinarios.map((e) => e.numero)).toEqual(["NE-3"]);
+    // Tipo e credor juntos: os dois filtros valem (nenhum sobrescreve o outro).
+    expect((await listarEmpenhos(prisma, { ...RECORTE, tipoDoEmpenho: "ESTIMATIVO", credorCpfCnpj: "00000000000000" })).length).toBe(0);
+    expect((await listarEmpenhos(prisma, { ...RECORTE, tipoDoEmpenho: "ESTIMATIVO", credorCpfCnpj: CREDOR })).length).toBe(2);
   });
 });

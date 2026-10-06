@@ -1,5 +1,5 @@
 import { toMoney, type Money } from "../../packages/contracts/index.js";
-import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import type { Prisma, PrismaClient } from "../../prisma/generated/client/client.js";
 // A soma LÍQUIDA de registros estornáveis é do M08 e é fonte única (o M12 já a
 // usa no relatório de restos). O líquido de UM pagamento é do M09 — nasceu na
 // conciliação, e recopiá-la aqui seria criar a segunda verdade sobre o mesmo
@@ -652,6 +652,25 @@ export interface RecorteDeEmpenhos extends RecorteDaExecucao {
    * m05-dimensoes-das-anulacoes): o conjunto filtrado já traz as reduções de cada empenho.
    */
   readonly vinculo?: VinculoDoEmpenho | undefined;
+  /**
+   * V36 — os empenhos de UM tipo (o encerramento lista os ESTIMATIVOS com saldo antes de inscrever). A anulação
+   * não carrega o tipo do original como dado confiável para a soma, então o filtro alcança o tipo pelo original,
+   * como `doCredor` faz com o credor: sem a linha da anulação no conjunto, o empenho pareceria inteiro.
+   */
+  readonly tipoDoEmpenho?: "ORDINARIO" | "GLOBAL" | "ESTIMATIVO" | undefined;
+}
+
+/** O `where` do tipo: pelo próprio empenho ou pelo original da anulação (os três níveis da cadeia). */
+function doTipo(tipo: RecorteDeEmpenhos["tipoDoEmpenho"]): Prisma.EmpenhoWhereInput {
+  if (tipo === undefined) return {};
+  return {
+    OR: [
+      { tipo, estornoDeId: null, anulacaoParcialDeId: null },
+      { estornoDe: { tipo } },
+      { anulacaoParcialDe: { tipo } },
+      { estornoDe: { anulacaoParcialDe: { tipo } } },
+    ],
+  };
 }
 
 /** As dimensões do empenho que um cadastro usa para abrir "os empenhos deste registro". */
@@ -759,9 +778,10 @@ export async function listarEmpenhos(
     // ⚠️ Fonte pela FICHA, credor pelo EMPENHO (e pelos pais dele — ver `doCredor`).
     where: {
       ficha: daFicha(p),
-      ...doCredor(p.credorCpfCnpj),
       ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}),
       ...(p.vinculo !== undefined ? { [p.vinculo.dimensao]: p.vinculo.id } : {}),
+      // O credor e o tipo usam OR; combinados, cada um vai num AND próprio para não se sobrescreverem.
+      AND: [doCredor(p.credorCpfCnpj), doTipo(p.tipoDoEmpenho)],
     },
     orderBy: [{ data: "desc" }, { numero: "desc" }],
     select: {

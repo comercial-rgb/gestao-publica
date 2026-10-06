@@ -88,6 +88,8 @@ export async function listarEmpenhosDaExecucao(p: {
   readonly fichaId?: string | undefined;
   /** V36 — os empenhos de uma obra, convênio, precatório, consórcio ou dívida. */
   readonly vinculo?: VinculoDoEmpenho | undefined;
+  /** V36 — os empenhos de um tipo (o encerramento lista os estimativos com saldo). */
+  readonly tipoDoEmpenho?: "ORDINARIO" | "GLOBAL" | "ESTIMATIVO" | undefined;
 }): Promise<readonly EmpenhoDaTela[]> {
   // ⚠️ TODO filtro desce ao SQL do módulo. A porta NUNCA recorta a lista depois de
   // recebê-la: um `.filter()` aqui traria o exercício inteiro do banco para jogar fora,
@@ -99,6 +101,7 @@ export async function listarEmpenhosDaExecucao(p: {
     ...(p.fonteCodigo !== undefined ? { fonteCodigo: p.fonteCodigo } : {}),
     ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}),
     ...(p.vinculo !== undefined ? { vinculo: p.vinculo } : {}),
+    ...(p.tipoDoEmpenho !== undefined ? { tipoDoEmpenho: p.tipoDoEmpenho } : {}),
   });
   const [nomes, vinculos] = await Promise.all([
     nomesDosCredores(linhas.map((l) => l.credorCpfCnpj)),

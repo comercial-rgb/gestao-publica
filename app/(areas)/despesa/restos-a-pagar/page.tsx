@@ -16,6 +16,9 @@ import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { FiltroDosRestos } from "./FiltroDosRestos";
 import { FormApuracaoDoResultado, FormEncerramentoDoExercicio, FormEstornarApuracao } from "./FormEncerramento";
 import { dataBr } from "../../../../lib/recorte";
+import { listarEmpenhosDaExecucao } from "../../../../lib/portas/empenho";
+import { formatarDocumento } from "../../../../packages/documento/index";
+import { FormAnular } from "../FormAnular";
 import { EXERCICIO_PADRAO } from "../../../../lib/recorte";
 
 /** RESTOS A PAGAR — posição por inscrição. Server Component, força-dinâmica. */
@@ -175,7 +178,12 @@ function AtosDoEncerramento({
   const nenhum = !permitidas.has("ENCERRAR_EXERCICIO") && !permitidas.has("APURAR_RESULTADO") && !permitidas.has("ESTORNAR_APURACAO");
   return (
     <>
-      {permitidas.has("ENCERRAR_EXERCICIO") ? <FormEncerramentoDoExercicio exercicio={exercicio} /> : null}
+      {permitidas.has("ENCERRAR_EXERCICIO") ? (
+        <>
+          <AntesDeEncerrar exercicio={exercicio} podeAnular={permitidas.has("ANULAR_EMPENHO_PARCIAL")} />
+          <FormEncerramentoDoExercicio exercicio={exercicio} />
+        </>
+      ) : null}
       {permitidas.has("APURAR_RESULTADO") ? <FormApuracaoDoResultado exercicio={exercicio} /> : null}
       {permitidas.has("ESTORNAR_APURACAO") ? <PainelDoEstorno apuracoes={apuracoes} /> : null}
       {nenhum ? (
@@ -203,5 +211,78 @@ function PainelDoEstorno({
           rotulo: `Resultado de ${String(a.ano)} — apurado em ${dataBr(a.data)} por ${a.criadoPor}`,
         }))}
     />
+  );
+}
+
+/**
+ * V36 — ANTES DE ENCERRAR: a conferência anual e os ESTIMATIVOS com saldo a liquidar.
+ *
+ * O encerramento inscreve em restos tudo o que ficou empenhado e não liquidado, sem olhar o tipo — e é certo que
+ * seja assim: a inscrição é do saldo, não da intenção. Mas o estimativo costuma sobrar por estimativa, não por
+ * obrigação, e inscrevê-lo leva para o ano seguinte uma despesa que não vai acontecer. A decisão é de quem
+ * encerra; o que faltava era ver a lista e poder anular o saldo aqui, com a mesma anulação parcial da central
+ * (motivo obrigatório, ato novo, original intacto). Quem não anular continua inscrito, como antes.
+ */
+async function AntesDeEncerrar({ exercicio, podeAnular }: { readonly exercicio: number; readonly podeAnular: boolean }): Promise<React.ReactElement> {
+  const estimativos = (await listarEmpenhosDaExecucao({ exercicio, tipoDoEmpenho: "ESTIMATIVO" })).filter(
+    (e) => !e.anulado && e.saldoALiquidar !== "0.00"
+  );
+  return (
+    <section
+      className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-card)]"
+      data-painel="antes-de-encerrar"
+    >
+      <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Antes de encerrar {exercicio}</h2>
+      <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
+        Confira o balancete, o balanço e as demais identidades do ano em{" "}
+        <Link className="text-[color:var(--color-primary)] underline" href={`/relatorios/consistencia?escopo=ANUAL&exercicio=${exercicio}`}>
+          Relatórios · Consistência (anual)
+        </Link>
+        . Uma divergência ali vai para o encerramento junto.
+      </p>
+      <h3 className="mt-4 text-xs font-semibold text-[color:var(--color-ink)]">Empenhos estimativos com saldo a liquidar</h3>
+      {estimativos.length === 0 ? (
+        <p className="mt-1 text-xs text-[color:var(--color-ink-2)]" data-estimativos="nenhum">
+          Nenhum empenho estimativo de {exercicio} tem saldo a liquidar.
+        </p>
+      ) : (
+        <>
+          <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
+            O saldo destes empenhos será inscrito em restos a pagar não processados. Se a despesa não vai acontecer,
+            anule o saldo antes de encerrar.
+          </p>
+          <table className="mt-2 w-full text-left text-xs" data-lista="estimativos-com-saldo">
+            <thead>
+              <tr className="text-[color:var(--color-ink-3)]">
+                <th scope="col" className="py-1.5 pr-3">Empenho</th>
+                <th scope="col" className="py-1.5 pr-3">Credor</th>
+                <th scope="col" className="py-1.5 pr-3 text-right">Empenhado</th>
+                <th scope="col" className="py-1.5 pr-3 text-right">A liquidar</th>
+                <th scope="col" className="py-1.5">Anular o saldo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {estimativos.map((e) => (
+                <tr key={e.id} className="border-t border-[color:var(--color-border)] align-top" data-empenho={e.numero}>
+                  <th scope="row" className="py-1.5 pr-3 font-normal">
+                    <Link className="text-[color:var(--color-primary)] underline" href={`/despesa/empenhos/${e.id}`}>{e.numero}</Link>
+                  </th>
+                  <td className="py-1.5 pr-3">{e.credorNome ?? formatarDocumento(e.credorCpfCnpj)}</td>
+                  <td className="py-1.5 pr-3 text-right"><ValorMonetario valor={e.empenhadoLiquido} /></td>
+                  <td className="py-1.5 pr-3 text-right"><ValorMonetario valor={e.saldoALiquidar} /></td>
+                  <td className="py-1.5">
+                    {podeAnular ? (
+                      <FormAnular tipo="empenho" id={e.id} anulavelSaldo={e.saldoALiquidar} estornavel={e.liquidado === "0.00"} objeto={`Empenho estimativo ${e.numero}`} />
+                    ) : (
+                      <span className="text-[color:var(--color-ink-2)]">quem anula empenho decide</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+    </section>
   );
 }
