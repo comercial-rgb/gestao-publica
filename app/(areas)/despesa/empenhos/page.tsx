@@ -22,6 +22,7 @@ import {
 } from "../../../../lib/portas/contexto";
 import { dataBr, descreverRecorte, type RecorteDaPagina } from "../../../../lib/recorte";
 import { FormEmpenho } from "./FormEmpenho";
+import { podeUsarAtalhoDeCadastro } from "../../../../lib/portas/pessoas";
 import { FormAnular } from "../FormAnular";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
@@ -49,6 +50,9 @@ export default async function EmpenhosPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
+  // V37 — o credor que volta escolhido do atalho de cadastro, e se quem está aqui pode usar o atalho.
+  const credorPadrao = typeof sp["credor"] === "string" && sp["credor"] !== "" ? sp["credor"].replace(/\D/g, "") : undefined;
+  const podeCadastrarCredor = await podeUsarAtalhoDeCadastro();
 
   // ⚠️ O RECORTE VEM AUTORIZADO, e a chamada está DENTRO do try de propósito: ela pode
   // RECUSAR. Antes era `recorteDe(sp)` — parse puro, que aceitava qualquer `?ug=` e
@@ -120,6 +124,8 @@ export default async function EmpenhosPage({
       </div>
 
       <FormEmpenho
+        credorPadrao={credorPadrao}
+        podeCadastrarCredor={podeCadastrarCredor}
         numeroSugerido={numeroSugerido}
         fichas={fichas.map((f) => ({
           id: f.id,

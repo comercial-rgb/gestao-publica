@@ -28,6 +28,7 @@ import {
 } from "./FormSolicitacao";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
+import { podeUsarAtalhoDeCadastro } from "../../../../lib/portas/pessoas";
 /**
  * SOLICITAÇÕES DE EMPENHO (M05, V22) — pedir, autorizar, e só então emitir.
  *
@@ -70,6 +71,9 @@ export default async function SolicitacoesDeEmpenhoPage({
   readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
+  // V37 — o credor que volta escolhido do atalho de cadastro, e se quem está aqui pode usar o atalho.
+  const credorPadrao = typeof sp["credor"] === "string" && sp["credor"] !== "" ? sp["credor"].replace(/\D/g, "") : undefined;
+  const podeCadastrarCredor = await podeUsarAtalhoDeCadastro();
   let recorte: RecorteDaPagina;
   let solicitacoes: readonly SolicitacaoDaTela[];
   let fichas: readonly FichaDaTela[];
@@ -122,6 +126,8 @@ export default async function SolicitacoesDeEmpenhoPage({
       </div>
 
       <FormSolicitacao
+        credorPadrao={credorPadrao}
+        podeCadastrarCredor={podeCadastrarCredor}
         fichas={fichas.map((f) => ({
           id: f.id,
           numero: f.numero,

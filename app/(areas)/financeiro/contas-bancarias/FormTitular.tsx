@@ -79,7 +79,7 @@ export function FormTitular({
     return (
       <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
         Nenhuma entidade contábil cadastrada ainda. Cadastre em{" "}
-        <strong>Contabilidade &gt; Entidades contábeis</strong> antes de declarar o titular.
+        <a href="/contabilidade/entidades" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Contabilidade &gt; Entidades contábeis</a> antes de declarar o titular.
       </p>
     );
   }

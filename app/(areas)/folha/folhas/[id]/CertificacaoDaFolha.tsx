@@ -36,7 +36,7 @@ export function CertificacaoDaFolha({ situacao, fatos }: { readonly situacao: st
       {fatos.length === 0 ? (
         <p className="text-xs text-[color:var(--color-ink-2)]">
           Esta folha ainda não foi certificada. O atesto cabe ao servidor designado por ato administrativo (portaria,
-          decreto ou delegação). Cadastre a designação em Folha &gt; Designações. Quem calculou ou fechou a folha não pode
+          decreto ou delegação). Cadastre a designação em <a href="/folha/designacoes" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Folha &gt; Designações</a>. Quem calculou ou fechou a folha não pode
           certificá-la.
         </p>
       ) : (

@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { CADASTRO_DE_CREDOR, linkDeCadastro } from "../../../../lib/atalho-de-cadastro";
 import { CampoReferenciado, type OpcaoDoSeletor } from "../../../../components/ui/CampoReferenciado";
 import { fichasQueCasam } from "./busca-da-ficha";
 import { CampoCpfCnpj, CampoValor } from "../../../../components/ui/Campos";
@@ -116,6 +117,8 @@ export function FormEmpenho({
   ordemPadrao = "",
   solicitacaoPadrao = "",
   numeroSugerido,
+  credorPadrao,
+  podeCadastrarCredor = false,
 }: {
   readonly fichas: readonly FichaParaEmpenho[];
   readonly ordemPadrao?: string;
@@ -123,13 +126,17 @@ export function FormEmpenho({
   readonly solicitacaoPadrao?: string;
   /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
   readonly numeroSugerido?: string | undefined;
+  /** V37 — o credor que volta escolhido do atalho de cadastro (`?credor=` da URL). */
+  readonly credorPadrao?: string | undefined;
+  /** V37 — o servidor diz se quem está aqui pode cadastrar o credor; sem isso, o atalho não aparece. */
+  readonly podeCadastrarCredor?: boolean;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoEmpenho, FormData>(empenharAction, {});
   const ref = useRef<HTMLFormElement>(null);
 
   const [fichaId, setFichaId] = useState("");
   const [buscaFicha, setBuscaFicha] = useState("");
-  const [credor, setCredor] = useState<{ doc: string; nome: string; versao: number }>({ doc: "", nome: "", versao: 0 });
+  const [credor, setCredor] = useState<{ doc: string; nome: string; versao: number }>({ doc: credorPadrao ?? "", nome: "", versao: 0 });
   const [credorManual, setCredorManual] = useState(false);
   // Quando o documento digitado não está no cadastro de credores, a tela passa sozinha para o credor
   // sem cadastro, com o documento já preenchido — e diz por quê.
@@ -384,6 +391,14 @@ export function FormEmpenho({
             {credorNaoCadastrado ? (
               <span role="status" className="mt-1 block text-[11px] text-[color:var(--color-ink-2)]">
                 Este documento não está no cadastro de credores. Confira o número e emita como credor sem cadastro, ou cadastre o credor antes.
+                {podeCadastrarCredor ? (
+                  <>
+                    {" "}
+                    <a href={linkDeCadastro(CADASTRO_DE_CREDOR, credor.doc, typeof window === "undefined" ? "/despesa/empenhos" : `${window.location.pathname}${window.location.search}`)} className="font-medium text-[color:var(--color-primary)] hover:underline" data-atalho-de-cadastro>
+                      Cadastrar este credor
+                    </a>
+                  </>
+                ) : null}
               </span>
             ) : null}
             <button type="button" onClick={() => { setCredorManual(false); setCredorNaoCadastrado(false); }} className="mt-1 text-[11px] font-medium text-[color:var(--color-primary)] hover:underline">
@@ -402,6 +417,7 @@ export function FormEmpenho({
               largura={4}
               {...(credor.doc !== "" ? { valorInicial: credor.doc } : {})}
               aoEscolher={(o) => setCredor((c) => ({ doc: o?.valor ?? "", nome: o?.dados?.["credorNome"] ?? "", versao: c.versao }))}
+              {...(podeCadastrarCredor ? { cadastro: { href: CADASTRO_DE_CREDOR, rotulo: "Cadastrar este credor" } } : {})}
               aoNaoEncontrar={(t) => {
                 const digitos = t.replace(/\D/g, "");
                 if (digitos.length !== 11 && digitos.length !== 14) return;

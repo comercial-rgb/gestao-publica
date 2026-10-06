@@ -133,8 +133,8 @@ export function FormPagamento({
         <strong className="text-[color:var(--color-ink)]">
           Nenhuma conta bancária cadastrada.
         </strong>{" "}
-        O pagamento exige uma conta bancária vinculada à fonte de recursos. Cadastre a conta em
-        Financeiro, Contas bancárias.
+        O pagamento exige uma conta bancária vinculada à fonte de recursos. Cadastre a conta em{" "}
+        <a href="/financeiro/contas-bancarias" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Financeiro, Contas bancárias</a>.
       </div>
     );
   }

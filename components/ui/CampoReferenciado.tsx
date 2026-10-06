@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { linkDeCadastro } from "../../lib/atalho-de-cadastro";
 import { CLASSE_CAMPO as CAMPO, CLASSE_ROTULO as ROTULO } from "./Formulario";
 
 /**
@@ -61,6 +62,12 @@ export interface CampoReferenciadoProps {
    * oferecer a alternativa dele (ex.: o credor sem cadastro, digitado à mão).
    */
   readonly aoNaoEncontrar?: (texto: string) => void;
+  /**
+   * V37 — o ATALHO PARA O CADASTRO quando a busca não acha o que se digitou: o endereço base da tela de
+   * cadastro e o texto do link. A tela leva o texto digitado (se for documento) e o caminho de volta. Só
+   * se passa a quem pode cadastrar — o servidor decide, a tela não oferece o que recusaria.
+   */
+  readonly cadastro?: { readonly href: string; readonly rotulo: string } | undefined;
 }
 
 /** Só os dígitos, para comparar documento digitado com máscara e documento guardado sem ela. */
@@ -99,7 +106,7 @@ interface Resultado {
   readonly pagina: number;
 }
 
-export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, placeholder, contexto, largura, base, aoEscolher, valorInicial, avisarInicial, aoNaoEncontrar }: CampoReferenciadoProps): React.ReactElement {
+export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, placeholder, contexto, largura, base, aoEscolher, valorInicial, avisarInicial, aoNaoEncontrar, cadastro }: CampoReferenciadoProps): React.ReactElement {
   const id = useId();
   const idLista = `${id}-lista`;
   const idStatus = `${id}-status`;
@@ -111,6 +118,11 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
   const [ativa, setAtiva] = useState(-1);
   const [aviso, setAviso] = useState<string | null>(null);
   const seq = useRef(0);
+  // O caminho desta tela, para o atalho de cadastro voltar a ela (lido no navegador, depois de montar).
+  const [aqui, setAqui] = useState("");
+  useEffect(() => {
+    setAqui(`${window.location.pathname}${window.location.search}`);
+  }, []);
   /** A busca cujo resultado está na tela — só ela vale para escolher por correspondência exata. */
   const ultimaBusca = useRef<string | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
@@ -358,6 +370,11 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
         {escolha !== null ? `Escolhido: ${escolha.rotulo}` : obrigatorio === true && statusTexto === "" ? "Obrigatório. Selecione uma opção da lista." : statusTexto}
       </span>
       {aviso !== null ? <span role="alert" className="mt-1 block text-[11px] text-[color:var(--color-status-erro-fg)]">{aviso}</span> : null}
+      {cadastro !== undefined && escolha === null && texto.trim() !== "" && aqui !== "" && (aviso !== null || (estado.tipo === "pronto" && opcoes.length === 0)) ? (
+        <a href={linkDeCadastro(cadastro.href, texto, aqui)} className="mt-1 block text-[11px] font-medium text-[color:var(--color-primary)] hover:underline" data-atalho-de-cadastro>
+          {cadastro.rotulo}
+        </a>
+      ) : null}
       {ajuda !== undefined ? <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">{ajuda}</span> : null}
       {aberta && opcoes.length > 0 ? (
         <ul id={idLista} role="listbox" aria-label={rotulo} className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] shadow">

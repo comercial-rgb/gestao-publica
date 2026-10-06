@@ -84,7 +84,7 @@ export function FormParametroDo13({
           Faltam rubricas para preencher este formulário. São necessárias: duas rubricas de provento (uma para o 13º e
           outra para o adiantamento), ao menos uma rubrica de provento de vencimento-base, gratificação ou percentual
           para compor a base, e uma rubrica de desconto de natureza &quot;Abatimento do adiantamento do 13º&quot;.
-          Cadastre-as em Folha &gt; Rubricas, com versão aprovada.
+          Cadastre-as em <a href="/folha/rubricas" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Folha &gt; Rubricas</a>, com versão aprovada.
         </p>
       ) : null}
 

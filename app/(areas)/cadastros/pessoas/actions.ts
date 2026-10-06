@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import {
+  documentoNoCadastro,
   registrarAlteracaoDePessoa,
   registrarMovimentoDePapel,
   registrarPessoa,
@@ -12,6 +14,8 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { registrarPerfilFiscalPelaTela } from "../../../../lib/portas/retencao-calculada";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
+import { retornoSeguro } from "../../../../lib/retorno-seguro";
+import { voltaComCredor } from "../../../../lib/atalho-de-cadastro";
 /**
  * Server Actions do cadastro de pessoas.
  *
@@ -176,5 +180,44 @@ export async function registrarPerfilFiscalAction(_prev: EstadoPessoa, formData:
     } catch (e) {
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o perfil fiscal." };
     }
+  });
+}
+
+/**
+ * V37 — CADASTRAR A PARTIR DO AVISO. A tela que não achou o documento ("não está no cadastro de
+ * credores") manda para cá com o documento, o papel e o caminho de volta. Aqui:
+ *   · pessoa inexistente: cadastra (mesma porta do formulário comum) e, pedido o papel, concede;
+ *   · pessoa existente sem o papel: só concede — cadastrar de novo seria recusado por duplicidade;
+ *   · e volta à tela de origem com o documento no parâmetro, para o campo já vir escolhido.
+ * Cada passo é o caso de uso de sempre, com a sua autorização (CADASTRAR_PESSOA, MOVER_PAPEL_DE_PESSOA).
+ * Se o papel falhar depois do cadastro, a pessoa fica cadastrada e a nova tentativa só concede o papel.
+ */
+export async function cadastrarPeloAvisoAction(_prev: EstadoPessoa, formData: FormData): Promise<EstadoPessoa> {
+  return comComandoDoFormulario(formData, async () => {
+    const documento = String(formData.get("documento") ?? "").replace(/\D/g, "");
+    const papelBruto = String(formData.get("papel") ?? "");
+    const papel = ehPapel(papelBruto) ? papelBruto : null;
+    const conceder = papel !== null && formData.get("conceder") !== null;
+    const dataBruta = String(formData.get("dataDoPapel") ?? "").trim();
+    const retorno = retornoSeguro(String(formData.get("retorno") ?? ""), "/cadastros/pessoas");
+
+    if (conceder && !/^\d{4}-\d{2}-\d{2}$/.test(dataBruta)) return { erro: "Informe a data a partir da qual o papel vale." };
+    try {
+      const existente = await documentoNoCadastro(documento);
+      const pessoaId = existente?.pessoaId ?? (await registrarPessoa({ documento, ...camposCadastrais(formData) }));
+      if (conceder && papel !== null && !(existente?.papeisVigentes.includes(papel) ?? false)) {
+        await registrarMovimentoDePapel({
+          pessoaId,
+          papel,
+          movimento: "CONCEDIDO",
+          data: meioDiaCivil(dataBruta),
+          motivo: opcional(formData, "motivo") ?? "Cadastrado a partir do aviso da tela de origem.",
+        });
+      }
+      revalidatePath("/cadastros/pessoas");
+    } catch (erro) {
+      return { erro: mensagem(erro) };
+    }
+    redirect(conceder && papel === "CREDOR" ? voltaComCredor(retorno, documento) : retorno);
   });
 }

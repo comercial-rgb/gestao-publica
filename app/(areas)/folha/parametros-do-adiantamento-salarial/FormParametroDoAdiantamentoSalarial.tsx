@@ -100,7 +100,7 @@ export function FormParametroDoAdiantamentoSalarial({
         <p className="mb-3 rounded border border-[color:var(--color-borda)] p-3 text-xs text-[color:var(--color-ink-2)]">
           Faltam rubricas para preencher este formulário. São necessárias: uma rubrica de provento para pagar o
           adiantamento e uma rubrica de desconto de natureza &quot;Abatimento do adiantamento salarial&quot; para abatê-lo
-          na folha mensal (a natureza do abatimento do 13º não se aplica). Cadastre-as em Folha &gt; Rubricas, com versão
+          na folha mensal (a natureza do abatimento do 13º não se aplica). Cadastre-as em <a href="/folha/rubricas" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Folha &gt; Rubricas</a>, com versão
           aprovada.
         </p>
       ) : null}

@@ -66,7 +66,7 @@ export function FormGrupoDosEncargos({ fichas, credores, contasDeVariacao, conta
       <fieldset data-secao="componentes" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Componentes de encargo deste grupo</legend>
         {componentes.length === 0 ? (
-          <p className="text-xs text-[color:var(--color-ink-2)]">Não há componente de encargo sem grupo. Cadastre em Folha &gt; Encargos do empregador.</p>
+          <p className="text-xs text-[color:var(--color-ink-2)]">Não há componente de encargo sem grupo. Cadastre em <a href="/folha/encargos" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Folha &gt; Encargos do empregador</a>.</p>
         ) : (
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {componentes.map((k, i) => (

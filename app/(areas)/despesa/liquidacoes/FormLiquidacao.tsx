@@ -186,7 +186,7 @@ export function FormLiquidacao({
             liquidações, uma por empenho.
             {opcoesDeMaterial.classes.length === 0 ? (
               <strong className="block text-[color:var(--color-status-erro-fg)]">
-                Nenhuma classe de material cadastrada. Cadastre a classe antes de liquidar material.
+                Nenhuma classe de material cadastrada. <a href="/patrimonio/almoxarifado/classes" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Cadastre a classe</a> antes de liquidar material.
               </strong>
             ) : null}
           </p>

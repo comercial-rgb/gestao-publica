@@ -22,20 +22,29 @@ import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
  * ⚠️ NENHUM CAMPO ESCONDIDO CARREGA AUTORIZAÇÃO. Não há `criadoPor` no formulário: ele
  * vem da sessão, no servidor.
  */
-export function FormPessoa(): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoPessoa, FormData>(
-    cadastrarPessoaAction,
-    {}
-  );
+export function FormPessoa({
+  acao = cadastrarPessoaAction,
+  documentoInicial,
+  titulo = "Cadastrar pessoa",
+  rotuloDoBotao = "Cadastrar pessoa",
+  children,
+}: {
+  /** V37 — o atalho "cadastrar a partir do aviso" usa este mesmo formulário com a ação que cadastra e volta. */
+  readonly acao?: (prev: EstadoPessoa, formData: FormData) => Promise<EstadoPessoa>;
+  readonly documentoInicial?: string | undefined;
+  readonly titulo?: string;
+  readonly rotuloDoBotao?: string;
+  /** Campos a mais, antes da mensagem e do botão (o papel e o caminho de volta, no atalho). */
+  readonly children?: React.ReactNode;
+} = {}): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoPessoa, FormData>(acao, {});
   const ref = useRef<HTMLFormElement>(null);
   if (estado.sucesso !== undefined) ref.current?.reset();
 
   return (
     <form ref={ref} action={action} data-acao="cadastrar-pessoa" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
-      <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
-        Cadastrar pessoa
-      </h2>
+      <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">{titulo}</h2>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -43,6 +52,7 @@ export function FormPessoa(): React.ReactElement {
           <CampoCpfCnpj
             name="documento"
             required
+            {...(documentoInicial !== undefined && documentoInicial !== "" ? { defaultValue: documentoInicial } : {})}
             placeholder="12.345.678/0001-95"
             className={CAMPO}
           />
@@ -115,6 +125,8 @@ export function FormPessoa(): React.ReactElement {
         existir, ele fica declarado como pendência em vez de nascer no lugar errado.
       */}
 
+      {children}
+
       {estado.erro !== undefined ? (
         <p
           role="alert"
@@ -130,7 +142,7 @@ export function FormPessoa(): React.ReactElement {
       ) : null}
 
       <button type="submit" disabled={pendente} className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`}>
-        {pendente ? "Cadastrando…" : "Cadastrar pessoa"}
+        {pendente ? "Cadastrando…" : rotuloDoBotao}
       </button>
     </form>
   );

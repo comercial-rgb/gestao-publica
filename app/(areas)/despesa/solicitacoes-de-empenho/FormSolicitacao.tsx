@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { CADASTRO_DE_CREDOR } from "../../../../lib/atalho-de-cadastro";
 import { CampoReferenciado, type OpcaoDoSeletor } from "../../../../components/ui/CampoReferenciado";
 import { CampoValor } from "../../../../components/ui/Campos";
 import {
@@ -43,11 +44,21 @@ const ehCategoria = (v: string | undefined): v is Exclude<Categoria, ""> => v !=
  * é conferida na emissão do empenho. O contrato ou a ordem de compra escolhidos sugerem o credor, o
  * valor e a categoria — tudo continua editável, e o domínio confere de novo.
  */
-export function FormSolicitacao({ fichas }: { readonly fichas: readonly FichaParaSolicitacao[] }): React.ReactElement {
+export function FormSolicitacao({
+  fichas,
+  credorPadrao,
+  podeCadastrarCredor = false,
+}: {
+  readonly fichas: readonly FichaParaSolicitacao[];
+  /** V37 — o credor que volta escolhido do atalho de cadastro (`?credor=` da URL). */
+  readonly credorPadrao?: string | undefined;
+  /** V37 — o servidor diz se quem está aqui pode cadastrar o credor; sem isso, o atalho não aparece. */
+  readonly podeCadastrarCredor?: boolean;
+}): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaSolicitacao, FormData>(solicitarAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [fichaId, setFichaId] = useState("");
-  const [credor, setCredor] = useState<{ doc: string; versao: number }>({ doc: "", versao: 0 });
+  const [credor, setCredor] = useState<{ doc: string; versao: number }>({ doc: credorPadrao ?? "", versao: 0 });
   const [valor, setValor] = useState<{ cru: string; versao: number }>({ cru: "", versao: 0 });
   const [categoria, setCategoria] = useState<Categoria>("");
   const [tipo, setTipo] = useState<"ORDINARIO" | "GLOBAL" | "ESTIMATIVO">("ORDINARIO");
@@ -137,6 +148,7 @@ export function FormSolicitacao({ fichas }: { readonly fichas: readonly FichaPar
             placeholder="Digite o CPF, o CNPJ ou o nome"
             largura={4}
             {...(credor.doc !== "" ? { valorInicial: credor.doc } : {})}
+            {...(podeCadastrarCredor ? { cadastro: { href: CADASTRO_DE_CREDOR, rotulo: "Cadastrar este credor" } } : {})}
           />
         </div>
 

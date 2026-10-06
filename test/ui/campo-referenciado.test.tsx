@@ -226,4 +226,31 @@ describe("CampoReferenciado", () => {
     );
     expect(fireEvent.submit(container.querySelector("form") as HTMLFormElement)).toBe(true);
   });
+  it("V37 ATALHO DE CADASTRO: a busca sem resultado oferece o cadastro com o documento — só a quem a tela autoriza", async () => {
+    const { container, getByRole, unmount } = render(
+      <form>
+        <CampoReferenciado name="credor" rotulo="Credor" catalogo="credores" obrigatorio cadastro={{ href: "/cadastros/pessoas/nova?papel=CREDOR", rotulo: "Cadastrar este credor" }} />
+      </form>
+    );
+    await digitar(getByRole("combobox"), "418.273.659-19");
+    await responder(0, { opcoes: [], temMais: false });
+    const link = container.querySelector("[data-atalho-de-cadastro]") as HTMLAnchorElement | null;
+    expect(link?.textContent).toBe("Cadastrar este credor");
+    const u = new URL(link!.getAttribute("href")!, "http://x");
+    expect(u.pathname).toBe("/cadastros/pessoas/nova");
+    expect(u.searchParams.get("documento")).toBe("41827365919");
+    expect(u.searchParams.get("papel")).toBe("CREDOR");
+    expect(u.searchParams.get("retorno")?.startsWith("/")).toBe(true);
+    unmount();
+
+    // Sem a autorização (a tela não passa `cadastro`), o mesmo vazio não oferece atalho nenhum.
+    const sem = render(
+      <form>
+        <CampoReferenciado name="credor" rotulo="Credor" catalogo="credores" obrigatorio />
+      </form>
+    );
+    await digitar(sem.getByRole("combobox"), "418.273.659-19");
+    await responder(1, { opcoes: [], temMais: false });
+    expect(sem.container.querySelector("[data-atalho-de-cadastro]")).toBeNull();
+  });
 });

@@ -1,5 +1,7 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { comEscritaAutenticada } from "./sessao";
+import { exigirLeituraDoEnte } from "./leitura";
+import { acoesPermitidas } from "./molde";
 import {
   listarPessoas,
   type FiltroDePessoas,
@@ -136,4 +138,57 @@ export async function registrarMovimentoDePapel(input: {
     );
     return r.movimentoId;
   });
+}
+
+/**
+ * V37 — O DOCUMENTO NO CADASTRO, para o atalho "cadastrar a partir do aviso".
+ *
+ * Quem digita um CPF/CNPJ que a busca de credores não acha está em um de dois casos, e o atalho trata os
+ * dois: a pessoa NÃO EXISTE (cadastra-se, com o papel), ou EXISTE sem o papel vigente (só se concede o
+ * papel — cadastrar de novo seria recusado por documento duplicado). Papel vigente é a mesma regra do
+ * catálogo de credores: o último movimento do papel, pela data do ato, é CONCEDIDO.
+ */
+export interface DocumentoNoCadastro {
+  readonly pessoaId: string;
+  readonly nome: string;
+  readonly documentoFormatado: string;
+  readonly papeisVigentes: readonly PapelDePessoa[];
+}
+
+export async function documentoNoCadastro(documento: string): Promise<DocumentoNoCadastro | null> {
+  await exigirLeituraDoEnte("CONSULTAR_CADASTROS");
+  const digitos = documento.replace(/\D/g, "");
+  if (digitos.length !== 11 && digitos.length !== 14) return null;
+  const p = await cliente().pessoa.findUnique({
+    where: { documento: digitos },
+    select: {
+      id: true,
+      documento: true,
+      versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } },
+      movimentos: { orderBy: [{ data: "desc" }, { criadoEm: "desc" }], select: { papel: true, movimento: true } },
+    },
+  });
+  if (p === null) return null;
+  const ultimo = new Map<PapelDePessoa, string>();
+  for (const m of p.movimentos) if (!ultimo.has(m.papel)) ultimo.set(m.papel, m.movimento);
+  return {
+    pessoaId: p.id,
+    nome: p.versoes[0]?.nome ?? "",
+    documentoFormatado: formatarDocumento(p.documento),
+    papeisVigentes: [...ultimo].filter(([, mov]) => mov === "CONCEDIDO").map(([papel]) => papel),
+  };
+}
+
+/**
+ * V37 — quem pode usar o atalho "cadastrar a partir do aviso": precisa das DUAS ações que ele executa
+ * (cadastrar a pessoa e conceder o papel). Sem uma delas a tela não oferece o atalho; a gravação, de
+ * todo modo, confere cada uma no servidor.
+ */
+export async function podeUsarAtalhoDeCadastro(): Promise<boolean> {
+  try {
+    const p = await acoesPermitidas(["CADASTRAR_PESSOA", "MOVER_PAPEL_DE_PESSOA"]);
+    return p.has("CADASTRAR_PESSOA") && p.has("MOVER_PAPEL_DE_PESSOA");
+  } catch {
+    return false;
+  }
 }

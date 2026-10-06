@@ -51,7 +51,7 @@ export default async function DescontosRetidosPage(): Promise<React.ReactElement
       ) : null}
       {dados.tipos.length === 0 ? (
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] p-3 text-xs">
-          Nenhum tipo de consignação ativo com conta de passivo. Cadastre-os em Financeiro &gt; Consignações.
+          Nenhum tipo de consignação ativo com conta de passivo. Cadastre-os em <a href="/financeiro/consignacoes" className="font-medium text-[color:var(--color-primary)] underline" data-atalho-de-cadastro>Financeiro &gt; Consignações</a>.
         </div>
       ) : null}
       <Card>
