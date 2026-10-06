@@ -34,7 +34,7 @@ describe("o caminho de volta aceito pela tela de cadastro", () => {
   });
 
   it("⚠️ NEGAÇÃO — endereço externo, protocolo, barra dupla ou invertida e quebra de linha voltam ao padrão", () => {
-    for (const ruim of ["https://golpe.example/x", "//golpe.example/x", "/\\golpe.example", "javascript:alert(1)", "despesa/empenhos", "/x\r\nLocation: //golpe", "", undefined]) {
+    for (const ruim of ["https://golpe.example/x", "//golpe.example/x", "/\\golpe.example", "javascript:alert(1)", "despesa/empenhos", "/x\r\nLocation: //golpe", "/\t/golpe.example", "/\u0000/golpe.example", "/\u001f/golpe.example", "", undefined]) {
       expect(retornoSeguro(ruim, "/cadastros/pessoas"), String(ruim)).toBe("/cadastros/pessoas");
     }
   });
