@@ -1,5 +1,6 @@
 import { porCredor, posicaoAPagar, type EmpenhoSemInscricao, type ObrigacaoAPagar, type TotaisDoCredor } from "../../modules/m05-despesa/a-pagar.js";
 import { toMoney } from "../../packages/contracts/index.js";
+import { diaCivil } from "../../packages/datas/index.js";
 import { cliente } from "./cliente";
 import { nomesDosCredores } from "./empenho";
 
@@ -28,6 +29,8 @@ export interface APagarDaTela {
   readonly semInscricao: readonly (EmpenhoSemInscricao & { readonly credorNome: string | null })[];
   /** Os credores do recorte, para o filtro (só os que aparecem — nenhuma escolha rende tela vazia). */
   readonly opcoesDeCredor: readonly { readonly documento: string; readonly nome: string | null }[];
+  /** V36 — as fontes que têm obrigação no recorte (sem o filtro de fonte, para o select não colapsar). */
+  readonly opcoesDeFonte: readonly string[];
 }
 
 export function faseDoFiltro(v: string): FaseDoFiltro {
@@ -35,6 +38,10 @@ export function faseDoFiltro(v: string): FaseDoFiltro {
 }
 export function origemDoFiltro(v: string): OrigemDoFiltro {
   return v === "exercicio" || v === "restos" ? v : "";
+}
+/** V36 — "vence até" (dia civil AAAA-MM-DD). Valor que não é um dia vira "sem filtro", nunca um corte inventado. */
+export function venceAteDoFiltro(v: string): string {
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : "";
 }
 
 const somar = (os: readonly ObrigacaoAPagar[]): string => os.reduce((s, o) => s.plus(o.saldo), toMoney("0")).toFixed(2);
@@ -46,21 +53,30 @@ export async function lerAPagar(p: {
   readonly credorCpfCnpj?: string | undefined;
   readonly fase?: FaseDoFiltro;
   readonly origem?: OrigemDoFiltro;
+  /**
+   * V36 — só as obrigações com vencimento até este dia civil (o vencimento é a data prevista da ordem de
+   * pagamento). Obrigação sem ordem não tem vencimento e fica fora do recorte — a tela diz isso.
+   */
+  readonly venceAte?: string;
 }): Promise<APagarDaTela> {
   const prisma = cliente();
   const recorte = { exercicio: p.exercicio, unidadeCodigo: p.unidadeCodigo, fonteCodigo: p.fonteCodigo };
+  const semFiltroDeOpcoes = { exercicio: p.exercicio, unidadeCodigo: p.unidadeCodigo };
   const [posicao, todos] = await Promise.all([
     posicaoAPagar(prisma, { ...recorte, credorCpfCnpj: p.credorCpfCnpj }),
-    // As opções do filtro ignoram o próprio filtro de credor (senão o select colapsaria numa opção só).
-    p.credorCpfCnpj === undefined ? null : posicaoAPagar(prisma, recorte),
+    // As opções dos filtros ignoram o filtro de credor e o de fonte (senão o select colapsaria numa opção só).
+    p.credorCpfCnpj === undefined && p.fonteCodigo === undefined ? null : posicaoAPagar(prisma, semFiltroDeOpcoes),
   ]);
   const base = todos ?? posicao;
   const docs = [...new Set([...base.obrigacoes.map((o) => o.credorCpfCnpj), ...base.semInscricao.map((e) => e.credorCpfCnpj)])];
   const nomes = await nomesDosCredores(docs);
   const fase = p.fase ?? "";
   const origem = p.origem ?? "";
+  const venceAte = p.venceAte ?? "";
   const passa = (o: ObrigacaoAPagar): boolean =>
-    (fase === "" || o.fase === fase) && (origem === "" || (origem === "exercicio" ? o.situacao === "EXERCICIO" : o.situacao !== "EXERCICIO"));
+    (fase === "" || o.fase === fase) &&
+    (origem === "" || (origem === "exercicio" ? o.situacao === "EXERCICIO" : o.situacao !== "EXERCICIO")) &&
+    (venceAte === "" || (o.vencimento !== null && diaCivil(o.vencimento) <= venceAte));
   const filtradas = posicao.obrigacoes.filter(passa);
   return {
     exercicio: posicao.exercicio,
@@ -73,6 +89,7 @@ export async function lerAPagar(p: {
     opcoesDeCredor: docs
       .map((d) => ({ documento: d, nome: nomes.get(d) ?? null }))
       .sort((a, b) => (a.nome ?? a.documento).localeCompare(b.nome ?? b.documento)),
+    opcoesDeFonte: [...new Set(base.obrigacoes.map((o) => o.fonteCodigo))].sort(),
   };
 }
 

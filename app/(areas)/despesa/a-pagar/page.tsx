@@ -7,7 +7,7 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
-import { faseDoFiltro, lerAPagar, origemDoFiltro, ROTULO_DA_FASE, ROTULO_DA_SITUACAO, type APagarDaTela } from "../../../../lib/portas/a-pagar";
+import { faseDoFiltro, lerAPagar, origemDoFiltro, ROTULO_DA_FASE, ROTULO_DA_SITUACAO, venceAteDoFiltro, type APagarDaTela } from "../../../../lib/portas/a-pagar";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { EscopoDeLeituraError, ExercicioIlegivelError, recorteDePagina } from "../../../../lib/portas/contexto";
 import { PortaSemBancoError } from "../../../../lib/portas/empenho";
@@ -39,13 +39,15 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
   const credor = umString(sp["credor"]).replace(/\D/g, "");
   const fase = faseDoFiltro(umString(sp["fase"]));
   const origem = origemDoFiltro(umString(sp["origem"]));
+  const fonte = umString(sp["fonte"]).trim();
+  const venceAte = venceAteDoFiltro(umString(sp["venceAte"]));
   let recorte: RecorteDaPagina;
   let dados: APagarDaTela;
   let permitidas: ReadonlySet<string>;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     [dados, permitidas] = await Promise.all([
-      lerAPagar({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo, fase, origem, ...(credor !== "" ? { credorCpfCnpj: credor } : {}) }),
+      lerAPagar({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo, fase, origem, ...(credor !== "" ? { credorCpfCnpj: credor } : {}), ...(fonte !== "" ? { fonteCodigo: fonte } : {}), ...(venceAte !== "" ? { venceAte } : {}) }),
       acoesPermitidas(["PAGAR", "LIQUIDAR"]),
     ]);
   } catch (erro) {
@@ -108,7 +110,7 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
           <div className="flex gap-2" data-chrome>
             <BotaoCsv csv={csv} nomeArquivo={`a-pagar-${String(recorte.exercicio)}.csv`} />
             <BotaoImprimir />
-            <BotaoPdf href={`/despesa/a-pagar/pdf?${new URLSearchParams({ exercicio: String(recorte.exercicio), ...(recorte.unidadeCodigo !== undefined ? { ug: recorte.unidadeCodigo } : {}), ...(credor !== "" ? { credor } : {}), ...(fase !== "" ? { fase } : {}), ...(origem !== "" ? { origem } : {}) }).toString()}`} />
+            <BotaoPdf href={`/despesa/a-pagar/pdf?${new URLSearchParams({ exercicio: String(recorte.exercicio), ...(recorte.unidadeCodigo !== undefined ? { ug: recorte.unidadeCodigo } : {}), ...(credor !== "" ? { credor } : {}), ...(fase !== "" ? { fase } : {}), ...(origem !== "" ? { origem } : {}), ...(fonte !== "" ? { fonte } : {}), ...(venceAte !== "" ? { venceAte } : {}) }).toString()}`} />
           </div>
         }
       />
@@ -143,9 +145,28 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
             <option value="restos">Só restos a pagar</option>
           </select>
         </label>
+        <label>
+          <span className="block font-semibold">Fonte</span>
+          <select name="fonte" defaultValue={fonte} className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-2">
+            <option value="">Todas</option>
+            {dados.opcoesDeFonte.map((f) => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <span className="block font-semibold">Vence até</span>
+          <input type="date" name="venceAte" defaultValue={venceAte} className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-2" />
+        </label>
         <button type="submit" className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 font-semibold text-[color:var(--color-acao-tinta)]">Filtrar</button>
       </form>
 
+      {venceAte !== "" ? (
+        <p className="text-xs text-[color:var(--color-ink-2)]" data-filtro-vencimento>
+          Mostrando só o que vence até {venceAte.split("-").reverse().join("/")}. O vencimento vem da ordem de pagamento:
+          obrigação ainda sem ordem não tem vencimento e fica fora deste recorte.
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2" data-totais-a-pagar>
         <Card>
           <p className="text-xs text-[color:var(--color-ink-3)]">Liquidado a pagar (obrigação exigível)</p>

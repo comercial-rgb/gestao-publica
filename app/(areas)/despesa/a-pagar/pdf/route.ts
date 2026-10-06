@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { recorteDePagina, type RecorteDaPagina } from "../../../../../lib/portas/contexto";
-import { faseDoFiltro, lerAPagar, origemDoFiltro, ROTULO_DA_FASE } from "../../../../../lib/portas/a-pagar";
+import { faseDoFiltro, lerAPagar, origemDoFiltro, ROTULO_DA_FASE, venceAteDoFiltro } from "../../../../../lib/portas/a-pagar";
 import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { emitir, montarPdfAPagar } from "../../../../../lib/pdf/operacionais";
 import { formatarDocumento } from "../../../../../packages/documento/index";
@@ -26,11 +26,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const credor = (sp["credor"] ?? "").replace(/\D/g, "");
   const fase = faseDoFiltro(sp["fase"] ?? "");
   const origem = origemDoFiltro(sp["origem"] ?? "");
-  const dados = await lerAPagar({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo, fase, origem, ...(credor !== "" ? { credorCpfCnpj: credor } : {}) });
+  const fonte = (sp["fonte"] ?? "").trim();
+  const venceAte = venceAteDoFiltro(sp["venceAte"] ?? "");
+  const dados = await lerAPagar({ exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo, fase, origem, ...(credor !== "" ? { credorCpfCnpj: credor } : {}), ...(fonte !== "" ? { fonteCodigo: fonte } : {}), ...(venceAte !== "" ? { venceAte } : {}) });
   const filtros = [
     credor !== "" ? `Credor: ${dados.opcoesDeCredor.find((o) => o.documento === credor)?.nome ?? formatarDocumento(credor)}` : null,
     fase !== "" ? `Fase: ${ROTULO_DA_FASE[fase].toLowerCase()}` : null,
     origem !== "" ? `Origem: ${origem === "exercicio" ? "só o exercício" : "só restos a pagar"}` : null,
+    fonte !== "" ? `Fonte: ${fonte}` : null,
+    venceAte !== "" ? `Vence até ${venceAte.split("-").reverse().join("/")} (sem ordem de pagamento, fora do recorte)` : null,
   ].filter((f): f is string => f !== null);
   const doc = await montarPdfAPagar(dados, { unidade: recorte.unidadeCodigo !== undefined ? `Unidade orçamentária ${recorte.unidadeCodigo}` : undefined, filtros });
   const r = await emitir(doc, `a-pagar-${String(recorte.exercicio)}`);
