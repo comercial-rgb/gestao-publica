@@ -15,6 +15,7 @@ import {
   derivarSolicitacaoDeEmpenho,
   derivarLeiOrcamentariaAnual,
   derivarPlanoDoTribunal,
+  derivarCadastroDeContaBancaria,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -213,6 +214,17 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     expect(d).toEqual(["cont IMPORTAR_PLANO_DO_TRIBUNAL G"]);
   });
 
+  it("v43: só quem administra permissões NO GLOBAL recebe CADASTRAR_CONTA_BANCARIA; quem administra numa UG, já tem ou só opera a tesouraria não recebe (V36)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "adm", nome: "ADMIN", permissoes: [{ acao: "CONCEDER_ACAO_A_PERFIL", unidadeOrcId: null }] },
+      { id: "adm-ug", nome: "ADMIN-UG", permissoes: [{ acao: "CONCEDER_ACAO_A_PERFIL", unidadeOrcId: "ug-a" }] },
+      { id: "ja", nome: "JA-TEM", permissoes: [{ acao: "CONCEDER_ACAO_A_PERFIL", unidadeOrcId: null }, { acao: "CADASTRAR_CONTA_BANCARIA", unidadeOrcId: null }] },
+      { id: "tes", nome: "TESOURARIA", permissoes: [{ acao: "GERIR_ROL_DE_FONTES_DA_CONTA", unidadeOrcId: null }, { acao: "IMPORTAR_EXTRATO", unidadeOrcId: null }] },
+    ];
+    const d = derivarCadastroDeContaBancaria(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect(d).toEqual(["adm CADASTRAR_CONTA_BANCARIA G"]);
+  });
+
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
     const perfis: readonly PerfilComPermissoes[] = [
       {
@@ -400,6 +412,8 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 41, previa: 0, aplicada: false },
       // V27 — prévia 0 na instalação limpa: as quatro ações da frota e da farmácia chegaram a ACOES_DO_ENTE pelo bootstrap.
       { versao: 42, previa: 0, aplicada: false },
+      // V36 — prévia 0 na instalação limpa: CADASTRAR_CONTA_BANCARIA chegou a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 43, previa: 0, aplicada: false },
     ]);
   });
 

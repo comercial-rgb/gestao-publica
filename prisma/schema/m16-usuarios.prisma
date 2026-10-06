@@ -574,6 +574,9 @@ enum AcaoDoSistema {
   // M09 V16 — o rol de fontes que cada conta bancaria comporta (TR 5.10.2.6)
   GERIR_ROL_DE_FONTES_DA_CONTA
 
+  // M09 V36 — o cadastro de uma conta bancaria nova pela tela (TR 5.10.2.6)
+  CADASTRAR_CONTA_BANCARIA
+
   // M21 V11 V8 — a agenda do guichê (TR 5.39.92)
   CONFIGURAR_AGENDA_DO_GUICHE
   RESERVAR_ATENDIMENTO_NO_GUICHE

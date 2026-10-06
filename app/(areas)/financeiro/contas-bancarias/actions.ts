@@ -5,6 +5,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import {
   acrescentarFonteAoRol,
+  cadastrarContaBancariaPelaTela,
   declararTitular,
   removerFonteDoRolDaConta,
 } from "../../../../lib/portas/entidades-contabeis";
@@ -90,6 +91,38 @@ export async function rolDeFontesAction(
       return {
         erro: mensagemDoErro(e, "Não foi possível alterar o rol de fontes desta conta. Nada foi gravado."),
       };
+    }
+  });
+}
+
+/** V36 — a conta bancária nova. A recusa do domínio sobe inteira: é ela que nomeia o campo e o motivo. */
+export interface EstadoDoCadastroDeConta {
+  readonly erro?: string;
+  readonly sucesso?: string;
+}
+
+export async function cadastrarContaAction(
+  _p: EstadoDoCadastroDeConta,
+  f: FormData
+): Promise<EstadoDoCadastroDeConta> {
+  return comComandoDoFormulario(f, async () => {
+    const campo = (nome: string): string => String(f.get(nome) ?? "").trim();
+    try {
+      const sucesso = await cadastrarContaBancariaPelaTela({
+        codigo: campo("codigo"),
+        descricao: campo("descricao"),
+        fonteCodigo: campo("fonte"),
+        contaContabilCodigo: campo("contaContabil"),
+        banco: campo("banco"),
+        agencia: campo("agencia"),
+        digitoAgencia: campo("digitoAgencia"),
+        conta: campo("conta"),
+        digitoConta: campo("digitoConta"),
+      });
+      revalidatePath("/financeiro/contas-bancarias");
+      return { sucesso };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível cadastrar a conta bancária. Nada foi gravado.") };
     }
   });
 }

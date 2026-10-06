@@ -676,6 +676,29 @@ export function derivarRolDeFontesDaConta(
 }
 
 /**
+ * V36 (TR 5.10.2.6) — o CADASTRO da conta bancária nova.
+ *
+ * ⚠️ VAI SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como o rol (v33), e pela mesma razão: a conta
+ * diz em que conta contábil o dinheiro dela é escriturado e qual fonte ela comporta por padrão. Uma
+ * conta aberta errada não falha no ato: aparece na conciliação e no controle de destinação.
+ */
+export function derivarCadastroDeContaBancaria(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    const administra = perfil.permissoes.some(
+      (p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null
+    );
+    if (!administra) continue;
+    if (perfil.permissoes.some((p) => p.acao === "CADASTRAR_CONTA_BANCARIA" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CADASTRAR_CONTA_BANCARIA", unidadeOrcId: null });
+  }
+  return saida;
+}
+
+/**
  * V18 (C13 · TR 5.9.1.30 · 5.9.2.18) — o ATO que ALTERA o PPA ou a LDO já aprovados.
  *
  * ⚠️ VAI SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, e não a quem já tem CADASTRAR_PPA ou
@@ -1833,6 +1856,17 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "quem ja cadastra bem; CADASTRAR_FARMACIA e INFORMAR_ESTOQUE_DA_FARMACIA, a quem ja registra entrada no " +
       "almoxarifado. So a partir da permissao global (os atos sao do ente).",
     derivar: derivarFrotaEFarmacia,
+  },
+  {
+    versao: 43,
+    nome: "cadastro-de-conta-bancaria",
+    descricao:
+      "A conta bancaria passou a ser cadastrada pela tela (V36): codigo, descricao, banco, agencia e conta, " +
+      "a conta contabil do PCASP em que ela e escriturada (do grupo 1.1.1, caixa e equivalentes) e a fonte " +
+      "padrao. Ate aqui so semeador e teste criavam conta. Vem com a acao CADASTRAR_CONTA_BANCARIA, so para " +
+      "quem administra permissoes no global, que a distribui nomeando a pessoa. O titular e o rol de fontes " +
+      "continuam atos proprios.",
+    derivar: derivarCadastroDeContaBancaria,
   },
 ];
 

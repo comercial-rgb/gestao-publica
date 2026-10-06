@@ -20,6 +20,11 @@ import {
   acrescentarFonteAoRol as acrescentarNoRolDoDominio,
   removerFonteDoRol as removerDoRolDoDominio,
 } from "../../modules/m09-tesouraria/rol-de-fontes";
+import {
+  cadastrarContaBancaria as cadastrarContaBancariaNoDominio,
+  contasContabeisDeDisponibilidade,
+  type CadastrarContaBancariaInput,
+} from "../../modules/m09-tesouraria/cadastro-de-conta";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
 
@@ -286,4 +291,38 @@ export async function declararTitular(input: {
     );
     return r.versao;
   });
+}
+
+/**
+ * V36 — A CONTA BANCÁRIA NOVA PELA TELA. A régua (grupo 1.1.1 analítico, fonte cadastrada, conta física
+ * não repetida) é do domínio, na transação; a recusa sobe inteira.
+ */
+export async function cadastrarContaBancariaPelaTela(
+  input: Omit<CadastrarContaBancariaInput, "criadoPor">
+): Promise<string> {
+  const r = await comEscritaAutenticada("CADASTRAR_CONTA_BANCARIA", (criadoPor) =>
+    cadastrarContaBancariaNoDominio(cliente(), { ...input, criadoPor })
+  );
+  return `Conta ${r.codigo} cadastrada. Declare o titular a seguir; as guias desta conta ficam não atribuídas até lá.`;
+}
+
+
+/**
+ * V36 — AS OPÇÕES DOS FORMULÁRIOS DA TELA DE CONTAS BANCÁRIAS, sob a consulta do FINANCEIRO.
+ *
+ * ⚠️ A tela mora na área financeira, mas carregava as entidades com `lerEntidadesContabeis`
+ * (CONSULTAR_CONTABILIDADE) e as fontes com `lerTodasAsFontes` (CONSULTAR_RECEITA): quem só tinha o
+ * financeiro — a tesouraria — abria a tela e recebia "acesso negado" (achado no percurso da V36). As
+ * opções aqui são só código e nome, o mesmo que a lista de contas já mostra como titular e fonte.
+ */
+export async function lerOpcoesDaTelaDeContas(): Promise<{
+  readonly entidades: readonly { readonly id: string; readonly codigo: string; readonly nome: string }[];
+  readonly fontes: readonly { readonly codigo: string; readonly descricao: string }[];
+  readonly contasContabeis: readonly { readonly codigo: string; readonly nome: string }[];
+}> {
+  await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
+  const prisma = cliente();
+  const entidades = (await entidadesContabeis(prisma)).map((e) => ({ id: e.id, codigo: e.codigo, nome: e.nome }));
+  const fontes = await prisma.fonteRecurso.findMany({ orderBy: { codigo: "asc" }, select: { codigo: true, descricao: true } });
+  return { entidades, fontes, contasContabeis: await contasContabeisDeDisponibilidade(prisma) };
 }

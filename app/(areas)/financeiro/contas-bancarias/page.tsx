@@ -4,10 +4,11 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import {
   lerContasComTitular,
-  lerEntidadesContabeis,
+  lerOpcoesDaTelaDeContas,
   TIPOS_DE_ATO_NA_TELA,
 } from "../../../../lib/portas/entidades-contabeis";
-import { lerTodasAsFontes } from "../../../../lib/portas/arrecadacao";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import { FormNovaConta } from "./FormNovaConta";
 import { FormRolDeFontes } from "./FormRolDeFontes";
 import { FormTitular } from "./FormTitular";
 
@@ -28,14 +29,15 @@ export const dynamic = "force-dynamic";
 
 export default async function ContasBancariasPage(): Promise<React.ReactElement> {
   let contas: Awaited<ReturnType<typeof lerContasComTitular>>;
-  let entidades: Awaited<ReturnType<typeof lerEntidadesContabeis>>;
-  let fontes: Awaited<ReturnType<typeof lerTodasAsFontes>>;
+  let opcoesDosForms: Awaited<ReturnType<typeof lerOpcoesDaTelaDeContas>>;
+  let permitidas: ReadonlySet<string>;
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
     contas = await lerContasComTitular();
-    entidades = await lerEntidadesContabeis();
-    // O rol da conta escolhe entre as fontes CADASTRADAS — o mesmo rol que a arrecadação oferece.
-    fontes = await lerTodasAsFontes();
+    // V36 — as opções dos formulários sob a consulta do FINANCEIRO (ver lerOpcoesDaTelaDeContas): antes a
+    // tesouraria, sem a consulta da contabilidade e da receita, recebia "acesso negado" nesta tela.
+    opcoesDosForms = await lerOpcoesDaTelaDeContas();
+    permitidas = await acoesPermitidas(["CADASTRAR_CONTA_BANCARIA", "DECLARAR_TITULAR_DA_CONTA_BANCARIA", "GERIR_ROL_DE_FONTES_DA_CONTA"]);
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -49,7 +51,10 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
     );
   }
 
-  const opcoes = entidades.map((e) => ({ id: e.id, codigo: e.codigo, nome: e.nome }));
+  const { entidades: opcoes, fontes, contasContabeis } = opcoesDosForms;
+  const podeCadastrar = permitidas.has("CADASTRAR_CONTA_BANCARIA");
+  const podeDeclararTitular = permitidas.has("DECLARAR_TITULAR_DA_CONTA_BANCARIA");
+  const podeGerirRol = permitidas.has("GERIR_ROL_DE_FONTES_DA_CONTA");
   const semTitular = contas.filter((c) => c.titularNome === null);
 
   return (
@@ -81,10 +86,13 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
         </div>
       ) : null}
 
+      {/* V36 — a conta nova. Sempre na mesma posição da árvore, antes da lista (ver FormNovaConta). */}
+      {podeCadastrar ? <FormNovaConta contasContabeis={contasContabeis} fontes={fontes} /> : null}
+
       {contas.length === 0 ? (
         <EstadoVazio
           titulo="Nenhuma conta bancária cadastrada"
-          descricao="Cadastre as contas bancárias para declarar a titularidade e as fontes de recursos."
+          descricao={podeCadastrar ? "Cadastre a primeira conta no formulário acima." : "O cadastro de contas bancárias depende de permissão própria; peça ao administrador."}
         />
       ) : (
         <ul className="space-y-2" data-papel="lista-de-contas">
@@ -118,14 +126,16 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
                   </>
                 )}
               </p>
-              <FormTitular
-                contaBancariaId={c.id}
-                contaCodigo={c.codigo}
-                entidades={opcoes}
-                tiposDeAto={TIPOS_DE_ATO_NA_TELA}
-                jaTemTitular={c.titularNome !== null}
-                identificacaoBancaria={c.identificacaoBancaria}
-              />
+              {podeDeclararTitular ? (
+                <FormTitular
+                  contaBancariaId={c.id}
+                  contaCodigo={c.codigo}
+                  entidades={opcoes}
+                  tiposDeAto={TIPOS_DE_ATO_NA_TELA}
+                  jaTemTitular={c.titularNome !== null}
+                  identificacaoBancaria={c.identificacaoBancaria}
+                />
+              ) : null}
               {/* V16 (TR 5.10.2.6) — o ROL de fontes da conta. Sem este cadastro, a guia repartida
                   entre fontes era inalcançável: um depósito de duas fontes só entra numa conta que
                   comporte as duas, e o rol não tinha superfície (`ROL-DE-FONTES-UI`). */}
@@ -133,6 +143,7 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
                 contaCodigo={c.codigo}
                 fontesDisponiveis={fontes}
                 fontesDoRol={c.fontesDoRol}
+                podeAlterar={podeGerirRol}
                 rolDeclarado={c.rolDeclarado}
               />
             </li>

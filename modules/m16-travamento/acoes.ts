@@ -370,6 +370,11 @@ export type AcaoDoSistema =
   // recurso vinculado não custeou outra coisa. Quem declara a autarquia dona da conta não é, por
   // isso, quem decide se o FUNDEB pode entrar nela.
   | "GERIR_ROL_DE_FONTES_DA_CONTA"
+  // ⚠️ M09 V36 — CADASTRAR UMA CONTA BANCÁRIA NOVA. Até a V36 nenhuma conta nascia pela tela: só
+  // semeador e teste a criavam. É ação PRÓPRIA, e não acompanha o rol nem o titular: abrir a conta
+  // diz em que conta contábil do PCASP o dinheiro dela é escriturado e qual a fonte padrão — é
+  // parametrização da escrituração, e quem decide se o FUNDEB cabe nela continua sendo o rol.
+  | "CADASTRAR_CONTA_BANCARIA"
   | "ATRIBUIR_ENTIDADE_A_ARRECADACAO"
   // ── V6 (P2.1/P2.2) — M32 PESSOAL (RH bloco 1, conciliado do siafic-cg c04ad5a). Catorze ações
   // para dezessete serviços; a divisão é a da origem (ver modules/m32-pessoal/MODULO.md):
@@ -1181,6 +1186,7 @@ export type NomeDeServico =
   // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
   | "acrescentarFonteAoRol"
   | "removerFonteDoRol"
+  | "cadastrarContaBancaria"
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
@@ -1704,6 +1710,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // outro, o que não significaria nada: quem pode acrescentar pode desfazer acrescentando outra.
   acrescentarFonteAoRol: "GERIR_ROL_DE_FONTES_DA_CONTA",
   removerFonteDoRol: "GERIR_ROL_DE_FONTES_DA_CONTA",
+  // V36 — a conta bancária nova, com a conta contábil e a fonte padrão.
+  cadastrarContaBancaria: "CADASTRAR_CONTA_BANCARIA",
   // Atribuir entidade a uma guia do LEGADO — espelho exato de `atribuirContaAArrecadacao`.
   atribuirEntidadeAArrecadacao: "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
   // ⚠️ V34 — o mesmo poder: dizer de quem é o dinheiro que passou por uma conta sem titular declarado.
@@ -3543,4 +3551,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "ATO DE INSTALAÇÃO, como o bootstrap do primeiro usuário: roda fora da aplicação, por quem " +
     "opera o servidor, e é inerte quando já existe contrato. Não há sessão para autorizar — o " +
     "gate que ele instala é justamente o que ainda não existe quando ele roda.",
+  retidoPorPagamento: "leitura (V36 — o retido vivo de cada pagamento, para o líquido do relatório; não muta)",
+  pagamentosEfetuados: "leitura (V36 — o relatório de pagamentos efetuados do exercício e de restos; não muta)",
+  listarIngressosAvulsos: "leitura (V36 — os ingressos extraorçamentários avulsos, com o estorno; não muta)",
+  contasContabeisDeDisponibilidade: "leitura (V36 — as contas analíticas do grupo 1.1.1 que o cadastro da conta bancária oferece; não muta)",
 };

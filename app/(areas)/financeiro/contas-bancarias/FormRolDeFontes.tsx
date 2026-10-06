@@ -30,35 +30,51 @@ export function FormRolDeFontes({
   fontesDoRol,
   rolDeclarado,
   fontesDisponiveis,
+  podeAlterar,
 }: {
   readonly contaCodigo: string;
-  readonly fontesDoRol: readonly { readonly codigo: string; readonly descricao: string }[];
+  readonly fontesDoRol: readonly {
+    readonly codigo: string;
+    readonly descricao: string;
+  }[];
   readonly rolDeclarado: boolean;
-  readonly fontesDisponiveis: readonly { readonly codigo: string; readonly descricao: string }[];
+  readonly fontesDisponiveis: readonly {
+    readonly codigo: string;
+    readonly descricao: string;
+  }[];
+  /** V36 — quem só consulta vê o rol, sem os formulários de alterar. */
+  readonly podeAlterar: boolean;
 }): React.ReactElement {
   const noRol = new Set(fontesDoRol.map((f) => f.codigo));
   const aAcrescentar = fontesDisponiveis.filter((f) => !noRol.has(f.codigo));
 
   return (
     <div className="mt-2">
-      <p className="text-xs text-[color:var(--color-ink-2)]" data-papel={`rol-${contaCodigo}`}>
+      <p
+        className="text-xs text-[color:var(--color-ink-2)]"
+        data-papel={`rol-${contaCodigo}`}
+      >
         Fontes aceitas: {fontesDoRol.map((f) => f.codigo).join(", ")}
-        {rolDeclarado ? "" : " (rol não declarado; vale a fonte padrão da conta)"}
+        {rolDeclarado
+          ? ""
+          : " (rol não declarado; vale a fonte padrão da conta)"}
       </p>
 
-      <Operacao
-        acao={`rol-acrescentar-${contaCodigo}`}
-        botao="Acrescentar"
-        campo="fonte"
-        contaCodigo={contaCodigo}
-        opcoes={aAcrescentar}
-        operacao="acrescentar"
-        rotulo="Fonte a acrescentar ao rol"
-      />
+      {podeAlterar ? (
+        <Operacao
+          acao={`rol-acrescentar-${contaCodigo}`}
+          botao="Acrescentar"
+          campo="fonte"
+          contaCodigo={contaCodigo}
+          opcoes={aAcrescentar}
+          operacao="acrescentar"
+          rotulo="Fonte a acrescentar ao rol"
+        />
+      ) : null}
 
       {/* A remoção só aparece quando há mais de uma fonte: com uma só, o domínio a recusaria — e
           oferecer um formulário cujo único desfecho é a recusa é oferecer trabalho perdido. */}
-      {fontesDoRol.length > 1 ? (
+      {podeAlterar && fontesDoRol.length > 1 ? (
         <Operacao
           acao={`rol-remover-${contaCodigo}`}
           botao="Remover"
@@ -86,14 +102,20 @@ function Operacao({
   readonly botao: string;
   readonly campo: string;
   readonly contaCodigo: string;
-  readonly opcoes: readonly { readonly codigo: string; readonly descricao: string }[];
+  readonly opcoes: readonly {
+    readonly codigo: string;
+    readonly descricao: string;
+  }[];
   readonly operacao: string;
   readonly rotulo: string;
 }): React.ReactElement {
   const uid = useId();
   const [seq, setSeq] = useState(0);
   const ultimo = useRef<string | undefined>(undefined);
-  const [estado, action, pendente] = useActionState<EstadoDoRol, FormData>(rolDeFontesAction, {});
+  const [estado, action, pendente] = useActionState<EstadoDoRol, FormData>(
+    rolDeFontesAction,
+    {},
+  );
 
   const texto = estado.erro ?? estado.sucesso;
   if (texto !== undefined && texto !== ultimo.current) {
@@ -111,7 +133,12 @@ function Operacao({
           <label className={ROTULO} htmlFor={`${uid}-${campo}`}>
             {rotulo}
           </label>
-          <select className={CAMPO} defaultValue="" id={`${uid}-${campo}`} name={campo}>
+          <select
+            className={CAMPO}
+            defaultValue=""
+            id={`${uid}-${campo}`}
+            name={campo}
+          >
             <option value="">Escolha a fonte…</option>
             {opcoes.map((f) => (
               <option key={f.codigo} value={f.codigo}>
@@ -120,7 +147,11 @@ function Operacao({
             ))}
           </select>
         </div>
-        <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">
+        <button
+          className={CLASSE_BOTAO_PRIMARIO}
+          disabled={pendente}
+          type="submit"
+        >
           {pendente ? "Gravando…" : botao}
         </button>
       </div>
