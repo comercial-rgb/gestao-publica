@@ -16,6 +16,7 @@ import {
   derivarLeiOrcamentariaAnual,
   derivarPlanoDoTribunal,
   derivarCadastroDeContaBancaria,
+  derivarEmendasAoOrcamento,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -225,6 +226,21 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     expect(d).toEqual(["adm CADASTRAR_CONTA_BANCARIA G"]);
   });
 
+  it("v44: quem tem CADASTRAR_LOA no global recebe as duas ações da emenda; na UG, só consulta ou já tendo, não (V36)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "plan", nome: "PLANEJAMENTO", permissoes: [{ acao: "CADASTRAR_LOA", unidadeOrcId: null }] },
+      { id: "plan-ug", nome: "PLANEJAMENTO-UG", permissoes: [{ acao: "CADASTRAR_LOA", unidadeOrcId: "ug-a" }] },
+      { id: "meio", nome: "JA-CADASTRA", permissoes: [{ acao: "CADASTRAR_LOA", unidadeOrcId: null }, { acao: "CADASTRAR_EMENDA_AO_ORCAMENTO", unidadeOrcId: null }] },
+      { id: "leit", nome: "LEITOR", permissoes: [{ acao: "CONSULTAR_PLANEJAMENTO", unidadeOrcId: null }] },
+    ];
+    const d = derivarEmendasAoOrcamento(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect(d).toEqual([
+      "plan CADASTRAR_EMENDA_AO_ORCAMENTO G",
+      "plan SANCIONAR_EMENDA_AO_ORCAMENTO G",
+      "meio SANCIONAR_EMENDA_AO_ORCAMENTO G",
+    ]);
+  });
+
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
     const perfis: readonly PerfilComPermissoes[] = [
       {
@@ -414,6 +430,8 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 42, previa: 0, aplicada: false },
       // V36 — prévia 0 na instalação limpa: CADASTRAR_CONTA_BANCARIA chegou a ACOES_DO_ENTE pelo bootstrap.
       { versao: 43, previa: 0, aplicada: false },
+      // V36 — prévia 0 na instalação limpa: as duas ações das emendas chegaram a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 44, previa: 0, aplicada: false },
     ]);
   });
 

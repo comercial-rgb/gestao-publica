@@ -353,6 +353,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // O rol da conta bancária mora na área FINANCEIRA, com o cadastro das contas.
   GERIR_ROL_DE_FONTES_DA_CONTA: "financeiro",
   CADASTRAR_CONTA_BANCARIA: "financeiro",
+  CADASTRAR_EMENDA_AO_ORCAMENTO: "planejamento",
+  SANCIONAR_EMENDA_AO_ORCAMENTO: "planejamento",
   // M21 V11 V8 — a agenda do guichê mora no PROTOCOLO, junto da carta de serviços que ela atende.
   CONFIGURAR_AGENDA_DO_GUICHE: "protocolo",
   RESERVAR_ATENDIMENTO_NO_GUICHE: "protocolo",

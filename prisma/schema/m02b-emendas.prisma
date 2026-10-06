@@ -1,0 +1,111 @@
+// ============================================================================
+// V36 — EMENDAS AO PROJETO DA LOA (TR 5.9.3.13 a 5.9.3.15), no M02b.
+//
+// A emenda é proposta do LEGISLATIVO sobre o projeto de lei — aqui, a PROPOSTA ORÇAMENTÁRIA ainda não
+// efetivada (M02, V29). Ela não cria valor por conta própria: cada item diz quanto a linha de despesa da
+// proposta ganha (+) ou perde (−), e só a SANÇÃO leva o item aprovado à proposta, pelo canal que já existe —
+// um AJUSTE da linha (AjusteDeDespesaDaProposta), com o motivo citando a emenda. Crédito adicional (M03) é ato
+// do Executivo sobre orçamento já vigente e não se confunde com isto.
+//
+// ⚠️ INSERT-ONLY EM TODAS AS TABELAS. O estado da emenda (aguardando, aprovada, rejeitada, parcial) é DERIVADO da
+// sanção registrada; o bloqueio vivo é o que nenhuma revogação desfez.
+// ============================================================================
+
+model EmendaAoOrcamento {
+  id String @id @default(cuid())
+
+  propostaOrcamentariaId String
+  proposta               PropostaOrcamentaria @relation(fields: [propostaOrcamentariaId], references: [id])
+
+  /// Número sequencial da emenda dentro da proposta (1, 2, 3...), atribuído no cadastro.
+  numero Int
+  /// Dia civil da emenda, gravado ao meio-dia civil do ente.
+  data          DateTime
+  objetivo      String
+  justificativa String
+  /// O nome do vereador autor, como a cláusula pede (texto: o cadastro de pessoas não é exigido aqui).
+  vereador      String
+  textoJuridico String
+
+  itens   ItemDaEmenda[]
+  sancao  SancaoDaEmenda?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([propostaOrcamentariaId, numero])
+  @@index([propostaOrcamentariaId])
+}
+
+model ItemDaEmenda {
+  id       String            @id @default(cuid())
+  emendaId String
+  emenda   EmendaAoOrcamento @relation(fields: [emendaId], references: [id])
+
+  linhaDeDespesaId String
+  linhaDeDespesa   LinhaDeDespesaDaProposta @relation(fields: [linhaDeDespesaId], references: [id])
+
+  /// Com sinal: positivo é acréscimo à dotação, negativo é redução. Nunca zero.
+  valor Decimal @db.Decimal(18, 2)
+
+  sancionados ItemSancionado[]
+
+  @@unique([emendaId, linhaDeDespesaId])
+  @@index([linhaDeDespesaId])
+}
+
+enum ResultadoDaSancao {
+  APROVADA
+  REJEITADA
+  PARCIAL
+}
+
+model SancaoDaEmenda {
+  id       String            @id @default(cuid())
+  emendaId String            @unique
+  emenda   EmendaAoOrcamento @relation(fields: [emendaId], references: [id])
+
+  resultado ResultadoDaSancao
+  /// Dia civil da sanção, gravado ao meio-dia civil do ente.
+  data DateTime
+  /// O ato que sancionou ou vetou (ex.: "Lei nº 650/2026, art. 3º; veto parcial").
+  ato  String
+
+  /// Os itens aprovados (todos na APROVADA, nenhum na REJEITADA, os escolhidos na PARCIAL).
+  itensAprovados ItemSancionado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+model ItemSancionado {
+  id       String         @id @default(cuid())
+  sancaoId String
+  sancao   SancaoDaEmenda @relation(fields: [sancaoId], references: [id])
+  itemId   String
+  item     ItemDaEmenda   @relation(fields: [itemId], references: [id])
+  /// O ajuste da proposta que a sanção gravou para este item.
+  ajusteId String         @unique
+  ajuste   AjusteDeDespesaDaProposta @relation(fields: [ajusteId], references: [id])
+
+  @@unique([sancaoId, itemId])
+}
+
+model BloqueioDeEmenda {
+  id String @id @default(cuid())
+
+  linhaDeDespesaId String
+  linhaDeDespesa   LinhaDeDespesaDaProposta @relation(fields: [linhaDeDespesaId], references: [id])
+
+  motivo String
+
+  /// A revogação é OUTRO registro apontando o bloqueio revogado (um por bloqueio).
+  revogaDeId String?           @unique
+  revogaDe   BloqueioDeEmenda?  @relation("RevogacaoDeBloqueio", fields: [revogaDeId], references: [id], onDelete: Restrict)
+  revogadoPor BloqueioDeEmenda? @relation("RevogacaoDeBloqueio")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([linhaDeDespesaId])
+}

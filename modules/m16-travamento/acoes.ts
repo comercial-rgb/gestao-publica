@@ -375,6 +375,10 @@ export type AcaoDoSistema =
   // diz em que conta contábil do PCASP o dinheiro dela é escriturado e qual a fonte padrão — é
   // parametrização da escrituração, e quem decide se o FUNDEB cabe nela continua sendo o rol.
   | "CADASTRAR_CONTA_BANCARIA"
+  // ⚠️ M02b V36 — AS EMENDAS AO PROJETO DA LOA. Duas autoridades: quem REGISTRA a emenda (e bloqueia ou libera
+  // dotações para emenda) e quem registra a SANÇÃO, que leva os itens aprovados à proposta como ajuste.
+  | "CADASTRAR_EMENDA_AO_ORCAMENTO"
+  | "SANCIONAR_EMENDA_AO_ORCAMENTO"
   | "ATRIBUIR_ENTIDADE_A_ARRECADACAO"
   // ── V6 (P2.1/P2.2) — M32 PESSOAL (RH bloco 1, conciliado do siafic-cg c04ad5a). Catorze ações
   // para dezessete serviços; a divisão é a da origem (ver modules/m32-pessoal/MODULO.md):
@@ -1189,6 +1193,10 @@ export type NomeDeServico =
   | "acrescentarFonteAoRol"
   | "removerFonteDoRol"
   | "cadastrarContaBancaria"
+  | "cadastrarEmendaAoOrcamento"
+  | "bloquearDotacaoParaEmendas"
+  | "revogarBloqueioDeEmenda"
+  | "sancionarEmendaAoOrcamento"
   | "cadastrarTipoDeConsignacao"
   | "redefinirContaDaConsignacao"
   | "desativarTipoDeConsignacao"
@@ -1717,6 +1725,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   removerFonteDoRol: "GERIR_ROL_DE_FONTES_DA_CONTA",
   // V36 — a conta bancária nova, com a conta contábil e a fonte padrão.
   cadastrarContaBancaria: "CADASTRAR_CONTA_BANCARIA",
+  // V36 — as emendas ao projeto da LOA.
+  cadastrarEmendaAoOrcamento: "CADASTRAR_EMENDA_AO_ORCAMENTO",
+  bloquearDotacaoParaEmendas: "CADASTRAR_EMENDA_AO_ORCAMENTO",
+  revogarBloqueioDeEmenda: "CADASTRAR_EMENDA_AO_ORCAMENTO",
+  sancionarEmendaAoOrcamento: "SANCIONAR_EMENDA_AO_ORCAMENTO",
   // Atribuir entidade a uma guia do LEGADO — espelho exato de `atribuirContaAArrecadacao`.
   atribuirEntidadeAArrecadacao: "ATRIBUIR_ENTIDADE_A_ARRECADACAO",
   // ⚠️ V34 — o mesmo poder: dizer de quem é o dinheiro que passou por uma conta sem titular declarado.
@@ -3563,6 +3576,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   arrecadadoPorFonteMesAMes: "leitura (V36 — a receita arrecadada mês a mês por fonte, composta de arrecadadoPorNaturezaFonte; não muta)",
   dispendiosEfetuados: "leitura (V36 — os dispêndios extraorçamentários do período, com o estorno descontado, para o relatório de pagamentos; não muta)",
   contasContabeisDeDisponibilidade: "leitura (V36 — as contas analíticas do grupo 1.1.1 que o cadastro da conta bancária oferece; não muta)",
+  emendasDaProposta: "leitura (V36 — as emendas de uma proposta, com a situação derivada da sanção; não muta)",
   comparativoDaDivida: "leitura (V36 — as parcelas informadas da dívida ao lado do que os pagamentos amortizaram; não muta)",
   lerExtratoImportado: "leitura (V36 — as linhas de um extrato importado, com a situação derivada dos vínculos, para consulta e impressão; não muta)",
 };

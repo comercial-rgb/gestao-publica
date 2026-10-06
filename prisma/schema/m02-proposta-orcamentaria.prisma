@@ -60,6 +60,7 @@ model PropostaOrcamentaria {
   linhasDeReceita LinhaDeReceitaDaProposta[]
   linhasDeDespesa LinhaDeDespesaDaProposta[]
   efetivacao      EfetivacaoDaProposta?
+  emendas         EmendaAoOrcamento[]
 
   @@index([exercicio])
 }
@@ -110,6 +111,8 @@ model LinhaDeDespesaDaProposta {
   valorProjetado         Decimal              @db.Decimal(18, 2)
 
   ajustes AjusteDeDespesaDaProposta[]
+  itensDeEmenda ItemDaEmenda[]
+  bloqueiosDeEmenda BloqueioDeEmenda[]
 
   @@unique([propostaOrcamentariaId, fichaDeOrigemId])
   @@index([propostaOrcamentariaId])
@@ -123,6 +126,8 @@ model AjusteDeDespesaDaProposta {
   motivo    String
   criadoEm  DateTime                 @default(now())
   criadoPor String
+  /// V36 — quando o ajuste veio da sanção de uma emenda, o item sancionado que o gravou.
+  itemSancionado ItemSancionado?
 
   @@index([linhaId, criadoEm])
 }

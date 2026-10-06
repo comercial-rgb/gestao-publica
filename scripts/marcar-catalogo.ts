@@ -2087,47 +2087,47 @@ const MAPA: Readonly<Record<string, Marca>> = {
   "5.9.1.21": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia:
-      "V18/C13, medido: nao existe cadastro de emenda ao PPA (zero ocorrencias de 'emenda' no schema e nos servicos do M02b). ⚠️ E ELA NAO E UM SUBCASO DO ATO DE ALTERACAO DA V18, e essa distincao e a razao de nao ter sido forcada aqui: a emenda tem campos proprios (vereador responsavel, objetivo, texto juridico) e, sobretudo, um RITO — o valor proposto nao altera a peca enquanto nao for sancionado. O ato desta unidade vale por existir. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "Verificado na V36: as emendas existem para a LOA (projeto = proposta orçamentária; ver 5.9.3.13 a 5.9.3.15), mas NÃO para esta peça. O caminho coerente com o modelo é a sanção gerar o ATO DE ALTERAÇÃO DO PLANEJAMENTO do M02b (registrarAtoDeAlteracaoDoPlanejamento), que já alcança previsão de receita do PPA, teto do programa, meta financeira da ação e as metas anuais da LDO — sem uma segunda aritmética. Falta: o item de emenda apontar esses alvos, e a decisão do que é \"dotação\" na LDO, que no sistema não tem previsão orçamentária (só metas anuais). Pendência EMENDA-PPA-LDO.",
   },
   "5.9.1.22": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia:
-      "V18/C13, medido: nao existe bloqueio de dotacao inemendavel — ele e guard SOBRE a emenda, que nao existe. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "Verificado na V36: as emendas existem para a LOA (projeto = proposta orçamentária; ver 5.9.3.13 a 5.9.3.15), mas NÃO para esta peça. O caminho coerente com o modelo é a sanção gerar o ATO DE ALTERAÇÃO DO PLANEJAMENTO do M02b (registrarAtoDeAlteracaoDoPlanejamento), que já alcança previsão de receita do PPA, teto do programa, meta financeira da ação e as metas anuais da LDO — sem uma segunda aritmética. Falta: o item de emenda apontar esses alvos, e a decisão do que é \"dotação\" na LDO, que no sistema não tem previsão orçamentária (só metas anuais). Pendência EMENDA-PPA-LDO.",
   },
   "5.9.1.23": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia:
-      "V18/C13, medido: nao existe sancionamento de emenda (total, reprovacao total ou PARCIAL por dotacao). A sancao parcial e a parte dificil: ela exige que cada item nasca pendente e mude de estado, o que e rito, nao ajuste. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "Verificado na V36: as emendas existem para a LOA (projeto = proposta orçamentária; ver 5.9.3.13 a 5.9.3.15), mas NÃO para esta peça. O caminho coerente com o modelo é a sanção gerar o ATO DE ALTERAÇÃO DO PLANEJAMENTO do M02b (registrarAtoDeAlteracaoDoPlanejamento), que já alcança previsão de receita do PPA, teto do programa, meta financeira da ação e as metas anuais da LDO — sem uma segunda aritmética. Falta: o item de emenda apontar esses alvos, e a decisão do que é \"dotação\" na LDO, que no sistema não tem previsão orçamentária (só metas anuais). Pendência EMENDA-PPA-LDO.",
   },
   "5.9.2.11": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia:
-      "V18/C13, medido: nao existe cadastro de emenda na LDO — mesma ausencia de 5.9.1.21, mesma pendencia EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "Verificado na V36: as emendas existem para a LOA (projeto = proposta orçamentária; ver 5.9.3.13 a 5.9.3.15), mas NÃO para esta peça. O caminho coerente com o modelo é a sanção gerar o ATO DE ALTERAÇÃO DO PLANEJAMENTO do M02b (registrarAtoDeAlteracaoDoPlanejamento), que já alcança previsão de receita do PPA, teto do programa, meta financeira da ação e as metas anuais da LDO — sem uma segunda aritmética. Falta: o item de emenda apontar esses alvos, e a decisão do que é \"dotação\" na LDO, que no sistema não tem previsão orçamentária (só metas anuais). Pendência EMENDA-PPA-LDO.",
   },
   "5.9.2.12": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia:
-      "V18/C13, medido: nao existe bloqueio de dotacao inemendavel na LDO. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "Verificado na V36: as emendas existem para a LOA (projeto = proposta orçamentária; ver 5.9.3.13 a 5.9.3.15), mas NÃO para esta peça. O caminho coerente com o modelo é a sanção gerar o ATO DE ALTERAÇÃO DO PLANEJAMENTO do M02b (registrarAtoDeAlteracaoDoPlanejamento), que já alcança previsão de receita do PPA, teto do programa, meta financeira da ação e as metas anuais da LDO — sem uma segunda aritmética. Falta: o item de emenda apontar esses alvos, e a decisão do que é \"dotação\" na LDO, que no sistema não tem previsão orçamentária (só metas anuais). Pendência EMENDA-PPA-LDO.",
   },
   "5.9.2.13": {
     situacao: "AUSENTE_CONFIRMADO",
     evidencia:
-      "V18/C13, medido: nao existe sancionamento de emenda da LDO. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "Verificado na V36: as emendas existem para a LOA (projeto = proposta orçamentária; ver 5.9.3.13 a 5.9.3.15), mas NÃO para esta peça. O caminho coerente com o modelo é a sanção gerar o ATO DE ALTERAÇÃO DO PLANEJAMENTO do M02b (registrarAtoDeAlteracaoDoPlanejamento), que já alcança previsão de receita do PPA, teto do programa, meta financeira da ação e as metas anuais da LDO — sem uma segunda aritmética. Falta: o item de emenda apontar esses alvos, e a decisão do que é \"dotação\" na LDO, que no sistema não tem previsão orçamentária (só metas anuais). Pendência EMENDA-PPA-LDO.",
   },
   "5.9.3.13": {
-    situacao: "AUSENTE_CONFIRMADO",
+    situacao: "VALIDADO_LOCALMENTE",
     evidencia:
-      "V18/C13, medido: nao existe cadastro de emenda na LOA. ⚠️ E O QUE EXISTE NA LOA NAO A SUBSTITUI: a reprevisao da receita (append-only com sinal) e o credito adicional do M03 (lei autorizadora, decreto, itens de suplementacao e anulacao) sao atos do EXECUTIVO; a emenda e proposta do Legislativo e depende de sancao. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "V36 (M02b, modules/m02b-plurianual/emendas.ts; tabelas EmendaAoOrcamento, ItemDaEmenda, SancaoDaEmenda, ItemSancionado, BloqueioDeEmenda, migrations aditivas 20261106120000/20261106120100; ações CADASTRAR_EMENDA_AO_ORCAMENTO e SANCIONAR_EMENDA_AO_ORCAMENTO, atualização de permissões v44 para quem já tem CADASTRAR_LOA no global). A emenda atua sobre a PROPOSTA ORÇAMENTÁRIA ainda não efetivada — o projeto de lei —, e só a sanção muda a proposta, gravando um ajuste da linha que cita a emenda e o ato. Tela /planejamento/emendas. Teste m02b-emendas.test.ts 8/8 (N=2 fichas e emendas; bloqueio e liberação; sanção total, parcial e rejeição; redução que deixaria a linha negativa recusada no cadastro e na sanção sem gravar nada; proposta efetivada recusa; negação das duas autoridades com o motivo), seis mutações acusadas, e a derivação v44 provada por mutação. Percurso scripts/percurso-v36-emendas.mts 4/4 na base fictícia (o percurso achou a confirmação da sanção sumindo junto com o formulário: corrigido). Cadastro: data, objetivo, justificativa, vereador responsável, texto jurídico e as dotações (fichas) com acréscimo ou redução, uma por linha. O sistema mostra se a emenda é compensada pelas próprias reduções, sem impor a regra (exame da Câmara).",
   },
   "5.9.3.14": {
-    situacao: "AUSENTE_CONFIRMADO",
+    situacao: "VALIDADO_LOCALMENTE",
     evidencia:
-      "V18/C13, medido: nao existe bloqueio de dotacao inemendavel na LOA. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "V36 (M02b, modules/m02b-plurianual/emendas.ts; tabelas EmendaAoOrcamento, ItemDaEmenda, SancaoDaEmenda, ItemSancionado, BloqueioDeEmenda, migrations aditivas 20261106120000/20261106120100; ações CADASTRAR_EMENDA_AO_ORCAMENTO e SANCIONAR_EMENDA_AO_ORCAMENTO, atualização de permissões v44 para quem já tem CADASTRAR_LOA no global). A emenda atua sobre a PROPOSTA ORÇAMENTÁRIA ainda não efetivada — o projeto de lei —, e só a sanção muda a proposta, gravando um ajuste da linha que cita a emenda e o ato. Tela /planejamento/emendas. Teste m02b-emendas.test.ts 8/8 (N=2 fichas e emendas; bloqueio e liberação; sanção total, parcial e rejeição; redução que deixaria a linha negativa recusada no cadastro e na sanção sem gravar nada; proposta efetivada recusa; negação das duas autoridades com o motivo), seis mutações acusadas, e a derivação v44 provada por mutação. Percurso scripts/percurso-v36-emendas.mts 4/4 na base fictícia (o percurso achou a confirmação da sanção sumindo junto com o formulário: corrigido). Bloqueio: pelo número da ficha, com motivo; a dotação bloqueada recusa emenda nova nomeando a ficha; a liberação é registro novo que revoga o bloqueio (fica no histórico).",
   },
   "5.9.3.15": {
-    situacao: "AUSENTE_CONFIRMADO",
+    situacao: "VALIDADO_LOCALMENTE",
     evidencia:
-      "V18/C13, medido: nao existe sancionamento de emenda da LOA. Pendencia: EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL.",
+      "V36 (M02b, modules/m02b-plurianual/emendas.ts; tabelas EmendaAoOrcamento, ItemDaEmenda, SancaoDaEmenda, ItemSancionado, BloqueioDeEmenda, migrations aditivas 20261106120000/20261106120100; ações CADASTRAR_EMENDA_AO_ORCAMENTO e SANCIONAR_EMENDA_AO_ORCAMENTO, atualização de permissões v44 para quem já tem CADASTRAR_LOA no global). A emenda atua sobre a PROPOSTA ORÇAMENTÁRIA ainda não efetivada — o projeto de lei —, e só a sanção muda a proposta, gravando um ajuste da linha que cita a emenda e o ato. Tela /planejamento/emendas. Teste m02b-emendas.test.ts 8/8 (N=2 fichas e emendas; bloqueio e liberação; sanção total, parcial e rejeição; redução que deixaria a linha negativa recusada no cadastro e na sanção sem gravar nada; proposta efetivada recusa; negação das duas autoridades com o motivo), seis mutações acusadas, e a derivação v44 provada por mutação. Percurso scripts/percurso-v36-emendas.mts 4/4 na base fictícia (o percurso achou a confirmação da sanção sumindo junto com o formulário: corrigido). Sanção: aprovação total, reprovação total ou parcial escolhendo as dotações sancionadas (parcial vazia ou com todas é recusada com o motivo); a situação da emenda é derivada da sanção registrada.",
   },
   // ── A IMPORTACAO de peca anterior: ausencia MEDIDA (nenhum servico `importar*` no M02b) ──
   // Copia nao e versao: importar e comecar uma peca NOVA a partir de outra, e o `MODULO.md` do

@@ -682,6 +682,28 @@ export function derivarRolDeFontesDaConta(
  * diz em que conta contábil o dinheiro dela é escriturado e qual fonte ela comporta por padrão. Uma
  * conta aberta errada não falha no ato: aparece na conciliação e no controle de destinação.
  */
+/**
+ * V36 (TR 5.9.3.13 a 5.9.3.15) — as EMENDAS ao projeto da LOA.
+ *
+ * ⚠️ VÃO A QUEM JÁ TEM CADASTRAR_LOA NO GLOBAL, e as duas: quem mantém o projeto da LOA já ajusta as linhas da
+ * proposta (`ajustarLinhaDaProposta`), e a sanção grava exatamente esse ajuste, citando a emenda. Nenhum poder novo
+ * sobre valor; o que muda é que o ajuste passa a dizer de onde veio. Quem só consulta o planejamento não recebe.
+ */
+export function derivarEmendasAoOrcamento(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    if (!perfil.permissoes.some((p) => p.acao === "CADASTRAR_LOA" && p.unidadeOrcId === null)) continue;
+    for (const acao of ["CADASTRAR_EMENDA_AO_ORCAMENTO", "SANCIONAR_EMENDA_AO_ORCAMENTO"] as const) {
+      if (perfil.permissoes.some((p) => p.acao === acao && p.unidadeOrcId === null)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarCadastroDeContaBancaria(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -1867,6 +1889,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "quem administra permissoes no global, que a distribui nomeando a pessoa. O titular e o rol de fontes " +
       "continuam atos proprios.",
     derivar: derivarCadastroDeContaBancaria,
+  },
+  {
+    versao: 44,
+    nome: "emendas-ao-orcamento",
+    descricao:
+      "As emendas ao projeto da LOA passaram a ser registradas (V36): data, objetivo, justificativa, vereador, texto " +
+      "juridico e as dotacoes da proposta com acrescimo ou reducao; o bloqueio de dotacoes para emenda; e a sancao " +
+      "(total, rejeicao ou parcial), que leva os itens aprovados a proposta como ajuste. Vem com CADASTRAR_EMENDA_AO_ORCAMENTO " +
+      "e SANCIONAR_EMENDA_AO_ORCAMENTO para quem ja tem CADASTRAR_LOA no global, que ja ajustava as linhas da proposta.",
+    derivar: derivarEmendasAoOrcamento,
   },
 ];
 

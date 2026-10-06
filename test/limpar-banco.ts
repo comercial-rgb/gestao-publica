@@ -471,6 +471,12 @@ export const TABELAS = [
   "EfetivacaoDaProposta",
   "AjusteDeReceitaDaProposta",
   "LinhaDeReceitaDaProposta",
+  // V36 — emendas ao projeto da LOA
+  "ItemSancionado",
+  "SancaoDaEmenda",
+  "ItemDaEmenda",
+  "EmendaAoOrcamento",
+  "BloqueioDeEmenda",
   "AjusteDeDespesaDaProposta",
   "LinhaDeDespesaDaProposta",
   "PropostaOrcamentaria",

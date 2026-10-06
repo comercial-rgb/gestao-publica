@@ -197,10 +197,16 @@ do grupo. Os anexos da LDO saem em PDF pela rota autenticada do detalhe.
 - **Vínculo PPA → LOA** (a ficha que executa a ação do plano) → ainda não existe; exigiria
   decidir se a amarração é por `Acao` ou por `AcaoPpa`. Decisão consciente, não
   esquecimento. Pendência `VINCULO-PPA-LOA`.
-- **Emenda parlamentar** com vereador, texto jurídico, bloqueio de dotação inemendável e
-  sanção total/parcial (TR 5.9.1.21-23, 5.9.2.11-13, 5.9.3.13-15) → não modelada, e a parte
-  difícil é a sanção PARCIAL: ela exige que cada item nasça pendente e mude de estado, o que é
-  **rito**, não ajuste. Pendência `EMENDA-PARLAMENTAR-COM-SANCAO-PARCIAL`.
+- ~~**Emenda parlamentar**~~ **na LOA, modelada na V36** (`emendas.ts`, TR 5.9.3.13-15). O rito
+  ficou assim, sem estado mutável: a emenda e os itens (com sinal) são inserts; a SANÇÃO é outro
+  registro (total, rejeição ou parcial com os itens escolhidos); a situação é derivada dela. A
+  emenda atua sobre a **proposta orçamentária ainda não efetivada** (o projeto de lei), e só a
+  sanção a muda, gravando um `AjusteDeDespesaDaProposta` por item aprovado (vigente + item, na
+  mesma transação, recusa tudo se alguma linha ficar negativa). Bloqueio de dotação para emenda:
+  insert, liberado por outro insert que o revoga. Duas autoridades: `CADASTRAR_EMENDA_AO_ORCAMENTO`
+  e `SANCIONAR_EMENDA_AO_ORCAMENTO`. A compensação (CF art. 166, §3º) é mostrada, não imposta.
+  **Falta no PPA e na LDO** (TR 5.9.1.21-23, 5.9.2.11-13): a sanção deve gerar o ato de alteração
+  do planejamento, e na LDO não há "dotação" (só metas anuais). Pendência `EMENDA-PPA-LDO`.
 - **Importação de peça anterior** (TR 5.9.1.5, .7, .9, .10, 5.9.2.5-7) → cópia não é versão, e
   nenhum serviço `importar*` existe aqui. Pendência `IMPORTACAO-DE-PECA-ANTERIOR`.
 - **Audiências públicas** com as solicitações da comunidade (TR 5.9.1.1-2) → outro domínio.

@@ -577,6 +577,10 @@ enum AcaoDoSistema {
   // M09 V36 — o cadastro de uma conta bancaria nova pela tela (TR 5.10.2.6)
   CADASTRAR_CONTA_BANCARIA
 
+  // M02b V36 — as emendas ao projeto da LOA (TR 5.9.3.13 a 5.9.3.15): cadastrar e bloquear; sancionar
+  CADASTRAR_EMENDA_AO_ORCAMENTO
+  SANCIONAR_EMENDA_AO_ORCAMENTO
+
   // M21 V11 V8 — a agenda do guichê (TR 5.39.92)
   CONFIGURAR_AGENDA_DO_GUICHE
   RESERVAR_ATENDIMENTO_NO_GUICHE
