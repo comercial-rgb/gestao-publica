@@ -69,7 +69,7 @@ export default async function RestosAPagarPage({
     [linhas, apuracoes, permitidas] = await Promise.all([
       listarRestosAPagar({ exercicioOrigem: exercicio, tipo }),
       lerApuracoesFeitas(),
-      acoesPermitidas(["ENCERRAR_EXERCICIO", "APURAR_RESULTADO", "ESTORNAR_APURACAO"]),
+      acoesPermitidas(["ENCERRAR_EXERCICIO", "APURAR_RESULTADO", "ESTORNAR_APURACAO", "ANULAR_EMPENHO_PARCIAL"]),
     ]);
   } catch (erro) {
     return (
