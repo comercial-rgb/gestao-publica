@@ -4,16 +4,32 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import { exigirContaDaLiquidacao } from "../../modules/m01-core-contabil/conta-da-liquidacao.js";
+import { declararTitularDaContaBancaria, titularVigenteDaConta } from "../../modules/m01-core-contabil/entidade-contabil.js";
+import { exigirNaturezaDaFonte } from "../../modules/m01-core-contabil/natureza-da-fonte.js";
 import { declararRoteiroPatrimonial } from "../../modules/m01-core-contabil/roteiro-patrimonial-declarado.js";
-import { CONTA_FORNECEDORES_A_PAGAR, roteiroEmpenho, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros.js";
+import { CONTA_FORNECEDORES_A_PAGAR, roteiroArrecadacao, roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../../modules/m01-core-contabil/roteiros.js";
 import { criarM02Deps } from "../../modules/m02-planejamento/adapter-prisma.js";
 import { reprevisarReceita } from "../../modules/m02-planejamento/servico.js";
 import { cadastrarLeiOrcamentariaAnual, registrarAprovacaoDaLeiOrcamentaria } from "../../modules/m02b-plurianual/lei-orcamentaria.js";
 import { criarLdo, criarPlanoPlurianual, criarProjecaoAtuarialRpps } from "../../modules/m02b-plurianual/servico.js";
+import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma.js";
+import { contaDaReceitaVigente, declararContaDaReceita } from "../../modules/m04-receita/conta-da-receita.js";
+import { registrarDeducaoDaReceita } from "../../modules/m04-receita/deducao-da-receita.js";
+import { registrarArrecadacao } from "../../modules/m04-receita/servico.js";
+import { criarM05Deps } from "../../modules/m05-despesa/adapter-prisma.js";
+import { autorizarOrdemDePagamento, prepararOrdemDePagamento } from "../../modules/m05-despesa/ordem-pagamento.js";
 import { empenhar } from "../../modules/m05-despesa/servico.js";
-import { liquidar } from "../../modules/m05-despesa/servico-bloco2.js";
+import { liquidar, pagar } from "../../modules/m05-despesa/servico-bloco2.js";
+import { liquidacoesComSaldo } from "../../modules/m06-ordem-cronologica/adapter-prisma.js";
+import { ordenarFila } from "../../modules/m06-ordem-cronologica/dominio.js";
 import { listarTiposConsignacao } from "../../modules/m07-extraorcamentario/consultas.js";
+import { roteiroIngressoExtra, type RetencoesDoPagamento } from "../../modules/m07-extraorcamentario/dominio.js";
+import { registrarIngressoExtra } from "../../modules/m07-extraorcamentario/extraorcamentario.js";
+import { irDaFolhaNoPagamento } from "../../modules/m07-extraorcamentario/retencao-propria.js";
 import { cadastrarTipoDeConsignacao, redefinirContaDaConsignacao } from "../../modules/m07-extraorcamentario/servico-tipos-de-consignacao.js";
+import { definirContabilizacaoDaTransferenciaEntreUgs, registrarTransferenciaEntreUgs } from "../../modules/m09-tesouraria/transferencia-entre-ugs.js";
+import { descontosDaFolhaPendentes } from "../../modules/m33-folha/descontos-da-folha.js";
+import { toMoney } from "../../packages/contracts/index.js";
 import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox.js";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05.js";
 import { redigirNotaExplicativa } from "../../modules/m12-relatorios/notas-explicativas.js";
@@ -42,7 +58,7 @@ import {
 } from "../../modules/m33-folha/encargos-servico.js";
 import { abrirFolha, cadastrarRubrica, cadastrarTabelaDeContribuicao, cadastrarTabelaIrrf, calcularFolha, fecharFolha } from "../../modules/m33-folha/servico.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
-import { meioDiaCivil } from "../../packages/datas/index.js";
+import { diaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 
 /**
@@ -86,6 +102,8 @@ const CONTADOR = "contador@ficticio.local";
 const ATESTADOR = "atestador@ficticio.local";
 const LIQUIDANTE = "liquidante@ficticio.local";
 const APROVADOR = "aprovador@ficticio.local";
+const TESOUREIRO = "tesoureiro@ficticio.local";
+const ORDENADOR = "ordenador@ficticio.local";
 
 /** Fichas da Lei 613/2025, Secretaria de Administração (02004), fonte 500. */
 const FICHA_VENCIMENTOS = 10852; // 319011
@@ -184,6 +202,13 @@ const PAPEIS: readonly { readonly email: string; readonly nome: string; readonly
   { email: ATESTADOR, nome: "Atestadora da folha (fictícia)", perfil: "ATESTO DA FOLHA — FICTÍCIO", acoes: ["CERTIFICAR_FOLHA", "CERTIFICAR_ENCARGOS_DA_FOLHA", "CONSULTAR_FOLHA", "CONSULTAR_PESSOAL", "CONSULTAR_CADASTROS"] },
   { email: LIQUIDANTE, nome: "Liquidante da folha (fictício)", perfil: "LIQUIDAÇÃO DA FOLHA — FICTÍCIO", acoes: ["LIQUIDAR_FOLHA", "LIQUIDAR", "CONSULTAR_FOLHA", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"] },
   { email: APROVADOR, nome: "Conferente dos encargos (fictício)", perfil: "APROVAÇÃO DE ENCARGOS — FICTÍCIO", acoes: ["APROVAR_ENCARGO_DA_FOLHA", "CONSULTAR_FOLHA", "CONSULTAR_CADASTROS"] },
+  // O financeiro: quem prepara a ordem e paga não é quem a autoriza (segregação do domínio, ordem-pagamento.ts).
+  {
+    email: TESOUREIRO, nome: "Tesoureira (fictícia)", perfil: "TESOURARIA — FICTÍCIO",
+    acoes: ["REGISTRAR_ARRECADACAO", "PAGAR", "PREPARAR_ORDEM_PAGAMENTO", "REGISTRAR_INGRESSO_EXTRA", "TRANSFERIR_ENTRE_CONTAS",
+      "CONSULTAR_FINANCEIRO", "CONSULTAR_RECEITA", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
+  },
+  { email: ORDENADOR, nome: "Ordenador da despesa (fictício)", perfil: "ORDENAÇÃO DA DESPESA — FICTÍCIO", acoes: ["AUTORIZAR_ORDEM_PAGAMENTO", "CONSULTAR_DESPESA", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"] },
 ];
 
 async function semearUsuarios(prisma: PrismaClient): Promise<void> {
@@ -595,6 +620,249 @@ async function semearReceitaENotas(prisma: PrismaClient): Promise<void> {
   });
 }
 
+// ═══ 7. FINANCEIRO: contas bancárias, FPM com a dedução do FUNDEB, a fila do art. 141 paga até a FIC-L2, caução, duodécimo ═══
+
+/**
+ * As contas do plano do TCE-PB que esta etapa usa — todas conferidas analíticas por `contaId` antes de qualquer gravação.
+ *   1.1.1.1.1.19.00 BANCOS CONTA MOVIMENTO - DEMAIS CONTAS (a mesma de prisma/seed/cenario-aceite.ts);
+ *   4.5.2.1.3.02.00 COTA-PARTE FPM (VPA das transferências constitucionais da União);
+ *   2.1.8.8.1.04.01 DEPOSITOS E CAUÇÕES (passivo da caução de terceiro);
+ *   3.5.1.1.2.02.00 REPASSE CONCEDIDO / 4.5.1.1.2.02.00 REPASSE RECEBIDO (intra OFSS — o precedente é
+ *     m09-transferencia-entre-ugs.test.ts e scripts/demonstracao/percurso-v26-cadastros.ts).
+ * As da dedução (6.2.1.3.1.01.00 etc.) são as constantes de modules/m04-receita/deducao-da-receita.ts.
+ */
+const CONTA_BANCOS = "1.1.1.1.1.19.00";
+const CONTA_VPA_FPM = "4.5.2.1.3.02.00";
+const CONTA_CAUCOES = "2.1.8.8.1.04.01";
+const CONTA_REPASSE_CONCEDIDO = "3.5.1.1.2.02.00";
+const CONTA_REPASSE_RECEBIDO = "4.5.1.1.2.02.00";
+const FONTE = "500";
+const NATUREZA_FPM = "17115111";
+
+/** As duas contas bancárias fictícias: banco 001, agência 0000 e conta de zeros — nenhuma existe. */
+const CONTAS_BANCARIAS = [
+  { codigo: "FIC-PM-500", entidade: "PM", nomeDaEntidade: "Prefeitura Municipal de Esperança", conta: "000001", descricao: `Prefeitura — movimento, fonte 500 (${MARCA})` },
+  { codigo: "FIC-CM-500", entidade: "CM", nomeDaEntidade: "Câmara Municipal de Esperança", conta: "000002", descricao: `Câmara — movimento, fonte 500 (${MARCA})` },
+] as const;
+
+/**
+ * O FPM de dois decêndios (valores FICTÍCIOS). A dedução do FUNDEB é o valor do demonstrativo bancário (aqui fictício,
+ * 20% do bruto, CF art. 212-A e Lei 14.113/2020 art. 3º); o sistema não calcula alíquota.
+ *
+ * ⚠️ A DEDUÇÃO VAI NO DIA ÚTIL SEGUINTE, e não no do crédito: `registrarDeducaoDaReceita` soma o arrecadado até o INÍCIO
+ * do dia civil da dedução (`inicioDoDiaCivil`), e a guia guarda o meio-dia — a do mesmo dia fica de fora e a dedução é
+ * recusada ("cabem 0.00"). Achado registrado como pendência do M04, não contornado aqui.
+ */
+const GUIAS_FPM = [
+  { numero: "FIC-FPM-2026-01-2", dia: "2026-01-20", valor: "1402637.45", decendio: "2º decêndio de janeiro/2026", deducao: "280527.49", diaDaDeducao: "2026-01-21" },
+  { numero: "FIC-FPM-2026-07-2", dia: "2026-07-20", valor: "1385214.80", decendio: "2º decêndio de julho/2026", deducao: "277042.96", diaDaDeducao: "2026-07-21" },
+] as const;
+
+/** As liquidações comuns pagas com ordem de pagamento (preparada pela tesouraria, autorizada pelo ordenador). */
+const PAGAMENTO_COM_ORDEM: Readonly<Record<string, string>> = { "FIC-L1": "2026-07-24", "FIC-L2": "2026-08-07" };
+
+async function contaBancariaFicticia(prisma: PrismaClient, c: (typeof CONTAS_BANCARIAS)[number]): Promise<{ readonly id: string; readonly codigo: string }> {
+  const conta = await passo(`Conta bancária ${c.codigo} (contábil ${CONTA_BANCOS}, fonte ${FONTE}, banco 001 ag. 0000 c/c ${c.conta}-0, fictícia)`, async () => {
+    const ja = await prisma.contaBancaria.findUnique({ where: { codigo: c.codigo }, select: { id: true, codigo: true, contaContabil: { select: { codigo: true } } } });
+    if (ja !== null) {
+      if (ja.contaContabil?.codigo !== CONTA_BANCOS) throw new Error(`a conta ${c.codigo} já existe mapeada a ${ja.contaContabil?.codigo ?? "nenhuma conta contábil"}, e não a ${CONTA_BANCOS}`);
+      return { estado: "existente", valor: { id: ja.id, codigo: ja.codigo } };
+    }
+    // ⚠️ NÃO HÁ SERVIÇO DE DOMÍNIO QUE CADASTRE CONTA BANCÁRIA: a tela /financeiro/contas-bancarias só declara titular e
+    // rol de fontes de contas que já existem, e o único caminho de criação no repositório é o seed (cenario-aceite.ts).
+    // Aqui, o mesmo caminho do seed: a conta nasce com a contábil mapeada (conferida analítica) e a identificação SAGRES.
+    const contaContabilId = await contaId(prisma, CONTA_BANCOS);
+    const fonte = await prisma.fonteRecurso.findUnique({ where: { codigo: FONTE }, select: { id: true } });
+    if (fonte === null) throw new Error(`a fonte ${FONTE} não está no cadastro`);
+    const criada = await prisma.contaBancaria.create({
+      data: { codigo: c.codigo, descricao: c.descricao, fonteId: fonte.id, contaContabilId, banco: "001", agencia: "0000", digitoAgencia: "0", conta: c.conta, digitoConta: "0" },
+      select: { id: true, codigo: true },
+    });
+    return { estado: "criado", valor: criada };
+  });
+  await passo(`Titular de ${c.codigo}: ${c.nomeDaEntidade} (contrato de abertura fictício)`, async () => {
+    const entidade = await prisma.entidadeContabil.findUnique({ where: { codigo: c.entidade }, select: { id: true } });
+    if (entidade === null) throw new Error(`a entidade contábil ${c.entidade} não está cadastrada`);
+    const titular = await titularVigenteDaConta(prisma, conta.id);
+    if (titular !== null) {
+      if (titular.entidadeId !== entidade.id) throw new Error(`a conta ${c.codigo} já tem outro titular (${titular.codigo})`);
+      return { estado: "existente", valor: null };
+    }
+    await declararTitularDaContaBancaria(prisma, {
+      contaBancariaId: conta.id, entidadeId: entidade.id, atoTipo: "CONTRATO", atoNumero: "000/2026", atoAno: 2026, atoDispositivo: "cláusula 1ª",
+      atoCitacao: `Contrato de abertura da conta corrente ${c.conta} na agência 0000 do banco 001, de titularidade da ${c.nomeDaEntidade} (${MARCA}).`,
+      criadoPor: ADMIN,
+    }, new Date());
+    return { estado: "criado", valor: null };
+  });
+  return conta;
+}
+
+/** O que o pagamento de uma liquidação de FOLHA retém — composto como a porta da tela compõe (lib/portas/pagamento.ts). */
+async function retencoesDaFolha(prisma: PrismaClient, p: { readonly liquidacaoId: string; readonly data: Date; readonly contaBancariaId: string }): Promise<RetencoesDoPagamento | undefined> {
+  const ir = await irDaFolhaNoPagamento(prisma, p);
+  const descontos = await descontosDaFolhaPendentes(prisma, p.liquidacaoId);
+  const pedidas = [
+    ...(ir?.consignacao == null ? [] : [ir.consignacao]),
+    ...(descontos?.porConsignacao ?? []).map((d) => ({ tipoConsignacaoId: d.tipoConsignacaoId, credorConsignatario: d.credorConsignatario, valor: d.valor.toFixed(2) })),
+  ];
+  if (ir === null && pedidas.length === 0) return undefined;
+  const tipos = await listarTiposConsignacao(prisma);
+  return {
+    contaDisponibilidade: CONTA_BANCOS,
+    retencoes: pedidas.map((r) => {
+      const t = tipos.find((x) => x.id === r.tipoConsignacaoId);
+      if (t === undefined || !t.ativo || t.contaPassivoCodigo === null) throw new Error(`o tipo de consignação ${r.tipoConsignacaoId} não existe, está inativo ou não tem conta de passivo`);
+      return { ...r, contaConsignacaoAPagar: t.contaPassivoCodigo };
+    }),
+    proprias: ir?.propria == null ? [] : [ir.propria],
+  };
+}
+
+async function semearFinanceiro(prisma: PrismaClient): Promise<void> {
+  // Todas as contas da etapa, conferidas antes do primeiro fato: conta ausente ou sintética para aqui, nomeada.
+  for (const codigo of [CONTA_BANCOS, CONTA_VPA_FPM, CONTA_CAUCOES, CONTA_REPASSE_CONCEDIDO, CONTA_REPASSE_RECEBIDO]) await contaId(prisma, codigo);
+  const fonte = await prisma.fonteRecurso.findUniqueOrThrow({ where: { codigo: FONTE }, select: { id: true } });
+
+  const [contaPm, contaCm] = [await contaBancariaFicticia(prisma, CONTAS_BANCARIAS[0]), await contaBancariaFicticia(prisma, CONTAS_BANCARIAS[1])];
+
+  // ── a receita: a VPA da natureza, as guias do FPM e a dedução do FUNDEB ──
+  await passo(`Conta da receita: naturezas 171151* (FPM) → VPA ${CONTA_VPA_FPM} COTA-PARTE FPM`, async () => {
+    const vigente = await contaDaReceitaVigente(prisma, NATUREZA_FPM);
+    if (vigente !== null) {
+      if (vigente.contaVpaCodigo !== CONTA_VPA_FPM) throw new Error(`a natureza ${NATUREZA_FPM} já está declarada para a VPA ${vigente.contaVpaCodigo}`);
+      return { estado: "existente", valor: null };
+    }
+    await declararContaDaReceita(prisma, {
+      naturezaPrefixo: "171151", contaVpaCodigo: CONTA_VPA_FPM,
+      fundamento: "PCASP do TCE-PB 2025: 4.5.2.1.3.02.00 COTA-PARTE FPM (transferências constitucionais e legais da União, inter OFSS) — a VPA da cota-parte do FPM, naturezas 1711.51.x.",
+      criadoPor: ADMIN,
+    });
+    return { estado: "criado", valor: null };
+  });
+  const natureza = await exigirNaturezaDaFonte(prisma, FONTE);
+  const m04 = criarM04Deps(prisma);
+  for (const g of GUIAS_FPM) {
+    await passo(`Arrecadação ${g.numero}: FPM ${g.decendio}, ${NATUREZA_FPM}/${FONTE}, R$ ${g.valor} em ${g.dia} na ${contaPm.codigo}`, async () => {
+      if ((await prisma.receitaArrecadada.findFirst({ where: { exercicio: EXERCICIO, numeroReceita: g.numero }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await registrarArrecadacao(
+        { exercicio: EXERCICIO, naturezaReceita: NATUREZA_FPM, fonte: FONTE, exercicioFonte: 1, valor: g.valor, dataArrecadacao: D(g.dia), numeroReceita: g.numero, contaBancaria: contaPm.codigo, criadoPor: TESOUREIRO },
+        roteiroArrecadacao({ disponibilidade: CONTA_BANCOS, variacaoAumentativa: CONTA_VPA_FPM, naturezaDaFonte: natureza.natureza }),
+        m04
+      );
+      return { estado: "criado", valor: null };
+    });
+    const documento = `Demonstrativo de distribuição da arrecadação, FPM ${g.decendio}, retenção do FUNDEB (${MARCA})`;
+    await passo(`Dedução do FUNDEB sobre ${g.numero}: R$ ${g.deducao} em ${g.diaDaDeducao}`, async () => {
+      if ((await prisma.deducaoDaReceitaRealizada.findFirst({ where: { documento, estornoDeId: null }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await registrarDeducaoDaReceita(prisma, { naturezaReceita: NATUREZA_FPM, fonte: FONTE, valor: g.deducao, dia: g.diaDaDeducao, contaBancaria: contaPm.codigo, documento, criadoPor: TESOUREIRO });
+      return { estado: "criado", valor: null };
+    });
+  }
+
+  // ── a despesa: a fila do art. 141 (fonte 500, prestação de serviços) paga NA ORDEM até a FIC-L2 ──
+  // A fila é por fonte e categoria, ordenada pela data da liquidação e desempatada pelo número (m06). A folha e os
+  // encargos de janeiro a julho estão nela, antes da FIC-L2: pagá-la sem pagar quem vem antes exigiria justificativa
+  // de quebra numa hipótese taxativa do §1º, e nenhuma se aplica. Por isso a etapa paga a cabeça da fila, em ordem.
+  // A FIC-L1 é paga INTEIRA: pagamento parcial não tira a liquidação da fila, e ela vem antes da FIC-L2.
+  const fic003 = await prisma.empenho.findFirst({ where: { numero: "FIC-003/2026" }, select: { id: true } });
+  const alvo = fic003 === null ? null : await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId: fic003.id, numero: "FIC-L2" } }, select: { id: true } });
+  if (alvo === null) throw new Error("A liquidação FIC-L2 do empenho FIC-003/2026 não está nesta base (etapa [5]). Nada foi gravado.");
+  const todas = await prisma.liquidacao.findMany({
+    where: { estornoDeId: null, anulacaoParcialDeId: null, estornos: { none: {} }, empenho: { categoriaOrdemCronologica: "PRESTACAO_SERVICOS", ficha: { fonteId: fonte.id } } },
+    select: { id: true, numero: true, data: true, valor: true, empenho: { select: { numero: true, historico: true } } },
+  });
+  const porId = new Map(todas.map((l) => [l.id, l] as const));
+  const ordem = ordenarFila(todas.map((l) => ({ liquidacaoId: l.id, numero: l.numero, dataLiquidacao: l.data, fonteId: fonte.id, categoria: "PRESTACAO_SERVICOS" as const, saldoAPagar: toMoney(l.valor.toFixed(2)) })));
+  const ate = ordem.findIndex((l) => l.liquidacaoId === alvo.id);
+  const m05 = criarM05Deps(prisma);
+  for (const naFila of ordem.slice(0, ate + 1)) {
+    const l = porId.get(naFila.liquidacaoId)!;
+    const sufixo = l.numero.replace(/^FIC-/, "");
+    const numero = `FIC-PG-${sufixo}`;
+    const dia = PAGAMENTO_COM_ORDEM[l.numero] ?? diaCivil(l.data);
+    const comOrdem = PAGAMENTO_COM_ORDEM[l.numero] !== undefined;
+    const saldoAPagar = async (): Promise<string | null> => {
+      const fila = await liquidacoesComSaldo(prisma, { fonteId: fonte.id, categoria: "PRESTACAO_SERVICOS" });
+      return fila.find((x) => x.liquidacaoId === l.id)?.saldoAPagar.toFixed(2) ?? null;
+    };
+    let ordemId: string | undefined;
+    if (comOrdem) {
+      const numeroDaOrdem = `FIC-OP-${sufixo}`;
+      ordemId = await passo(`Ordem de pagamento ${numeroDaOrdem} da liquidação ${l.numero} preparada por ${TESOUREIRO}`, async () => {
+        const ja = await prisma.ordemDePagamento.findFirst({ where: { liquidacaoId: l.id, numero: numeroDaOrdem }, select: { id: true } });
+        if (ja !== null) return { estado: "existente", valor: ja.id };
+        const valor = await saldoAPagar();
+        if (valor === null) throw new Error(`a liquidação ${l.numero} já não tem saldo a pagar`);
+        const r = await prepararOrdemDePagamento(prisma, { liquidacaoId: l.id, numero: numeroDaOrdem, valor, dataPrevista: D(dia), contaBancaria: contaPm.codigo, fonteId: fonte.id, historico: `Pagamento — ${l.empenho.historico}`, criadoPor: TESOUREIRO });
+        return { estado: "criado", valor: r.ordemId, detalhe: `R$ ${valor}` };
+      });
+      await passo(`Ordem de pagamento ${numeroDaOrdem} autorizada por ${ORDENADOR}`, async () => {
+        if ((await prisma.movimentoDaOrdemDePagamento.findFirst({ where: { ordemId: ordemId as string, tipo: "AUTORIZACAO" }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+        await autorizarOrdemDePagamento(prisma, { ordemId: ordemId as string, motivo: `Despesa liquidada e atestada; ordem cronológica conferida (${MARCA})`, criadoPor: ORDENADOR });
+        return { estado: "criado", valor: null };
+      });
+    }
+    await passo(`Pagamento ${numero} da liquidação ${l.numero} (empenho ${l.empenho.numero}) em ${dia}${comOrdem ? ", com a ordem" : ""}`, async () => {
+      if ((await prisma.pagamento.findUnique({ where: { liquidacaoId_numero: { liquidacaoId: l.id, numero } }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      const valor = comOrdem
+        ? (await prisma.ordemDePagamento.findUniqueOrThrow({ where: { id: ordemId as string }, select: { valor: true } })).valor.toFixed(2)
+        : await saldoAPagar();
+      if (valor === null) throw new Error(`a liquidação ${l.numero} já não tem saldo a pagar, mas não pelo pagamento ${numero} deste semeador`);
+      const data = D(dia);
+      const retencoes = await retencoesDaFolha(prisma, { liquidacaoId: l.id, data, contaBancariaId: contaPm.id });
+      // A obrigação que ESTA liquidação creditou (salário, encargo, fornecedor), lida como a porta da tela a lê.
+      const obrigacoes = (await m05.despesa.buscarLiquidacao(l.id))?.obrigacoes ?? [];
+      await pagar(
+        { liquidacaoId: l.id, numero, valor, data, contaBancaria: contaPm.codigo, fonteId: fonte.id, historico: `Pagamento — ${l.empenho.historico}`, criadoPor: TESOUREIRO, ...(ordemId !== undefined ? { ordemDePagamentoId: ordemId } : {}) },
+        roteiroPagamento({ obrigacaoAPagar: obrigacoes[0] ?? CONTA_FORNECEDORES_A_PAGAR, disponibilidade: CONTA_BANCOS }),
+        m05,
+        retencoes
+      );
+      const retido = (retencoes?.retencoes ?? []).map((r) => `${String(r.valor)} retido`).join(", ");
+      return { estado: "criado", valor: null, detalhe: `R$ ${valor}${retido === "" ? "" : ` (${retido})`}` };
+    });
+  }
+
+  // ── o extraorçamentário: a caução da contratada do FIC-003 ──
+  const limpeza = cnpjComDv("583016270001");
+  const caucao = await passo(`Tipo de consignação CAUCAO (passivo ${CONTA_CAUCOES} DEPOSITOS E CAUÇÕES)`, async () => {
+    const ja = await prisma.tipoConsignacao.findUnique({ where: { codigo: "CAUCAO" }, select: { id: true } });
+    if (ja !== null) {
+      const vigente = (await listarTiposConsignacao(prisma)).find((t) => t.id === ja.id);
+      if (vigente?.contaPassivoCodigo !== CONTA_CAUCOES) throw new Error(`o tipo CAUCAO já existe com o passivo em ${vigente?.contaPassivoCodigo ?? "nenhuma conta"}`);
+      return { estado: "existente", valor: ja.id };
+    }
+    const r = await cadastrarTipoDeConsignacao(prisma, { codigo: "CAUCAO", descricao: "Caução de garantia contratual (depósito de terceiro)", contaPassivoCodigo: CONTA_CAUCOES, fundamento: "PCASP do TCE-PB 2025: 2.1.8.8.1.04.01 DEPOSITOS E CAUÇÕES (depósitos não judiciais); garantia do art. 96, § 1º, I, da Lei 14.133/2021.", criadoPor: ADMIN });
+    return { estado: "criado", valor: r.tipoId };
+  });
+  const historicoDaCaucao = `Caução em dinheiro do contrato de limpeza (empenho FIC-003/2026), 5% de R$ 12.000,00 (${MARCA})`;
+  await passo(`Ingresso extraorçamentário: caução de R$ 600.00 em 2026-07-01 na ${contaPm.codigo}`, async () => {
+    if ((await prisma.movimentoExtraorcamentario.findFirst({ where: { tipoConsignacaoId: caucao, tipo: "INGRESSO", historico: historicoDaCaucao }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await registrarIngressoExtra(
+      prisma,
+      { tipoConsignacaoId: caucao, credorConsignatario: "Limpa Bem Serviços Gerais Ltda (fictícia)", documentoDoContribuinte: limpeza, contaBancaria: contaPm.codigo, fonteId: fonte.id, valor: "600.00", data: D("2026-07-01"), historico: historicoDaCaucao, criadoPor: TESOUREIRO },
+      roteiroIngressoExtra({ disponibilidade: CONTA_BANCOS, consignacaoAPagar: CONTA_CAUCOES })
+    );
+    return { estado: "criado", valor: null };
+  });
+
+  // ── a transferência entre UGs: o duodécimo de julho da Prefeitura à Câmara ──
+  await passo(`Contabilização do duodécimo: D ${CONTA_REPASSE_CONCEDIDO} REPASSE CONCEDIDO / C ${CONTA_REPASSE_RECEBIDO} REPASSE RECEBIDO, desde 2026-01-01`, async () => {
+    if ((await prisma.contabilizacaoDaTransferenciaEntreUgs.findFirst({ where: { tipo: "DUODECIMO" }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await definirContabilizacaoDaTransferenciaEntreUgs(prisma, { tipo: "DUODECIMO", contaConcedidaCodigo: CONTA_REPASSE_CONCEDIDO, contaRecebidaCodigo: CONTA_REPASSE_RECEBIDO, vigenteDesde: D("2026-01-01"), fundamento: "PCASP do TCE-PB 2025: repasse concedido e recebido, intra OFSS (3.5.1.1.2.02.00 e 4.5.1.1.2.02.00).", criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  const vinculo = `Duodécimo de julho/2026 — CF art. 29-A, § 2º, II (valor ${MARCA})`;
+  await passo(`Transferência entre UGs: duodécimo de R$ 150000.00 em 2026-07-22, 201078 → 101078 (${contaPm.codigo} → ${contaCm.codigo})`, async () => {
+    if ((await prisma.transferenciaEntreUgs.findFirst({ where: { vinculo }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    const [pm, cm] = [await prisma.unidadeGestora.findFirst({ where: { codigoTce: "201078" }, select: { id: true } }), await prisma.unidadeGestora.findFirst({ where: { codigoTce: "101078" }, select: { id: true } })];
+    if (pm === null || cm === null) throw new Error("as unidades gestoras 201078 (Prefeitura) e 101078 (Câmara) precisam estar cadastradas");
+    await registrarTransferenciaEntreUgs(prisma, { tipo: "DUODECIMO", ugOrigemId: pm.id, ugDestinoId: cm.id, valor: "150000.00", data: D("2026-07-22"), contaOrigemId: contaPm.id, contaDestinoId: contaCm.id, vinculo, criadoPor: TESOUREIRO });
+    return { estado: "criado", valor: null };
+  });
+}
+
 async function main(): Promise<void> {
   const prisma = criarPrismaClient(exigirBanco());
   try {
@@ -627,6 +895,8 @@ async function main(): Promise<void> {
     await semearDespesa(prisma);
     console.log("\n[6] receita e notas");
     await semearReceitaENotas(prisma);
+    console.log("\n[7] financeiro");
+    await semearFinanceiro(prisma);
     console.log(`\nPronto. Usuários da base fictícia: ${PAPEIS.map((p) => p.email).join(", ")} (senha em FICTICIO_SENHA ou a padrão do script).`);
   } finally {
     await prisma.$disconnect();
