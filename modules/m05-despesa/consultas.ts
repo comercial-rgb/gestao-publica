@@ -645,6 +645,20 @@ export interface RecorteDeEmpenhos extends RecorteDaExecucao {
    * do original, então o filtro não as separa: `liquidoDoFato` continua vendo o conjunto inteiro.
    */
   readonly fichaId?: string | undefined;
+  /**
+   * V36 — os empenhos de UM vínculo do cadastro (a obra, o convênio, o precatório, o consórcio ou
+   * a dívida abrem "os empenhos deste ..."). Filtro simples e correto porque TODA anulação COPIA
+   * essas dimensões do original (`DIMENSOES_DO_EMPENHO`, conferido em
+   * m05-dimensoes-das-anulacoes): o conjunto filtrado já traz as reduções de cada empenho.
+   */
+  readonly vinculo?: VinculoDoEmpenho | undefined;
+}
+
+/** As dimensões do empenho que um cadastro usa para abrir "os empenhos deste registro". */
+export const DIMENSOES_CONSULTAVEIS = ["obraId", "convenioId", "precatorioId", "consorcioId", "dividaId"] as const;
+export interface VinculoDoEmpenho {
+  readonly dimensao: (typeof DIMENSOES_CONSULTAVEIS)[number];
+  readonly id: string;
 }
 
 /**
@@ -743,7 +757,12 @@ export async function listarEmpenhos(
 ): Promise<readonly EmpenhoNaLista[]> {
   const linhas = await prisma.empenho.findMany({
     // ⚠️ Fonte pela FICHA, credor pelo EMPENHO (e pelos pais dele — ver `doCredor`).
-    where: { ficha: daFicha(p), ...doCredor(p.credorCpfCnpj), ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}) },
+    where: {
+      ficha: daFicha(p),
+      ...doCredor(p.credorCpfCnpj),
+      ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}),
+      ...(p.vinculo !== undefined ? { [p.vinculo.dimensao]: p.vinculo.id } : {}),
+    },
     orderBy: [{ data: "desc" }, { numero: "desc" }],
     select: {
       id: true,

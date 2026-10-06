@@ -4,7 +4,7 @@ import { formatarMoeda } from "../format/moeda";
 import { mascararCpfCnpj } from "../format/mascaras";
 import { dataBr } from "../recorte";
 import { lerArrecadacoes, type ArrecadacaoDaTela } from "../portas/arrecadacao";
-import { listarEmpenhosDaExecucao, type EmpenhoDaTela } from "../portas/empenho";
+import { listarEmpenhosDaExecucao, type EmpenhoDaTela, type VinculoDoEmpenho } from "../portas/empenho";
 import { listarLiquidacoesDaExecucao, type LiquidacaoDaTela } from "../portas/liquidacao";
 import { lerFilasDePagamento } from "../portas/pagamento";
 import { lerDecretos } from "../portas/creditos";
@@ -123,6 +123,9 @@ export async function montarPdfGerencialEmpenhos(p: {
   readonly unidadeCodigo?: string | undefined;
   readonly credorCpfCnpj?: string | undefined;
   readonly fonteCodigo?: string | undefined;
+  /** V36 — os empenhos de um registro do cadastro, com o nome dele para o papel. */
+  readonly vinculo?: VinculoDoEmpenho | undefined;
+  readonly rotuloDoVinculo?: string | undefined;
   /** O período por extenso, como a tela o descreve — o PDF é a tela. */
   readonly periodo: string;
 }): Promise<DocumentoPdf> {
@@ -131,9 +134,11 @@ export async function montarPdfGerencialEmpenhos(p: {
     unidadeCodigo: p.unidadeCodigo,
     credorCpfCnpj: p.credorCpfCnpj,
     fonteCodigo: p.fonteCodigo,
+    vinculo: p.vinculo,
   });
 
   const recorteEmTexto = [
+    ...(p.rotuloDoVinculo !== undefined ? [p.rotuloDoVinculo] : []),
     ...(p.credorCpfCnpj !== undefined && p.credorCpfCnpj !== "" ? [`credor ${mascararCpfCnpj(p.credorCpfCnpj)}`] : []),
     ...(p.fonteCodigo !== undefined && p.fonteCodigo !== "" ? [`fonte ${p.fonteCodigo}`] : []),
   ];

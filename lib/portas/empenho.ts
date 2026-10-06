@@ -7,7 +7,9 @@ import {
   vocabularioDosEmpenhos,
   type EmpenhoNaLista,
   type FichaNaLista,
+  type VinculoDoEmpenho,
 } from "../../modules/m05-despesa/consultas";
+export { DIMENSOES_CONSULTAVEIS, type VinculoDoEmpenho } from "../../modules/m05-despesa/consultas";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05";
 import { empenhar } from "../../modules/m05-despesa/servico";
 import { roteiroEmpenho } from "../../modules/m01-core-contabil/roteiros";
@@ -84,6 +86,8 @@ export async function listarEmpenhosDaExecucao(p: {
   readonly fonteCodigo?: string | undefined;
   /** V31 — os empenhos de uma ficha. */
   readonly fichaId?: string | undefined;
+  /** V36 — os empenhos de uma obra, convênio, precatório, consórcio ou dívida. */
+  readonly vinculo?: VinculoDoEmpenho | undefined;
 }): Promise<readonly EmpenhoDaTela[]> {
   // ⚠️ TODO filtro desce ao SQL do módulo. A porta NUNCA recorta a lista depois de
   // recebê-la: um `.filter()` aqui traria o exercício inteiro do banco para jogar fora,
@@ -94,6 +98,7 @@ export async function listarEmpenhosDaExecucao(p: {
     ...(p.credorCpfCnpj !== undefined ? { credorCpfCnpj: p.credorCpfCnpj } : {}),
     ...(p.fonteCodigo !== undefined ? { fonteCodigo: p.fonteCodigo } : {}),
     ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}),
+    ...(p.vinculo !== undefined ? { vinculo: p.vinculo } : {}),
   });
   const [nomes, vinculos] = await Promise.all([
     nomesDosCredores(linhas.map((l) => l.credorCpfCnpj)),
@@ -599,4 +604,35 @@ function paraTelaODossie(d: DossieDoEmpenho): DossieDaTela {
       })),
     })),
   };
+}
+
+/**
+ * V36 — COMO SE CHAMA o registro de que se abriram os empenhos ("obra OB-2026-001"). É o que a tela
+ * e o PDF imprimem no recorte: um id opaco no papel não diz ao leitor o que ele está vendo. Registro
+ * inexistente devolve `null`, e quem chama diz isso em vez de imprimir um rótulo inventado.
+ */
+export async function rotuloDoVinculoDoEmpenho(v: VinculoDoEmpenho): Promise<string | null> {
+  const db = cliente();
+  switch (v.dimensao) {
+    case "obraId": {
+      const r = await db.obra.findUnique({ where: { id: v.id }, select: { identificador: true, descricao: true } });
+      return r === null ? null : `obra ${r.identificador} — ${r.descricao}`;
+    }
+    case "convenioId": {
+      const r = await db.convenio.findUnique({ where: { id: v.id }, select: { identificador: true } });
+      return r === null ? null : `convênio ${r.identificador}`;
+    }
+    case "precatorioId": {
+      const r = await db.precatorio.findUnique({ where: { id: v.id }, select: { numeroProcesso: true } });
+      return r === null ? null : `precatório ${r.numeroProcesso}`;
+    }
+    case "consorcioId": {
+      const r = await db.consorcioPublico.findUnique({ where: { id: v.id }, select: { identificador: true } });
+      return r === null ? null : `consórcio ${r.identificador}`;
+    }
+    case "dividaId": {
+      const r = await db.dividaConsolidada.findUnique({ where: { id: v.id }, select: { identificador: true } });
+      return r === null ? null : `dívida ${r.identificador}`;
+    }
+  }
 }

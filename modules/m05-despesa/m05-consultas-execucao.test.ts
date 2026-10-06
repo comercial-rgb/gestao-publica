@@ -129,9 +129,10 @@ async function semear(): Promise<void> {
   });
 }
 
-async function empenhaDe(valor: string, n: string): Promise<string> {
+async function empenhaDe(valor: string, n: string, obraId?: string): Promise<string> {
   const e = await empenhar(
     {
+      ...(obraId !== undefined ? { obraId } : {}),
       fichaId: FICHA, numero: `NE-${n}`, tipo: "ORDINARIO", valor,
       data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: CREDOR,
       historico: `empenho ${n}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS",
@@ -330,5 +331,40 @@ describe("M05 — as leituras da execução (TR 5.17)", () => {
     ).toBe(0);
     // Exercício sem execução: idem.
     expect((await listarEmpenhos(prisma, { exercicio: 2025 })).length).toBe(0);
+  });
+
+  /**
+   * t6 — OS EMPENHOS DE UM VÍNCULO (V36). Os cadastros de obra, convênio, precatório, consórcio e
+   * dívida abrem "os empenhos deste registro" pelo relatório gerencial, que ignorava o parâmetro.
+   * Conta à mão: obra A tem NE-1 (1.000) e NE-2 (4.000, anulação parcial de 1.500 → 2.500); a obra B
+   * tem NE-3 (700). Filtrar A devolve 2 linhas, empenhado líquido 1.000 + 2.500 = 3.500,00 — a
+   * parcial entra porque copia a obra. Sem filtro, 3 linhas.
+   */
+  it("t6: o recorte por VÍNCULO traz os empenhos da obra com as anulações deles", async () => {
+    await prisma.obra.createMany({
+      data: [
+        { id: "obra-a", identificador: "OB-A", descricao: "Obra A", tipoObraServico: "PAVIMENTACAO_ASFALTICA", criadoPor: POR },
+        { id: "obra-b", identificador: "OB-B", descricao: "Obra B", tipoObraServico: "PAVIMENTACAO_ASFALTICA", criadoPor: POR },
+      ],
+    });
+    await empenhaDe("1000.00", "1", "obra-a");
+    const ne2 = await empenhaDe("4000.00", "2", "obra-a");
+    await empenhaDe("700.00", "3", "obra-b");
+    await anularEmpenhoParcial(
+      { originalId: ne2, numero: "NEA-2", valor: "1500.00", data: new Date("2026-02-10T12:00:00Z"), motivo: "redução do objeto da obra A por acordo entre as partes", criadoPor: POR },
+      deps
+    );
+
+    const daA = await listarEmpenhos(prisma, { ...RECORTE, vinculo: { dimensao: "obraId", id: "obra-a" } });
+    expect(daA.map((e) => e.numero).sort()).toEqual(["NE-1", "NE-2"]);
+    const linhaNe2 = daA.find((e) => e.numero === "NE-2");
+    expect(linhaNe2?.empenhadoLiquido.toFixed(2)).toBe("2500.00");
+    expect(daA.reduce((t, e) => t + BigInt(e.empenhadoLiquido.toFixed(2).replace(".", "")), 0n)).toBe(350000n);
+
+    const daB = await listarEmpenhos(prisma, { ...RECORTE, vinculo: { dimensao: "obraId", id: "obra-b" } });
+    expect(daB.map((e) => e.numero)).toEqual(["NE-3"]);
+    expect((await listarEmpenhos(prisma, RECORTE)).length).toBe(3);
+    // Registro sem empenho: lista vazia, não a lista inteira.
+    expect(await listarEmpenhos(prisma, { ...RECORTE, vinculo: { dimensao: "convenioId", id: "conv-sem-empenho" } })).toEqual([]);
   });
 });

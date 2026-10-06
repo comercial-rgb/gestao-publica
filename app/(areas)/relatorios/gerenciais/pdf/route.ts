@@ -7,6 +7,7 @@ import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { emitir, montarPdfGerencialEmpenhos } from "../../../../../lib/pdf/operacionais";
 import { descreverRecorte } from "../../../../../lib/recorte";
 import { recorteGerencialDe } from "../filtro";
+import { rotuloDoVinculoDoEmpenho } from "../../../../../lib/portas/empenho";
 
 /**
  * EMISSÃO PDF — RELATÓRIO GERENCIAL DE EMPENHOS (por credor e por fonte). Autenticada.
@@ -43,12 +44,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     throw e;
   }
   const filtro = recorteGerencialDe(sp);
+  const rotuloDoVinculo = filtro.vinculo === undefined ? null : await rotuloDoVinculoDoEmpenho(filtro.vinculo);
+  if (filtro.vinculo !== undefined && rotuloDoVinculo === null) {
+    return NextResponse.json({ erro: "O registro de que se pediram os empenhos não existe." }, { status: 404 });
+  }
 
   const doc = await montarPdfGerencialEmpenhos({
     exercicio: recorte.exercicio,
     unidadeCodigo: recorte.unidadeCodigo,
     credorCpfCnpj: filtro.credorCpfCnpj,
     fonteCodigo: filtro.fonteCodigo,
+    ...(filtro.vinculo !== undefined && rotuloDoVinculo !== null ? { vinculo: filtro.vinculo, rotuloDoVinculo } : {}),
     periodo: descreverRecorte(recorte),
   });
 

@@ -10,6 +10,7 @@ import {
   lerVocabularioDeEmpenhos,
   listarEmpenhosDaExecucao,
   PortaSemBancoError,
+  rotuloDoVinculoDoEmpenho,
   type EmpenhoDaTela,
   type VocabularioDaTela,
 } from "../../../../lib/portas/empenho";
@@ -23,7 +24,7 @@ import {
   type RecorteDaPagina,
 } from "../../../../lib/portas/contexto";
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
-import { descreverFiltroGerencial, recorteGerencialDe } from "./filtro";
+import { descreverFiltroGerencial, parametroDoVinculo, recorteGerencialDe } from "./filtro";
 import { FiltroGerencial } from "./FiltroGerencial";
 
 /**
@@ -66,7 +67,7 @@ export default async function RelatoriosGerenciaisPage({
 }): Promise<React.ReactElement> {
   const sp = await searchParams;
   const filtro = recorteGerencialDe(sp);
-  const recorteEmTexto = descreverFiltroGerencial(filtro);
+  const filtroEmTexto = descreverFiltroGerencial(filtro);
 
   // ⚠️ AQUI NÃO HÁ VARIÁVEL `cabecalho` — o que carrega o recorte é o `subtitulo`, e é ele
   // que nasce DEPOIS do try. `descreverRecorte(recorte)` só pode ser escrito quando o
@@ -77,6 +78,7 @@ export default async function RelatoriosGerenciaisPage({
   let recorte: RecorteDaPagina;
   let empenhos: readonly EmpenhoDaTela[];
   let vocabulario: VocabularioDaTela;
+  let rotuloDoVinculo: string | null = null;
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     // ⚠️ AS DUAS LEITURAS TÊM RECORTES DIFERENTES DE PROPÓSITO. A tabela leva o filtro; o
@@ -88,6 +90,7 @@ export default async function RelatoriosGerenciaisPage({
         unidadeCodigo: recorte.unidadeCodigo,
         credorCpfCnpj: filtro.credorCpfCnpj,
         fonteCodigo: filtro.fonteCodigo,
+        vinculo: filtro.vinculo,
       }),
       lerVocabularioDeEmpenhos({
         exercicio: recorte.exercicio,
@@ -118,6 +121,24 @@ export default async function RelatoriosGerenciaisPage({
     );
   }
 
+  if (filtro.vinculo !== undefined) {
+    rotuloDoVinculo = await rotuloDoVinculoDoEmpenho(filtro.vinculo);
+    if (rotuloDoVinculo === null) {
+      // ⚠️ Vínculo que não existe NÃO vira "nenhum empenho": diria que o registro não tem execução.
+      return (
+        <div className="space-y-4">
+          <SincronizarContexto />
+          <PageHeader titulo="Relatórios gerenciais — despesa por credor e fonte" subtitulo="Empenhos de um registro do cadastro" />
+          <EstadoVazio
+            titulo="Registro não encontrado"
+            descricao="O registro de que se pediram os empenhos não existe. Volte ao cadastro e abra o link de novo, ou remova o filtro."
+          />
+        </div>
+      );
+    }
+  }
+  const recorteEmTexto = rotuloDoVinculo === null ? filtroEmTexto : [rotuloDoVinculo, ...filtroEmTexto];
+
   // ⚠️ AQUI: `recorte` autorizado, e só agora o subtítulo pode afirmar o escopo.
   const subtitulo =
     `${descreverRecorte(recorte)} — execução da despesa por credor (CPF/CNPJ) e fonte de recursos` +
@@ -129,6 +150,7 @@ export default async function RelatoriosGerenciaisPage({
   if (recorte.unidadeCodigo !== undefined) query.set("ug", recorte.unidadeCodigo);
   if (filtro.credorCpfCnpj !== undefined) query.set("credor", filtro.credorCpfCnpj);
   if (filtro.fonteCodigo !== undefined) query.set("fonte", filtro.fonteCodigo);
+  if (filtro.vinculo !== undefined) query.set(parametroDoVinculo(filtro.vinculo), filtro.vinculo.id);
 
   const sufixoArquivo =
     (filtro.credorCpfCnpj !== undefined ? `-credor-${filtro.credorCpfCnpj}` : "") +
@@ -154,6 +176,14 @@ export default async function RelatoriosGerenciaisPage({
         O filtro de <strong>credor</strong> considera o CPF/CNPJ informado no empenho e lista os
         documentos existentes no exercício. O filtro de <strong>fonte</strong> considera a fonte
         de recursos da ficha do empenho.
+        {rotuloDoVinculo !== null && filtro.vinculo !== undefined ? (
+          <>
+            {" "}Mostrando só os empenhos de <strong>{rotuloDoVinculo}</strong>, com as anulações deles.{" "}
+            <a href={`/relatorios/gerenciais?${semVinculo(query, parametroDoVinculo(filtro.vinculo))}`} className="text-[color:var(--color-primary)] hover:underline">
+              Ver todos os empenhos
+            </a>
+          </>
+        ) : null}
       </div>
 
       {empenhos.length === 0 ? (
@@ -285,3 +315,10 @@ const COLUNAS: readonly ColunaTabela<EmpenhoDaTela>[] = [
     celula: (l) => <Badge status={tomDoStatus(l.status)}>{ROTULO_STATUS[l.status] ?? l.status}</Badge>,
   },
 ];
+
+/** A mesma consulta sem o parâmetro do vínculo — o link "ver todos". */
+function semVinculo(query: URLSearchParams, parametro: string): string {
+  const q = new URLSearchParams(query);
+  q.delete(parametro);
+  return q.toString();
+}
