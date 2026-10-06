@@ -120,4 +120,15 @@ describe("M04 — a dedução da receita realizada (FUNDEB)", () => {
     expect(linha("DED_FUNDEB")?.total12m).toBe("300.00");
     expect(a.rcl.total12m).toBe("1200.00");
   });
+
+  /**
+   * t7 — A DEDUÇÃO NO DIA DO CRÉDITO (V36). As guias são de 10/03 e 20/03, gravadas às 9h de Esperança. A dedução
+   * de 20/03 enxerga as duas (cabem 1.500,00); a de 19/03 só a de 10/03 (cabem 1.000,00). Com o corte no início do
+   * dia, a de 20/03 via só 1.000,00 e a dedução do dia do crédito era recusada.
+   */
+  it("t7: a dedução do dia do crédito cabe na guia do mesmo dia; a da véspera, não", async () => {
+    await expect(deduzir("1000.01", "2026-03-19")).rejects.toThrow(/1000\.00 arrecadados e 0\.00 já deduzidos[\s\S]*cabem 1000\.00/);
+    await deduzir("1500.00", "2026-03-20");
+    expect(await saldo("6.2.1.3.1.01.00")).toBe("1500.00");
+  });
 });

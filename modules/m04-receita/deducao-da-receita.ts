@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
-import { inicioDoDiaCivil } from "../../packages/datas/index.js";
+import { fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
@@ -104,7 +104,10 @@ export async function registrarDeducaoDaReceita(
 
     // A dedução cabe na receita da natureza e fonte — sob trinco, contra a corrida.
     await travar(tx, "DeducaoDaReceita", [natureza.id, fonte.id]);
-    const { arrecadado, deduzido } = await arrecadadoEDeduzido(tx, exercicio, natureza.id, fonte.id, quando);
+    // ⚠️ O ARRECADADO É O DO DIA INTEIRO. A guia é gravada no meio do dia civil; cortar no início do dia deixava
+    // de fora a guia do próprio dia, e a dedução feita no dia do crédito (o caso comum: o banco credita o FPM e
+    // retém o FUNDEB na mesma data) era sempre recusada com "cabem 0,00". Achado ao semear a base fictícia (V36).
+    const { arrecadado, deduzido } = await arrecadadoEDeduzido(tx, exercicio, natureza.id, fonte.id, fimDoDiaCivil(d.dia));
     const cabe = toMoney(arrecadado.minus(deduzido));
     if (d.valor.greaterThan(cabe)) {
       throw new Error(
