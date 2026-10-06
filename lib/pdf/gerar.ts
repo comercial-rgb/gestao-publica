@@ -9,6 +9,9 @@ import {
   type DocumentoPdf,
 } from "./documento.js";
 import { ambienteDeExecucao } from "../identidade/produto.js";
+import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 /**
  * O MOTOR DE PDF — o headless que transforma o corpo HTML (de `documento.ts`) em A4 (TR 7.5/5.120).
@@ -35,11 +38,40 @@ let fechamentoOcioso: ReturnType<typeof setTimeout> | null = null;
  */
 export const OCIOSIDADE_MS = 20_000;
 
+/**
+ * ⚠️ V36 — OS DIRETÓRIOS DO CHROMIUM VÃO PARA O TEMPORÁRIO, NUNCA PARA O `HOME`.
+ *
+ * Em produção o serviço roda com o `HOME` em `/opt/gestao-publica`, que o próprio serviço deixa somente leitura
+ * (`ProtectSystem=strict`, gravação só em anexos e versões). O Chromium cria no `HOME` a configuração, o cache e o
+ * banco do relatório de falhas (crashpad); sem poder gravar, o crashpad aborta ("--database is required") e o
+ * launch falha — TODO PDF do sistema respondia 500 em produção (medido em 06/10/2026, journalctl). O temporário do
+ * serviço é privado e gravável (`PrivateTmp=true`); localmente é o temporário do usuário.
+ */
+function ambienteDoChromium(): { readonly env: NodeJS.ProcessEnv; readonly crashpad: string } {
+  const base = join(tmpdir(), "gestao-publica-chromium");
+  const pastas = { config: join(base, "config"), cache: join(base, "cache"), data: join(base, "data"), crashpad: join(base, "crashpad") };
+  for (const p of Object.values(pastas)) mkdirSync(p, { recursive: true });
+  return {
+    env: { ...process.env, HOME: base, XDG_CONFIG_HOME: pastas.config, XDG_CACHE_HOME: pastas.cache, XDG_DATA_HOME: pastas.data },
+    crashpad: pastas.crashpad,
+  };
+}
+
 async function obterBrowser(): Promise<Browser> {
   if (browserPromise === null) {
+    const ambiente = ambienteDoChromium();
     // `--no-sandbox`: o processo já roda isolado (container/CI); o sandbox do Chromium exige
     // capacidades que ambientes headless costumam não ter, e sem ele o launch falha nomeando.
-    browserPromise = puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
+    browserPromise = puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", `--crash-dumps-dir=${ambiente.crashpad}`],
+      env: ambiente.env,
+    });
+    // ⚠️ Launch que falhou NÃO fica guardado: sem isto, a promessa rejeitada era reaproveitada e todo PDF seguinte
+    // falhava até o serviço reiniciar, mesmo depois de a causa passar.
+    browserPromise.catch(() => {
+      browserPromise = null;
+    });
   }
   return browserPromise;
 }
