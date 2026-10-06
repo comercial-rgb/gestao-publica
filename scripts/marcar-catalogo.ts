@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { MARCAS_V36 } from "./marcacoes-v36-contabilidade";
+import { MARCAS_V36 } from "./marcacoes-v36-contabilidade.js";
 
 /**
  * MARCA `situacao` E `evidencia` NO CATÁLOGO DE EXECUÇÃO — só para o que tem
