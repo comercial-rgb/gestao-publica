@@ -1,3 +1,4 @@
+import { BotaoPdf } from "../../../../../components/ui/BotaoPdf";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
@@ -21,7 +22,13 @@ export default async function DiarioPage({
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
 
   const cabecalho = (
-    <PageHeader titulo="Livro Diário" subtitulo="Lançamentos contábeis do período, em ordem cronológica" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} />} />
+    <PageHeader titulo="Livro Diário" subtitulo="Lançamentos contábeis do período, em ordem cronológica" acoes={
+        <div className="flex flex-wrap items-end gap-2">
+          <SeletorPeriodo desde={desdeStr} ate={ateStr} />
+          {/* V36: o livro com termo de abertura e de encerramento, do mesmo período. */}
+          <BotaoPdf href={`/relatorios/livros/diario/pdf?desde=${desdeStr}&ate=${ateStr}`} />
+        </div>
+      } />
   );
 
   let lancamentos: readonly LancamentoDoDiario[];

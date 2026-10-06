@@ -72,3 +72,30 @@ export type { TotalDeSubsistema } from "../../modules/m12-relatorios/livros";
 export type { LinhaDoRazao } from "../../modules/m12-relatorios/livros";
 export type { LinhaDoBalancete } from "../../modules/m12-relatorios/livros";
 export type { PartidaDoDiario } from "../../modules/m12-relatorios/livros";
+
+/**
+ * V36 — QUEM RESPONDE PELOS LIVROS: o que os termos de abertura e encerramento imprimem. Vem do cadastro
+ * institucional do ente (`EnteConfig`, o mesmo do MANAD e do SAGRES). Campo vazio volta `null`, e o termo diz
+ * "não cadastrado" — um nome ou um CRC inventado num livro obrigatório seria pior que a lacuna.
+ */
+export interface ResponsaveisDosLivros {
+  readonly cnpj: string | null;
+  readonly nomeContador: string | null;
+  readonly crcContador: string | null;
+  readonly nomeOrdenador: string | null;
+}
+
+export async function lerResponsaveisDosLivros(): Promise<ResponsaveisDosLivros> {
+  const e = await cliente().enteConfig.findUnique({
+    where: { id: "unico" },
+    select: { cnpj: true, nomeContador: true, crcContador: true, nomeOrdenador: true },
+  });
+  const ou = (v: string | null | undefined): string | null => (v === null || v === undefined || v.trim() === "" ? null : v.trim());
+  return { cnpj: ou(e?.cnpj), nomeContador: ou(e?.nomeContador), crcContador: ou(e?.crcContador), nomeOrdenador: ou(e?.nomeOrdenador) };
+}
+
+/** V36 — o título da conta para o cabeçalho do Razão em PDF; conta fora do plano volta `null`. */
+export async function tituloDaConta(codigo: string): Promise<string | null> {
+  const c = await cliente().contaPcasp.findUnique({ where: { codigo }, select: { nome: true } });
+  return c?.nome ?? null;
+}

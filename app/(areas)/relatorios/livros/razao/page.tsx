@@ -1,3 +1,4 @@
+import { BotaoPdf } from "../../../../../components/ui/BotaoPdf";
 import { CardEstatistica } from "../../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
@@ -23,7 +24,14 @@ export default async function RazaoPage({
   const conta = (Array.isArray(sp["conta"]) ? sp["conta"][0] : sp["conta"])?.trim();
 
   const cabecalho = (
-    <PageHeader titulo="Livro Razão" subtitulo="Saldo anterior, movimentos e saldo acumulado de uma conta" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} conta={conta ?? ""} comConta />} />
+    <PageHeader titulo="Livro Razão" subtitulo="Saldo anterior, movimentos e saldo acumulado de uma conta" acoes={
+        <div className="flex flex-wrap items-end gap-2">
+          <SeletorPeriodo desde={desdeStr} ate={ateStr} conta={conta ?? ""} comConta />
+          {conta === undefined || conta === "" ? null : (
+            <BotaoPdf href={`/relatorios/livros/razao/pdf?conta=${encodeURIComponent(conta)}&desde=${desdeStr}&ate=${ateStr}`} />
+          )}
+        </div>
+      } />
   );
 
   if (conta === undefined || conta === "") {
