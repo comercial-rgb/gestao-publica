@@ -172,6 +172,11 @@ tabulação — o navegador a apaga e "/<TAB>/golpe.example" chegaria como "//go
   testes diferentes a cada corrida; o Docker Desktop caiu e o contêiner do banco reiniciou duas vezes (recuperação
   limpa no log). Depois de religar, tudo passou. Nada foi marcado como aprovado durante a queda.
 
+**Publicado em 06/10/2026 (tarde):** `628dfbea` (Actions 37509211675 verde), backup antes
+`/var/backups/gestao-publica/esperanca-antes-v36f-20261006T180617Z.dump`. Em produção, como tesoureiro@ficticio.local:
+`/financeiro/conciliacao/extratos` 200 (nenhum extrato importado lá), PDF de extrato inexistente 404 com o motivo.
+A cópia local `gestao_publica_esperanca_ficticio_restos` (2026 encerrado) fica para repetir o percurso do resto.
+
 Pendências que seguem: leiaute OFC próprio (arquivo real do banco do ente), resumo por fonte no Razão (decisão de
 modelo), contas do roteiro de cancelamento de restos (decisão contábil do ente), e as ausentes que pedem modelo novo.
 
