@@ -76,6 +76,14 @@ pagamentos-pdf, ofx-texto, conciliação-pdf) verdes; test/ui inteiro 284/286 co
 Pendências: cadastro de conta bancária pela tela (não existe serviço); OFC; resumo por fonte no Razão; dispêndios
 extra no relatório de pagamentos; visão única do credor.
 
+**Publicado em 06/10/2026:** `d8d96d76` (Actions 37410703030) e, em seguida, `ad327d86` (Actions 37411389352) na 3000.
+Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36b-20261006T034330Z.dump`. A conferência em produção
+achou **todo PDF em 500** (também os antigos, como a DMPL): o Google Chrome do sistema
+(`PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome`) grava no HOME do serviço (`/opt/gestao-publica`, somente leitura
+por `ProtectSystem=strict`) e o crashpad aborta. Reproduzido no servidor com `systemd-run` sob o mesmo isolamento
+(atual FALHOU, novo gerou), corrigido em `lib/pdf/gerar.ts` (HOME/XDG no temporário privado, `--crash-dumps-dir`,
+launch falho não fica guardado). Depois: DMPL, Diário, Razão e pagamentos em PDF com 200 em produção.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.
