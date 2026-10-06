@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { desfazerVinculoDaConciliacao, vincularNaConciliacao } from "../../../../lib/portas/conciliacao";
+import { desfazerVinculoDaConciliacao, importarExtratoOfxPelaTela, vincularNaConciliacao } from "../../../../lib/portas/conciliacao";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
 export interface EstadoDoVinculo {
@@ -45,6 +45,26 @@ export async function desfazerVinculoAction(_prev: EstadoDoVinculo, formData: Fo
       return { sucesso: "Vínculo desfeito. O original continua registrado, com o motivo." };
     } catch (e) {
       return { erro: e instanceof Error ? e.message : "Não foi possível desfazer o vínculo." };
+    }
+  });
+}
+
+/**
+ * V36 — IMPORTAR O EXTRATO OFX. Só lê o formulário; a decodificação do arquivo, a autorização e a importação são
+ * da porta e do M09, e a mensagem (inseridas, já importado, arquivo inválido, conflito de FITID) volta como veio.
+ */
+export async function importarExtratoAction(_prev: EstadoDoVinculo, formData: FormData): Promise<EstadoDoVinculo> {
+  return comComandoDoFormulario(formData, async () => {
+    const contaBancaria = String(formData.get("contaBancaria") ?? "").trim();
+    const arquivo = formData.get("arquivo");
+    if (contaBancaria === "") return { erro: "Escolha a conta bancária do extrato." };
+    if (!(arquivo instanceof File) || arquivo.size === 0) return { erro: "Escolha o arquivo OFX do extrato." };
+    try {
+      const msg = await importarExtratoOfxPelaTela({ contaBancaria, bytes: new Uint8Array(await arquivo.arrayBuffer()) });
+      revalidatePath("/financeiro/conciliacao");
+      return { sucesso: msg };
+    } catch (e) {
+      return { erro: e instanceof Error ? e.message : "Não foi possível importar o extrato." };
     }
   });
 }

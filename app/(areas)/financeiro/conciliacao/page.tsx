@@ -12,6 +12,8 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { FormDesfazerVinculo, FormVincular } from "./FormsDoVinculo";
+import { FormImportarExtrato } from "./FormImportarExtrato";
+import { lerContasBancarias } from "../../../../lib/portas/pagamento";
 
 /** O nome do registro do sistema como o tesoureiro o chama (o tipo interno é código). */
 const TIPO_DO_REGISTRO: Readonly<Record<string, string>> = {
@@ -113,6 +115,10 @@ export default async function ConciliacaoBancariaPage({
     );
   }
 
+  // V36 — a importação do OFX mora aqui, para quem tem a ação (a mesma fonte que o serviço confere).
+  const podeImportar = (await acoesPermitidas(["IMPORTAR_EXTRATO"])).has("IMPORTAR_EXTRATO");
+  const importar = podeImportar ? <FormImportarExtrato contas={(await lerContasBancarias()).map((c) => ({ codigo: c.codigo, descricao: c.descricao }))} /> : null;
+
   // Sem extrato importado NÃO é "tudo conciliado" — é "não há o que conciliar". A diferença
   // importa: um zero mudo aqui faria a Comissão ler uma conta fechada onde não há conta nenhuma.
   if (painel === null) {
@@ -120,9 +126,12 @@ export default async function ConciliacaoBancariaPage({
       <div className="space-y-4">
         <SincronizarContexto />
         {cabecalho}
+        {/* V36: na MESMA posição do estado com extrato — o primeiro extrato troca o estado da tela, e um
+            formulário em outra posição seria remontado e perderia a mensagem do próprio sucesso. */}
+        {importar}
         <EstadoVazio
           titulo={`Nenhum extrato bancário importado no exercício ${exercicio}`}
-          descricao="A conciliação exige um extrato importado. A importação (arquivo OFX ou API do Banco do Brasil) é feita na Central de Integrações."
+          descricao={podeImportar ? "A conciliação exige um extrato importado. Importe o arquivo OFX acima, ou use a API do Banco do Brasil na Central de Integrações." : "A conciliação exige um extrato importado. A importação é feita por quem tem a permissão de importar extratos."}
           acao={
             <Link href="/integracoes" className="text-sm font-semibold text-[color:var(--color-primary)] underline">
               Ir para a Central de Integrações
@@ -144,6 +153,7 @@ export default async function ConciliacaoBancariaPage({
     <div className="space-y-4">
       <SincronizarContexto />
       {cabecalho}
+      {importar}
 
       {/* ══ HONESTIDADE, NO TOPO — não é nota de rodapé (DIRETIVA §4/§7) ══ */}
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">

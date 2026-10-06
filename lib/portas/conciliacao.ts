@@ -3,6 +3,7 @@ import { exigirLeituraDoEnte } from "./leitura";
 import { serializar, toMoney, type Money } from "../../packages/contracts/index.js";
 import { conciliacaoBancaria } from "../../modules/m09-tesouraria/conciliacao";
 import { estornarVinculo, vincular } from "../../modules/m09-tesouraria/vinculo";
+import { importarExtrato } from "../../modules/m09-tesouraria/extrato";
 import { comEscritaAutenticada } from "./sessao";
 import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/dominio";
 import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
@@ -516,5 +517,33 @@ export async function desfazerVinculoDaConciliacao(input: { readonly vinculoId: 
   return comEscritaAutenticada("ESTORNAR_VINCULO", async (criadoPor) => {
     const r = await estornarVinculo(cliente(), { vinculoId: input.vinculoId, motivo: input.motivo, criadoPor });
     return r.vinculoId;
+  });
+}
+
+/**
+ * V36 — O TEXTO DE UM ARQUIVO OFX, decodificado pelo charset que o próprio cabeçalho declara. O OFX 1.x (SGML) dos
+ * bancos brasileiros vem em `CHARSET:1252`; lê-lo como UTF-8 trocaria todo acento do memo por "?" e o hash de
+ * origem deixaria de bater com o de uma importação anterior do mesmo arquivo. Sem charset declarado: UTF-8.
+ */
+export function textoDoArquivoOfx(bytes: Uint8Array): string {
+  const cabecalho = new TextDecoder("latin1").decode(bytes.slice(0, 512));
+  const charset = /CHARSET:\s*([A-Za-z0-9-]+)/.exec(cabecalho)?.[1]?.toUpperCase() ?? "";
+  const rotulo = charset === "1252" || charset === "WINDOWS-1252" ? "windows-1252" : charset === "8859-1" || charset === "ISO-8859-1" ? "latin1" : "utf-8";
+  return new TextDecoder(rotulo).decode(bytes);
+}
+
+/**
+ * V36 — IMPORTAR O EXTRATO OFX PELA TELA. O leitor (`packages/ofx`) e a importação (`importarExtrato`, M09) já
+ * existiam e são testados — idempotente pelo hash do arquivo, recusa arquivo inválido e aborta em conflito de
+ * FITID —, mas nenhuma porta os chamava. A autorização é `IMPORTAR_EXTRATO`, cobrada no serviço.
+ */
+export async function importarExtratoOfxPelaTela(input: { readonly contaBancaria: string; readonly bytes: Uint8Array }): Promise<string> {
+  const conta = await cliente().contaBancaria.findUnique({ where: { codigo: input.contaBancaria }, select: { id: true, codigo: true } });
+  if (conta === null) throw new Error(`A conta bancária ${input.contaBancaria} não existe. Nada foi importado.`);
+  const arquivoOfx = textoDoArquivoOfx(input.bytes);
+  return comEscritaAutenticada("IMPORTAR_EXTRATO", async (importadoPor) => {
+    const r = await importarExtrato(cliente(), { contaBancariaId: conta.id, arquivoOfx, importadoPor });
+    if (r.jaImportado) return `Este arquivo já tinha sido importado na conta ${conta.codigo}. Nada mudou.`;
+    return `Extrato importado na conta ${conta.codigo}: ${String(r.inseridas)} lançamento(s) novo(s)${r.puladas > 0 ? `, ${String(r.puladas)} já existente(s) de importação anterior` : ""}.`;
   });
 }
