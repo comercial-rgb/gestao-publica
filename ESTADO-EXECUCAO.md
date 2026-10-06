@@ -253,6 +253,13 @@ Catálogo inteiro: 619 de 2.037 verificadas, 127 validadas.
   desenvolvimento reiniciou uma vez por limite de memória (registrado no log dele), e a corrida foi refeita.
 - Guardas: censo 5/5 (536 nomes), navegação 20/20 (menu contra o servidor, rotas vivas, busca, menu do contador),
   typecheck do app e do backend limpos. Sem migration nesta rodada.
+- **Publicado em 06/10/2026 (noite):** `4570684c` na main (commit da rodada `d5465386`; Actions 37538935433 verde),
+  `/release` = `4570684`. Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36h-20261006T220351Z.dump`. Sem
+  migration nem atualização de permissões. Conferido com o administrador em produção: `/patrimonio/incorporacoes` e
+  `/planejamento/cmd-mba` com 200 e os quadros novos; detalhe de empenho com 200 e o formulário de duplicar.
+  Intermitência, com o motivo: a primeira conferência de tipos do `publicar` morreu no recorte das rotas geradas com
+  código -1 depois de 51 s (sem erro de tipo impresso); a mesma conferência, direta e na segunda corrida, passou limpa
+  em 17 s. O servidor de desenvolvimento da 3011 (heap de 8 GB) estava de pé ao mesmo tempo: carga de memória.
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
