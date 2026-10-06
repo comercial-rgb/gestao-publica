@@ -221,7 +221,9 @@ async function AcoesDaInscricao({
       {pendentes.length > 0 ? (
         <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {pendentes.length === 1
-            ? `A ${pendentes[0]} ainda não tem contas informadas e não poderá ser registrada.`
+            ? pendentes[0] === "liquidação"
+              ? "A liquidação ainda não tem contas informadas e não poderá ser registrada."
+              : `O ${pendentes[0]} ainda não tem contas informadas e não poderá ser registrado.`
             : `Estas operações ainda não têm contas informadas e não poderão ser registradas: ${pendentes.join(", ")}.`}{" "}
           <Link className="underline hover:no-underline" href="/contabilidade/roteiros-de-restos-a-pagar">
             Informar as contas das operações de restos a pagar

@@ -36,6 +36,14 @@ export const ROTULO_DO_EVENTO: Record<EventoDeRestos, string> = {
   CANCELAMENTO_NAO_PROCESSADO: "cancelamento de restos a pagar não processados",
 };
 
+/** O artigo de cada rótulo: "a liquidação", mas "o pagamento" e "o cancelamento" (a recusa dizia "A cancelamento"). */
+const FEMININO: Record<EventoDeRestos, boolean> = {
+  LIQUIDACAO_NAO_PROCESSADO: true,
+  PAGAMENTO: false,
+  CANCELAMENTO_PROCESSADO: false,
+  CANCELAMENTO_NAO_PROCESSADO: false,
+};
+
 /**
  * A recusa por falta de configuração. Ela existe como CLASSE porque a tela precisa distinguir
  * "não configurado" (que o ente resolve, e a mensagem diz onde) de "erro".
@@ -44,7 +52,7 @@ export class RoteiroDeRestosAusenteError extends Error {
   readonly evento: EventoDeRestos;
   constructor(evento: EventoDeRestos) {
     super(
-      `A ${ROTULO_DO_EVENTO[evento]} ainda não tem contas informadas. Informe as contas desta ` +
+      `${FEMININO[evento] ? "A" : "O"} ${ROTULO_DO_EVENTO[evento]} ainda não tem contas informadas. Informe as contas desta ` +
         `operação em Contabilidade / Roteiros de restos a pagar antes de executá-la. Nada foi gravado.`
     );
     this.name = "RoteiroDeRestosAusenteError";
@@ -335,7 +343,7 @@ export async function publicarRoteiroRestosAPagar(
       (vigente.controle?.credito ?? null) === (ctrlCredito?.codigo ?? null);
     if (igual) {
       throw new Error(
-        `O roteiro da ${ROTULO_DO_EVENTO[evento]} já é exatamente este. Republicar o mesmo ` +
+        `O roteiro ${FEMININO[evento] ? "da" : "do"} ${ROTULO_DO_EVENTO[evento]} já é exatamente este. Republicar o mesmo ` +
           `conjunto não é um fato novo. Nada foi gravado.`
       );
     }

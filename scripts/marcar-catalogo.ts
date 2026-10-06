@@ -592,9 +592,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
   // aparecem na LISTA, uma linha cada. Marcar VALIDADO aqui esconderia justamente o que a cláusula
   // pede a mais.
   "5.10.1.28": {
-    situacao: "IMPLEMENTADO_NAO_VALIDADO",
+    situacao: "VALIDADO_LOCALMENTE",
     evidencia:
-      "O CANCELAMENTO existe para os dois tipos, com roteiro contábil próprio por evento (RoteiroRestosAPagar, fail-closed), autorização no servidor e saldo conferido na transação (m08-roteiro-de-restos.test.ts). V36: a área de operações do resto passa a mostrar, no momento do cancelamento, o saldo do empenho em PROCESSADOS e em NÃO PROCESSADOS (as duas inscrições do mesmo empenho, pela mesma régua saldoDosRestos), e diz que o cancelamento vale só para a inscrição aberta (lib/portas/restos-a-pagar.ts, saldoPorTipoDoEmpenho). FALTA: percurso — nenhuma base local tem resto inscrito.",
+      "O CANCELAMENTO existe para os dois tipos, com roteiro contábil próprio por evento (RoteiroRestosAPagar, fail-closed), autorização no servidor e saldo conferido na transação (m08-roteiro-de-restos.test.ts). V36: a área de operações do resto passa a mostrar, no momento do cancelamento, o saldo do empenho em PROCESSADOS e em NÃO PROCESSADOS (as duas inscrições do mesmo empenho, pela mesma régua saldoDosRestos), e diz que o cancelamento vale só para a inscrição aberta (lib/portas/restos-a-pagar.ts, saldoPorTipoDoEmpenho). Percurso V36 (scripts/percurso-v36-resto-cancelamento.mts, numa CÓPIA da base fictícia, 2026-10-06): o administrador encerra 2026 pela tela (18 inscrições, 9 processadas e 9 não processadas); no detalhe do FIC-003/2026, que tem as duas, a tela mostra processados R$ 2.000,00 e não processados R$ 8.000,00, iguais aos inscritos; o cancelamento sem as contas da operação é recusado com o motivo e nada é gravado. O cancelamento COM as contas informadas está medido em scripts/smoke-restos-a-pagar-operacoes.ts (passos 8.1 a 9.2: cancela, confere o saldo, anula). As contas do roteiro de cancelamento são decisão contábil do ente — não se escolhem num percurso. O percurso achou a recusa dizendo \"A cancelamento\": o artigo vem agora da operação (m08-rotulo-do-evento.test.ts).",
   },
   "5.10.2.6": {
     situacao: "VALIDADO_LOCALMENTE",
