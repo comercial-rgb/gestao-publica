@@ -59,6 +59,21 @@ describe("M06 — ordenarFila (puro)", () => {
   });
 
   /**
+   * V36 — o desempate em ORDEM NATURAL. Com números de um dígito a comparação de texto acertava por acaso; com "10"
+   * ela punha a liquidação 10 antes da 7. N=3 em cada forma: só dígitos, e com prefixo.
+   */
+  it("o desempate compara o número como número: 7, 9, 10 — e NL2 antes de NL10", () => {
+    const soDigitos = ordenarFila([liq("c", "10", "2026-03-05"), liq("a", "7", "2026-03-05"), liq("b", "9", "2026-03-05")]);
+    expect(soDigitos.map((l) => l.numero)).toEqual(["7", "9", "10"]);
+    const comPrefixo = ordenarFila([liq("c", "FIC-L10", "2026-03-05"), liq("a", "FIC-L2", "2026-03-05"), liq("b", "FIC-L3", "2026-03-05")]);
+    expect(comPrefixo.map((l) => l.numero)).toEqual(["FIC-L2", "FIC-L3", "FIC-L10"]);
+    // "07" e "7" empatam como número; o texto decide, e a ordem não depende da ordem de entrada.
+    const ida = ordenarFila([liq("x", "7", "2026-03-05"), liq("y", "07", "2026-03-05")]).map((l) => l.numero);
+    const volta = ordenarFila([liq("y", "07", "2026-03-05"), liq("x", "7", "2026-03-05")]).map((l) => l.numero);
+    expect(ida).toEqual(volta);
+  });
+
+  /**
    * ⚠️ O DESEMPATE SÓ EXISTE SE HOUVER EMPATE — e comparando INSTANTES ele nunca havia.
    *
    * Duas liquidações do MESMO dia civil, gravadas em horas diferentes, não empatavam por

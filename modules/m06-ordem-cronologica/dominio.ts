@@ -94,8 +94,21 @@ export function ordenarFila(
   return [...liquidacoes].sort((a, b) => {
     const porDia = compararPorDiaCivil(a.dataLiquidacao, b.dataLiquidacao);
     if (porDia !== 0) return porDia;
-    return a.numero.localeCompare(b.numero);
+    return compararNumeroDaLiquidacao(a.numero, b.numero);
   });
+}
+
+/**
+ * V36 — O DESEMPATE PELO NÚMERO, EM ORDEM NATURAL. A comparação era de TEXTO, e "10" vinha antes de "7": no mesmo
+ * dia, a liquidação 10 passava na frente da 7 (medido ao semear a base fictícia, março da folha). A ordem natural
+ * compara os trechos numéricos como números ("NL2" antes de "NL10", "7" antes de "10"). Se dois números empatam
+ * nela ("07" e "7"), o texto decide, e a ordem continua TOTAL — que é a razão de existir do desempate.
+ */
+const NATURAL = new Intl.Collator("pt-BR", { numeric: true, sensitivity: "variant" });
+export function compararNumeroDaLiquidacao(a: string, b: string): number {
+  const natural = NATURAL.compare(a, b);
+  if (natural !== 0) return natural;
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /** Posição (1-based) da liquidação na fila; `null` se ela não está na fila. */
