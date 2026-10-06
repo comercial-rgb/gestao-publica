@@ -4200,9 +4200,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-pagamentos-efetuados.mts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/a-pagar mostra por credor o que está em aberto do exercício e de restos; /relatorios/gerenciais lista os empenhos por credor; desde a V36 /relatorios/pagamentos filtra por credor o histórico de pagamentos do exercício e de restos, com retido e líquido. FALTA: uma visão única do credor reunindo empenhos, restos e pagamentos num só relatório.",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-ficha-do-credor.mts, 5/5: a ficha concorda com o relatório de pagamentos (14 linhas, líquido), com a tela do a pagar (os dois totais) e com o banco (18 empenhos).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: Relatórios › Ficha do credor (/relatorios/credor): numa página, os empenhos do exercício com empenhado líquido, liquidado e pago; o que está a liquidar e a pagar, do exercício e de restos, com vencimento; e os pagamentos efetuados no exercício com retido e líquido — cada bloco pela leitura da tela própria dele (listarEmpenhosDaExecucao, lerAPagar, lerPagamentosEfetuados; lib/portas/ficha-do-credor.ts), com o link para a tela completa já filtrada, e o nome do credor no a pagar levando à ficha.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.62",

@@ -281,6 +281,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
 export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
   { href: "/relatorios/gerenciais", numero: "Gerenciais", rotulo: "Relatórios Gerenciais", descricao: "Consulta de empenhos por credor e fonte, com exportação em PDF e CSV." },
   { href: "/relatorios/pagamentos", numero: "Pagamentos", rotulo: "Pagamentos Efetuados", descricao: "Pagamentos do período, do exercício e de restos a pagar, com retido e líquido, filtros e agrupamento." },
+  { href: "/relatorios/credor", numero: "Credor", rotulo: "Ficha do Credor", descricao: "Numa página, os empenhos, o que está a liquidar e a pagar e os pagamentos de um credor." },
 ];
 
 /** A EXECUÇÃO DA RECEITA — fonte única da landing de /receita e do submenu. */
@@ -745,6 +746,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Consultas", itens: [
         { href: "/relatorios/gerenciais", rotulo: "Consulta por credor e fonte" },
         { href: "/relatorios/pagamentos", rotulo: "Pagamentos efetuados" },
+        { href: "/relatorios/credor", rotulo: "Ficha do credor" },
       ] },
     ],
   },

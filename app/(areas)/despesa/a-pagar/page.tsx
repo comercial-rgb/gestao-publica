@@ -205,7 +205,7 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
               <tbody key={c.credorCpfCnpj} data-credor={c.credorCpfCnpj}>
                 <tr className="border-t-2 border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)]">
                   <th scope="rowgroup" colSpan={13} className="py-2 pr-2 text-left">
-                    <span className="font-semibold">{c.credorNome ?? "Credor sem cadastro de pessoa"}</span>{" "}
+                    <Link className={`font-semibold ${LINK}`} data-elo="ficha-do-credor" href={`/relatorios/credor?exercicio=${String(recorte.exercicio)}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}&documento=${c.credorCpfCnpj}`}>{c.credorNome ?? "Credor sem cadastro de pessoa"}</Link>{" "}
                     <span className="font-mono text-[color:var(--color-ink-3)]">{formatarDocumento(c.credorCpfCnpj)}</span>
                     <span className="ml-3 font-normal">
                       liquidado a pagar <strong data-subtotal="liquidado-a-pagar"><ValorMonetario valor={c.liquidadoAPagar.toFixed(2)} /></strong> · a liquidar{" "}
