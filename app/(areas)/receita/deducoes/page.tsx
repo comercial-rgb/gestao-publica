@@ -6,7 +6,9 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { lerDeducoesDaReceita, lerEscolhasDaDeducao } from "../../../../lib/portas/deducoes-da-receita";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { exercicioAutorizado } from "../../../../lib/recorte";
-import { FormDeducao, FormEstornoDeducao } from "./Formularios";
+import { FormDeducao, FormEstornoDeducao, FormLoteDeDeducoes } from "./Formularios";
+import { lerCopiaDaDeducao, type CopiaDaDeducao } from "../../../../lib/portas/duplicacao";
+import { AvisoDeDuplicacao, idParaDuplicar, LinkDuplicar } from "../../../../components/ui/Duplicacao";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -25,13 +27,15 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
   const sp = await searchParams;
   let exercicio = 0;
   let titulo = <PageHeader titulo="Deduções da receita" subtitulo="FUNDEB retido na origem" />;
-  let dados: [Awaited<ReturnType<typeof lerDeducoesDaReceita>>, Awaited<ReturnType<typeof lerEscolhasDaDeducao>>];
+  let dados: [Awaited<ReturnType<typeof lerDeducoesDaReceita>>, Awaited<ReturnType<typeof lerEscolhasDaDeducao>>, CopiaDaDeducao | null];
+  // V36 (TR 5.10.2.5) — "duplicar" na lista: o formulário vem preenchido com a dedução escolhida.
+  const duplicar = idParaDuplicar(sp);
   try {
     // o exercício do contexto, com a recusa do ilegível (nunca o ano do relógio do servidor)
     exercicio = exercicioAutorizado(sp);
     titulo = <PageHeader titulo="Deduções da receita" subtitulo={`FUNDEB retido na origem — exercício ${String(exercicio)}`} />;
     await telaExigeLeituraDoEnte("CONSULTAR_RECEITA");
-    dados = await Promise.all([lerDeducoesDaReceita(exercicio), lerEscolhasDaDeducao(exercicio)]);
+    dados = await Promise.all([lerDeducoesDaReceita(exercicio), lerEscolhasDaDeducao(exercicio), duplicar === "" ? Promise.resolve(null) : lerCopiaDaDeducao(duplicar)]);
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -41,7 +45,7 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
       </div>
     );
   }
-  const [deducoes, escolhas] = dados;
+  const [deducoes, escolhas, copia] = dados;
 
   return (
     <div className="space-y-4">
@@ -53,15 +57,27 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
         mostrar o líquido, o banco fica com o que de fato entrou e a disponibilidade da fonte diminui na mesma medida.
       </div>
 
+      <AvisoDeDuplicacao pedido={duplicar} achado={copia !== null} />
       <Card>
         {escolhas.naturezas.length === 0 ? (
           <EstadoVazio titulo="Nenhuma receita arrecadada no exercício" descricao="A dedução se registra sobre uma receita já arrecadada. Registre a arrecadação primeiro." />
         ) : escolhas.contas.length === 0 ? (
           <EstadoVazio titulo="Nenhuma conta bancária com conta contábil" descricao="Vincule a conta contábil da conta bancária antes de registrar a dedução." />
         ) : (
-          <FormDeducao naturezas={escolhas.naturezas} fontes={escolhas.fontes} contas={escolhas.contas} />
+          <FormDeducao key={copia === null ? "nova" : duplicar} copia={copia ?? undefined} naturezas={escolhas.naturezas} fontes={escolhas.fontes} contas={escolhas.contas} />
         )}
       </Card>
+
+      {escolhas.naturezas.length > 0 && escolhas.contas.length > 0 ? (
+        <Card>
+          <details>
+            <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-primary)]">Registrar várias deduções do mesmo demonstrativo</summary>
+            <div className="mt-3">
+              <FormLoteDeDeducoes naturezas={escolhas.naturezas} fontes={escolhas.fontes} contas={escolhas.contas} />
+            </div>
+          </details>
+        </Card>
+      ) : null}
 
       <Card>
         {deducoes.length === 0 ? (
@@ -92,6 +108,7 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
                       <a className="block underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${d.lancamentoId}`}>abrir o lançamento</a>
                     </td>
                     <td className="py-2 pr-3">
+                      {d.ehEstorno ? null : <LinkDuplicar href={`/receita/deducoes?exercicio=${String(exercicio)}&duplicar=${d.id}`} />}{" "}
                       {d.ehEstorno ? "Estorno" : d.estorno !== null ? `Estornada em ${d.estorno.dia.split("-").reverse().join("/")}` : <FormEstornoDeducao deducaoId={d.id} rotulo={`${d.natureza} de ${d.dia}`} />}
                     </td>
                   </tr>

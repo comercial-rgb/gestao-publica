@@ -22,6 +22,8 @@ import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { FormArrecadacao } from "./FormArrecadacao";
+import { lerCopiaDaArrecadacao, type CopiaDaArrecadacao } from "../../../../lib/portas/duplicacao";
+import { AvisoDeDuplicacao, idParaDuplicar, LinkDuplicar } from "../../../../components/ui/Duplicacao";
 import { AnulacoesDaTela, FormAnularReceita } from "./FormAnularReceita";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
@@ -88,11 +90,15 @@ export default async function ArrecadacoesPage({
   let periodo: ArrecadacaoDoPeriodo;
   let naturezas: readonly NaturezaDaTela[];
   let contas: Awaited<ReturnType<typeof lerContasBancariasParaGuia>>;
+  // V36 (TR 5.10.2.5) — "duplicar" na lista: o formulário vem preenchido com a guia escolhida.
+  const duplicar = idParaDuplicar(sp);
+  let copia: CopiaDaArrecadacao | null = null;
   try {
-    [periodo, naturezas, contas] = await Promise.all([
+    [periodo, naturezas, contas, copia] = await Promise.all([
       lerArrecadacoes({ exercicio }),
       lerNaturezasPrevistas({ exercicio }),
       lerContasBancariasParaGuia(),
+      duplicar === "" ? Promise.resolve(null) : lerCopiaDaArrecadacao(duplicar),
     ]);
   } catch (erro) {
     return (
@@ -124,7 +130,10 @@ export default async function ArrecadacoesPage({
         <strong>Repartir uma guia entre fontes</strong>.
       </div>
 
+      <AvisoDeDuplicacao pedido={duplicar} achado={copia !== null} />
       <FormArrecadacao
+        key={copia === null ? "nova" : duplicar}
+        copia={copia ?? undefined}
         exercicio={exercicio}
         naturezas={naturezas.map((n) => ({
           naturezaCodigo: n.naturezaCodigo,
@@ -194,6 +203,7 @@ function colunaAcoes(anuladas: ReadonlySet<string>, exercicio: number): ColunaTa
         <a href={`/receita/arrecadacoes/guia?id=${l.id}&exercicio=${exercicio}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-[color:var(--color-primary)] hover:underline">
           Emitir guia
         </a>
+        {l.sinal === -1 ? null : <LinkDuplicar href={`/receita/arrecadacoes?exercicio=${exercicio}&duplicar=${l.id}`} />}
         {l.sinal === -1 || anuladas.has(l.id) ? null : <FormAnularReceita receitaId={l.id} />}
       </span>
     ),

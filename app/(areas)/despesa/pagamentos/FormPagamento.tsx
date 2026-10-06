@@ -79,6 +79,15 @@ const ROTULO_HIPOTESE: Record<string, string> = {
  * pagamento tem de casar com a do banco). Pedir as duas seria oferecer ao usuário a
  * chance de errar num guard que o sistema já sabe responder.
  */
+/** V36 (TR 5.10.2.5) — os dados de um pagamento escolhido em "duplicar". */
+export interface CopiaParaPagamento {
+  readonly origem: string;
+  readonly liquidacaoId: string;
+  readonly contaBancaria: string;
+  readonly valor: string;
+  readonly historico: string;
+}
+
 export function FormPagamento({
   liquidacoes,
   contas,
@@ -86,6 +95,7 @@ export function FormPagamento({
   ordensAutorizadas,
   opcoesDaRetencao,
   liquidacaoInicial,
+  copia,
 }: {
   readonly liquidacoes: readonly LiquidacaoPagavel[];
   /** V33 — a liquidação que veio escolhida de outra tela (a pagar, dossiê). Fora da fila, é ignorada. */
@@ -94,15 +104,18 @@ export function FormPagamento({
   readonly tiposDeConsignacao: readonly TipoDeConsignacaoParaTela[];
   readonly ordensAutorizadas: readonly OrdemAutorizadaParaTela[];
   readonly opcoesDaRetencao: OpcoesDaRetencaoParaTela;
+  /** V36 — preenchimento a partir de um pagamento existente; número, data, ordem e retenções ficam para o usuário. */
+  readonly copia?: CopiaParaPagamento | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoPagamento, FormData>(
     pagarAction,
     {}
   );
   const ref = useRef<HTMLFormElement>(null);
-  const inicial = liquidacaoInicial !== undefined && liquidacoes.some((l) => l.liquidacaoId === liquidacaoInicial) ? liquidacaoInicial : "";
+  const pedida = copia?.liquidacaoId ?? liquidacaoInicial;
+  const inicial = pedida !== undefined && liquidacoes.some((l) => l.liquidacaoId === pedida) ? pedida : "";
   const [escolhida, setEscolhida] = useState<string>(inicial);
-  const [conta, setConta] = useState<string>("");
+  const [conta, setConta] = useState<string>(copia?.contaBancaria ?? "");
   /**
    * As linhas de retenção. Só o NÚMERO delas é estado; os valores vivem no DOM e chegam
    * ao servidor por `getAll` do nome repetido.
@@ -154,6 +167,14 @@ export function FormPagamento({
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Pagar
       </h2>
+      {copia !== undefined ? (
+        <p data-copia-de={copia.origem} className="mb-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-xs text-[color:var(--color-status-alerta-fg)]">
+          Preenchido a partir do {copia.origem}.{" "}
+          {inicial === ""
+            ? "A liquidação dele não tem mais saldo a pagar na fila: escolha a liquidação."
+            : "Informe o número e a data e confira o valor, a ordem e as retenções antes de pagar."}
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
@@ -188,7 +209,7 @@ export function FormPagamento({
           <span className={ROTULO}>
             Valor (R$){alvo !== undefined ? `, até ${formatarMoeda(alvo.saldoAPagar).texto}` : ""}
           </span>
-          <CampoValor name="valor" required placeholder="2.500,00" className={CAMPO} />
+          <CampoValor name="valor" required defaultValue={copia?.valor} placeholder="2.500,00" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -201,7 +222,7 @@ export function FormPagamento({
           <select
             name="contaBancaria"
             required
-            defaultValue=""
+            defaultValue={copia?.contaBancaria ?? ""}
             className={CAMPO}
             onChange={(e) => setConta(e.target.value)}
           >
@@ -242,6 +263,7 @@ export function FormPagamento({
           <input
             name="historico"
             required
+            defaultValue={copia?.historico}
             placeholder="pagamento conforme liquidação"
             className={CAMPO}
           />

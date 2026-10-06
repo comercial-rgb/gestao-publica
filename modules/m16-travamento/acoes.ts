@@ -1163,6 +1163,7 @@ export type NomeDeServico =
   | "carregarReceitaDaLoa"
   // V35 — a dedução da receita realizada (FUNDEB) e o estorno dela
   | "registrarDeducaoDaReceita"
+  | "registrarDeducoesEmLote"
   | "estornarDeducaoDaReceita"
   // V35 — os de-paras da LRF gerados pelo ementário oficial de 2026
   | "gerarDeParasDaLrf"
@@ -1955,6 +1956,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V35 — registrar a retenção do FUNDEB é escriturar a receita que chegou líquida: a autoridade de quem arrecada.
   // Estornar é a de quem anula a arrecadação — a mesma segregação de registrar × anular.
   registrarDeducaoDaReceita: "REGISTRAR_ARRECADACAO",
+  // V36 — TR 5.10.2.11: o lote de deduções com uma só conta, sob a mesma ação da avulsa.
+  registrarDeducoesEmLote: "REGISTRAR_ARRECADACAO",
   estornarDeducaoDaReceita: "ANULAR_ARRECADACAO",
   // V35 — dizer em que linha do demonstrativo cada receita entra é a autoridade de cadastrar as linhas dele.
   gerarDeParasDaLrf: "CADASTRAR_LINHA_DEMONSTRATIVO",

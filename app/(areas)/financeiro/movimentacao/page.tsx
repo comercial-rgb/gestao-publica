@@ -9,6 +9,8 @@ import {
 } from "../../../../lib/portas/tesouraria";
 import { diaCivil } from "../../../../packages/datas/index";
 import { FormMovimentacao } from "./FormMovimentacao";
+import { lerCopiaDoMovimento } from "../../../../lib/portas/duplicacao";
+import { AvisoDeDuplicacao, idParaDuplicar, LinkDuplicar } from "../../../../components/ui/Duplicacao";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
@@ -48,9 +50,12 @@ export default async function MovimentacaoPage({
   );
 
   try {
-    const [contas, contasContabeis] = await Promise.all([
+    // V36 (TR 5.10.2.5) — "duplicar" na lista: o formulário vem preenchido com o movimento escolhido.
+    const duplicar = idParaDuplicar(params);
+    const [contas, contasContabeis, copia] = await Promise.all([
       contasComSaldo(ate),
       contasContabeisAnaliticas(),
+      duplicar === "" ? Promise.resolve(null) : lerCopiaDoMovimento(duplicar),
     ]);
 
     const selecionada =
@@ -62,7 +67,10 @@ export default async function MovimentacaoPage({
       <div className="space-y-6">
         {cabecalho}
 
+        <AvisoDeDuplicacao pedido={duplicar} achado={copia !== null} />
         <FormMovimentacao
+          key={copia === null ? "nova" : duplicar}
+          copia={copia ?? undefined}
           contas={contas.map((c) => ({
             id: c.id,
             codigo: c.codigo,
@@ -173,6 +181,7 @@ export default async function MovimentacaoPage({
                       <td>
                         {/* V36 — o aviso do banco, o contrato da aplicação: na página do movimento. */}
                         <a className="text-[color:var(--color-primary)] hover:underline" data-elo="documentos-do-movimento" href={`/financeiro/movimentacao/${m.id}`}>abrir</a>
+                        {m.ehEstorno ? null : <> · <LinkDuplicar href={`/financeiro/movimentacao?conta=${selecionada?.id ?? ""}&duplicar=${m.id}`} /></>}
                       </td>
                     </tr>
                   ))}

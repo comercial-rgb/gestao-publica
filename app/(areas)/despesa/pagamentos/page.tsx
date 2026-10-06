@@ -25,6 +25,8 @@ import {
 } from "../../../../lib/portas/contexto";
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { FormPagamento, type LiquidacaoPagavel, type OrdemAutorizadaParaTela } from "./FormPagamento";
+import { lerCopiaDoPagamento, type CopiaDoPagamento } from "../../../../lib/portas/duplicacao";
+import { AvisoDeDuplicacao, idParaDuplicar, LinkDuplicar } from "../../../../components/ui/Duplicacao";
 import { lerOpcoesDaRetencao, type OpcoesDaRetencao } from "../../../../lib/portas/retencao-calculada";
 import { lerOrdensDePagamento } from "../../../../lib/portas/ordem-pagamento";
 import { listarPagamentosDaExecucao, type PagamentoDaTela } from "../../../../lib/portas/anulacao";
@@ -85,6 +87,9 @@ export default async function PagamentosPage({
   let tiposDeConsignacao: readonly TipoDeConsignacaoDaTela[];
   let ordens: Awaited<ReturnType<typeof lerOrdensDePagamento>>;
   let opcoesDaRetencao: OpcoesDaRetencao;
+  // V36 (TR 5.10.2.5) — "duplicar" na lista: o formulário vem preenchido com o pagamento escolhido.
+  const duplicar = idParaDuplicar(sp);
+  let copia: CopiaDoPagamento | null = null;
   try {
     // ⚠️ O RECORTE AUTORIZADO ALIMENTA DUAS DAS CINCO LEITURAS DESTA TELA, e **não** a
     // fila. `lerFilasDePagamento()` não recebe argumento de propósito: a ordem do art. 141
@@ -108,6 +113,7 @@ export default async function PagamentosPage({
       // V24 — as tabelas oficiais vigentes da retenção calculada (IR, INSS e ISS).
       lerOpcoesDaRetencao(),
     ]);
+    if (duplicar !== "") copia = await lerCopiaDoPagamento(duplicar);
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -140,7 +146,10 @@ export default async function PagamentosPage({
         posição 1 exige <strong>justificativa prévia</strong> em uma das hipóteses do §1º do art. 141.
       </div>
 
+      <AvisoDeDuplicacao pedido={duplicar} achado={copia !== null} />
       <FormPagamento
+        key={copia === null ? "nova" : duplicar}
+        copia={copia ?? undefined}
         liquidacoes={filas.flatMap((f) =>
           f.linhas.map(
             (l): LiquidacaoPagavel => ({
@@ -249,6 +258,7 @@ const COLUNAS_PAGAMENTOS: readonly ColunaTabela<PagamentoDaTela>[] = [
       <>
         {l.numero}
         <a className="block text-xs text-[color:var(--color-primary)] hover:underline" data-elo="documentos-do-pagamento" href={`/despesa/pagamentos/${l.id}`}>documentos</a>
+        {l.anulado ? null : <span className="block"><LinkDuplicar href={`/despesa/pagamentos?duplicar=${l.id}`} /></span>}
       </>
     ),
   },

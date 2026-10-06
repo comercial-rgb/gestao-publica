@@ -7,6 +7,8 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerTransferenciasEntreUgs, ROTULO_DA_TRANSFERENCIA_ENTRE_UGS } from "../../../../lib/portas/transferencias-entre-ugs";
 import { anoCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
 import { FormContabilizacao, FormEstornar, FormTransferencia } from "./Forms";
+import { lerCopiaDaTransferencia, type CopiaDaTransferencia } from "../../../../lib/portas/duplicacao";
+import { AvisoDeDuplicacao, idParaDuplicar, LinkDuplicar } from "../../../../components/ui/Duplicacao";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -24,9 +26,13 @@ export default async function TransferenciasEntreUgsPage({ searchParams }: { rea
   const sp = await searchParams;
   const ano = typeof sp.ano === "string" && /^\d{4}$/.test(sp.ano) ? sp.ano : String(anoCivil(new Date()));
   let dados: Awaited<ReturnType<typeof lerTransferenciasEntreUgs>>;
+  // V36 (TR 5.10.2.5) — "duplicar" na lista: o formulário vem preenchido com a transferência escolhida.
+  const duplicar = idParaDuplicar(sp);
+  let copia: CopiaDaTransferencia | null = null;
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_FINANCEIRO");
     dados = await lerTransferenciasEntreUgs({ de: inicioDoDiaCivil(`${ano}-01-01`), ate: inicioDoDiaCivil(`${ano}-12-31`) });
+    if (duplicar !== "") copia = await lerCopiaDaTransferencia(duplicar);
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -61,7 +67,8 @@ export default async function TransferenciasEntreUgsPage({ searchParams }: { rea
         )}
       </Card>
       <FormContabilizacao tipos={ROTULO_DA_TRANSFERENCIA_ENTRE_UGS} vpds={dados.vpds} vpas={dados.vpas} />
-      <FormTransferencia tipos={ROTULO_DA_TRANSFERENCIA_ENTRE_UGS} ugs={dados.ugs} contas={dados.contasBancarias} />
+      <AvisoDeDuplicacao pedido={duplicar} achado={copia !== null} />
+      <FormTransferencia key={copia === null ? "nova" : duplicar} copia={copia ?? undefined} tipos={ROTULO_DA_TRANSFERENCIA_ENTRE_UGS} ugs={dados.ugs} contas={dados.contasBancarias} />
 
       <Card>
         <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Conciliação do ano</h2>
@@ -91,7 +98,7 @@ export default async function TransferenciasEntreUgsPage({ searchParams }: { rea
                         {l.lancamentoRecebidaId !== null ? <a className="underline" data-elo="lancamento-recebida" href={`/contabilidade/lancamentos/${l.lancamentoRecebidaId}`}>lançamento do recebimento</a> : null}
                       </span>
                     </td>
-                    <td className="py-1.5 text-xs">{!l.estorno && !l.estornada ? <FormEstornar transferenciaId={l.id} rotulo={`a transferência de ${l.data}`} /> : null}</td>
+                    <td className="py-1.5 text-xs">{!l.estorno ? <LinkDuplicar href={`/financeiro/transferencias-entre-ugs?ano=${ano}&duplicar=${l.id}`} /> : null}{!l.estorno && !l.estornada ? <FormEstornar transferenciaId={l.id} rotulo={`a transferência de ${l.data}`} /> : null}</td>
                   </tr>
                 ))}
               </tbody>

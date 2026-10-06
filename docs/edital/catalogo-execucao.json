@@ -3416,9 +3416,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há ação de duplicar em pagamento, movimento bancário, receita, dedução ou transferência.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-duplicar-registros.mts 8/8 · receita, dedução e transferência duplicadas e gravadas com os campos do original; formulário de pagamento preenchido com conta, valor e o aviso de que a liquidação não tem mais saldo; id inexistente dito; atestador em /sem-acesso. Mutação: sem o preenchimento na arrecadação, o passo da receita fica vermelho.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: \"Duplicar\" nas listas de arrecadação (/receita/arrecadacoes), dedução (/receita/deducoes), transferência entre unidades (/financeiro/transferencias-entre-ugs), movimento bancário (/financeiro/movimentacao) e pagamento (/despesa/pagamentos): o link reabre a tela com ?duplicar=<id> e o formulário de inclusão vem preenchido (lib/portas/duplicacao.ts, components/ui/Duplicacao.tsx). Quem grava é a action de sempre, com todas as guardas; não há caminho novo de escrita. Não vêm do original a data, o número e os vínculos de uso único (ordem de pagamento, crédito lançado, dívida quitada). Cada leitura cobra a leitura da tela de origem (pagamento: a despesa na unidade dele); estorno ou id inexistente é dito na tela. FALTA medir pelo navegador a gravação do movimento bancário (a base fictícia não tem movimento, e registrar um exige a conta de contrapartida, decisão do ente) e de um pagamento duplicado (os pagamentos da fictícia quitaram as liquidações).",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.6",
@@ -3500,9 +3500,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o formulário de dedução trata uma natureza, uma fonte e um valor por envio; não há lote de deduções.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-duplicar-registros.mts 8/8 · lote de duas linhas gravado na mesma conta e documento; lote com uma linha que não cabe recusado inteiro, com \"Linha 2 do lote\" na tela.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m04-receita/deducao-da-receita.ts — registrarDeducoesEmLote: um dia, uma conta bancária e um documento para N linhas (natureza, fonte, valor), numa transação, tudo ou nada; cada linha passa pelo mesmo corpo da dedução avulsa (gravarDeducaoNaTransacao: exercício aberto, conta com conta contábil, teto do arrecadado sob trinco), e duas linhas da mesma natureza somam no teto. A linha recusada é nomeada. m04-deducoes-em-lote.test.ts 3/3 (N=2 naturezas, três linhas; lote recusado inteiro; negação pela ação; valor zero), mutação acusada (linha que falha pulada em vez de abortar); m04-deducao-da-receita.test.ts 7/7 depois da extração. Tela: /receita/deducoes, \"Registrar várias deduções do mesmo demonstrativo\".",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.12",

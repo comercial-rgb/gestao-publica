@@ -15,11 +15,11 @@ function Resultado({ estado, acao }: { readonly estado: EstadoDaTransferencia; r
   return null;
 }
 
-function SelectTipo({ tipos }: { readonly tipos: Readonly<Record<string, string>> }): React.ReactElement {
+function SelectTipo({ tipos, valor = "" }: { readonly tipos: Readonly<Record<string, string>>; readonly valor?: string }): React.ReactElement {
   return (
     <label className="text-xs">
       <span className={ROTULO}>Tipo</span>
-      <select name="tipo" required defaultValue="" className={CAMPO}>
+      <select name="tipo" required defaultValue={valor} className={CAMPO}>
         <option value="">Escolha…</option>
         {Object.entries(tipos).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
       </select>
@@ -59,12 +59,26 @@ export function FormContabilizacao({ tipos, vpds, vpas }: { readonly tipos: Read
   );
 }
 
-export function FormTransferencia({ tipos, ugs, contas }: { readonly tipos: Readonly<Record<string, string>>; readonly ugs: readonly Opcao[]; readonly contas: readonly Opcao[] }): React.ReactElement {
+/** V36 (TR 5.10.2.5) — os dados de uma transferência escolhida em "duplicar". */
+export interface CopiaParaTransferencia {
+  readonly origem: string;
+  readonly tipo: string;
+  readonly valor: string;
+  readonly ugOrigemId: string;
+  readonly ugDestinoId: string;
+  readonly contaOrigemId: string;
+  readonly contaDestinoId: string;
+  readonly vinculo: string;
+}
+
+export function FormTransferencia({ tipos, ugs, contas, copia }: { readonly tipos: Readonly<Record<string, string>>; readonly ugs: readonly Opcao[]; readonly contas: readonly Opcao[]; readonly copia?: CopiaParaTransferencia | undefined }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaTransferencia, FormData>(registrarTransferenciaAction, {});
+  // V36 — o que vem da cópia, por nome de campo; o que não está aqui nasce vazio.
+  const preenchido: Readonly<Record<string, string>> = copia === undefined ? {} : { ugOrigemId: copia.ugOrigemId, ugDestinoId: copia.ugDestinoId, contaOrigemId: copia.contaOrigemId, contaDestinoId: copia.contaDestinoId };
   const select = (name: string, rotulo: string, opcoes: readonly Opcao[], vazio: string, obrigatorio: boolean): React.ReactElement => (
     <label className="text-xs">
       <span className={ROTULO}>{rotulo}</span>
-      <select name={name} required={obrigatorio} defaultValue="" className={CAMPO}>
+      <select name={name} required={obrigatorio} defaultValue={preenchido[name] ?? ""} className={CAMPO}>
         <option value="">{vazio}</option>
         {opcoes.map((o) => <option key={o.id} value={o.id}>{o.rotulo}</option>)}
       </select>
@@ -74,18 +88,23 @@ export function FormTransferencia({ tipos, ugs, contas }: { readonly tipos: Read
     <form action={action} className={PAINEL} data-acao="registrar-transferencia-entre-ugs" aria-label="Registrar uma transferência entre unidades gestoras">
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Registrar uma transferência</h2>
+      {copia !== undefined ? (
+        <p data-copia-de={copia.origem} className="mb-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-xs text-[color:var(--color-status-alerta-fg)]">
+          Preenchido a partir da {copia.origem}. Informe a data e confira o valor e o ato antes de registrar.
+        </p>
+      ) : null}
       <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">Informe a conta só do lado escriturado aqui. O lado de uma unidade de fora fica sem conta e sem lançamento.</p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <SelectTipo tipos={tipos} />
+        <SelectTipo tipos={tipos} valor={copia?.tipo ?? ""} />
         <label className="text-xs"><span className={ROTULO}>Data</span><input name="data" type="date" required className={CAMPO} /></label>
-        <label className="text-xs"><span className={ROTULO}>Valor</span><CampoValor name="valor" required placeholder="0,00" className={CAMPO} aria-label="Valor da transferência" /></label>
+        <label className="text-xs"><span className={ROTULO}>Valor</span><CampoValor name="valor" required defaultValue={copia?.valor} placeholder="0,00" className={CAMPO} aria-label="Valor da transferência" /></label>
         {select("ugOrigemId", "Unidade que concede", ugs, "Escolha…", true)}
         {select("contaOrigemId", "Conta de saída (se escriturada aqui)", contas, "Nenhuma: unidade de fora", false)}
         <span />
         {select("ugDestinoId", "Unidade que recebe", ugs, "Escolha…", true)}
         {select("contaDestinoId", "Conta de entrada (se escriturada aqui)", contas, "Nenhuma: unidade de fora", false)}
         <span />
-        <label className="text-xs sm:col-span-3"><span className={ROTULO}>Ato ou documento (ex.: duodécimo de março, ofício)</span><input name="vinculo" required minLength={5} className={CAMPO} /></label>
+        <label className="text-xs sm:col-span-3"><span className={ROTULO}>Ato ou documento (ex.: duodécimo de março, ofício)</span><input name="vinculo" required minLength={5} defaultValue={copia?.vinculo} className={CAMPO} /></label>
       </div>
       <button type="submit" disabled={pendente} className={`${CLASSE_BOTAO_PRIMARIO} mt-3`}>{pendente ? "Gravando…" : "Registrar"}</button>
       <Resultado estado={estado} acao="registrar-transferencia-entre-ugs" />

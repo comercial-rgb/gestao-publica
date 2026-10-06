@@ -85,66 +85,119 @@ export async function registrarDeducaoDaReceita(
 ): Promise<{ readonly deducaoId: string; readonly lancamentoId: string }> {
   const d = zRegistrarDeducao.parse(input);
   if (!d.valor.greaterThan(0)) throw new Error("O valor da dedução tem de ser maior que zero. Nada foi gravado.");
-  const quando = inicioDoDiaCivil(d.dia);
-  const exercicio = Number(d.dia.slice(0, 4));
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarDeducaoDaReceita, "ENTE");
-    await exigirExercicioAberto(tx, exercicio, `dedução da receita ${d.naturezaReceita}`);
-    const [natureza, fonte, conta] = await Promise.all([
-      tx.naturezaReceita.findUnique({ where: { codigo: d.naturezaReceita }, select: { id: true } }),
-      tx.fonteRecurso.findUnique({ where: { codigo: d.fonte }, select: { id: true } }),
-      tx.contaBancaria.findUnique({ where: { codigo: d.contaBancaria }, select: { id: true, codigo: true, contaContabil: { select: { id: true, codigo: true, analitica: true } } } }),
-    ]);
-    if (natureza === null) throw new Error(`A natureza ${d.naturezaReceita} não está no cadastro. Nada foi gravado.`);
-    if (fonte === null) throw new Error(`A fonte ${d.fonte} não está no cadastro. Nada foi gravado.`);
-    if (conta === null) throw new Error(`A conta bancária ${d.contaBancaria} não existe. Nada foi gravado.`);
-    if (conta.contaContabil === null || !conta.contaContabil.analitica) {
-      throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil analítica vinculada: a saída do dinheiro não tem onde ser escriturada. Nada foi gravado.`);
-    }
-
-    // A dedução cabe na receita da natureza e fonte — sob trinco, contra a corrida.
-    await travar(tx, "DeducaoDaReceita", [natureza.id, fonte.id]);
-    // ⚠️ O ARRECADADO É O DO DIA INTEIRO. A guia é gravada no meio do dia civil; cortar no início do dia deixava
-    // de fora a guia do próprio dia, e a dedução feita no dia do crédito (o caso comum: o banco credita o FPM e
-    // retém o FUNDEB na mesma data) era sempre recusada com "cabem 0,00". Achado ao semear a base fictícia (V36).
-    const { arrecadado, deduzido } = await arrecadadoEDeduzido(tx, exercicio, natureza.id, fonte.id, fimDoDiaCivil(d.dia));
-    const cabe = toMoney(arrecadado.minus(deduzido));
-    if (d.valor.greaterThan(cabe)) {
-      throw new Error(
-        `A natureza ${d.naturezaReceita} na fonte ${d.fonte} tem ${arrecadado.toFixed(2)} arrecadados e ${deduzido.toFixed(2)} já deduzidos até ` +
-          `${d.dia}; cabem ${cabe.toFixed(2)}, e a dedução pede ${d.valor.toFixed(2)}. Registre a arrecadação antes da dedução. Nada foi gravado.`
-      );
-    }
-
-    const ids = await contasDoLancamento(tx, [CONTA_DEDUCAO_FUNDEB_REALIZADA, CONTA_RECEITA_A_REALIZAR_DA_DEDUCAO, CONTA_VPD_TRANSFERENCIA_AO_FUNDEB, CONTA_DDR_DISPONIVEL, CONTA_DDR_UTILIZADA_POR_DEDUCAO]);
-    const deducaoId = randomUUID();
-    const lancamentoId = randomUUID();
-    const v = d.valor.toFixed(2);
-    await lancarNoRazao(tx, {
-      id: lancamentoId,
-      numeroControle: `DED-FUNDEB-${d.dia}-${deducaoId.slice(0, 8)}`,
-      dataTransacao: quando,
-      historico: `Dedução da receita ${d.naturezaReceita} (fonte ${d.fonte}) para o FUNDEB — ${d.documento}`,
-      origemTipo: "DEDUCAO_DA_RECEITA",
-      origemId: deducaoId,
-      criadoPor: d.criadoPor,
-      partidas: [
-        { contaId: ids.get(CONTA_DEDUCAO_FUNDEB_REALIZADA)!, tipo: "DEBITO", subsistema: "ORCAMENTARIO", valor: v },
-        { contaId: ids.get(CONTA_RECEITA_A_REALIZAR_DA_DEDUCAO)!, tipo: "CREDITO", subsistema: "ORCAMENTARIO", valor: v },
-        { contaId: ids.get(CONTA_VPD_TRANSFERENCIA_AO_FUNDEB)!, tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: v },
-        { contaId: conta.contaContabil.id, tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: v },
-        { contaId: ids.get(CONTA_DDR_DISPONIVEL)!, tipo: "DEBITO", subsistema: "CONTROLE", valor: v },
-        { contaId: ids.get(CONTA_DDR_UTILIZADA_POR_DEDUCAO)!, tipo: "CREDITO", subsistema: "CONTROLE", valor: v },
-      ],
-    });
-    await tx.deducaoDaReceitaRealizada.create({
-      data: {
-        id: deducaoId, exercicio, naturezaReceitaId: natureza.id, fonteId: fonte.id, exercicioFonte: 1, tipo: "FUNDEB", valor: v,
-        data: quando, documento: d.documento, contaBancariaId: conta.id, lancamentoId, criadoPor: d.criadoPor,
-      },
-    });
-    return { deducaoId, lancamentoId };
+    return gravarDeducaoNaTransacao(tx, d);
   });
+}
+
+/**
+ * V36 — VÁRIAS DEDUÇÕES DE UMA VEZ, COM UMA SÓ CONTA BANCÁRIA (TR 5.10.2.11): o demonstrativo do banco traz no mesmo
+ * dia a retenção do FUNDEB sobre o FPM, o ICMS, o IPVA... Um lote é um dia, uma conta, um documento e N linhas
+ * (natureza, fonte, valor). TUDO OU NADA, numa transação: a linha que não cabe na receita recusa o lote inteiro,
+ * nomeando a linha — gravar as outras deixaria o demonstrativo do banco escriturado pela metade.
+ *
+ * Cada linha passa pelo MESMO corpo da dedução avulsa (`gravarDeducaoNaTransacao`): exercício aberto, conta com conta
+ * contábil, teto do arrecadado sob trinco. Duas linhas da mesma natureza e fonte somam no teto, porque a segunda lê a
+ * primeira já gravada na mesma transação.
+ */
+export const zRegistrarDeducoesEmLote = z.object({
+  dia: zDia,
+  contaBancaria: z.string().trim().min(1, "Escolha a conta em que a receita foi creditada."),
+  documento: z.string().trim().min(10, "Cite o documento bancário da retenção (o demonstrativo da distribuição da arrecadação)."),
+  itens: z
+    .array(z.object({ naturezaReceita: z.string(), fonte: z.string(), valor: z.string() }))
+    .min(1, "Informe ao menos uma dedução no lote."),
+  criadoPor: z.string().min(1),
+});
+
+export async function registrarDeducoesEmLote(
+  prisma: PrismaClient,
+  input: z.input<typeof zRegistrarDeducoesEmLote>
+): Promise<readonly { readonly deducaoId: string; readonly lancamentoId: string }[]> {
+  const l = zRegistrarDeducoesEmLote.parse(input);
+  const linhas = l.itens.map((i, n) => {
+    const r = zRegistrarDeducao.safeParse({ ...i, dia: l.dia, contaBancaria: l.contaBancaria, documento: l.documento, criadoPor: l.criadoPor });
+    if (!r.success) throw new Error(`Linha ${String(n + 1)} do lote: ${r.error.issues[0]?.message ?? "dados inválidos"}. Nada foi gravado.`);
+    if (!r.data.valor.greaterThan(0)) throw new Error(`Linha ${String(n + 1)} do lote: o valor tem de ser maior que zero. Nada foi gravado.`);
+    return r.data;
+  });
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, l.criadoPor, ACAO_DO_SERVICO.registrarDeducoesEmLote, "ENTE");
+    const gravadas = [];
+    for (const [n, d] of linhas.entries()) {
+      try {
+        gravadas.push(await gravarDeducaoNaTransacao(tx, d));
+      } catch (e) {
+        throw new Error(`Linha ${String(n + 1)} do lote (natureza ${d.naturezaReceita}, fonte ${d.fonte}): ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    return gravadas;
+  });
+}
+
+/** O corpo da dedução, dentro de uma transação já autorizada — a avulsa e o lote passam pelas mesmas guardas. */
+async function gravarDeducaoNaTransacao(
+  tx: Tx,
+  d: z.output<typeof zRegistrarDeducao>
+): Promise<{ readonly deducaoId: string; readonly lancamentoId: string }> {
+  const quando = inicioDoDiaCivil(d.dia);
+  const exercicio = Number(d.dia.slice(0, 4));
+  await exigirExercicioAberto(tx, exercicio, `dedução da receita ${d.naturezaReceita}`);
+  const [natureza, fonte, conta] = await Promise.all([
+    tx.naturezaReceita.findUnique({ where: { codigo: d.naturezaReceita }, select: { id: true } }),
+    tx.fonteRecurso.findUnique({ where: { codigo: d.fonte }, select: { id: true } }),
+    tx.contaBancaria.findUnique({ where: { codigo: d.contaBancaria }, select: { id: true, codigo: true, contaContabil: { select: { id: true, codigo: true, analitica: true } } } }),
+  ]);
+  if (natureza === null) throw new Error(`A natureza ${d.naturezaReceita} não está no cadastro. Nada foi gravado.`);
+  if (fonte === null) throw new Error(`A fonte ${d.fonte} não está no cadastro. Nada foi gravado.`);
+  if (conta === null) throw new Error(`A conta bancária ${d.contaBancaria} não existe. Nada foi gravado.`);
+  if (conta.contaContabil === null || !conta.contaContabil.analitica) {
+    throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil analítica vinculada: a saída do dinheiro não tem onde ser escriturada. Nada foi gravado.`);
+  }
+
+  // A dedução cabe na receita da natureza e fonte — sob trinco, contra a corrida.
+  await travar(tx, "DeducaoDaReceita", [natureza.id, fonte.id]);
+  // ⚠️ O ARRECADADO É O DO DIA INTEIRO. A guia é gravada no meio do dia civil; cortar no início do dia deixava
+  // de fora a guia do próprio dia, e a dedução feita no dia do crédito (o caso comum: o banco credita o FPM e
+  // retém o FUNDEB na mesma data) era sempre recusada com "cabem 0,00". Achado ao semear a base fictícia (V36).
+  const { arrecadado, deduzido } = await arrecadadoEDeduzido(tx, exercicio, natureza.id, fonte.id, fimDoDiaCivil(d.dia));
+  const cabe = toMoney(arrecadado.minus(deduzido));
+  if (d.valor.greaterThan(cabe)) {
+    throw new Error(
+      `A natureza ${d.naturezaReceita} na fonte ${d.fonte} tem ${arrecadado.toFixed(2)} arrecadados e ${deduzido.toFixed(2)} já deduzidos até ` +
+        `${d.dia}; cabem ${cabe.toFixed(2)}, e a dedução pede ${d.valor.toFixed(2)}. Registre a arrecadação antes da dedução. Nada foi gravado.`
+    );
+  }
+
+  const ids = await contasDoLancamento(tx, [CONTA_DEDUCAO_FUNDEB_REALIZADA, CONTA_RECEITA_A_REALIZAR_DA_DEDUCAO, CONTA_VPD_TRANSFERENCIA_AO_FUNDEB, CONTA_DDR_DISPONIVEL, CONTA_DDR_UTILIZADA_POR_DEDUCAO]);
+  const deducaoId = randomUUID();
+  const lancamentoId = randomUUID();
+  const v = d.valor.toFixed(2);
+  await lancarNoRazao(tx, {
+    id: lancamentoId,
+    numeroControle: `DED-FUNDEB-${d.dia}-${deducaoId.slice(0, 8)}`,
+    dataTransacao: quando,
+    historico: `Dedução da receita ${d.naturezaReceita} (fonte ${d.fonte}) para o FUNDEB — ${d.documento}`,
+    origemTipo: "DEDUCAO_DA_RECEITA",
+    origemId: deducaoId,
+    criadoPor: d.criadoPor,
+    partidas: [
+      { contaId: ids.get(CONTA_DEDUCAO_FUNDEB_REALIZADA)!, tipo: "DEBITO", subsistema: "ORCAMENTARIO", valor: v },
+      { contaId: ids.get(CONTA_RECEITA_A_REALIZAR_DA_DEDUCAO)!, tipo: "CREDITO", subsistema: "ORCAMENTARIO", valor: v },
+      { contaId: ids.get(CONTA_VPD_TRANSFERENCIA_AO_FUNDEB)!, tipo: "DEBITO", subsistema: "PATRIMONIAL", valor: v },
+      { contaId: conta.contaContabil.id, tipo: "CREDITO", subsistema: "PATRIMONIAL", valor: v },
+      { contaId: ids.get(CONTA_DDR_DISPONIVEL)!, tipo: "DEBITO", subsistema: "CONTROLE", valor: v },
+      { contaId: ids.get(CONTA_DDR_UTILIZADA_POR_DEDUCAO)!, tipo: "CREDITO", subsistema: "CONTROLE", valor: v },
+    ],
+  });
+  await tx.deducaoDaReceitaRealizada.create({
+    data: {
+      id: deducaoId, exercicio, naturezaReceitaId: natureza.id, fonteId: fonte.id, exercicioFonte: 1, tipo: "FUNDEB", valor: v,
+      data: quando, documento: d.documento, contaBancariaId: conta.id, lancamentoId, criadoPor: d.criadoPor,
+    },
+  });
+  return { deducaoId, lancamentoId };
 }
 
 export const zEstornarDeducao = z.object({

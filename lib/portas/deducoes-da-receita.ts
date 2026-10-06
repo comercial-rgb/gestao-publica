@@ -1,5 +1,5 @@
 import { diaCivil } from "../../packages/datas/index.js";
-import { estornarDeducaoDaReceita, registrarDeducaoDaReceita } from "../../modules/m04-receita/deducao-da-receita.js";
+import { estornarDeducaoDaReceita, registrarDeducaoDaReceita, registrarDeducoesEmLote } from "../../modules/m04-receita/deducao-da-receita.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
@@ -81,4 +81,15 @@ export async function registrarDeducao(input: {
 export async function estornarDeducao(input: { readonly deducaoId: string; readonly dia: string; readonly motivo: string }): Promise<string> {
   await comEscritaAutenticada("ANULAR_ARRECADACAO", (criadoPor) => estornarDeducaoDaReceita(cliente(), { ...input, criadoPor }));
   return `Dedução estornada em ${input.dia}. O lançamento original continua no razão, ao lado do estorno.`;
+}
+
+/** V36 (TR 5.10.2.11) — várias deduções com um dia, uma conta e um documento; tudo ou nada, no M04. */
+export async function registrarLoteDeDeducoes(input: {
+  readonly dia: string;
+  readonly contaBancaria: string;
+  readonly documento: string;
+  readonly itens: readonly { readonly naturezaReceita: string; readonly fonte: string; readonly valor: string }[];
+}): Promise<string> {
+  const r = await comEscritaAutenticada("REGISTRAR_ARRECADACAO", (criadoPor) => registrarDeducoesEmLote(cliente(), { ...input, itens: [...input.itens], criadoPor }));
+  return `${String(r.length)} dedução(ões) registrada(s) em ${input.dia}, todas creditadas na conta ${input.contaBancaria}.`;
 }

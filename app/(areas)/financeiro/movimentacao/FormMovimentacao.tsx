@@ -55,19 +55,33 @@ export interface ContaContabilParaMovimento {
  * ⚠️ E O SELECT NÃO É O GUARD. Quem recusa fonte fora do rol é `exigirFonteNoRolDaConta`,
  * dentro da transação. Este filtro é conveniência; conveniência não protege.
  */
+/** V36 (TR 5.10.2.5) — os dados de um movimento escolhido em "duplicar". */
+export interface CopiaParaMovimento {
+  readonly origem: string;
+  readonly contaId: string;
+  readonly fonteId: string;
+  readonly tipo: string;
+  readonly valor: string;
+  readonly contrapartidaId: string;
+  readonly historico: string;
+}
+
 export function FormMovimentacao({
   contas,
   contasContabeis,
+  copia,
 }: {
   readonly contas: readonly ContaParaMovimento[];
   readonly contasContabeis: readonly ContaContabilParaMovimento[];
+  /** V36 — preenchimento a partir de um movimento existente; a data fica para o usuário. */
+  readonly copia?: CopiaParaMovimento | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoMovimento, FormData>(
     registrarMovimentoAction,
     {}
   );
   const ref = useRef<HTMLFormElement>(null);
-  const [contaId, setContaId] = useState("");
+  const [contaId, setContaId] = useState(copia?.contaId ?? "");
   // ⚠️ `useId` — esta página tem mais de um formulário, e id repetido quebra o
   // `label for` e o leitor de tela. Ver `test/ui/formularios-na-mesma-pagina.test.tsx`.
   const idFontes = `fontes-da-conta-${useId()}`;
@@ -99,6 +113,11 @@ export function FormMovimentacao({
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
         Registrar movimentação bancária
       </h2>
+      {copia !== undefined ? (
+        <p data-copia-de={copia.origem} className="mb-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-xs text-[color:var(--color-status-alerta-fg)]">
+          Preenchido a partir do {copia.origem}. Informe a data e confira o valor e a contrapartida antes de registrar.
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
@@ -134,7 +153,7 @@ export function FormMovimentacao({
             fonte — significa o oposto: a fonte precisa ser DECLARADA, porque não dá mais
             para inferi-la da conta. Um default carimbaria recurso vinculado como livre.
           */}
-          <select name="fonte" required defaultValue="" disabled={escolhida === undefined} className={CAMPO}>
+          <select name="fonte" required defaultValue={copia?.fonteId ?? ""} disabled={escolhida === undefined} className={CAMPO}>
             <option value="" disabled>
               {escolhida === undefined ? "Escolha a conta primeiro…" : "Escolha a fonte…"}
             </option>
@@ -148,7 +167,7 @@ export function FormMovimentacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Tipo</span>
-          <select name="tipo" required defaultValue="" className={CAMPO}>
+          <select name="tipo" required defaultValue={copia?.tipo ?? ""} className={CAMPO}>
             <option value="" disabled>
               Escolha…
             </option>
@@ -163,7 +182,7 @@ export function FormMovimentacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Valor (R$)</span>
-          <CampoValor name="valor" required placeholder="1.000,00" className={CAMPO} />
+          <CampoValor name="valor" required defaultValue={copia?.valor} placeholder="1.000,00" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -179,7 +198,7 @@ export function FormMovimentacao({
             conta de aplicações. Escolher por conta do operador acertaria às vezes e
             erraria em silêncio no resto — e é o operador que sabe qual conta é qual.
           */}
-          <select name="contrapartida" required defaultValue="" className={CAMPO}>
+          <select name="contrapartida" required defaultValue={copia?.contrapartidaId ?? ""} className={CAMPO}>
             <option value="" disabled>
               Escolha a conta de contrapartida…
             </option>
@@ -196,6 +215,7 @@ export function FormMovimentacao({
           <input
             name="historico"
             required
+            defaultValue={copia?.historico}
             placeholder="aplicação em fundo de curto prazo"
             className={CAMPO}
           />

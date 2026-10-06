@@ -40,15 +40,29 @@ export interface ContaParaGuiaDaIlha {
   readonly contaContabil: string | null;
 }
 
+/** V36 (TR 5.10.2.5) — os dados de uma guia escolhida em "duplicar". Declarado aqui: ilha client não importa porta. */
+export interface CopiaParaArrecadacao {
+  readonly origem: string;
+  readonly natureza: string;
+  readonly fonte: string;
+  readonly contaBancaria: string;
+  readonly co: string;
+  readonly exercicioFonte: 1 | 2;
+  readonly valor: string;
+}
+
 export function FormArrecadacao({
   exercicio,
   naturezas,
   contas = [],
+  copia,
 }: {
   readonly exercicio: number;
   readonly naturezas: readonly NaturezaParaGuia[];
   /** V6 P1.2 — as contas bancárias que a guia pode declarar (a que recebeu o dinheiro). */
   readonly contas?: readonly ContaParaGuiaDaIlha[];
+  /** V36 — preenchimento a partir de uma guia existente; a data e o número ficam para o usuário. */
+  readonly copia?: CopiaParaArrecadacao | undefined;
 }): React.ReactElement {
   // ⚠️ O ID DO `<datalist>` VEM DO `useId`, e não é literal.
   //
@@ -81,6 +95,11 @@ export function FormArrecadacao({
         Registrar guia de arrecadação
       </h2>
       <input type="hidden" name="exercicio" value={exercicio} />
+      {copia !== undefined ? (
+        <p data-copia-de={copia.origem} className="mb-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-alerta-bg)] px-3 py-2 text-xs text-[color:var(--color-status-alerta-fg)]">
+          Preenchido a partir da {copia.origem}. Informe a data e o número da guia nova e confira o valor antes de registrar.
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
@@ -90,6 +109,7 @@ export function FormArrecadacao({
             required
             pattern="\d{8}"
             list={idNaturezas}
+            defaultValue={copia?.natureza}
             placeholder="11121101"
             className={CAMPO}
           />
@@ -105,12 +125,12 @@ export function FormArrecadacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Fonte (3 dígitos)</span>
-          <input name="fonte" required pattern="\d{3}" placeholder="500" className={CAMPO} />
+          <input name="fonte" required pattern="\d{3}" defaultValue={copia?.fonte} placeholder="500" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Conta bancária que recebeu</span>
-          <select name="contaBancaria" required defaultValue="" className={CAMPO}>
+          <select name="contaBancaria" required defaultValue={copia?.contaBancaria ?? ""} className={CAMPO}>
             <option value="" disabled>
               Escolha a conta…
             </option>
@@ -124,12 +144,12 @@ export function FormArrecadacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>CO (4 dígitos, opcional)</span>
-          <input name="co" pattern="\d{4}" placeholder="0001" className={CAMPO} />
+          <input name="co" pattern="\d{4}" defaultValue={copia?.co} placeholder="0001" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Exercício da fonte</span>
-          <select name="exercicioFonte" defaultValue="1" className={CAMPO}>
+          <select name="exercicioFonte" defaultValue={String(copia?.exercicioFonte ?? 1)} className={CAMPO}>
             <option value="1">1 — atual</option>
             <option value="2">2 — anterior</option>
           </select>
@@ -137,7 +157,7 @@ export function FormArrecadacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Valor (R$)</span>
-          <CampoValor name="valor" required placeholder="1.500,00" className={CAMPO} />
+          <CampoValor name="valor" required defaultValue={copia?.valor} placeholder="1.500,00" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
