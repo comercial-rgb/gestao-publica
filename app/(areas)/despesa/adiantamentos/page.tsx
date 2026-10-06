@@ -7,7 +7,7 @@ import { lerAdiantamentos, type AdiantamentoNaLista } from "../../../../lib/port
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { formatarDocumento } from "../../../../packages/documento/index";
 import { formatarMoeda } from "../../../../packages/contracts/moeda";
-import { FormConceder, FormDecisao, FormPrestacao } from "./FormsDoAdiantamento";
+import { FormConceder, PrestacaoDaConcessao } from "./FormsDoAdiantamento";
 
 /**
  * DIÁRIAS E SUPRIMENTO DE FUNDOS — a concessão, o prazo e a prestação de contas (V32).
@@ -118,19 +118,19 @@ export default async function AdiantamentosPage(): Promise<React.ReactElement> {
                       ) : null}
                     </td>
                     <td className="py-2 pr-3 min-w-[20rem]">
-                      {l.situacao === "COMPROVADA" ? (
-                        "—"
-                      ) : l.prestacaoEmAnalise !== null ? (
-                        <div className="space-y-2">
+                      <PrestacaoDaConcessao
+                        concessaoId={l.id}
+                        numero={l.numero}
+                        prestacaoEmAnaliseId={l.situacao === "COMPROVADA" || l.prestacaoEmAnalise === null ? null : l.prestacaoEmAnalise.id}
+                        comprovada={l.situacao === "COMPROVADA"}
+                      >
+                        {l.prestacaoEmAnalise !== null ? (
                           <p className="text-[color:var(--color-ink-2)]">
                             Comprovado R$ {formatarMoeda(l.prestacaoEmAnalise.valorComprovado).texto}, devolvido R${" "}
                             {formatarMoeda(l.prestacaoEmAnalise.valorDevolvido).texto}. {l.prestacaoEmAnalise.relatorio}
                           </p>
-                          <FormDecisao prestacaoId={l.prestacaoEmAnalise.id} numero={l.numero} />
-                        </div>
-                      ) : (
-                        <FormPrestacao concessaoId={l.id} numero={l.numero} />
-                      )}
+                        ) : null}
+                      </PrestacaoDaConcessao>
                     </td>
                   </tr>
                 ))}

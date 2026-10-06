@@ -143,8 +143,56 @@ export function FormConceder(): React.ReactElement {
   );
 }
 
-export function FormPrestacao({ concessaoId, numero }: { readonly concessaoId: string; readonly numero: string }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDoAdiantamento, FormData>(registrarPrestacaoAction, {});
+type EstadoDaAcao = readonly [EstadoDoAdiantamento, (f: FormData) => void, boolean];
+
+/**
+ * V36 — A PRESTAÇÃO DE UMA CONCESSÃO: registrar, decidir, e o retorno de cada um.
+ *
+ * ⚠️ OS DOIS ESTADOS MORAM AQUI, E NÃO EM CADA FORMULÁRIO, PORQUE O SUCESSO TROCA O FORMULÁRIO. Registrar a
+ * prestação faz a linha passar a mostrar a decisão; rejeitar a faz voltar ao registro; aprovar a deixa
+ * comprovada, sem formulário. Com o estado dentro de cada formulário, o que sumia junto era a mensagem de
+ * sucesso: o operador via a tela mudar sem nenhuma confirmação, e o percurso lia silêncio com a gravação
+ * feita. Este componente fica montado nos três estados da linha, e a última resposta continua à vista.
+ */
+export function PrestacaoDaConcessao({
+  concessaoId,
+  numero,
+  prestacaoEmAnaliseId,
+  comprovada,
+  children,
+}: {
+  readonly concessaoId: string;
+  readonly numero: string;
+  readonly prestacaoEmAnaliseId: string | null;
+  readonly comprovada: boolean;
+  /** O resumo da prestação em análise, montado no servidor. */
+  readonly children?: React.ReactNode;
+}): React.ReactElement {
+  const prestar = useActionState<EstadoDoAdiantamento, FormData>(registrarPrestacaoAction, {});
+  const decidir = useActionState<EstadoDoAdiantamento, FormData>(decidirPrestacaoAction, {});
+  // A resposta que já não tem formulário embaixo dela: a do registro, quando a linha passou à decisão; a da
+  // decisão, quando a linha voltou ao registro (rejeitada) ou ficou comprovada (aprovada).
+  const anterior =
+    prestacaoEmAnaliseId !== null ? { estado: prestar[0], acao: "registrar-prestacao" } : { estado: decidir[0], acao: "decidir-prestacao" };
+  return (
+    <div className="space-y-2">
+      {comprovada ? <span>—</span> : null}
+      {/* Só o sucesso: o erro fica dentro do formulário que o produziu, que continua montado. */}
+      {anterior.estado.sucesso !== undefined ? <Resultado estado={anterior.estado} acao={anterior.acao} /> : null}
+      {comprovada ? null : prestacaoEmAnaliseId !== null ? (
+        <>
+          {children}
+          <FormDecisao prestacaoId={prestacaoEmAnaliseId} numero={numero} acao={decidir} />
+        </>
+      ) : (
+        <FormPrestacao concessaoId={concessaoId} numero={numero} acao={prestar} />
+      )}
+    </div>
+  );
+}
+
+function FormPrestacao({ concessaoId, numero, acao }: { readonly concessaoId: string; readonly numero: string; readonly acao: EstadoDaAcao }): React.ReactElement {
+  const [estado, action, pendente] = acao;
   return (
     <form action={action} data-acao="registrar-prestacao" data-concessao={numero} className="grid gap-2 sm:grid-cols-2">
       <ChaveDeComando />
@@ -171,14 +219,15 @@ export function FormPrestacao({ concessaoId, numero }: { readonly concessaoId: s
         </button>
       </div>
       <div className="sm:col-span-2">
-        <Resultado estado={estado} acao="registrar-prestacao" />
+        {/* Só o erro: o sucesso tira a linha deste formulário e aparece acima, em PrestacaoDaConcessao. */}
+        <Resultado estado={estado.erro !== undefined ? estado : {}} acao="registrar-prestacao" />
       </div>
     </form>
   );
 }
 
-export function FormDecisao({ prestacaoId, numero }: { readonly prestacaoId: string; readonly numero: string }): React.ReactElement {
-  const [estado, action, pendente] = useActionState<EstadoDoAdiantamento, FormData>(decidirPrestacaoAction, {});
+function FormDecisao({ prestacaoId, numero, acao }: { readonly prestacaoId: string; readonly numero: string; readonly acao: EstadoDaAcao }): React.ReactElement {
+  const [estado, action, pendente] = acao;
   return (
     <form action={action} data-acao="decidir-prestacao" data-concessao={numero} className="grid gap-2 sm:grid-cols-2">
       <ChaveDeComando />
@@ -205,7 +254,7 @@ export function FormDecisao({ prestacaoId, numero }: { readonly prestacaoId: str
         </button>
       </div>
       <div className="sm:col-span-2">
-        <Resultado estado={estado} acao="decidir-prestacao" />
+        <Resultado estado={estado.erro !== undefined ? estado : {}} acao="decidir-prestacao" />
       </div>
     </form>
   );

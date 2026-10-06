@@ -1946,9 +1946,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m05-despesa/adiantamentos.ts concede diária e suprimento e lança o controle (classes 7 e 8) pelas contas que o ente declara; a aprovação da prestação baixa o controle e, desde a V35, só aceita devolução coberta pelas anulações (m05-adiantamentos.test.ts t1 a t5; m05-adiantamentos-movimento.test.ts m1 a m3). Modo diferente: o controle nasce na concessão que referencia o empenho, não na emissão do empenho. FALTA: o percurso percurso-v32-areas.ts é anterior à guarda da V35 e precisa rodar de novo.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: administrador (EMPENHAR) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-05 · passos: /despesa/adiantamentos → conceder diária (destino, 2,5 x 200,00) → controle 7/8 conferido no banco → /transparencia/diarias mostra a diária com CPF mascarado → conceder suprimento → prestação com 50,00 devolvidos → aprovar é recusado com o motivo e nada é gravado → rejeitar com parecer → nova prestação sem devolução → aprovar → a baixa inverte o controle da concessão → prestação da diária aprovada → recarga mostra as duas comprovadas · obtido: 19/19 · artefato: scripts/percurso-v36-adiantamentos.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m05-despesa/adiantamentos.ts concede diária e suprimento e lança o controle (classes 7 e 8) pelas contas que o ente declara; a aprovação da prestação baixa o controle e, desde a V35, só aceita devolução coberta pelas anulações (m05-adiantamentos.test.ts t1 a t5; m05-adiantamentos-movimento.test.ts m1 a m3). Modo diferente: o controle nasce na concessão que referencia o empenho, não na emissão do empenho — o empenho só vira responsabilidade a comprovar quando há beneficiário e período.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.15",
@@ -2604,9 +2604,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): concessão, prestação e aprovação (adiantamentos.ts) lançam o controle nas classes 7 e 8 pelas contas declaradas; a despesa segue empenho, liquidação e pagamento (m05-adiantamentos.test.ts t1 a t5; m05-adiantamentos-movimento.test.ts m1 a m3). FALTA: o percurso percurso-v32-areas.ts é anterior à guarda da devolução (V35) e precisa rodar de novo.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: administrador (EMPENHAR) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-05 · passos: /despesa/adiantamentos → conceder diária (destino, 2,5 x 200,00) → controle 7/8 conferido no banco → /transparencia/diarias mostra a diária com CPF mascarado → conceder suprimento → prestação com 50,00 devolvidos → aprovar é recusado com o motivo e nada é gravado → rejeitar com parecer → nova prestação sem devolução → aprovar → a baixa inverte o controle da concessão → prestação da diária aprovada → recarga mostra as duas comprovadas · obtido: 19/19 · artefato: scripts/percurso-v36-adiantamentos.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): concessão, prestação e aprovação (adiantamentos.ts) lançam o controle nas classes 7 e 8 pelas contas declaradas; a despesa segue empenho, liquidação e pagamento (m05-adiantamentos.test.ts t1 a t5; m05-adiantamentos-movimento.test.ts m1 a m3). O percurso da V36 refez o caminho depois da guarda da devolução (V35) e achou um defeito de tela, corrigido: a mensagem de sucesso sumia junto com o formulário trocado.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.62",
@@ -3696,9 +3696,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, equivalente: a diária é ConcessaoDeAdiantamento de espécie DIARIA com beneficiário, finalidade, destino, período, quantidade, valor unitário, empenho, ato e prazo (prisma/schema/m05-adiantamentos.prisma; m05-adiantamentos.test.ts t1, N=2), tela /despesa/adiantamentos. FALTA: percurso da espécie diária pela tela; o servidor é texto, não vínculo com o cadastro de pessoal.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: administrador (EMPENHAR) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-05 · passos: /despesa/adiantamentos → conceder diária (destino, 2,5 x 200,00) → controle 7/8 conferido no banco → /transparencia/diarias mostra a diária com CPF mascarado → conceder suprimento → prestação com 50,00 devolvidos → aprovar é recusado com o motivo e nada é gravado → rejeitar com parecer → nova prestação sem devolução → aprovar → a baixa inverte o controle da concessão → prestação da diária aprovada → recarga mostra as duas comprovadas · obtido: 19/19 · artefato: scripts/percurso-v36-adiantamentos.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, equivalente: a diária é ConcessaoDeAdiantamento de espécie DIARIA com beneficiário, finalidade, destino, período, quantidade, valor unitário, empenho, ato e prazo (prisma/schema/m05-adiantamentos.prisma; m05-adiantamentos.test.ts t1, N=2). Ressalva: o servidor é nome e CPF digitados, não vínculo com o cadastro de pessoal.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.26",
@@ -3710,9 +3710,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): listarDiariasPublicas lê as concessões de diária a cada consulta, com CPF mascarado (lib/portas/diarias-publicas.ts; m05-adiantamentos.test.ts t5), em /transparencia/diarias. FALTA: percurso que conceda uma diária e a veja no portal.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: administrador (EMPENHAR) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-05 · passos: /despesa/adiantamentos → conceder diária (destino, 2,5 x 200,00) → controle 7/8 conferido no banco → /transparencia/diarias mostra a diária com CPF mascarado → conceder suprimento → prestação com 50,00 devolvidos → aprovar é recusado com o motivo e nada é gravado → rejeitar com parecer → nova prestação sem devolução → aprovar → a baixa inverte o controle da concessão → prestação da diária aprovada → recarga mostra as duas comprovadas · obtido: 19/19 · artefato: scripts/percurso-v36-adiantamentos.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): listarDiariasPublicas lê as concessões de diária a cada consulta, sem etapa de publicação, com CPF mascarado (lib/portas/diarias-publicas.ts; m05-adiantamentos.test.ts t5), em /transparencia/diarias.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.27",
