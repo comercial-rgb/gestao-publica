@@ -27,6 +27,7 @@ import { FormEstornoManual, FormLancamentoManual } from "./FormsDoLancamentoManu
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { lancamentosManuaisEstornaveis } from "../../../../lib/portas/lancamento-manual";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * LANÇAMENTOS — a CONSULTA ANALÍTICA do razão: filtra, mostra as partidas e leva ao documento.
  *
@@ -123,7 +124,7 @@ export default async function LancamentosPage({
                   ? "Serviço indisponível"
                   : "Não foi possível consultar os lançamentos"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

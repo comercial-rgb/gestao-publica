@@ -15,6 +15,7 @@ import { SeletorQuadrimestre } from "../anexo1/SeletorQuadrimestre";
 import { badgeDaSituacao } from "../../simplificado-ui";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RGF — ANEXO 6: DEMONSTRATIVO SIMPLIFICADO DA GESTÃO FISCAL. LRF art. 48.
  *
@@ -56,7 +57,7 @@ export default async function RgfAnexo6Page({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 6"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

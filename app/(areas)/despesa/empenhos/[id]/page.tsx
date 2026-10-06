@@ -18,6 +18,7 @@ import { formatarDocumento } from "../../../../../packages/documento";
 import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * DETALHE DO EMPENHO — origem, liquidações, retenções, pagamentos, anulações,
  * lançamentos e histórico no MESMO contexto.
@@ -131,7 +132,7 @@ export default async function DetalheDoEmpenhoPage({
                 ? "Serviço indisponível"
                 : "Não foi possível carregar este empenho"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

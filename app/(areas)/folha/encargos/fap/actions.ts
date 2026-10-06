@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 import { aprovarFap, registrarEstabelecimento, registrarFap } from "../../../../../lib/portas/fap";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** V24 — cadastro e aprovação do FAP. Nenhuma regra aqui: o M33 recusa e a mensagem sobe como veio. */
 export interface EstadoDoFap {
   readonly erro?: string;
@@ -19,7 +20,7 @@ export async function registrarFapAction(_prev: EstadoDoFap, f: FormData): Promi
       revalidatePath("/folha/encargos/fap");
       return { sucesso: `FAP de ${ano} cadastrado, aguardando a aprovação de outra pessoa. Até lá, não entra na apuração.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível cadastrar o FAP." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível cadastrar o FAP." };
     }
   });
 }
@@ -38,7 +39,7 @@ export async function registrarEstabelecimentoAction(_prev: EstadoDoFap, f: Form
       revalidatePath("/folha/encargos/fap");
       return { sucesso: "Estabelecimento registrado. As apurações a partir dessa competência usam o FAP deste CNPJ para quem está na lotação e nas lotações abaixo dela." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o estabelecimento." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o estabelecimento." };
     }
   });
 }
@@ -50,7 +51,7 @@ export async function aprovarFapAction(_prev: EstadoDoFap, f: FormData): Promise
       revalidatePath("/folha/encargos/fap");
       return { sucesso: "FAP aprovado. A próxima apuração dos encargos do ano já o usa." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível aprovar o FAP." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível aprovar o FAP." };
     }
   });
 }

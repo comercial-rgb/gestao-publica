@@ -8,6 +8,7 @@ import { FiltroAuditoria } from "./FiltroAuditoria";
 import { fimDoDiaCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /** ADMINISTRAÇÃO · Auditoria (RegistroDeOperacao, TR 6.1-6.3) — leitura com filtros e paginação. */
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function AuditoriaPage({
       pagina,
     });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Auditoria indisponível no momento" : "Não foi possível consultar a auditoria"} descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Auditoria indisponível no momento" : "Não foi possível consultar a auditoria"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Tente novamente em alguns instantes."} /></div>;
   }
 
   if (dados.total === 0) return <div>{cabecalho}<EstadoVazio titulo="Nenhuma operação" descricao="Não há registro de operação para os filtros selecionados." /></div>;

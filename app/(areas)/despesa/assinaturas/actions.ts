@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { assinar, enviarParaAssinatura } from "../../../../lib/portas/assinatura-despesa";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoAssinatura {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -44,7 +45,7 @@ export async function enviarParaAssinaturaAction(
       return { sucesso: "Documento gerado e enviado à fila de assinaturas." };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível enviar para assinatura.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível enviar para assinatura.",
       };
     }
   });
@@ -67,7 +68,7 @@ export async function assinarAction(
           : "Documento assinado. Ainda há assinaturas pendentes.",
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível assinar." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível assinar." };
     }
   });
 }

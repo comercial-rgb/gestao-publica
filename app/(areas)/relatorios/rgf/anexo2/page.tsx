@@ -13,6 +13,7 @@ import {
 } from "../../../../../lib/portas/rreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RGF — ANEXO 2: DÍVIDA CONSOLIDADA LÍQUIDA. LRF art. 55, I, "b".
  *
@@ -61,7 +62,7 @@ export default async function RgfAnexo2Page({
               ? "Serviço indisponível"
               : "Não foi possível gerar o Anexo 2"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -22,6 +22,7 @@ import { dataBr, descreverRecorte, recorteNaoAutorizado } from "../../../../lib/
 import { SeletorFonte } from "./SeletorFonte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ORDEM CRONOLÓGICA — O PAINEL DE CONFORMIDADE do art. 141 da Lei 14.133/2021.
  *
@@ -148,7 +149,7 @@ export default async function OrdemCronologicaPage({
               ? "Serviço indisponível"
               : "Não foi possível carregar a ordem cronológica"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

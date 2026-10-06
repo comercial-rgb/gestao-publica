@@ -8,6 +8,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { exercicioAutorizado } from "../../../../lib/recorte";
 import { FormDeducao, FormEstornoDeducao } from "./Formularios";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS DEDUÇÕES DA RECEITA (V35, onda B1) — o FUNDEB retido na origem, registrado como dedução da receita arrecadada,
  * pelo valor do documento do banco. A receita realizada do balanço, o banco e a disponibilidade da fonte passam a
@@ -36,7 +37,7 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
       <div className="space-y-4">
         <SincronizarContexto />
         {titulo}
-        <EstadoVazio titulo="Não foi possível ler as deduções" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler as deduções" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

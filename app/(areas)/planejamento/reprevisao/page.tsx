@@ -7,6 +7,7 @@ import { FormReprevisao } from "./FormReprevisao";
 import { diaCivilBr } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * REPREVISÃO DE RECEITA — histórico append-only (LRF art. 12). Server Component, força-dinâmica.
  * ⚠️ Só LEITURA: o registro de uma reprevisão é ato autorizado, e depende da sessão (6.3). Até lá,
@@ -30,7 +31,7 @@ export default async function ReprevisaoPage({
   try {
     reprevisoes = await gerarReprevisoes({ exercicio });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível ler as reprevisões"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível ler as reprevisões"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   return (

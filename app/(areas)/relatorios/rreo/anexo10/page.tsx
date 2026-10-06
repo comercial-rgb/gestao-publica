@@ -16,6 +16,7 @@ import {
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { FormProjecao, FormRetirarProjecao } from "./Formularios";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — RREO Anexo 10 · Projeção Atuarial do Regime Próprio de Previdência (LRF, art. 53, § 1º, II). Só no 6º bimestre
  * (regra do Siconfi). Os números vêm da avaliação atuarial, registrada aqui com o documento; resultado e saldo são
@@ -47,7 +48,7 @@ export default async function RreoAnexo10Page({
   try {
     [dados, permitidas] = await Promise.all([gerarRreoAnexo10({ exercicio, bimestre }), acoesPermitidas(["CADASTRAR_LINHA_DEMONSTRATIVO"])]);
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 10"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 10"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
   const podeEscrever = permitidas.has("CADASTRAR_LINHA_DEMONSTRATIVO");
 

@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/portas/recursos/roteiros-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action do roteiro do resultado da alienação — despacho FAIL-CLOSED.
  *
@@ -34,7 +35,7 @@ export async function acaoDeRoteirosDeResultadoAction(
         await acaoDoRoteiroDeResultado(acao, id, campos);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(ROTEIROS_DE_RESULTADO.rota);

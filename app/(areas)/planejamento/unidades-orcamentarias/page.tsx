@@ -13,6 +13,7 @@ import { dataBr } from "../../../../lib/recorte";
 import { FormDeclaracao } from "./FormDeclaracao";
 import { ATOS, NATUREZAS, rotuloDe } from "./rotulos";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * UNIDADES ORÇAMENTÁRIAS (M02 V21) — o que a prestação de contas pede de cada unidade: a natureza
  * jurídica, o secretário responsável e o ato que o nomeou. A declaração é versionada: a tabela mostra
@@ -79,7 +80,7 @@ export default async function UnidadesOrcamentariasPage(): Promise<React.ReactEl
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler as unidades"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -13,6 +13,7 @@ import {
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** RREO — Anexo 2 · Despesa por Função/Subfunção (LRF art. 52, II). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function RreoAnexo2Page({
   try {
     dados = await gerarRreoAnexo2({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 2"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 2"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   if (dados.despesas.length === 0) {

@@ -6,6 +6,7 @@ import { DIVIDA_FUNDADA } from "../../../../lib/portas/recursos/definicoes";
 import { acaoDaDividaFundada, criarDividaFundada } from "../../../../lib/portas/recursos/dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A SERVER ACTION DE DÍVIDA FUNDADA — uma só, e ela despacha pelo `__acao`.
  *
@@ -36,7 +37,7 @@ export async function acaoDeDividaFundadaAction(
         await acaoDaDividaFundada(acao, id, campos);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(DIVIDA_FUNDADA.rota);

@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/portas/designer";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS AÇÕES DO DESIGNER.
  *
@@ -29,7 +30,7 @@ function revalidar(): void {
 }
 
 function comoErro(e: unknown): EstadoDoDesigner {
-  return { erro: e instanceof Error ? e.message : String(e) };
+  return { erro: e instanceof Error ? mensagemDoErro(e, "") : String(e) };
 }
 
 const texto = (f: FormData, campo: string): string => String(f.get(campo) ?? "").trim();

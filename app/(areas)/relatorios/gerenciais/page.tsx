@@ -27,6 +27,7 @@ import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { descreverFiltroGerencial, parametroDoVinculo, recorteGerencialDe } from "./filtro";
 import { FiltroGerencial } from "./FiltroGerencial";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * RELATÓRIOS GERENCIAIS — A EXECUÇÃO DA DESPESA POR CREDOR E POR FONTE.
  *
@@ -115,7 +116,7 @@ export default async function RelatoriosGerenciaisPage({
                   ? "Serviço indisponível"
                   : "Não foi possível ler a execução da despesa"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

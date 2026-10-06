@@ -23,6 +23,7 @@ import { lerPerfisFiscais } from "../../../../../lib/portas/retencao-calculada";
 import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * DETALHE DA PESSOA — dados, papéis, relacionados e histórico, no MESMO contexto.
  *
@@ -92,7 +93,7 @@ export default async function DetalheDaPessoaPage({
               ? "Cadastro indisponível no momento"
               : "Não foi possível consultar o cadastro"
           }
-          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Tente novamente em alguns instantes."}
         />
       </div>
     );

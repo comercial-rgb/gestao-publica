@@ -15,6 +15,7 @@ import {
 } from "../../../../lib/portas/contexto";
 import { descreverRecorte } from "../../../../lib/recorte";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * QDD — QUADRO DE DETALHAMENTO DA DESPESA, com a coluna que o M03 existe para produzir:
  * a **DOTAÇÃO ATUALIZADA** de cada ficha (TR 4.20–4.40).
@@ -72,7 +73,7 @@ export default async function QddPage({
                   ? "Serviço indisponível"
                   : "Não foi possível ler o QDD"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

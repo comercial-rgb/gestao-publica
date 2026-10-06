@@ -7,6 +7,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerAgrupamentosDaFolha } from "../../../../lib/portas/agrupamento-da-folha";
 import { FormDoAgrupamento } from "./FormDoAgrupamento";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — O CÓDIGO DE AGRUPAMENTO DA FOLHA DE CADA LIQUIDAÇÃO, para a prestação de contas ao Tribunal: o que falta no
  * mês e o que já foi informado.
@@ -33,7 +34,7 @@ export default async function AgrupamentoNoTribunalPage({ searchParams }: { read
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { comEscritaAutenticada, exigirSessao, type Identidade } from "./sessao";
-import { autorizarLeituraDoRegistroPara, EscopoDeLeituraError } from "./leitura";
+import { autorizarLeituraDoRegistroPara, EscopoDeLeituraError, exigirLeituraDoEnte } from "./leitura";
+import { proximoNumeroLivre } from "../../modules/m05-despesa/numerador";
 import {
   listarEmpenhos,
   listarFichas,
@@ -643,5 +644,19 @@ export async function rotuloDoVinculoDoEmpenho(v: VinculoDoEmpenho): Promise<str
       const r = await db.dividaConsolidada.findUnique({ where: { id: v.id }, select: { identificador: true } });
       return r === null ? null : `dívida ${r.identificador}`;
     }
+  }
+}
+
+/**
+ * V37 — O NÚMERO QUE A TELA SUGERE para o próximo empenho, liquidação ou anulação do exercício: o
+ * próximo livre no espaço único de números (inclusive os reservados pelo sistema). Só lê. Quem não
+ * consulta a despesa recebe vazio, e o campo continua aberto para digitar.
+ */
+export async function proximoNumeroDeDocumento(exercicio: number): Promise<string> {
+  try {
+    await exigirLeituraDoEnte("CONSULTAR_DESPESA");
+    return await proximoNumeroLivre(cliente(), exercicio);
+  } catch {
+    return "";
   }
 }

@@ -4,6 +4,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { processarCompetencia } from "../../../../lib/portas/recursos/competencia-dados";
 import { rotuloDoTipoPatrimonial } from "../../../../lib/portas/recursos/roteiros";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ⚠️ SEM `revalidatePath` AQUI, de propósito: revalidar dentro da action faz o Next re-renderizar a
  * rota, e a página passa a NÃO montar mais este formulário (a prévia deixa de estar PRONTA) — a
@@ -37,7 +38,7 @@ export async function processarCompetenciaAction(
           `(${r.escopo === "BEM" ? "um bem" : "toda a classe"}). A memória de cálculo foi registrada para cada item.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao processar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao processar. Nada foi gravado." };
     }
   });
 }

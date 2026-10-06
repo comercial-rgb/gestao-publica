@@ -5,6 +5,7 @@ import { inicioDoDiaCivil, janelaCivilDoMes } from "../../../../../packages/data
 import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * DOWNLOAD DO PACOTE SAGRES (ZIP diário/mensal + manifesto). GET autenticado — a porta chama
  * `exigirSessao`. O ZIP é determinístico (mesma massa = mesmo byte). Runtime Node (Buffer/zlib).
@@ -57,6 +58,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (e) {
-    return NextResponse.json({ erro: e instanceof Error ? e.message : "Não foi possível gerar o pacote." }, { status: 500 });
+    return NextResponse.json({ erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível gerar o pacote." }, { status: 500 });
   }
 }

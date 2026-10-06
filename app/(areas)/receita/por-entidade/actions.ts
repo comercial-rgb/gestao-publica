@@ -5,6 +5,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { atribuirEntidade } from "../../../../lib/portas/arrecadacao";
 import type { TipoDeAtoDeclarado } from "../../../../lib/portas/entidades-contabeis";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDaAtribuicao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -44,7 +45,7 @@ export async function atribuirEntidadeAction(
           "Entidade atribuída. A guia foi mantida, e a atribuição ficou registrada com o responsável, o motivo e o ato.",
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível atribuir a entidade." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível atribuir a entidade." };
     }
   });
 }

@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/portas/suporte";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDoChamado {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -21,7 +22,7 @@ function revalidar(chamadoId?: string): void {
 }
 
 function comoErro(e: unknown): EstadoDoChamado {
-  return { erro: e instanceof Error ? e.message : String(e) };
+  return { erro: e instanceof Error ? mensagemDoErro(e, "") : String(e) };
 }
 
 const texto = (f: FormData, campo: string): string => String(f.get(campo) ?? "").trim();

@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/portas/tesouraria";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoLote {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -44,7 +45,7 @@ export async function criarLoteAction(
       revalidatePath("/financeiro/lotes");
       return { sucesso: `Lote ${numero} criado.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível criar o lote." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível criar o lote." };
     }
   });
 }
@@ -63,7 +64,7 @@ export async function incluirAction(
       revalidatePath("/financeiro/lotes");
       return { sucesso: "Ordem incluída no lote." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível incluir a ordem." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível incluir a ordem." };
     }
   });
 }
@@ -79,7 +80,7 @@ export async function fecharAction(
       revalidatePath("/financeiro/lotes");
       return { sucesso: "Lote fechado." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível fechar o lote." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível fechar o lote." };
     }
   });
 }
@@ -107,7 +108,7 @@ export async function gerarBorderoAction(
       revalidatePath("/financeiro/lotes");
       return { sucesso: `Borderô gerado. Código de verificação ${r.hash.slice(0, 12)}…` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível gerar o borderô." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível gerar o borderô." };
     }
   });
 }
@@ -138,7 +139,7 @@ export async function retornoAction(
       revalidatePath("/financeiro/lotes");
       return { sucesso: `${baixados} item(ns) baixado(s) pelo retorno do banco.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível processar o retorno." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível processar o retorno." };
     }
   });
 }

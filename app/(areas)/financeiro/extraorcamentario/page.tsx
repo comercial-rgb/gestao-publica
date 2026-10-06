@@ -17,6 +17,7 @@ import { formatarMoeda } from "../../../../lib/format/moeda";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * EXTRAORÇAMENTÁRIO (M07, TR 5.39–5.49) — dinheiro de terceiros no caixa: eventos (consignações),
  * saldos por consignatário (o que o ente deve, 5.41), retenções na fonte com drill ao pagamento
@@ -56,7 +57,7 @@ export default async function ExtraorcamentarioPage({
               ? "O exercício pedido não é um ano"
               : "Não foi possível carregar a consulta"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -87,7 +88,7 @@ export default async function ExtraorcamentarioPage({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível carregar os dados extraorçamentários"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/portas/entidades-contabeis";
 import { FormCadastrarEntidade, FormPublicarVersao } from "./FormsDaEntidade";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS ENTIDADES CONTÁBEIS — QUEM TEM BALANCETE PRÓPRIO (V11 V9 · TR 5.10.1.3).
  *
@@ -38,7 +39,7 @@ export default async function EntidadesPage(): Promise<React.ReactElement> {
         <PageHeader titulo="Entidades contábeis" subtitulo="Entidades do ente com contabilização própria" />
         <EstadoVazio
           titulo="Não foi possível ler as entidades"
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

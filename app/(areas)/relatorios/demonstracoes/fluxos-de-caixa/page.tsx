@@ -22,6 +22,7 @@ import { SeletorExercicio } from "../SeletorExercicio";
 import { lerExercicio } from "../exercicio";
 import { LinkDoBalancete } from "../ContasDaLinha";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** DEMONSTRAÇÃO DOS FLUXOS DE CAIXA (MCASP, Parte V). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -67,7 +68,7 @@ export default async function FluxosDeCaixaPage({
     return (
       <div>
         {cabecalho}
-        <EstadoVazio titulo={titulo} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo={titulo} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

@@ -12,6 +12,7 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { dataBr } from "../../../../../lib/recorte";
 import { lerExercicio } from "../exercicio";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V33 — A COMPOSIÇÃO DE UMA LINHA DO BALANÇO FINANCEIRO, DO ORÇAMENTÁRIO OU DA DFC: os documentos
  * que a formam, cada um com o caminho até o registro, e a conferência da soma contra a linha.
@@ -47,7 +48,7 @@ export default async function ComposicaoPage({
     return (
       <div className="space-y-4">
         <PageHeader titulo="Composição da linha" subtitulo={`Exercício ${String(exercicio)}`} />
-        <EstadoVazio titulo="Não foi possível montar a composição" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível montar a composição" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

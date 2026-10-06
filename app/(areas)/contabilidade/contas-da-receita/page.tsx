@@ -7,6 +7,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerContasDaReceita } from "../../../../lib/portas/contas-da-receita";
 import { FormContaDaReceita } from "./FormContaDaReceita";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS CONTAS DA RECEITA POR NATUREZA — em que conta da DVP cada receita arrecadada entra (M04, V28).
  *
@@ -28,7 +29,7 @@ export default async function ContasDaReceitaPage(): Promise<React.ReactElement>
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Contas da receita por natureza" subtitulo="Em que conta da variação patrimonial cada receita arrecadada entra" />
-        <EstadoVazio titulo="Não foi possível ler as naturezas" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler as naturezas" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

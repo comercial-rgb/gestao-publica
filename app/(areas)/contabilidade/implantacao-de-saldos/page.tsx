@@ -4,6 +4,7 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FormImplantacao } from "./FormImplantacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A IMPLANTAÇÃO DOS SALDOS INICIAIS — o balancete do sistema anterior vira o lançamento de abertura (V32).
  *
@@ -20,7 +21,7 @@ export default async function ImplantacaoDeSaldosPage(): Promise<React.ReactElem
       <div className="space-y-4">
         <SincronizarContexto />
         {cabecalho}
-        <EstadoVazio titulo="Sem acesso à implantação" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Sem acesso à implantação" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

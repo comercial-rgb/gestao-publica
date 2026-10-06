@@ -10,6 +10,7 @@ import { EXTENSOES_ACEITAS, lerAnexosDasNormas, TAMANHO_MAXIMO_BYTES, type Anexo
 import { ListaDeAnexos } from "../../../../../components/ui/ListaDeAnexos";
 import { FormAnexo } from "../../../documentos/FormAnexo";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — AS LEIS ORÇAMENTÁRIAS COM O PROTOCOLO DO TRIBUNAL: o cadastro do protocolo e a lista do que falta.
  *
@@ -34,7 +35,7 @@ export default async function NormasNoTribunalPage(): Promise<React.ReactElement
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

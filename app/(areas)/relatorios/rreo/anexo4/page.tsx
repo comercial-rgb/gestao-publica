@@ -9,6 +9,7 @@ import { anoCivil } from "../../../../../packages/datas/index";
 import { SecoesDoDocumento } from "../../demonstracoes/QuadrosDoDocumento";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — RREO ANEXO 4: DEMONSTRATIVO DAS RECEITAS E DESPESAS PREVIDENCIÁRIAS DO RPPS (LRF art. 53, II; MDF 15ª ed.,
  * Tabela 4, pelo mapeamento da STN). Server Component, força-dinâmica.
@@ -54,7 +55,7 @@ export default async function RreoAnexo4Page({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 4"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

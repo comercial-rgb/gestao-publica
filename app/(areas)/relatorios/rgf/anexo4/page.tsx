@@ -13,6 +13,7 @@ import {
 import { SeletorQuadrimestre } from "../anexo1/SeletorQuadrimestre";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RGF — ANEXO 4: OPERAÇÕES DE CRÉDITO. LRF art. 55, I, "d".
  *
@@ -54,7 +55,7 @@ export default async function RgfAnexo4Page({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 4"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

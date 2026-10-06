@@ -17,6 +17,7 @@ import { formatarMoeda } from "../../../../lib/format/moeda";
 import { dataBr, descreverRecorte, type RecorteDaPagina } from "../../../../lib/recorte";
 import { formatarDocumento } from "../../../../packages/documento/index";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A PAGAR (V33) — o que o ente deve, por credor e por obrigação. A aritmética é do M05 e do M08
  * (`modules/m05-despesa/a-pagar.ts`); esta tela só agrupa e mostra.
@@ -65,7 +66,7 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
                   ? "Serviço indisponível"
                   : "Não foi possível carregar o que há a pagar"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

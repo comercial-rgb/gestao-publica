@@ -8,6 +8,7 @@ import { lerEntidadesContabeis, TIPOS_DE_ATO_NA_TELA } from "../../../../../lib/
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../../lib/recorte";
 import { AtribuicoesDaFila, FormAtribuir } from "./FormAtribuirMovimento";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V34 — OS MOVIMENTOS EXTRAORÇAMENTÁRIOS SEM TITULAR: a fila de regularização.
  *
@@ -40,7 +41,7 @@ export default async function MovimentosSemTitularPage({
         <PageHeader titulo="Movimentos sem titular" subtitulo="Extraorçamentário em conta sem titular declarado" />
         <EstadoVazio
           titulo={erro instanceof ExercicioIlegivelError ? "Exercício inválido" : "Não foi possível carregar os movimentos"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

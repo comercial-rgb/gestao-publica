@@ -262,7 +262,7 @@ export function FormPagamento({
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[color:var(--color-ink-2)]">
               <span className={ROTULO}>Hipótese (§1º)</span>
-              <select name="hipotese" defaultValue="" className={CAMPO}>
+              <select name="hipotese" defaultValue="" required className={CAMPO}>
                 <option value="" disabled>
                   Escolha a hipótese…
                 </option>
@@ -277,6 +277,7 @@ export function FormPagamento({
               <span className={ROTULO}>Quem autorizou</span>
               <input
                 name="autorizadoPor"
+                required
                 placeholder="Secretário de Finanças"
                 className={CAMPO}
               />
@@ -286,6 +287,8 @@ export function FormPagamento({
               <textarea
                 name="justificativa"
                 rows={3}
+                required
+                minLength={30}
                 placeholder="motivo do pagamento antes dos credores anteriores na fila"
                 className={CLASSE_AREA_TEXTO}
               />
@@ -301,6 +304,7 @@ export function FormPagamento({
           <textarea
             name="justificativaOrdemConstitucional"
             rows={2}
+            minLength={20}
             placeholder="Acordo homologado judicialmente, sequestro de verba ou outra razão que autoriza pagar antes dos anteriores"
             className={CLASSE_AREA_TEXTO}
           />

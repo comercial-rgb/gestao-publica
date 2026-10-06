@@ -6,6 +6,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerFarmacias } from "../../../../lib/portas/frota";
 import { FormCadastrarFarmacia, FormEstoque, FormVersaoDaFarmacia } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V27 — AS FARMÁCIAS PÚBLICAS da unidade gestora e o estoque de medicamentos do mês, que a prestação de contas
  * mensal ao Tribunal pede.
@@ -27,7 +28,7 @@ export default async function FarmaciasPage(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

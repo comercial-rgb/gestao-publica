@@ -13,6 +13,7 @@ import {
 import { FormAtoDeAlteracao, FormItemDoAto } from "./FormAtoDeAlteracao";
 import { SeletorDaPeca } from "./SeletorDaPeca";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ALTERAÇÕES DO PPA E DA LDO — o original, os atos e o valor vigente, lado a lado.
  *
@@ -60,7 +61,7 @@ export default async function Page({
       <div>
         {cabecalho}
         <EstadoVazio
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
               ? "Serviço indisponível"

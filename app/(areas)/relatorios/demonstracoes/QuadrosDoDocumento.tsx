@@ -6,6 +6,7 @@ import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/Tabe
 import { csvDasTabelas, type TabelasDoDocumento } from "../../../../lib/relatorios/tabelas-dos-demonstrativos";
 import { SeletorExercicio } from "./SeletorExercicio";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — a tela de um demonstrativo que já sai montado em tabelas (`TabelasDoDocumento`): as mesmas seções do PDF e do CSV,
  * desenhadas com a tabela padrão. A recusa do motor (dívida sem conta que diga interna ou externa, conta bancária sem
@@ -91,6 +92,6 @@ export async function tabelasOuRecusa<T>(gerar: () => Promise<T>, montar: (d: T)
   try {
     return { tabelas: montar(await gerar()) };
   } catch (e) {
-    return { recusa: e instanceof Error ? e.message : "Erro desconhecido." };
+    return { recusa: e instanceof Error ? mensagemDoErro(e, "") : "Erro desconhecido." };
   }
 }

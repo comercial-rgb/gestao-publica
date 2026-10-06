@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/portas/administracao";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS ESCRITAS DA TELA DE PERFIS (TR 4.56).
  *
@@ -33,7 +34,7 @@ export async function criarPerfilAction(_prev: EstadoPerfil, formData: FormData)
       revalidatePath(ROTA);
       return { sucesso: `Perfil ${nome} criado sem permissões. Conceda as ações necessárias individualmente.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível criar o perfil." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível criar o perfil." };
     }
   });
 }
@@ -54,7 +55,7 @@ export async function concederAcaoAction(_prev: EstadoPerfil, formData: FormData
             : `Ação ${acao} concedida na unidade gestora selecionada.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível conceder a ação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível conceder a ação." };
     }
   });
 }
@@ -69,7 +70,7 @@ export async function revogarAcaoAction(_prev: EstadoPerfil, formData: FormData)
       revalidatePath(ROTA);
       return { sucesso: `Ação ${acao} revogada.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível revogar a ação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível revogar a ação." };
     }
   });
 }
@@ -89,7 +90,7 @@ export async function aplicarAtualizacaoAction(_prev: EstadoPerfil, formData: Fo
             : `Atualização ${versao} aplicada: ${r.concessoes} permissão(ões) concedida(s) em ${r.perfisAlcancados} perfil(is), registradas em seu nome.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível aplicar a atualização." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível aplicar a atualização." };
     }
   });
 }

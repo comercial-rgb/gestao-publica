@@ -6,6 +6,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerFrota, ROTULO_COMBUSTIVEL, ROTULO_SITUACAO, ROTULO_TIPO_DE_FROTA } from "../../../../lib/portas/frota";
 import { FormAbastecimento, FormAnular, FormCadastrarMaquina, FormCadastrarVeiculo, FormSituacao, FormVersao } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V27 — A FROTA: veículos e máquinas da unidade gestora, a situação ao longo do mês e os abastecimentos — o que a
  * prestação de contas mensal ao Tribunal pede.
@@ -27,7 +28,7 @@ export default async function FrotaPage(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

@@ -15,6 +15,7 @@ import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { badgeDaSituacao } from "../../simplificado-ui";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RREO — ANEXO 14: DEMONSTRATIVO SIMPLIFICADO DO RREO. LRF art. 48 · art. 52.
  *
@@ -54,7 +55,7 @@ export default async function RreoAnexo14Page({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 14"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

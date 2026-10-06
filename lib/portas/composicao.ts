@@ -4,6 +4,7 @@ import { cliente } from "./cliente";
 import { gerarBalancoFinanceiro, gerarBalancoOrcamentario } from "./demonstrativos";
 import { gerarFluxosDeCaixa } from "./fluxos-de-caixa";
 
+import { mensagemDoErro } from "./mensagem-do-erro";
 /**
  * PORTA — V33: DE QUE DOCUMENTOS É FEITA ESTA LINHA DA DEMONSTRAÇÃO?
  *
@@ -161,7 +162,7 @@ export async function lerComposicao(p: { readonly exercicio: number; readonly li
   try {
     linha = await valorDaLinha(p.exercicio, p.linha);
   } catch (erro) {
-    linha = { indisponivel: erro instanceof Error ? erro.message : "a demonstração não foi emitida" };
+    linha = { indisponivel: erro instanceof Error ? mensagemDoErro(erro, "") : "a demonstração não foi emitida" };
   }
   const confere =
     linha === null || "indisponivel" in linha

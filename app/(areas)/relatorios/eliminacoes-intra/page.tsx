@@ -16,6 +16,7 @@ import {
 } from "../../../../lib/portas/eliminacoes-intra";
 import { SeletorDoPeriodo } from "./SeletorDoPeriodo";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ELIMINAÇÕES INTRAGOVERNAMENTAIS — o ajuste da consolidação, explicado linha a linha.
  *
@@ -159,7 +160,7 @@ export default async function Page({
       <div className="space-y-4">
         {cabecalho}
         <EstadoVazio
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
               ? "Serviço indisponível"

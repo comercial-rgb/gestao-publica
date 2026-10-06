@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { declararDisponibilidadeDeRecursoNovo } from "../../../../lib/portas/creditos";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDeclaracao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -47,7 +48,7 @@ export async function declararAction(
         descricao,
       });
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível declarar a disponibilidade." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível declarar a disponibilidade." };
     }
 
     revalidatePath("/planejamento/recursos-novos");

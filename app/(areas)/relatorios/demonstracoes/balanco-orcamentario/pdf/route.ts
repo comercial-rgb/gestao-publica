@@ -5,6 +5,7 @@ import { emitir } from "../../../../../../lib/pdf/operacionais";
 import { montarPdfBalancoOrcamentario } from "../../../../../../lib/pdf/balancos";
 import { exigirLeituraDoEnte } from "../../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * V34 — EMISSÃO PDF: Balanço Orçamentário. A mesma apuração da tela e do CSV (`lib/relatorios/tabelas-dos-demonstrativos.ts`).
  * Autenticada; a leitura é cobrada antes de qualquer parse. ⚠️ nodejs runtime: o puppeteer é Node.
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     doc = await montarPdfBalancoOrcamentario({ exercicio });
   } catch (e) {
-    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? e.message : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
+    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? mensagemDoErro(e, "") : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
   const r = await emitir(doc, `balanco-orcamentario-${String(exercicio)}`);
   return new NextResponse(Buffer.from(r.pdf), {

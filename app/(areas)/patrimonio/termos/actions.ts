@@ -6,6 +6,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { TERMOS_PATRIMONIAIS } from "../../../../lib/portas/recursos/termos";
 import { criarTermo } from "../../../../lib/portas/recursos/termos-dados";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action dos termos — só "criar" (o termo é imutável). A resolução dos tombamentos
  * e a recusa do domínio sobem COMO VIERAM; `__acao` desconhecida ESTOURA.
@@ -21,7 +22,7 @@ export async function acaoDeTermosAction(_prev: EstadoDoMolde, formData: FormDat
     try {
       await criarTermo(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao emitir o termo. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao emitir o termo. Nada foi gravado." };
     }
     revalidatePath(TERMOS_PATRIMONIAIS.rota);
     revalidatePath("/patrimonio/bens-patrimoniais");

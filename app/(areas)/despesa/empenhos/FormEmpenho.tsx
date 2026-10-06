@@ -115,11 +115,14 @@ export function FormEmpenho({
   fichas,
   ordemPadrao = "",
   solicitacaoPadrao = "",
+  numeroSugerido,
 }: {
   readonly fichas: readonly FichaParaEmpenho[];
   readonly ordemPadrao?: string;
   /** V22: a solicitação autorizada vinda da tela de solicitações ("Emitir empenho"). */
   readonly solicitacaoPadrao?: string;
+  /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
+  readonly numeroSugerido?: string | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoEmpenho, FormData>(empenharAction, {});
   const ref = useRef<HTMLFormElement>(null);
@@ -128,6 +131,9 @@ export function FormEmpenho({
   const [buscaFicha, setBuscaFicha] = useState("");
   const [credor, setCredor] = useState<{ doc: string; nome: string; versao: number }>({ doc: "", nome: "", versao: 0 });
   const [credorManual, setCredorManual] = useState(false);
+  // Quando o documento digitado não está no cadastro de credores, a tela passa sozinha para o credor
+  // sem cadastro, com o documento já preenchido — e diz por quê.
+  const [credorNaoCadastrado, setCredorNaoCadastrado] = useState(false);
   const [valor, setValor] = useState<{ cru: string; versao: number }>({ cru: "", versao: 0 });
   const [categoria, setCategoria] = useState<Categoria>("");
   const [tipo, setTipo] = useState<"ORDINARIO" | "GLOBAL" | "ESTIMATIVO">("ORDINARIO");
@@ -363,8 +369,8 @@ export function FormEmpenho({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nº da nota</span>
-          <input name="numero" required inputMode="numeric" placeholder="0000001" className={CAMPO} />
-          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só números, até 7 dígitos: é assim que o SAGRES recebe.</span>
+          <input name="numero" required inputMode="numeric" defaultValue={numeroSugerido} placeholder={numeroSugerido !== undefined && numeroSugerido !== "" ? numeroSugerido : "0000001"} className={CAMPO} />
+          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só números, até 7 dígitos: é assim que o SAGRES recebe. Já vem o próximo número livre do exercício.</span>
         </label>
 
         {credorManual ? (
@@ -375,7 +381,12 @@ export function FormEmpenho({
               comprimento é o domínio, sobre os DÍGITOS que o hidden submete (`zEmpenharInput`).
             */}
             <CampoCpfCnpj key={`manual-${credor.versao}`} name="credor" required defaultValue={credor.doc} placeholder="12.345.678/0001-95" className={CAMPO} />
-            <button type="button" onClick={() => setCredorManual(false)} className="mt-1 text-[11px] font-medium text-[color:var(--color-primary)] hover:underline">
+            {credorNaoCadastrado ? (
+              <span role="status" className="mt-1 block text-[11px] text-[color:var(--color-ink-2)]">
+                Este documento não está no cadastro de credores. Confira o número e emita como credor sem cadastro, ou cadastre o credor antes.
+              </span>
+            ) : null}
+            <button type="button" onClick={() => { setCredorManual(false); setCredorNaoCadastrado(false); }} className="mt-1 text-[11px] font-medium text-[color:var(--color-primary)] hover:underline">
               Buscar no cadastro de credores
             </button>
           </label>
@@ -391,6 +402,13 @@ export function FormEmpenho({
               largura={4}
               {...(credor.doc !== "" ? { valorInicial: credor.doc } : {})}
               aoEscolher={(o) => setCredor((c) => ({ doc: o?.valor ?? "", nome: o?.dados?.["credorNome"] ?? "", versao: c.versao }))}
+              aoNaoEncontrar={(t) => {
+                const digitos = t.replace(/\D/g, "");
+                if (digitos.length !== 11 && digitos.length !== 14) return;
+                setCredor((c) => ({ doc: digitos, nome: "", versao: c.versao + 1 }));
+                setCredorNaoCadastrado(true);
+                setCredorManual(true);
+              }}
             />
             <button type="button" onClick={() => setCredorManual(true)} className="mt-1 text-[11px] font-medium text-[color:var(--color-primary)] hover:underline">
               Credor sem cadastro? Digitar o documento

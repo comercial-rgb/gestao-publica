@@ -7,6 +7,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerDescontosDaFolha } from "../../../../lib/portas/descontos-da-folha";
 import { DescontosDoEnte, FormDesconto } from "./FormDesconto";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * OS DESCONTOS DA FOLHA RETIDOS NO PAGAMENTO (M33, V28) — a quem cada desconto do contracheque é devido.
  *
@@ -28,7 +29,7 @@ export default async function DescontosRetidosPage(): Promise<React.ReactElement
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Descontos retidos no pagamento" subtitulo="A quem cada desconto do contracheque é devido" />
-        <EstadoVazio titulo="Não foi possível ler as rubricas" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler as rubricas" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

@@ -17,6 +17,7 @@ import {
 import { dataBr } from "../../../../lib/recorte";
 import { FormElaborarProposta } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A PROPOSTA ORÇAMENTÁRIA DO EXERCÍCIO SEGUINTE (M02 V29).
  *
@@ -79,7 +80,7 @@ export default async function PropostaOrcamentariaPage(): Promise<React.ReactEle
                 ? "Banco de dados não configurado"
                 : "Não foi possível ler as propostas"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

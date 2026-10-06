@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { entregarAnexo } from "../../../../../lib/portas/documentos";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * DOWNLOAD DE UM ANEXO — e a autorização é a DO REGISTRO DONO, resolvida no servidor.
  *
@@ -50,7 +51,7 @@ export async function GET(
     // genérico: ela é a diferença entre "não achei" e "o arquivo foi trocado depois de
     // anexado". A segunda é um incidente, e alguém precisa saber dele.
     return NextResponse.json(
-      { erro: e instanceof Error ? e.message : "Falha ao ler o anexo." },
+      { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao ler o anexo." },
       { status: 500 }
     );
   }

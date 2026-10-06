@@ -6,6 +6,7 @@ import { TIPOS_DE_INCORPORACAO } from "../../../../lib/portas/recursos/gestao-do
 import { criarTipoDeIncorporacao } from "../../../../lib/portas/recursos/gestao-do-bem-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action deste cadastro. Ver o cabeçalho de `localizacoes/actions.ts`: despacho
  * fail-closed, e a recusa do domínio sobe inteira.
@@ -27,7 +28,7 @@ export async function acaoDeTiposDeIncorporacaoAction(
       }
       await criarTipoDeIncorporacao(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(TIPOS_DE_INCORPORACAO.rota);

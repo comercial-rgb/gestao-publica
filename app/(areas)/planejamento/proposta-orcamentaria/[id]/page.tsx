@@ -21,6 +21,7 @@ import { toMoney } from "../../../../../packages/contracts/index";
 import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta } from "../Forms";
 import { ConferenciaDaPropostaSecao } from "./Conferencia";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * UMA PROPOSTA ORÇAMENTÁRIA (M02 V29): as receitas e as fichas importadas, com a base, o projetado e o
  * valor da proposta (o último ajuste); o que falta para gerar o orçamento; e o botão que o gera.
@@ -189,7 +190,7 @@ export default async function PropostaPage({ params }: { readonly params: Promis
                 ? "Banco de dados não configurado"
                 : "Não foi possível ler a proposta"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

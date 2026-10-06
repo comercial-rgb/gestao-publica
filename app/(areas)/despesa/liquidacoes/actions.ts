@@ -6,6 +6,7 @@ import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoLiquidacao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -116,7 +117,7 @@ export async function liquidarAction(
       if (documentoFiscalId !== "") revalidatePath("/licitacoes/documentos-fiscais");
       return { sucesso: `Liquidação ${numero} registrada no valor de R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível liquidar." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível liquidar." };
     }
   });
 }

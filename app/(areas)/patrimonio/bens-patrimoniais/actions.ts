@@ -6,6 +6,7 @@ import { BENS_PATRIMONIAIS } from "../../../../lib/portas/recursos/acervo";
 import { acaoDoBem, criarBem } from "../../../../lib/portas/recursos/acervo-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action deste cadastro — despacho FAIL-CLOSED.
  *
@@ -37,7 +38,7 @@ export async function acaoDeBensPatrimoniaisAction(
         await acaoDoBem(acao, id, campos);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(BENS_PATRIMONIAIS.rota);

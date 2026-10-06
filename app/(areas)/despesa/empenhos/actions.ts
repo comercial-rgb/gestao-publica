@@ -6,6 +6,7 @@ import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoEmpenho {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -101,7 +102,7 @@ export async function empenharAction(
       if (solicitacaoDeEmpenhoId !== "") revalidatePath("/despesa/solicitacoes-de-empenho");
       return { sucesso: `Empenho ${numero} emitido. Valor: R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível emitir o empenho." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível emitir o empenho." };
     }
   });
 }

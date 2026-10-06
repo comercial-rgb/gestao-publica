@@ -21,6 +21,7 @@ import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../..
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FormLimitacao, FormLiberacao, FormProporDaLoa } from "./FormsDaProgramacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * PROGRAMAÇÃO FINANCEIRA — CMD e MBA (TR 4.18/4.19/4.43/4.44 · LRF arts. 8º, 9º e 13).
  *
@@ -80,7 +81,7 @@ export default async function CmdMbaPage({
               ? "Exercício inválido"
               : "Não foi possível carregar a consulta"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -110,7 +111,7 @@ export default async function CmdMbaPage({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível carregar a programação financeira"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

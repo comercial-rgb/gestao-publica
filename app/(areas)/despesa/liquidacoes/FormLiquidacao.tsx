@@ -55,12 +55,15 @@ export function FormLiquidacao({
   opcoesDeMaterial,
   documentos = [],
   empenhoInicial,
+  numeroSugerido,
 }: {
   readonly empenhos: readonly EmpenhoLiquidavel[];
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   readonly documentos?: readonly { readonly id: string; readonly rotulo: string }[];
   /** V33 — o empenho que veio escolhido de outra tela (diárias, a pagar). Sem saldo a liquidar, é ignorado. */
   readonly empenhoInicial?: string | undefined;
+  /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
+  readonly numeroSugerido?: string | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoLiquidacao, FormData>(
     liquidarAction,
@@ -123,8 +126,8 @@ export function FormLiquidacao({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nº da liquidação</span>
-          <input name="numero" required inputMode="numeric" placeholder="0000001" className={CAMPO} />
-          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só números, até 7 dígitos: é assim que o SAGRES recebe.</span>
+          <input name="numero" required inputMode="numeric" defaultValue={numeroSugerido} placeholder={numeroSugerido !== undefined && numeroSugerido !== "" ? numeroSugerido : "0000001"} className={CAMPO} />
+          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só números, até 7 dígitos: é assim que o SAGRES recebe. Já vem o próximo número livre do exercício.</span>
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">

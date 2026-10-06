@@ -16,6 +16,7 @@ import {
 } from "../../../../../lib/portas/rreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RGF — ANEXO 5: DISPONIBILIDADE DE CAIXA E RESTOS A PAGAR. LRF art. 55, III, "a".
  *
@@ -65,7 +66,7 @@ export default async function RgfAnexo5Page({
               ? "Serviço indisponível"
               : "Não foi possível gerar o Anexo 5"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

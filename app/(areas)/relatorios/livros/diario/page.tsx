@@ -9,6 +9,7 @@ import { lerPeriodo, PADRAO_DESDE, PADRAO_ATE } from "../periodo";
 import { diaCivilBr } from "../../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** Livro DIÁRIO — todo lançamento da janela, em ordem cronológica. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,7 @@ export default async function DiarioPage({
   try {
     lancamentos = await gerarDiario({ desde, ate });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Diário"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Diário"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   if (lancamentos.length === 0) {

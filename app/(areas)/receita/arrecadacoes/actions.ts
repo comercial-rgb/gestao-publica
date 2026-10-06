@@ -5,6 +5,7 @@ import { registrarGuia } from "../../../../lib/portas/arrecadacao";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoArrecadacao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -68,7 +69,7 @@ export async function arrecadarAction(
       };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível registrar a guia.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar a guia.",
       };
     }
   });

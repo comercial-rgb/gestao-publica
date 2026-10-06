@@ -18,6 +18,7 @@ import { SeletorCorte } from "../SeletorCorte";
 import { lerCorteStr } from "../exercicio";
 import { ContasDaLinha, LinkDoBalancete } from "../ContasDaLinha";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** ANEXO 14 — Balanço Patrimonial (Lei 4.320, art. 105). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ export default async function BalancoPatrimonialPage({
               ? "Serviço indisponível"
               : "Não foi possível emitir o Balanço Patrimonial"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

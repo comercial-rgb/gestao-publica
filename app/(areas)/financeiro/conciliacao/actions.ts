@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { desfazerVinculoDaConciliacao, importarExtratoOfxPelaTela, vincularNaConciliacao } from "../../../../lib/portas/conciliacao";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDoVinculo {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -29,7 +30,7 @@ export async function vincularAction(_prev: EstadoDoVinculo, formData: FormData)
       revalidatePath("/financeiro/conciliacao");
       return { sucesso: "Vínculo registrado. A linha e o registro saíram das pendências no valor conciliado." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o vínculo." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o vínculo." };
     }
   });
 }
@@ -44,7 +45,7 @@ export async function desfazerVinculoAction(_prev: EstadoDoVinculo, formData: Fo
       revalidatePath("/financeiro/conciliacao");
       return { sucesso: "Vínculo desfeito. O original continua registrado, com o motivo." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível desfazer o vínculo." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível desfazer o vínculo." };
     }
   });
 }
@@ -64,7 +65,7 @@ export async function importarExtratoAction(_prev: EstadoDoVinculo, formData: Fo
       revalidatePath("/financeiro/conciliacao");
       return { sucesso: msg };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível importar o extrato." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível importar o extrato." };
     }
   });
 }

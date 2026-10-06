@@ -5,6 +5,7 @@ import { emitir } from "../../../../../../lib/pdf/operacionais";
 import { montarPdfAnexo17 } from "../../../../../../lib/pdf/balancos";
 import { exigirLeituraDoEnte } from "../../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — EMISSÃO PDF: ANEXO 17 — Demonstração da Dívida Flutuante (Lei 4.320, art. 92). As mesmas tabelas da tela e do CSV (`lib/relatorios/tabelas-da-pca.ts`).
  * Autenticada; a leitura é cobrada antes de qualquer parse. ⚠️ nodejs runtime: o puppeteer é Node.
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     doc = await montarPdfAnexo17({ exercicio });
   } catch (e) {
-    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? e.message : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
+    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? mensagemDoErro(e, "") : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
   const r = await emitir(doc, `divida-flutuante-${String(exercicio)}`);
   return new NextResponse(Buffer.from(r.pdf), {

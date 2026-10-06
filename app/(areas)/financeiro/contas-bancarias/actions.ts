@@ -44,7 +44,7 @@ export async function declararTitularAction(
             : `Titular alterado (versão ${String(versao)}). As guias já arrecadadas mantêm o titular vigente na data da arrecadação.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível declarar o titular." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível declarar o titular." };
     }
   });
 }

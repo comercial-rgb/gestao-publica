@@ -56,6 +56,33 @@ export interface CampoReferenciadoProps {
   readonly valorInicial?: string;
   /** Com `valorInicial`, também chama `aoEscolher` quando a conferência volta (padrão: não). */
   readonly avisarInicial?: boolean;
+  /**
+   * Chamado quando o envio é barrado com texto digitado e nenhuma opção escolhida — para o formulário
+   * oferecer a alternativa dele (ex.: o credor sem cadastro, digitado à mão).
+   */
+  readonly aoNaoEncontrar?: (texto: string) => void;
+}
+
+/** Só os dígitos, para comparar documento digitado com máscara e documento guardado sem ela. */
+function digitosDe(t: string): string {
+  return t.replace(/\D/g, "");
+}
+
+/**
+ * A opção que corresponde EXATAMENTE ao que se digitou: o mesmo valor, o mesmo rótulo ou, para
+ * documento (11 dígitos ou mais), os mesmos dígitos. Prefixo e parte do nome não contam: escolher por
+ * aproximação poria no formulário um credor que ninguém escolheu.
+ */
+export function correspondenciaExata(texto: string, opcoes: readonly OpcaoDoSeletor[]): OpcaoDoSeletor | undefined {
+  const t = texto.trim();
+  if (t === "") return undefined;
+  const d = digitosDe(t);
+  return opcoes.find(
+    (o) =>
+      o.valor === t ||
+      o.rotulo.trim().toLowerCase() === t.toLowerCase() ||
+      (d.length >= 11 && d.length === t.replace(/[\s./-]/g, "").length && digitosDe(o.valor) === d)
+  );
 }
 
 const SPAN: Readonly<Record<1 | 2 | 3 | 4, string>> = { 1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4" };
@@ -72,7 +99,7 @@ interface Resultado {
   readonly pagina: number;
 }
 
-export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, placeholder, contexto, largura, base, aoEscolher, valorInicial, avisarInicial }: CampoReferenciadoProps): React.ReactElement {
+export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, placeholder, contexto, largura, base, aoEscolher, valorInicial, avisarInicial, aoNaoEncontrar }: CampoReferenciadoProps): React.ReactElement {
   const id = useId();
   const idLista = `${id}-lista`;
   const idStatus = `${id}-status`;
@@ -84,6 +111,8 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
   const [ativa, setAtiva] = useState(-1);
   const [aviso, setAviso] = useState<string | null>(null);
   const seq = useRef(0);
+  /** A busca cujo resultado está na tela — só ela vale para escolher por correspondência exata. */
+  const ultimaBusca = useRef<string | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
   const contextoDaEscolha = useRef<string>("");
 
@@ -119,6 +148,7 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
           setEstado({ tipo: "erro", mensagem: corpo.erro ?? `Não foi possível consultar as opções (HTTP ${r.status}).` });
           return;
         }
+        if (pagina === 1) ultimaBusca.current = q;
         setResultado((anterior) => ({
           opcoes: pagina > 1 ? [...anterior.opcoes, ...(corpo.opcoes ?? [])] : (corpo.opcoes ?? []),
           temMais: corpo.temMais === true,
@@ -212,6 +242,53 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
 
   const opcoes = resultado.opcoes;
 
+  // O estado mais recente, para os ouvintes do formulário (registrados uma vez) e para o blur.
+  const atual = useRef({ texto, escolha, opcoes });
+  atual.current = { texto, escolha, opcoes };
+  const aoNaoEncontrarRef = useRef(aoNaoEncontrar);
+  aoNaoEncontrarRef.current = aoNaoEncontrar;
+
+  /**
+   * ⚠️ O TEXTO DIGITADO NÃO É ESCOLHA — MAS O TEXTO QUE É EXATAMENTE UMA OPÇÃO, É. Quem digita o CPF
+   * inteiro do credor e sai do campo sem clicar na lista tinha o formulário enviado com o campo VAZIO,
+   * e o servidor respondia com a recusa de documento inválido. Ao sair do campo, a correspondência
+   * EXATA com o resultado da busca do próprio texto vira a escolha; aproximação, não.
+   */
+  function resolverAoSair(): void {
+    const { texto: t, escolha: e, opcoes: ops } = atual.current;
+    if (e !== null || t.trim() === "" || ultimaBusca.current !== t) return;
+    const o = correspondenciaExata(t, ops);
+    if (o !== undefined) escolher(o);
+  }
+
+  /**
+   * ⚠️ OBRIGATÓRIO SEM ESCOLHA NÃO SAI DA TELA. O hidden não é validado pelo navegador (ver abaixo), e
+   * o envio vazio voltava como recusa de validação do servidor, muitas vezes sem dizer qual campo.
+   * Aqui o envio é barrado no próprio formulário, com a mensagem ao lado do campo e o foco nele. O
+   * caso de uso continua conferindo: isto é conveniência, não a proteção.
+   */
+  useEffect(() => {
+    const form = raiz.current?.closest("form");
+    if (form === null || form === undefined || obrigatorio !== true) return;
+    const aoEnviar = (ev: SubmitEvent): void => {
+      const { texto: t, escolha: e } = atual.current;
+      if (e !== null) return;
+      ev.preventDefault();
+      setAviso(
+        t.trim() === ""
+          ? `Escolha uma opção em "${rotulo}" antes de enviar.`
+          : `"${t.trim()}" não foi escolhido na lista. Digite e clique em uma das opções que aparecem; se nenhuma aparecer, o item não está cadastrado.`
+      );
+      const busca = raiz.current?.querySelector<HTMLInputElement>('input[role="combobox"]');
+      const detalhe = busca?.closest("details");
+      if (detalhe !== null && detalhe !== undefined) detalhe.open = true;
+      busca?.focus();
+      if (t.trim() !== "") aoNaoEncontrarRef.current?.(t.trim());
+    };
+    form.addEventListener("submit", aoEnviar);
+    return () => form.removeEventListener("submit", aoEnviar);
+  }, [obrigatorio, rotulo]);
+
   function teclado(ev: React.KeyboardEvent<HTMLInputElement>): void {
     if (ev.key === "ArrowDown") {
       ev.preventDefault();
@@ -265,7 +342,12 @@ export function CampoReferenciado({ name, rotulo, catalogo, obrigatorio, ajuda, 
           if (escolha !== null) e.target.select();
           setAberta(true);
         }}
-        onBlur={() => setTimeout(() => setAberta(false), 150)}
+        onBlur={() =>
+          setTimeout(() => {
+            setAberta(false);
+            resolverAoSair();
+          }, 150)
+        }
         onKeyDown={teclado}
         className={CAMPO}
       />

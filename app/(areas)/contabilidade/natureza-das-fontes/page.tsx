@@ -10,6 +10,7 @@ import {
 } from "../../../../lib/portas/natureza-das-fontes";
 import { FormDaNatureza, NaturezasDoEnte } from "./FormNatureza";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A NATUREZA DAS FONTES — ONDE O ENTE DIZ DE QUE NATUREZA É CADA RECURSO (M01, V11 V9.3).
  *
@@ -46,7 +47,7 @@ export default async function NaturezaDasFontesPage(): Promise<React.ReactElemen
         />
         <EstadoVazio
           titulo="Não foi possível ler as fontes"
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

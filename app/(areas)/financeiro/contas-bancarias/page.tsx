@@ -12,6 +12,7 @@ import { FormNovaConta } from "./FormNovaConta";
 import { FormRolDeFontes } from "./FormRolDeFontes";
 import { FormTitular } from "./FormTitular";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS CONTAS BANCÁRIAS E DE QUEM ELAS SÃO (V11 V9).
  *
@@ -45,7 +46,7 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
         <PageHeader titulo="Contas bancárias" subtitulo="Titularidade e fontes de recursos das contas bancárias do ente" />
         <EstadoVazio
           titulo="Não foi possível carregar as contas"
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -10,6 +10,7 @@ import { anoCivil } from "../../../../packages/datas/index";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { AcoesDoMes } from "./FormsDoFechamento";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * O FECHAMENTO MENSAL — onde a contabilidade confere e fecha cada mês (V32).
  *
@@ -65,7 +66,7 @@ export default async function FechamentoMensalPage({
       <div className="space-y-4">
         <SincronizarContexto />
         {cabecalho}
-        <EstadoVazio titulo="Não foi possível ler o fechamento" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler o fechamento" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

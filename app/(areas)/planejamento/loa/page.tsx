@@ -20,6 +20,7 @@ import {
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * LEI ORÇAMENTÁRIA ANUAL — a LOA do exercício consolidada: receita prevista × despesa fixada, o
  * equilíbrio, e os anexos da Lei 4.320/64 que os dados sustentam.
@@ -64,7 +65,7 @@ export default async function LoaPage({
                   ? "Os anexos não fecham com os totais da lei"
                   : "Não foi possível carregar a Lei Orçamentária Anual"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

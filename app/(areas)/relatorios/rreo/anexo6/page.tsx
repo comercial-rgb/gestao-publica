@@ -20,6 +20,7 @@ import {
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RREO — Anexo 6 · Resultado Primário e Nominal, ACIMA DA LINHA (LRF art. 53, III).
  * Server Component, força-dinâmica.
@@ -65,7 +66,7 @@ export default async function RreoAnexo6Page({
               ? "Serviço indisponível"
               : "Não foi possível gerar o Anexo 6"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

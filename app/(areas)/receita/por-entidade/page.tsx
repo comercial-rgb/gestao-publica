@@ -11,6 +11,7 @@ import {
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { AtribuicoesDaFila, FormAtribuir } from "./FormAtribuir";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A ARRECADACAO POR ENTIDADE TITULAR (V11 V9 · desenho de engenharia).
  *
@@ -66,7 +67,7 @@ export default async function PorEntidadePage({
               ? "Exercício inválido"
               : "Não foi possível carregar a arrecadação por entidade"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

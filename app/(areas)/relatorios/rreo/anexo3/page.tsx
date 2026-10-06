@@ -14,6 +14,7 @@ import {
 import { SeletorBimestreRreo } from "./SeletorBimestreRreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RREO — ANEXO 3: DEMONSTRATIVO DA RECEITA CORRENTE LÍQUIDA (LRF art. 53, I; MDF 15ª ed.).
  *
@@ -68,7 +69,7 @@ export default async function RreoAnexo3Page({
         ) : (
           <EstadoVazio
             titulo="Não foi possível gerar o Anexo 3"
-            descricao={erro instanceof Error ? erro.message : "Erro desconhecido ao ler o demonstrativo."}
+            descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido ao ler o demonstrativo."}
           />
         )}
       </div>

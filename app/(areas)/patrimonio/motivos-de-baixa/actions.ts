@@ -6,6 +6,7 @@ import { MOTIVOS_DE_BAIXA } from "../../../../lib/portas/recursos/gestao-do-bem"
 import { criarMotivoDeBaixa } from "../../../../lib/portas/recursos/gestao-do-bem-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action deste cadastro. Ver o cabeçalho de `localizacoes/actions.ts`: despacho
  * fail-closed, e a recusa do domínio sobe inteira.
@@ -27,7 +28,7 @@ export async function acaoDeMotivosDeBaixaAction(
       }
       await criarMotivoDeBaixa(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(MOTIVOS_DE_BAIXA.rota);

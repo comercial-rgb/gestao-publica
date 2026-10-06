@@ -8,6 +8,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { exercicioAutorizado } from "../../../../lib/recorte";
 import { FormLimite } from "./FormLimite";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * O LIMITE DO REPASSE AO LEGISLATIVO (CF art. 29-A) — V35. Faixa pela população, base do exercício anterior, limite,
  * a LOA da Câmara contida nele, o duodécimo e os repasses de cada mês até o dia 20.
@@ -32,7 +33,7 @@ export default async function LimiteDoLegislativoPage({ searchParams }: { readon
     await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
     a = await lerLimiteDoLegislativo(exercicio);
   } catch (erro) {
-    motivo = erro instanceof Error ? erro.message : "Erro desconhecido.";
+    motivo = erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido.";
   }
 
   return (

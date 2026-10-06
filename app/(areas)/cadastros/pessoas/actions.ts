@@ -11,6 +11,7 @@ import { inicioDoDiaCivil, meioDiaCivil } from "../../../../packages/datas/index
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { registrarPerfilFiscalPelaTela } from "../../../../lib/portas/retencao-calculada";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * Server Actions do cadastro de pessoas.
  *
@@ -56,7 +57,7 @@ function camposCadastrais(formData: FormData) {
 }
 
 function mensagem(erro: unknown): string {
-  return erro instanceof Error ? erro.message : "Não foi possível gravar o cadastro.";
+  return erro instanceof Error ? mensagemDoErro(erro, "") : "Não foi possível gravar o cadastro.";
 }
 
 export async function cadastrarPessoaAction(
@@ -173,7 +174,7 @@ export async function registrarPerfilFiscalAction(_prev: EstadoPessoa, formData:
       revalidatePath(`/cadastros/pessoas/${pessoaId}`);
       return { sucesso: "Perfil fiscal registrado." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o perfil fiscal." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o perfil fiscal." };
     }
   });
 }

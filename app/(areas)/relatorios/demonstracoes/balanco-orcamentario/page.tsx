@@ -18,6 +18,7 @@ import { SeletorExercicio } from "../SeletorExercicio";
 import { lerExercicio } from "../exercicio";
 import { LinkDoBalancete } from "../ContasDaLinha";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** ANEXO 12 — Balanço Orçamentário (Lei 4.320, art. 102). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export default async function BalancoOrcamentarioPage({
               ? "Serviço indisponível"
               : "Não foi possível emitir o Balanço Orçamentário"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

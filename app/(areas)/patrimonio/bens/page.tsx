@@ -8,6 +8,7 @@ import { lerPosicaoPatrimonial, lerDividas, PortaSemBancoError, type Demonstrati
 import { exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * PATRIMÔNIO (M10, TR 5.82–5.86) — a posição patrimonial por classe (5.86: saldo anterior + ingressos
  * + atualizações = saldo final, por SUM dos lançamentos) e o saldo da dívida consolidada por tipo (o
@@ -43,7 +44,7 @@ export default async function BensPage({
               ? "Exercício inválido"
               : "Não foi possível carregar o exercício selecionado"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

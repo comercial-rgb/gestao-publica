@@ -21,6 +21,7 @@ import {
 import { FormPessoa } from "./FormPessoa";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * PESSOAS E CREDORES — o cadastro compartilhado.
  *
@@ -151,7 +152,7 @@ export default async function PessoasPage({
               ? "Cadastro indisponível no momento"
               : "Não foi possível consultar o cadastro de pessoas"
           }
-          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Tente novamente em alguns instantes."}
         />
       </div>
     );

@@ -6,6 +6,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { EMENTARIO_DA_RECEITA } from "../../../../lib/portas/recursos/ementario-receita";
 import { criarNaturezaDeReceita, semAcaoNoEmentario } from "../../../../lib/portas/recursos/ementario-receita-dados";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action do ementário da receita — só "criar".
  *
@@ -28,7 +29,7 @@ export async function acaoDoEmentarioAction(_prev: EstadoDoMolde, formData: Form
       }
       cadastrada = await criarNaturezaDeReceita(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(EMENTARIO_DA_RECEITA.rota);

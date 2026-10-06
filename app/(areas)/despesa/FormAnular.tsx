@@ -57,6 +57,7 @@ export function FormAnular({
   anulavelSaldo,
   estornavel,
   objeto,
+  numeroSugerido,
 }: {
   readonly tipo: TipoAnulavel;
   readonly id: string;
@@ -66,6 +67,8 @@ export function FormAnular({
   readonly estornavel: boolean;
   /** V33 — o que se anula, dito na conferência ("Empenho 12/2026 · Fornecedor X"). */
   readonly objeto?: string;
+  /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
+  readonly numeroSugerido?: string | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoAnulacao, FormData>(anularDespesaAction, {});
   const formRef = useRef<HTMLFormElement>(null);
@@ -102,7 +105,7 @@ export function FormAnular({
           </label>
           <label className="block">
             <span className={ROTULO}>Nº do documento de anulação</span>
-            <input name="numero" required inputMode="numeric" placeholder="0000001" className={CAMPO} />
+            <input name="numero" required inputMode="numeric" defaultValue={numeroSugerido} placeholder={numeroSugerido !== undefined && numeroSugerido !== "" ? numeroSugerido : "0000001"} className={CAMPO} />
             <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só números, até 7 dígitos: é assim que o SAGRES recebe.</span>
           </label>
           <label className="block">

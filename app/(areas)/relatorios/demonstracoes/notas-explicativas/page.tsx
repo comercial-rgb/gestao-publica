@@ -16,6 +16,7 @@ import { lerExercicio } from "../exercicio";
 import { SeletorExercicio } from "../SeletorExercicio";
 import { FormNota, FormRetirar } from "./Formularios";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 C2 — NOTAS EXPLICATIVAS ÀS DEMONSTRAÇÕES CONTÁBEIS (MCASP 11ª ed., Parte V, item 8). O contador redige; o sistema
  * acrescenta o que já sabe por cadastro, com a origem; os temas que o manual manda divulgar e ainda não foram redigidos
@@ -45,7 +46,7 @@ export default async function NotasExplicativasPage({
     return (
       <div>
         {cabecalho}
-        <EstadoVazio titulo="Não foi possível ler as notas" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler as notas" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

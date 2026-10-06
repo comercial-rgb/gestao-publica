@@ -8,13 +8,14 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { listarAnulacoesDoExercicio, listarPagamentosDaExecucao, type AnulacaoRegistrada, type PagamentoDaTela } from "../../../../lib/portas/anulacao";
 import { EscopoDeLeituraError, ExercicioIlegivelError, recorteDePagina } from "../../../../lib/portas/contexto";
-import { listarEmpenhosDaExecucao, PortaSemBancoError, type EmpenhoDaTela } from "../../../../lib/portas/empenho";
+import { listarEmpenhosDaExecucao, PortaSemBancoError, proximoNumeroDeDocumento, type EmpenhoDaTela } from "../../../../lib/portas/empenho";
 import { listarLiquidacoesDaExecucao, type LiquidacaoDaTela } from "../../../../lib/portas/liquidacao";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { dataBr, descreverRecorte, type RecorteDaPagina } from "../../../../lib/recorte";
 import { formatarDocumento } from "../../../../packages/documento/index";
 import { FormAnular } from "../FormAnular";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * CENTRAL DE ANULAÇÕES E ESTORNOS DA DESPESA (V33).
  *
@@ -87,8 +88,11 @@ export default async function AnulacoesPage({ searchParams }: { readonly searchP
   let pagamentos: readonly PagamentoDaTela[];
   let registradas: readonly AnulacaoRegistrada[];
   let permitidas: ReadonlySet<string>;
+  let numeroSugerido = "";
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
+    // V37 — o próximo número livre do exercício, já no campo (só lê; o numerador continua conferindo na gravação).
+    numeroSugerido = await proximoNumeroDeDocumento(recorte.exercicio);
     const r = { exercicio: recorte.exercicio, unidadeCodigo: recorte.unidadeCodigo };
     [empenhos, liquidacoes, pagamentos, registradas, permitidas] = await Promise.all([
       listarEmpenhosDaExecucao(r),
@@ -112,7 +116,7 @@ export default async function AnulacoesPage({ searchParams }: { readonly searchP
                   ? "Serviço indisponível"
                   : "Não foi possível carregar as anulações"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -178,7 +182,7 @@ export default async function AnulacoesPage({ searchParams }: { readonly searchP
                   <td className="py-1.5 pr-2">{x.origem}</td>
                   <td className="py-1.5 pr-2 text-right"><ValorMonetario valor={x.saldo} /></td>
                   <td className="py-1.5">
-                    {podeAnular ? <FormAnular tipo={tipo} id={x.id} anulavelSaldo={x.saldo} estornavel={x.estornavel} objeto={`${ROTULO_DO_TIPO[tipo]} ${x.numero} · ${x.credor}`} /> : null}
+                    {podeAnular ? <FormAnular tipo={tipo} id={x.id} anulavelSaldo={x.saldo} estornavel={x.estornavel} objeto={`${ROTULO_DO_TIPO[tipo]} ${x.numero} · ${x.credor}`} numeroSugerido={tipo === "pagamento" ? undefined : numeroSugerido} /> : null}
                   </td>
                 </tr>
               ))}

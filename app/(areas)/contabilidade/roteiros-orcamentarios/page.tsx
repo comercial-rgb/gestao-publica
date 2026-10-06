@@ -12,6 +12,7 @@ import {
 } from "../../../../lib/portas/roteiro-orcamentario";
 import { FormDaFonte, FormDoEixo, FormDoPar, RoteirosDoEnte } from "./FormRoteiro";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * O ROTEIRO ORÇAMENTÁRIO — ONDE O ENTE DIZ EM QUE CONTAS CADA MOVIMENTO LANÇA (M05, V11 V8.4).
  *
@@ -49,7 +50,7 @@ export default async function RoteirosOrcamentariosPage(): Promise<React.ReactEl
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Roteiro orçamentário" subtitulo="Contas contábeis de cada movimento de dotação" />
-        <EstadoVazio titulo="Não foi possível ler os roteiros" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler os roteiros" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

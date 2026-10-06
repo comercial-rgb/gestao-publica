@@ -6,6 +6,7 @@ import { montarPdfComposicao } from "../../../../../../lib/pdf/balancos";
 import { exigirLeituraDoEnte } from "../../../../../../lib/portas/leitura";
 import { linhaPedidaDaUrl } from "../../../../../../lib/portas/composicao";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * V34 — EMISSÃO PDF: composição de uma linha. A mesma apuração da tela e do CSV (`lib/relatorios/tabelas-dos-demonstrativos.ts`).
  * Autenticada; a leitura é cobrada antes de qualquer parse. ⚠️ nodejs runtime: o puppeteer é Node.
@@ -36,7 +37,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     doc = await montarPdfComposicao({ exercicio, linha });
   } catch (e) {
-    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? e.message : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
+    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? mensagemDoErro(e, "") : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
   const r = await emitir(doc, `composicao-${String(exercicio)}`);
   return new NextResponse(Buffer.from(r.pdf), {

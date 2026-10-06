@@ -7,6 +7,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { MOVIMENTOS_ESCOLHIVEIS, lerRoteirosPatrimoniais, type RoteiroNaLista } from "../../../../lib/portas/roteiros-patrimoniais";
 import { FormRoteiroPatrimonial } from "./FormRoteiroPatrimonial";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * OS ROTEIROS DE PRECATÓRIOS E CONVÊNIOS — onde a contabilidade diz em que contas cada movimento lança (V32).
  *
@@ -35,7 +36,7 @@ export default async function RoteirosPatrimoniaisPage(): Promise<React.ReactEle
       <div className="space-y-4">
         <SincronizarContexto />
         {cabecalho}
-        <EstadoVazio titulo="Não foi possível ler os roteiros" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler os roteiros" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

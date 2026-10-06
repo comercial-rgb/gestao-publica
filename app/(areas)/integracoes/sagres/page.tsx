@@ -19,6 +19,7 @@ import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { diaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * TELA SAGRES 2026 (M15, S2) — prévia monoespaçada com régua de posições, lista de validações,
  * download do pacote, e a COMUNICAÇÃO HONESTA (DIRETIVA §7). A tela consome a PORTA (lib/portas/
@@ -286,7 +287,7 @@ export default async function SagresPage({
         <BannerHonesto />
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Dados indisponíveis no momento" : "Não foi possível consultar os períodos com movimento"}
-          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Tente novamente em alguns instantes."}
         />
       </div>
     );
@@ -308,7 +309,7 @@ export default async function SagresPage({
       ug = await ugDaRemessa(diaEscolhido, ugParam, POC_SAGRES);
       preview = await montarPreviewSagres({ ...POC_SAGRES, codUnidadeGestora: ug.codUnidadeGestora, cnpjGerenciadora: ug.cnpjGerenciadora, dia: diaEscolhido, mes: mesEscolhido });
     } catch (e) {
-      erro = e instanceof Error ? e.message : "Não foi possível gerar a prévia.";
+      erro = e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível gerar a prévia.";
     }
   }
 

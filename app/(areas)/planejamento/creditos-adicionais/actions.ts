@@ -11,6 +11,7 @@ import { ehOrigem, errosDoRascunho, type MovimentoRascunho } from "./rascunho";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoEncerrar {
   readonly erro?: string;
   readonly sucesso?: boolean;
@@ -28,7 +29,7 @@ export async function encerrarDecretoAction(_prev: EstadoEncerrar, formData: For
       revalidatePath("/planejamento/creditos-adicionais");
       return { sucesso: true };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível encerrar o decreto." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível encerrar o decreto." };
     }
   });
 }
@@ -104,7 +105,7 @@ export async function cadastrarDecretoAction(
         origemRecurso: origemBruta,
       });
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível criar o decreto." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível criar o decreto." };
     }
 
     try {
@@ -121,7 +122,7 @@ export async function cadastrarDecretoAction(
         })),
       });
     } catch (e) {
-      const motivo = e instanceof Error ? e.message : "erro desconhecido";
+      const motivo = e instanceof Error ? mensagemDoErro(e, "") : "erro desconhecido";
       return {
         erro:
           `O decreto ${numero}/${anoBruto} foi criado, mas os movimentos foram recusados e a dotação ` +
@@ -181,7 +182,7 @@ export async function cadastrarLeiAction(
         dataPublicacao: meioDiaCivil(publicacao),
       });
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível cadastrar a lei." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível cadastrar a lei." };
     }
 
     revalidatePath("/planejamento/creditos-adicionais");
