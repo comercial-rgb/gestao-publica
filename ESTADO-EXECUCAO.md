@@ -1,5 +1,60 @@
 # Estado da execução
 
+## V36 — catálogo da contabilidade e lacunas construídas (05/10/2026; vale sobre a V35 abaixo)
+
+Pedido: `docs/lotes/V36-catalogo-e-lacunas-da-contabilidade.md`. Regime: superfície (vínculos, filtros, telas) e
+profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulações, totais do razão).
+
+| Campo | Valor |
+|---|---|
+| HEAD | `6ee38bdf` em `apresentacao/contabilidade` (este registro vem no commit seguinte) |
+| Catálogo | 619 de 2.037 verificadas (antes 436). As 285 de contabilidade (5.9 e 5.10): 0 sem verificar; 46 validadas, 29 implementadas sem percurso, 124 parciais, 84 ausentes, 2 de terceiro. |
+| Último resultado | Percursos na base fictícia: adiantamentos 19/19, a pagar 7/7, vínculos 15/15, leituras 6/6. Testes dirigidos verdes (abaixo). |
+| Próximo passo | Publicar; rodar a etapa [7] do semeador na base fictícia de produção; seguir pelas lacunas "construir" do levantamento. |
+
+### Como o catálogo foi verificado
+Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra
+código, testes e percursos. A marca diz quando o sistema atende por outro caminho com o mesmo efeito (estorno no lugar
+de alteração; efetivação da proposta no lugar de "disponibilizar"; cota por fonte no lugar de contingenciamento por
+percentual; liberação de cota; dossiê do empenho no lugar de consulta na tela de pagamento) e quando o efeito difere
+(dedução do FUNDEB automática na cota-parte: AUSENTE). Mapa em `scripts/marcacoes-v36-contabilidade.ts`, ligado ao
+`scripts/marcar-catalogo.ts` (id em dois mapas é erro).
+
+### O que passou a funcionar, e a rota
+- **Defeitos corrigidos:**
+  - razão: com filtro de conta, totais e soma da seleção somavam as contrapartidas (diferença sempre zero); agora são
+    da conta (`/contabilidade/lancamentos?conta=`; `m12-totais-da-conta.test.ts`);
+  - relatório gerencial ignorava `?obra=`, `?convenio=`, `?precatorio=`, `?consorcio=`, `?divida=` dos cadastros (cinco
+    links mortos); agora recorta no SQL, imprime o nome do registro e recusa registro inexistente (t6);
+  - dedução do FUNDEB no dia do crédito sempre recusada (teto cortado no início do dia; t7);
+  - prestação de contas de adiantamento e estorno de movimento extra: a mensagem de sucesso sumia com o formulário;
+  - painel novo do encerramento não oferecia a anulação (permissão não carregada; achado pelo percurso).
+- **Adiantamentos** (`/despesa/adiantamentos`): percurso novo depois da guarda da V35 (devolução sem anulação recusada).
+- **Vínculos:** transferência entre UGs, dedução, retenção, recolhimento, pagamento e histórico do dossiê levam ao
+  lançamento; resto a pagar abre o dossiê do empenho; ingressos avulsos passam a ser listados, com estorno pela tela.
+- **Encerramento** (`/despesa/restos-a-pagar`): antes de encerrar, os estimativos com saldo (com a anulação ali) e o
+  atalho para a consistência anual (recorte por tipo no M05, t7).
+- **Cancelamento de resto:** mostra o saldo do empenho em processados e não processados (sem percurso: não há resto).
+- **A pagar:** filtros de fonte e "vence até", na tela e no PDF.
+- **Base fictícia, etapa [7] financeiro:** contas bancárias, FPM com dedução, 30 pagamentos, caução, duodécimo.
+
+### Comandos e resultados
+- Typecheck backend e app-sem-rotas: limpos a cada unidade; scripts: limpo no semeador.
+- `m05-consultas-execucao` 7/7 (t6 vínculo, t7 tipo; mutações acusadas); `m04-deducao-da-receita` 7/7 (t7, mutação);
+  `m12-totais-da-conta` 3/3 (mutação); m07, m09 transferências e m05 dossiê verdes.
+- Intermitência, com o motivo: `m05-consultas-execucao` estourou o gancho de 10 s em 3 testes com 5 arquivos juntos, e
+  1 teste sem nome gravado numa corrida concorrente com o typecheck; sozinho e com saída gravada, 6/6 e 7/7. Carga.
+
+### Pendências reais (nomeadas)
+- Percurso do cancelamento de resto e do dossiê a partir do resto (falta resto inscrito em base local).
+- Fila do art. 141: desempate por número da liquidação como TEXTO ("10" antes de "7"); decidir se é numérico.
+- Conta bancária não tem serviço de cadastro (o semeador cria como o seed de aceite).
+- As lacunas "construir" do levantamento seguem nas evidências de cada cláusula do mapa V36.
+
+### Bloqueado por terceiro ou decisão do ente
+Tabela de vínculos do TCE para PPA/LDO; consulta de NF-e (SEFAZ/Receita); convênio bancário (remessa e retorno);
+eSocial/SEFIP; vínculo PPA-LOA (grão a decidir); entidade como dimensão da receita.
+
 ## V35 — estado em 05/10/2026 (vale sobre o "Resumo atual" abaixo)
 
 Pedido: `docs/lotes/V35-contabilidade-publica-completa.md`: contabilidade pública completa para um município real
