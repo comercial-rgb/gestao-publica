@@ -379,8 +379,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cadastro de audiência pública (schema, módulos, telas). modules/m02b-plurianual/MODULO.md e docs/varreduras/varredura-v18-versao-do-planejamento.md registram como outro domínio; o M21 trata pedido de acesso, não audiência. FALTA: AudienciaPublica com as solicitações da comunidade (bairro, contato, órgão analisador, status).",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.2",
@@ -393,8 +393,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): sem a audiência (5.9.1.1) não há a que anexar. O anexo do M22 existe e funciona (leis orçamentárias usam ANEXAR_ARQUIVO), mas cada dono é uma FK própria em Anexo. FALTA: o dono audiência e a aba de anexos.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.3",
@@ -420,9 +420,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: CADASTRAR_PPA · /planejamento/ppa/estrutura · percurso scripts/smoke-plurianual.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a estrutura do PPA (EixoEstruturante, AreaTematica, PublicoAlvo, Macroacao, função e subfunção em AcaoPpa — prisma/schema/m02b-plurianual.prisma) é cadastrada em /planejamento/ppa/estrutura, com m02b-plurianual.test.ts e scripts/smoke-plurianual.ts. É cadastro livre do ente. FALTA: a tabela de vínculos do TCE como domínio oficial — depende de transcrição de fonte oficial.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.5",
@@ -477,8 +477,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há geração de código reduzido. FichaOrcamentaria.numero é único no exercício mas digitado (lib/portas/recursos/fichas.ts), não composto da classificação; o PPA não tem classificação completa da despesa. FALTA: o código reduzido gerado automaticamente.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.9",
@@ -532,9 +532,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/ppa/[id] · scripts/smoke-plurianual.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): PrevisaoReceitaPpa guarda a previsão por natureza, fonte e ano do quadriênio, com tela /planejamento/ppa/[id] e scripts/smoke-plurianual.ts. FALTA: o rateio automático por percentual de fonte — cada linha natureza x fonte x ano é digitada em valor absoluto; não há tabela de repartição.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.13",
@@ -603,8 +603,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há previsão de transferência financeira no PPA nem na LOA. TransferenciaEntreUgs é o fato realizado, lançado no razão, não a previsão. FALTA: previsão por ano do PPA com a entidade de destino.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.18",
@@ -630,9 +630,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/qdd · scripts/smoke-credito-adicional.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o planejamento é ato do ente (o MODULO do M02b recusa unidade nas tabelas do PPA e LDO); a despesa da LOA tem recorte consolidado ou por unidade no QDD (/planejamento/qdd) e as alterações saem pelos créditos adicionais (smoke-credito-adicional.ts). FALTA: dimensão de entidade na receita prevista e no PPA, previsão de transferência, e seleção de duas ou mais entidades para somar.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.20",
@@ -645,8 +645,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): no PPA a despesa não tem fonte (AcaoPpa só metaFinanceira), logo não há confronto por fonte. O equivalente existe só para a LOA (modules/m12-relatorios/consistencia-loa.ts, POR_FONTE, m12-consistencia-loa.test.ts), sobre a previsão inicial. FALTA: fonte na despesa do PPA, o confronto, o corte por data e a consolidação.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.21",
@@ -700,9 +700,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/ppa/[id], /planejamento/loa · scripts/smoke-plurianual.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): PPA só tem telas de lista e detalhe, sem relatório emissível; a LOA emite PDF e Excel por anexo (/planejamento/loa/pdf, /xlsx). FALTA: relatório gerencial do PPA por fonte, de transferências, e seleção de entidades.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.25",
@@ -742,9 +742,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/ppa/programas · scripts/smoke-plurianual.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): dos onze relatórios, há telas equivalentes para programas detalhados (/planejamento/ppa/programas e /[id]) e para a receita por ano (aba histórico do plano); o corte 'situação até' existe só em /planejamento/alteracoes (m02b-alteracao.test.ts, smoke-alteracoes-do-planejamento.ts). FALTA: os demais relatórios nomeados, a saída impressa e a consolidação de entidades.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.1.28",
@@ -757,8 +757,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a pendência VINCULO-PPA-LOA (modules/m02b-plurianual/MODULO.md) registra que a ficha não se liga à ação do PPA; a LOA não emite o quadro de compatibilidade com as metas da LDO. FALTA: o vínculo e os dois relatórios de compatibilização — depende da decisão do grão do vínculo.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.1.29",
@@ -799,8 +799,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): os demonstrativos existem: RREO Anexo 3 (RCL), Anexo 8 (MDE), Anexo 12 (saúde) e RGF Anexo 1 (pessoal), em modules/m12-relatorios/rreo-anexo3.ts, rreo-anexo8.ts, rreo-anexo12.ts, rgf-anexo1.ts, cada um com teste m12-*.test.ts e tela em /relatorios/rreo e /relatorios/rgf. FALTA: percurso de navegador que confira os percentuais na tela — os conferidores só abrem as rotas.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.9.1.32",
@@ -812,9 +812,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/alteracoes · scripts/smoke-alteracoes-do-planejamento.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): receita orçada e atualizada do PPA por linha de PrevisaoReceitaPpa, com corte por data, em /planejamento/alteracoes (m02b-alteracao.test.ts; smoke-alteracoes-do-planejamento.ts). FALTA: relatório emissível da receita do PPA, o grau da natureza (5.9.1.3) e a seleção por entidade.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.2.1",
@@ -841,8 +841,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a LDO tem trâmite, prioridades, metas anuais e anexos da LRF; não há vínculo com tabela do tribunal. FALTA: a tabela do TCE, que precisa ser transcrita de fonte oficial.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.3",
@@ -939,8 +939,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a LDO não tem previsão de receita, despesa ou transferência (pendência LDO-SEM-PREVISAO-ORCAMENTARIA no MODULO do M02b). Sem previsão, não há o que consolidar por entidade.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.10",
@@ -1009,8 +1009,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): sem receita e despesa orçadas na LDO não há confronto por fonte. O equivalente existe só na LOA (consistencia-loa.ts, POR_FONTE). FALTA: as previsões da LDO e o confronto.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.15",
@@ -1023,8 +1023,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a LDO não tem receita, despesa nem programa de trabalho valorados; o anexo de prioridades (anexos/ldo.ts, m02b-anexos-ldo.test.ts) não é demonstrativo de receitas, de despesas nem programa de trabalho com valor. FALTA: os três relatórios.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.16",
@@ -1037,8 +1037,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cadastro de obras previstas na LDO. Obra (prisma/schema/m11-licitacoes.prisma) é cadastro de contratação, sem início, valor previsto, conservação nem novos projetos. FALTA: o cadastro.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.17",
@@ -1051,8 +1051,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o demonstrativo de obras e conservação do patrimônio não está entre os oito anexos de modules/m02b-plurianual/anexos/ldo.ts, e falta o cadastro que o alimentaria (5.9.2.16).",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.2.18",
@@ -1079,8 +1079,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): consistencia-loa.ts verifica sobre a previsão da LOA MDE >= 25% e Saúde >= 15% da base de impostos (m12-consistencia-loa.test.ts, tela /relatorios/consistencia); pessoal contra a RCL e FUNDEB 70% saem SEM_DADO. FALTA: os três demonstrativos sobre valores orçados como relatório, e tudo sobre a LDO, que não tem valores.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.2.20",
@@ -1177,8 +1177,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): NaturezaReceita não tem relação com fonte; o vínculo nasce em cada ReceitaPrevista, com valor absoluto e sem percentual. FALTA: lista de fontes por natureza com percentual e soma <= 100%.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.5",
@@ -1190,9 +1190,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/fichas · scripts/smoke-ficha-pela-tela.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a despesa tem tela e percurso: /planejamento/fichas cria ficha com função, subfunção, programa, ação, natureza, fonte e exercício da fonte (test/ficha-pela-tela.test.ts; scripts/smoke-ficha-pela-tela.ts). A receita prevista com fonte é criada por criarReceitaPrevista (modules/m02-planejamento/servico.ts), só pela carga da LOA e pela proposta. FALTA: tela para cadastrar a previsão de receita com fonte.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.6",
@@ -1204,9 +1204,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/proposta-orcamentaria · scripts/smoke-proposta-orcamentaria.ts, scripts/percurso-v31-contador.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m02-planejamento/proposta-orcamentaria.ts importa receitas e fichas do exercício de origem com base e percentual escolhidos (m02-proposta-orcamentaria.test.ts; smoke-proposta-orcamentaria.ts, percurso-v31-contador.ts); a base da despesa pode ser dotação inicial, autorizada ou empenhada. FALTA: importar da LDO (que não tem valores), base liquidado ou pago na despesa e arrecadado na receita.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.7",
@@ -1219,8 +1219,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há rateio automático da receita da LOA por percentual de fonte; o valor é informado por linha natureza x fonte. FALTA: o cadastro de 5.9.3.4 e a divisão do valor.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.8",
@@ -1233,8 +1233,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a atualização da receita é a reprevisão, append-only e com sinal (ReceitaReprevista; prevista atualizada = inicial + ajustes), com exercício, natureza, fonte, tipo da receita, valor, motivo e data; tela /planejamento/reprevisao com FormReprevisao.tsx; m02-reprevisao.test.ts. FALTA: tipo da atualização, ato e texto jurídico, data escolhida pelo usuário, e percurso de navegador.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.9",
@@ -1261,8 +1261,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: a reprevisão não tem rascunho nem finalização — ao ser registrada, reprevisar (modules/m02-planejamento/adapter-prisma.ts) grava e lança no razão na mesma transação (lancarReprevisaoDaReceita): aumento em previsão adicional, redução em anulação, dedução na conta do seu tipo (V35). Testes t-razão e t-dedução em m02-reprevisao.test.ts. FALTA: percurso de navegador que registre pela tela e confira o razão.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.9.3.11",
@@ -1274,9 +1274,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/qdd · scripts/smoke-credito-adicional.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /planejamento/qdd mostra dotação inicial, créditos e atualizada por ficha, consolidada ou por unidade (smoke-credito-adicional.ts); /planejamento/comparacao-de-exercicios traz previsão atualizada e dotação autorizada. FALTA: corte 'até a data' na receita (reprevisaoAcumuladaPorNatureza só recebe o exercício) e na despesa, e seleção de entidades.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.12",
@@ -1288,9 +1288,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/fichas · scripts/smoke-ficha-pela-tela.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a ficha tem elemento, destinação (fonte e exercício da fonte) e unidade orçamentária, com tela e percurso (/planejamento/fichas; smoke-ficha-pela-tela.ts; test/ficha-pela-tela.test.ts); totais por unidade e consolidado no QDD. FALTA: o valor pela tela — a ficha nasce com dotação zero por decisão (sem lei não há saldo); o valor entra pela carga da LOA (sem tela, pendência CARGA-DA-LOA-PELA-TELA) ou pela efetivação da proposta.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.13",
@@ -1345,8 +1345,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o decreto de crédito (modules/m03-creditos/servico.ts) aceita N movimentos de suplementação e anulação em fichas e fontes diferentes, vários decretos consomem a mesma lei até o teto (m03.test.ts, m03-limite-da-loa.test.ts); a tela /planejamento/creditos-adicionais tem adicionar e remover movimento. FALTA: o percurso (smoke-credito-adicional.ts) grava só um movimento suplementar — multi-dotação e multi-fonte pela tela não foram exercidos.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.9.3.17",
@@ -1359,8 +1359,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a ficha mostra o histórico dos movimentos de dotação, inclusive crédito, por competência (/planejamento/fichas/[id]); /relatorios/atualizacoes-orcamentarias lista os movimentos de crédito. FALTA: o relatório ordena por número do decreto, não por data, e o histórico da ficha não tem teste dedicado.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.18",
@@ -1373,8 +1373,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a LOA sai consolidada e por unidade orçamentária (consultas-loa.ts, /planejamento/loa); a escrita é recortada por UG. FALTA: entidade como dimensão da previsão de receita e do razão, e seleção de duas ou mais entidades para consolidar receita, despesa, transferência e alteração.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.19",
@@ -1386,9 +1386,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: contador · /planejamento/proposta-orcamentaria · percurso scripts/percurso-v31-contador.ts C.5, C.6 e D.1 (abre 2027, gera o orçamento, confere a fase).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: 'disponibilizar' é a efetivação da proposta (proposta-orcamentaria.ts), que cria receita prevista e fichas do exercício de destino numa transação, com dotação inicial e previsão da receita no razão. Testes em m02-proposta-orcamentaria.test.ts (efetiva; recusa efetivar duas vezes e em exercício fechado). Ressalva: a efetivação não exige a lei aprovada registrada.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.20",
@@ -1414,9 +1414,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/cmd-mba · scripts/smoke-programacao-financeira.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): meta de arrecadação versionada por ato, por fonte e por bimestre (CotaCmd/MBA, registrarVersaoMba, proporMbaDaLoa em modules/m02-planejamento/programacao.ts), tela /planejamento/cmd-mba e confronto com o arrecadado (m02-programacao.test.ts t8). FALTA: grão mensal (o modelo é bimestral), modalidade, entidade, e tela de digitação manual.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.22",
@@ -1429,8 +1429,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a ficha tem número inteiro único por exercício, que faz o papel de código reduzido da despesa (prisma/schema/m02-planejamento.prisma). FALTA: código reduzido na receita prevista e rotina de reordenar os números antes da execução.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.23",
@@ -1443,8 +1443,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há prévia de alteração orçamentária: o decreto grava direto o movimento na dotação; rascunho.ts da tela de créditos é só validação de forma. FALTA: lote de prévias, aprovação, efetivação sem redigitação e impressão de projeto de lei.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.24",
@@ -1457,8 +1457,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): sem prévia (5.9.3.23) não há bloqueio da dotação a anular nem desbloqueio na efetivação; ReservaDotacao do M05 existe mas não se liga a alteração orçamentária.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.25",
@@ -1470,9 +1470,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/proposta-orcamentaria/[id] · scripts/percurso-v31-contador.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m02-planejamento/conferencia-da-proposta.ts confere a proposta da LOA: equilíbrio, despesa por fonte sem lastro, linhas negativas, metas e prioridades da LDO, ações contra o PPA, deduções sem tipo (m02-conferencia-da-proposta.test.ts k1 a k9; tela Conferencia.tsx; percurso-v31-contador.ts C.2 a C.4). FALTA: consistência interna do PPA e da LDO e escolha da peça.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.26",
@@ -1484,9 +1484,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/cmd-mba · scripts/smoke-programacao-financeira.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): cronograma mensal de desembolso por fonte x mês, versionado por ato (proporCmdDaLoa, registrarVersaoCmd; m02-programacao.test.ts t1, t1b), tela /planejamento/cmd-mba e PDF /planejamento/cmd-mba/pdf (smoke-programacao-financeira.ts). FALTA: recorte por entidade e tela para valores manuais por mês (só proposta uniforme da LOA).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.27",
@@ -1498,9 +1498,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/cmd-mba · scripts/smoke-programacao-financeira.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): metas de arrecadação por fonte no MBA, com PDF e confronto com o arrecadado (confrontoMba, m02-programacao.test.ts t8). FALTA: grão mensal (é bimestral), entidade, e tela para digitar valores diferentes por período.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.28",
@@ -1513,8 +1513,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): cada decreto tem 'Imprimir decreto' (app/(areas)/planejamento/creditos-adicionais/decreto/route.ts, montarDecreto em lib/pdf/operacionais.ts) com identificação, itens e totais. FALTA: teste e percurso que exerçam a rota, e o texto jurídico do decreto (o gerador por modelo existe só para CMD e MBA).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.29",
@@ -1526,9 +1526,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/proposta-orcamentaria/[id] · scripts/percurso-v31-contador.ts C.6.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: implantar é efetivar a proposta, única por exercício (EfetivacaoDaProposta); depois disso, ajustar e importar de novo são recusados (m02-proposta-orcamentaria.test.ts). FALTA: recusar inclusão de ficha e receita prevista no exercício já efetivado fora do caminho de crédito e reprevisão.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.30",
@@ -1540,9 +1540,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/proposta-orcamentaria · scripts/percurso-v31-contador.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): elaborarProposta importa fichas e receitas do exercício de origem, com valor de partida, reajuste e fichas exclusivas, sem tocar o razão até a efetivação (m02-proposta-orcamentaria.test.ts; percurso-v31-contador.ts C.1, D.4). FALTA: copiar relacionamentos e configurações (o subtipo da dedução precisa ser registrado de novo — pendência PROPOSTA-SUBTIPO-DA-DEDUCAO).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.31",
@@ -1568,9 +1568,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/cmd-mba · scripts/smoke-programacao-financeira.ts (recusa de 20.000,00 contra cota de 12.500,00).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: a cota é fonte x mês do cronograma, cobrada no empenho dentro da transação (modules/m05-despesa/guard-cmd.ts; m02-programacao.test.ts t2 a t7, concorrência em t7), ligada por ato na tela /planejamento/cmd-mba; o percurso recusa empenho acima da cota. FALTA: cota por entidade ou por dotação.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.33",
@@ -1583,8 +1583,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a cota de despesa tem grão fixo mensal e a meta de receita grão fixo bimestral (programacao-dominio.ts); não há periodicidade configurável.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.34",
@@ -1597,8 +1597,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): os créditos adicionais (modules/m03-creditos) não tocam CotaCmd; mudar cota exige nova versão do cronograma ou liberação. FALTA: atualização automática das cotas pela alteração orçamentária.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.35",
@@ -1611,8 +1611,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a tela e o PDF do cronograma mostram cotas e liberações, sem coluna de realizado (empenhado); o consumido existe só dentro do guard (guard-cmd.ts). FALTA: previsto x realizado das cotas de despesa.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.36",
@@ -1624,9 +1624,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/cmd-mba · scripts/smoke-programacao-financeira.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): existe a alternativa [c]: distribuirEmParcelas divide por 12 com resto na última (programacao-dominio.ts, teste t1), proposta pela tela. FALTA: [a] executado no ano anterior e [b] média dos últimos três anos.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.37",
@@ -1639,8 +1639,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há percentual por mês no cronograma; registrarVersaoCmd aceita cotas manuais sem tela e sem divisão por percentual.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.9.3.38",
@@ -1652,9 +1652,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/cmd-mba · scripts/smoke-programacao-financeira.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: a limitação de empenho do art. 9º da LRF é feita por cota — ligada por ato com motivo e data (registrarEventoLimitacao) e cobrada no empenho (guard-cmd.ts; m02-programacao.test.ts t2 a t5; smoke-programacao-financeira.ts). FALTA: contingenciamento por percentual sobre o orçamento todo ou sobre dotação específica.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.39",
@@ -1666,9 +1666,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: contador · /planejamento/cmd-mba · percurso scripts/smoke-programacao-financeira.ts libera 10.000,00 por ato e o mesmo empenho é aceito.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: liberar é devolver cota do mês por ato (liberarProgramacao, FormLiberacao em /planejamento/cmd-mba), que sobe o teto da fonte; o empenho antes recusado passa a ser aceito (m02-programacao.test.ts t4). Ressalva: libera cota por fonte e mês, não valor contingenciado por percentual (ver 5.9.3.38).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.40",
@@ -1681,8 +1681,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: retirar cota é nova versão do cronograma com valor menor (registrarVersaoCmd; m02-programacao.test.ts t6), e a cota não rola de mês (t3). FALTA: rotina que apure a cota não usada de meses fechados e redistribua nos abertos, e tela de edição por valor.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.41",
@@ -1695,8 +1695,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): há conferência, não rotina que iguale as peças: conferencia-da-proposta.ts compara a proposta com as metas da LDO e as ações do PPA (k6, k8; tela Conferencia.tsx). FALTA: o vínculo PPA-LOA (pendência VINCULO-PPA-LOA) e a rotina que aponte e corrija divergências entre as três peças.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.42",
@@ -1709,8 +1709,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a conferência da proposta mostra despesa x receita por fonte e acusa fontes sem lastro (código FONTES, teste k2); a LOA tem os anexos da Lei 4.320, com o Anexo 8 por natureza declarada da fonte. FALTA: consulta receita x despesa da LOA por fonte, com seleção de entidades e impressão.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.43",
@@ -1723,8 +1723,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /relatorios/atualizacoes-orcamentarias com PDF lista cada movimento de crédito com decreto, lei, origem, ficha, UG, fonte, tipo e situação (test/ui/atualizacoes-orcamentarias.test.ts, N=3 fichas), filtrando por ficha, decreto, fonte e UG. FALTA: filtros de data, tipo de crédito e origem, agrupamento por órgão, programa, ação, função e subfunção, e percurso que aplique filtro.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.44",
@@ -1737,8 +1737,8 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): existem os demonstrativos de execução de MDE (rreo-anexo8.ts), saúde (rreo-anexo12.ts) e pessoal (rgf-anexo1.ts), com teste e tela. FALTA: os mesmos mínimos calculados sobre os valores ORÇADOS (LOA ou proposta) — a conferência da proposta não os traz (pendência PROPOSTA-CONFERENCIA-ANTES-DA-VOTACAO).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.45",
@@ -1765,8 +1765,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a escrituração passa por um funil único (lancarNoRazao em modules/m01-core-contabil/razao.ts, vigiado por m01-funil.test.ts), append-only, balanceada por subsistema, com roteiros fail-closed, leiautes de tribunal em adapters/tribunais/ e demonstrativos no M12. Cláusula global: atendimento é medido nas cláusulas específicas. FALTA: SEFIP e eSocial (leiaute externo ausente).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.2",
@@ -1779,8 +1779,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): empenho, liquidação, pagamento e retenção lançam na mesma transação do fato; o funil único impede escritor paralelo; conferirDotacaoContraRazao confronta razão e dotação. FALTA: o lançamento manual (FormsDoLancamentoManual.tsx, para ajuste e abertura) registra partidas sem origem em cadastro — a proibição vale para o fluxo da despesa, não para toda a escrituração.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.3",
@@ -1806,9 +1806,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: EMPENHAR/LIQUIDAR/PAGAR · /despesa/empenhos, /despesa/liquidacoes, /despesa/pagamentos · percursos scripts/smoke-cadeia-despesa.ts (cadeia com retenção e estorno) e scripts/demonstracao/percurso-execucao-da-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): empenho, liquidação e pagamento lançam por fase, balanceados por subsistema, com roteiro parametrizado (modules/m05-despesa/servico.ts, servico-bloco2.ts; m05.test.ts, m05b.test.ts, m05-concorrencia.test.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.5",
@@ -1821,8 +1821,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o travamento por competência (M16) vale para todo fato porque o funil o consulta (m16-travamento.test.ts t1 a t7b: mês travado rejeita, dia seguinte passa, concorrência não atravessa); exclusão não existe (razão append-only, correção é estorno, que também passa pelo guard). A tela /contabilidade/fechamento-mensal trava o mês (percurso-v33.ts C.4 a C.6). FALTA: percurso que tente lançar em mês fechado pela tela e leia a recusa.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.6",
@@ -1834,9 +1834,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: EMPENHAR · /despesa/empenhos · percurso scripts/demonstracao/percurso-execucao-da-despesa.ts (passo 3 afirma o tipo).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): TipoEmpenho ORDINARIO, GLOBAL e ESTIMATIVO; m05-tipo-do-empenho.test.ts prova a regra do MCASP com N=2 parcelas; FormEmpenho.tsx tem o seletor.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.7",
@@ -1849,8 +1849,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há subempenho no modelo (já registrado em 5.17.98); o global aceita várias liquidações (m05-tipo-do-empenho.test.ts), mas não há a entidade subempenho nem o bloqueio de subempenho sobre global já liquidado.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.8",
@@ -1877,8 +1877,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a dotação do empenho é um select nativo com todas as fichas (FormEmpenho.tsx), sem busca nem filtro por parte da dotação; os outros vínculos usam combobox com busca. FALTA: o filtro.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.10",
@@ -1890,9 +1890,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/empenhos · scripts/demonstracao/percurso-execucao-da-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): exigirSaldo (modules/m05-despesa/adapter-prisma.ts) recusa empenho acima do disponível dentro da transação (m05.test.ts); a tela mostra o disponível atual (percurso-execucao-da-despesa.ts passo 2). FALTA: saldo da dotação até a data de emissão, para empenho retroativo.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.11",
@@ -1905,8 +1905,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há marca de contribuinte autônomo em pessoa, credor, empenho ou liquidação (TipoDePessoa só FISICA e JURIDICA); pessoa física é NAO_CALCULAVEL na retenção. SEFIP e eSocial dependem de leiaute externo.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.12",
@@ -1919,8 +1919,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há ação de duplicar empenho em modules/m05-despesa, app/(areas)/despesa ou lib/portas.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.13",
@@ -1947,8 +1947,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m05-despesa/adiantamentos.ts concede diária e suprimento e lança o controle (classes 7 e 8) pelas contas que o ente declara; a aprovação da prestação baixa o controle e, desde a V35, só aceita devolução coberta pelas anulações (m05-adiantamentos.test.ts t1 a t5; m05-adiantamentos-movimento.test.ts m1 a m3). Modo diferente: o controle nasce na concessão que referencia o empenho, não na emissão do empenho. FALTA: o percurso percurso-v32-areas.ts é anterior à guarda da V35 e precisa rodar de novo.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.15",
@@ -1960,9 +1960,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/anulacoes · scripts/demonstracao/percurso-execucao-da-despesa.ts, scripts/percurso-v33.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): anulação total e parcial de empenho como fato novo, com motivo obrigatório (anulacao-parcial.ts, servico-bloco2.ts; m05-anulacao-parcial.test.ts, m05-dimensoes-das-anulacoes.test.ts), tela /despesa/anulacoes. FALTA: nota de estorno como documento imprimível (só a nota de empenho tem PDF).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.16",
@@ -1974,9 +1974,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/folha/folhas/[id] · scripts/smoke-apropriacao-da-folha.ts, scripts/smoke-decimo-terceiro.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): apropriarFolha (modules/m33-folha/apropriacao.ts) empenha a folha fechada pelo empenhar do M05, por grupo de empenho, nos tipos mensal, complementar, adiantamento do 13º, 13º e adiantamento salarial (m33-apropriacao.test.ts, m33-criterio-do-abatimento.test.ts, m33-adiantamento-salarial.test.ts). FALTA: folha de férias como tipo próprio (depende do Estatuto do município).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.17",
@@ -1988,9 +1988,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/folha/folhas/[id] · scripts/smoke-apropriacao-da-folha.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a apropriação recusa rubrica sem grupo e para dizendo a ficha e a matrícula quando falta saldo, sem duplicar na retomada (m33-apropriacao.test.ts). FALTA: consulta prévia listando todas as irregularidades antes de gravar.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.18",
@@ -2003,8 +2003,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m33-folha/apropriacao-por-competencia.ts lança a provisão mensal do 13º e das férias por vínculo, com encargos patronais; a liquidação baixa o passivo; o acerto de 31/12 zera o 13º (m33-apropriacao-por-competencia.test.ts t1 a t6, dois vínculos, três mutações). FALTA: percurso de navegador em /folha/apropriacao-por-competencia.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.19",
@@ -2016,9 +2016,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/folha/folhas/[id] · scripts/smoke-atesto-da-folha.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a liquidação da folha vem depois da certificação, com segregação (modules/m33-folha/certificacao.ts; smoke-atesto-da-folha.ts); as retenções viram MovimentoExtraorcamentario no pagamento (descontos-da-folha.ts; m07-retencao.test.ts). Modo diferente: a nota extra nasce no pagamento, não na liquidação. FALTA: liquidação automática e reconhecimento da consignação na liquidação.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.20",
@@ -2031,8 +2031,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não existe desmovimentar competência da folha: o MODULO do M33 registra RETIFICACAO-DA-FOLHA; cálculo fechado não se recalcula; desfazer empenhos é anulação pela despesa, um a um.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.21",
@@ -2044,9 +2044,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/folha/folhas/[id] · scripts/smoke-atesto-da-folha.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o fluxo existe em etapas por ator: RH calcula e fecha, contabilidade apropria, atestador certifica, liquidante liquida, tesouraria paga; EmpenhosDaFolha.tsx mostra por empenho a liquidação e o pagamento (smoke-atesto-da-folha.ts, cinco papéis). FALTA: estado final 'folha concluída' quando todos os empenhos estão pagos.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.22",
@@ -2072,9 +2072,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: EMPENHAR · /licitacoes/contratos, /despesa/empenhos · percursos scripts/smoke-contratacao.ts (passo 5) e scripts/smoke-ponte-contratual.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o contrato é cadastrado uma vez no M11 (Contrato) e consumido pelo empenho, pela liquidação, pela ordem de compra e pelo saldo do contrato (m11-integracao.test.ts, m05-concorrencia.test.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.24",
@@ -2086,9 +2086,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/fichas/[id] · scripts/smoke-contratacao.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a reserva de dotação existe (reservarDotacao, tela em /planejamento/fichas/[id]); empenhar à conta da reserva a libera e o disponível cai uma vez (m05.test.ts; smoke-contratacao.ts). FALTA: bloqueio automático na emissão da requisição ou ordem de compra (o M11 não reserva).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.25",
@@ -2114,9 +2114,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/empenhos/[id] · scripts/smoke-cadeia-despesa.ts, scripts/demonstracao/percurso-execucao-da-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m05-despesa/dossie.ts monta a consulta do empenho com origem, dotação, ordem de compra, contrato, processo, liquidações, retenções, pagamentos, anulações nos três níveis, lançamentos e histórico (m05-dossie.test.ts, 11 casos), tela /despesa/empenhos/[id]. FALTA: anexos, assinantes e o processo digital no dossiê.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.27",
@@ -2129,8 +2129,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o detalhe do resto (/despesa/restos-a-pagar/[id]) mostra origem e composição do saldo; operações por smoke-restos-a-pagar-operacoes.ts. FALTA: a consulta inter-relacionada — o resto não abre o dossiê do empenho de origem (contrato, liquidações, retenções, lançamentos, anexos).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.28",
@@ -2156,9 +2156,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos, /financeiro/extraorcamentario · scripts/smoke-cadeia-despesa.ts, scripts/demonstracao/percurso-retencao-calculada.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a retenção gera a nota extra (MovimentoExtraorcamentario) presa ao pagamento, com cálculo de IRRF, INSS e ISS por tabela e perfil do fornecedor (retencao-calculada.ts; m07-retencao*.test.ts). Modo diferente: o momento é o pagamento, não a liquidação (pendência RETENCOES-NA-LIQUIDACAO-DA-PARCELA).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.30",
@@ -2171,8 +2171,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a liquidação exige empenho existente e não tem indicação de despesa sem empenho prévio (zLiquidarInput, Liquidacao).",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.31",
@@ -2184,9 +2184,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/liquidacoes · scripts/demonstracao/percurso-execucao-da-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a liquidação aceita documento fiscal conferido (DocumentoFiscalRecebido: NFE, NFCE, avulsa, CTE, RPS, recibo, outro) ou a nota inline (FormLiquidacao.tsx; percurso-execucao-da-despesa.ts). FALTA: vários documentos por liquidação e controle de pessoa estrangeira.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.32",
@@ -2198,9 +2198,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/licitacoes/documentos-fiscais · scripts/smoke-compras.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): documento fiscal duplicado (emitente+modelo+série+número, e chave de acesso) é recusado com motivo (registrarDocumentoFiscal; m11-documento-fiscal.test.ts t3, t4; smoke-compras.ts), e a liquidação só aceita nota conferida do credor. FALTA: o parâmetro de configuração, e conferência quando a nota é digitada na liquidação sem documento registrado.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.33",
@@ -2213,8 +2213,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: não se altera liquidação — anula-se total ou parcialmente (registro novo) e liquida-se de novo (anulacao-parcial.ts; m05b.test.ts, m05-anulacao-parcial.test.ts t2), na central /despesa/anulacoes. FALTA: percurso que anule liquidação pela tela, e teste e campo de tela para a substituição de documento fiscal (substituiId).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.34",
@@ -2227,8 +2227,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a liquidação de material aceita entradas de material por classe, com perna física (FormLiquidacao.tsx; smoke-cadeia-por-papel.ts, smoke-ent06.ts). FALTA: itens do empenho e da liquidação fora de material, e a carga dos itens do empenho.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.35",
@@ -2241,8 +2241,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): docs/dependencias-externas.md registra a consulta de NF-e na Receita como ausente, não solicitada; o sistema guarda a chave de 44 dígitos e importa o XML com validação estrutural (xml-nfe.ts, xml-nfe.test.ts). FALTA: o estado 'consulta indisponível' nomeado na tela.",
+      "situacao": "DEPENDENCIA_EXTERNA"
     },
     {
       "id": "5.10.1.36",
@@ -2254,9 +2254,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "papel: EMPENHAR/LIQUIDAR/PAGAR/CANCELAR · /despesa/empenhos, /despesa/liquidacoes, /despesa/anulacoes, /despesa/restos-a-pagar · percursos scripts/smoke-cadeia-despesa.ts, scripts/smoke-restos-a-pagar-operacoes.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): empenho, liquidação, pagamento, anulações e cancelamento de restos lançam no razão por roteiro na mesma transação (m05.test.ts, m05b.test.ts, m05-dotacao-razao.test.ts, m08-anulacao-cancelamento.test.ts, m08-controle-dos-restos.test.ts). Ressalva: o estágio facultativo 'em liquidação' não é usado (5.10.1.42).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.37",
@@ -2283,8 +2283,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): nenhuma validação de débito do credor no empenho, na liquidação ou no pagamento; a dívida ativa (M10) e os lançamentos (M34) existem isolados.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.39",
@@ -2297,8 +2297,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): empenho com contrato é recusado na transação por processo não homologado, contrato fora da vigência (com prorrogações) e saldo do contrato insuficiente (adapter-prisma.ts do M05, adapter-m05.ts do M11; m11-integracao.test.ts t2 e t3). FALTA: percurso que exerça as recusas pela tela.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.40",
@@ -2311,8 +2311,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): ao empenhar com contrato exige-se processo homologado e, com reserva, que reserva e contrato sejam do mesmo processo (m11-integracao.test.ts). FALTA: vigência do processo ou da ata, e consistência para empenho ligado a processo sem contrato.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.41",
@@ -2324,9 +2324,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/contabilidade/contas-da-liquidacao · scripts/demonstracao/percurso-v28-cadeias.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: o destino VPD ou ativo é decidido por elemento, declarado pelo ente em ContaDaLiquidacaoPorElemento (conta-da-liquidacao.ts; m01-conta-da-liquidacao.test.ts; tela /contabilidade/contas-da-liquidacao, percurso-v28-cadeias.ts); estoque entra por entradas de material. FALTA: escolha por liquidação e itens da nota para bens permanentes e serviços.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.42",
@@ -2339,8 +2339,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o estágio 'em liquidação' (6.2.2.1.3.02) está DORMENTE em modules/m01-core-contabil/roteiros.ts; não há relatório de empenhos e restos em liquidação. O estágio é facultativo no MCASP.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.43",
@@ -2352,9 +2352,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/fichas/[id] · scripts/percurso-v31-rastreio.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): reserva de dotação por valor e liberação como registro novo, lançadas no razão (reservarDotacao, liberarReserva, dotacao-razao.ts; m05.test.ts, m05-dotacao-razao.test.ts t3), tela /planejamento/fichas/[id] e percurso-v31-rastreio.ts D.1 a D.4. FALTA: bloqueio por percentual e bloqueio distinto de reserva.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.44",
@@ -2381,8 +2381,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o M36 (prisma/schema/m36-frota.prisma) tem veículo, máquina e abastecimento, sem multa nem infrator.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.46",
@@ -2408,9 +2408,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/empenhos/[id] · scripts/demonstracao/percurso-execucao-da-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o dossiê do empenho (/despesa/empenhos/[id]) reúne origem, liquidações, pagamentos, retenções, anulações, lançamentos e um histórico em ordem (m05-dossie.test.ts). FALTA: a linha do histórico levar à rotina de origem (liquidação, pagamento, lançamento).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.48",
@@ -2437,8 +2437,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): docs/dependencias-externas.md registra a consulta de NF-e emitidas contra a entidade na SEFAZ como ausente, não solicitada. Depende de contrato e credencial.",
+      "situacao": "DEPENDENCIA_EXTERNA"
     },
     {
       "id": "5.10.1.50",
@@ -2450,9 +2450,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/licitacoes/obras · scripts/smoke-ent03c.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): cadastro de obras (Obra, cadastrarObra; m11-obras.test.ts) com identificador, descrição, tipo, CEI, órgão, anexos e campos adicionais, tela /licitacoes/obras e percurso smoke-ent03c.ts. FALTA: localização, valor, conta de incorporação, contrato e licitação como campos.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.51",
@@ -2465,8 +2465,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): Empenho.obraId existe e o elemento 51 exige obra ativa (exigirVinculoDeObra; m11-obras.test.ts t3, t3b). FALTA: consulta dos empenhos por obra — o link do detalhe da obra para /relatorios/gerenciais?obra= é morto (o filtro só lê credor e fonte).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.52",
@@ -2478,9 +2478,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/licitacoes/obras/[id] · scripts/smoke-ent03c.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o detalhe da obra mostra dados, órgão, medições com contrato, responsável e aprovação, anexos e planilha orçamentária (m11-medicoes-integracao.test.ts; smoke-ent03c.ts, smoke-planilha-da-obra.ts). FALTA: aditivos, licitação, empenhos e situação da obra.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.53",
@@ -2493,8 +2493,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a obra mostra medido e aprovado; não há valor da obra, valor contratado, empenhado nem percentual executado.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.54",
@@ -2507,8 +2507,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o portal da transparência não tem obras; modules/m13-transparencia/MODULO.md lista obras entre o que não foi feito.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.55",
@@ -2520,9 +2520,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/fichas/[id] · scripts/percurso-v31-rastreio.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o detalhe da ficha traz chave, dotação inicial, saldos, histórico dos movimentos, reservas e empenhos (lib/portas/operacoes-da-ficha.ts; m05-dotacao-razao.test.ts, m03-qdd.test.ts; percurso-v31-rastreio.ts). FALTA: relatório analítico único de dotações com filtro por qualquer campo.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.56",
@@ -2535,8 +2535,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o mecanismo existe (liquidações de capital com valor a incorporar e a reclassificação na incorporação, m10-patrimonio.test.ts), mas não o relatório de bens incorporados e não incorporados com filtros.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.57",
@@ -2548,9 +2548,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/empenhos · scripts/demonstracao/percurso-execucao-da-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/empenhos lista empenhado, liquidado, pago e saldos no recorte autorizado, com CSV, Excel e PDF (m05-consultas-execucao.test.ts); /relatorios/gerenciais filtra por credor e fonte; restos têm filtro e relatório próprio. FALTA: filtros por todos os campos da dotação, obra e licitação, e totalizar sem listar.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.58",
@@ -2563,8 +2563,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): os anexos da Lei 4.320 da LOA saem com valores fixados (anexos/loa.ts; m02b-anexos-loa.test.ts; /planejamento/loa e /transparencia/planejamento/loa/[exercicio]); o RREO Anexo 2 cobre função e subfunção com execução. FALTA: colunas de execução (empenhado, liquidado, pago) nesses quadros e as visões por elemento, ação, órgão e unidade.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.59",
@@ -2577,8 +2577,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há página de audiência com gráficos comparativos; os demonstrativos de base (RGF, RREO, metas da LDO, limites) existem.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.60",
@@ -2590,9 +2590,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/adiantamentos · scripts/demonstracao/percurso-v32-areas.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): concessão e prestação de contas de diária e suprimento existem (adiantamentos.ts), e a solicitação de empenho tem autorização por outro usuário (solicitacao-de-empenho.ts). FALTA: solicitação de diária ou adiantamento em fluxo configurável que termine no empenho.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.61",
@@ -2605,8 +2605,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): concessão, prestação e aprovação (adiantamentos.ts) lançam o controle nas classes 7 e 8 pelas contas declaradas; a despesa segue empenho, liquidação e pagamento (m05-adiantamentos.test.ts t1 a t5; m05-adiantamentos-movimento.test.ts m1 a m3). FALTA: o percurso percurso-v32-areas.ts é anterior à guarda da devolução (V35) e precisa rodar de novo.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.62",
@@ -2619,8 +2619,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há prestação de contas online pela entidade beneficiada: a prestação é registrada por servidor interno; não há perfil externo vinculado à concessão.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.63",
@@ -2633,8 +2633,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): PrestacaoDeContasDoAdiantamento guarda valores e relatório, sem anexo; não há tela filtrada pela entidade logada.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.64",
@@ -2647,8 +2647,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): cada prestação fica registrada append-only; o analista aprova ou rejeita com motivo e a rejeição reabre para nova apresentação (aprovar/rejeitarPrestacaoDeAdiantamento). FALTA: o canal online da entidade (5.10.1.62).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.65",
@@ -2661,8 +2661,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a aprovação gera a baixa automática do controle pelo roteiro declarado, sob trinco e com a devolução conferida (m05-adiantamentos.test.ts t1; m05-adiantamentos-movimento.test.ts). FALTA: a origem online (5.10.1.62).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.66",
@@ -2731,8 +2731,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o prazo é dado por concessão, a situação EM_ATRASO é derivada e concederAdiantamento recusa novo suprimento a quem está em atraso ou com dois em aberto (m05-adiantamentos.test.ts t3, N=2, mutação do art. 69). FALTA: a regra vale só para suprimento (não diária), não há prazo configurável por espécie, e a recusa não foi exercida pela tela.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.71",
@@ -2772,9 +2772,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/contabilidade/lancamentos, /relatorios/livros/diario · percursos scripts/percurso-v31-rastreio.ts e scripts/percurso-v33-cadeias.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): razão de partidas dobradas com funil único (lancarNoRazao; packages/ledger validarLancamento) conferindo débito = crédito por subsistema (m01.test.ts, m01-funil.test.ts, m01-consolidacao.test.ts); Livro Diário em /relatorios/livros/diario (m12-livros.test.ts t1, t5, t7).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.74",
@@ -2815,8 +2815,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a fila de assinaturas do M22 cobre empenho, liquidação, ordem de pagamento e borderô; os movimentos extraorçamentários não têm documento canônico nem ação de assinar.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.77",
@@ -3038,9 +3038,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/planejamento/proposta-orcamentaria · scripts/percurso-v31-contador.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a abertura orçamentária é automática: a ficha grava a dotação inicial e a previsão da receita lança D 5.2.1.1.1 / C 6.2.1.1 (previsao-no-razao.ts, V35); a efetivação da proposta faz as duas numa transação (m02-proposta-orcamentaria.test.ts; percurso-v31-contador.ts). FALTA: abertura por entidade, e previsões anteriores à V35 sem lançamento.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.93",
@@ -3095,8 +3095,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: o superávit por fonte é apurado dos fatos (superavit-por-fonte.ts, consulta-do-superavit.ts, amarrações S1 a S3; m12-superavit-fonte.test.ts), exposto em /contabilidade/superavit e usado como teto pelo M03; a fonte atravessa o exercício nos fatos, não por lançamento de abertura. FALTA: detalhe por conta bancária e percurso da tela.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.97",
@@ -3109,8 +3109,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modules/m12-relatorios/consistencia.ts confere, no escopo anual, balancete, balanço patrimonial, DVP, balanço orçamentário e eliminações intra, com OK, DIVERGE ou SEM_DADO (m12-consistencia.test.ts), tela /relatorios/consistencia. FALTA: ligação com o fluxo de encerramento e percurso próprio.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.98",
@@ -3122,9 +3122,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/restos-a-pagar, /contabilidade/virada-dos-controles · percursos scripts/smoke-encerramento-do-exercicio.ts, scripts/percurso-v33-encerramento.ts, scripts/smoke-virada-dos-controles.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o encerramento é feito em etapas separadas, cada uma com tela e confirmação digitada: encerrar e inscrever restos (encerrarExercicioComRestos, que desde a V35 também lança o controle 5.3/6.3), apurar o resultado (classes 3 e 4) e virar os controles 5 e 6 (m08-encerramento.test.ts, m08-encerramento-cadeia.test.ts, m08-encerramento-controles.test.ts, m08-controle-dos-restos.test.ts). Ressalva: sem painel único de progresso.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.99",
@@ -3137,8 +3137,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cópia de programações de pagamento (lotes e borderôs) para o exercício seguinte; o liquidado e não pago vira resto a pagar.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.100",
@@ -3151,8 +3151,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o encerramento inscreve tudo o que ficou empenhado e não liquidado, sem olhar o tipo; a anulação parcial e o tipo ESTIMATIVO existem (m05-anulacao-parcial.test.ts, m05-tipo-do-empenho.test.ts). FALTA: etapa do encerramento que liste os estimativos com saldo e ofereça anulá-los antes da inscrição.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.101",
@@ -3193,8 +3193,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: não há cópia de notas extraorçamentárias porque o saldo a pagar por consignatário (listarSaldosExtra) não tem recorte de exercício — a obrigação atravessa a virada sem cópia; m07-composicao-do-recolhimento.test.ts t1 recolhe numa guia retenções de 2026 e 2027. FALTA: prova com exercício encerrado e recolhimento no ano novo.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.104",
@@ -3220,9 +3220,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/contabilidade/lancamentos · scripts/percurso-v31-rastreio.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /contabilidade/lancamentos é a consulta analítica do razão com filtros por período, conta, subsistema, origem, fonte e fato, e o detalhe mostra origem, natureza, estorno e autor (m12-livros.test.ts t5; percurso-v31-rastreio.ts). FALTA: conta corrente da MSC no lançamento (resolvida só na exportação), conta corrente do estado e o evento do roteiro.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.106",
@@ -3235,8 +3235,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o balancete dá saldos por conta com anterior, período e acumulado (/relatorios/livros/balancete; m12-livros.test.ts t2 a t4) e o fechamento mensal confere mês a mês. FALTA: saldos por fonte de recursos e visão de doze meses lado a lado.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.107",
@@ -3249,8 +3249,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): SelecaoESoma.tsx em /contabilidade/lancamentos soma débito, crédito e diferença da seleção por subsistema. FALTA: com filtro de conta a soma inclui as contrapartidas (diário devolve todas as partidas), então a diferença dá sempre zero; e não há teste nem percurso da soma.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.108",
@@ -3277,8 +3277,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o Livro Diário existe (diario() em modules/m12-relatorios/livros.ts; /relatorios/livros/diario; m12-livros.test.ts t1). FALTA: termos de abertura e encerramento e a emissão numerada.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.110",
@@ -3290,9 +3290,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/relatorios/livros/razao · scripts/percurso-v33.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o razão por conta tem saldo anterior, movimentos com saldo corrente e saldo final (razaoAnalitico; m12-livros.test.ts t2, t6; /relatorios/livros/razao; percurso-v33.ts C.3). FALTA: termos, agrupamento por data ou tipo de lançamento e resumo por fonte.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.111",
@@ -3305,8 +3305,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o balancete é por conta, sem recorte por fonte; a fonte existe nos fatos (arrecadadoPorFonte, despesaPorFonte, extraorcamentarioPorFonte, restosAPagarPorFonte) mas não há balancete por fonte.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.112",
@@ -3319,8 +3319,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): há dois relatórios equivalentes por fonte: RGF Anexo 5 (rgf-anexo5.ts; m12-rgf-anexo5.test.ts) com disponibilidade bruta, obrigações, restos, consignações e disponibilidade líquida por fonte, e o superávit por fonte (m12-superavit-fonte.test.ts). FALTA: seleção de uma ou mais fontes e percurso.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.113",
@@ -3333,8 +3333,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o recolhimento compõe a guia com as retenções que quita, mas o sistema não emite DARF, GPS, DARF do PASEP nem recibo de retenção de IRRF e ISSQN; o MODULO do M07 declara a guia fora do escopo.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.1.114",
@@ -3346,9 +3346,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/extraorcamentario · scripts/smoke-recolhimento-por-origem.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /financeiro/extraorcamentario lista retenções (com drill ao pagamento e empenho), dispêndios e saldos por consignatário, com PDF (modules/m07-extraorcamentario/consultas.ts; percurso-retencoes-proprias.ts, smoke-recolhimento-por-origem.ts). FALTA: filtros por credor, conta, fonte e empenho, separação emitidas/estornadas/pagas e totalização.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.1",
@@ -3360,9 +3360,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos, /receita/arrecadacoes, /financeiro/movimentacao · percursos scripts/smoke-cadeia-despesa.ts, scripts/smoke-ent03a.ts, scripts/demonstracao/percurso-dinheiro-nas-telas.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): pagamento, recebimento, movimentação bancária e transferência entre UGs lançam no razão na mesma transação do registro (M05, modules/m04-receita, registrarMovimentoBancario; m04.test.ts, m09-movimentacao.test.ts, m09-transferencia-entre-ugs.test.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.2",
@@ -3374,9 +3374,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos · scripts/smoke-cadeia-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos executados com liquidação, empenho, credor, fonte e situação, com CSV (listarPagamentosDaExecucao). FALTA: restos e extraorçamentário na mesma consulta, e as retenções por pagamento.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.3",
@@ -3388,9 +3388,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos · scripts/smoke-cadeia-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a linha do pagamento oferece estorno total ou parcial append-only (FormAnular; smoke-cadeia-despesa.ts) e o dossiê do empenho mostra os lançamentos. FALTA: anexos no pagamento (o M22 não tem esse alvo) e link da linha para o lançamento.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.4",
@@ -3403,8 +3403,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos não tem filtros; o pagamento não tem marca de assinatura, anexo nem finalidade (FUNDEB, FMS).",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.5",
@@ -3417,8 +3417,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há ação de duplicar em pagamento, movimento bancário, receita, dedução ou transferência.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.6",
@@ -3487,8 +3487,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): registrarDeducaoDaReceita (modules/m04-receita/deducao-da-receita.ts; tela /receita/deducoes) registra a dedução pelo bruto com contas do PCASP e estorna com lançamento novo (m04-deducao-da-receita.test.ts t1 a t6). FALTA: subtipos além do FUNDEB (pendentes no MODULO do M04) e percurso de navegador.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.11",
@@ -3501,8 +3501,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o formulário de dedução trata uma natureza, uma fonte e um valor por envio; não há lote de deduções.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.12",
@@ -3514,9 +3514,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/extraorcamentario · percurso scripts/demonstracao/percurso-sagres-receita-extra.ts (recusa CNPJ com dígito errado, registra o válido).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): registrarIngressoExtra (modules/m07-extraorcamentario/extraorcamentario.ts) registra caução, depósito e consignação como receita extra sem tocar o orçamento (m07.test.ts). A retenção do pagamento nasce no pagamento, por desenho.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.13",
@@ -3528,9 +3528,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/extraorcamentario/recolher · percursos scripts/smoke-recolhimento-por-origem.ts, scripts/demonstracao/percurso-dinheiro-nas-telas.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: a nota extra é o dispêndio; /financeiro/extraorcamentario/recolher seleciona várias retenções ou ingressos e gera um recolhimento composto com o vínculo AlocacaoDoRecolhimento (m07-composicao-do-recolhimento.test.ts: exercícios diferentes, composição que não fecha, retenção alheia, repetida, parcial). Ressalva: a seleção é por obrigação (tipo x consignatário).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.14",
@@ -3543,8 +3543,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): os lançamentos são automáticos e simultâneos ao registro de receita, dedução, extra, movimentação e transferência; a MSC é derivada do razão (modules/m14-exports-federais, m14-msc.test.ts). FALTA: prova de que a MSC leva a conta corrente de cada movimentação financeira (dedução, extra, movimentação bancária).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.15",
@@ -3570,9 +3570,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/receita/arrecadacoes/[id] · scripts/smoke-receita-por-fontes.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a receita orçamentária tem link para o lançamento e estorno pela tela (/receita/arrecadacoes/[id]; smoke-receita-por-fontes.ts); a dedução tem estorno append-only. FALTA: link do lançamento na dedução e na receita extra, e estorno do ingresso extra pela tela (estornarMovimentoExtra existe e é testado).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.17",
@@ -3585,8 +3585,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente e não equivalente: a dedução do FUNDEB é registro separado pelo valor do demonstrativo do banco (deducao-da-receita.ts diz que não é 20% calculado); a arrecadação da cota-parte não lança a dedução sozinha.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.18",
@@ -3641,8 +3641,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a movimentação bancária não tem anexo; o M22 não tem o alvo movimento bancário.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.22",
@@ -3655,8 +3655,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o borderô existe para lote de pagamento (gerarBordero), não para movimento bancário (depósito, saque, aplicação).",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.23",
@@ -3668,9 +3668,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/transferencias-entre-ugs · percurso scripts/demonstracao/percurso-v26-cadastros.ts (decide contas, recusa conta alheia, registra dois duodécimos, confere os lançamentos).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): transferência entre UGs concedida e recebida, com contabilização dos dois lados por tabela (modules/m09-tesouraria/transferencia-entre-ugs.ts; m09-transferencia-entre-ugs.test.ts, 9 casos, N=2). Adm. direta e indireta são modeladas por unidade gestora, o que é equivalente.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.24",
@@ -3682,9 +3682,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/transferencias-entre-ugs · scripts/demonstracao/percurso-v26-cadastros.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o estorno da transferência inverte os dois lados, recusa repetição e grava motivo, pela tela (percurso-v26-cadastros.ts; m09-transferencia-entre-ugs.test.ts). FALTA: link para os lançamentos a partir da transferência.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.25",
@@ -3697,8 +3697,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, equivalente: a diária é ConcessaoDeAdiantamento de espécie DIARIA com beneficiário, finalidade, destino, período, quantidade, valor unitário, empenho, ato e prazo (prisma/schema/m05-adiantamentos.prisma; m05-adiantamentos.test.ts t1, N=2), tela /despesa/adiantamentos. FALTA: percurso da espécie diária pela tela; o servidor é texto, não vínculo com o cadastro de pessoal.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.26",
@@ -3711,8 +3711,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): listarDiariasPublicas lê as concessões de diária a cada consulta, com CPF mascarado (lib/portas/diarias-publicas.ts; m05-adiantamentos.test.ts t5), em /transparencia/diarias. FALTA: percurso que conceda uma diária e a veja no portal.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.27",
@@ -3724,9 +3724,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/lotes · scripts/smoke-ent03a.ts (só criação).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o lote aceita vencimento e inclui ordem de pagamento ou nota extra, com ordem cronológica conferida (m09-lote.test.ts); tela /financeiro/lotes. FALTA: nota extra pela tela e percurso de inclusão, fechamento, borderô e retorno.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.28",
@@ -3739,8 +3739,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): contasComSaldo dá saldo por conta e por fonte nas telas de movimentação, lotes e conciliação; o saque é barrado por saldo insuficiente (m09-movimentacao.test.ts). FALTA: o formulário de pagamento não mostra o saldo da conta nem da fonte.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.29",
@@ -3753,8 +3753,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o lote agrupa ordens de pagamento e notas extras por referência (m09-lote.test.ts). FALTA: nota extra pela tela, prova de ordem de resto no lote e percurso de inclusão.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.30",
@@ -3766,9 +3766,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/a-pagar, /despesa/ordem-cronologica · percursos scripts/percurso-v33.ts, scripts/percurso-v33-cadeias.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o vencimento vem da ordem de pagamento e do lote; /despesa/a-pagar o mostra e exporta (m05-a-pagar.test.ts t1); a ordem cronológica é guard no pagamento e no lote (m06-pagamento.test.ts, m06-fila-parcial.test.ts, m09-lote.test.ts t6, t7). Ressalva: sem ordem, sem vencimento.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.31",
@@ -3781,8 +3781,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): gerarBordero gera o borderô de lote fechado (uma conta, vários itens e credores), com hash, anexo e fila de assinatura (m09-lote.test.ts t9 a t13); tela /financeiro/lotes. FALTA: percurso até a geração; o envio ao banco é indisponível (5.10.2.34).",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.32",
@@ -3795,8 +3795,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há leitura de arquivo de retorno bancário (CNAB); processarRetornoBancario baixa itens marcados à mão.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.33",
@@ -3809,8 +3809,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): processarRetornoBancario grava a baixa idempotente por item (m09-lote.test.ts t14, t15). FALTA: a baixa não cria o pagamento nem o lançamento, vem de marcação manual e não tem percurso.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.34",
@@ -3823,8 +3823,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): enviarBordero recusa sempre, nomeando a falta de convênio bancário (BORDERO-CONVENIO-BANCARIO); não há configuração de baixar na geração do borderô.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.35",
@@ -3836,9 +3836,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos · percurso scripts/smoke-cadeia-despesa.ts (anula pela tela e reencontra após recarga).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos com situação e oferece estorno total ou parcial com lançamento novo (m05-anulacao-parcial.test.ts t3 a t5); restos têm a mesma operação em tela própria (smoke-restos-a-pagar-operacoes.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.36",
@@ -3850,9 +3850,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/a-pagar · scripts/percurso-v33.ts C.7, C.8, T.1.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/a-pagar (modules/m05-despesa/a-pagar.ts; m05-a-pagar.test.ts) lista as obrigações por credor com filtros de credor, fase e origem, e mostra fonte e vencimento como colunas; cada linha leva ao pagamento de uma liquidação. FALTA: filtros por vencimento e por fonte, e seleção de vários registros para pagar de uma vez.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.37",
@@ -3878,9 +3878,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/ordens, /despesa/pagamentos · scripts/smoke-cadeia-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a ordem de pagamento autorizada (modules/m05-despesa/ordem-pagamento.ts; m05-ordem-pagamento.test.ts) é consumida pelo pagamento no select 'Ordem autorizada', e grava dataPrevista. FALTA: filtrar as ordens por data de vencimento e pagar várias de uma vez.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.39",
@@ -3893,8 +3893,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): pagamento total e parcial pelo campo valor, com teto no liquidado lido da soma real (m05b.test.ts); estorno total e parcial do pagamento como registro novo (m05-anulacao-parcial.test.ts t3; parcial com retenção recusado com motivo, t4). FALTA: percurso de pagamento parcial e estorno parcial pela tela (o percurso paga e estorna o total).",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.40",
@@ -3906,9 +3906,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/empenhos/[id], /despesa/pagamentos · percursos scripts/smoke-cadeia-despesa.ts (paga com retenção, confere o dossiê, anula, recarrega) e scripts/percurso-v31-rastreio.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: os lançamentos do pagamento são consultados no dossiê do empenho (dossie.ts, seção de lançamentos, com caixa e retenção) e o estorno parte do pagamento, gerando os lançamentos invertidos com o original mantido (m05-dossie.test.ts: estorno devolve 900, não 1.000; m05-anulacao-parcial.test.ts t8).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.41",
@@ -3920,9 +3920,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/ordens · scripts/smoke-cadeia-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a ordem de pagamento existe para liquidação de empenho do exercício, com preparar, autorizar por outra pessoa e cancelar (/despesa/ordens). FALTA: ordem para restos a pagar (pagos sem ordem pelo M08), ordem para despesa extraorçamentária e inclusão de nota extra no lote pela tela.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.42",
@@ -3935,8 +3935,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cheque: Pagamento não guarda meio nem número de cheque, e não existe cheque avulso nem consulta.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.43",
@@ -3963,8 +3963,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): packages/ofx/parser.ts interpreta OFX 1.x (ofx.test.ts, oraculo.test.ts contra corpus) e importarExtrato (modules/m09-tesouraria/extrato.ts; m09-extrato.test.ts) é idempotente e recusa arquivo inválido. FALTA: tela de importação (nenhuma porta chama importarExtrato), formato OFC e impressão do extrato.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.45",
@@ -4047,8 +4047,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): as telas de conciliação não têm filtro por data, descrição, valor ou controle de lançamento (FormsDoVinculo.tsx, periodo/FormsDoPeriodo.tsx).",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.51",
@@ -4061,8 +4061,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): nenhuma coluna de valor é ordenável nas telas de conciliação; a ordem é fixa do serviço.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.52",
@@ -4075,8 +4075,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a baixa praticada é o vínculo extrato x razão em /financeiro/conciliacao, com desfazer e motivo (m09-conciliacao.test.ts, m09-conciliacao-periodo.test.ts); o serviço calcula 'resolvida' para pendência manual. FALTA: a tela não separa baixadas de abertas e nenhum serviço resolve pendência manual.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.53",
@@ -4088,9 +4088,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/financeiro/conciliacao/periodo · scripts/smoke-ent03a.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /financeiro/conciliacao/periodo mostra saldos do extrato e contábil, diferença e pendências (do extrato, do razão, herdadas e declaradas), com a identidade conferida. FALTA: relatório emissível em PDF (pendência CONCILIACAO-PERIODO-PDF).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.54",
@@ -4102,9 +4102,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos, /despesa/empenhos/[id] · percursos scripts/smoke-cadeia-despesa.ts e scripts/demonstracao/percurso-lancamento-e-conciliacao.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, mesmo efeito: o estorno parte do pagamento e os lançamentos invertidos nascem dele, consultáveis no dossiê do empenho (m05-dossie.test.ts); o lançamento manual tem estorno próprio em /contabilidade.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.55",
@@ -4131,8 +4131,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente: o documento de pagamento é o borderô gerado do lote fechado, com hash e fila de assinatura (servico-lote.ts; m09-lote.test.ts t9 a t13). FALTA: tela onde os signatários assinem o borderô (/despesa/assinaturas lista só empenho, liquidação e ordem), link de download e percurso.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.57",
@@ -4145,8 +4145,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): enviarBordero confere as assinaturas antes de tudo e trata fila vazia como incompleta (m09-lote.test.ts t11 a t13, t16); sem convênio, recusa como indisponível com motivo. FALTA: colher as assinaturas do borderô pela tela e percurso; a transmissão depende de convênio bancário.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.58",
@@ -4159,8 +4159,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há demonstrativo diário de receita arrecadada e despesa realizada; /relatorios/livros/diario é o Livro Diário contábil, outra coisa.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.59",
@@ -4173,8 +4173,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /receita/arrecadacoes lista as guias do exercício com natureza, fonte e total, com CSV e PDF (m04-consultas-arrecadacao.test.ts); /transparencia/receitas filtra por fonte e período; arrecadadoPorFonte resume por fonte. FALTA: quadro mês a mês e o resumo por fonte numa tela de relatório.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.60",
@@ -4187,8 +4187,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há relatório de receita mês a mês de três exercícios com fontes e saída em planilha; as consultas trabalham um exercício por vez.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.61",
@@ -4200,9 +4200,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/a-pagar · scripts/percurso-v33.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/a-pagar mostra por credor as obrigações em aberto do exercício e de restos, com PDF; /relatorios/gerenciais lista empenhos por credor e fonte com empenhado, liquidado, pago e a pagar. FALTA: visão única do credor com empenhos e restos, inclusive o já pago, e o histórico de pagamentos.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.62",
@@ -4215,8 +4215,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): integração interna: o lançamento tributário constituído vira receita reconhecida no M04 pelo roteiro (test/lancamento-tributario.test.ts), a arrecadação baixa o crédito (m04-reconhecimento.test.ts t1, t2, t8), o cancelamento baixa por VPD e há inscrição em dívida ativa. FALTA: recolhimento da rede bancária, anistia, isenção e prescrição como tipos próprios, e percurso.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.63",
@@ -4229,8 +4229,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /receita/lancamentos/[loteId] mostra o lote com as inconsistências por lançamento antes de constituir, e constituir com inconsistência é recusado (test/lancamento-tributario.test.ts). FALTA: relatório de críticas emissível e conferência prévia da configuração contábil das receitas.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.64",
@@ -4243,8 +4243,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há restituição de receita (ano anterior por empenho, ano corrente por dedução); a dedução existente é só a do FUNDEB e a anulação de arrecadação não distingue o exercício.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.65",
@@ -4271,8 +4271,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o mecanismo geral por fonte existe: arrecadação com natureza e fonte, despesa com a fonte da ficha, guard da fonte da conta (m05b.test.ts), e publicação automática por fonte em /transparencia/receitas e /transparencia/despesas. FALTA: a vinculação declarada multa de trânsito x fonte x despesa e a publicação dedicada.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.67",
@@ -4284,9 +4284,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/a-pagar · scripts/percurso-v33.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): mesma exigência da 5.10.2.36: /despesa/a-pagar filtra por credor, fase e origem, com fonte e vencimento em coluna. FALTA: filtro por vencimento e por fonte e pagamento simultâneo.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.68",
@@ -4299,8 +4299,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): Anexo (prisma/schema/m22-documentos.prisma) não tem o dono pagamento e FormPagamento.tsx não tem campo de arquivo.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.10.2.69",
@@ -4326,9 +4326,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/assinaturas · percurso scripts/smoke-ent03a.ts (envia, assina, recarrega).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): modo diferente, equivalente: ao enviar o documento para assinatura o operador escolhe os signatários e a ordem (FormEnviarAssinatura); a fila é ordenada e quem fura a ordem é recusado com motivo (m05-assinatura-da-despesa.test.ts t4, t9; m22-documentos.test.ts t12, t13). A configuração é por documento, não cadastro permanente. A assinatura qualificada é recusada com motivo (sem certificado ICP-Brasil).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.71",
@@ -4340,9 +4340,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "rota_verificada": "/despesa/pagamentos · scripts/smoke-cadeia-despesa.ts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos executados com data, credor, fonte e valor líquido. FALTA: filtros de data, credor, fonte e banco, agrupamentos, coluna de banco, opção de listar retenções e PDF dos pagamentos efetuados.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.72",
@@ -4355,8 +4355,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "",
-      "situacao": "NAO_VERIFICADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há portal do fornecedor com usuário e senha; a posição a pagar por credor existe só para o operador interno.",
+      "situacao": "AUSENTE_CONFIRMADO"
     },
     {
       "id": "5.11.1",

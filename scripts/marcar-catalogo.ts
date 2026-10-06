@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { MARCAS_V36 } from "./marcacoes-v36-contabilidade";
 
 /**
  * MARCA `situacao` E `evidencia` NO CATÁLOGO DE EXECUÇÃO — só para o que tem
@@ -2661,7 +2662,13 @@ function main(): void {
   let mudadas = 0;
   let jaIguais = 0;
 
-  for (const [id, marca] of Object.entries(MAPA)) {
+  // Os mapas por rodada moram em arquivos próprios; um id em dois mapas é ERRO, não sobrescrita.
+  for (const id of Object.keys(MARCAS_V36)) {
+    if (id in MAPA) problemas.push(`cláusula ${id} marcada no MAPA e em MARCAS_V36`);
+  }
+  const todas: Readonly<Record<string, Marca>> = { ...MAPA, ...MARCAS_V36 };
+
+  for (const [id, marca] of Object.entries(todas)) {
     const c = porId.get(id);
 
     // ⚠️ CLÁUSULA INEXISTENTE É ERRO, não silêncio. Um id digitado errado marcaria nada e
@@ -2703,7 +2710,7 @@ function main(): void {
   }
 
   console.log(`\nCatálogo: ${cat.clausulas.length} cláusulas.`);
-  console.log(`Mapa: ${Object.keys(MAPA).length} marcações (${mudadas} a mudar, ${jaIguais} já iguais).\n`);
+  console.log(`Mapa: ${Object.keys(todas).length} marcações (${mudadas} a mudar, ${jaIguais} já iguais).\n`);
   for (const [s, n] of Object.entries(placar).sort((a, b) => b[1] - a[1])) {
     const pct = ((n / cat.clausulas.length) * 100).toFixed(1);
     console.log(`  ${s.padEnd(28)} ${String(n).padStart(5)}  (${pct}%)`);
