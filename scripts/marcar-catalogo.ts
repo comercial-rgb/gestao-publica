@@ -592,11 +592,9 @@ const MAPA: Readonly<Record<string, Marca>> = {
   // aparecem na LISTA, uma linha cada. Marcar VALIDADO aqui esconderia justamente o que a cláusula
   // pede a mais.
   "5.10.1.28": {
-    situacao: "PARCIAL",
+    situacao: "IMPLEMENTADO_NAO_VALIDADO",
     evidencia:
-      "O CANCELAMENTO existe para os dois tipos, com roteiro contábil próprio por evento (`RoteiroRestosAPagar`, versionado e fail-closed: sem as contas informadas a operação é RECUSADA nomeando onde resolver), autorização no servidor e saldo conferido dentro da transação. A tela do ato (`/despesa/restos-a-pagar/[id]`) mostra o TIPO da inscrição (Processado / Não processado) e a composição do saldo em pernas brutas antes do líquido; a lista (`/despesa/restos-a-pagar`) traz uma linha por inscrição, com tipo e saldo, filtrável por tipo. ⚠️ O QUE FALTA: a cláusula pede demonstrar o valor processado E o não processado no MOMENTO do cancelamento; como cada inscrição é de um tipo só, o detalhe demonstra o da inscrição que se cancela — os dois juntos existem na lista, não no ato. modules/m08-restos-a-pagar/m08-roteiro-de-restos.test.ts.",
-    rota_verificada:
-      "papel: papel de runtime com as ações de restos a pagar · contexto: clone do banco de percursos, next dev em 3010, 2026-09-26 · passos: /despesa/restos-a-pagar/[id] de um resto PROCESSADO → cancelar sem as contas informadas é RECUSADO nomeando a tela de configuração → contas publicadas → o cancelamento é aceito e o saldo cai de 28.000,00 para 23.000,00 → o estorno do cancelamento devolve · obtido: scripts/smoke-restos-a-pagar-operacoes.ts, 23 passos ok / 0 falhas (8.1 a 8.3 e o estorno).",
+      "O CANCELAMENTO existe para os dois tipos, com roteiro contábil próprio por evento (RoteiroRestosAPagar, fail-closed), autorização no servidor e saldo conferido na transação (m08-roteiro-de-restos.test.ts). V36: a área de operações do resto passa a mostrar, no momento do cancelamento, o saldo do empenho em PROCESSADOS e em NÃO PROCESSADOS (as duas inscrições do mesmo empenho, pela mesma régua saldoDosRestos), e diz que o cancelamento vale só para a inscrição aberta (lib/portas/restos-a-pagar.ts, saldoPorTipoDoEmpenho). FALTA: percurso — nenhuma base local tem resto inscrito.",
   },
   "5.10.2.6": {
     situacao: "VALIDADO_LOCALMENTE",
