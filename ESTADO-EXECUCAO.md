@@ -180,6 +180,42 @@ A cópia local `gestao_publica_esperanca_ficticio_restos` (2026 encerrado) fica 
 Pendências que seguem: leiaute OFC próprio (arquivo real do banco do ente), resumo por fonte no Razão (decisão de
 modelo), contas do roteiro de cancelamento de restos (decisão contábil do ente), e as ausentes que pedem modelo novo.
 
+**Sexta rodada (06/10/2026, pedido "continue pelos que faltaram"), pelas ausentes que não dependem de regra do ente.**
+Catálogo da contabilidade (285): **64 validadas** (eram 57), 28 implementadas sem percurso, 119 parciais, **72 ausentes**
+(eram 79), 2 de terceiro. Catálogo inteiro: 619 de 2.037 verificadas, 124 validadas.
+- **Parcelas da dívida fundada e relatório da dívida** (`363a669e`, M10): o cronograma INFORMADO (`ParcelaDaDivida`,
+  migration `20261106110000_v36_parcelas_da_divida`), colado de uma planilha ou corrigido parcela a parcela
+  (append-only), sob `CADASTRAR_DIVIDA`; o comparativo põe ao lado de cada parcela o amortizado entre o vencimento
+  anterior e o dela, pelo dia civil, sem as amortizações estornadas. O sistema não calcula amortização. Tela
+  `/relatorios/divida` (todas as dívidas e, com `?divida=`, as parcelas), CSV e PDF. Teste 5/5 (N=2, hora de borda,
+  estorno, negação) com cinco mutações; leitor do cronograma colado 3/3 com duas; percurso 6/6. 5.10.1.84 e 5.10.1.86
+  validados. Juros e encargos ficam informados sem comparativo (o empenho de juros não se liga à dívida).
+- **Emendas ao projeto da LOA** (`7085be35`, M02b): emenda sobre a proposta orçamentária não efetivada (data, objetivo,
+  justificativa, vereador, texto jurídico, fichas com acréscimo ou redução), bloqueio de dotação para emenda e sanção
+  total, parcial ou rejeição; só a sanção muda a proposta (ajuste da linha citando a emenda, na mesma transação). Ações
+  novas `CADASTRAR_EMENDA_AO_ORCAMENTO` e `SANCIONAR_EMENDA_AO_ORCAMENTO` (migrations `20261106120000`, só ADD VALUE, e
+  `20261106120100`), atualização de permissões **v44** para quem tem `CADASTRAR_LOA` no global (aplicada na fictícia: 2
+  concessões). Tela `/planejamento/emendas` com recorte (o projeto da fictícia tem 1.054 fichas: a tabela mostra as
+  citadas, as bloqueadas e a consultada). Teste 8/8 com seis mutações; v44 com mutação; percurso 4/4. **Defeito achado
+  pelo percurso:** a confirmação da sanção sumia com o formulário; o componente agora fica montado. 5.9.3.13-15
+  validados; PPA e LDO seguem ausentes com o caminho nomeado (ato de alteração do planejamento; pendência
+  `EMENDA-PPA-LDO`).
+- **Anexos no pagamento e no movimento bancário** (`d9b1789a`, M22): donos novos do `Anexo` (migration
+  `20261106130000`); o do pagamento segue a UG do pagamento, o do movimento é ato do ente. Páginas
+  `/despesa/pagamentos/[id]` (link "documentos" na lista) e `/financeiro/movimentacao/[id]`. Teste 4/4 com três
+  mutações. 5.10.2.68 validado (percurso: anexo, lista, download). 5.10.2.21 implementado sem percurso: a fictícia não
+  tem movimento bancário, e registrar um exige a conta de contrapartida — decisão do ente.
+- Guardas a cada unidade: censo 5/5, `leitura-exige-acao` 5/5, `fronteira-ui` 3/3, `formularios-na-mesma-pagina` 6/6,
+  `m16-atualizacoes` 19/19, `m22-documentos` 21/21, `m02-proposta-orcamentaria` 21/21, `m10-divida` 9/9; typecheck do
+  app e do backend limpos.
+- Dados fictícios criados nesta rodada na base local: dívidas `FIC-FINISA-*` (uma por corrida do percurso) e propostas
+  2027 "de demonstração" (uma por corrida), todas pelos serviços.
+
+Ausentes que seguem e por quê: retorno bancário, cheques e borderô do movimento (arquivo ou convênio do banco);
+prestação de contas online, portal do fornecedor, SEFIP/eSocial, multas de trânsito (outro domínio ou regra do ente);
+importações de peça anterior do PPA/LDO (decisão de cópia × versão); emendas do PPA e da LDO; PPP (não há cadastro);
+DARF/GPS e recibos (leiaute oficial a obter); duplicação de registros (cópia com baixa no original pede regra).
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.
