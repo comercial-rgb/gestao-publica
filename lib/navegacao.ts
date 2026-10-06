@@ -517,6 +517,7 @@ export const TRANSFERENCIAS: readonly RelatorioNav[] = [
 export const DIVIDA: readonly RelatorioNav[] = [
   { href: "/divida/precatorios", numero: "Precatórios", rotulo: "Precatórios Judiciais", descricao: "Ordem de pagamento de precatórios judiciais (CF art. 100)." },
   { href: "/divida/fundada", numero: "Dívida fundada", rotulo: "Dívida Fundada", descricao: "Dívida consolidada: contratação, amortização e atualização monetária." },
+  { href: "/relatorios/divida", numero: "Relatório da dívida", rotulo: "Relatório e parcelas da dívida", descricao: "Saldos de todas as dívidas fundadas e as parcelas informadas ao lado do amortizado." },
   { href: "/divida/ativa", numero: "Dívida ativa", rotulo: "Dívida Ativa", descricao: "Inscrição, atualização e cancelamento da dívida ativa (Lei 4.320, art. 39)." },
   { href: "/divida/ativa/perdas", numero: "Perdas", rotulo: "Ajuste para Perdas da Dívida Ativa", descricao: "Perda esperada declarada com a metodologia, e a apuração que lança a diferença na conta redutora." },
 ];
@@ -881,6 +882,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/relatorios/eliminacoes-intra", rotulo: "Operações intragovernamentais" },
         { href: "/contabilidade/custos", rotulo: "Custos" },
         { href: "/divida/fundada", rotulo: "Dívida fundada" },
+        { href: "/relatorios/divida", rotulo: "Relatório e parcelas da dívida" },
         { href: "/divida/precatorios", rotulo: "Precatórios" },
       ] },
     ],

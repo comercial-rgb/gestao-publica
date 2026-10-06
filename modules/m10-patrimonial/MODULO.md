@@ -47,6 +47,20 @@ a pendência da conjugação segue de pé.
   lock na liquidação** — a mesma classe de bug da ficha (6fa5d4e) e do contrato
   (e0e7e9f). A **dívida** já está travada; a **liquidação** não. Próximo da fila.
 
+### V36 — parcelas informadas e o relatório da dívida (TR 5.10.1.84 e 5.10.1.86)
+
+- **A parcela é PREVISÃO, não fato** (`ParcelaDaDivida`, `parcelas-da-divida.ts`): número, vencimento, principal e
+  encargos, como o contrato diz. Não toca razão nem saldo, e o sistema **não calcula amortização** — Price, SAC ou
+  carência são do contrato. Append-only: corrigir é gravar outra com `substituiDeId`; viva é a não substituída.
+  Autoridade: `CADASTRAR_DIVIDA` (o cronograma é parte do contrato).
+- **O comparativo é por período, não quitação**: cada parcela recebe o amortizado entre o vencimento anterior
+  (exclusive) e o dela (inclusive), pelo dia civil do ente, sem as amortizações estornadas; o pago depois do último
+  vencimento tem linha própria. O pagamento não diz a que parcela se refere — atribuir pagamento a parcela seria
+  decisão do usuário, e não foi tomada.
+- **Juros e encargos sem comparativo**: a guarda do empenho só aceita dívida no grupo 6, então o pagamento de juros
+  não se liga à dívida. Relaxar isso é decisão de modelo (contábil), não de tela.
+- Tela `/relatorios/divida` (todas as dívidas, e `?divida=` com as parcelas), CSV e PDF.
+
 ## Bloco 5 — DÍVIDA ATIVA (TR 5.83, 4.63; art. 39 da Lei 4.320/64)
 
 O crédito do ente contra o **contribuinte** — o espelho da dívida consolidada.

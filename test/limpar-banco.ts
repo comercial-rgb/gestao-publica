@@ -286,6 +286,7 @@ export const TABELAS = [
   "RoteiroDividaAtiva",
   "DividaAtiva",
   // M10 — dívida consolidada
+  "ParcelaDaDivida",
   "MovimentoDivida",
   "RoteiroDivida",
   "DividaConsolidada",

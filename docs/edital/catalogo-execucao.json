@@ -2927,8 +2927,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "Verificado: NÃO há modelo de PARCELA da dívida. O que existe são os movimentos (ingresso, atualização, amortização) e o saldo derivado deles — não há cronograma previsto contra o qual comparar o pago. ⚠️ Marcar a ausência é o que expõe a lacuna: o comparativo previsto × pago que a cláusula pede é impossível sem o previsto, e construir o relatório antes do modelo produziria uma coluna sempre vazia. Pendência DIVIDA-PARCELAS.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "evidencia": "V36: as PARCELAS da dívida passam a existir como cronograma INFORMADO (ParcelaDaDivida, migration aditiva 20261106110000_v36_parcelas_da_divida): número, vencimento, principal e encargos, coladas de uma planilha (uma por linha, todas as linhas ruins recusadas com o número delas) ou corrigidas uma a uma — append-only, a corrigida sai do cronograma e fica no histórico. Sob CADASTRAR_DIVIDA (nenhuma ação nova). O COMPARATIVO põe ao lado de cada parcela o que os pagamentos amortizaram entre o vencimento anterior e o dela, pelo dia civil do ente, sem as amortizações estornadas; o pago depois do último vencimento tem linha própria. O sistema não calcula amortização (a regra é do contrato). modules/m10-patrimonial/parcelas-da-divida.ts; m10-parcelas-da-divida.test.ts 5/5 (N=2 dívidas, hora de borda 23h30 do último dia do mês, estorno, negação com motivo), cinco mutações acusadas; leitor do cronograma colado com duas mutações. Tela /relatorios/divida?divida=, percurso scripts/percurso-v36-parcelas-da-divida.mts 6/6 na base fictícia. Limite nomeado: juros e encargos ficam informados sem comparativo, porque o empenho de juros não se liga à dívida no modelo atual.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.85",
@@ -2955,8 +2955,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "Verificado: não há relatório gerencial de dívida (nem de uma, nem do conjunto). O `saldoDaDividaEm` responde a pergunta por API e é testado, mas nenhuma tela ou impressão o expõe. Pendência DIVIDA-RELATORIO.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "evidencia": "V36: relatório gerencial em /relatorios/divida — todas as dívidas fundadas com ingressado, atualizado, amortizado e saldo (a mesma soma de movimentos com o sinal de SINAL_MOVIMENTO_DIVIDA, estornos incluídos) e o total; escolhida uma dívida, o comparativo das parcelas. CSV das duas tabelas e PDF (/relatorios/divida/pdf, todas ou ?divida=), com dívida inexistente respondendo 404 com o motivo. Leitura sob CONSULTAR_DIVIDA; quem não a tem vai para /sem-acesso e o PDF responde 403 (lib/portas/relatorio-da-divida.ts; percurso scripts/percurso-v36-parcelas-da-divida.mts 6/6).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.87",

@@ -954,6 +954,8 @@ export type NomeDeServico =
   | "conferirDocumentoFiscal"
   | "cancelarDocumentoFiscal"
   | "cadastrarDivida"
+  | "informarParcelasDaDivida"
+  | "substituirParcelaDaDivida"
   | "registrarAtualizacaoMonetaria"
   | "estornarMovimentoDivida"
   | "cadastrarDividaAtiva"
@@ -1614,6 +1616,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cancelarDocumentoFiscal: "CANCELAR_DOCUMENTO_FISCAL",
 
   cadastrarDivida: "CADASTRAR_DIVIDA",
+  // V36 — o cronograma de parcelas é parte do contrato da dívida: a mesma autoridade que a cadastra.
+  informarParcelasDaDivida: "CADASTRAR_DIVIDA",
+  substituirParcelaDaDivida: "CADASTRAR_DIVIDA",
   registrarAtualizacaoMonetaria: "REGISTRAR_ATUALIZACAO_MONETARIA",
   estornarMovimentoDivida: "ESTORNAR_MOVIMENTO_DIVIDA",
 
@@ -3558,5 +3563,6 @@ export const FORA_DO_CENSO: Record<string, string> = {
   arrecadadoPorFonteMesAMes: "leitura (V36 — a receita arrecadada mês a mês por fonte, composta de arrecadadoPorNaturezaFonte; não muta)",
   dispendiosEfetuados: "leitura (V36 — os dispêndios extraorçamentários do período, com o estorno descontado, para o relatório de pagamentos; não muta)",
   contasContabeisDeDisponibilidade: "leitura (V36 — as contas analíticas do grupo 1.1.1 que o cadastro da conta bancária oferece; não muta)",
+  comparativoDaDivida: "leitura (V36 — as parcelas informadas da dívida ao lado do que os pagamentos amortizaram; não muta)",
   lerExtratoImportado: "leitura (V36 — as linhas de um extrato importado, com a situação derivada dos vínculos, para consulta e impressão; não muta)",
 };

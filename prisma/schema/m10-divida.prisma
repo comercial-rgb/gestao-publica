@@ -68,6 +68,7 @@ model DividaConsolidada {
   @@index([tipo])
   anexos           Anexo[]
   camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeDivida")
+  parcelas         ParcelaDaDivida[]
 }
 
 /// Os SEIS tipos — os três fatos e os três estornos, desde o dia 1. A lição do
@@ -147,4 +148,38 @@ model RoteiroDivida {
 
   criadoEm  DateTime @default(now())
   criadoPor String
+}
+
+// ----------------------------------------------------------------------------
+// ParcelaDaDivida — V36 (TR 5.10.1.84): o cronograma INFORMADO pelo usuário.
+//
+// A parcela é PREVISÃO, não fato: não toca o razão nem o saldo da dívida, que continuam sendo a soma dos
+// movimentos. O sistema não calcula amortização (Price, SAC...) — o cronograma vem do contrato, como o
+// credor o mandou, e o comparativo põe ao lado o que os pagamentos efetivamente amortizaram.
+//
+// APPEND-ONLY: corrigir uma parcela é gravar outra com `substituiDeId` apontando a corrigida (uma
+// substituição por parcela, pelo índice único). Viva é a parcela que ninguém substituiu — DERIVADO.
+// ----------------------------------------------------------------------------
+model ParcelaDaDivida {
+  id       String            @id @default(cuid())
+  dividaId String
+  divida   DividaConsolidada @relation(fields: [dividaId], references: [id])
+
+  numero Int
+  /// Dia civil do vencimento, gravado ao meio-dia civil do ente (packages/datas, meioDiaCivil).
+  vencimento DateTime
+
+  valorPrincipal Decimal  @db.Decimal(18, 2)
+  /// Juros e encargos previstos. Informativo: o pagamento de juros não se liga à dívida no modelo atual.
+  valorEncargos  Decimal? @db.Decimal(18, 2)
+
+  substituiDeId String?            @unique
+  substituiDe   ParcelaDaDivida?   @relation("SubstituicaoDeParcela", fields: [substituiDeId], references: [id], onDelete: Restrict)
+  substituidaPor ParcelaDaDivida?  @relation("SubstituicaoDeParcela")
+  motivo        String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([dividaId, numero])
 }
