@@ -146,11 +146,14 @@ export default async function LancamentosPage({
   // ⚠️ OS TOTAIS VÊM DO MÓDULO. Somar aqui pareceria inofensivo — é um `reduce` — e seria
   // a segunda aritmética do razão: no dia em que o corte por natureza mudar lá, a tela
   // continuaria somando do jeito antigo, e discordaria do relatório com a mesma certeza.
-  const totais = totaisPorSubsistema(lancamentos);
+  // Com filtro de conta, os totais e a soma da seleção são DA CONTA: o lançamento vem inteiro
+  // (as contrapartidas aparecem ao abri-lo), mas somá-lo inteiro dá diferença zero sempre.
+  const contaDaSoma = conta !== "" ? conta : undefined;
+  const totais = totaisPorSubsistema(lancamentos, contaDaSoma);
   const selecionaveis: readonly LancamentoSelecionavel[] = lancamentos.map((l) => ({
     id: l.id,
     rotulo: `${l.numeroControle} · ${dataBr(l.data)} · ${l.origemTipo}${l.estornoDeId !== null ? " (estorno)" : ""} — ${l.historico.slice(0, 70)}`,
-    partidas: l.partidas.map((p) => ({
+    partidas: l.partidas.filter((p) => contaDaSoma === undefined || p.conta === contaDaSoma).map((p) => ({
       tipo: p.tipo,
       subsistema: p.subsistema,
       valor: p.valor,
@@ -216,7 +219,7 @@ export default async function LancamentosPage({
       {totais.length === 0 ? null : (
         <div className="rounded-[var(--radius-lg)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-5 shadow-[var(--shadow-card)]">
           <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
-            Totais do recorte, por subsistema
+            {contaDaSoma === undefined ? "Totais do recorte, por subsistema" : `Totais da conta ${contaDaSoma} no recorte`}
           </h2>
           <div className="mt-3 overflow-x-auto">
             <table className="w-full min-w-[30rem] text-xs">
@@ -243,13 +246,14 @@ export default async function LancamentosPage({
             </table>
           </div>
           <p className="mt-2 text-xs text-[color:var(--color-ink-2)]">
-            A diferença esperada em cada subsistema é zero. Com filtro por conta, a consulta pode
-            conter apenas um lado do lançamento, e a diferença reflete o filtro aplicado.
+            {contaDaSoma === undefined
+              ? "A diferença esperada em cada subsistema é zero."
+              : "Somadas só as partidas desta conta: a diferença é o movimento líquido dela no recorte (débito menos crédito)."}
           </p>
         </div>
       )}
 
-      {linhas.length === 0 ? null : <SelecaoESoma lancamentos={selecionaveis} />}
+      {linhas.length === 0 ? null : <SelecaoESoma lancamentos={selecionaveis} {...(contaDaSoma !== undefined ? { conta: contaDaSoma } : {})} />}
 
       {linhas.length === 0 ? (
         <EstadoVazio

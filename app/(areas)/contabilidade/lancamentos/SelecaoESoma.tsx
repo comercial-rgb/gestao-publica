@@ -39,8 +39,11 @@ function emReais(centavos: bigint): string {
 
 export function SelecaoESoma({
   lancamentos,
+  conta,
 }: {
   readonly lancamentos: readonly LancamentoSelecionavel[];
+  /** Quando a consulta filtra uma conta, as partidas recebidas são só as dela. */
+  readonly conta?: string;
 }): React.ReactElement {
   const [marcados, setMarcados] = useState<ReadonlySet<string>>(new Set());
 
@@ -87,7 +90,8 @@ export function SelecaoESoma({
       </div>
 
       <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
-        Os totais são apresentados <strong>por subsistema</strong>, com débito e crédito separados.
+        Os totais são apresentados <strong>por subsistema</strong>, com débito e crédito separados
+        {conta !== undefined ? <>, somando só as partidas da conta <strong>{conta}</strong></> : null}.
       </p>
 
       <div className="mt-3 max-h-64 overflow-y-auto rounded-[var(--radius-md)] border border-[color:var(--color-border)]">

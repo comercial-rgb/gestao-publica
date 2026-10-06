@@ -173,13 +173,21 @@ export interface TotalDeSubsistema {
  *
  * ⚠️ SOMA EM CENTAVOS INTEIROS. `Number` sobre dinheiro é como o float entra num sistema
  * contábil, e ele entra pela porta do relatório — que é onde ninguém procura.
+ *
+ * ═══ ⚠️ COM `conta`, SÓ AS PARTIDAS DESSA CONTA ═══
+ * O filtro por conta do Diário devolve o lançamento INTEIRO (as contrapartidas vêm junto, e
+ * precisam vir: é o que a tela mostra ao abrir o lançamento). Somar tudo isso dava débito igual
+ * a crédito em todo subsistema, sempre — uma diferença zero que nada dizia sobre a conta
+ * consultada. Com `conta`, a soma é a da conta: o débito, o crédito e o saldo do recorte nela.
  */
 export function totaisPorSubsistema(
-  lancamentos: readonly LancamentoDoDiario[]
+  lancamentos: readonly LancamentoDoDiario[],
+  conta?: string
 ): readonly TotalDeSubsistema[] {
   const acc = new Map<string, { d: bigint; c: bigint }>();
   for (const l of lancamentos) {
     for (const p of l.partidas) {
+      if (conta !== undefined && p.conta !== conta) continue;
       const atual = acc.get(p.subsistema) ?? { d: 0n, c: 0n };
       const centavos = BigInt(p.valor.replace(".", ""));
       if (p.tipo === "DEBITO") atual.d += centavos;
