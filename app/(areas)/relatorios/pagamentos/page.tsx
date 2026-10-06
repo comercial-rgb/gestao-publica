@@ -20,6 +20,7 @@ import {
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { formatarDocumento } from "../../../../packages/documento/index";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V36 — RELATÓRIO DE PAGAMENTOS EFETUADOS (TR 5.10.2.71 e 5.10.2.2). Os pagamentos do período — do exercício e de
  * restos a pagar —, com o pago, o retido e o líquido de cada um, filtrados por credor, fonte e conta bancária e
@@ -49,7 +50,7 @@ export default async function PagamentosEfetuadosPage({
         <PageHeader titulo="Pagamentos efetuados" subtitulo="Pagamentos do período, do exercício e de restos a pagar" />
         <EstadoVazio
           titulo={erro instanceof EscopoDeLeituraError ? "Esta unidade não está no seu acesso" : erro instanceof ExercicioIlegivelError ? "Exercício inválido" : "Não foi possível ler os pagamentos"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

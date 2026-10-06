@@ -281,6 +281,8 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
 export const RELATORIOS_GERENCIAIS: readonly RelatorioNav[] = [
   { href: "/relatorios/gerenciais", numero: "Gerenciais", rotulo: "Relatórios Gerenciais", descricao: "Consulta de empenhos por credor e fonte, com exportação em PDF e CSV." },
   { href: "/relatorios/pagamentos", numero: "Pagamentos", rotulo: "Pagamentos Efetuados", descricao: "Pagamentos do período, do exercício e de restos a pagar, com retido e líquido, filtros e agrupamento." },
+  { href: "/relatorios/movimento-diario", numero: "Diário", rotulo: "Movimento Diário", descricao: "Receita arrecadada e despesa paga num dia, por natureza, fonte e credor, em PDF." },
+  { href: "/relatorios/receita-mensal", numero: "Receita", rotulo: "Receita Mês a Mês", descricao: "Receita arrecadada por fonte, mês a mês, nos três últimos exercícios, com planilha." },
   { href: "/relatorios/credor", numero: "Credor", rotulo: "Ficha do Credor", descricao: "Numa página, os empenhos, o que está a liquidar e a pagar e os pagamentos de um credor." },
 ];
 
@@ -747,6 +749,8 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/relatorios/gerenciais", rotulo: "Consulta por credor e fonte" },
         { href: "/relatorios/pagamentos", rotulo: "Pagamentos efetuados" },
         { href: "/relatorios/credor", rotulo: "Ficha do credor" },
+        { href: "/relatorios/movimento-diario", rotulo: "Movimento diário" },
+        { href: "/relatorios/receita-mensal", rotulo: "Receita mês a mês" },
       ] },
     ],
   },

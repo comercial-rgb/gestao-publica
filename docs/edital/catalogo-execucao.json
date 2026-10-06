@@ -4158,9 +4158,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há demonstrativo diário de receita arrecadada e despesa realizada; /relatorios/livros/diario é o Livro Diário contábil, outra coisa.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-receita-e-diario.mts: pago do dia e receita do dia batem com leituras independentes do domínio; PDF 200.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: Relatórios › Movimento diário (/relatorios/movimento-diario?dia=): a receita arrecadada no dia por natureza e fonte (arrecadadoPorNaturezaFonte do M04 na janela civil do dia, líquida das anulações) e a despesa paga no dia, do exercício e de restos, com retido e líquido (pagamentosEfetuados); PDF do mesmo recorte, dia malformado recusado com 400. lib/portas/receita-e-despesa-do-periodo.ts, lib/pdf/movimento-diario.ts. Modo de execução: a despesa realizada é a PAGA no dia (a realização financeira); empenho e liquidação do dia estão nas consultas da execução.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.59",
@@ -4186,9 +4186,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há relatório de receita mês a mês de três exercícios com fontes e saída em planilha; as consultas trabalham um exercício por vez.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-receita-e-diario.mts: o total de 2026 da tela bate com listarArrecadacoes (R$ 2.787.852,25).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: Relatórios › Receita mês a mês (/relatorios/receita-mensal): a receita arrecadada por fonte de recursos, mês a mês, nos três últimos exercícios até o do contexto, com o total de cada ano e a planilha (CSV). modules/m04-receita/arrecadado-mes-a-mes.ts compõe arrecadadoPorNaturezaFonte por mês (sinal da anulação e guia repartida de lá); m04-arrecadado-mes-a-mes.test.ts (duas fontes, dois exercícios, hora de borda na virada do mês, anulação no mês dela; mutação para janela UTC acusada).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.61",

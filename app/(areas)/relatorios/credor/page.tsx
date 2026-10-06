@@ -10,6 +10,7 @@ import { credoresDoExercicio, lerFichaDoCredor, type FichaDoCredor } from "../..
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { formatarDocumento } from "../../../../packages/documento/index";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V36 — A FICHA DO CREDOR (TR 5.10.2.61). Numa página: os empenhos do exercício com empenhado, liquidado e pago; o que
  * está a liquidar e a pagar, do exercício e de restos; e os pagamentos efetuados no exercício, com retido e líquido.
@@ -44,7 +45,7 @@ export default async function FichaDoCredorPage({
         <PageHeader titulo="Ficha do credor" subtitulo="Empenhos, valores a pagar e pagamentos de um credor" />
         <EstadoVazio
           titulo={erro instanceof EscopoDeLeituraError ? "Esta unidade não está no seu acesso" : erro instanceof ExercicioIlegivelError ? "Exercício inválido" : "Não foi possível ler o credor"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
