@@ -1,3 +1,4 @@
+import { toMoney } from "../../packages/contracts/index.js";
 import { cliente, PortaSemBancoError } from "./cliente";
 import {
   anularCancelamentoRestosAPagar,
@@ -190,6 +191,13 @@ export interface RestoAPagarDetalhe extends RestoAPagarNaLista {
   readonly estornoDeCancelamento: string;
   readonly empenhoData: Date;
   readonly empenhoValor: string;
+  /**
+   * V36 — O SALDO DO EMPENHO EM CADA TIPO, no momento da consulta. Um empenho pode ter as duas inscrições (a parte
+   * liquidada é processada, a não liquidada é não processada), e quem cancela precisa ver as duas: cancelar o não
+   * processado de um empenho que ainda tem processado a pagar é decisão diferente de cancelar o resto inteiro.
+   * Cada saldo vem de `saldoDosRestos`, a mesma régua da lista; tipo sem inscrição sai como null, não zero.
+   */
+  readonly saldoPorTipoDoEmpenho: { readonly PROCESSADO: string | null; readonly NAO_PROCESSADO: string | null };
 }
 
 /** O detalhe de UMA inscrição: as pernas brutas, o líquido e a origem. */
@@ -217,6 +225,13 @@ export async function lerRestoAPagar(inscricaoId: string): Promise<RestoAPagarDe
 
   const s = await saldoDosRestos(prisma, i.id);
   const pessoa = await nomeDoCredor(prisma, i.empenho.credorCpfCnpj);
+  const irmas = await prisma.inscricaoRestosAPagar.findMany({ where: { empenhoId: i.empenho.id }, select: { id: true, tipo: true } });
+  const saldoPorTipoDoEmpenho: { PROCESSADO: string | null; NAO_PROCESSADO: string | null } = { PROCESSADO: null, NAO_PROCESSADO: null };
+  for (const irma of irmas) {
+    const saldo = irma.id === i.id ? s.saldo : (await saldoDosRestos(prisma, irma.id)).saldo;
+    const atual = saldoPorTipoDoEmpenho[irma.tipo];
+    saldoPorTipoDoEmpenho[irma.tipo] = (atual === null ? saldo : saldo.plus(toMoney(atual))).toFixed(2);
+  }
 
   return {
     inscricaoId: i.id,
@@ -239,6 +254,7 @@ export async function lerRestoAPagar(inscricaoId: string): Promise<RestoAPagarDe
     situacao: situacaoDe(s),
     empenhoData: i.empenho.data,
     empenhoValor: i.empenho.valor.toFixed(2),
+    saldoPorTipoDoEmpenho,
   };
 }
 

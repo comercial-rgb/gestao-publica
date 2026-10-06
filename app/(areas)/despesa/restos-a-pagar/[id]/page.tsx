@@ -14,6 +14,7 @@ import {
 import { lerContasBancarias } from "../../../../../lib/portas/pagamento";
 import { PainelDeAcoes } from "./AcoesDoResto";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
+import { formatarMoeda } from "../../../../../lib/format/moeda";
 import { diaCivilBr } from "../../../../../packages/datas/index";
 
 /** DETALHE de uma inscrição de restos a pagar. Server Component, força-dinâmica. */
@@ -206,6 +207,15 @@ async function AcoesDaInscricao({
   return (
     <div className="mt-8 grid gap-4">
       <h2 className="text-base font-semibold text-[color:var(--color-ink)]">Operações</h2>
+
+      {/* V36 — no momento de cancelar, o que o empenho ainda tem em cada tipo (a cláusula pede os dois à vista). */}
+      <p className="text-sm text-[color:var(--color-ink-2)]" data-saldo-por-tipo>
+        Saldo deste empenho em restos a pagar agora: processados{" "}
+        <strong>{d.saldoPorTipoDoEmpenho.PROCESSADO === null ? "sem inscrição" : `R$ ${formatarMoeda(d.saldoPorTipoDoEmpenho.PROCESSADO).texto}`}</strong>
+        {" · "}não processados{" "}
+        <strong>{d.saldoPorTipoDoEmpenho.NAO_PROCESSADO === null ? "sem inscrição" : `R$ ${formatarMoeda(d.saldoPorTipoDoEmpenho.NAO_PROCESSADO).texto}`}</strong>
+        . O cancelamento abaixo vale só para esta inscrição ({d.tipo === "PROCESSADO" ? "processados" : "não processados"}).
+      </p>
 
       {pendentes.length > 0 ? (
         <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
