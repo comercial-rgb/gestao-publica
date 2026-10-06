@@ -239,6 +239,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
   // distinção que o ADR de 2026-09-10 registrou — e esconder a segunda dentro da primeira
   // faria o fechamento parecer um detalhe de uma tela de consulta.
   { href: "/financeiro/conciliacao/periodo", numero: "Períodos", rotulo: "Conciliação por período", descricao: "Abertura, justificativa de pendências e encerramento da conciliação mensal." },
+  { href: "/financeiro/conciliacao/extratos", numero: "Extratos", rotulo: "Extratos importados", descricao: "Os extratos bancários como o banco os mandou, com a situação de cada lançamento e a impressão." },
   { href: "/financeiro/movimentacao", numero: "Movimentação", rotulo: "Movimentação Bancária", descricao: "Depósitos, saques, aplicações, resgates, rendimentos e tarifas bancárias." },
   { href: "/financeiro/lotes", numero: "Lotes", rotulo: "Lotes e Borderô", descricao: "Agrupamento de ordens de pagamento, borderô e baixa pelo retorno bancário." },
 ];
@@ -744,6 +745,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Conciliação", itens: [
         { href: "/financeiro/conciliacao", rotulo: "Conciliação bancária" },
         { href: "/financeiro/conciliacao/periodo", rotulo: "Conciliação por período" },
+        { href: "/financeiro/conciliacao/extratos", rotulo: "Extratos importados" },
       ] },
       { rotulo: "Consultas", itens: [
         { href: "/relatorios/gerenciais", rotulo: "Consulta por credor e fonte" },

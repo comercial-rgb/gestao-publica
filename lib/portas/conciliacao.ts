@@ -4,6 +4,7 @@ import { serializar, toMoney, type Money } from "../../packages/contracts/index.
 import { conciliacaoBancaria } from "../../modules/m09-tesouraria/conciliacao";
 import { estornarVinculo, vincular } from "../../modules/m09-tesouraria/vinculo";
 import { importarExtrato } from "../../modules/m09-tesouraria/extrato";
+import { lerExtratoImportado } from "../../modules/m09-tesouraria/extrato-importado";
 import { comEscritaAutenticada } from "./sessao";
 import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/dominio";
 import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
@@ -546,4 +547,107 @@ export async function importarExtratoOfxPelaTela(input: { readonly contaBancaria
     if (r.jaImportado) return `Este arquivo já tinha sido importado na conta ${conta.codigo}. Nada mudou.`;
     return `Extrato importado na conta ${conta.codigo}: ${String(r.inseridas)} lançamento(s) novo(s)${r.puladas > 0 ? `, ${String(r.puladas)} já existente(s) de importação anterior` : ""}.`;
   });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V36 — OS EXTRATOS IMPORTADOS, para consulta e impressão
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface ExtratoDaLista {
+  readonly id: string;
+  readonly conta: ContaConciliada;
+  readonly origem: "OFX" | "API_BB";
+  readonly periodoInicio: Date;
+  readonly periodoFim: Date;
+  readonly importadoPor: string;
+  readonly importadoEm: Date;
+  readonly quantidadeLinhas: number;
+}
+
+export interface LinhaDoExtratoParaImpressao {
+  readonly data: Date;
+  readonly fitid: string;
+  readonly documento: string | null;
+  readonly memo: string;
+  readonly natureza: "CREDITO" | "DEBITO";
+  readonly valor: string;
+  readonly vinculado: string;
+  readonly situacao: "CONCILIADA" | "PARCIAL" | "PENDENTE";
+}
+
+export interface ExtratoParaImpressao extends ExtratoDaLista {
+  readonly hashOrigem: string;
+  /** O banco e o final da conta que o PRÓPRIO arquivo declarou; nulo no extrato que não declarava. */
+  readonly bancoDoArquivo: string | null;
+  readonly contaDoArquivoMascarada: string | null;
+  readonly linhas: readonly LinhaDoExtratoParaImpressao[];
+  readonly totalCreditos: string;
+  readonly totalDebitos: string;
+  readonly movimentoLiquido: string;
+}
+
+const SELECAO_DA_CONTA = {
+  codigo: true, descricao: true, banco: true, agencia: true, digitoAgencia: true, conta: true, digitoConta: true,
+  contaContabil: { select: { codigo: true } },
+} as const;
+
+function contaDaLista(c: {
+  codigo: string; descricao: string; banco: string | null; agencia: string | null; digitoAgencia: string | null;
+  conta: string | null; digitoConta: string | null; contaContabil: { codigo: string } | null;
+}): ContaConciliada {
+  const id = identificacaoMascarada(c);
+  return { codigo: c.codigo, descricao: c.descricao, banco: c.banco, agenciaMascarada: id.agencia, contaMascarada: id.conta, contaContabil: c.contaContabil?.codigo ?? "" };
+}
+
+/** Os extratos cujo período termina no exercício (o mesmo recorte do painel), do mais recente ao mais antigo. */
+export async function listarExtratosImportados(p: { readonly exercicio: number }): Promise<readonly ExtratoDaLista[]> {
+  await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
+  const extratos = await cliente().extratoBancario.findMany({
+    where: { periodoFim: { gte: janelaCivilDoAno(p.exercicio).inicio, lt: janelaCivilDoAno(p.exercicio + 1).inicio } },
+    orderBy: [{ periodoFim: "desc" }, { criadoEm: "desc" }],
+    select: {
+      id: true, origem: true, periodoInicio: true, periodoFim: true, importadoPor: true, criadoEm: true,
+      contaBancaria: { select: SELECAO_DA_CONTA },
+      _count: { select: { lancamentos: true } },
+    },
+  });
+  return extratos.map((e) => ({
+    id: e.id,
+    conta: contaDaLista(e.contaBancaria),
+    origem: e.origem,
+    periodoInicio: e.periodoInicio,
+    periodoFim: e.periodoFim,
+    importadoPor: e.importadoPor,
+    importadoEm: e.criadoEm,
+    quantidadeLinhas: e._count.lancamentos,
+  }));
+}
+
+/** Um extrato importado inteiro, com a situação de cada linha na conciliação. `null` quando o id não existe. */
+export async function lerExtratoParaImpressao(id: string): Promise<ExtratoParaImpressao | null> {
+  await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
+  const prisma = cliente();
+  const e = await lerExtratoImportado(prisma, id);
+  if (e === null) return null;
+  const conta = await prisma.contaBancaria.findUniqueOrThrow({ where: { id: e.contaBancariaId }, select: SELECAO_DA_CONTA });
+  return {
+    id: e.id,
+    conta: contaDaLista(conta),
+    origem: e.origem,
+    periodoInicio: e.periodoInicio,
+    periodoFim: e.periodoFim,
+    importadoPor: e.importadoPor,
+    importadoEm: e.importadoEm,
+    quantidadeLinhas: e.linhas.length,
+    hashOrigem: e.arquivoHash,
+    bancoDoArquivo: e.bancoDoArquivo,
+    contaDoArquivoMascarada: e.contaDoArquivo === null ? null : mascararConta(e.contaDoArquivo),
+    linhas: e.linhas.map((l) => ({
+      data: l.data, fitid: l.fitid, documento: l.documento, memo: l.memo, natureza: l.natureza,
+      valor: serializar(l.valor), vinculado: serializar(l.vinculado), situacao: l.situacao,
+    })),
+    totalCreditos: serializar(e.totalCreditos),
+    totalDebitos: serializar(e.totalDebitos),
+    movimentoLiquido: serializar(e.movimentoLiquido),
+  };
 }

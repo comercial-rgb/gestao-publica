@@ -492,6 +492,10 @@ export default async function ConciliacaoBancariaPage({
         <Link href="/financeiro/conciliacao/periodo" className="text-[color:var(--color-primary)] underline">
           Conciliação por período
         </Link>
+        . Os extratos importados, linha a linha e com impressão, estão em{" "}
+        <Link href={`/financeiro/conciliacao/extratos?exercicio=${exercicio}`} className="text-[color:var(--color-primary)] underline">
+          Extratos importados
+        </Link>
         .
       </p>
     </div>
