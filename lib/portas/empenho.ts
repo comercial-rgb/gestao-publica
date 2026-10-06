@@ -193,6 +193,8 @@ export interface FichaDaTela {
   readonly fonteCodigo: string;
   readonly naturezaCodigo: string;
   readonly naturezaDescricao: string;
+  /** V36 — função.subfunção.programa.ação e o título da ação (busca da dotação). */
+  readonly classificacao: string;
   readonly saldoDisponivel: string;
 }
 
@@ -213,6 +215,7 @@ export async function listarFichasParaEmpenho(p: {
     fonteCodigo: f.fonteCodigo,
     naturezaCodigo: f.naturezaCodigo,
     naturezaDescricao: f.naturezaDescricao,
+    classificacao: f.classificacao,
     saldoDisponivel: f.saldoDisponivel.toFixed(2),
   }));
 }

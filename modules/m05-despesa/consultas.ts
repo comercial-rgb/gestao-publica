@@ -1245,6 +1245,11 @@ export interface FichaNaLista {
   readonly naturezaCodigo: string;
   readonly naturezaDescricao: string;
   readonly codElemento: string;
+  /**
+   * V36 — a classificação funcional e programática da ficha, em texto: "função.subfunção.programa.ação — título
+   * da ação". É o que deixa o operador achar a dotação por qualquer parte dela (TR 5.10.1.9), não só pelo número.
+   */
+  readonly classificacao: string;
   /** Cache — orientação para a tela, nunca decisão. Ver acima. */
   readonly saldoDisponivel: Money;
 }
@@ -1265,6 +1270,10 @@ export async function listarFichas(
       naturezaDespesa: {
         select: { codigoCompleto: true, descricao: true, codElemento: true },
       },
+      funcao: { select: { codigo: true } },
+      subfuncao: { select: { codigo: true } },
+      programa: { select: { codigo: true } },
+      acao: { select: { codigo: true, descricao: true } },
     },
   });
 
@@ -1277,6 +1286,7 @@ export async function listarFichas(
     naturezaCodigo: f.naturezaDespesa.codigoCompleto,
     naturezaDescricao: f.naturezaDespesa.descricao,
     codElemento: f.naturezaDespesa.codElemento,
+    classificacao: `${f.funcao.codigo}.${f.subfuncao.codigo}.${f.programa.codigo}.${f.acao.codigo} — ${f.acao.descricao}`,
     saldoDisponivel: toMoney(f.saldoDisponivel.toFixed(2)),
   }));
 }

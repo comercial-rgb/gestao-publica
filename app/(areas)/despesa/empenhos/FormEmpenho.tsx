@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CampoReferenciado, type OpcaoDoSeletor } from "../../../../components/ui/CampoReferenciado";
+import { fichasQueCasam } from "./busca-da-ficha";
 import { CampoCpfCnpj, CampoValor } from "../../../../components/ui/Campos";
 import {
   CLASSE_BOTAO_PRIMARIO,
@@ -29,8 +30,12 @@ export interface FichaParaEmpenho {
   readonly fonteCodigo: string;
   readonly naturezaCodigo: string;
   readonly naturezaDescricao: string;
+  /** V36 — unidade e classificação, para a busca da dotação (opcionais: outros formulários usam a mesma forma). */
+  readonly unidade?: string;
+  readonly classificacao?: string;
   readonly saldoDisponivel: string;
 }
+
 
 type Categoria = "" | "FORNECIMENTO_BENS" | "LOCACAO" | "PRESTACAO_SERVICOS" | "REALIZACAO_OBRAS";
 const CATEGORIAS: readonly Exclude<Categoria, "">[] = ["FORNECIMENTO_BENS", "LOCACAO", "PRESTACAO_SERVICOS", "REALIZACAO_OBRAS"];
@@ -120,6 +125,7 @@ export function FormEmpenho({
   const ref = useRef<HTMLFormElement>(null);
 
   const [fichaId, setFichaId] = useState("");
+  const [buscaFicha, setBuscaFicha] = useState("");
   const [credor, setCredor] = useState<{ doc: string; nome: string; versao: number }>({ doc: "", nome: "", versao: 0 });
   const [credorManual, setCredorManual] = useState(false);
   const [valor, setValor] = useState<{ cru: string; versao: number }>({ cru: "", versao: 0 });
@@ -186,6 +192,8 @@ export function FormEmpenho({
   }
 
   const fichaEscolhida = fichas.find((f) => f.id === fichaId);
+  // A ficha escolhida continua na lista mesmo que a busca a exclua: o select não pode perder o valor que tem.
+  const fichasVisiveis = ((casam) => (fichaEscolhida !== undefined && !casam.includes(fichaEscolhida) ? [fichaEscolhida, ...casam] : casam))(fichasQueCasam(fichas, buscaFicha));
   // V22: escolhida uma solicitação, os vínculos são os DELA (enviados como estão; o M05 confere).
   const solicitacaoEscolhida: Readonly<Record<string, string>> | null = origens.solicitacao === null ? null : (origens.solicitacao.dados ?? {});
 
@@ -320,12 +328,26 @@ export function FormEmpenho({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
+          <span className={ROTULO}>Buscar a dotação</span>
+          <input
+            type="search"
+            value={buscaFicha}
+            onChange={(e) => setBuscaFicha(e.target.value)}
+            placeholder="Número, natureza, fonte, unidade, programa ou ação"
+            className={CAMPO}
+            data-busca-da-ficha
+          />
+          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]" data-fichas-encontradas>
+            {fichasVisiveis.length === fichas.length ? `${String(fichas.length)} fichas` : `${String(fichasVisiveis.length)} de ${String(fichas.length)} fichas`}
+          </span>
+        </label>
+        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Ficha (dotação)</span>
           <select name="fichaId" required value={fichaId} onChange={(e) => setFichaId(e.target.value)} className={CAMPO}>
             <option value="" disabled>
               Escolha a ficha…
             </option>
-            {fichas.map((f) => (
+            {fichasVisiveis.map((f) => (
               <option key={f.id} value={f.id}>
                 {f.numero} — {f.naturezaCodigo} {f.naturezaDescricao} · fonte {f.fonteCodigo} · disponível R${" "}
                 {formatarMoeda(f.saldoDisponivel).texto}

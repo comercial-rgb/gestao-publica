@@ -121,6 +121,8 @@ export default async function EmpenhosPage({
           fonteCodigo: f.fonteCodigo,
           naturezaCodigo: f.naturezaCodigo,
           naturezaDescricao: f.naturezaDescricao,
+          unidade: `${f.unidadeCodigo} ${f.unidadeNome}`,
+          classificacao: f.classificacao,
           saldoDisponivel: f.saldoDisponivel,
         }))}
         ordemPadrao={typeof sp["ordemId"] === "string" ? sp["ordemId"] : ""}

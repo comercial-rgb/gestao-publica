@@ -66,6 +66,9 @@
     // V6.2 — importa `lib/portas/opcoes-referenciadas` (resolução bundler); mesma troca medida acima.
     "test/ficha-pela-tela.test.ts",
     "test/ui/resumo-da-folha.test.ts",
+    "test/ui/nota-de-estorno.test.ts",
+    "test/ui/livros-com-termos.test.ts",
+    "test/ui/busca-da-ficha.test.ts",
     "test/ui/portal-sem-encargos.test.ts",
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
