@@ -121,9 +121,21 @@ produção: migration aplicada, v43 aplicada (1 concessão, ao administrador); c
 extra, ficha do credor, receita mês a mês, movimento diário e conciliação com 200; PDFs do movimento diário e dos
 pagamentos com 200. A conciliação de produção não tem extrato importado (estado vazio; o filtro aparece com extrato).
 
+**Quarta rodada (06/10/2026, extratos reais e a finsystem):** os dez OFX reais da Instasolutions em Downloads (Itaú,
+SGML sem fechamento; Sicredi, folhas fechadas) foram lidos pelo `packages/ofx` e por uma implementação independente
+no algoritmo da finsystem (`services/extrato_parser.rb`): 2.309 lançamentos, concordância linha a linha. Medição
+local; nenhum arquivo real entrou no repositório (os testes usam a FORMA medida com números inventados). Achados e
+corrigidos (`65e09003`, publicado em `e935df16`, backup `esperanca-antes-v36d-20261006T135928Z.dump`):
+- a importação não conferia a conta do arquivo com a conta escolhida — agora BANKID contra o banco cadastrado e ACCTID
+  ligado à conta na primeira importação (migration `20261106100000_v36_conta_do_arquivo_do_extrato`, aditiva);
+- o mesmo arquivo em outra conta respondia "já importado" nomeando a conta errada — agora recusa nomeando onde está;
+- PDF, ZIP, página salva e o leiaute OFC próprio recusados com o motivo; .ofc com conteúdo OFX aceito pela tela.
+Percurso `percurso-v36-extrato-da-conta-certa.mts` 4/4. Guardas apontadas pela sessão gestao-publica-86 (leitura do
+movimento diário, id literal) corrigidas; `test/ui` 306/309, as 3 do `contexto-ug` sob carga (4/4 sozinho).
+
 **Pendências nomeadas depois desta rodada:**
-- **Formato OFC:** sem arquivo real nem especificação no repositório; construir de memória seria inventar o leiaute.
-  Precisa de um .ofc do banco do ente.
+- **Leiaute OFC próprio (raiz `<OFC>`):** a finsystem também não tem leitor dele (trata .ofc como OFX), e não há
+  arquivo real. Recusado com o motivo; precisa de um arquivo OFC do banco do ente.
 - **Resumo por fonte no Razão:** o razão não tem fonte (a partida só carrega a ficha); a fonte vem dos fatos, conferida
   contra o razão no superávit por fonte. Resumir no Razão seria uma segunda aritmética — decisão de modelo, não de tela.
 - **Percurso do cancelamento de resto:** a base fictícia não tem resto inscrito (exigiria encerrar 2026 nela).
