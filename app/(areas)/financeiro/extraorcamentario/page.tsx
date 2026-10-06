@@ -278,15 +278,12 @@ export default async function ExtraorcamentarioPage({
                     </td>
                     <td className="py-1.5 text-right"><ValorMonetario valor={g.valor} /></td>
                     <td className="py-1.5 pl-4">
-                      {g.estornado ? (
-                        <span className="text-xs text-[color:var(--color-ink-2)]">estornado</span>
-                      ) : (
-                        <FormEstornoDoMovimento
-                          movimentoId={g.id}
-                          acao="estornar-ingresso"
-                          explicacao={`Estornar o ingresso de ${g.tipoCodigo} de ${g.consignatario}. O original continua na lista, e o saldo a repassar diminui.`}
-                        />
-                      )}
+                      <FormEstornoDoMovimento
+                        movimentoId={g.id}
+                        estornado={g.estornado}
+                        acao="estornar-ingresso"
+                        explicacao={`Estornar o ingresso de ${g.tipoCodigo} de ${g.consignatario}. O original continua na lista, e o saldo a repassar diminui.`}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -330,14 +327,11 @@ export default async function ExtraorcamentarioPage({
                       voltar; agora isso se faz aqui, na linha do recolhimento que se está vendo.
                     */}
                     <td className="py-1.5 pr-4">
-                      {d.estornado ? (
-                        <span className="text-xs text-[color:var(--color-ink-2)]">estornado</span>
-                      ) : (
-                        <FormEstornoDoRecolhimento
-                          movimentoId={d.id}
-                          rotulo={`o recolhimento de ${d.tipoCodigo} para ${d.consignatario}`}
-                        />
-                      )}
+                      <FormEstornoDoRecolhimento
+                        movimentoId={d.id}
+                        estornado={d.estornado}
+                        rotulo={`o recolhimento de ${d.tipoCodigo} para ${d.consignatario}`}
+                      />
                     </td>
                   </tr>
                 ))}

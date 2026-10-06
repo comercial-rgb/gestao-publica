@@ -18,13 +18,16 @@ import { estornarRecolhimentoAction, type EstadoDoEstornoExtra } from "./actions
 export function FormEstornoDoRecolhimento({
   movimentoId,
   rotulo,
+  estornado,
 }: {
   readonly movimentoId: string;
   readonly rotulo: string;
+  readonly estornado: boolean;
 }): React.ReactElement {
   return (
     <FormEstornoDoMovimento
       movimentoId={movimentoId}
+      estornado={estornado}
       acao="estornar-recolhimento"
       explicacao={`Estornar ${rotulo}. O recolhimento original continua na lista, e o valor volta a constar como a recolher.`}
     />
@@ -40,22 +43,41 @@ export function FormEstornoDoMovimento({
   movimentoId,
   acao,
   explicacao,
+  estornado,
 }: {
   readonly movimentoId: string;
   readonly acao: "estornar-recolhimento" | "estornar-ingresso";
   readonly explicacao: string;
+  /** O movimento já tem estorno: não se oferece estornar de novo. */
+  readonly estornado: boolean;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoEstornoExtra, FormData>(
     estornarRecolhimentoAction,
     {}
   );
 
+  // ⚠️ ESTE COMPONENTE FICA MONTADO DEPOIS DO SUCESSO. Se a página trocasse a linha estornada por um texto, a
+  // mensagem de confirmação sumiria junto com o formulário e o operador veria a tela mudar sem resposta (medido
+  // no percurso da V36). Estornado, ele mostra a confirmação do próprio ato, ou só a situação para quem chega depois.
+  if (estornado) {
+    return estado.sucesso !== undefined ? (
+      <p
+        className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-2 py-1 text-xs text-[color:var(--color-status-ok-fg)]"
+        data-resultado-da-acao={acao}
+      >
+        {estado.sucesso}
+      </p>
+    ) : (
+      <span className="text-xs text-[color:var(--color-ink-2)]">estornado</span>
+    );
+  }
+
   return (
     <details data-estorno={movimentoId}>
       <summary className="cursor-pointer text-xs text-[color:var(--color-primary)] hover:underline">
         Estornar
       </summary>
-      <form action={action} className="mt-2 space-y-2" data-acao={acao}>
+      <form action={action} className="mt-2 space-y-2" data-acao={acao} data-movimento={movimentoId}>
         <ChaveDeComando />
         <input name="movimentoId" type="hidden" value={movimentoId} />
         <p className="text-xs text-[color:var(--color-ink-2)]">{explicacao}</p>
