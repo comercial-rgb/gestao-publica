@@ -1,4 +1,5 @@
 import { Badge } from "../../../../../components/ui/Badge";
+import { BotaoPdf } from "../../../../../components/ui/BotaoPdf";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import {
@@ -207,6 +208,8 @@ export default async function PeriodoDeConciliacaoPage({
                       : "aberta"}
                   </Badge>
                 </span>
+                {/* V36: o relatório do período em PDF, do mesmo leitor desta tela. */}
+                <BotaoPdf href={`/financeiro/conciliacao/periodo/pdf?id=${detalhe.id}`} />
               </div>
 
               <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-3">

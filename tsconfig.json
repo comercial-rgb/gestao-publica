@@ -71,6 +71,7 @@
     "test/ui/busca-da-ficha.test.ts",
     "test/ui/pagamentos-efetuados-pdf.test.ts",
     "test/ui/ofx-texto.test.ts",
+    "test/ui/conciliacao-pdf.test.ts",
     "test/ui/portal-sem-encargos.test.ts",
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
