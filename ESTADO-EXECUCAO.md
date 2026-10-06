@@ -84,6 +84,52 @@ por `ProtectSystem=strict`) e o crashpad aborta. Reproduzido no servidor com `sy
 (atual FALHOU, novo gerou), corrigido em `lib/pdf/gerar.ts` (HOME/XDG no temporário privado, `--crash-dumps-dir`,
 launch falho não fica guardado). Depois: DMPL, Diário, Razão e pagamentos em PDF com 200 em produção.
 
+### Terceira rodada (06/10/2026, pedido "continue pelas pendencias que faltaram")
+Catálogo da contabilidade (285): **57 validadas** (eram 51), 28 implementadas sem percurso, 119 parciais, 79 ausentes,
+2 de terceiro. Catálogo inteiro: 619 de 2.037 verificadas, 117 validadas.
+- **Cadastro de conta bancária pela tela** (`/financeiro/contas-bancarias`, `963b4e9f`): ação nova
+  `CADASTRAR_CONTA_BANCARIA` (migration `20261106090000_v36_acao_do_cadastro_de_conta_bancaria`, só `ADD VALUE`;
+  atualização de permissões v43, só a quem administra permissões no global). Conta contábil analítica do grupo 1.1.1
+  escolhida da tabela, fonte padrão como primeira linha do rol, conta física repetida recusada
+  (`modules/m09-tesouraria/cadastro-de-conta.ts`; `m09-cadastro-de-conta.test.ts` 6/6, duas mutações).
+  **Defeito achado pelo percurso:** a tela carregava entidades e fontes com as consultas da contabilidade e da receita,
+  e a tesoureira (só financeiro) recebia "acesso negado"; agora as opções vêm sob `CONSULTAR_FINANCEIRO` e cada
+  formulário aparece a quem tem a ação. Percurso 4/4.
+- **Dispêndios extraorçamentários no relatório de pagamentos** (`32da6bc5`): seção própria, fora do total, CSV e PDF;
+  só com a leitura do financeiro do ente, e com unidade a seção diz o motivo (`modules/m07-extraorcamentario/
+  dispendios-efetuados.ts`, 3/3, mutação). A confirmação do recolhimento mostrava "10.00" — agora em reais. Percurso 4/4
+  (registra um recolhimento pela tela).
+- **Ficha do credor** (`/relatorios/credor`, `6b73a5bf`): empenhos, a liquidar e a pagar, pagamentos, compondo as
+  leituras das telas próprias. Percurso 5/5 por concordância com o relatório de pagamentos, o a pagar e o banco.
+- **Movimento diário** (`/relatorios/movimento-diario`, PDF) e **receita mês a mês por fonte, três exercícios**
+  (`/relatorios/receita-mensal`, CSV) (`8b966b51`): `modules/m04-receita/arrecadado-mes-a-mes.ts` sobre
+  `arrecadadoPorNaturezaFonte` (1/1, hora de borda, mutação para UTC acusada). Percurso 5/5 contra leituras
+  independentes.
+- **Conciliação:** filtros de período, texto/FITID, valor e tipo do registro, e ordem pela coluna de valor nos dois
+  lados (`d4b4c875`; `test/ui/conciliacao-filtro.test.ts` 5/5; percurso 4/4). Recorte de exibição: a soma do motor fica.
+- **Integrado da sessão gestao-publica-86** (`f6b17dfb`, merge limpo): recusa em português em vez do JSON do zod
+  (234 pontos), credor digitado sem escolher, número sugerido livre no empenho, na liquidação e na anulação. O censo
+  acusou `proximoNumeroLivre` sem classificação — classificado como leitura (`4e9547b1`). Também classificadas quatro
+  leituras desta V36 que o censo não tinha visto (eu não o rodara nas rodadas anteriores).
+Testes desta rodada: m09-cadastro-de-conta, m16-censo, m16-atualizacoes (v43 com teste próprio), m07-dispendios,
+m04-arrecadado-mes-a-mes, test/ui (pagamentos-pdf, conciliacao-filtro, fronteira-ui, recusa-em-portugues,
+campo-referenciado), m05-numerador: verdes. Typecheck do app e do backend limpos depois do merge.
+
+**Publicado em 06/10/2026 (manhã):** `57152508` na 3001 (Actions 37469617408 verde; `tipos:conferir` aprovado com
+as rotas geradas). Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36c-20261006T131432Z.dump`. Em
+produção: migration aplicada, v43 aplicada (1 concessão, ao administrador); contas bancárias, pagamentos com a seção
+extra, ficha do credor, receita mês a mês, movimento diário e conciliação com 200; PDFs do movimento diário e dos
+pagamentos com 200. A conciliação de produção não tem extrato importado (estado vazio; o filtro aparece com extrato).
+
+**Pendências nomeadas depois desta rodada:**
+- **Formato OFC:** sem arquivo real nem especificação no repositório; construir de memória seria inventar o leiaute.
+  Precisa de um .ofc do banco do ente.
+- **Resumo por fonte no Razão:** o razão não tem fonte (a partida só carrega a ficha); a fonte vem dos fatos, conferida
+  contra o razão no superávit por fonte. Resumir no Razão seria uma segunda aritmética — decisão de modelo, não de tela.
+- **Percurso do cancelamento de resto:** a base fictícia não tem resto inscrito (exigiria encerrar 2026 nela).
+- Das 79 ausentes, as que pedem modelo novo ou regra do ente: emendas parlamentares (PPA, LDO, LOA), importações do
+  PPA, cheque, retorno bancário, portal do fornecedor, subempenho, parcelas da dívida, PPP.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.
