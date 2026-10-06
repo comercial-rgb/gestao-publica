@@ -10,7 +10,7 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 | HEAD | `6ee38bdf` em `apresentacao/contabilidade` (este registro vem no commit seguinte) |
 | Catálogo | 619 de 2.037 verificadas (antes 436). As 285 de contabilidade (5.9 e 5.10): 0 sem verificar; 46 validadas, 29 implementadas sem percurso, 124 parciais, 84 ausentes, 2 de terceiro. |
 | Último resultado | Percursos na base fictícia: adiantamentos 19/19, a pagar 7/7, vínculos 15/15, leituras 6/6. Testes dirigidos verdes (abaixo). |
-| Próximo passo | Publicar; rodar a etapa [7] do semeador na base fictícia de produção; seguir pelas lacunas "construir" do levantamento. |
+| Próximo passo | Publicado (abaixo). Seguir pelas lacunas "construir" do levantamento, na ordem de valor: nota de estorno em PDF, termos do Diário e do Razão, combobox da ficha no empenho, relatório de pagamentos com filtros e retenções, importação do extrato OFX pela tela, PDF da conciliação. |
 
 ### Como o catálogo foi verificado
 Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra
@@ -54,6 +54,16 @@ percentual; liberação de cota; dossiê do empenho no lugar de consulta na tela
 ### Bloqueado por terceiro ou decisão do ente
 Tabela de vínculos do TCE para PPA/LDO; consulta de NF-e (SEFAZ/Receita); convênio bancário (remessa e retorno);
 eSocial/SEFIP; vínculo PPA-LOA (grão a decidir); entidade como dimensão da receita.
+
+### Publicado em 05/10/2026 (noite)
+- Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
+- Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.
+- Etapa [7] do semeador na base fictícia de produção, por túnel: 49 itens criados, 0 recusas (usuários
+  tesoureiro@ e ordenador@ficticio.local, contas FIC-PM-500 e FIC-CM-500, FPM com dedução, 30 pagamentos, caução,
+  duodécimo). Apagar junto com o resto da base fictícia, pelo mesmo procedimento.
+- Conferido nas telas de produção: 30 pagamentos com link do lançamento; razão dos bancos com diferença
+  2.191.548,86; 2 deduções com link; a caução na lista de ingressos avulsos (tesoureira); os dois lados da
+  transferência com link. A contadora fictícia não tem a consulta do financeiro (o perfil recusa com o motivo).
 
 ## V35 — estado em 05/10/2026 (vale sobre o "Resumo atual" abaixo)
 
