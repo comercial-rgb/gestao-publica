@@ -239,7 +239,19 @@ function csvPagamentos(pagamentos: readonly PagamentoDaTela[]): string {
 }
 
 const COLUNAS_PAGAMENTOS: readonly ColunaTabela<PagamentoDaTela>[] = [
-  { chave: "numero", cabecalho: "Nº", alinhamento: "esquerda", largura: "7rem", celula: (l) => l.numero },
+  {
+    chave: "numero",
+    cabecalho: "Nº",
+    alinhamento: "esquerda",
+    largura: "7rem",
+    // V36 — os documentos do pagamento (comprovante, autorização) na página própria dele.
+    celula: (l) => (
+      <>
+        {l.numero}
+        <a className="block text-xs text-[color:var(--color-primary)] hover:underline" data-elo="documentos-do-pagamento" href={`/despesa/pagamentos/${l.id}`}>documentos</a>
+      </>
+    ),
+  },
   { chave: "data", cabecalho: "Data", alinhamento: "esquerda", largura: "6rem", celula: (l) => dataBr(l.data) },
   { chave: "liquidacao", cabecalho: "Liquidação", alinhamento: "esquerda", largura: "7rem", celula: (l) => l.liquidacaoNumero },
   {

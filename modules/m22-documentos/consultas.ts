@@ -391,3 +391,22 @@ export async function loteDeAnexosDaPessoa(
  * outra num módulo que parece só de escrita.
  */
 export { baixarAnexo };
+
+/**
+ * V36 — os anexos de um REGISTRO DE PAGAMENTO ou de um MOVIMENTO BANCÁRIO. A leitura do dono é cobrada na porta
+ * (a despesa na unidade do pagamento; o financeiro do ente para o movimento); aqui, só usuário ativo.
+ */
+export async function listarAnexosDoPagamentoOuMovimento(
+  prisma: PrismaClient,
+  dono: { readonly pagamentoId: string } | { readonly movimentoBancarioId: string },
+  usuarioIdent: string
+): Promise<readonly AnexoNaLista[]> {
+  const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
+  if (u === null || !u.ativo) return [];
+  const anexos = await prisma.anexo.findMany({
+    where: "pagamentoId" in dono ? { pagamentoId: dono.pagamentoId } : { movimentoBancarioId: dono.movimentoBancarioId },
+    select: { id: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
+    orderBy: { criadoEm: "asc" },
+  });
+  return anexos.map((a) => ({ id: a.id, nome: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, criadoEm: a.criadoEm, criadoPor: a.criadoPor, origem: "PROCESSO", movimento: null }));
+}

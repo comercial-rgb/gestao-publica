@@ -534,6 +534,9 @@ model Pagamento {
   criadoEm  DateTime @default(now())
   criadoPor String
 
+  /// V36 — os documentos anexados ao pagamento (M22).
+  anexos Anexo[] @relation("AnexoDoPagamento")
+
   @@unique([liquidacaoId, numero])
   @@index([liquidacaoId])
   @@index([fonteId])

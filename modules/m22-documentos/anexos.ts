@@ -62,6 +62,9 @@ export const zAnexar = z
     atoDeRealocacaoId: z.string().min(1).optional(),
     // ── V27: o PDF da lei orçamentária publicada, no cadastro da norma ──
     normaOrcamentariaId: z.string().min(1).optional(),
+    // ── V36: o documento do registro de pagamento e o do movimento bancário ──
+    pagamentoId: z.string().min(1).optional(),
+    movimentoBancarioId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -84,12 +87,14 @@ export const zAnexar = z
         d.decretoCreditoId,
         d.atoDeRealocacaoId,
         d.normaOrcamentariaId,
+        d.pagamentoId,
+        d.movimentoBancarioId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação ou norma orçamentária. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento ou movimento bancário. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -131,6 +136,8 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       decretoCreditoId: d.decretoCreditoId ?? null,
       atoDeRealocacaoId: d.atoDeRealocacaoId ?? null,
       normaOrcamentariaId: d.normaOrcamentariaId ?? null,
+      pagamentoId: d.pagamentoId ?? null,
+      movimentoBancarioId: d.movimentoBancarioId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -196,6 +203,8 @@ export async function anexarArquivo(
       decretoCreditoId: d.decretoCreditoId ?? null,
       atoDeRealocacaoId: d.atoDeRealocacaoId ?? null,
       normaOrcamentariaId: d.normaOrcamentariaId ?? null,
+        pagamentoId: d.pagamentoId ?? null,
+        movimentoBancarioId: d.movimentoBancarioId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -251,9 +260,25 @@ async function escopoDoDono(
     readonly decretoCreditoId?: string | undefined;
     readonly atoDeRealocacaoId?: string | undefined;
     readonly normaOrcamentariaId?: string | undefined;
+    readonly pagamentoId?: string | undefined;
+    readonly movimentoBancarioId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  // V36: o documento do PAGAMENTO segue a UG do pagamento — a mesma régua do M16 para o próprio pagamento (o
+  // escopo { pagamento } anda até a ficha). Como o empenho e a liquidação: anexar no nível do ente não dá poder
+  // sobre o pagamento de outra unidade.
+  if (d.pagamentoId !== undefined) {
+    const p = await tx.pagamento.findUnique({ where: { id: d.pagamentoId }, select: { id: true } });
+    if (p === null) throw new Error(`Pagamento ${d.pagamentoId} não existe. Nada foi gravado.`);
+    return { pagamento: d.pagamentoId };
+  }
+  // V36: o MOVIMENTO BANCÁRIO é da tesouraria, que opera pelo ente (a conta bancária não é de unidade): ato do ENTE.
+  if (d.movimentoBancarioId !== undefined) {
+    const m = await tx.movimentoBancario.findUnique({ where: { id: d.movimentoBancarioId }, select: { id: true } });
+    if (m === null) throw new Error(`Movimento bancário ${d.movimentoBancarioId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
   // V22: a LOA é ato do ENTE (não há escopo de unidade no planejamento); a lei tem de existir.
   if (d.leiOrcamentariaAnualId !== undefined) {
     const lei = await tx.leiOrcamentariaAnual.findUnique({ where: { id: d.leiOrcamentariaAnualId }, select: { id: true } });

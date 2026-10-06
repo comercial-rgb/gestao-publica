@@ -3576,6 +3576,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   arrecadadoPorFonteMesAMes: "leitura (V36 — a receita arrecadada mês a mês por fonte, composta de arrecadadoPorNaturezaFonte; não muta)",
   dispendiosEfetuados: "leitura (V36 — os dispêndios extraorçamentários do período, com o estorno descontado, para o relatório de pagamentos; não muta)",
   contasContabeisDeDisponibilidade: "leitura (V36 — as contas analíticas do grupo 1.1.1 que o cadastro da conta bancária oferece; não muta)",
+  listarAnexosDoPagamentoOuMovimento: "leitura (V36 — os anexos de um pagamento ou de um movimento bancário; a leitura do dono é cobrada na porta; não muta)",
   emendasDaProposta: "leitura (V36 — as emendas de uma proposta, com a situação derivada da sanção; não muta)",
   comparativoDaDivida: "leitura (V36 — as parcelas informadas da dívida ao lado do que os pagamentos amortizaram; não muta)",
   lerExtratoImportado: "leitura (V36 — as linhas de um extrato importado, com a situação derivada dos vínculos, para consulta e impressão; não muta)",

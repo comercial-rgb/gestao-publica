@@ -308,6 +308,9 @@ model MovimentoBancario {
   /// silenciosa de um índice que o saldo por fonte usa. Declarado aqui, a deriva acabou.
   @@index([fonteId])
   @@index([estornoDeId])
+
+  /// V36 — os documentos anexados ao movimento bancário (M22).
+  anexos Anexo[] @relation("AnexoDoMovimentoBancario")
 }
 
 // ============================================================================

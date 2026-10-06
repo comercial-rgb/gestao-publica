@@ -173,6 +173,14 @@ model Anexo {
   leiOrcamentariaAnualId String?
   leiOrcamentariaAnual   LeiOrcamentariaAnual? @relation("AnexoDaLeiOrcamentaria", fields: [leiOrcamentariaAnualId], references: [id])
 
+  /// V36 (TR 5.10.2.68) — o documento do registro de pagamento (comprovante, autorização, nota). Escopo = a UG do
+  /// pagamento, como a escrita do próprio pagamento.
+  pagamentoId String?
+  pagamento   Pagamento? @relation("AnexoDoPagamento", fields: [pagamentoId], references: [id])
+  /// V36 (TR 5.10.2.21) — o documento do movimento bancário (aviso do banco, contrato de aplicação). Ato do ENTE.
+  movimentoBancarioId String?
+  movimentoBancario   MovimentoBancario? @relation("AnexoDoMovimentoBancario", fields: [movimentoBancarioId], references: [id])
+
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
 
@@ -200,6 +208,8 @@ model Anexo {
   @@index([documentoFiscalId])
   @@index([guiaDeRecolhimentoId])
   @@index([leiOrcamentariaAnualId])
+  @@index([pagamentoId])
+  @@index([movimentoBancarioId])
   @@index([ocorrenciaDeFiscalizacaoId])
   @@index([medicaoDaOrdemId])
   @@index([sha256])

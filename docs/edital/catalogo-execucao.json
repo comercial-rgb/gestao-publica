@@ -3641,8 +3641,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a movimentação bancária não tem anexo; o M22 não tem o alvo movimento bancário.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: o Anexo do M22 ganhou os donos pagamento e movimento bancário (migration aditiva 20261106130000, duas colunas anuláveis; o dono único continua no zAnexar). O anexo do pagamento segue a UG do pagamento (escopo { pagamento } do M16), o do movimento é ato do ente; o download cobra a leitura do dono (despesa na unidade do pagamento; financeiro do ente). modules/m22-documentos/m22-anexo-do-pagamento-e-do-movimento.test.ts 4/4 (N=2 anexos e donos; quem anexa só noutra unidade é recusado no pagamento; permissão de unidade não basta no movimento; dono inexistente ou duplo recusado com o motivo), três mutações acusadas. Tela: na movimentação bancária, a coluna Documentos abre /financeiro/movimentacao/[id], com os anexos e o formulário. FALTA o percurso: a base fictícia não tem movimento bancário, e registrar um exige a conta contábil de contrapartida, que é decisão do ente — não se escolhe num percurso. A negação (contador vai para /sem-acesso) foi medida.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.2.22",
@@ -4298,9 +4298,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): Anexo (prisma/schema/m22-documentos.prisma) não tem o dono pagamento e FormPagamento.tsx não tem campo de arquivo.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-anexos-do-pagamento.mts: PDF anexado ao pagamento, gravado, listado depois de recarregar e baixado (200, application/pdf).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: o Anexo do M22 ganhou os donos pagamento e movimento bancário (migration aditiva 20261106130000, duas colunas anuláveis; o dono único continua no zAnexar). O anexo do pagamento segue a UG do pagamento (escopo { pagamento } do M16), o do movimento é ato do ente; o download cobra a leitura do dono (despesa na unidade do pagamento; financeiro do ente). modules/m22-documentos/m22-anexo-do-pagamento-e-do-movimento.test.ts 4/4 (N=2 anexos e donos; quem anexa só noutra unidade é recusado no pagamento; permissão de unidade não basta no movimento; dono inexistente ou duplo recusado com o motivo), três mutações acusadas. Tela: na lista de pagamentos realizados (/despesa/pagamentos), o link \"documentos\" abre /despesa/pagamentos/[id], com o registro, os anexos e o formulário de anexar.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.69",

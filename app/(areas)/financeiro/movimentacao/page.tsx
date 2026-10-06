@@ -12,15 +12,8 @@ import { FormMovimentacao } from "./FormMovimentacao";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
-const ROTULO_TIPO: Readonly<Record<string, string>> = {
-  DEPOSITO: "Depósito",
-  SAQUE: "Saque",
-  APLICACAO: "Aplicação financeira",
-  RESGATE: "Resgate de aplicação",
-  RENDIMENTO: "Rendimento creditado",
-  TARIFA: "Tarifa bancária",
-};
 
+import { ROTULO_TIPO } from "./rotulos";
 /**
  * MOVIMENTAÇÃO BANCÁRIA POR FONTE — TR 5.62 e 5.10.2.6/.18/.19.
  *
@@ -153,6 +146,7 @@ export default async function MovimentacaoPage({
                     <th>Histórico</th>
                     <th className="text-right">Valor</th>
                     <th>Situação</th>
+                    <th>Documentos</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -175,6 +169,10 @@ export default async function MovimentacaoPage({
                         ) : (
                           <Badge status="ok">vigente</Badge>
                         )}
+                      </td>
+                      <td>
+                        {/* V36 — o aviso do banco, o contrato da aplicação: na página do movimento. */}
+                        <a className="text-[color:var(--color-primary)] hover:underline" data-elo="documentos-do-movimento" href={`/financeiro/movimentacao/${m.id}`}>abrir</a>
                       </td>
                     </tr>
                   ))}
