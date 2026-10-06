@@ -8,6 +8,7 @@ import { lerTransferenciasEntreUgs, ROTULO_DA_TRANSFERENCIA_ENTRE_UGS } from "..
 import { anoCivil, inicioDoDiaCivil } from "../../../../packages/datas/index";
 import { FormContabilizacao, FormEstornar, FormTransferencia } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — TRANSFERÊNCIAS FINANCEIRAS ENTRE AS UNIDADES GESTORAS DO MUNICÍPIO (o duodécimo à Câmara, os aportes, a
  * devolução): as contas decididas por tipo, o registro, o estorno e a conciliação do período.
@@ -31,7 +32,7 @@ export default async function TransferenciasEntreUgsPage({ searchParams }: { rea
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

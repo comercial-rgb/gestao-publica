@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { registrarReprevisao } from "../../../../lib/portas/planejamento";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoReprevisao {
   readonly erro?: string;
   readonly sucesso?: boolean;
@@ -28,7 +29,7 @@ export async function reprevisarAction(_prev: EstadoReprevisao, formData: FormDa
       revalidatePath("/planejamento/reprevisao");
       return { sucesso: true };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar a reprevisão." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar a reprevisão." };
     }
   });
 }

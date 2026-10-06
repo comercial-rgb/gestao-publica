@@ -19,6 +19,7 @@ import {
 } from "../../../../lib/portas/recursos/competencia-dados";
 import { ProcessarCompetencia } from "./ProcessarCompetencia";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * O PROCESSAMENTO POR COMPETÊNCIA (V3 pacote 2; V4 §4) — a prévia ITEM A ITEM com o corte e a
  * versão vigente na competência, depois o lançamento (uma execução com escopo declarado: a
@@ -181,7 +182,7 @@ export default async function CompetenciaPage({
           previa = await previaDaCompetencia(classeId, competencia, bemId === "" ? undefined : bemId);
           if (previa === null) erro = "Classe não encontrada.";
         } catch (e) {
-          erro = e instanceof Error ? e.message : "Não foi possível calcular a prévia.";
+          erro = e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível calcular a prévia.";
         }
       }
     }

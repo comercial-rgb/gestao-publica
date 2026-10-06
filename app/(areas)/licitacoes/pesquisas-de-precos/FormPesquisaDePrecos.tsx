@@ -37,7 +37,7 @@ export function FormPesquisaDePrecos({ materiais, fornecedores }: { readonly mat
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Objeto (mínimo 5 caracteres)</span>
-          <input name="objeto" required className={CAMPO} />
+          <input name="objeto" required minLength={5} className={CAMPO} />
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Data</span>

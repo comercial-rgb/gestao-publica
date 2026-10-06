@@ -6,6 +6,7 @@ import { GRUPOS_DE_MATERIAL } from "../../../../../lib/portas/recursos/almoxarif
 import { criarGrupoDeMaterial, semAcaoDeDetalhe } from "../../../../../lib/portas/recursos/almoxarifado-dados";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action deste cadastro — uma só, despachando pelo `__acao`.
  *
@@ -36,7 +37,7 @@ export async function acaoDeGruposAction(
         await semAcaoDeDetalhe(acao);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(GRUPOS_DE_MATERIAL.rota);

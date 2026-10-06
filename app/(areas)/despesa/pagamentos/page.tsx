@@ -34,6 +34,7 @@ import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * PAGAMENTOS — A FILA DO ART. 141 (ordem cronológica), por fonte × categoria (TR 5.29).
  *
@@ -122,7 +123,7 @@ export default async function PagamentosPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar a fila de pagamentos"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

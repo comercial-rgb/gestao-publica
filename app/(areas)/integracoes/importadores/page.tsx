@@ -5,6 +5,7 @@ import { dataBr } from "../../../../lib/recorte";
 import { FormImportador } from "./FormImportador";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * IMPORTADORES (M20, TR 7.10-7.11) — folha e arrecadação tributária, por arquivo com LAYOUT
  * PARAMETRIZÁVEL. Dois atos: prévia (valida, nada grava) e confirmação (gera os fatos pelos
@@ -19,7 +20,7 @@ export default async function ImportadoresPage(): Promise<React.ReactElement> {
   try {
     historico = await lerImportacoes();
   } catch (e) {
-    erro = e instanceof PortaSemBancoError ? "Histórico indisponível no momento." : e instanceof Error ? e.message : "Não foi possível consultar o histórico.";
+    erro = e instanceof PortaSemBancoError ? "Histórico indisponível no momento." : e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível consultar o histórico.";
   }
 
   return (

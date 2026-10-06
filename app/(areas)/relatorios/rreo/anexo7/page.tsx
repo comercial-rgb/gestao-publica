@@ -17,6 +17,7 @@ import {
 import { SeletorExercicioAnexo7 } from "./SeletorExercicioAnexo7";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RREO — ANEXO 7: DEMONSTRATIVO DOS RESTOS A PAGAR POR PODER E ÓRGÃO (LRF art. 53, V; MDF Tab. 7).
  *
@@ -62,7 +63,7 @@ export default async function RreoAnexo7Page({
         ) : (
           <EstadoVazio
             titulo="Não foi possível gerar o Anexo 7"
-            descricao={erro instanceof Error ? erro.message : "Erro desconhecido ao ler o demonstrativo."}
+            descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido ao ler o demonstrativo."}
           />
         )}
       </div>

@@ -19,6 +19,7 @@ import {
   type ComparacaoDeExercicios,
 } from "../../../../lib/portas/comparacao-de-exercicios";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * COMPARAÇÃO DE EXERCÍCIOS (V31) — dois orçamentos lado a lado, para conferir a proposta do ano seguinte
  * contra o ano em execução, ou dois anos executados entre si.
@@ -98,7 +99,7 @@ export default async function ComparacaoPage({
             : erro instanceof PortaSemBancoError
               ? "Banco de dados não configurado"
               : "Não foi possível montar a comparação",
-      descricao: erro instanceof Error ? erro.message : "Erro desconhecido.",
+      descricao: erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido.",
     };
   }
   const pedido = pedidoDaUrl(sp, anos);

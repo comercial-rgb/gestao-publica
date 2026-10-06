@@ -13,6 +13,7 @@ import {
   PortaSemBancoError,
   type EmpenhoDaTela,
   type FichaDaTela,
+  proximoNumeroDeDocumento,
 } from "../../../../lib/portas/empenho";
 import {
   EscopoDeLeituraError,
@@ -33,6 +34,7 @@ import { formatarDocumento } from "../../../../packages/documento/index";
 import { ROTULO_STATUS_DO_EMPENHO as ROTULO_STATUS } from "./rotulos";
 import { ResumoDoEmpenho, tomDoStatusDoEmpenho as tomDoStatus } from "./ResumoDoEmpenho";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * EMPENHOS — a execução da despesa do exercício/unidade, com os saldos da TR 5.17.
  *
@@ -57,10 +59,13 @@ export default async function EmpenhosPage({
   // recorte que ainda não foi autorizado não existe para ser descrito: montar o título
   // antes seria afirmar "consolidado (ente)" na tela de quem acabou de ser recusado.
   let recorte: RecorteDaPagina;
+  let numeroSugerido = "";
   let empenhos: readonly EmpenhoDaTela[];
   let fichas: readonly FichaDaTela[];
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
+    // V37 — o próximo número livre do exercício, já no campo (só lê; o numerador continua conferindo na gravação).
+    numeroSugerido = await proximoNumeroDeDocumento(recorte.exercicio);
     [empenhos, fichas] = await Promise.all([
       listarEmpenhosDaExecucao({
         exercicio: recorte.exercicio,
@@ -90,7 +95,7 @@ export default async function EmpenhosPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar os empenhos"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -115,6 +120,7 @@ export default async function EmpenhosPage({
       </div>
 
       <FormEmpenho
+        numeroSugerido={numeroSugerido}
         fichas={fichas.map((f) => ({
           id: f.id,
           numero: f.numero,
@@ -143,7 +149,7 @@ export default async function EmpenhosPage({
             <BotaoImprimir rotulo="Imprimir lista" />
           </div>
           <TabelaDeDados
-            colunas={[colunaNumero(recorte), ...COLUNAS, colunaAcoesEmpenho(recorte)]}
+            colunas={[colunaNumero(recorte), ...COLUNAS, colunaAcoesEmpenho(recorte, numeroSugerido)]}
             linhas={empenhos}
             keyDe={(l) => l.id}
             legenda={`${empenhos.length} empenho(s) · valores em R$ · saldo a pagar = liquidado − pago.`}
@@ -288,7 +294,7 @@ function queryRecorte(r: RecorteDaPagina): string {
 }
 
 /** A coluna de AÇÕES: emitir a Nota de Empenho (F2) + anular (quando há saldo a liquidar). */
-function colunaAcoesEmpenho(recorte: RecorteDaPagina): ColunaTabela<EmpenhoDaTela> {
+function colunaAcoesEmpenho(recorte: RecorteDaPagina, numeroSugerido: string): ColunaTabela<EmpenhoDaTela> {
   return {
     chave: "acoes",
     cabecalho: "Ações",
@@ -302,7 +308,7 @@ function colunaAcoesEmpenho(recorte: RecorteDaPagina): ColunaTabela<EmpenhoDaTel
           Emitir NE
         </a>
         {l.saldoALiquidar === "0.00" || l.anulado ? null : (
-          <FormAnular tipo="empenho" id={l.id} anulavelSaldo={l.saldoALiquidar} estornavel={l.liquidado === "0.00"} />
+          <FormAnular tipo="empenho" id={l.id} anulavelSaldo={l.saldoALiquidar} estornavel={l.liquidado === "0.00"} numeroSugerido={numeroSugerido} />
         )}
       </span>
     ),

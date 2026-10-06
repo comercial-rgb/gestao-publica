@@ -8,6 +8,7 @@ import {
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoMovimento {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -80,7 +81,7 @@ export async function registrarMovimentoAction(
       return { sucesso: `Movimento registrado: ${ROTULO_TIPO[tipoBruto]} de R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível registrar o movimento.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o movimento.",
       };
     }
   });
@@ -104,7 +105,7 @@ export async function estornarMovimentoAction(
       return { sucesso: "Movimento estornado." };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível estornar o movimento.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível estornar o movimento.",
       };
     }
   });

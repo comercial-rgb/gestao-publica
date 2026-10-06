@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { estornarLancamentoManual, registrarLancamentoManual, type PartidaDaTela } from "../../../../lib/portas/lancamento-manual";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDoLancamento {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -38,7 +39,7 @@ export async function registrarLancamentoAction(_prev: EstadoDoLancamento, formD
       revalidatePath("/contabilidade/lancamentos");
       return { sucesso: `Lançamento ${numeroControle} registrado no razão.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o lançamento." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o lançamento." };
     }
   });
 }
@@ -55,7 +56,7 @@ export async function estornarLancamentoAction(_prev: EstadoDoLancamento, formDa
       revalidatePath("/contabilidade/lancamentos");
       return { sucesso: `Estorno ${numeroControle} registrado. O lançamento original continua no razão, com o estorno ligado a ele.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível estornar o lançamento." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível estornar o lançamento." };
     }
   });
 }

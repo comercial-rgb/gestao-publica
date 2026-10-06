@@ -5,6 +5,7 @@ import { emitir } from "../../../../../../lib/pdf/operacionais";
 import { montarPdfDmpl } from "../../../../../../lib/pdf/balancos";
 import { exigirLeituraDoEnte } from "../../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — EMISSÃO PDF: a DMPL do exercício, o mesmo leitor da tela.
  * Autenticada; a leitura é cobrada antes de qualquer parse. ⚠️ nodejs runtime: o puppeteer é Node.
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     doc = await montarPdfDmpl({ exercicio });
   } catch (e) {
-    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? e.message : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
+    return new NextResponse(`O documento não foi emitido: ${e instanceof Error ? mensagemDoErro(e, "") : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
   const r = await emitir(doc, `dmpl-${String(exercicio)}`);
   return new NextResponse(Buffer.from(r.pdf), {

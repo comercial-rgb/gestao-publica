@@ -7,6 +7,7 @@ import {
   registrarAtoDeAlteracao,
 } from "../../../../lib/portas/alteracoes-do-planejamento";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * SERVER ACTIONS da alteração da peça (V18/C13).
  *
@@ -102,7 +103,7 @@ export async function registrarAtoAction(
       revalidatePath("/planejamento/alteracoes");
       return { sucesso: "Ato registrado. O comparativo foi atualizado com o valor vigente." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar o ato." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar o ato." };
     }
   });
 }
@@ -134,7 +135,7 @@ export async function acrescentarItemAction(
       revalidatePath("/planejamento/alteracoes");
       return { sucesso: "Valor acrescentado ao ato." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível acrescentar o valor." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível acrescentar o valor." };
     }
   });
 }

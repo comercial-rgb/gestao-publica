@@ -10,6 +10,7 @@ import { lerPeriodo } from "../periodo";
 import { diaCivilBr } from "../../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** Livro RAZÃO de uma conta — saldo anterior, movimentos com saldo corrente, saldo final. */
 export const dynamic = "force-dynamic";
 
@@ -42,7 +43,7 @@ export default async function RazaoPage({
   try {
     dados = await gerarRazao({ conta, desde, ate });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Razão"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Razão"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   if (dados.linhas.length === 0 && dados.saldoAnterior === "0.00") {

@@ -5,6 +5,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { anularReceita } from "../../../../lib/portas/anulacao";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoAnulacaoReceita {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -43,6 +44,6 @@ async function anularArrecadacao(formData: FormData): Promise<EstadoAnulacaoRece
     revalidatePath("/receita/arrecadacoes");
     return { sucesso: `Anulação ${numero} registrada.` };
   } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível anular a arrecadação." };
+    return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível anular a arrecadação." };
   }
 }

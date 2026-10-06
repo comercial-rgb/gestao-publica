@@ -14,6 +14,7 @@ import {
 import { FormDaClassificacao } from "./FormDaClassificacao";
 import { LinhaDoLegado } from "./LegadoDaConsignacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — O IR E O ISS RETIDOS PELO PRÓPRIO MUNICÍPIO: a decisão do ente que transforma a retenção em receita.
  *
@@ -41,7 +42,7 @@ export default async function RetencoesPropriasPage(): Promise<React.ReactElemen
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Retenções do próprio município" subtitulo="IR e ISS retidos nos pagamentos, como receita do município" />
-        <EstadoVazio titulo="Não foi possível carregar as decisões" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar as decisões" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

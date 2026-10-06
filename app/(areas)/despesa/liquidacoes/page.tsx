@@ -16,7 +16,7 @@ import {
   type NotaDaLiquidacao,
   type OpcoesDasEntradasDeMaterial,
 } from "../../../../lib/portas/liquidacao";
-import { listarEmpenhosDaExecucao, nomesDosCredores } from "../../../../lib/portas/empenho";
+import { listarEmpenhosDaExecucao, nomesDosCredores, proximoNumeroDeDocumento } from "../../../../lib/portas/empenho";
 import { EXTENSOES_ACEITAS, lerAnexosDasLiquidacoes, TAMANHO_MAXIMO_BYTES, type AnexoNaLista } from "../../../../lib/portas/documentos";
 import { BotaoExcel } from "../../../../components/ui/BotaoExcel";
 import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
@@ -38,6 +38,7 @@ import { formatarMoeda } from "../../../../lib/format/moeda";
 import { FormLiquidacao, type EmpenhoLiquidavel } from "./FormLiquidacao";
 import { documentosConferidosParaLiquidar } from "../../../../lib/portas/recursos/documentos-fiscais-dados";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * LIQUIDAÇÕES — o marco de exigibilidade (art. 141, caput), com o empenho de origem.
  *
@@ -64,8 +65,11 @@ export default async function LiquidacoesPage({
   let opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   let documentos: readonly { readonly id: string; readonly rotulo: string }[];
   let extras: Extras;
+  let numeroSugerido = "";
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
+    // V37 — o próximo número livre do exercício, já no campo (só lê; o numerador continua conferindo na gravação).
+    numeroSugerido = await proximoNumeroDeDocumento(recorte.exercicio);
     const [lista, empenhos, opcoes, docs] = await Promise.all([
       listarLiquidacoesDaExecucao({
         exercicio: recorte.exercicio,
@@ -119,7 +123,7 @@ export default async function LiquidacoesPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar as liquidações"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -139,7 +143,7 @@ export default async function LiquidacoesPage({
         de <strong>material de consumo</strong> registra também as entradas no almoxarifado.
       </div>
 
-      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} />
+      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} />
 
       {liquidacoes.length === 0 ? (
         <EstadoVazio
@@ -155,7 +159,7 @@ export default async function LiquidacoesPage({
             <BotaoImprimir rotulo="Imprimir lista" />
           </div>
           <TabelaDeDados
-            colunas={colunas(extras)}
+            colunas={colunas({ ...extras, numeroSugerido })}
             linhas={liquidacoes}
             keyDe={(l) => l.id}
             legenda={`${liquidacoes.length} liquidação(ões) · valores em R$ · saldo a pagar = liquidado − pago.`}
@@ -170,6 +174,8 @@ interface Extras {
   readonly nomes: ReadonlyMap<string, string>;
   readonly notas: ReadonlyMap<string, NotaDaLiquidacao>;
   readonly anexos: ReadonlyMap<string, readonly AnexoNaLista[]>;
+  /** V37 — o próximo número livre, para a anulação da linha. */
+  readonly numeroSugerido?: string;
 }
 
 /**
@@ -291,7 +297,7 @@ function colunas(x: Extras): readonly ColunaTabela<LiquidacaoDaTela>[] {
       l.saldoAPagar === "0.00" || l.anulado ? (
         <span className="text-xs text-[color:var(--color-ink-3)]">—</span>
       ) : (
-        <FormAnular tipo="liquidacao" id={l.id} anulavelSaldo={l.saldoAPagar} estornavel={l.pago === "0.00"} />
+        <FormAnular tipo="liquidacao" id={l.id} anulavelSaldo={l.saldoAPagar} estornavel={l.pago === "0.00"} numeroSugerido={x.numeroSugerido} />
       ),
   },
   ];

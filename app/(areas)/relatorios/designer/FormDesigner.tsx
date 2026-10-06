@@ -333,6 +333,7 @@ export function FormRetirar({ modeloId }: { readonly modeloId: string }): React.
         placeholder="Motivo da retirada (mín. 10 caracteres)"
         aria-label="Motivo da retirada"
         required
+        minLength={10}
       />
       <button type="submit" className={CLASSE_BOTAO_PRIMARIO} disabled={pendente}>
         {pendente ? "Retirando…" : "Retirar de vigência"}

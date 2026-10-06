@@ -9,6 +9,7 @@ import { formatarDocumento } from "../../../../packages/documento/index";
 import { formatarMoeda } from "../../../../packages/contracts/moeda";
 import { FormConceder, PrestacaoDaConcessao } from "./FormsDoAdiantamento";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * DIÁRIAS E SUPRIMENTO DE FUNDOS — a concessão, o prazo e a prestação de contas (V32).
  *
@@ -35,7 +36,7 @@ export default async function AdiantamentosPage(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <SincronizarContexto />
         {cabecalho}
-        <EstadoVazio titulo="Não foi possível ler as concessões" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler as concessões" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

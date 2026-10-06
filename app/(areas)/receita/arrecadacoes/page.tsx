@@ -25,6 +25,7 @@ import { FormArrecadacao } from "./FormArrecadacao";
 import { AnulacoesDaTela, FormAnularReceita } from "./FormAnularReceita";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ARRECADAÇÃO — as guias do exercício e o total realizado LÍQUIDO (TR 4.59).
  *
@@ -71,7 +72,7 @@ export default async function ArrecadacoesPage({
               ? "Exercício inválido"
               : "Não foi possível carregar a consulta"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -104,7 +105,7 @@ export default async function ArrecadacoesPage({
               ? "Serviço indisponível"
               : "Não foi possível carregar a arrecadação"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

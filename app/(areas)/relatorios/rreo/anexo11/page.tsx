@@ -14,6 +14,7 @@ import {
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** RREO — Anexo 11 · Alienação de Ativos (LRF art. 44 e 53 §1º III). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function RreoAnexo11Page({
   try {
     dados = await gerarRreoAnexo11({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 11"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 11"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   const semDados = dados.totalReceitas.realizada === "0.00" && dados.totalReceitas.previsaoAtualizada === "0.00" && dados.aplicacoes.length === 0;

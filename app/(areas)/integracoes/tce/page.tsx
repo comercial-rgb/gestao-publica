@@ -5,6 +5,7 @@ import { compararEmpenhosLocalTce, type SituacaoComparacao } from "../../../../l
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * TELA — CONSULTA API TCE (S4): comparação "dados locais × TCE" por UG/período. MODO MOCK permanente,
  * retorno sintético (fixtures conformes ao schema oficial). Consome a porta (grep trivalente).
@@ -48,7 +49,7 @@ export default async function ConsultaTcePage(): Promise<React.ReactElement> {
   try {
     r = await compararEmpenhosLocalTce();
   } catch (e) {
-    erro = e instanceof Error ? e.message : "Não foi possível realizar a consulta.";
+    erro = e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível realizar a consulta.";
   }
 
   return (

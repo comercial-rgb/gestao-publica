@@ -92,7 +92,34 @@ describe("a recusa em português — o rótulo interno não vai à tela", () => 
       .safeParse({ ano: 12 });
     expect(r.success).toBe(false);
     const texto = mensagemDoErro(r.error as ZodError, "x");
-    expect(texto).toBe("ano: informe um ano de quatro dígitos.");
+    expect(texto).toBe("Ano: informe um ano de quatro dígitos.");
+  });
+
+  it("V37: o nome interno do campo não chega à tela — frase completa sai sozinha, e cada campo uma vez", () => {
+    // O caso de produção: o empenho com o credor vazio recusava com DUAS regras no mesmo campo, e a tela
+    // mostrava o JSON. Agora sai a primeira frase, sem "credorCpfCnpj:" na frente.
+    const credor = z
+      .object({
+        credorCpfCnpj: z
+          .string()
+          .min(11, "CPF/CNPJ inválido")
+          .refine(() => false, "CPF/CNPJ do credor com dígito verificador inválido. Confira o documento."),
+      })
+      .safeParse({ credorCpfCnpj: "" });
+    expect(credor.success).toBe(false);
+    const t1 = mensagemDoErro(credor.error as ZodError, "x");
+    expect(t1).toBe("CPF/CNPJ inválido");
+    expect(t1).not.toMatch(/credorCpfCnpj|"code"|too_small/);
+
+    // Caminho aninhado, frase completa: só a frase.
+    const quebra = z
+      .object({ justificativaQuebraOrdem: z.object({ justificativa: z.string().min(30, "A justificativa da quebra de ordem precisa de ao menos 30 caracteres") }) })
+      .safeParse({ justificativaQuebraOrdem: { justificativa: "curta" } });
+    expect(mensagemDoErro(quebra.error as ZodError, "x")).toBe("A justificativa da quebra de ordem precisa de ao menos 30 caracteres");
+
+    // N=2 campos com a mensagem padrão do Zod (em inglês): o nome legível e "valor inválido", um por linha.
+    const padrao = z.object({ valorBruto: z.string().min(3), dataDoPagamento: z.string() }).safeParse({ valorBruto: "1", dataDoPagamento: 5 });
+    expect(mensagemDoErro(padrao.error as ZodError, "x")).toBe("Valor bruto: valor inválido.\nData do pagamento: valor inválido.");
   });
 
   it("valor que não é Error devolve o padrão de quem chamou", () => {

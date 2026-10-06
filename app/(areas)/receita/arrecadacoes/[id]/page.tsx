@@ -10,6 +10,7 @@ import { EscopoDeLeituraError } from "../../../../../lib/portas/contexto";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { dataBr } from "../../../../../lib/recorte";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * UMA ARRECADAÇÃO (V33) — a cadeia da receita de ponta a ponta: classificação → entidade e fonte → conta bancária →
  * conciliação → lançamento → razão → demonstrativo. Cada elo abre onde mora; o que falta é dito.
@@ -37,7 +38,7 @@ export default async function ArrecadacaoPage({ params }: { readonly params: Pro
     return (
       <div className="space-y-4">
         <PageHeader titulo="Arrecadação" subtitulo="" />
-        <EstadoVazio titulo={e instanceof EscopoDeLeituraError ? "A receita do ente não está no seu acesso" : "Não foi possível ler a arrecadação"} descricao={e instanceof Error ? e.message : "Erro desconhecido."} />
+        <EstadoVazio titulo={e instanceof EscopoDeLeituraError ? "A receita do ente não está no seu acesso" : "Não foi possível ler a arrecadação"} descricao={e instanceof Error ? mensagemDoErro(e, "") : "Erro desconhecido."} />
       </div>
     );
   }

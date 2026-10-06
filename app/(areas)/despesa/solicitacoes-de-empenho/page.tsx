@@ -27,6 +27,7 @@ import {
   FormSolicitacao,
 } from "./FormSolicitacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * SOLICITAÇÕES DE EMPENHO (M05, V22) — pedir, autorizar, e só então emitir.
  *
@@ -93,7 +94,7 @@ export default async function SolicitacoesDeEmpenhoPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar as solicitações"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -20,6 +20,7 @@ import {
 import { descreverRecorte } from "../../../../lib/recorte";
 import { janelaCivilDoAno } from "../../../../packages/datas/index";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * PLANO DE CONTAS PCASP — o cadastro (M01) com o SALDO de cada conta ao lado.
  *
@@ -116,7 +117,7 @@ export default async function PlanoDeContasPage({
                   ? "Serviço indisponível"
                   : "Não foi possível ler o plano de contas"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -16,6 +16,7 @@ import { FormImportarExtrato } from "./FormImportarExtrato";
 import { lerContasBancarias } from "../../../../lib/portas/pagamento";
 import { filtrarEOrdenar, filtroAtivo, filtroDaConciliacao, somaExibida, type FiltroDaConciliacao } from "./filtro";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /** O nome do registro do sistema como o tesoureiro o chama (o tipo interno é código). */
 const TIPO_DO_REGISTRO: Readonly<Record<string, string>> = {
   PAGAMENTO: "pagamento",
@@ -83,7 +84,7 @@ export default async function ConciliacaoBancariaPage({
               ? "O exercício pedido não é um ano"
               : "Não foi possível carregar a consulta"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -110,7 +111,7 @@ export default async function ConciliacaoBancariaPage({
               ? "Serviço indisponível"
               : "Não foi possível carregar a conciliação"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

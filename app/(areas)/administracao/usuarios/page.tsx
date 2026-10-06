@@ -13,6 +13,7 @@ import { FormCriarUsuario } from "./FormCriarUsuario";
 import { AcoesUsuario } from "./AcoesUsuario";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /** ADMINISTRAÇÃO · Usuários (TR 4.55/4.56) — leitura + escrita (7.14). Server Component. */
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function UsuariosPage(): Promise<React.ReactElement> {
   try {
     [usuarios, perfis] = await Promise.all([listarUsuarios(), listarPerfisOpcoes()]);
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Usuários indisponíveis no momento" : "Não foi possível listar os usuários"} descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Usuários indisponíveis no momento" : "Não foi possível listar os usuários"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Tente novamente em alguns instantes."} /></div>;
   }
 
   return (

@@ -6,6 +6,7 @@ import { PARAMETROS_DE_ATUALIZACAO } from "../../../../lib/portas/recursos/param
 import { acaoDoParametro, criarParametro } from "../../../../lib/portas/recursos/parametros-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action dos parâmetros de atualização — despacho FAIL-CLOSED.
  *
@@ -28,7 +29,7 @@ export async function acaoDeParametrosAction(_prev: EstadoDoMolde, formData: For
         await acaoDoParametro(acao, id, campos);
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
     revalidatePath(PARAMETROS_DE_ATUALIZACAO.rota);
     if (id !== "") revalidatePath(`${PARAMETROS_DE_ATUALIZACAO.rota}/${id}`);

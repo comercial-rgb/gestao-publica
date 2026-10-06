@@ -6,6 +6,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { CAMPANHAS_PUBLICITARIAS } from "../../../../lib/portas/recursos/campanhas-publicitarias";
 import { criarCampanhaPublicitaria, semAcaoNasCampanhas } from "../../../../lib/portas/recursos/campanhas-publicitarias-dados";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action das campanhas publicitárias — só "criar".
  *
@@ -28,7 +29,7 @@ export async function acaoDasCampanhasAction(_prev: EstadoDoMolde, formData: For
       }
       cadastrada = await criarCampanhaPublicitaria(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(CAMPANHAS_PUBLICITARIAS.rota);

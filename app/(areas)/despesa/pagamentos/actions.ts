@@ -7,6 +7,7 @@ import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { lerOperacaoFiscal } from "./operacao-fiscal";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoPagamento {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -108,7 +109,7 @@ export async function pagarAction(
       revalidatePath("/despesa/empenhos");
       return { sucesso: `Pagamento ${numero} registrado.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível pagar." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível pagar." };
     }
   });
 }

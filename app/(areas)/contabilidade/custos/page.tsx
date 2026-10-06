@@ -16,6 +16,7 @@ import {
 import { FormApropriacaoDeCusto, FormCriterioDeRateio, FormCustoDaFolha } from "./FormsDoCusto";
 import { SeletorDoCusto } from "./SeletorDoCusto";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * CUSTO POR CENTRO — o acumulado de cada centro, e a composição que volta ao fato.
  *
@@ -94,7 +95,7 @@ export default async function Page({
       <div>
         {cabecalho}
         <EstadoVazio
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
               ? "Serviço indisponível"

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { previewFolha, previewTributos, confirmarFolha, confirmarTributos, type PreviaImportacao, type LinhaFolha, type LinhaTributo } from "../../../../lib/portas/importadores";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoImportacao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -38,7 +39,7 @@ export async function previaAction(_prev: EstadoImportacao, formData: FormData):
       const previaTributos = await previewTributos(arq.nome, arq.texto);
       return { previaTributos, conteudo: arq.texto, nomeArquivo: arq.nome, tipo };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível ler o arquivo." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível ler o arquivo." };
     }
   });
 }
@@ -57,7 +58,7 @@ export async function confirmarAction(_prev: EstadoImportacao, formData: FormDat
       revalidatePath("/integracoes/importadores");
       return { sucesso: `Importação confirmada: ${r.linhas} linha(s) e ${r.fatosGerados} registro(s) gerado(s). Identificador ${r.correlationId.slice(0, 8)}.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível confirmar a importação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível confirmar a importação." };
     }
   });
 }

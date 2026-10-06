@@ -16,6 +16,7 @@ import {
 import { SeletorQuadrimestre } from "./SeletorQuadrimestre";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** RGF — Anexo 1 · Despesa com Pessoal (LRF art. 55 I "a"). Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export default async function RgfAnexo1Page({
   try {
     dados = await gerarRgfAnexo1({ exercicio, quadrimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o RGF Anexo 1"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o RGF Anexo 1"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   if (dados.poderes.length === 0) {

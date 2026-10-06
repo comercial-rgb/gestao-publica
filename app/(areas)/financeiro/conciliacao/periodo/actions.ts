@@ -10,6 +10,7 @@ import {
 } from "../../../../../lib/portas/tesouraria";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 export interface EstadoConciliacao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -41,7 +42,7 @@ export async function abrirPeriodoAction(
       revalidatePath("/financeiro/conciliacao/periodo");
       return { sucesso: `Conciliação de ${inicio} a ${fim} aberta.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível abrir o período." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível abrir o período." };
     }
   });
 }
@@ -60,7 +61,7 @@ export async function encerrarPeriodoAction(
       return { sucesso: `Conciliação de ${rotulo} encerrada.` };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível encerrar o período.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível encerrar o período.",
       };
     }
   });
@@ -93,7 +94,7 @@ export async function pendenciaManualAction(
       return { sucesso: "Pendência registrada." };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível registrar a pendência.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar a pendência.",
       };
     }
   });
@@ -115,7 +116,7 @@ export async function justificarAction(
       return { sucesso: "Justificativa registrada." };
     } catch (e) {
       return {
-        erro: e instanceof Error ? e.message : "Não foi possível justificar a pendência.",
+        erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível justificar a pendência.",
       };
     }
   });
@@ -139,7 +140,7 @@ export async function atribuirContaAction(
       revalidatePath("/financeiro/conciliacao/periodo");
       return { sucesso: "Conta atribuída. A guia passa a integrar os registros desta conta; vincule-a à linha do extrato para concluir a conciliação." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível atribuir a conta." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível atribuir a conta." };
     }
   });
 }

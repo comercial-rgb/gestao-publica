@@ -10,6 +10,7 @@ import { desmascararValor } from "../../../../lib/format/mascaras";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDaOrdem {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -60,7 +61,7 @@ export async function prepararOrdemAction(
       revalidar();
       return { sucesso: `Ordem ${numero} preparada. Aguardando autorização.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível preparar a ordem." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível preparar a ordem." };
     }
   });
 }
@@ -80,7 +81,7 @@ export async function autorizarOrdemAction(
       revalidar();
       return { sucesso: "Ordem autorizada." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível autorizar." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível autorizar." };
     }
   });
 }
@@ -100,7 +101,7 @@ export async function cancelarOrdemAction(
       revalidar();
       return { sucesso: "Ordem cancelada." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível cancelar." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível cancelar." };
     }
   });
 }

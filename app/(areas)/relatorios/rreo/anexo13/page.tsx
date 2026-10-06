@@ -9,6 +9,7 @@ import { gerarRreoAnexo13, PortaSemBancoError, type Anexo13, type LinhaContratoP
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** RREO — Anexo 13 · PPP (Lei 11.079/2004). Server Component, força-dinâmica. Esqueleto honesto. */
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function RreoAnexo13Page({
   try {
     dados = await gerarRreoAnexo13({ exercicio, bimestre });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 13"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 13"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   return (

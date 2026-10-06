@@ -5,6 +5,7 @@ import {
   type LoteDeAnexos,
 } from "../../../../lib/portas/documentos";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * DOWNLOAD EM LOTE — um .zip com os anexos de um processo ou de uma pessoa.
  *
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     // Teto do lote estourado, ou integridade de um dos arquivos. As duas mensagens foram
     // escritas para quem lê — e a segunda é um incidente que alguém precisa ver.
     return NextResponse.json(
-      { erro: e instanceof Error ? e.message : "Falha ao montar o lote." },
+      { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao montar o lote." },
       { status: 500, headers: { "cache-control": "no-store" } }
     );
   }

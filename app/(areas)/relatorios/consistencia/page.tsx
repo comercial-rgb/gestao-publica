@@ -16,6 +16,7 @@ import { SeletorConsistencia } from "./SeletorConsistencia";
 import { janelaCivilDoAno } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * RELATÓRIO DE CONSISTÊNCIA (TR 5.128–5.131 · 7.27) — INTERNO, atrás do shell autenticado.
  *
@@ -74,7 +75,7 @@ export default async function ConsistenciaPage({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível executar as verificações"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

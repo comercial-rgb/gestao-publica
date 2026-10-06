@@ -7,6 +7,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerContasDePassivo, lerTiposDeConsignacao } from "../../../../lib/portas/consignacoes";
 import { AtosDaConsignacao, AtosDoTipo, FormCadastrar } from "./FormsDaConsignacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS CONSIGNAÇÕES — ONDE O ENTE DIZ EM QUE CONTA A RETENÇÃO VIRA DÍVIDA (M07, V11 V8.3).
  *
@@ -39,7 +40,7 @@ export default async function ConsignacoesPage(): Promise<React.ReactElement> {
         <PageHeader titulo="Consignações" subtitulo="Tipos de consignação e contas de passivo das retenções na fonte" />
         <EstadoVazio
           titulo="Não foi possível carregar as consignações"
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

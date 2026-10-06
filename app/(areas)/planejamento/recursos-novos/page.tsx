@@ -19,6 +19,7 @@ import { dataBr } from "../../../../lib/recorte";
 import { FormDeclaracao } from "./FormDeclaracao";
 import { consultaDoSuperavit } from "../../../../lib/portas/superavit";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * DISPONIBILIDADE DE RECURSO NOVO (M03, TR 4.37) — o número que AUTORIZA o crédito adicional por
  * superávit financeiro, excesso de arrecadação e operação de crédito.
@@ -87,7 +88,7 @@ export default async function RecursosNovosPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar as disponibilidades"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

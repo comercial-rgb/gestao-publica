@@ -9,6 +9,7 @@ import { anoCivil } from "../../../../../packages/datas/index";
 import { SecoesDoDocumento } from "../../demonstracoes/QuadrosDoDocumento";
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — RREO ANEXO 9: OPERAÇÕES DE CRÉDITO E DESPESAS DE CAPITAL, a regra de ouro (CF art. 167, III; LRF art. 53, § 1º, I;
  * MDF 15ª ed., Tabela 9). Server Component, força-dinâmica.
@@ -54,7 +55,7 @@ export default async function RreoAnexo9Page({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 9"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

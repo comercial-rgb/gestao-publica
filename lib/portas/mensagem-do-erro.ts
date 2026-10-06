@@ -57,15 +57,43 @@ export function paraLeituraHumana(texto: string): string {
   return limpo === "" ? semConstraint.trim() : limpo;
 }
 
+/** A mensagem padrão do Zod, em inglês, que nenhum schema daqui escreveu — não se mostra a quem opera. */
+const MENSAGEM_PADRAO_DO_ZOD = /^(Invalid|Too (small|big)|Expected|Unrecognized|Required)\b/;
+
+/** O nome interno do campo, legível: `credorCpfCnpj` vira "Credor cpf cnpj". Só o último trecho do caminho. */
+function nomeDoCampo(caminho: readonly PropertyKey[]): string {
+  const ultimo = [...caminho].reverse().find((p) => typeof p === "string");
+  if (ultimo === undefined) return "";
+  const palavras = String(ultimo).replace(/([a-z0-9])([A-Z])/g, "$1 $2").toLowerCase();
+  return palavras.charAt(0).toUpperCase() + palavras.slice(1);
+}
+
+/**
+ * ⚠️ O CAMINHO DO CAMPO NÃO É TEXTO DE TELA (V37). `credorCpfCnpj: CPF/CNPJ inválido` e
+ * `justificativaQuebraOrdem.justificativa: …` chegavam ao operador com o nome interno na frente. Agora:
+ *   · frase completa (começa em maiúscula) sai sozinha — ela já diz o que está errado;
+ *   · pedaço de frase (começa em minúscula, escrito para vir depois do campo) ganha o nome legível;
+ *   · a mensagem padrão do Zod, em inglês, vira "<campo>: valor inválido.";
+ *   · um campo recusado por duas regras aparece uma vez, com a primeira.
+ */
+function linhaDaRecusa(caminho: readonly PropertyKey[], mensagem: string): string {
+  const campo = nomeDoCampo(caminho);
+  if (MENSAGEM_PADRAO_DO_ZOD.test(mensagem)) return campo !== "" ? `${campo}: valor inválido.` : "Valor inválido.";
+  const frase = paraLeituraHumana(mensagem);
+  return campo !== "" && /^[a-zà-ü]/.test(frase) ? `${campo}: ${frase}` : frase;
+}
+
 export function mensagemDoErro(e: unknown, padrao: string): string {
   if (e instanceof ZodError) {
-    return e.issues
-      .map((i) =>
-        i.path.length > 0
-          ? `${i.path.join(".")}: ${paraLeituraHumana(i.message)}`
-          : paraLeituraHumana(i.message)
-      )
-      .join("\n");
+    const vistos = new Set<string>();
+    const linhas: string[] = [];
+    for (const i of e.issues) {
+      const chave = i.path.map(String).join(".");
+      if (vistos.has(chave)) continue;
+      vistos.add(chave);
+      linhas.push(linhaDaRecusa(i.path, i.message));
+    }
+    return linhas.join("\n");
   }
   return e instanceof Error ? paraLeituraHumana(e.message) : padrao;
 }

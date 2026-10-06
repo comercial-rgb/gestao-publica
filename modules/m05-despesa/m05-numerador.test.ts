@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { limparBanco } from "../../test/limpar-banco.js";
-import { exigirUsoDoNumero, MAIOR_NUMERO, reservarNumero } from "./numerador.js";
+import { exigirUsoDoNumero, MAIOR_NUMERO, proximoNumeroLivre, reservarNumero } from "./numerador.js";
 
 /**
  * O NUMERADOR DOS DOCUMENTOS QUE O SISTEMA NUMERA (V22) — o número que o SAGRES aceita (numérico,
@@ -144,5 +144,34 @@ describe("a conferência na gravação — número reservado só é usado por qu
     const r = await reservar("ficha-a", "FP/2026-05/MAT-A");
     await expect(conferir({ exercicio: 2026, numero: r.numero, numeroDoEmpenho: r.numero })).resolves.toBeUndefined();
     await expect(conferir({ exercicio: 2026, numero: r.numero, numeroDoEmpenho: "12" })).rejects.toThrow(/NUMERO-RESERVADO/);
+  });
+
+  it("t11 (V37): a SUGESTÃO da tela pula a reserva do sistema — e o número sugerido passa na conferência", async () => {
+    // O caso de produção: o 1 de 2026 reservado pela folha, e a tela sugerindo "0000001".
+    const r = await reservar("ficha-a", "FV/2026-01/FIC-0001");
+    expect(r.numero).toBe("1");
+    expect(await proximoNumeroLivre(prisma, 2026)).toBe("2");
+    // N=2 espaços: empenho digitado e liquidação acima da reserva; a sugestão fica acima do maior dos três,
+    // e não olha outro exercício nem número de texto.
+    await empenhoComNumero("ficha-b", "5");
+    await liquidacaoComNumero("ficha-b", "5", "9");
+    await empenhoComNumero("ficha-2025", "40");
+    await empenhoComNumero("ficha-b", "NE-TEXTO");
+    const sugerido = await proximoNumeroLivre(prisma, 2026);
+    expect(sugerido).toBe("10");
+    await expect(conferir({ exercicio: 2026, numero: sugerido })).resolves.toBeUndefined();
+    // E o número reservado continua recusado a quem o digita.
+    await expect(conferir({ exercicio: 2026, numero: "1" })).rejects.toThrow(/NUMERO-RESERVADO/);
+  });
+
+  it("t12 (V37): a sugestão SÓ LÊ — não reserva nada, e repetida dá o mesmo número", async () => {
+    await reservar("ficha-a", "FP/2026-05/MAT-A");
+    const antes = await prisma.numeroReservado.count();
+    const a = await proximoNumeroLivre(prisma, 2026);
+    const b = await proximoNumeroLivre(prisma, 2026);
+    expect(a).toBe(b);
+    expect(await prisma.numeroReservado.count()).toBe(antes);
+    // Exercício vazio começa no 1.
+    expect(await proximoNumeroLivre(prisma, 2027)).toBe("1");
   });
 });

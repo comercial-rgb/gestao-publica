@@ -3,6 +3,7 @@
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { ehEixo, estornarPorAnalise } from "../../../../lib/portas/recursos/estorno-dados";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ⚠️ SEM `revalidatePath` AQUI, de propósito: revalidar dentro da action faz o Next re-renderizar a
  * rota, e a página passa a NÃO montar mais este formulário (a prévia deixa de estar PRONTA) — a
@@ -35,7 +36,7 @@ export async function estornarAction(_prev: EstadoDoEstorno, formData: FormData)
             : `Estorno registrado. ${r.movimentos} movimentos da operação foram anulados em conjunto, e os originais permanecem no histórico.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao estornar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao estornar. Nada foi gravado." };
     }
   });
 }

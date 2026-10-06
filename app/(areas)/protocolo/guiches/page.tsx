@@ -12,6 +12,7 @@ import {
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FormsDaOrganizacao } from "./FormsDaOrganizacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A ORGANIZAÇÃO DO ATENDIMENTO PRESENCIAL (M21, TR 5.39.92).
  *
@@ -51,7 +52,7 @@ export default async function GuichesPage(): Promise<React.ReactElement> {
         <PageHeader titulo="Atendimento presencial" subtitulo="Unidades, guichês e oferta de horários." />
         <EstadoVazio
           titulo="Não foi possível carregar o atendimento presencial"
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

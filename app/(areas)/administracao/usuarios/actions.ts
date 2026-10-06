@@ -13,6 +13,7 @@ import {
 } from "../../../../lib/portas/administracao";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 const ROTA = "/administracao/usuarios";
 
 export interface EstadoUsuario {
@@ -39,7 +40,7 @@ export async function criarUsuarioAction(_prev: EstadoUsuario, formData: FormDat
       revalidatePath(ROTA);
       return { sucesso: `Usuário ${email} criado.`, senhaParaEntregar: senhaInicial };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível criar o usuário." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível criar o usuário." };
     }
   });
 }
@@ -54,7 +55,7 @@ export async function concederPerfilAction(_prev: EstadoUsuario, formData: FormD
       revalidatePath(ROTA);
       return { sucesso: "Perfil concedido." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível conceder o perfil." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível conceder o perfil." };
     }
   });
 }
@@ -68,7 +69,7 @@ export async function revogarPerfilAction(_prev: EstadoUsuario, formData: FormDa
       revalidatePath(ROTA);
       return { sucesso: "Perfil revogado." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível revogar o perfil." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível revogar o perfil." };
     }
   });
 }
@@ -81,7 +82,7 @@ export async function ativarUsuarioAction(_prev: EstadoUsuario, formData: FormDa
       revalidatePath(ROTA);
       return { sucesso: "Usuário reativado." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível reativar o usuário." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível reativar o usuário." };
     }
   });
 }
@@ -94,7 +95,7 @@ export async function inativarUsuarioAction(_prev: EstadoUsuario, formData: Form
       revalidatePath(ROTA);
       return { sucesso: `Usuário inativado. ${sessoesRevogadas} sessão(ões) encerrada(s).` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível inativar o usuário." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível inativar o usuário." };
     }
   });
 }
@@ -108,7 +109,7 @@ export async function resetarSenhaAction(_prev: EstadoUsuario, formData: FormDat
       revalidatePath(ROTA);
       return { sucesso: `Senha redefinida. ${sessoesRevogadas} sessão(ões) do usuário encerrada(s).`, senhaParaEntregar: senhaTemporaria };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível redefinir a senha." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível redefinir a senha." };
     }
   });
 }
@@ -125,7 +126,7 @@ export async function vincularPessoaAction(_prev: EstadoUsuario, formData: FormD
       revalidatePath("/administracao/usuarios");
       return { sucesso: `Usuário vinculado a ${r.nome}. O vínculo não concede permissões de acesso.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível vincular." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível vincular." };
     }
   });
 }
@@ -139,7 +140,7 @@ export async function desvincularPessoaAction(_prev: EstadoUsuario, formData: Fo
       revalidatePath("/administracao/usuarios");
       return { sucesso: "Vínculo desfeito. O registro anterior permanece no histórico." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível desvincular." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível desvincular." };
     }
   });
 }

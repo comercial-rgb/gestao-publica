@@ -15,6 +15,7 @@ import {
 } from "../../../../lib/portas/comunicacao";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS AÇÕES DA COMUNICAÇÃO INTERNA.
  *
@@ -35,7 +36,7 @@ function revalidar(comunicadoId?: string): void {
 }
 
 function comoErro(e: unknown): EstadoDoComunicado {
-  return { erro: e instanceof Error ? e.message : String(e) };
+  return { erro: e instanceof Error ? mensagemDoErro(e, "") : String(e) };
 }
 
 const texto = (f: FormData, campo: string): string => String(f.get(campo) ?? "").trim();

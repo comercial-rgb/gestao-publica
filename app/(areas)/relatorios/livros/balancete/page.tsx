@@ -8,6 +8,7 @@ import { SeletorPeriodo } from "../SeletorPeriodo";
 import { lerPeriodo } from "../periodo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** Livro BALANCETE de verificação — analítico. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function BalancetePage({
   try {
     dados = await gerarBalancete({ desde, ate, modo: "ANALITICO" });
   } catch (erro) {
-    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Balancete"} descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Balancete"} descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} /></div>;
   }
 
   if (dados.linhas.length === 0) {

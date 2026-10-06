@@ -17,6 +17,7 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { formatarMoeda } from "../../../../../lib/format/moeda";
 import { diaCivilBr } from "../../../../../packages/datas/index";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** DETALHE de uma inscrição de restos a pagar. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function RestoAPagarDetalhePage({
         <PageHeader titulo="Resto a Pagar" acoes={voltar} />
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível consultar a inscrição"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

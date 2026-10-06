@@ -29,6 +29,7 @@ import { FormEncerrarDecreto } from "./FormEncerrarDecreto";
 import { FormDecretoCredito } from "./FormDecretoCredito";
 import { FormLeiCredito } from "./FormLeiCredito";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * CRÉDITOS ADICIONAIS (M03, TR 4.20–4.40) — a lista de decretos com autorizado/utilizado/saldo
  * (4.27–4.28) e o estado de encerramento (derivado do fato, nunca coluna). A tela consome a PORTA
@@ -92,7 +93,7 @@ export default async function CreditosAdicionaisPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar os créditos adicionais"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

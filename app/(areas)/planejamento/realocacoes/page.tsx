@@ -26,6 +26,7 @@ import { FormAnexo } from "../../documentos/FormAnexo";
 import { FormAnularRealocacao } from "./FormAnularRealocacao";
 import { FormRealocacao } from "./FormRealocacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * REMANEJAMENTO, TRANSPOSIÇÃO E TRANSFERÊNCIA DE DOTAÇÃO (M03 V21).
  *
@@ -130,7 +131,7 @@ export default async function RealocacoesPage({
                   ? "Banco de dados não configurado"
                   : "Não foi possível ler as realocações"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

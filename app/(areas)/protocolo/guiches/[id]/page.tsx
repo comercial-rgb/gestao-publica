@@ -9,6 +9,7 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { lerAgendaDoDia } from "../../../../../lib/portas/guiche";
 import { AtosDaAgenda, AtosDaReserva, BotaoConfirmar, FormMarcar } from "./AcoesDaAgenda";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * A AGENDA DE UM DIA NUM GUICHÊ (M21 V11 V8) — onde se marca e onde se atende.
  *
@@ -60,7 +61,7 @@ export default async function AgendaDoGuichePage({
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Agenda do guichê" subtitulo="Atendimento presencial" />
-        <EstadoVazio titulo="Não foi possível carregar a agenda" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar a agenda" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

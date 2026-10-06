@@ -7,6 +7,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { EFEITOS_ESCOLHIVEIS, lerElementosEAsContas } from "../../../../lib/portas/contas-da-liquidacao";
 import { FormContaDaLiquidacao } from "./FormContaDaLiquidacao";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS CONTAS DA LIQUIDAÇÃO POR ELEMENTO — onde a contabilidade diz em que cada despesa se
  * transforma ao ser liquidada (M01, V28).
@@ -35,7 +36,7 @@ export default async function ContasDaLiquidacaoPage(): Promise<React.ReactEleme
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Contas da liquidação por elemento" subtitulo="Em que cada despesa se transforma ao ser liquidada" />
-        <EstadoVazio titulo="Não foi possível ler os elementos" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler os elementos" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

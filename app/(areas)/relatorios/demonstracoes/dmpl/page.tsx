@@ -8,6 +8,7 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { lerExercicio } from "../exercicio";
 import { SeletorExercicio } from "../SeletorExercicio";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 — DEMONSTRAÇÃO DAS MUTAÇÕES NO PATRIMÔNIO LÍQUIDO (MCASP 11ª ed., Parte V, item 7), lida do razão: colunas pelo
  * grupo 2.3, linhas pelo par do lançamento. O movimento sem regra aparece como pendência, com o lançamento.
@@ -36,7 +37,7 @@ export default async function DmplPage({
     return (
       <div>
         {cabecalho}
-        <EstadoVazio titulo="Não foi possível montar a DMPL" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível montar a DMPL" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

@@ -6,6 +6,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerUnidadesGestoras, ROTULO_DA_NATUREZA_DA_UG } from "../../../../lib/portas/unidades-gestoras";
 import { FormCadastrarUg, FormEncerrarUg, FormVincularUo } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — AS UNIDADES GESTORAS DO MUNICÍPIO, como estão no cadastro do Tribunal: as escrituradas aqui e as de fora,
  * que aparecem como o outro lado de uma transferência.
@@ -27,7 +28,7 @@ export default async function UnidadesGestorasPage(): Promise<React.ReactElement
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

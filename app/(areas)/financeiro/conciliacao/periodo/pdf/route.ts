@@ -6,6 +6,7 @@ import { nomeDoEnteParaDocumentos } from "../../../../../../lib/pdf/ente";
 import { exigirLeituraDoEnte } from "../../../../../../lib/portas/leitura";
 import { verConciliacao } from "../../../../../../lib/portas/tesouraria";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * V36 — EMISSÃO PDF da conciliação de um período (`?id=`). Mesmo leitor da tela. Quando o motor recusa (conta sem
  * mapeamento contábil, diferença não explicada), a rota devolve a recusa com o motivo, nunca um papel que afirme
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     conciliacao = await verConciliacao(id);
   } catch (e) {
-    return new NextResponse(`O relatório não foi emitido: ${e instanceof Error ? e.message : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
+    return new NextResponse(`O relatório não foi emitido: ${e instanceof Error ? mensagemDoErro(e, "") : "erro desconhecido"}`, { status: 409, headers: { "content-type": "text/plain; charset=utf-8" } });
   }
   const doc = documentoDaConciliacao({ ente: await nomeDoEnteParaDocumentos(), conciliacao });
   const r = await emitir(doc, `conciliacao-${conciliacao.relatorio.contaBancaria.codigo}-${conciliacao.rotulo}`);

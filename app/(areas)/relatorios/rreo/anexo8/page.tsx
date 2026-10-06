@@ -24,6 +24,7 @@ import {
 import { SeletorBimestreRreo } from "../anexo3/SeletorBimestreRreo";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * RREO — ANEXO 8: MDE (Educação), BLOCO 1 (LDB art. 72; CF art. 212/212-A). Server Component +
  * force-dynamic. Quadros empilhados: receitas (base + apuração), FUNDEB (receitas/despesas), e o
@@ -72,7 +73,7 @@ export default async function RreoAnexo8Page({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível gerar o Anexo 8"}
-          descricao={erro instanceof PortaSemBancoError ? "Não foi possível acessar os dados. Tente novamente mais tarde." : erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof PortaSemBancoError ? "Não foi possível acessar os dados. Tente novamente mais tarde." : erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

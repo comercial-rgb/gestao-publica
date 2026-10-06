@@ -20,6 +20,7 @@ import {
 import { FiltroAtualizacoes } from "./FiltroAtualizacoes";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * RELATÓRIO DE ATUALIZAÇÕES ORÇAMENTÁRIAS (TR 4.40) — uma linha por MOVIMENTO de crédito, com
  * filtros por ficha, decreto, fonte e UG, e emissão em PDF e CSV.
@@ -70,7 +71,7 @@ export default async function AtualizacoesOrcamentariasPage({
               ? "Exercício inválido"
               : "Não foi possível identificar o exercício"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );
@@ -91,7 +92,7 @@ export default async function AtualizacoesOrcamentariasPage({
         <PageHeader titulo="Atualizações orçamentárias" subtitulo={`Exercício ${exercicio}`} />
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível ler as atualizações"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

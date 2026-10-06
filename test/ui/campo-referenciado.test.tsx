@@ -10,7 +10,7 @@
 
 import { act, cleanup, fireEvent, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CampoReferenciado } from "../../components/ui/CampoReferenciado";
+import { CampoReferenciado, correspondenciaExata } from "../../components/ui/CampoReferenciado";
 
 interface Pendente {
   readonly url: string;
@@ -146,5 +146,84 @@ describe("CampoReferenciado", () => {
     fireEvent.keyDown(input, { key: "Enter" });
     expect((container.querySelector('input[name="naturezaDespesa"]') as HTMLInputElement).value).toBe("319013");
     expect(aoEnviar).not.toHaveBeenCalled();
+  });
+  // ── V37 — o defeito de produção: o CPF inteiro digitado, sem clicar na lista, ia VAZIO ao servidor ──
+
+  it("V37 CORRESPONDÊNCIA EXATA: documento com máscara casa pelos dígitos; prefixo e parte do nome não", () => {
+    const ops = [
+      { valor: "41827365919", rotulo: "418.273.659-19 — Maria" },
+      { valor: "41827365900", rotulo: "418.273.659-00 — João" },
+    ];
+    expect(correspondenciaExata("418.273.659-19", ops)?.valor).toBe("41827365919");
+    expect(correspondenciaExata("41827365900", ops)?.valor).toBe("41827365900");
+    expect(correspondenciaExata("418.273.659-00 — joão", ops)?.valor).toBe("41827365900");
+    expect(correspondenciaExata("4182736", ops)).toBeUndefined();
+    expect(correspondenciaExata("Maria", ops)).toBeUndefined();
+    expect(correspondenciaExata("CPF 41827365919", ops)).toBeUndefined();
+    expect(correspondenciaExata("", ops)).toBeUndefined();
+  });
+
+  it("V37 AO SAIR DO CAMPO: o texto que é exatamente uma opção vira escolha; a aproximação não", async () => {
+    const { container, getByRole } = render(
+      <form>
+        <CampoReferenciado name="credor" rotulo="Credor" catalogo="credores" obrigatorio />
+      </form>
+    );
+    const input = getByRole("combobox");
+    const hidden = container.querySelector('input[type="hidden"][name="credor"]') as HTMLInputElement;
+
+    await digitar(input, "4182");
+    await responder(0, { opcoes: [{ valor: "41827365919", rotulo: "418.273.659-19 — Maria" }], temMais: false });
+    fireEvent.blur(input);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(hidden.value).toBe("");
+
+    await digitar(input, "418.273.659-19");
+    await responder(1, { opcoes: [{ valor: "41827365919", rotulo: "418.273.659-19 — Maria" }], temMais: false });
+    fireEvent.blur(input);
+    await act(async () => {
+      vi.advanceTimersByTime(200);
+    });
+    expect(hidden.value).toBe("41827365919");
+  });
+
+  it("V37 OBRIGATÓRIO SEM ESCOLHA NÃO ENVIA: o envio é barrado com o motivo, e o formulário oferece a alternativa", async () => {
+    const naoEncontrado = vi.fn();
+    const { container, getByRole } = render(
+      <form>
+        <CampoReferenciado name="credor" rotulo="Credor" catalogo="credores" obrigatorio aoNaoEncontrar={naoEncontrado} />
+      </form>
+    );
+    const form = container.querySelector("form") as HTMLFormElement;
+    const input = getByRole("combobox");
+    await digitar(input, "418.273.659-19");
+    await responder(0, { opcoes: [], temMais: false });
+    let enviou = true;
+    act(() => {
+      enviou = fireEvent.submit(form);
+    });
+    expect(enviou).toBe(false);
+    expect(container.querySelector('[role="alert"]')?.textContent).toMatch(/não foi escolhido na lista/);
+    expect(naoEncontrado).toHaveBeenCalledWith("418.273.659-19");
+
+    // Com a escolha feita, o envio passa.
+    await digitar(input, "418");
+    await responder(1, { opcoes: [{ valor: "41827365919", rotulo: "418.273.659-19 — Maria" }], temMais: false });
+    fireEvent.mouseDown(container.querySelector('[data-valor="41827365919"]') as HTMLElement);
+    act(() => {
+      enviou = fireEvent.submit(form);
+    });
+    expect(enviou).toBe(true);
+  });
+
+  it("V37 O OPCIONAL NÃO BARRA: sem obrigatorio, o envio vazio segue", () => {
+    const { container } = render(
+      <form>
+        <CampoReferenciado name="obra" rotulo="Obra" catalogo="obras" />
+      </form>
+    );
+    expect(fireEvent.submit(container.querySelector("form") as HTMLFormElement)).toBe(true);
   });
 });

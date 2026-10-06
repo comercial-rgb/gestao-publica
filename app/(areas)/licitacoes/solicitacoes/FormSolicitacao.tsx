@@ -54,7 +54,7 @@ export function FormSolicitacao({ setores, materiais }: { readonly setores: read
         </label>
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
           <span className={ROTULO}>Justificativa (mínimo 10 caracteres)</span>
-          <textarea name="justificativa" required rows={2} className={CAMPO} />
+          <textarea name="justificativa" required minLength={10} rows={2} className={CAMPO} />
         </label>
       </div>
       <fieldset data-secao="itens" className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">

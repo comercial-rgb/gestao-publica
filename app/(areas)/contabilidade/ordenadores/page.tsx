@@ -6,6 +6,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { lerOrdenadoresEResponsavel } from "../../../../lib/portas/ordenadores";
 import { FormDesignar, FormEncerrar, FormResponsavel } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — QUEM ORDENA A DESPESA E QUEM RESPONDE PELO SISTEMA, para a prestação de contas.
  *
@@ -23,7 +24,7 @@ export default async function OrdenadoresPage(): Promise<React.ReactElement> {
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Ordenadores e responsável pelo sistema" subtitulo="Quem ordena a despesa e quem mantém o sistema" />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

@@ -9,6 +9,7 @@ import {
   type TipoDeAtoDeclarado,
 } from "../../../../lib/portas/entidades-contabeis";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDaEntidade {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -57,7 +58,7 @@ export async function cadastrarEntidadeAction(
     } catch (e) {
       // A mensagem do domínio é a que nomeia o motivo e o que fazer. Reescrevê-la aqui apagaria
       // exatamente a orientação que ela carrega.
-      return { erro: e instanceof Error ? e.message : "Não foi possível cadastrar a entidade." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível cadastrar a entidade." };
     }
   });
 }
@@ -85,7 +86,7 @@ export async function publicarVersaoAction(
         sucesso: `Versão ${String(versao)} publicada. A versão anterior permanece no histórico, e as guias já emitidas mantêm a entidade original.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível publicar a versão." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível publicar a versão." };
     }
   });
 }

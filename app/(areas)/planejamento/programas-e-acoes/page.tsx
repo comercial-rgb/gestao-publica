@@ -7,6 +7,7 @@ import { lerProgramasEAcoesDoOrcamento, OBJETIVO_MILENIO_2026 } from "../../../.
 import { anoCivil } from "../../../../packages/datas/index";
 import { FormDaAcao, FormDoPrograma } from "./Forms";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — PROGRAMAS E AÇÕES DO ORÇAMENTO, com o objetivo, o objetivo da Agenda 2030, a meta e a unidade de medida que a
  * prestação de contas pede. Os que têm ficha no exercício; sem declaração, a linha diz o que falta.
@@ -27,7 +28,7 @@ export default async function ProgramasEAcoesPage({ searchParams }: { readonly s
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Programas e ações" subtitulo="Os dados de cada programa e ação do orçamento para a prestação de contas" />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

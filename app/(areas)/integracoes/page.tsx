@@ -5,6 +5,7 @@ import { PageHeader } from "../../../components/ui/PageHeader";
 import { montarCentralIntegracoes, type EstadoCard } from "../../../lib/portas/integracoes";
 import { telaExigeLeituraDoEnte } from "../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../lib/portas/mensagem-do-erro";
 /**
  * CENTRAL DE INTEGRAÇÕES (S6) — o hub que a Comissão vê. Quatro canais (SAGRES TXT · Captura 2.0 ·
  * Banco do Brasil · API TCE), cada um com o MODO vigente, o último evento e a ação principal — ou o
@@ -26,7 +27,7 @@ export default async function CentralIntegracoesPage(): Promise<React.ReactEleme
   try {
     cards = await montarCentralIntegracoes();
   } catch (e) {
-    erro = e instanceof Error ? e.message : "Não foi possível carregar a Central de Integrações.";
+    erro = e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível carregar a Central de Integrações.";
   }
 
   return (

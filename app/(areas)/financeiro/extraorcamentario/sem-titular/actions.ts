@@ -5,6 +5,7 @@ import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 import { atribuirEntidadeAoMovimento } from "../../../../../lib/portas/movimentos-sem-titular";
 import type { TipoDeAtoDeclarado } from "../../../../../lib/portas/entidades-contabeis";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDaAtribuicao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -29,7 +30,7 @@ export async function atribuirEntidadeAoMovimentoAction(_prev: EstadoDaAtribuica
       revalidatePath("/financeiro/extraorcamentario/sem-titular");
       return { sucesso: "Entidade atribuída. O movimento foi mantido, e a atribuição ficou registrada com o responsável, o motivo e o ato." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível atribuir a entidade." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível atribuir a entidade." };
     }
   });
 }

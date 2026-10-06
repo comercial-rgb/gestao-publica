@@ -21,6 +21,7 @@ import { formatarDocumento } from "../../../../packages/documento/index";
 import { FormAnular } from "../FormAnular";
 import { EXERCICIO_PADRAO } from "../../../../lib/recorte";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /** RESTOS A PAGAR — posição por inscrição. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ export default async function RestosAPagarPage({
         {cabecalho}
         <EstadoVazio
           titulo={erro instanceof PortaSemBancoError ? "Serviço indisponível" : "Não foi possível consultar os restos a pagar"}
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

@@ -6,6 +6,7 @@ import { lerCadastroDeFontes } from "../../../../lib/portas/fontes-de-recurso";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { FormCarga } from "./FormCarga";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS FONTES DE RECURSO (V35, onda A1) — o cadastro que não tinha lugar. A fonte é classificação da STN: a tela
  * carrega a tabela oficial e mostra o que está no cadastro, com a natureza de cada fonte.
@@ -35,7 +36,7 @@ export default async function FontesDeRecursoPage(): Promise<React.ReactElement>
       <div className="space-y-4">
         <SincronizarContexto />
         {titulo}
-        <EstadoVazio titulo="Não foi possível ler as fontes" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível ler as fontes" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

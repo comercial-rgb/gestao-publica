@@ -6,6 +6,7 @@ import { CLASSES_DE_BENS } from "../../../../lib/portas/recursos/acervo";
 import { criarClasseDeBens } from "../../../../lib/portas/recursos/acervo-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action deste cadastro — despacho FAIL-CLOSED: ação desconhecida é recusada
  * nomeando, em vez de cair num caminho feliz que diria "salvo" sem ter gravado nada.
@@ -32,7 +33,7 @@ export async function acaoDeClassesDeBensAction(
       }
       await criarClasseDeBens(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(CLASSES_DE_BENS.rota);

@@ -20,6 +20,7 @@ import {
 } from "../../../../lib/portas/protocolo";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * AS AÇÕES DO PROCESSO DIGITAL.
  *
@@ -45,7 +46,7 @@ function revalidar(processoId?: string): void {
 
 /** A mensagem do domínio, inteira. Ela já foi escrita para quem lê. */
 function comoErro(e: unknown): EstadoDoProcesso {
-  return { erro: e instanceof Error ? e.message : String(e) };
+  return { erro: e instanceof Error ? mensagemDoErro(e, "") : String(e) };
 }
 
 const texto = (f: FormData, campo: string): string =>

@@ -10,6 +10,7 @@ import {
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 export interface EstadoDaSolicitacao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -66,7 +67,7 @@ export async function solicitarAction(_prev: EstadoDaSolicitacao, fd: FormData):
       revalidar();
       return { sucesso: `Solicitação ${numero} registrada (R$ ${formatarMoeda(valor).texto}). Aguardando autorização.` };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível registrar a solicitação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar a solicitação." };
     }
   });
 }
@@ -82,7 +83,7 @@ export async function autorizarSolicitacaoAction(_prev: EstadoDaSolicitacao, fd:
       revalidar();
       return { sucesso: "Solicitação autorizada. O empenho já pode ser emitido a partir dela." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível autorizar a solicitação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível autorizar a solicitação." };
     }
   });
 }
@@ -96,7 +97,7 @@ export async function rejeitarSolicitacaoAction(_prev: EstadoDaSolicitacao, fd: 
       revalidar();
       return { sucesso: "Solicitação rejeitada. O motivo fica registrado com o seu nome." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível rejeitar a solicitação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível rejeitar a solicitação." };
     }
   });
 }
@@ -110,7 +111,7 @@ export async function cancelarSolicitacaoAction(_prev: EstadoDaSolicitacao, fd: 
       revalidar();
       return { sucesso: "Solicitação cancelada." };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Não foi possível cancelar a solicitação." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível cancelar a solicitação." };
     }
   });
 }

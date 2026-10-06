@@ -5,6 +5,7 @@ import { previaDasRetencoes, type LinhaDaPrevia } from "../../../../lib/portas/r
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { lerOperacaoFiscal } from "./operacao-fiscal";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V24 — A PRÉVIA DAS RETENÇÕES CALCULADAS. Só LÊ: não grava, não consome chave de comando, e a porta
  * exige a leitura da despesa. O pagamento recalcula tudo no servidor; esta prévia não vale como valor.
@@ -30,6 +31,6 @@ export async function previaRetencoesAction(_prev: EstadoDaPrevia, f: FormData):
     const p = await previaDasRetencoes({ liquidacaoId, valorDoPagamento: valor, data: meioDiaCivil(data), operacao: op });
     return { fornecedor: p.fornecedor, perfil: p.perfil, linhas: p.linhas };
   } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível calcular." };
+    return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível calcular." };
   }
 }

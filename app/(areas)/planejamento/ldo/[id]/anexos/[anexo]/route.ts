@@ -6,6 +6,7 @@ import { exigirLeituraDoEnte } from "../../../../../../../lib/portas/leitura";
 import { ehChaveDeAnexo, montarAnexoDaLdo } from "../../../../../../../lib/portas/anexos-ldo";
 import { respostaDaRecusaDeLeitura } from "../../../../../../../lib/rotas/recusa";
 
+import { mensagemDoErro } from "../../../../../../../lib/portas/mensagem-do-erro";
 /**
  * OS ANEXOS DA LDO EM PDF — uma rota, oito anexos (M02b, V4 §8; conciliado do siafic-cg c04ad5a).
  *
@@ -31,7 +32,7 @@ export async function GET(_req: Request, ctx: { readonly params: Promise<{ reado
   try {
     doc = anexoParaDocumento(await montarAnexoDaLdo(id, anexo), await nomeDoEnteParaDocumentos());
   } catch (e) {
-    return NextResponse.json({ erro: e instanceof Error ? e.message : "Não foi possível montar o anexo." }, { status: 404 });
+    return NextResponse.json({ erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível montar o anexo." }, { status: 404 });
   }
   const r = await emitir(doc, `ldo-${anexo}`);
   return new NextResponse(Buffer.from(r.pdf), {

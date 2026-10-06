@@ -17,6 +17,7 @@ import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { FormCriarPerfil } from "./FormCriarPerfil";
 import { GerenciarPerfil } from "./GerenciarPerfil";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ADMINISTRAÇÃO · Perfis e permissões (TR 4.56).
  *
@@ -62,7 +63,7 @@ export default async function PerfisPage(): Promise<React.ReactElement> {
               ? "Perfis indisponíveis no momento"
               : "Não foi possível listar os perfis"
           }
-          descricao={erro instanceof Error ? erro.message : "Tente novamente em alguns instantes."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Tente novamente em alguns instantes."}
         />
       </div>
     );

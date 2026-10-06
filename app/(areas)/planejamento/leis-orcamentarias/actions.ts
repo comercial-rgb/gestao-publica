@@ -6,6 +6,7 @@ import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { LEIS_ORCAMENTARIAS } from "../../../../lib/portas/recursos/leis-orcamentarias";
 import { criarLeiOrcamentaria, registrarAprovacaoDaLei } from "../../../../lib/portas/recursos/leis-orcamentarias-dados";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action da Lei Orçamentária Anual — "criar" (o projeto) e "registrar-aprovacao" (a lei).
  *
@@ -35,7 +36,7 @@ export async function acaoDasLeisOrcamentariasAction(_prev: EstadoDoMolde, formD
         return { erro: "Ação não reconhecida. Nada foi gravado." };
       }
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(LEIS_ORCAMENTARIAS.rota);

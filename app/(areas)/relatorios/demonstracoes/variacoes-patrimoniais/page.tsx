@@ -14,6 +14,7 @@ import { SeletorPeriodo } from "../../livros/SeletorPeriodo";
 import { lerPeriodo } from "../../livros/periodo";
 import { ContasDaLinha, LinkDoBalancete } from "../ContasDaLinha";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /** ANEXO 15 — Demonstração das Variações Patrimoniais. Server Component, força-dinâmica. */
 export const dynamic = "force-dynamic";
 
@@ -57,7 +58,7 @@ export default async function VariacoesPatrimoniaisPage({
               ? "Serviço indisponível"
               : "Não foi possível emitir a demonstração"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

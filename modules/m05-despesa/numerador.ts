@@ -98,23 +98,45 @@ export async function reservarNumero(
     const corrida = await tx.numeroReservado.findUnique({ where: onde, select: { numero: true } });
     if (corrida !== null) return { numero: corrida.numero, chave };
 
-    const linhas = (await tx.$queryRawUnsafe(
-      `SELECT GREATEST(
-         COALESCE((SELECT MAX(e.numero::bigint) FROM "Empenho" e JOIN "FichaOrcamentaria" f ON f.id = e."fichaId"
-                   WHERE f.exercicio = $1 AND e.numero ~ '^[0-9]{1,7}$'), 0),
-         COALESCE((SELECT MAX(l.numero::bigint) FROM "Liquidacao" l JOIN "Empenho" e ON e.id = l."empenhoId" JOIN "FichaOrcamentaria" f ON f.id = e."fichaId"
-                   WHERE f.exercicio = $1 AND l.numero ~ '^[0-9]{1,7}$'), 0),
-         COALESCE((SELECT MAX(r.numero::bigint) FROM "NumeroReservado" r WHERE r.exercicio = $1 AND r.especie = $2), 0)
-       )::text AS maior`,
-      exercicio,
-      ESPECIE
-    )) as { maior: string }[];
-    const proximo = Number(linhas[0]?.maior ?? "0") + 1;
+    const proximo = (await maiorNumeroUsado(tx, exercicio)) + 1;
     if (proximo > MAIOR_NUMERO) throw new NumeradorEsgotadoError(exercicio);
     const numero = String(proximo);
     await tx.numeroReservado.create({ data: { exercicio, especie: ESPECIE, chave, numero, criadoPor: p.criadoPor } });
     return { numero, chave };
   });
+}
+
+/**
+ * O MAIOR número numérico já usado no exercício — em empenho, em liquidação ou em reserva. É a régua
+ * do numerador e também a da sugestão da tela, para as duas nunca divergirem.
+ */
+async function maiorNumeroUsado(executor: TxComRaw, exercicio: number): Promise<number> {
+  const linhas = (await executor.$queryRawUnsafe(
+    `SELECT GREATEST(
+       COALESCE((SELECT MAX(e.numero::bigint) FROM "Empenho" e JOIN "FichaOrcamentaria" f ON f.id = e."fichaId"
+                 WHERE f.exercicio = $1 AND e.numero ~ '^[0-9]{1,7}$'), 0),
+       COALESCE((SELECT MAX(l.numero::bigint) FROM "Liquidacao" l JOIN "Empenho" e ON e.id = l."empenhoId" JOIN "FichaOrcamentaria" f ON f.id = e."fichaId"
+                 WHERE f.exercicio = $1 AND l.numero ~ '^[0-9]{1,7}$'), 0),
+       COALESCE((SELECT MAX(r.numero::bigint) FROM "NumeroReservado" r WHERE r.exercicio = $1 AND r.especie = $2), 0)
+     )::text AS maior`,
+    exercicio,
+    ESPECIE
+  )) as { maior: string }[];
+  return Number(linhas[0]?.maior ?? "0");
+}
+
+/**
+ * O PRÓXIMO NÚMERO LIVRE do exercício, para a TELA sugerir (V37). Só lê: não reserva nada.
+ *
+ * ⚠️ POR QUE A TELA PRECISA DISTO. O campo do número mostrava "0000001" como exemplo, e o operador que
+ * digitava 1 esbarrava na reserva do sistema (o empenho da folha, por exemplo) — "NUMERO-RESERVADO".
+ * A recusa está certa; o que estava errado era a tela não dizer qual número estava livre. Entre a
+ * sugestão e a gravação outro documento pode tomar o número: aí a gravação recusa como sempre, e a
+ * tela sugere o seguinte.
+ */
+export async function proximoNumeroLivre(prisma: PrismaClient, exercicio: number): Promise<string> {
+  const proximo = (await maiorNumeroUsado(prisma, exercicio)) + 1;
+  return proximo > MAIOR_NUMERO ? "" : String(proximo);
 }
 
 /** O cliente transacional mínimo que a conferência precisa. */

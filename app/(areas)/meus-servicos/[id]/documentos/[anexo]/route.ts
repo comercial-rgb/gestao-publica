@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { documentoDaSolicitacaoPara } from "../../../../../../lib/portas/carta-de-servicos";
 import { exigirLeituraDoEnte } from "../../../../../../lib/portas/leitura";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * O DOCUMENTO DE UMA SOLICITAÇÃO PARA O REQUERENTE (V6.2 P3).
  *
@@ -29,7 +30,7 @@ export async function GET(_req: Request, { params }: { readonly params: Promise<
   try {
     doc = await documentoDaSolicitacaoPara(sessao, id, anexo);
   } catch (e) {
-    return NextResponse.json({ erro: e instanceof Error ? e.message : "Falha ao ler o documento." }, { status: 500, headers: { "cache-control": "no-store" } });
+    return NextResponse.json({ erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao ler o documento." }, { status: 500, headers: { "cache-control": "no-store" } });
   }
   if (doc === null) return NextResponse.json({ erro: "Documento não encontrado." }, { status: 404, headers: { "cache-control": "no-store" } });
   return new NextResponse(new Uint8Array(doc.conteudo), {

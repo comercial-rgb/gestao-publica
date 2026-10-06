@@ -5,6 +5,7 @@ import { ValorMonetario } from "../../../../../../components/ui/ValorMonetario";
 import { identidadePublica } from "../../../../../../lib/portas/identidade";
 import { lerLoaPublica, PortaSemBancoError, type LoaDaTela } from "../../../../../../lib/portas/planejamento-publico";
 
+import { mensagemDoErro } from "../../../../../../lib/portas/mensagem-do-erro";
 /**
  * V35 C9 — A LOA APROVADA NO PORTAL: o resumo e os anexos da Lei 4.320/1964, a mesma montagem e a mesma conferência da
  * tela interna (`loaDoExercicio`). Exercício sem lei de aprovação responde 404: o projeto não é publicado aqui.
@@ -41,7 +42,7 @@ export default async function LoaPublicaPage({ params }: { readonly params: Prom
   } catch (e) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
-        <p role="alert" className="text-sm">{e instanceof PortaSemBancoError ? "Consulta indisponível no momento." : e instanceof Error ? e.message : "Não foi possível montar a LOA."}</p>
+        <p role="alert" className="text-sm">{e instanceof PortaSemBancoError ? "Consulta indisponível no momento." : e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível montar a LOA."}</p>
       </main>
     );
   }

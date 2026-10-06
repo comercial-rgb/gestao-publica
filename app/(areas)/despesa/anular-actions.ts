@@ -6,6 +6,7 @@ import { anularExecucao, type TipoAnulavel } from "../../../lib/portas/anulacao"
 import { desmascararValor } from "../../../lib/format/mascaras";
 import { meioDiaCivil } from "../../../packages/datas/index";
 
+import { mensagemDoErro } from "../../../lib/portas/mensagem-do-erro";
 export interface EstadoAnulacao {
   readonly erro?: string;
   readonly sucesso?: string;
@@ -80,6 +81,6 @@ async function anularDespesa(formData: FormData): Promise<EstadoAnulacao> {
       originalHref: tipo === "empenho" ? `/despesa/empenhos/${id}` : `/despesa/documento/${tipo === "liquidacao" ? "LIQUIDACAO" : "PAGAMENTO"}/${id}`,
     };
   } catch (e) {
-    return { erro: e instanceof Error ? e.message : "Não foi possível registrar a anulação." };
+    return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar a anulação." };
   }
 }

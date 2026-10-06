@@ -13,6 +13,7 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * TELA SAGRES CAPTURA 2.0 (M18, S3) — a MESMA massa em JSON, validada contra o schema OFICIAL, com
  * simulação de submissão (MOCK → SIMULATED). Consome a PORTA (grep trivalente). Comunicação honesta
@@ -79,7 +80,7 @@ export default async function CapturaPage(): Promise<React.ReactElement> {
     preview = await montarPreviewCaptura();
     execucoes = await ultimasExecucoesCaptura(8);
   } catch (e) {
-    erro = e instanceof Error ? e.message : "Não foi possível gerar a prévia.";
+    erro = e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível gerar a prévia.";
   }
 
   return (

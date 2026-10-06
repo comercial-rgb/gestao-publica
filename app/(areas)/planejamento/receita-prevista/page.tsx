@@ -7,6 +7,7 @@ import { DEDUCAO_SAGRES, lerReceitaPrevista } from "../../../../lib/portas/recei
 import { anoCivil } from "../../../../packages/datas/index";
 import { FormDoDetalhe } from "./FormDoDetalhe";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * V26 — A RECEITA PREVISTA DO EXERCÍCIO, com o subtipo de cada dedução e a origem de cada linha.
  *
@@ -28,7 +29,7 @@ export default async function ReceitaPrevistaPage({ searchParams }: { readonly s
       <div className="space-y-4">
         <SincronizarContexto />
         <PageHeader titulo="Receita prevista" subtitulo="As linhas da previsão da receita do exercício" />
-        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? erro.message : "Erro desconhecido."} />
+        <EstadoVazio titulo="Não foi possível carregar" descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."} />
       </div>
     );
   }

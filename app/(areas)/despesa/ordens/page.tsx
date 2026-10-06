@@ -23,6 +23,7 @@ import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { FormAutorizar, FormCancelar, FormOrdem } from "./FormOrdem";
 import { instanteCivilBr } from "../../../../packages/datas/index";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * ORDENS DE PAGAMENTO — as QUATRO ETAPAS, cada uma com o seu estado real.
  *
@@ -109,7 +110,7 @@ export default async function OrdensDePagamentoPage({
                   ? "Serviço indisponível"
                   : "Não foi possível carregar as ordens de pagamento"
           }
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
         />
       </div>
     );

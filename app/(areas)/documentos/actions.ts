@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { anexarNaTela } from "../../../lib/portas/documentos";
 import { comComandoDoFormulario } from "../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../lib/portas/mensagem-do-erro";
 /**
  * A AÇÃO DE ANEXAR — uma só, para todos os registros que aceitam anexo.
  *
@@ -156,7 +157,7 @@ export async function anexarArquivoAction(
           `que permite confirmar posteriormente a integridade do arquivo.`,
       };
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : String(e) };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : String(e) };
     }
   });
 }

@@ -6,6 +6,7 @@ import { LOCALIZACOES_FISICAS } from "../../../../lib/portas/recursos/gestao-do-
 import { criarLocalizacao } from "../../../../lib/portas/recursos/gestao-do-bem-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A Server Action deste cadastro, despachando pelo `__acao`.
  *
@@ -33,7 +34,7 @@ export async function acaoDeLocalizacoesAction(
       }
       await criarLocalizacao(campos);
     } catch (e) {
-      return { erro: e instanceof Error ? e.message : "Falha ao gravar. Nada foi gravado." };
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
 
     revalidatePath(LOCALIZACOES_FISICAS.rota);

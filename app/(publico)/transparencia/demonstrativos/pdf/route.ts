@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { gerarPdfPublico } from "../../../../../lib/pdf/demonstrativos";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * ROTA PÚBLICA DE PDF (LC 131/2009 · TR 7.5). GET, SEM sessão — o relatório oficial é público. Ela
  * mora fora de `(areas)`, então não há layout autenticado; e ela mesma NÃO chama `exigirSessao`.
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     resultado = await gerarPdfPublico(slug, { exercicio, bimestre });
   } catch (e) {
-    return NextResponse.json({ erro: e instanceof Error ? e.message : "Falha ao gerar o PDF." }, { status: 500 });
+    return NextResponse.json({ erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gerar o PDF." }, { status: 500 });
   }
   if (resultado === null) {
     return NextResponse.json({ erro: `Demonstrativo não encontrado: "${slug}".` }, { status: 404 });

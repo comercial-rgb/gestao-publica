@@ -12,6 +12,7 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { anoCivil, diaCivilBr } from "../../../../../packages/datas/index";
 import { toMoney } from "../../../../../packages/contracts/index";
 
+import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
  * UM LANÇAMENTO (V31) — resumo, partidas, origem e estornos. Cada conta abre o próprio razão no exercício
  * do lançamento; a origem abre o documento. É o elo entre "este valor no balanço" e "este empenho".
@@ -61,7 +62,7 @@ export default async function LancamentoPage({ params }: { readonly params: Prom
         <PageHeader titulo="Lançamento contábil" subtitulo="" />
         <EstadoVazio
           titulo={e instanceof EscopoDeLeituraError ? "A contabilidade do ente não está no seu acesso" : e instanceof PortaSemBancoError ? "Banco de dados não configurado" : "Não foi possível ler o lançamento"}
-          descricao={e instanceof Error ? e.message : "Erro desconhecido."}
+          descricao={e instanceof Error ? mensagemDoErro(e, "") : "Erro desconhecido."}
         />
       </div>
     );

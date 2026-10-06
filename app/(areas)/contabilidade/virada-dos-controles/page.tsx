@@ -16,6 +16,7 @@ import {
 } from "./FormsDaVirada";
 import { SeletorDoExercicioDaVirada } from "./SeletorDoExercicio";
 
+import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * A VIRADA DAS CONTAS DE CONTROLE — o que morre em 31 de dezembro e o que atravessa.
  *
@@ -74,7 +75,7 @@ export default async function Page({
       <div>
         {cabecalho}
         <EstadoVazio
-          descricao={erro instanceof Error ? erro.message : "Erro desconhecido."}
+          descricao={erro instanceof Error ? mensagemDoErro(erro, "") : "Erro desconhecido."}
           titulo={
             erro instanceof PortaSemBancoError
               ? "Serviço indisponível"
