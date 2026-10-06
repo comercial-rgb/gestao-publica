@@ -1876,9 +1876,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a dotação do empenho é um select nativo com todas as fichas (FormEmpenho.tsx), sem busca nem filtro por parte da dotação; os outros vínculos usam combobox com busca. FALTA: o filtro.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-busca-da-ficha.mts, 4/4: em 1.054 fichas, '339014' deixa 34; um segundo termo restringe.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: o empenho ganhou a busca da dotação — um campo filtra as fichas por número, natureza e título, fonte, unidade e função.subfunção.programa.ação com o título da ação, sem caixa nem acento, vários termos restringindo; a ficha escolhida não some (app/(areas)/despesa/empenhos/busca-da-ficha.ts; listarFichas traz a classificação; test/ui/busca-da-ficha.test.ts, mutação acusada).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.10",
@@ -1960,9 +1960,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/despesa/anulacoes · scripts/demonstracao/percurso-execucao-da-despesa.ts, scripts/percurso-v33.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): anulação total e parcial de empenho como fato novo, com motivo obrigatório (anulacao-parcial.ts, servico-bloco2.ts; m05-anulacao-parcial.test.ts, m05-dimensoes-das-anulacoes.test.ts), tela /despesa/anulacoes. FALTA: nota de estorno como documento imprimível (só a nota de empenho tem PDF).",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-nota-de-estorno.mts, 4/4: anulação pelo painel antes de encerrar → central → nota em PDF → tipo errado 404.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): anulação total e parcial de empenho como fato novo, com motivo obrigatório (anulacao-parcial.ts, servico-bloco2.ts; m05-anulacao-parcial.test.ts). V36: a NOTA DE ESTORNO em PDF (/despesa/anulacoes/nota) para anulação de empenho, liquidação ou pagamento — número, data, documento anulado, integral ou parcial, valor, motivo, autor e as partidas do lançamento (lib/pdf/nota-de-estorno.ts; test/ui/nota-de-estorno.test.ts, N=2). O percurso achou e a V36 corrigiu um 500 da central de anulações na primeira anulação registrada.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.16",
@@ -3276,9 +3276,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o Livro Diário existe (diario() em modules/m12-relatorios/livros.ts; /relatorios/livros/diario; m12-livros.test.ts t1). FALTA: termos de abertura e encerramento e a emissão numerada.",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-livros.mts, 5/5.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o Livro Diário (diario() em modules/m12-relatorios/livros.ts) sai em PDF (/relatorios/livros/diario/pdf) com TERMO DE ABERTURA e TERMO DE ENCERRAMENTO: entidade, CNPJ, período, contagem de lançamentos, primeiro e último número, totais de débito e crédito, contador com CRC e ordenador do cadastro institucional (campo vazio sai 'não cadastrado', nunca inventado). lib/pdf/livros.ts; test/ui/livros-com-termos.test.ts (N=2, mutação do total acusada).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.110",
@@ -3290,8 +3290,8 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/relatorios/livros/razao · scripts/percurso-v33.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o razão por conta tem saldo anterior, movimentos com saldo corrente e saldo final (razaoAnalitico; m12-livros.test.ts t2, t6; /relatorios/livros/razao; percurso-v33.ts C.3). FALTA: termos, agrupamento por data ou tipo de lançamento e resumo por fonte.",
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-livros.mts (Razão da conta de bancos em PDF; sem conta, 400).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o Razão por conta (razaoAnalitico; m12-livros.test.ts t2, t6) sai em PDF desde a V36 (/relatorios/livros/razao/pdf) com termo de abertura e de encerramento, saldo anterior, movimentos com saldo corrente, totais e saldo final (test/ui/livros-com-termos.test.ts; percurso-v36-livros.mts). FALTA: agrupamento por data ou tipo de lançamento e resumo por fonte de recursos.",
       "situacao": "PARCIAL"
     },
     {
@@ -3374,8 +3374,8 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/despesa/pagamentos · scripts/smoke-cadeia-despesa.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos executados com liquidação, empenho, credor, fonte e situação, com CSV (listarPagamentosDaExecucao). FALTA: restos e extraorçamentário na mesma consulta, e as retenções por pagamento.",
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-pagamentos-efetuados.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos do exercício; desde a V36 o relatório de pagamentos efetuados (/relatorios/pagamentos) traz na mesma consulta os pagamentos de RESTOS A PAGAR, com o retido e o líquido de cada pagamento (percurso-v36-pagamentos-efetuados.mts). FALTA: os dispêndios extraorçamentários na mesma consulta (estão em /financeiro/extraorcamentario).",
       "situacao": "PARCIAL"
     },
     {
@@ -3962,9 +3962,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): packages/ofx/parser.ts interpreta OFX 1.x (ofx.test.ts, oraculo.test.ts contra corpus) e importarExtrato (modules/m09-tesouraria/extrato.ts; m09-extrato.test.ts) é idempotente e recusa arquivo inválido. FALTA: tela de importação (nenhuma porta chama importarExtrato), formato OFC e impressão do extrato.",
-      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-importar-extrato.mts, 3/3: 3 linhas importadas, o mesmo arquivo não duplica, arquivo inválido recusado com o motivo.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: a importação do extrato OFX pela tela da conciliação (/financeiro/conciliacao), a quem tem IMPORTAR_EXTRATO, decodificando pelo charset do cabeçalho (test/ui/ofx-texto.test.ts); a importação (packages/ofx, importarExtrato do M09) já era idempotente e testada. FALTA: o formato OFC e a impressão do extrato importado.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.45",
@@ -4088,9 +4088,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/financeiro/conciliacao/periodo · scripts/smoke-ent03a.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /financeiro/conciliacao/periodo mostra saldos do extrato e contábil, diferença e pendências (do extrato, do razão, herdadas e declaradas), com a identidade conferida. FALTA: relatório emissível em PDF (pendência CONCILIACAO-PERIODO-PDF).",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-conciliacao-pdf.mts: período aberto pela tela, PDF emitido.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a conciliação do período mostra saldos, diferença e pendências; desde a V36 o relatório sai em PDF (/financeiro/conciliacao/periodo/pdf): saldos, linhas sem vínculo dos dois lados com a justificativa, herdadas e declaradas; recusa do motor vira 409 com o motivo (lib/pdf/conciliacao.ts; test/ui/conciliacao-pdf.test.ts, N=2 por lado).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.54",
@@ -4200,8 +4200,8 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/despesa/a-pagar · scripts/percurso-v33.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/a-pagar mostra por credor as obrigações em aberto do exercício e de restos, com PDF; /relatorios/gerenciais lista empenhos por credor e fonte com empenhado, liquidado, pago e a pagar. FALTA: visão única do credor com empenhos e restos, inclusive o já pago, e o histórico de pagamentos.",
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-pagamentos-efetuados.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/a-pagar mostra por credor o que está em aberto do exercício e de restos; /relatorios/gerenciais lista os empenhos por credor; desde a V36 /relatorios/pagamentos filtra por credor o histórico de pagamentos do exercício e de restos, com retido e líquido. FALTA: uma visão única do credor reunindo empenhos, restos e pagamentos num só relatório.",
       "situacao": "PARCIAL"
     },
     {
@@ -4340,9 +4340,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/despesa/pagamentos · scripts/smoke-cadeia-despesa.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos lista os pagamentos executados com data, credor, fonte e valor líquido. FALTA: filtros de data, credor, fonte e banco, agrupamentos, coluna de banco, opção de listar retenções e PDF dos pagamentos efetuados.",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-pagamentos-efetuados.mts, 7/7 (30 pagamentos; pago − retido = líquido; conta, período e agrupamento conferidos; PDF).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: Relatórios › Pagamentos efetuados (/relatorios/pagamentos), do exercício e de restos a pagar, por período, com filtros de credor, fonte e conta bancária, agrupamento por credor, fonte ou conta com subtotais, opção de listar ou não as retenções, CSV e PDF do mesmo recorte. modules/m05-despesa/pagamentos-efetuados.ts (liquidoDoFato e retidoPorPagamento, sem segunda aritmética); m05-pagamentos-efetuados.test.ts (retenção viva e estornada, pagamento anulado, resto pago em 2027; duas mutações acusadas).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.72",

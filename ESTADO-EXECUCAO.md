@@ -55,6 +55,27 @@ percentual; liberação de cota; dossiê do empenho no lugar de consulta na tela
 Tabela de vínculos do TCE para PPA/LDO; consulta de NF-e (SEFAZ/Receita); convênio bancário (remessa e retorno);
 eSocial/SEFIP; vínculo PPA-LOA (grão a decidir); entidade como dimensão da receita.
 
+### Segunda rodada (06/10/2026, pedido "pode seguir pelo que definiu")
+Catálogo da contabilidade (285): 51 validadas, 28 implementadas sem percurso, 121 parciais, 83 ausentes, 2 de terceiro.
+- **Nota de estorno em PDF** (`/despesa/anulacoes/nota`), de empenho, liquidação ou pagamento. O percurso achou um
+  **500 da V33** na central de anulações (saldo "a liquidar 999.00" passado à formatação de moeda) — corrigido.
+- **Livro Diário e Razão em PDF** com termo de abertura e de encerramento (responsáveis do `EnteConfig`; vazio sai
+  "não cadastrado").
+- **Busca da dotação no empenho** por qualquer parte da ficha (a lista traz a classificação).
+- **Relatório de pagamentos efetuados** (`/relatorios/pagamentos`): exercício e restos, retido e líquido, filtros,
+  agrupamento, CSV e PDF (`modules/m05-despesa/pagamentos-efetuados.ts`).
+- **Importação do extrato OFX pela tela da conciliação**; o formulário mudava de posição ao sair do estado vazio e
+  perdia a mensagem — corrigido (mesma posição nos dois estados).
+- **PDF da conciliação do período** (`/financeiro/conciliacao/periodo/pdf`); recusa do motor vira 409 com o motivo.
+- **Fila do art. 141**: desempate em ordem natural (a 10 vinha antes da 7).
+- Defeito meu corrigido: o filtro do gerencial importava o tipo do vínculo do módulo (guarda de fronteira acusou).
+Percursos (base fictícia na 3011): nota 4/4, livros 5/5, busca 4/4, pagamentos 7/7, OFX 3/3, conciliação 2/2.
+Testes: m05-pagamentos-efetuados 3/3 (2 mutações), m06 19/19 sozinho (mutação), test/ui novos (nota, livros, busca,
+pagamentos-pdf, ofx-texto, conciliação-pdf) verdes; test/ui inteiro 284/286 com 2 estouros de gancho sob carga
+(contexto-ug 4/4 sozinho). Typecheck dos três projetos e cobertura de tsconfig (2106/2106) limpos.
+Pendências: cadastro de conta bancária pela tela (não existe serviço); OFC; resumo por fonte no Razão; dispêndios
+extra no relatório de pagamentos; visão única do credor.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.
