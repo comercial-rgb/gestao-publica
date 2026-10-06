@@ -2,7 +2,9 @@ import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
 import {
+  acompanhamentoDasCotasCmd,
   bimestreDoMes,
+  type LinhaAcompanhamentoCmd,
   confrontoMba,
   gerarDecretoCmd,
   gerarDecretoMba,
@@ -530,4 +532,24 @@ export async function liberarCotaDaProgramacao(p: {
   return comEscritaAutenticada("LIBERAR_PROGRAMACAO", (criadoPor) =>
     liberarProgramacao(cliente(), { ...p, criadoPor })
   );
+}
+
+/** Uma linha do acompanhamento das cotas, já com o código da fonte. */
+export interface LinhaAcompanhamentoDasCotas extends LinhaAcompanhamentoCmd {
+  readonly fonteCodigo: string;
+}
+
+/**
+ * V36 — O ACOMPANHAMENTO DAS COTAS DE DESPESA (TR 5.9.3.35): previsto (cota + liberações) × realizado (empenhado
+ * líquido), por fonte e mês. A conta é toda do domínio (`acompanhamentoDasCotasCmd`), com a régua do guard; a porta
+ * só troca o id da fonte pelo código.
+ */
+export async function lerAcompanhamentoDasCotas(p: { readonly exercicio: number }): Promise<readonly LinhaAcompanhamentoDasCotas[]> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  const db = cliente();
+  const linhas = await acompanhamentoDasCotasCmd(db, { exercicio: p.exercicio });
+  if (linhas.length === 0) return [];
+  const fontes = await db.fonteRecurso.findMany({ select: { id: true, codigo: true } });
+  const codigoPorId = new Map(fontes.map((f) => [f.id, f.codigo]));
+  return linhas.map((l) => ({ ...l, fonteCodigo: codigoPorId.get(l.fonteId) ?? l.fonteId }));
 }

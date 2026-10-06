@@ -221,6 +221,39 @@ prestação de contas online, portal do fornecedor, SEFIP/eSocial, multas de tr�
 importações de peça anterior do PPA/LDO (decisão de cópia × versão); emendas do PPA e da LDO; PPP (não há cadastro);
 DARF/GPS e recibos (leiaute oficial a obter); duplicação de registros (cópia com baixa no original pede regra).
 
+**Sétima rodada (06/10/2026, pedido "pode seguir pelos dados e lacunas que faltaram").** Regime: profundidade na
+duplicação do empenho (dinheiro, dotação, razão) e superfície nos três relatórios. Catálogo da contabilidade (285):
+**67 validadas** (eram 64), 29 implementadas sem percurso, 119 parciais, **68 ausentes** (eram 72), 2 de terceiro.
+Catálogo inteiro: 619 de 2.037 verificadas, 127 validadas.
+- **Duplicar empenho** (M05, `modules/m05-despesa/duplicar-empenho.ts`): número, data, valor e histórico do usuário;
+  ficha, tipo, credor, categoria e vínculos do original; a emissão é a do `empenhar` (dotação pelo SUM real na
+  transação, guards do contrato, lançamento pelo roteiro). Autoriza EMPENHAR na ficha do original antes de ler o
+  conteúdo; reserva e solicitação não se copiam (uso único); consórcio e anulação recusados com o motivo. Tela: detalhe
+  do empenho, "Duplicar este empenho" (só para quem empenha). Teste 5/5, duas mutações. 5.10.1.12 validado.
+- **Acompanhamento das cotas de despesa** (M02, `acompanhamentoDasCotasCmd`): por fonte e mês, cota da versão vigente
+  no fim do mês, liberações, previsto, realizado (a régua do guard do cronograma) e saldo. Tela `/planejamento/cmd-mba`.
+  Teste 3/3 (o t2 amarra o saldo ao guard: um centavo a mais recusado, o saldo exato passa), duas mutações. 5.9.3.35
+  validado. O PDF do cronograma ainda não traz o quadro.
+- **Posição financeira da obra** (M11, `posicao-da-obra.ts`): valor da obra (planilha vigente, ou a falta dita),
+  contratado (valor atualizado dos contratos ligados por medição, planilha ou empenho), empenhado líquido e percentual
+  executado (medido aprovado ÷ contratado; nulo sem contrato). Tela: detalhe da obra. Teste 1/1 (N=2 obras e contratos),
+  duas mutações. 5.10.1.53 validado; a lista de obras segue com medido e aprovado.
+- **Bens incorporados e a incorporar** (M10, `relatorio-de-incorporacao.ts`): liquidações de capital com liquidado,
+  incorporado e a incorporar (as funções do teto da aquisição, agora exportadas) e as incorporações com bem, classe,
+  conta e data; filtros da dotação, classe, conta e período. Tela `/patrimonio/incorporacoes` (menu Patrimônio > Bens),
+  CSV e impressão. Teste 2/2, três mutações. 5.10.1.56 implementado sem percurso com linhas: a fictícia não tem
+  liquidação de capital nem classe de bens, e liquidar o elemento 52 exige a conta da liquidação por elemento (decisão
+  do contador do ente).
+- Percurso `scripts/percurso-v36-setima-rodada.mts` 9/9 na fictícia (duplicação gravada e aberta pelo link; quadro das
+  cotas; obra cadastrada pela tela com a posição; incorporações com filtro; negações: ordenador sem o formulário de
+  duplicar, atestador em /sem-acesso no cronograma e nas incorporações). Dois achados do percurso, com o motivo: (1) a
+  contadora fictícia TEM `EMPENHAR` (o perfil foi semeado assim), por isso vê o formulário; a negação usa o ordenador;
+  (2) o clique triplo do helper não seleciona o histórico longo do textarea e o novo empenho saía com o histórico do
+  original (duas corridas, empenhos fictícios 38 e 41); o percurso passou a atribuir o valor. O servidor de
+  desenvolvimento reiniciou uma vez por limite de memória (registrado no log dele), e a corrida foi refeita.
+- Guardas: censo 5/5 (536 nomes), navegação 20/20 (menu contra o servidor, rotas vivas, busca, menu do contador),
+  typecheck do app e do backend limpos. Sem migration nesta rodada.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.

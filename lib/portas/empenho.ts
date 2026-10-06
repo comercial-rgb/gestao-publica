@@ -13,6 +13,7 @@ import {
 export { DIMENSOES_CONSULTAVEIS, type VinculoDoEmpenho } from "../../modules/m05-despesa/consultas";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05";
 import { empenhar } from "../../modules/m05-despesa/servico";
+import { duplicarEmpenho } from "../../modules/m05-despesa/duplicar-empenho";
 import { roteiroEmpenho } from "../../modules/m01-core-contabil/roteiros";
 import {
   dossieDoEmpenho,
@@ -659,4 +660,21 @@ export async function proximoNumeroDeDocumento(exercicio: number): Promise<strin
   } catch {
     return "";
   }
+}
+
+/**
+ * V36 — DUPLICAR UM EMPENHO (TR 5.10.1.12). A porta encaminha o roteiro e o leitor; quem copia,
+ * autoriza, confere saldo e lança é `modules/m05-despesa/duplicar-empenho.ts`, pela emissão comum.
+ */
+export async function duplicarEmpenhoDaTela(input: {
+  readonly empenhoOrigemId: string;
+  readonly numero: string;
+  readonly data: Date;
+  readonly valor: string;
+  readonly historico: string;
+}): Promise<string> {
+  return comEscritaAutenticada("EMPENHAR", async (criadoPor) => {
+    const r = await duplicarEmpenho({ ...input, criadoPor }, roteiroEmpenho(), criarM05DepsComContratos(cliente()), cliente());
+    return r.empenhoId;
+  });
 }

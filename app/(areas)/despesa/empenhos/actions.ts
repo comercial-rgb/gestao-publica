@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { registrarEmpenho } from "../../../../lib/portas/empenho";
+import { duplicarEmpenhoDaTela, registrarEmpenho } from "../../../../lib/portas/empenho";
+import { desmascararValor } from "../../../../lib/format/mascaras";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
@@ -103,6 +104,34 @@ export async function empenharAction(
       return { sucesso: `Empenho ${numero} emitido. Valor: R$ ${formatarMoeda(valor).texto}.` };
     } catch (e) {
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível emitir o empenho." };
+    }
+  });
+}
+
+export interface EstadoDuplicacao {
+  readonly erro?: string;
+  readonly sucesso?: string;
+  readonly novoId?: string;
+}
+
+/**
+ * V36 — DUPLICAR O EMPENHO (TR 5.10.1.12). Só traduz o formulário: número, data, valor e histórico.
+ * Ficha, tipo, credor, categoria e vínculos vêm do original, no domínio.
+ */
+export async function duplicarEmpenhoAction(_prev: EstadoDuplicacao, formData: FormData): Promise<EstadoDuplicacao> {
+  return comComandoDoFormulario(formData, async () => {
+    const empenhoOrigemId = String(formData.get("empenhoOrigemId") ?? "").trim();
+    const numero = String(formData.get("numero") ?? "").trim();
+    const valor = desmascararValor(String(formData.get("valor") ?? ""));
+    const historico = String(formData.get("historico") ?? "").trim();
+    const dataBruta = String(formData.get("data") ?? "").trim();
+    if (dataBruta === "") return { erro: "A data do novo empenho é obrigatória." };
+    try {
+      const novoId = await duplicarEmpenhoDaTela({ empenhoOrigemId, numero, data: meioDiaCivil(dataBruta), valor, historico });
+      revalidatePath("/despesa/empenhos");
+      return { sucesso: `Empenho ${numero} emitido a partir deste. Valor: R$ ${formatarMoeda(valor).texto}.`, novoId };
+    } catch (e) {
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível duplicar o empenho." };
     }
   });
 }

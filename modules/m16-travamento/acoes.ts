@@ -845,6 +845,7 @@ export type NomeDeServico =
   | "reservarDotacao"
   | "liberarReserva"
   | "empenhar"
+  | "duplicarEmpenho"
   | "anularEmpenho"
   | "anularEmpenhoParcial"
   | "liquidar"
@@ -1473,6 +1474,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   reservarDotacao: "RESERVAR_DOTACAO",
   liberarReserva: "LIBERAR_RESERVA",
   empenhar: "EMPENHAR",
+  // V36 — TR 5.10.1.12: a duplicação é uma emissão (chama `empenhar`), sob a mesma ação.
+  duplicarEmpenho: "EMPENHAR",
   anularEmpenho: "ANULAR_EMPENHO",
   anularEmpenhoParcial: "ANULAR_EMPENHO_PARCIAL",
   liquidar: "LIQUIDAR",
@@ -3111,6 +3114,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   exigirContaDaReceita: "guard (fail-closed antes da arrecadação: natureza sem VPA declarada recusa nomeando onde declarar)",
   listarContasDaReceita: "leitura (as declarações de VPA vigentes, uma por prefixo)",
   saldoAIncorporarDaLiquidacao: "leitura (o líquido de uma liquidação menos o já incorporado ao patrimônio; o teto de adquirirBem confere o mesmo dentro da trava)",
+  liquidoDaLiquidacaoNaTx: "leitura (V36 — o líquido de UMA liquidação, descontadas as anulações parciais vivas; o teto de adquirirBem e o relatório de incorporação leem a mesma)",
+  incorporadoDaLiquidacaoNaTx: "leitura (V36 — as aquisições vivas de uma liquidação, descontados os estornos; o teto de adquirirBem e o relatório de incorporação leem a mesma)",
+  relatorioDeIncorporacao: "leitura (V36 — liquidações de capital com liquidado, incorporado e a incorporar, e as incorporações com bem, classe e conta; filtros da dotação, classe, conta e data)",
   rgfAnexo2: "leitura (RGF Anexo 2 — dívida consolidada líquida sobre a RCL ajustada, LRF art. 55 I b)",
   anexo6: "leitura (RREO Anexo 6 — resultado primário e nominal ACIMA DA LINHA, LRF art. 53 III)",
   anexo6AbaixoDaLinha:
@@ -3259,6 +3265,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   balancete: "leitura (Balancete de verificação — TR 5.94)",
   // ── M02 — programação financeira: leitores e o gerador de decreto ──
   confrontoMba: "leitura (o confronto do art. 9º — meta × arrecadado)",
+  posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",
+  acompanhamentoDasCotasCmd: "leitura (V36 — previsto × realizado das cotas de despesa por fonte e mês; o realizado é o consumido do guard do cronograma)",
   gerarDecretoCmd: "leitura (compõe o texto do decreto — TR 4.19)",
   gerarDecretoMba: "leitura (idem)",
   superavitFinanceiroPorFonte: "leitura",

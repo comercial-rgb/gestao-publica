@@ -1610,9 +1610,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a tela e o PDF do cronograma mostram cotas e liberações, sem coluna de realizado (empenhado); o consumido existe só dentro do guard (guard-cmd.ts). FALTA: previsto x realizado das cotas de despesa.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-setima-rodada.mts 9/9 · quadro com as linhas de realizado do exercício 2026 da base fictícia; quem não lê o planejamento vai a /sem-acesso.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m02-planejamento/programacao.ts — acompanhamentoDasCotasCmd: por fonte e mês, a cota da versão do cronograma vigente no fim do mês, as liberações, o previsto (cota + liberações), o realizado (empenhado líquido no mês civil, a mesma régua do guard-cmd) e o saldo. m02-acompanhamento-cmd.test.ts 3/3 (N=2 fontes, meses e versões; o t2 amarra o saldo do relatório ao guard: um centavo a mais é recusado e o saldo exato passa; saldo negativo sem cronograma), duas mutações acusadas. Tela: /planejamento/cmd-mba, quadro \"Acompanhamento das cotas de despesa — previsto × realizado\" (impressão pela própria tela; o PDF do cronograma ainda não traz o quadro).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.36",
@@ -1918,9 +1918,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há ação de duplicar empenho em modules/m05-despesa, app/(areas)/despesa ou lib/portas.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-setima-rodada.mts 9/9 · empenho duplicado pela tela, gravado com ficha, tipo e credor do original e aberto pelo link; quem lê a despesa sem empenhar (ordenador fictício) vê o empenho sem o formulário.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m05-despesa/duplicar-empenho.ts — duplicarEmpenho autoriza EMPENHAR na ficha do original antes de ler o conteúdo, copia ficha, tipo, credor, categoria e vínculos (contrato, obra, dívida, convênio, campanha, precatório, ordem de compra) e emite pelo `empenhar` comum: baixa da dotação pelo SUM real na transação, guards do contrato e lançamento pelo roteiro. Reserva e solicitação (uso único) não se copiam; consórcio e anulação são recusados com o motivo. m05-duplicar-empenho.test.ts 5/5 (N=2 originais de tipo, credor e categoria diferentes; dotação e razão; quem empenha só noutra unidade é recusado; anulação aponta o original; dotação insuficiente recusa), duas mutações acusadas. Tela: no detalhe do empenho (/despesa/empenhos/[id]), \"Duplicar este empenho\" com número sugerido, data, valor e histórico.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.13",
@@ -2492,9 +2492,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a obra mostra medido e aprovado; não há valor da obra, valor contratado, empenhado nem percentual executado.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-setima-rodada.mts 9/9 · obra fictícia cadastrada pela tela mostra valor da obra (sem planilha), contratado, empenhado e percentual (sem valor contratado).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m11-licitacoes/posicao-da-obra.ts — posicaoFinanceiraDaObra: valor da obra (planilha orçamentária vigente, ou a falta dela dita), valor contratado (Σ do valor ATUALIZADO dos contratos ligados à obra por medição, planilha ou empenho, cada um uma vez), valor empenhado (líquido de anulações) e percentual executado (medido aprovado ÷ contratado; nulo sem contrato). m11-posicao-da-obra.test.ts (N=2 obras e N=2 contratos, aditivo e medição pendente), duas mutações acusadas. Tela: detalhe da obra (/licitacoes/obras/[id]). A lista de obras continua mostrando medido e aprovado.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.54",
@@ -2534,9 +2534,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o mecanismo existe (liquidações de capital com valor a incorporar e a reclassificação na incorporação, m10-patrimonio.test.ts), mas não o relatório de bens incorporados e não incorporados com filtros.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-setima-rodada.mts (passo 3b e a negação do atestador, /sem-acesso?acao=CONSULTAR_PATRIMONIO).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m10-patrimonial/relatorio-de-incorporacao.ts — relatorioDeIncorporacao: as liquidações de capital (grupos 4 e 5) do exercício com liquidado, incorporado e a incorporar (pelas mesmas funções que o teto de adquirirBem confere na trava) e o empenho de cada uma, e as incorporações feitas a partir de liquidação (bem, classe, conta do ativo, data). Filtros: qualquer campo da dotação (sem unidade, consolidado), classe do bem, conta do ativo e período de incorporação. m10-relatorio-de-incorporacao.test.ts 2/2 (N=2 liquidações de capital, uma incorporada em parte por duas aquisições com uma estornada, outra sem incorporação; a corrente fica de fora; o a incorporar igual ao saldoAIncorporarDaLiquidacao), três mutações acusadas. Tela: /patrimonio/incorporacoes, com CSV e impressão. FALTA o percurso com linhas: a base fictícia não tem liquidação de capital nem classe de bens, e liquidar o elemento 52 exige a conta da liquidação por elemento, decisão do contador do ente — não se escolhe num percurso. Medidos a tela vazia com o motivo, os filtros (13 unidades com ficha de capital) e a negação.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.57",

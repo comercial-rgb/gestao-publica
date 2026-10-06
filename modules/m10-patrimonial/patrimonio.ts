@@ -519,7 +519,7 @@ export async function saldoAIncorporarDaLiquidacao(tx: Tx, liquidacaoId: string)
 }
 
 /** O líquido de UMA liquidação: o valor menos as anulações parciais vivas (zero se anulada). */
-async function liquidoDaLiquidacaoNaTx(tx: Tx, id: string): Promise<Money> {
+export async function liquidoDaLiquidacaoNaTx(tx: Tx, id: string): Promise<Money> {
   const linhas = await tx.liquidacao.findMany({
     // V33 — e o estorno de cada parcial: sem ele, a parcial estornada continuava descontando o teto.
     where: { OR: [{ id }, { anulacaoParcialDeId: id }, { estornoDeId: id }, { estornoDe: { anulacaoParcialDeId: id } }] },
@@ -531,7 +531,7 @@ async function liquidoDaLiquidacaoNaTx(tx: Tx, id: string): Promise<Money> {
 }
 
 /** O que a liquidação JÁ incorporou ao patrimônio: as aquisições vivas, descontados os estornos. */
-async function incorporadoDaLiquidacaoNaTx(tx: Tx, liquidacaoId: string): Promise<Money> {
+export async function incorporadoDaLiquidacaoNaTx(tx: Tx, liquidacaoId: string): Promise<Money> {
   const aquisicoes = await tx.movimentoPatrimonial.findMany({
     where: { liquidacaoId, tipo: "AQUISICAO", estornoDeId: null },
     select: { id: true, valor: true },

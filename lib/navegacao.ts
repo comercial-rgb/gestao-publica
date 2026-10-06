@@ -564,6 +564,7 @@ export const GESTAO_DO_BEM: readonly RelatorioNav[] = [
 export const ACERVO: readonly RelatorioNav[] = [
   { href: "/patrimonio/classes-de-bens", numero: "Classes", rotulo: "Classes de Bens", descricao: "Classes de bens móveis e imóveis e a conta contábil de cada uma." },
   { href: "/patrimonio/bens-patrimoniais", numero: "Acervo", rotulo: "Bens Patrimoniais", descricao: "Cadastro de bens patrimoniais: classe, aquisição, incorporação e valor." },
+  { href: "/patrimonio/incorporacoes", numero: "Incorporados", rotulo: "Bens Incorporados e a Incorporar", descricao: "Liquidações de capital com o já incorporado e o que falta incorporar, e os bens incorporados, com filtros da dotação." },
   { href: "/patrimonio/meus-bens", numero: "Meus bens", rotulo: "Bens sob minha responsabilidade", descricao: "Bens sob sua responsabilidade." },
   { href: "/patrimonio/frota", numero: "Frota", rotulo: "Frota", descricao: "Veículos e máquinas, dono e locador, situação no mês e abastecimento." },
   { href: "/patrimonio/farmacias", numero: "Farmácias", rotulo: "Farmácias Públicas", descricao: "Farmácias públicas, responsável técnico e estoque de medicamentos do mês." },
@@ -827,6 +828,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Bens", itens: [
         { href: "/patrimonio/bens-patrimoniais", rotulo: "Bens e incorporações" },
         { href: "/patrimonio/bens", rotulo: "Posição por classe" },
+        { href: "/patrimonio/incorporacoes", rotulo: "Incorporados e a incorporar" },
         { href: "/patrimonio/classes-de-bens", rotulo: "Classes de bens" },
         { href: "/patrimonio/tipos-de-incorporacao", rotulo: "Tipos de incorporação" },
         { href: "/patrimonio/etiquetas", rotulo: "Etiquetas" },

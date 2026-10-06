@@ -17,6 +17,9 @@ import {
 import { formatarDocumento } from "../../../../../packages/documento";
 import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
+import { proximoNumeroDeDocumento } from "../../../../../lib/portas/empenho";
+import { acoesPermitidas } from "../../../../../lib/portas/molde";
+import { FormDuplicar } from "./FormDuplicar";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
@@ -174,6 +177,9 @@ export default async function DetalheDoEmpenhoPage({
   }
 
   const d = resultado.dossie;
+  // V36 — duplicar é emitir: o formulário só aparece para quem empenha (o domínio cobra de novo, na ficha).
+  const podeDuplicar = (await acoesPermitidas(["EMPENHAR"])).has("EMPENHAR");
+  const numeroSugerido = podeDuplicar ? await proximoNumeroDeDocumento(d.origem.exercicio) : "";
 
   return (
     <div className="space-y-4">
@@ -199,6 +205,12 @@ export default async function DetalheDoEmpenhoPage({
           </Link>
         </span>
       </div>
+
+      {podeDuplicar ? (
+        <Card>
+          <FormDuplicar empenhoId={d.id} numeroSugerido={numeroSugerido} valorSugerido={d.valor} historicoSugerido={d.historico} />
+        </Card>
+      ) : null}
 
       <Origem dossie={d} />
       <Valores dossie={d} />

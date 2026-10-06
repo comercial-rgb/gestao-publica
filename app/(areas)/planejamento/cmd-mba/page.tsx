@@ -6,12 +6,14 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
+  lerAcompanhamentoDasCotas,
   lerCmdVigente,
   lerConfrontoMba,
   lerLimitacaoDeEmpenho,
   lerMbaVigente,
   PortaSemBancoError,
   type ConfrontoMbaDaTela,
+  type LinhaAcompanhamentoDasCotas,
   type LinhaConfronto,
   type LinhaProgramacao,
   type PlanoProgramacao,
@@ -96,13 +98,15 @@ export default async function CmdMbaPage({
   let cmd: PlanoProgramacao;
   let mba: PlanoProgramacao;
   let confronto: ConfrontoMbaDaTela;
+  let acompanhamento: readonly LinhaAcompanhamentoDasCotas[];
   let limitacao: { readonly ativa: boolean; readonly atoRef: string | null; readonly motivo: string | null; readonly desde: Date | null; readonly criadoPor: string | null };
   try {
-    [cmd, mba, confronto, limitacao] = await Promise.all([
+    [cmd, mba, confronto, limitacao, acompanhamento] = await Promise.all([
       lerCmdVigente({ exercicio: exercicio }),
       lerMbaVigente({ exercicio: exercicio }),
       lerConfrontoMba({ exercicio: exercicio }),
       lerLimitacaoDeEmpenho({ exercicio: exercicio }),
+      lerAcompanhamentoDasCotas({ exercicio: exercicio }),
     ]);
   } catch (erro) {
     return (
@@ -199,6 +203,27 @@ export default async function CmdMbaPage({
               keyDe={(l) => l.fonteId}
               ehTotal={(l) => l.fonteId === CHAVE_TOTAL}
               legenda={`${mba.vigente.linhas.length} fonte(s) · valores em R$ · a soma dos 6 bimestres corresponde à receita prevista da fonte.`}
+            />
+          )}
+        </div>
+      </Card>
+
+      {/* ── V36: O ACOMPANHAMENTO DAS COTAS DE DESPESA — previsto × realizado ── */}
+      <Card>
+        <h2 className="text-base font-semibold text-[color:var(--color-ink)]">Acompanhamento das cotas de despesa — previsto × realizado</h2>
+        <p className="mt-1 text-sm text-[color:var(--color-ink-2)]">
+          Por fonte e mês: a cota do cronograma vigente no fim do mês, as liberações, o previsto (cota + liberações) e o
+          realizado (empenhado no mês, descontadas as anulações do próprio mês). Saldo <strong>negativo</strong> indica empenho além do previsto.
+        </p>
+        <div className="mt-4" data-acompanhamento-das-cotas>
+          {acompanhamento.filter(temMovimento).length === 0 ? (
+            <EstadoVazio titulo="Sem cotas nem empenhos no exercício" descricao={`O exercício ${exercicio} não tem cronograma de desembolso registrado nem empenho emitido.`} />
+          ) : (
+            <TabelaDeDados
+              colunas={COLUNAS_ACOMPANHAMENTO}
+              linhas={acompanhamento.filter(temMovimento)}
+              keyDe={(l) => `${l.fonteId}-${l.mes}`}
+              legenda="Valores em R$ · meses sem previsto e sem realizado são omitidos · saldo = previsto − realizado."
             />
           )}
         </div>
@@ -407,6 +432,19 @@ function colunasMatriz(
     },
   ];
 }
+
+/** Linha com previsto ou realizado diferente de zero — a forma é a da string do domínio ("0.00"). */
+const temMovimento = (l: LinhaAcompanhamentoDasCotas): boolean => l.previsto !== "0.00" || l.realizado !== "0.00";
+
+const COLUNAS_ACOMPANHAMENTO: readonly ColunaTabela<LinhaAcompanhamentoDasCotas>[] = [
+  { chave: "fonte", cabecalho: "Fonte", alinhamento: "esquerda", largura: "6rem", celula: (l) => <span className="font-mono text-xs text-[color:var(--color-ink-2)]">{l.fonteCodigo}</span> },
+  { chave: "mes", cabecalho: "Mês", alinhamento: "centro", largura: "5rem", celula: (l) => MESES[l.mes - 1] ?? String(l.mes) },
+  { chave: "cota", cabecalho: "Cota", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.cota} /> },
+  { chave: "liberado", cabecalho: "Liberado", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.liberado} /> },
+  { chave: "previsto", cabecalho: "Previsto", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.previsto} /> },
+  { chave: "realizado", cabecalho: "Realizado", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.realizado} /> },
+  { chave: "saldo", cabecalho: "Saldo", alinhamento: "direita", largura: "9rem", celula: (l) => <strong><ValorMonetario valor={l.saldo} /></strong> },
+];
 
 const COLUNAS_CONFRONTO: readonly ColunaTabela<LinhaConfronto>[] = [
   { chave: "fonte", cabecalho: "Fonte", alinhamento: "esquerda", largura: "6rem", celula: (l) => <span className="font-mono text-xs text-[color:var(--color-ink-2)]">{l.fonteCodigo}</span> },

@@ -8,6 +8,7 @@ import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { previsaoPorFonte } from "./consultas.js";
 import { diaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
+import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import {
   bimestreDoMes,
   gerarTextoDecreto,
@@ -450,3 +451,90 @@ async function gravarVersaoMba(
 }
 
 export { bimestreDoMes };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// acompanhamentoDasCotasCmd — previsto × realizado das cotas de despesa (TR 5.9.3.35)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface LinhaAcompanhamentoCmd {
+  readonly fonteId: string;
+  readonly mes: number;
+  /** A cota do mês na versão do cronograma vigente no último dia do mês. "0.00" quando a versão não a tem. */
+  readonly cota: string;
+  /** Σ das liberações da fonte no mês. */
+  readonly liberado: string;
+  /** cota + liberado — o teto do mês. */
+  readonly previsto: string;
+  /** Σ dos empenhos LÍQUIDOS da fonte no mês civil — a mesma conta do guard do cronograma. */
+  readonly realizado: string;
+  /** previsto − realizado. NEGATIVO = empenhou-se além do previsto (possível com a limitação desligada). */
+  readonly saldo: string;
+}
+
+/**
+ * O ACOMPANHAMENTO DAS COTAS DE DESPESA: por fonte × mês, a cota programada, as liberações, o previsto e o
+ * realizado (empenhado líquido).
+ *
+ * ⚠️ O REALIZADO É O CONSUMIDO DO GUARD (`exigirCotaCmd`, M05), e não outra soma: empenhos da fonte cuja data
+ * cai no mês CIVIL do ente, líquidos pelo `somaLiquidaEstornaveis` dentro da mesma janela. Uma anulação lançada
+ * em outro mês não devolve a cota do mês do empenho — é a régua que o guard aplica, e o relatório mostra a régua
+ * que de fato limitou o empenho.
+ *
+ * ⚠️ A VERSÃO DE CADA MÊS é a vigente no último dia dele (a maior `vigenteDesde` até lá). Um mês anterior à
+ * primeira versão não tem cota (0.00) — e o relatório diz isso, não inventa.
+ *
+ * Fontes listadas: as que têm cota em alguma versão do exercício ou empenho no exercício. Leitura pura.
+ */
+export async function acompanhamentoDasCotasCmd(
+  leitor: Tx,
+  p: { readonly exercicio: number }
+): Promise<readonly LinhaAcompanhamentoCmd[]> {
+  const versoes = await leitor.versaoCmd.findMany({
+    where: { exercicio: p.exercicio },
+    orderBy: { vigenteDesde: "asc" },
+    select: { id: true, vigenteDesde: true, cotas: { select: { fonteId: true, mes: true, valor: true } } },
+  });
+  const liberacoes = await leitor.liberacaoProgramacao.findMany({
+    where: { exercicio: p.exercicio },
+    select: { fonteId: true, mes: true, valor: true },
+  });
+  const ano = janelaCivilDeMeses(p.exercicio, 1, 12);
+  const empenhos = await leitor.empenho.findMany({
+    where: { data: { gte: ano.inicio, lte: ano.fim } },
+    select: { id: true, valor: true, data: true, estornoDeId: true, anulacaoParcialDeId: true, ficha: { select: { fonteId: true } } },
+  });
+
+  const fontes = new Set<string>();
+  for (const v of versoes) for (const c of v.cotas) fontes.add(c.fonteId);
+  for (const e of empenhos) fontes.add(e.ficha.fonteId);
+
+  const zero = toMoney("0.00");
+  const linhas: LinhaAcompanhamentoCmd[] = [];
+  for (const fonteId of [...fontes].sort()) {
+    for (let mes = 1; mes <= 12; mes++) {
+      const { inicio, fim } = janelaCivilDeMeses(p.exercicio, mes, 1);
+      const vigente = [...versoes].reverse().find((v) => v.vigenteDesde.getTime() <= fim.getTime());
+      const c = vigente?.cotas.find((x) => x.fonteId === fonteId && x.mes === mes);
+      const cota = c === undefined ? zero : toMoney(c.valor.toFixed(2));
+      const liberado = liberacoes
+        .filter((l) => l.fonteId === fonteId && l.mes === mes)
+        .reduce((acc, l) => toMoney(acc.plus(toMoney(l.valor.toFixed(2)))), zero);
+      const previsto = toMoney(cota.plus(liberado));
+      const realizado = somaLiquidaEstornaveis(
+        empenhos
+          .filter((e) => e.ficha.fonteId === fonteId && e.data.getTime() >= inicio.getTime() && e.data.getTime() <= fim.getTime())
+          .map((e) => ({ id: e.id, valor: toMoney(e.valor.toFixed(2)), estornoDeId: e.estornoDeId, anulacaoParcialDeId: e.anulacaoParcialDeId }))
+      );
+      linhas.push({
+        fonteId,
+        mes,
+        cota: cota.toFixed(2),
+        liberado: liberado.toFixed(2),
+        previsto: previsto.toFixed(2),
+        realizado: realizado.toFixed(2),
+        saldo: toMoney(previsto.minus(realizado)).toFixed(2),
+      });
+    }
+  }
+  return linhas;
+}

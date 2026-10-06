@@ -1,5 +1,6 @@
 import { Decimal, toMoney } from "../../../packages/contracts/index.js";
 import { parsearNaturezaReceita } from "../../../modules/m04-receita/natureza";
+import { posicaoFinanceiraDaObra } from "../../../modules/m11-licitacoes/posicao-da-obra.js";
 import {
   competenciaCivil,
   diaCivil,
@@ -1486,6 +1487,8 @@ export async function verObra(id: string): Promise<DetalheLido | null> {
     if (m.aprovadaEm !== null || m.aprovacao !== null) aprovado = aprovado.plus(new Decimal(m.valorMedido.toFixed(2)));
   }
   const pendentes = o.medicoes.filter((m) => m.aprovadaEm === null && m.aprovacao === null).length;
+  // V36 — a posição financeira (TR 5.10.1.53): cada número vem do seu dono, no M11.
+  const pos = await posicaoFinanceiraDaObra(prisma, id);
 
   return {
     titulo: `Obra ${o.identificador}`,
@@ -1511,6 +1514,14 @@ export async function verObra(id: string): Promise<DetalheLido | null> {
       { rotulo: "Total medido", valor: medido.toFixed(2), tipo: "dinheiro" },
       { rotulo: "Total aprovado", valor: aprovado.toFixed(2), tipo: "dinheiro",
         nota: "Somente o valor aprovado autoriza a liquidação, limitada ao valor medido." },
+      pos.valorDaObra === null
+        ? { rotulo: "Valor da obra", valor: "sem planilha orçamentária", nota: "O valor da obra é o total da planilha orçamentária vigente; registre a planilha." }
+        : { rotulo: "Valor da obra", valor: pos.valorDaObra.toFixed(2), tipo: "dinheiro", nota: `Total da planilha orçamentária vigente (versão ${String(pos.versaoDaPlanilha)}).` },
+      { rotulo: "Valor contratado", valor: pos.valorContratado.toFixed(2), tipo: "dinheiro",
+        nota: pos.contratos.length === 0 ? "Nenhum contrato ligado à obra por medição, planilha ou empenho." : `Valor atualizado (com aditivos) de: ${pos.contratos.map((c) => c.numero).join(", ")}.` },
+      { rotulo: "Valor empenhado", valor: pos.valorEmpenhado.toFixed(2), tipo: "dinheiro", nota: "Empenhos da obra, descontadas as anulações." },
+      { rotulo: "Percentual executado", valor: pos.percentualExecutado === null ? "sem valor contratado" : `${pos.percentualExecutado.replace(".", ",")}%`,
+        nota: "Medido aprovado sobre o valor contratado." },
     ],
     historico: o.medicoes.map((m) => ({
       id: m.id,
