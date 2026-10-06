@@ -1,5 +1,5 @@
 import { soDigitos } from "../../../../lib/format/mascaras";
-import type { VinculoDoEmpenho } from "../../../../modules/m05-despesa/consultas";
+import type { VinculoDoEmpenho } from "../../../../lib/portas/empenho";
 
 /**
  * O RECORTE GERENCIAL LIDO DA URL — credor e fonte.

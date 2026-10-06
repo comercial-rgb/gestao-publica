@@ -121,10 +121,13 @@ export default async function AnulacoesPage({ searchParams }: { readonly searchP
   const linhas = anulaveis(tipo, empenhos, liquidacoes, pagamentos);
   const podeAnular = ACOES[tipo].some((a) => permitidas.has(a));
   // O saldo atual de cada original, para a coluna "depois" das registradas.
-  const saldoAtual = new Map<string, string>([
-    ...empenhos.map((e) => [e.id, `a liquidar ${e.saldoALiquidar}`] as const),
-    ...liquidacoes.map((l) => [l.id, `a pagar ${l.saldoAPagar}`] as const),
-    ...pagamentos.map((p) => [p.id, `pago ${p.pagoLiquido}`] as const),
+  // ⚠️ RÓTULO E VALOR SEPARADOS (V36). O mapa guardava "a liquidar 999.00" e a célula passava o texto inteiro à
+  // formatação de moeda, que recusa o que não é decimal: a página caía em 500 na primeira anulação registrada
+  // cujo original estivesse na lista (achado pelo percurso da nota de estorno, na base fictícia).
+  const saldoAtual = new Map<string, { readonly rotulo: string; readonly valor: string }>([
+    ...empenhos.map((e) => [e.id, { rotulo: "a liquidar", valor: e.saldoALiquidar }] as const),
+    ...liquidacoes.map((l) => [l.id, { rotulo: "a pagar", valor: l.saldoAPagar }] as const),
+    ...pagamentos.map((p) => [p.id, { rotulo: "pago", valor: p.pagoLiquido }] as const),
   ]);
   const sufixo = `exercicio=${String(recorte.exercicio)}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}`;
 
@@ -212,8 +215,11 @@ export default async function AnulacoesPage({ searchParams }: { readonly searchP
                   <td className="py-1.5 pr-2 text-right"><ValorMonetario valor={a.valor} /></td>
                   <td className="py-1.5 pr-2">{a.motivo}<span className="block text-[color:var(--color-ink-3)]">por {a.criadoPor}</span></td>
                   <td className="py-1.5 pr-2"><Link className={LINK} href={a.originalHref}>{a.originalNumero}</Link></td>
-                  <td className="py-1.5 pr-2">{((v) => (v === undefined ? "—" : `R$ ${formatarMoeda(v).texto}`))(saldoAtual.get(a.originalId))}</td>
-                  <td className="py-1.5"><Link className={LINK} href={`/contabilidade/lancamentos/${a.lancamentoId}`}>abrir</Link></td>
+                  <td className="py-1.5 pr-2">{((v) => (v === undefined ? "—" : `${v.rotulo} R$ ${formatarMoeda(v.valor).texto}`))(saldoAtual.get(a.originalId))}</td>
+                  <td className="py-1.5">
+                    <Link className={LINK} href={`/contabilidade/lancamentos/${a.lancamentoId}`}>abrir</Link>
+                    <a className={`${LINK} block`} data-acao="nota-de-estorno" href={`/despesa/anulacoes/nota?${sufixo}&tipo=${a.tipo}&id=${a.id}`}>nota de estorno (PDF)</a>
+                  </td>
                 </tr>
               ))}
             </tbody>
