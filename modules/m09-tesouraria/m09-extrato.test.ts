@@ -29,7 +29,7 @@ interface Linha {
   checknum?: string;
 }
 
-function arquivo(linhas: readonly Linha[], periodo = ["20260101", "20260131"]): string {
+function arquivo(linhas: readonly Linha[], periodo = ["20260101", "20260131"], acctid = "12345-6"): string {
   const trns = linhas
     .map((l) =>
       [
@@ -51,7 +51,7 @@ function arquivo(linhas: readonly Linha[], periodo = ["20260101", "20260131"]): 
 <CURDEF>BRL
 <BANKACCTFROM>
 <BANKID>001
-<ACCTID>12345-6
+<ACCTID>${acctid}
 </BANKACCTFROM>
 <BANKTRANLIST>
 <DTSTART>${periodo[0]}
@@ -223,9 +223,11 @@ describe("M09 — import de extrato OFX", () => {
       contaBancariaId: CONTA, arquivoOfx: arquivo(JANEIRO), importadoPor: POR,
     });
     // MESMAS linhas, arquivo com período diferente (hash diferente), outra conta.
+    // V36: o arquivo da outra conta informa OUTRO ACCTID — o mesmo ACCTID em duas contas do sistema é recusado
+    // (m09-extrato-conta-do-arquivo.test.ts). O que este teste prova é o FITID repetido entre contas.
     const r = await importarExtrato(prisma, {
       contaBancariaId: "cb2",
-      arquivoOfx: arquivo(JANEIRO, ["20260101", "20260130"]),
+      arquivoOfx: arquivo(JANEIRO, ["20260101", "20260130"], "99999-9"),
       importadoPor: POR,
     });
 

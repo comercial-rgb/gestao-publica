@@ -3,6 +3,7 @@ import { respostaDaRecusaDeLeitura } from "../../../../../lib/rotas/recusa";
 import { emitir } from "../../../../../lib/pdf/operacionais";
 import { documentoDoMovimentoDiario } from "../../../../../lib/pdf/movimento-diario";
 import { nomeDoEnteParaDocumentos } from "../../../../../lib/pdf/ente";
+import { exigirLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { lerMovimentoDoDia, type MovimentoDoDia } from "../../../../../lib/portas/receita-e-despesa-do-periodo";
 
 /** V36 — EMISSÃO PDF do demonstrativo diário. Mesmo leitor da tela; dia malformado é 400, nunca outro dia. */
@@ -14,6 +15,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return new NextResponse("Informe o dia no formato AAAA-MM-DD.", { status: 400 });
   let m: MovimentoDoDia;
   try {
+    await exigirLeituraDoEnte("CONSULTAR_RECEITA");
+    await exigirLeituraDoEnte("CONSULTAR_DESPESA");
     m = await lerMovimentoDoDia(dia);
   } catch (e) {
     const recusa = respostaDaRecusaDeLeitura(e);

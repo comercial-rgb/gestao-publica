@@ -45,20 +45,37 @@ interface NucleoInput {
   readonly hashOrigem: string;
   readonly origem: Origem;
   readonly importadoPor: string;
+  /** V36 — o BANKID e o ACCTID que o arquivo informa. Ausentes na origem que não os traz. */
+  readonly bancoDoArquivo?: string | undefined;
+  readonly contaDoArquivo?: string | undefined;
 }
 
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
 /** O NÚCLEO — dedup + gravação. NÃO autoriza (quem chama já autorizou a sua ação). Privado. */
 async function ingerir(tx: Tx, input: NucleoInput): Promise<ResultadoImport> {
-  const conta = await tx.contaBancaria.findUnique({ where: { id: input.contaBancariaId }, select: { id: true } });
+  const conta = await tx.contaBancaria.findUnique({ where: { id: input.contaBancariaId }, select: { id: true, codigo: true, banco: true } });
   if (conta === null) throw new Error(`Conta bancária ${input.contaBancariaId} não cadastrada.`);
 
-  // (1) IDEMPOTÊNCIA DA ORIGEM.
-  const jaImportado = await tx.extratoBancario.findUnique({ where: { arquivoHash: input.hashOrigem }, select: { id: true } });
+  // (1) IDEMPOTÊNCIA DA ORIGEM — DENTRO DA CONTA. ⚠️ V36: o hash era procurado no sistema inteiro, e o mesmo
+  // arquivo pedido em OUTRA conta voltava "já importado" (a tela nomeava a conta errada) sem gravar nada. O
+  // mesmo arquivo em outra conta é o extrato de uma conta entrando na outra: recusa, nomeando onde ele está.
+  const jaImportado = await tx.extratoBancario.findUnique({
+    where: { arquivoHash: input.hashOrigem },
+    select: { id: true, contaBancariaId: true, contaBancaria: { select: { codigo: true } } },
+  });
+  if (jaImportado !== null && jaImportado.contaBancariaId !== conta.id) {
+    throw new Error(
+      `Este arquivo já foi importado na conta ${jaImportado.contaBancaria.codigo}, não na ${conta.codigo}. O mesmo extrato não ` +
+        `pertence a duas contas. Nada foi importado.`
+    );
+  }
   if (jaImportado !== null) {
     return { extratoId: jaImportado.id, jaImportado: true, inseridas: 0, puladas: 0, conflitos: [] };
   }
+
+  // (1b) V36 — A CONTA DO ARQUIVO É A CONTA ESCOLHIDA? Antes de gravar qualquer coisa.
+  await conferirContaDoArquivo(tx, conta, input.bancoDoArquivo, input.contaDoArquivo);
 
   const fitids = input.transacoes.map((t) => t.fitid);
   const existentes = await tx.lancamentoExtrato.findMany({
@@ -88,6 +105,8 @@ async function ingerir(tx: Tx, input: NucleoInput): Promise<ResultadoImport> {
       periodoFim: input.periodoFim,
       origem: input.origem,
       importadoPor: input.importadoPor,
+      bancoDoArquivo: normalizarBanco(input.bancoDoArquivo),
+      contaDoArquivo: input.contaDoArquivo ?? null,
     },
     select: { id: true },
   });
@@ -111,6 +130,66 @@ async function ingerir(tx: Tx, input: NucleoInput): Promise<ResultadoImport> {
   return { extratoId: extrato.id, jaImportado: false, inseridas: novas.length, puladas, conflitos: [] };
 }
 
+/** O código do banco como número, sem zeros à esquerda: o Itaú manda "0341", o cadastro guarda "341". */
+function normalizarBanco(bruto: string | null | undefined): string | null {
+  const d = (bruto ?? "").replace(/\D/g, "");
+  return d === "" ? null : String(Number(d));
+}
+
+/** Os quatro últimos caracteres — o bastante para o operador reconhecer a conta, sem expor o número. */
+const final = (acctid: string): string => `final ${acctid.slice(-4)}`;
+
+/**
+ * ═══ V36 — O EXTRATO DE UMA CONTA NÃO ENTRA EM OUTRA ═══
+ * A tela pede a conta e o arquivo separadamente; nada conferia um contra o outro. Três recusas, todas ANTES de
+ * gravar:
+ *   1. o BANKID do arquivo não é o banco cadastrado na conta (quando os dois existem);
+ *   2. o ACCTID do arquivo já teve extrato importado em OUTRA conta do sistema;
+ *   3. a conta escolhida já recebeu extrato de OUTRO ACCTID.
+ * A regra não presume como o banco compõe o número da conta — o Itaú manda agência e conta com dígito, o Sicredi
+ * dezesseis dígitos (medido em extratos reais em 06/10/2026): a conta do sistema fica ligada ao ACCTID da primeira
+ * importação. Extrato antigo, sem ACCTID gravado, não prende nem libera nada.
+ */
+async function conferirContaDoArquivo(
+  tx: Tx,
+  conta: { readonly id: string; readonly codigo: string; readonly banco: string | null },
+  bancoBruto: string | undefined,
+  acctid: string | undefined
+): Promise<void> {
+  const bancoDoArquivo = normalizarBanco(bancoBruto);
+  const bancoDaConta = normalizarBanco(conta.banco);
+  if (bancoDoArquivo !== null && bancoDaConta !== null && bancoDoArquivo !== bancoDaConta) {
+    throw new Error(
+      `O arquivo é do banco ${bancoDoArquivo.padStart(3, "0")} e a conta ${conta.codigo} está cadastrada no banco ${bancoDaConta.padStart(3, "0")}. ` +
+        `Confira a conta escolhida. Nada foi importado.`
+    );
+  }
+  if (acctid === undefined || acctid === "") return;
+
+  const emOutra = await tx.extratoBancario.findFirst({
+    where: { contaDoArquivo: acctid, contaBancariaId: { not: conta.id }, ...(bancoDoArquivo !== null ? { OR: [{ bancoDoArquivo }, { bancoDoArquivo: null }] } : {}) },
+    select: { contaBancaria: { select: { codigo: true } } },
+  });
+  if (emOutra !== null) {
+    throw new Error(
+      `O arquivo é da conta ${final(acctid)} do banco, que já teve extrato importado na conta ${emOutra.contaBancaria.codigo}. ` +
+        `Escolha a conta ${emOutra.contaBancaria.codigo} ou confira o arquivo. Nada foi importado.`
+    );
+  }
+
+  const ligada = await tx.extratoBancario.findFirst({
+    where: { contaBancariaId: conta.id, contaDoArquivo: { not: null } },
+    orderBy: { criadoEm: "asc" },
+    select: { contaDoArquivo: true },
+  });
+  if (ligada?.contaDoArquivo != null && ligada.contaDoArquivo !== acctid) {
+    throw new Error(
+      `A conta ${conta.codigo} recebe extratos da conta ${final(ligada.contaDoArquivo)} do banco, e este arquivo é da ` +
+        `${final(acctid)}. Confira a conta escolhida. Nada foi importado.`
+    );
+  }
+}
+
 /** IMPORT VIA ARQUIVO OFX. Autoriza IMPORTAR_EXTRATO e chama o núcleo. */
 export async function importarExtrato(prisma: PrismaClient, input: ImportarExtratoInput): Promise<ResultadoImport> {
   const dados = zImportarExtratoInput.parse(input);
@@ -129,6 +208,8 @@ export async function importarExtrato(prisma: PrismaClient, input: ImportarExtra
       hashOrigem,
       origem: "OFX",
       importadoPor: dados.importadoPor,
+      bancoDoArquivo: ofx.bankid,
+      contaDoArquivo: ofx.acctid,
     });
   });
 }

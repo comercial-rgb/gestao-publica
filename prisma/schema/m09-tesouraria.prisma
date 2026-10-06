@@ -75,6 +75,16 @@ model ExtratoBancario {
 
   criadoEm    DateTime @default(now())
   importadoPor String
+
+  /// V36 — O BANCO E A CONTA QUE O PRÓPRIO ARQUIVO INFORMA (BANKID e ACCTID do OFX), como vieram. É o que
+  /// impede o extrato de uma conta de entrar em outra: a conta do sistema fica ligada ao ACCTID da primeira
+  /// importação, e um arquivo de outro ACCTID é recusado — sem depender de como cada banco compõe o número
+  /// (o Itaú manda agência e conta com dígito; o Sicredi, dezesseis dígitos). NULLABLE, aditiva, sem backfill:
+  /// extrato antigo não declarava, e não se inventa o que o arquivo dizia.
+  bancoDoArquivo String?
+  contaDoArquivo String?
+
+  @@index([contaDoArquivo])
 }
 
 enum OrigemExtrato {

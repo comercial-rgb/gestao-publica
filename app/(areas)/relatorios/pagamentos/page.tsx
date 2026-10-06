@@ -183,7 +183,7 @@ export default async function PagamentosEfetuadosPage({
 function SecaoDosDispendios({ extra, periodo }: { readonly extra: DispendiosDaTela; readonly periodo: string }): React.ReactElement {
   return (
     <Card>
-      <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]" id="dispendios-extra">
+      <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">
         Dispêndios extraorçamentários
         {extra.disponivel ? <> — <span data-total="extra">R$ {formatarMoeda(extra.total).texto}</span></> : null}
       </h2>

@@ -212,3 +212,22 @@ describe("OFX — FAIL-CLOSED (nada é importado de arquivo parcialmente válido
     expect(String(e)).toMatch(/linha \d+/);
   });
 });
+
+/**
+ * V36 — o que NÃO é OFX é reconhecido pelo conteúdo e recusado com a frase que diz o que fazer; a extensão não
+ * decide nada (um .ofc com conteúdo OFX é OFX).
+ */
+describe("OFX — o arquivo de outro formato, reconhecido pelo conteúdo", () => {
+  const valida = '<STMTTRN>\n<TRNTYPE>OTHER\n<DTPOSTED>20260105\n<TRNAMT>-10.00\n<FITID>F1\n<MEMO>TARIFA\n</STMTTRN>';
+  it("PDF, ZIP/planilha e página salva: cada um com o seu motivo", () => {
+    expect(() => parseOfx("%PDF-1.7\n1 0 obj")).toThrow(/é um PDF, não um extrato OFX/);
+    expect(() => parseOfx("PK\u0003\u0004[Content_Types].xml")).toThrow(/ZIP ou uma planilha/);
+    expect(() => parseOfx("<!DOCTYPE html><html><body>Extrato</body></html>")).toThrow(/página da internet salva/);
+  });
+  it("leiaute OFC (raiz <OFC>) é recusado nomeando o formato; o mesmo conteúdo OFX passa", () => {
+    expect(() => parseOfx("<OFC>\n<ACCTSTMT>\n<STMTRS>\n</STMTRS>\n</ACCTSTMT>\n</OFC>")).toThrow(/leiaute OFC, que o sistema ainda não lê/);
+    expect(parseOfx(ofx(valida)).transacoes).toHaveLength(1);
+    // BOM e espaço antes do cabeçalho não fazem um OFX parecer outra coisa.
+    expect(parseOfx(`﻿  ${ofx(valida)}`).transacoes).toHaveLength(1);
+  });
+});

@@ -163,11 +163,38 @@ function exigir(
 }
 
 /**
+ * V36 — O ARQUIVO QUE NÃO É OFX, RECONHECIDO PELO CONTEÚDO, com a frase que diz o que fazer. A extensão não decide
+ * nada: há banco que entrega OFX com nome `.ofc`, e esse arquivo entra normalmente. O que se recusa aqui é o
+ * CONTEÚDO de outro formato — antes, um PDF ou uma página salva caíam em "CURDEF ausente", que não diz nada a quem
+ * baixou o arquivo errado (a lição registrada na finsystem, que diagnostica o mesmo).
+ *
+ * ⚠️ O LEIAUTE OFC (Open Financial Connectivity, raiz `<OFC>`) NÃO É LIDO, e a recusa diz isso. Não há no
+ * repositório nenhum arquivo OFC real nem a especificação; um leitor escrito de memória inventaria o leiaute, e o
+ * erro dele viraria verdade contábil. Com um arquivo de verdade do banco do ente, ele se escreve e se testa.
+ */
+function reconhecerOQueNaoEOfx(conteudo: string): void {
+  const inicio = conteudo.replace(/^﻿/, "").trimStart().slice(0, 400);
+  const recusa = (motivo: string): never => {
+    throw new OfxInvalidoError(motivo, 1, 0);
+  };
+  if (inicio.startsWith("%PDF")) recusa("o arquivo é um PDF, não um extrato OFX. Baixe o extrato no formato OFX (Money) no internet banking.");
+  if (inicio.startsWith("PK")) recusa("o arquivo é um ZIP ou uma planilha, não um extrato OFX. Descompacte-o ou baixe o extrato no formato OFX.");
+  if (/<html|<!doctype html/i.test(inicio)) recusa("o arquivo é uma página da internet salva, não um extrato OFX. Baixe o extrato no formato OFX.");
+  if (/<OFC>/i.test(conteudo) && !/<OFX>/i.test(conteudo)) {
+    recusa(
+      "o arquivo está no leiaute OFC, que o sistema ainda não lê. Baixe o extrato no formato OFX (Money 2000 ou superior) " +
+        "no internet banking; arquivos .ofc com conteúdo OFX são aceitos."
+    );
+  }
+}
+
+/**
  * Lê um OFX inteiro. Lança `OfxInvalidoError` ao primeiro problema — de propósito:
  * um arquivo com uma linha podre não é "um arquivo com uma linha a menos", é um
  * arquivo em que não se pode confiar.
  */
 export function parseOfx(conteudo: string): ExtratoOfx {
+  reconhecerOQueNaoEOfx(conteudo);
   const tags = tokenizar(conteudo);
   if (tags.length === 0) {
     throw new OfxInvalidoError("arquivo não contém nenhuma tag OFX.", 1, 0);

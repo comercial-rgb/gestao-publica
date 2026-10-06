@@ -7,6 +7,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { EscopoDeLeituraError, ExercicioIlegivelError, recorteDePagina, type RecorteDaPagina } from "../../../../lib/portas/contexto";
 import { ROTULO_DA_FASE, ROTULO_DA_SITUACAO } from "../../../../lib/portas/a-pagar";
 import { credoresDoExercicio, lerFichaDoCredor, type FichaDoCredor } from "../../../../lib/portas/ficha-do-credor";
+import { CampoDoCredor } from "./CampoDoCredor";
 import { dataBr, descreverRecorte } from "../../../../lib/recorte";
 import { formatarDocumento } from "../../../../packages/documento/index";
 
@@ -68,17 +69,7 @@ export default async function FichaDoCredorPage({
       <form method="get" className="flex flex-wrap items-end gap-3 text-xs" data-chrome aria-label="Escolher o credor">
         <input type="hidden" name="exercicio" value={recorte.exercicio} />
         {recorte.unidadeCodigo !== undefined ? <input type="hidden" name="ug" value={recorte.unidadeCodigo} /> : null}
-        <label>
-          <span className="block font-semibold">Credor (nome ou CPF/CNPJ)</span>
-          <input className={CAMPO} defaultValue={documento} list="credores-do-exercicio" name="documento" />
-        </label>
-        <datalist id="credores-do-exercicio">
-          {credores.map((c) => (
-            <option key={c.documento} value={c.documento}>
-              {c.nome ?? formatarDocumento(c.documento)}
-            </option>
-          ))}
-        </datalist>
+        <CampoDoCredor className={CAMPO} credores={credores.map((c) => ({ documento: c.documento, rotulo: c.nome ?? formatarDocumento(c.documento) }))} documento={documento} />
         <button type="submit" className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 font-semibold text-[color:var(--color-acao-tinta)]">Abrir</button>
       </form>
 

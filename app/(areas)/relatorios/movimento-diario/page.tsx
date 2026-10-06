@@ -7,6 +7,7 @@ import { SincronizarContexto } from "../../../../components/ui/SincronizarContex
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { lerMovimentoDoDia, type MovimentoDoDia } from "../../../../lib/portas/receita-e-despesa-do-periodo";
 import { diaCivil } from "../../../../packages/datas/index";
+import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -29,6 +30,9 @@ export default async function MovimentoDiarioPage({
   const dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido) ? pedido : diaCivil(new Date());
   let m: MovimentoDoDia;
   try {
+    // A receita e a despesa do dia são do ENTE: as duas leituras, declaradas aqui (a porta as cobra de novo).
+    await telaExigeLeituraDoEnte("CONSULTAR_RECEITA");
+    await telaExigeLeituraDoEnte("CONSULTAR_DESPESA");
     m = await lerMovimentoDoDia(dia);
   } catch (erro) {
     return (

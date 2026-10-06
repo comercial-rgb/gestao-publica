@@ -18,7 +18,7 @@ export function FormImportarExtrato({ contas }: { readonly contas: readonly { re
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Importar extrato bancário (OFX)</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
-        O arquivo OFX exportado pelo internet banking. Importar de novo o mesmo arquivo não duplica linhas.
+        O arquivo OFX exportado pelo internet banking (alguns bancos o entregam com a extensão .ofc). Importar de novo o mesmo arquivo não duplica linhas, e o arquivo de outra conta é recusado.
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label htmlFor={`${id}-conta`} className="text-xs text-[color:var(--color-ink-2)]">
@@ -32,7 +32,7 @@ export function FormImportarExtrato({ contas }: { readonly contas: readonly { re
         </label>
         <label htmlFor={`${id}-arquivo`} className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Arquivo OFX</span>
-          <input id={`${id}-arquivo`} name="arquivo" type="file" accept=".ofx,.OFX,application/x-ofx" required className="block w-full text-sm text-[color:var(--color-ink-2)]" />
+          <input id={`${id}-arquivo`} name="arquivo" type="file" accept=".ofx,.OFX,.ofc,.OFC,application/x-ofx" required className="block w-full text-sm text-[color:var(--color-ink-2)]" />
         </label>
       </div>
       {estado.erro !== undefined ? (

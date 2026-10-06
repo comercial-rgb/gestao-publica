@@ -33,9 +33,10 @@ const NAT = "11130111";
 
 const roteiro = (caixa: string) => roteiroArrecadacao({ disponibilidade: caixa, variacaoAumentativa: VPA, receitaARealizar: R_A_REALIZAR, receitaRealizada: R_REALIZADA });
 
-function ofx(linhas: readonly { fitid: string; dt: string; amt: string; memo: string }[]): string {
+// V36: o ACCTID é de cada conta do banco — o mesmo ACCTID em duas contas do sistema é recusado na importação.
+function ofx(linhas: readonly { fitid: string; dt: string; amt: string; memo: string }[], acctid = "1"): string {
   const trns = linhas.map((l) => ["<STMTTRN>", "<TRNTYPE>OTHER", `<DTPOSTED>${l.dt}`, `<TRNAMT>${l.amt}`, `<FITID>${l.fitid}`, `<MEMO>${l.memo}`, "</STMTTRN>"].join("\n")).join("\n");
-  return `OFXHEADER:100\n<OFX>\n<STMTRS>\n<CURDEF>BRL\n<BANKACCTFROM>\n<ACCTID>1\n</BANKACCTFROM>\n<BANKTRANLIST>\n<DTSTART>20260101\n<DTEND>20261231\n${trns}\n</BANKTRANLIST>\n</STMTRS>\n</OFX>`;
+  return `OFXHEADER:100\n<OFX>\n<STMTRS>\n<CURDEF>BRL\n<BANKACCTFROM>\n<ACCTID>${acctid}\n</BANKACCTFROM>\n<BANKTRANLIST>\n<DTSTART>20260101\n<DTEND>20261231\n${trns}\n</BANKTRANLIST>\n</STMTRS>\n</OFX>`;
 }
 
 async function guia(p: { numero: string; fonte: "500" | "540"; valor: string; conta?: string; caixa: string; data?: string; por?: string }): Promise<string> {
@@ -106,7 +107,7 @@ describe("V6 P1.2 · arrecadação × conta bancária × conciliação", () => {
     const a1 = await guia({ numero: "A1", fonte: "500", valor: "2000.00", conta: "CC-A", caixa: CAIXA_A });
     const b1 = await guia({ numero: "B1", fonte: "540", valor: "300.00", conta: "CC-B", caixa: CAIXA_B });
     await importarExtrato(prisma, { contaBancariaId: "cb-a", importadoPor: POR, arquivoOfx: ofx([{ fitid: "A-C1", dt: "20260110", amt: "2000.00", memo: "IPTU" }]) });
-    await importarExtrato(prisma, { contaBancariaId: "cb-b", importadoPor: POR, arquivoOfx: ofx([{ fitid: "B-C1", dt: "20260110", amt: "300.00", memo: "FUNDEB" }]) });
+    await importarExtrato(prisma, { contaBancariaId: "cb-b", importadoPor: POR, arquivoOfx: ofx([{ fitid: "B-C1", dt: "20260110", amt: "300.00", memo: "FUNDEB" }], "2") });
     const fatosA = await fatosDeCaixaDaConta(prisma, { id: "cb-a", codigo: "CC-A", fonteId: "f500", contaContabilId: "c-a" }, CORTE);
     const fatosB = await fatosDeCaixaDaConta(prisma, { id: "cb-b", codigo: "CC-B", fonteId: "f540", contaContabilId: "c-b" }, CORTE);
     expect(fatosA.map((f) => f.id)).toEqual([a1]);
