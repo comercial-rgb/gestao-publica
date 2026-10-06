@@ -190,6 +190,8 @@ export interface RetencaoNaLista {
   /** Drill ao documento: o pagamento e o empenho de origem (TR 5.25). */
   readonly pagamentoNumero: string | null;
   readonly empenhoNumero: string | null;
+  /** V36 — o lançamento do movimento, para a tela abrir a escrituração. */
+  readonly lancamentoId: string;
 }
 
 /** As RETENÇÕES do exercício (ingressos nascidos DENTRO de um pagamento — vínculo 5.25), com drill. */
@@ -214,6 +216,7 @@ export async function listarRetencoes(prisma: PrismaClient, params: { readonly e
     consignatario: m.credorConsignatario,
     pagamentoNumero: m.pagamento?.numero ?? null,
     empenhoNumero: m.pagamento?.liquidacao.empenho.numero ?? null,
+    lancamentoId: m.lancamentoId,
   }));
 }
 
@@ -224,6 +227,9 @@ export interface DispendioNaLista {
   readonly tipoCodigo: string;
   readonly consignatario: string;
   readonly historico: string;
+  /** V36 — o lançamento do movimento e se ele já tem estorno (a tela não oferece estornar de novo). */
+  readonly lancamentoId: string;
+  readonly estornado: boolean;
 }
 
 /** As DESPESAS EXTRA (recolhimentos/repasses ao consignatário) do exercício. */
@@ -234,10 +240,32 @@ export async function listarDispendios(prisma: PrismaClient, params: { readonly 
   const { inicio: gte, fim: lte } = janelaCivilDoAno(params.exercicio);
   const movs = await prisma.movimentoExtraorcamentario.findMany({
     where: { tipo: "DISPENDIO", data: { gte, lte } },
-    include: { tipoConsignacao: { select: { codigo: true } } },
+    include: { tipoConsignacao: { select: { codigo: true } }, estornos: { select: { id: true } } },
     orderBy: [{ data: "asc" }],
   });
-  return movs.map((m) => ({ id: m.id, data: m.data, valor: new Decimal(m.valor).toFixed(2), tipoCodigo: m.tipoConsignacao.codigo, consignatario: m.credorConsignatario, historico: m.historico }));
+  return movs.map((m) => ({
+    id: m.id, data: m.data, valor: new Decimal(m.valor).toFixed(2), tipoCodigo: m.tipoConsignacao.codigo,
+    consignatario: m.credorConsignatario, historico: m.historico, lancamentoId: m.lancamentoId, estornado: m.estornos.length > 0,
+  }));
+}
+
+/**
+ * V36 — OS INGRESSOS AVULSOS do exercício: caução, depósito de terceiro, consignação que não nasceu de um
+ * pagamento. Até aqui eles entravam só no saldo por consignatário — registrados pela tela e invisíveis como
+ * linha, sem caminho para o lançamento nem para o estorno (que o domínio tem e testa). A retenção, que nasce
+ * DENTRO do pagamento, continua em `listarRetencoes` e se desfaz pela anulação do pagamento.
+ */
+export async function listarIngressosAvulsos(prisma: PrismaClient, params: { readonly exercicio: number }): Promise<DispendioNaLista[]> {
+  const { inicio: gte, fim: lte } = janelaCivilDoAno(params.exercicio);
+  const movs = await prisma.movimentoExtraorcamentario.findMany({
+    where: { tipo: "INGRESSO", pagamentoId: null, data: { gte, lte } },
+    include: { tipoConsignacao: { select: { codigo: true } }, estornos: { select: { id: true } } },
+    orderBy: [{ data: "asc" }],
+  });
+  return movs.map((m) => ({
+    id: m.id, data: m.data, valor: new Decimal(m.valor).toFixed(2), tipoCodigo: m.tipoConsignacao.codigo,
+    consignatario: m.credorConsignatario, historico: m.historico, lancamentoId: m.lancamentoId, estornado: m.estornos.length > 0,
+  }));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

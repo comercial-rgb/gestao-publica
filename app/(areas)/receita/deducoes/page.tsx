@@ -86,7 +86,10 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
                     <th scope="row" className="py-2 pr-3 font-normal">{d.natureza} — {d.naturezaDescricao}</th>
                     <td className="py-2 pr-3">{d.fonte}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{d.ehEstorno ? "−" : ""}{brl(d.valor)}</td>
-                    <td className="py-2 pr-3">{d.documento}</td>
+                    <td className="py-2 pr-3">
+                      {d.documento}
+                      <a className="block underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${d.lancamentoId}`}>abrir o lançamento</a>
+                    </td>
                     <td className="py-2 pr-3">
                       {d.ehEstorno ? "Estorno" : d.estorno !== null ? `Estornada em ${d.estorno.dia.split("-").reverse().join("/")}` : <FormEstornoDeducao deducaoId={d.id} rotulo={`${d.natureza} de ${d.dia}`} />}
                     </td>

@@ -67,6 +67,8 @@ export async function lerTransferenciasEntreUgs(p: { readonly de: Date; readonly
       estornada: l.estornada,
       situacao: SITUACAO[l.situacao] ?? l.situacao,
       ladoSemConfirmacao: l.situacao !== "DOIS_LADOS_AQUI",
+      lancamentoConcedidaId: l.lancamentoConcedidaId,
+      lancamentoRecebidaId: l.lancamentoRecebidaId,
     })),
     liquidoPorPar: conciliacao.liquidoPorPar,
   };

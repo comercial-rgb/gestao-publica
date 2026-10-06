@@ -309,6 +309,9 @@ export interface LinhaDaConciliacaoEntreUgs {
   readonly valor: string;
   readonly estorno: boolean;
   readonly estornada: boolean;
+  /** V36 — os lançamentos de cada lado, para a tela abrir a escrituração (null: o lado é de fora). */
+  readonly lancamentoConcedidaId: string | null;
+  readonly lancamentoRecebidaId: string | null;
   /** Os dois lados escriturados aqui (conciliada por construção), ou qual lado falta e por quê. */
   readonly situacao: "DOIS_LADOS_AQUI" | "RECEBIMENTO_SEM_CONFIRMACAO" | "CONCESSAO_SEM_CONFIRMACAO";
 }
@@ -349,6 +352,8 @@ export async function conciliacaoDasTransferenciasEntreUgs(
     valor: t.valor.toFixed(2),
     estorno: t.estornoDeId !== null,
     estornada: t.estorno !== null,
+    lancamentoConcedidaId: t.lancamentoConcedidaId,
+    lancamentoRecebidaId: t.lancamentoRecebidaId,
     situacao:
       t.lancamentoConcedidaId !== null && t.lancamentoRecebidaId !== null
         ? ("DOIS_LADOS_AQUI" as const)

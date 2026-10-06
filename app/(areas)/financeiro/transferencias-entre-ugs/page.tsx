@@ -82,7 +82,14 @@ export default async function TransferenciasEntreUgsPage({ searchParams }: { rea
                     <td className="py-1.5 pr-3 text-xs">{l.estorno ? `Estorno de ${l.tipo.toLowerCase()}` : l.tipo}</td>
                     <td className="py-1.5 pr-3 text-xs">{l.origem} → {l.destino}</td>
                     <td className="py-1.5 pr-3 text-right"><ValorMonetario valor={l.estorno ? `-${l.valor}` : l.valor} /></td>
-                    <td className={`py-1.5 pr-3 text-xs ${l.ladoSemConfirmacao ? "text-[color:var(--color-status-erro-fg)]" : ""}`}>{l.situacao}{l.estornada ? " · estornada" : ""}</td>
+                    <td className={`py-1.5 pr-3 text-xs ${l.ladoSemConfirmacao ? "text-[color:var(--color-status-erro-fg)]" : ""}`}>
+                      {l.situacao}{l.estornada ? " · estornada" : ""}
+                      <span className="block text-[color:var(--color-ink-2)]">
+                        {l.lancamentoConcedidaId !== null ? <a className="underline" data-elo="lancamento-concedida" href={`/contabilidade/lancamentos/${l.lancamentoConcedidaId}`}>lançamento da concessão</a> : null}
+                        {l.lancamentoConcedidaId !== null && l.lancamentoRecebidaId !== null ? " · " : null}
+                        {l.lancamentoRecebidaId !== null ? <a className="underline" data-elo="lancamento-recebida" href={`/contabilidade/lancamentos/${l.lancamentoRecebidaId}`}>lançamento do recebimento</a> : null}
+                      </span>
+                    </td>
                     <td className="py-1.5 text-xs">{!l.estorno && !l.estornada ? <FormEstornar transferenciaId={l.id} rotulo={`a transferência de ${l.data}`} /> : null}</td>
                   </tr>
                 ))}

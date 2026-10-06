@@ -241,7 +241,18 @@ const COLUNAS_PAGAMENTOS: readonly ColunaTabela<PagamentoDaTela>[] = [
   { chave: "numero", cabecalho: "Nº", alinhamento: "esquerda", largura: "7rem", celula: (l) => l.numero },
   { chave: "data", cabecalho: "Data", alinhamento: "esquerda", largura: "6rem", celula: (l) => dataBr(l.data) },
   { chave: "liquidacao", cabecalho: "Liquidação", alinhamento: "esquerda", largura: "7rem", celula: (l) => l.liquidacaoNumero },
-  { chave: "empenho", cabecalho: "Empenho", alinhamento: "esquerda", largura: "7rem", celula: (l) => l.empenhoNumero },
+  {
+    chave: "empenho",
+    cabecalho: "Empenho",
+    alinhamento: "esquerda",
+    largura: "7rem",
+    celula: (l) => (
+      <>
+        <a className="text-[color:var(--color-primary)] hover:underline" href={`/despesa/empenhos/${l.empenhoId}#pagamento-${l.id}`}>{l.empenhoNumero}</a>
+        <a className="block text-xs text-[color:var(--color-primary)] hover:underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${l.lancamentoId}`}>lançamento</a>
+      </>
+    ),
+  },
   { chave: "credor", cabecalho: "Credor", alinhamento: "esquerda", largura: "11rem", celula: (l) => l.credorCpfCnpj },
   { chave: "fonte", cabecalho: "Fonte", alinhamento: "esquerda", largura: "4rem", celula: (l) => l.fonteCodigo },
   { chave: "valor", cabecalho: "Pago (líquido)", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.pagoLiquido} /> },

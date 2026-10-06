@@ -91,6 +91,9 @@ export async function anularReceita(input: {
 
 /** O pagamento como a TELA de anulação o consome — dinheiro em string. */
 export interface PagamentoDaTela {
+  /** V36 — o lançamento do pagamento e o empenho de origem (links da linha). */
+  readonly lancamentoId: string;
+  readonly empenhoId: string;
   readonly id: string;
   readonly numero: string;
   readonly data: Date;
@@ -123,6 +126,8 @@ export async function listarPagamentosDaExecucao(p: {
     empenhoNumero: l.empenhoNumero,
     credorCpfCnpj: l.credorCpfCnpj,
     fonteCodigo: l.fonteCodigo,
+    lancamentoId: l.lancamentoId,
+    empenhoId: l.empenhoId,
   }));
 }
 

@@ -336,6 +336,8 @@ export interface RetencaoDaTela {
   readonly movimento: string;
   readonly estornoDeId: string | null;
   readonly criadoPor: string;
+  /** V36 — o lançamento da retenção (o histórico do dossiê o abre). */
+  readonly lancamentoId: string;
 }
 
 export interface PagamentoDoDossieDaTela {
@@ -583,6 +585,7 @@ function paraTelaODossie(d: DossieDoEmpenho): DossieDaTela {
           movimento: r.movimento,
           estornoDeId: r.estornoDeId,
           criadoPor: r.criadoPor,
+          lancamentoId: r.lancamentoId,
         })),
       })),
     })),

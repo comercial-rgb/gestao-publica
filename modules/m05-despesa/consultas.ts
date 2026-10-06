@@ -1052,6 +1052,9 @@ export interface PagamentoNaLista {
   readonly empenhoNumero: string;
   readonly credorCpfCnpj: string;
   readonly fonteCodigo: string;
+  /** V36 — para a tela abrir o lançamento do pagamento e o dossiê do empenho. */
+  readonly lancamentoId: string;
+  readonly empenhoId: string;
 }
 
 export async function listarPagamentos(
@@ -1070,11 +1073,13 @@ export async function listarPagamentos(
       anulacaoParcialDeId: true,
       estornos: { select: { id: true } },
       liquidacaoId: true,
+      lancamentoId: true,
       liquidacao: {
         select: {
           numero: true,
           empenho: {
             select: {
+              id: true,
               numero: true,
               credorCpfCnpj: true,
               ficha: { select: { fonte: { select: { codigo: true } } } },
@@ -1102,6 +1107,8 @@ export async function listarPagamentos(
     empenhoNumero: l.liquidacao.empenho.numero,
     credorCpfCnpj: l.liquidacao.empenho.credorCpfCnpj,
     fonteCodigo: l.liquidacao.empenho.ficha.fonte.codigo,
+    lancamentoId: l.lancamentoId,
+    empenhoId: l.liquidacao.empenho.id,
   }));
 }
 

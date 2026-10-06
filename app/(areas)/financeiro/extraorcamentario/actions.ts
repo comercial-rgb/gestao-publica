@@ -26,7 +26,7 @@ export async function estornarRecolhimentoAction(
     const movimentoId = String(formData.get("movimentoId") ?? "").trim();
     const data = String(formData.get("data") ?? "").trim();
     const motivo = String(formData.get("motivo") ?? "").trim();
-    if (movimentoId === "") return { erro: "Escolha o recolhimento a estornar." };
+    if (movimentoId === "") return { erro: "Escolha o movimento a estornar." };
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { erro: "Informe a data do estorno." };
 
     try {
@@ -34,7 +34,7 @@ export async function estornarRecolhimentoAction(
       revalidatePath("/financeiro/extraorcamentario");
       return { sucesso: msg };
     } catch (e) {
-      return { erro: mensagemDoErro(e, "Não foi possível estornar o recolhimento.") };
+      return { erro: mensagemDoErro(e, "Não foi possível estornar o movimento.") };
     }
   });
 }

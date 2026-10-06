@@ -90,7 +90,7 @@ export default async function RestoAPagarDetalhePage({
       <TabelaDeDados
         colunas={COLUNAS_ORIGEM}
         linhas={[
-          { rotulo: "Empenho", valor: d.empenhoNumero },
+          { rotulo: "Empenho", valor: d.empenhoNumero, href: `/despesa/empenhos/${d.empenhoId}` },
           { rotulo: "Data do empenho", valor: diaCivilBr(d.empenhoData) },
           { rotulo: "Valor do empenho", valor: d.empenhoValor, dinheiro: true },
           { rotulo: "Credor", valor: d.credorNome ?? d.credorCpfCnpj },
@@ -132,13 +132,24 @@ interface LinhaOrigem {
   readonly rotulo: string;
   readonly valor: string;
   readonly dinheiro?: boolean;
+  /** V36 — o empenho de origem abre o dossiê: contrato, liquidações, retenções, anulações e lançamentos. */
+  readonly href?: string;
 }
 const COLUNAS_ORIGEM: readonly ColunaTabela<LinhaOrigem>[] = [
   { chave: "rotulo", cabecalho: "Campo", celula: (l) => l.rotulo },
   {
     chave: "valor",
     cabecalho: "Valor",
-    celula: (l) => (l.dinheiro === true ? <ValorMonetario valor={l.valor} /> : l.valor),
+    celula: (l) =>
+      l.dinheiro === true ? (
+        <ValorMonetario valor={l.valor} />
+      ) : l.href !== undefined ? (
+        <a className="text-[color:var(--color-primary)] hover:underline" data-elo="dossie-do-empenho" href={l.href}>
+          {l.valor} (abrir o empenho, com a cadeia inteira)
+        </a>
+      ) : (
+        l.valor
+      ),
   },
 ];
 

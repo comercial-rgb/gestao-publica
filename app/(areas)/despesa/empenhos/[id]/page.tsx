@@ -720,6 +720,9 @@ function Historico({
     readonly quem: string;
     readonly o_que: string;
     readonly valor: string;
+    /** V36 — a seção desta página onde o fato está (âncora), e o lançamento que ele gerou. */
+    readonly ancora: string | null;
+    readonly lancamentoId: string;
   }[] = [
     ...d.cadeia.map((f) => ({
       chave: `e-${f.id}`,
@@ -727,6 +730,8 @@ function Historico({
       quem: f.criadoPor,
       o_que: `${ROTULO_NATUREZA[f.natureza] ?? f.natureza} do empenho ${f.numero}`,
       valor: f.valor,
+      ancora: null,
+      lancamentoId: f.lancamentoId,
     })),
     ...d.liquidacoes.flatMap((l) => [
       ...l.cadeia.map((f) => ({
@@ -735,6 +740,8 @@ function Historico({
         quem: f.criadoPor,
         o_que: `${ROTULO_NATUREZA[f.natureza] ?? f.natureza} da liquidação ${f.numero}`,
         valor: f.valor,
+        ancora: `liquidacao-${l.id}`,
+        lancamentoId: f.lancamentoId,
       })),
       ...l.pagamentos.flatMap((p) => [
         ...p.cadeia.map((f) => ({
@@ -743,6 +750,8 @@ function Historico({
           quem: f.criadoPor,
           o_que: `${ROTULO_NATUREZA[f.natureza] ?? f.natureza} do pagamento ${f.numero}`,
           valor: f.valor,
+          ancora: `pagamento-${p.id}`,
+          lancamentoId: f.lancamentoId,
         })),
         ...p.retencoes.map((r) => ({
           chave: `r-${r.id}`,
@@ -750,6 +759,8 @@ function Historico({
           quem: r.criadoPor,
           o_que: `${ROTULO_MOVIMENTO_EXTRA[r.movimento] ?? r.movimento} — ${r.tipoDescricao} a favor de ${r.credorConsignatario}`,
           valor: r.valor,
+          ancora: `pagamento-${p.id}`,
+          lancamentoId: r.lancamentoId,
         })),
       ]),
     ]),
@@ -769,14 +780,20 @@ function Historico({
             <span className="tabular text-[color:var(--color-ink-3)]">
               {instante(e.quando)}
             </span>
-            <span className="text-[color:var(--color-ink)]">{e.o_que}</span>
+            {e.ancora !== null ? (
+              <a className="text-[color:var(--color-primary)] hover:underline" href={`#${e.ancora}`}>{e.o_que}</a>
+            ) : (
+              <span className="text-[color:var(--color-ink)]">{e.o_que}</span>
+            )}
             <ValorMonetario valor={e.valor} />
+            <a className="text-[color:var(--color-primary)] hover:underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${e.lancamentoId}`}>lançamento</a>
             <span className="ml-auto text-[color:var(--color-ink-2)]">{e.quem}</span>
           </li>
         ))}
       </ol>
       <p className="mt-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada linha indica o responsável e a data e hora do registro.
+        Cada linha indica o responsável e a data e hora do registro, e leva ao fato nesta página e ao lançamento
+        contábil que ele gerou.
       </p>
     </Card>
   );

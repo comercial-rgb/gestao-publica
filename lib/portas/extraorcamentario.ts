@@ -6,6 +6,7 @@ import {
   listarSaldosExtra,
   listarRetencoes,
   listarDispendios,
+  listarIngressosAvulsos,
   retencoesComSaldo,
 } from "../../modules/m07-extraorcamentario/consultas";
 import { estornarMovimentoExtra, registrarDispendioExtra, registrarIngressoExtra } from "../../modules/m07-extraorcamentario/extraorcamentario";
@@ -48,6 +49,11 @@ export async function lerRetencoes(p: { readonly exercicio: number }) {
 
 export async function lerDispendiosExtra(p: { readonly exercicio: number }) {
   return listarDispendios(cliente(), { exercicio: p.exercicio });
+}
+
+/** V36 — os ingressos avulsos do exercício (caução, depósito), com lançamento e estorno. */
+export async function lerIngressosAvulsos(p: { readonly exercicio: number }) {
+  return listarIngressosAvulsos(cliente(), { exercicio: p.exercicio });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

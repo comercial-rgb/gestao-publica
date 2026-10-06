@@ -21,6 +21,8 @@ export interface DeducaoNaTela {
   readonly estorno: { readonly dia: string; readonly motivo: string | null } | null;
   readonly ehEstorno: boolean;
   readonly criadoPor: string;
+  /** V36 — o lançamento desta linha (a dedução ou o estorno), para a tela abrir a escrituração. */
+  readonly lancamentoId: string;
 }
 
 export interface EscolhasDaDeducao {
@@ -37,7 +39,7 @@ export async function lerDeducoesDaReceita(exercicio: number): Promise<readonly 
     where: { exercicio },
     orderBy: [{ data: "desc" }, { criadoEm: "desc" }],
     select: {
-      id: true, data: true, valor: true, documento: true, estornoDeId: true, motivo: true, criadoPor: true,
+      id: true, data: true, valor: true, documento: true, estornoDeId: true, motivo: true, criadoPor: true, lancamentoId: true,
       naturezaReceita: { select: { codigo: true, descricao: true } }, fonte: { select: { codigo: true } }, contaBancaria: { select: { codigo: true } },
       estorno: { select: { data: true, motivo: true } },
     },
@@ -46,6 +48,7 @@ export async function lerDeducoesDaReceita(exercicio: number): Promise<readonly 
     id: d.id, dia: dia(d.data), natureza: d.naturezaReceita.codigo, naturezaDescricao: d.naturezaReceita.descricao, fonte: d.fonte.codigo,
     valor: d.valor.toFixed(2), documento: d.documento, conta: d.contaBancaria.codigo,
     estorno: d.estorno === null ? null : { dia: dia(d.estorno.data), motivo: d.estorno.motivo }, ehEstorno: d.estornoDeId !== null, criadoPor: d.criadoPor,
+    lancamentoId: d.lancamentoId,
   }));
 }
 

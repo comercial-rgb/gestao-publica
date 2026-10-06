@@ -5,12 +5,12 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
-import { FormEstornoDoRecolhimento } from "./FormEstorno";
+import { FormEstornoDoMovimento, FormEstornoDoRecolhimento } from "./FormEstorno";
 import { FormIngresso } from "./FormIngresso";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import {
-  lerConferenciaDaComposicao, lerContasParaRecolhimento, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, PortaSemBancoError,
+  lerConferenciaDaComposicao, lerContasParaRecolhimento, lerEventosExtra, lerSaldosExtra, lerRetencoes, lerDispendiosExtra, lerIngressosAvulsos, PortaSemBancoError,
   type TipoConsignacaoNaLista, type SaldoConsignatarioNaLista, type RetencaoNaLista, type DispendioNaLista,
 } from "../../../../lib/portas/extraorcamentario";
 import { formatarMoeda } from "../../../../lib/format/moeda";
@@ -73,11 +73,12 @@ export default async function ExtraorcamentarioPage({
   let saldos: readonly SaldoConsignatarioNaLista[];
   let retencoes: readonly RetencaoNaLista[];
   let dispendios: readonly DispendioNaLista[];
+  let ingressos: readonly DispendioNaLista[];
   let composicao: Awaited<ReturnType<typeof lerConferenciaDaComposicao>>;
   try {
-    [eventos, saldos, retencoes, dispendios, composicao] = await Promise.all([
+    [eventos, saldos, retencoes, dispendios, ingressos, composicao] = await Promise.all([
       lerEventosExtra(), lerSaldosExtra(), lerRetencoes({ exercicio }), lerDispendiosExtra({ exercicio }),
-      lerConferenciaDaComposicao(),
+      lerIngressosAvulsos({ exercicio }), lerConferenciaDaComposicao(),
     ]);
   } catch (erro) {
     return (
@@ -224,6 +225,7 @@ export default async function ExtraorcamentarioPage({
                   <th className="py-1.5 pr-4">Data</th><th className="py-1.5 pr-4">Tipo</th>
                   <th className="py-1.5 pr-4">Consignatário</th><th className="py-1.5 pr-4">Empenho</th>
                   <th className="py-1.5 pr-4">Pagamento</th><th className="py-1.5 text-right">Valor</th>
+                  <th className="py-1.5 pl-4">Lançamento</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,6 +237,57 @@ export default async function ExtraorcamentarioPage({
                     <td className="py-1.5 pr-4 font-mono">{r.empenhoNumero ?? "—"}</td>
                     <td className="py-1.5 pr-4 font-mono">{r.pagamentoNumero ?? "—"}</td>
                     <td className="py-1.5 text-right"><ValorMonetario valor={r.valor} /></td>
+                    <td className="py-1.5 pl-4"><Link className="underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${r.lancamentoId}`}>abrir</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* ── V36: INGRESSOS AVULSOS (caução, depósito) — antes só entravam no saldo ── */}
+      <Card>
+        <h2 className="mb-2 text-sm font-semibold text-[color:var(--color-ink)]">Ingressos avulsos (receita extra)</h2>
+        <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
+          Cauções, depósitos e consignações que não nasceram de um pagamento. A retenção feita no pagamento aparece
+          em Retenções na fonte e se desfaz pela anulação do pagamento.
+        </p>
+        {ingressos.length === 0 ? (
+          <p className="text-sm text-[color:var(--color-ink-3)]">Sem ingressos avulsos no exercício.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-lista="ingressos-avulsos">
+              <thead>
+                <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
+                  <th className="py-1.5 pr-4">Data</th><th className="py-1.5 pr-4">Tipo</th>
+                  <th className="py-1.5 pr-4">Consignatário</th><th className="py-1.5 pr-4">Histórico</th>
+                  <th className="py-1.5 text-right">Valor</th>
+                  <th className="py-1.5 pl-4">Estorno</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ingressos.map((g) => (
+                  <tr key={g.id} className="border-b border-[color:var(--color-border)]" data-ingresso={g.id}>
+                    <td className="py-1.5 pr-4">{dataBr(g.data)}</td>
+                    <td className="py-1.5 pr-4">{g.tipoCodigo}</td>
+                    <td className="py-1.5 pr-4">{g.consignatario}</td>
+                    <td className="py-1.5 pr-4">
+                      {g.historico}
+                      <Link className="block underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${g.lancamentoId}`}>abrir o lançamento</Link>
+                    </td>
+                    <td className="py-1.5 text-right"><ValorMonetario valor={g.valor} /></td>
+                    <td className="py-1.5 pl-4">
+                      {g.estornado ? (
+                        <span className="text-xs text-[color:var(--color-ink-2)]">estornado</span>
+                      ) : (
+                        <FormEstornoDoMovimento
+                          movimentoId={g.id}
+                          acao="estornar-ingresso"
+                          explicacao={`Estornar o ingresso de ${g.tipoCodigo} de ${g.consignatario}. O original continua na lista, e o saldo a repassar diminui.`}
+                        />
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -265,7 +318,10 @@ export default async function ExtraorcamentarioPage({
                     <td className="py-1.5 pr-4">{dataBr(d.data)}</td>
                     <td className="py-1.5 pr-4">{d.tipoCodigo}</td>
                     <td className="py-1.5 pr-4">{d.consignatario}</td>
-                    <td className="py-1.5 pr-4">{d.historico}</td>
+                    <td className="py-1.5 pr-4">
+                      {d.historico}
+                      <Link className="block underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${d.lancamentoId}`}>abrir o lançamento</Link>
+                    </td>
                     <td className="py-1.5 text-right"><ValorMonetario valor={d.valor} /></td>
                     {/*
                       ⚠️ O ESTORNO GANHOU CAMINHO (V19). O serviço existia, era censado, e nenhuma
@@ -274,10 +330,14 @@ export default async function ExtraorcamentarioPage({
                       voltar; agora isso se faz aqui, na linha do recolhimento que se está vendo.
                     */}
                     <td className="py-1.5 pr-4">
-                      <FormEstornoDoRecolhimento
-                        movimentoId={d.id}
-                        rotulo={`o recolhimento de ${d.tipoCodigo} para ${d.consignatario}`}
-                      />
+                      {d.estornado ? (
+                        <span className="text-xs text-[color:var(--color-ink-2)]">estornado</span>
+                      ) : (
+                        <FormEstornoDoRecolhimento
+                          movimentoId={d.id}
+                          rotulo={`o recolhimento de ${d.tipoCodigo} para ${d.consignatario}`}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
