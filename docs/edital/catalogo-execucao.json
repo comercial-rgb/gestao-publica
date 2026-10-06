@@ -4046,9 +4046,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): as telas de conciliação não têm filtro por data, descrição, valor ou controle de lançamento (FormsDoVinculo.tsx, periodo/FormsDoPeriodo.tsx).",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-conciliacao-filtros.mts, 4/4.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: a tela da conciliação (/financeiro/conciliacao) filtra por período (dia civil), histórico/documento/FITID (sem caixa nem acento), valor (sem sinal, como digitado; valor ilegível é avisado e ignorado) e tipo do registro interno (o controle do lançamento: pagamento, arrecadação, extraorçamentário, movimentação, transferência), nas correspondências e nas duas pendências; recorte de exibição — a soma do motor permanece e a soma das linhas exibidas aparece ao lado (app/(areas)/financeiro/conciliacao/filtro.ts; test/ui/conciliacao-filtro.test.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.51",
@@ -4060,9 +4060,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): nenhuma coluna de valor é ordenável nas telas de conciliação; a ordem é fixa do serviço.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-conciliacao-filtros.mts: as linhas exibidas vêm na ordem pedida nos dois sentidos.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: ordem pela coluna de valor, crescente ou decrescente, com sinal e em Decimal, dos dois lados (extrato e lançamentos) e nas correspondências; empate mantém a ordem por data (filtro.ts; test/ui/conciliacao-filtro.test.ts).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.52",

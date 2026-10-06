@@ -14,6 +14,7 @@ import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { FormDesfazerVinculo, FormVincular } from "./FormsDoVinculo";
 import { FormImportarExtrato } from "./FormImportarExtrato";
 import { lerContasBancarias } from "../../../../lib/portas/pagamento";
+import { filtrarEOrdenar, filtroAtivo, filtroDaConciliacao, somaExibida, type FiltroDaConciliacao } from "./filtro";
 
 /** O nome do registro do sistema como o tesoureiro o chama (o tipo interno é código). */
 const TIPO_DO_REGISTRO: Readonly<Record<string, string>> = {
@@ -143,6 +144,16 @@ export default async function ConciliacaoBancariaPage({
   }
 
   const { conta, extrato, resumo, modo } = painel;
+  // V36 (TR 5.10.2.50/51) — filtros e ordem pela coluna de valor. Recorte de EXIBIÇÃO: o resumo continua o do motor.
+  const filtro = filtroDaConciliacao(sp);
+  const comFiltro = filtroAtivo(filtro);
+  const correspondencias = filtrarEOrdenar(painel.correspondencias, filtro, {
+    data: (c) => c.extrato.data,
+    texto: (c) => `${c.extrato.memo} ${c.extrato.fitid} ${c.interno.rotulo} ${c.interno.detalhe ?? ""}`,
+    valor: (c) => c.valorConciliado,
+  });
+  const pendenciasExtrato = filtrarEOrdenar(painel.pendenciasExtrato, filtro, { data: (l) => l.data, texto: (l) => l.descricao, valor: (l) => l.residual });
+  const pendenciasInternas = filtrarEOrdenar(painel.pendenciasInternas, filtro, { data: (l) => l.data, texto: (l) => l.descricao, valor: (l) => l.residual, tipo: (l) => l.tipo });
   const fecha = resumo.diferenca === resumo.diferencaExplicada;
   // O menu e os botões mostram só o que o servidor autoriza — a MESMA fonte que o ato confere.
   const permitidas = await acoesPermitidas(["VINCULAR_CONCILIACAO", "ESTORNAR_VINCULO"]);
@@ -230,6 +241,8 @@ export default async function ConciliacaoBancariaPage({
         <p className="mt-3 text-xs text-[color:var(--color-ink-3)]">{modo.mensagem}</p>
       </Card>
 
+      <FiltrosDaConciliacao exercicio={exercicio} filtro={filtro} />
+
       {/* ══ CORRESPONDÊNCIAS — os dois lados, lado a lado ══ */}
       <Card>
         <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
@@ -239,11 +252,11 @@ export default async function ConciliacaoBancariaPage({
           A correspondência pode ser parcial em qualquer dos lados; por isso o valor conciliado é
           exibido separadamente dos valores do extrato e do sistema.
         </p>
-        {painel.correspondencias.length === 0 ? (
-          <p className="text-sm text-[color:var(--color-ink-3)]">Nenhuma linha do extrato foi conciliada ainda.</p>
+        {correspondencias.length === 0 ? (
+          <p className="text-sm text-[color:var(--color-ink-3)]">{comFiltro && painel.correspondencias.length > 0 ? "Nenhuma correspondência passa nos filtros." : "Nenhuma linha do extrato foi conciliada ainda."}</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-lista="correspondencias">
               <thead>
                 <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                   <th className="py-1.5 pr-4">Extrato — data</th>
@@ -257,7 +270,7 @@ export default async function ConciliacaoBancariaPage({
                 </tr>
               </thead>
               <tbody>
-                {painel.correspondencias.map((c) => (
+                {correspondencias.map((c) => (
                   <tr key={c.vinculoId} className="border-b border-[color:var(--color-border)] align-top">
                     <td className="py-1.5 pr-4 whitespace-nowrap">{dataBr(c.extrato.data)}</td>
                     <td className="py-1.5 pr-4">
@@ -291,9 +304,12 @@ export default async function ConciliacaoBancariaPage({
               <tfoot>
                 <tr>
                   <td colSpan={6} className="py-2 pr-4 text-right text-[color:var(--color-ink-2)]">
-                    Total conciliado
+                    {comFiltro ? "Total conciliado (todas) · das linhas exibidas" : "Total conciliado"}
                   </td>
-                  <td className="py-2 text-right font-semibold"><ValorMonetario valor={resumo.totalConciliado} /></td>
+                  <td className="py-2 text-right font-semibold">
+                    <ValorMonetario valor={resumo.totalConciliado} />
+                    {comFiltro ? <div className="text-xs font-normal" data-soma-exibida="correspondencias"><ValorMonetario valor={somaExibida(correspondencias, (c) => c.valorConciliado)} /></div> : null}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -311,10 +327,10 @@ export default async function ConciliacaoBancariaPage({
             Lançamentos do extrato sem registro correspondente no sistema, como tarifas não
             contabilizadas ou créditos não registrados. Valores positivos são entradas; negativos, saídas.
           </p>
-          {painel.pendenciasExtrato.length === 0 ? (
-            <p className="text-sm text-[color:var(--color-ink-3)]">Nada pendente deste lado.</p>
+          {pendenciasExtrato.length === 0 ? (
+            <p className="text-sm text-[color:var(--color-ink-3)]">{comFiltro && painel.pendenciasExtrato.length > 0 ? "Nenhuma pendência deste lado passa nos filtros." : "Nada pendente deste lado."}</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-lista="pendencias-extrato">
               <thead>
                 <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                   <th className="py-1.5 pr-4">Data</th>
@@ -323,8 +339,8 @@ export default async function ConciliacaoBancariaPage({
                 </tr>
               </thead>
               <tbody>
-                {painel.pendenciasExtrato.map((l, i) => (
-                  <tr key={i} className="border-b border-[color:var(--color-border)]">
+                {pendenciasExtrato.map((l, i) => (
+                  <tr key={i} className="border-b border-[color:var(--color-border)]" data-residual={l.residual}>
                     <td className="py-1.5 pr-4 whitespace-nowrap">{dataBr(l.data)}</td>
                     <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">{l.descricao}</td>
                     <td className="py-1.5 text-right whitespace-nowrap"><ValorMonetario valor={l.residual} /></td>
@@ -333,8 +349,11 @@ export default async function ConciliacaoBancariaPage({
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={2} className="py-2 pr-4 text-right text-[color:var(--color-ink-2)]">Soma</td>
-                  <td className="py-2 text-right font-semibold"><ValorMonetario valor={resumo.totalPendenteExtrato} /></td>
+                  <td colSpan={2} className="py-2 pr-4 text-right text-[color:var(--color-ink-2)]">{comFiltro ? "Soma (todas) · das linhas exibidas" : "Soma"}</td>
+                  <td className="py-2 text-right font-semibold">
+                    <ValorMonetario valor={resumo.totalPendenteExtrato} />
+                    {comFiltro ? <div className="text-xs font-normal" data-soma-exibida="pendencias-extrato"><ValorMonetario valor={somaExibida(pendenciasExtrato, (l) => l.residual)} /></div> : null}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -349,10 +368,10 @@ export default async function ConciliacaoBancariaPage({
             Registros do sistema nesta conta que ainda não constam do extrato, como cheques não
             compensados ou depósitos não creditados.
           </p>
-          {painel.pendenciasInternas.length === 0 ? (
-            <p className="text-sm text-[color:var(--color-ink-3)]">Nada pendente deste lado.</p>
+          {pendenciasInternas.length === 0 ? (
+            <p className="text-sm text-[color:var(--color-ink-3)]">{comFiltro && painel.pendenciasInternas.length > 0 ? "Nenhuma pendência deste lado passa nos filtros." : "Nada pendente deste lado."}</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-lista="pendencias-internas">
               <thead>
                 <tr className="border-b border-[color:var(--color-border)] text-left text-[color:var(--color-ink-2)]">
                   <th className="py-1.5 pr-4">Data</th>
@@ -361,8 +380,8 @@ export default async function ConciliacaoBancariaPage({
                 </tr>
               </thead>
               <tbody>
-                {painel.pendenciasInternas.map((l, i) => (
-                  <tr key={i} className="border-b border-[color:var(--color-border)]">
+                {pendenciasInternas.map((l, i) => (
+                  <tr key={i} className="border-b border-[color:var(--color-border)]" data-residual={l.residual} data-tipo={l.tipo}>
                     <td className="py-1.5 pr-4 whitespace-nowrap">{dataBr(l.data)}</td>
                     <td className="py-1.5 pr-4 text-[color:var(--color-ink-2)]">
                       {l.descricao} <span className="text-[color:var(--color-ink-3)]">({TIPO_DO_REGISTRO[l.tipo] ?? l.tipo})</span>
@@ -373,8 +392,11 @@ export default async function ConciliacaoBancariaPage({
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={2} className="py-2 pr-4 text-right text-[color:var(--color-ink-2)]">Soma</td>
-                  <td className="py-2 text-right font-semibold"><ValorMonetario valor={resumo.totalPendenteInterno} /></td>
+                  <td colSpan={2} className="py-2 pr-4 text-right text-[color:var(--color-ink-2)]">{comFiltro ? "Soma (todas) · das linhas exibidas" : "Soma"}</td>
+                  <td className="py-2 text-right font-semibold">
+                    <ValorMonetario valor={resumo.totalPendenteInterno} />
+                    {comFiltro ? <div className="text-xs font-normal" data-soma-exibida="pendencias-internas"><ValorMonetario valor={somaExibida(pendenciasInternas, (l) => l.residual)} /></div> : null}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -472,5 +494,55 @@ export default async function ConciliacaoBancariaPage({
         .
       </p>
     </div>
+  );
+}
+
+const CAMPO_DO_FILTRO = "h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-2";
+
+/** V36 — os filtros da conciliação, na URL (GET não muda estado). O vínculo continua oferecendo todas as pendências. */
+function FiltrosDaConciliacao({ exercicio, filtro }: { readonly exercicio: number; readonly filtro: FiltroDaConciliacao }): React.ReactElement {
+  return (
+    <form method="get" className="flex flex-wrap items-end gap-3 text-xs" data-chrome aria-label="Filtrar a conciliação">
+      <input type="hidden" name="exercicio" value={exercicio} />
+      <label>
+        <span className="block font-semibold">De</span>
+        <input type="date" name="desde" defaultValue={filtro.desde} className={CAMPO_DO_FILTRO} />
+      </label>
+      <label>
+        <span className="block font-semibold">Até</span>
+        <input type="date" name="ate" defaultValue={filtro.ate} className={CAMPO_DO_FILTRO} />
+      </label>
+      <label>
+        <span className="block font-semibold">Histórico, documento ou FITID</span>
+        <input type="text" name="texto" defaultValue={filtro.texto} className={CAMPO_DO_FILTRO} />
+      </label>
+      <label>
+        <span className="block font-semibold">Valor</span>
+        <input type="text" inputMode="decimal" name="valor" defaultValue={filtro.valor === "" ? filtro.valorIgnorado : formatarMoeda(filtro.valor).texto} className={CAMPO_DO_FILTRO} />
+      </label>
+      <label>
+        <span className="block font-semibold">Tipo do registro</span>
+        <select name="tipo" defaultValue={filtro.tipo} className={CAMPO_DO_FILTRO}>
+          <option value="">Todos</option>
+          {Object.entries(TIPO_DO_REGISTRO).map(([v, r]) => (
+            <option key={v} value={v}>{r}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span className="block font-semibold">Ordenar</span>
+        <select name="ordem" defaultValue={filtro.ordem} className={CAMPO_DO_FILTRO}>
+          <option value="">Por data</option>
+          <option value="valor-asc">Por valor, do menor ao maior</option>
+          <option value="valor-desc">Por valor, do maior ao menor</option>
+        </select>
+      </label>
+      <button type="submit" className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 font-semibold text-[color:var(--color-acao-tinta)]">Filtrar</button>
+      {filtro.valorIgnorado !== "" ? (
+        <p className="w-full text-[color:var(--color-status-alerta-fg)]" data-valor-ignorado>
+          O valor "{filtro.valorIgnorado}" não é um número e foi ignorado.
+        </p>
+      ) : null}
+    </form>
   );
 }

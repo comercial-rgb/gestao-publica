@@ -99,6 +99,7 @@
     "test/ui/pagamentos-efetuados-pdf.test.ts",
     "test/ui/ofx-texto.test.ts",
     "test/ui/conciliacao-pdf.test.ts",
+    "test/ui/conciliacao-filtro.test.ts",
     "test/carta-de-servicos.test.ts",
     "test/ouvidoria-e-avaliacao.test.ts",
     "test/ui/demonstrativo-das-obrigacoes.test.ts",
