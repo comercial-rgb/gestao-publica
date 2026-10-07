@@ -337,6 +337,20 @@ inteiro: 136 validadas (eram 134), 191 ausentes (eram 193).
   têm percurso desde a V36.
 - Medições: typecheck do app e do backend limpos (o teste novo do PDF entrou nas listas dos tsconfig como o irmão
   dele); censo 5/5; percurso `scripts/percurso-v36-decima-rodada.mts` 7/7 (negação 403 com a ação que falta).
+- **Periodicidade do controle das cotas** (TR 5.9.3.33; M02 declara, M05 aplica). Regime: **profundidade** (guard de
+  empenho). `PeriodicidadeDasCotasCmd` (migration `20261108110000_v36_periodicidade_das_cotas`, aditiva, aplicada na
+  fictícia; diff vazio), `declararPeriodicidadeDasCotas` sob CRIAR_VERSAO_CMD. O guard confere a cota no período vigente
+  na data do empenho (mensal sem ato; bimestral, trimestral, semestral do ano civil), soma cotas e liberações dos meses
+  do período, conta o empenhado no período inteiro e trava as cotas de todos os meses dele. O acompanhamento mostra o
+  período e o saldo do período pela mesma régua; tela com o formulário e as colunas. Teste 6/6 (N=2 fontes, versão,
+  corrida em 5 rodadas, negação, relatório amarrado ao guard); cinco mutações acusadas (trava só do mês, período sempre
+  mensal, consumido só do mês, vigência ignorada, relatório mensal); verde em três fusos; os testes antigos do
+  cronograma seguem verdes (o mensal é idêntico). Percurso `percurso-v36-periodicidade-das-cotas.mts` 4/4, repetível
+  (a primeira versão do percurso dependia do estado deixado pela corrida anterior; os atos passaram à mesma data).
+  Validado; o efeito no empenho está nos testes, não no navegador (exigiria ligar a limitação na base fictícia).
+- **5.9.3.34 continua ausente, com a decisão nomeada:** em que meses o crédito adicional entra na cota (mês do decreto,
+  meses restantes em partes iguais, proporção do cronograma) e o que a anulação de dotação faz com a cota programada.
+- Catálogo inteiro: 137 validadas, 190 ausentes. Censo 544 nomes (+1, nenhuma ação nova).
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.

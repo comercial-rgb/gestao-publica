@@ -1582,9 +1582,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a cota de despesa tem grão fixo mensal e a meta de receita grão fixo bimestral (programacao-dominio.ts); não há periodicidade configurável.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · percurso scripts/percurso-v36-periodicidade-das-cotas.mts 4/4 · bimestral registrada e mostrada como vigente; repetir recusado dizendo o motivo, nada gravado; o saldo do período de outubro na tela igual ao do domínio em 32 linhas; mensal registrado depois volta o controle ao padrão. O efeito no empenho está nos testes do guard.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: PeriodicidadeDasCotasCmd (migration aditiva 20261108110000, CHECK do rol), append-only e versionada por data; declararPeriodicidadeDasCotas sob CRIAR_VERSAO_CMD (recusa a que não muda nada e a de fora do exercício). O guard do empenho (modules/m05-despesa/guard-cmd.ts) confere a cota no PERÍODO vigente na data do empenho — mensal (padrão sem ato), bimestral, trimestral ou semestral do ano civil: teto = Σ cotas + liberações dos meses do período; consumido = empenhado líquido no período; trava todas as cotas do período. O acompanhamento (acompanhamentoDasCotasCmd) ganhou o período e o saldo do período, pela mesma régua. m02-periodicidade-das-cotas.test.ts 6/6 (N=2 fontes; versionada; corrida de dois meses do mesmo bimestre em 5 rodadas; negação pela ação; relatório amarrado ao guard), cinco mutações acusadas, verde em TZ=UTC, Asia/Tokyo e America/Los_Angeles; m02-programacao e m02-acompanhamento-cmd seguem verdes (o mensal é o de antes). Tela: /planejamento/cmd-mba, \"Periodicidade do controle das cotas\" e as colunas Período e Saldo do período.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.34",
@@ -1597,7 +1597,7 @@
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): os créditos adicionais (modules/m03-creditos) não tocam CotaCmd; mudar cota exige nova versão do cronograma ou liberação. FALTA: atualização automática das cotas pela alteração orçamentária.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): os créditos adicionais (modules/m03-creditos) não tocam CotaCmd; mudar cota exige nova versão do cronograma ou liberação. FALTA uma DECISÃO DO ENTE antes de construir: em que meses o valor do crédito entra na cota (o mês do decreto, os meses restantes em partes iguais, ou a proporção do cronograma vigente) e o que a anulação de dotação faz com a cota já programada. O termo de referência não diz; escolher sozinho seria inventar a regra do desembolso.",
       "situacao": "AUSENTE_CONFIRMADO"
     },
     {

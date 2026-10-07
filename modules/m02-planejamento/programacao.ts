@@ -10,6 +10,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { previsaoPorFonte } from "./consultas.js";
 import { diaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
+import { mesesDoPeriodo, PERIODICIDADES_DAS_COTAS, periodicidadeVigente, ROTULO_DO_PERIODO, type PeriodicidadeDasCotas } from "../m05-despesa/guard-cmd.js";
 import {
   bimestreDoMes,
   distribuirPorPercentuais,
@@ -278,6 +279,48 @@ export async function registrarEventoLimitacao(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// V36 (TR 5.9.3.33) — a PERIODICIDADE do controle das cotas
+// ═══════════════════════════════════════════════════════════════════════════
+
+const zPeriodicidade = z.object({
+  exercicio: z.number().int().min(1900).max(2200),
+  periodicidade: z.enum(PERIODICIDADES_DAS_COTAS, { message: "Periodicidade inválida: mensal, bimestral, trimestral ou semestral." }),
+  vigenteDesde: z.date(),
+  atoRef: z.string().trim().min(1, "Informe o ato que fixa a periodicidade."),
+  criadoPor: z.string().min(1),
+});
+
+/**
+ * DECLARA a periodicidade em que o guard do empenho confere as cotas (mensal, bimestral, trimestral ou semestral),
+ * desde uma data, por ato. Append-only: a anterior continua valendo até a data da nova. Sob CRIAR_VERSAO_CMD — quem
+ * fixa o cronograma fixa o período em que ele é cobrado. Recusa a declaração que não muda nada naquela data e a que
+ * cai fora do exercício.
+ */
+export async function declararPeriodicidadeDasCotas(
+  prisma: PrismaClient,
+  input: z.input<typeof zPeriodicidade>
+): Promise<{ readonly periodicidadeId: string }> {
+  const d = zPeriodicidade.parse(input);
+  if (Number(diaCivil(d.vigenteDesde).slice(0, 4)) !== d.exercicio) {
+    throw new Error(`A data de vigência (${diaCivil(d.vigenteDesde).split("-").reverse().join("/")}) não é do exercício ${String(d.exercicio)}. Nada foi gravado.`);
+  }
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.declararPeriodicidadeDasCotas, "ENTE");
+    const atual = await periodicidadeVigente(tx, d.exercicio, d.vigenteDesde);
+    if (atual === d.periodicidade) {
+      throw new Error(`O controle das cotas de ${String(d.exercicio)} já é ${d.periodicidade.toLowerCase()} nessa data. Nada foi gravado.`);
+    }
+    const p = await tx.periodicidadeDasCotasCmd.create({
+      data: { exercicio: d.exercicio, periodicidade: d.periodicidade, vigenteDesde: d.vigenteDesde, atoRef: d.atoRef, criadoPor: d.criadoPor },
+      select: { id: true },
+    });
+    return { periodicidadeId: p.id };
+  });
+}
+
+export { periodicidadeVigente, ROTULO_DO_PERIODO, type PeriodicidadeDasCotas };
+
+// ═══════════════════════════════════════════════════════════════════════════
 // confrontoMba — o LEITOR do art. 9º (leitura pura)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -500,6 +543,15 @@ export interface LinhaAcompanhamentoCmd {
   readonly realizado: string;
   /** previsto − realizado. NEGATIVO = empenhou-se além do previsto (possível com a limitação desligada). */
   readonly saldo: string;
+  /** V36 (TR 5.9.3.33) — o período do controle que contém o mês ("1 a 2" no bimestral; "3" no mensal). */
+  readonly periodo: string;
+  readonly periodicidade: PeriodicidadeDasCotas;
+  /**
+   * V36 — o saldo do PERÍODO, o que o guard deixa empenhar nele: Σ (cotas + liberações) dos meses do período, todas
+   * pela versão do cronograma vigente no fim do período, menos o empenhado líquido no período. No mensal, igual ao
+   * saldo do mês.
+   */
+  readonly saldoDoPeriodo: string;
 }
 
 /**
@@ -540,9 +592,27 @@ export async function acompanhamentoDasCotasCmd(
   for (const e of empenhos) fontes.add(e.ficha.fonteId);
 
   const zero = toMoney("0.00");
+  // V36 — a periodicidade de cada mês: a vigente no fim dele (a régua do guard para um empenho no fim do mês).
+  const periodicidades = new Map<number, PeriodicidadeDasCotas>();
+  for (let mes = 1; mes <= 12; mes++) periodicidades.set(mes, await periodicidadeVigente(leitor, p.exercicio, janelaCivilDeMeses(p.exercicio, mes, 1).fim));
   const linhas: LinhaAcompanhamentoCmd[] = [];
   for (const fonteId of [...fontes].sort()) {
     for (let mes = 1; mes <= 12; mes++) {
+      const periodicidade = periodicidades.get(mes) ?? "MENSAL";
+      const per = mesesDoPeriodo(periodicidade, mes);
+      const mesesDoPer = Array.from({ length: per.quantidade }, (_, i) => per.primeiro + i);
+      const janelaDoPeriodo = janelaCivilDeMeses(p.exercicio, per.primeiro, per.quantidade);
+      const versaoDoPeriodo = [...versoes].reverse().find((v) => v.vigenteDesde.getTime() <= janelaDoPeriodo.fim.getTime());
+      const previstoDoPeriodo = mesesDoPer.reduce((acc, m) => {
+        const c = versaoDoPeriodo?.cotas.find((x) => x.fonteId === fonteId && x.mes === m);
+        const lib = liberacoes.filter((l) => l.fonteId === fonteId && l.mes === m).reduce((a, l) => toMoney(a.plus(toMoney(l.valor.toFixed(2)))), zero);
+        return toMoney(acc.plus(c === undefined ? zero : toMoney(c.valor.toFixed(2))).plus(lib));
+      }, zero);
+      const realizadoDoPeriodo = somaLiquidaEstornaveis(
+        empenhos
+          .filter((e) => e.ficha.fonteId === fonteId && e.data.getTime() >= janelaDoPeriodo.inicio.getTime() && e.data.getTime() <= janelaDoPeriodo.fim.getTime())
+          .map((e) => ({ id: e.id, valor: toMoney(e.valor.toFixed(2)), estornoDeId: e.estornoDeId, anulacaoParcialDeId: e.anulacaoParcialDeId }))
+      );
       const { inicio, fim } = janelaCivilDeMeses(p.exercicio, mes, 1);
       const vigente = [...versoes].reverse().find((v) => v.vigenteDesde.getTime() <= fim.getTime());
       const c = vigente?.cotas.find((x) => x.fonteId === fonteId && x.mes === mes);
@@ -564,6 +634,9 @@ export async function acompanhamentoDasCotasCmd(
         previsto: previsto.toFixed(2),
         realizado: realizado.toFixed(2),
         saldo: toMoney(previsto.minus(realizado)).toFixed(2),
+        periodo: per.quantidade === 1 ? String(mes) : `${String(per.primeiro)} a ${String(per.primeiro + per.quantidade - 1)}`,
+        periodicidade,
+        saldoDoPeriodo: toMoney(previstoDoPeriodo.minus(realizadoDoPeriodo)).toFixed(2),
       });
     }
   }

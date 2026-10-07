@@ -1,0 +1,28 @@
+// ============================================================================
+// V36 — A PERIODICIDADE DO CONTROLE DAS COTAS DE DESPESA (TR 5.9.3.33).
+//
+// O cronograma de desembolso continua MENSAL (CotaCmd é fonte × mês). O que se configura é o PERÍODO em que o guard
+// do empenho confere a cota: mensal, bimestral, trimestral ou semestral. No período, o teto é a soma das cotas e das
+// liberações dos meses dele, e o consumido é o empenhado líquido no período inteiro — a cota de um mês pode ser usada
+// em outro mês do MESMO período, nunca fora dele. Os períodos são do ano civil (bimestres 1-2, 3-4...; trimestres 1-3,
+// 4-6...; semestres 1-6 e 7-12).
+//
+// APPEND-ONLY E VERSIONADA: cada ato é uma linha com a data desde quando vale; a vigente num instante é a de maior
+// `vigenteDesde` até ele (empate: a gravada por último). Sem ato, o controle é MENSAL, como sempre foi.
+// ============================================================================
+
+model PeriodicidadeDasCotasCmd {
+  id String @id @default(cuid())
+
+  exercicio     Int
+  /// MENSAL, BIMESTRAL, TRIMESTRAL ou SEMESTRAL (CHECK na migration).
+  periodicidade String   @db.VarChar(10)
+  vigenteDesde  DateTime
+  /// O ato (decreto, portaria) que fixou a periodicidade.
+  atoRef        String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([exercicio, vigenteDesde])
+}

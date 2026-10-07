@@ -89,3 +89,16 @@ cadastra o seu em `TemplateDecreto` (tabela-parâmetro — a anatomia do roteiro
   anatomia do 4.48/4.49/4.50); o consumido compõe `somaLiquidaEstornaveis`.
 - **(c)** a corrida é real e o `travarFichas` não a cobre → lock na cota, posto 3.
 - **(d)** opt-in default OFF preserva os 779 — confirmado (t2/t10).
+
+## V36 — a periodicidade do controle das cotas
+
+O cronograma continua mensal (`CotaCmd` é fonte x mês). O que se configura, por ato append-only e versionado
+(`PeriodicidadeDasCotasCmd`, sob CRIAR_VERSAO_CMD), é o **período** em que o guard do empenho confere a cota: mensal
+(o padrão sem ato), bimestral, trimestral ou semestral do ano civil. No período, teto = soma das cotas e liberações dos
+meses dele; consumido = empenhado líquido no período inteiro. A regra do período (`mesesDoPeriodo`,
+`periodicidadeVigente`) mora no `guard-cmd.ts` do M05, porque o M05 não importa o M02; o acompanhamento das cotas lê
+pelas mesmas funções e mostra o saldo do período. O guard trava as cotas de todos os meses do período: dois empenhos em
+meses diferentes do mesmo bimestre serializam (t6 do `m02-periodicidade-das-cotas.test.ts`).
+
+A atualização automática das cotas pelas alterações orçamentárias (TR 5.9.3.34) **não** foi construída: falta a regra
+de em que meses o crédito entra na cota, que é decisão do ente.

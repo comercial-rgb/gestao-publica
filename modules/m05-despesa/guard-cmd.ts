@@ -38,8 +38,35 @@ type Tx = Omit<
   "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
 >;
 
+// ═══ V36 (TR 5.9.3.33) — A PERIODICIDADE DO CONTROLE ═══
+// Mora aqui, e não no M02, porque é o guard quem a aplica, e o M05 não importa o M02 (o M02 importa o M05). O M02
+// declara a periodicidade e lê o período por estas mesmas funções, para o relatório não ter uma segunda régua.
+
+export const PERIODICIDADES_DAS_COTAS = ["MENSAL", "BIMESTRAL", "TRIMESTRAL", "SEMESTRAL"] as const;
+export type PeriodicidadeDasCotas = (typeof PERIODICIDADES_DAS_COTAS)[number];
+const MESES_DO_PERIODO: Readonly<Record<PeriodicidadeDasCotas, number>> = { MENSAL: 1, BIMESTRAL: 2, TRIMESTRAL: 3, SEMESTRAL: 6 };
+export const ROTULO_DO_PERIODO: Readonly<Record<PeriodicidadeDasCotas, string>> = { MENSAL: "mês", BIMESTRAL: "bimestre", TRIMESTRAL: "trimestre", SEMESTRAL: "semestre" };
+
+/** O período do ano civil que contém o mês: o primeiro mês e quantos meses tem. Bimestre 1 = jan–fev, e assim por diante. */
+export function mesesDoPeriodo(periodicidade: PeriodicidadeDasCotas, mes: number): { readonly primeiro: number; readonly quantidade: number } {
+  if (!Number.isInteger(mes) || mes < 1 || mes > 12) throw new Error(`Mês ${String(mes)} fora de 1 a 12.`);
+  const n = MESES_DO_PERIODO[periodicidade];
+  return { primeiro: Math.floor((mes - 1) / n) * n + 1, quantidade: n };
+}
+
+/** A periodicidade vigente no instante: o ato de maior `vigenteDesde` até ele (empate: o gravado por último). Sem ato, MENSAL. */
+export async function periodicidadeVigente(tx: Pick<Tx, "periodicidadeDasCotasCmd">, exercicio: number, instante: Date): Promise<PeriodicidadeDasCotas> {
+  const ato = await tx.periodicidadeDasCotasCmd.findFirst({
+    where: { exercicio, vigenteDesde: { lte: instante } },
+    orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
+    select: { periodicidade: true },
+  });
+  const v = ato?.periodicidade;
+  return v !== undefined && (PERIODICIDADES_DAS_COTAS as readonly string[]).includes(v) ? (v as PeriodicidadeDasCotas) : "MENSAL";
+}
+
 /**
- * A janela [início, fim] de um mês (1-12) de um exercício, NO CALENDÁRIO DO ENTE.
+ * A JANELA DO CONSUMIDO (antes `janelaDoMes`; desde a V36 é a do PERÍODO, por `janelaCivilDeMeses`), NO CALENDÁRIO DO ENTE.
  *
  * ⚠️ ERA `Date.UTC`, e a janela de junho ia de 31/05 às 21:00 a 30/06 às 20:59 civis. O
  * guard já classificava o empenho pelo mês CIVIL (`competenciaCivil`), mas somava o
@@ -47,9 +74,6 @@ type Tx = Omit<
  * JULHO e não entrava na soma de junho nenhuma das duas vezes. As duas pontas do guard
  * precisam da mesma régua.
  */
-function janelaDoMes(exercicio: number, mes: number): { inicio: Date; fim: Date } {
-  return janelaCivilDeMeses(exercicio, mes, 1);
-}
 
 /**
  * A limitação está LIGADA para este exercício? — a vigente é o `EventoLimitacaoEmpenho` de
@@ -127,22 +151,37 @@ export async function exigirCotaCmd(
     );
   }
 
-  // ── (3) TRAVA A COTA (posto 3) — antes de somar o consumido. Ver a corrida no cabeçalho. ──
-  await travar(tx, "CotaCmd", [cota.id]);
+  // ── (2b) V36 (TR 5.9.3.33) — O PERÍODO DO CONTROLE: o mês, ou o bimestre/trimestre/semestre que o contém, pela
+  // periodicidade vigente na data do empenho. Mensal (o padrão sem ato) reduz tudo abaixo ao comportamento de antes.
+  const periodicidade = await periodicidadeVigente(tx, ficha.exercicio, p.data);
+  const periodo = mesesDoPeriodo(periodicidade, mes);
+  const meses = Array.from({ length: periodo.quantidade }, (_, i) => periodo.primeiro + i);
+  const cotasDoPeriodo =
+    versaoVigente === null
+      ? []
+      : await tx.cotaCmd.findMany({
+          where: { versaoId: versaoVigente.id, fonteId: ficha.fonteId, mes: { in: meses } },
+          select: { id: true, valor: true },
+        });
 
-  // ── (4) O TETO = cota + Σ liberações (TR 4.44). ──
+  // ── (3) TRAVA AS COTAS DO PERÍODO (posto 3) — antes de somar o consumido. Ver a corrida no cabeçalho: com período,
+  // dois empenhos em meses diferentes do MESMO período travam o mesmo conjunto e serializam. ──
+  await travar(tx, "CotaCmd", cotasDoPeriodo.map((c) => c.id));
+
+  // ── (4) O TETO = Σ cotas do período + Σ liberações do período (TR 4.44). ──
   const liberacoes = await tx.liberacaoProgramacao.findMany({
-    where: { exercicio: ficha.exercicio, fonteId: ficha.fonteId, mes },
+    where: { exercicio: ficha.exercicio, fonteId: ficha.fonteId, mes: { in: meses } },
     select: { valor: true },
   });
   const liberado = liberacoes.reduce(
     (acc, l) => toMoney(acc.plus(toMoney(l.valor.toFixed(2)))),
     toMoney("0.00")
   );
-  const teto = toMoney(toMoney(cota.valor.toFixed(2)).plus(liberado));
+  const programado = cotasDoPeriodo.reduce((acc, c) => toMoney(acc.plus(toMoney(c.valor.toFixed(2)))), toMoney("0.00"));
+  const teto = toMoney(programado.plus(liberado));
 
-  // ── (5) O CONSUMIDO = Σ empenhos LÍQUIDOS da fonte no mês (net de anulação e parcial). ──
-  const { inicio, fim } = janelaDoMes(ficha.exercicio, mes);
+  // ── (5) O CONSUMIDO = Σ empenhos LÍQUIDOS da fonte no período (net de anulação e parcial). ──
+  const { inicio, fim } = janelaCivilDeMeses(ficha.exercicio, periodo.primeiro, periodo.quantidade);
   const empenhos = await tx.empenho.findMany({
     where: {
       ficha: { fonteId: ficha.fonteId },
@@ -162,16 +201,19 @@ export async function exigirCotaCmd(
   // ── (6) CABE? ──
   const disponivel = toMoney(teto.minus(consumido));
   if (p.valor.greaterThan(disponivel)) {
+    const mensal = periodicidade === "MENSAL";
+    const onde = mensal
+      ? `mês ${mes}/${ficha.exercicio}`
+      : `${ROTULO_DO_PERIODO[periodicidade]} de ${String(meses[0])}/${ficha.exercicio} a ${String(meses.at(-1))}/${ficha.exercicio} (controle ${periodicidade.toLowerCase()})`;
     throw new Error(
-      `LIMITAÇÃO DE EMPENHO ESTOURADA na fonte ${ficha.fonte.codigo}, mês ` +
-        `${mes}/${ficha.exercicio}:\n` +
-        `  cota programada .......... ${toMoney(cota.valor.toFixed(2)).toFixed(2)}\n` +
+      `LIMITAÇÃO DE EMPENHO ESTOURADA na fonte ${ficha.fonte.codigo}, ${onde}:\n` +
+        `  cota programada .......... ${programado.toFixed(2)}\n` +
         `  liberado ....... ${liberado.toFixed(2)}\n` +
-        `  teto do mês .............. ${teto.toFixed(2)}\n` +
+        `  teto do ${mensal ? "mês" : "período"} .............. ${teto.toFixed(2)}\n` +
         `  já empenhado (líquido) ... ${consumido.toFixed(2)}\n` +
         `  disponível ............... ${disponivel.toFixed(2)}\n` +
         `  pedido ................... ${p.valor.toFixed(2)}\n` +
-        `A cota do mês NÃO ROLA para o mês seguinte — realocar exige LIBERAÇÃO ou uma ` +
+        `A cota do ${mensal ? "mês NÃO ROLA para o mês seguinte" : "período NÃO ROLA para o período seguinte"} — realocar exige LIBERAÇÃO ou uma ` +
         `VERSÃO NOVA do cronograma. Nada foi gravado.`
     );
   }

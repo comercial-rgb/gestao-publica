@@ -8,6 +8,7 @@ import {
   configurarLimitacaoDeEmpenho,
   liberarCotaDaProgramacao,
   proporCronogramaPorPercentual,
+  declararPeriodicidade,
   proporProgramacaoDaLoa,
 } from "../../../../lib/portas/programacao";
 
@@ -98,7 +99,7 @@ export async function configurarLimitacaoAction(
       revalidatePath("/planejamento/cmd-mba");
       return {
         sucesso: r.ativo
-          ? "Limitação de empenho ativada. O empenho passa a observar também a cota mensal da fonte."
+          ? "Limitação de empenho ativada. O empenho passa a observar também a cota da fonte no período de controle."
           : "Limitação de empenho desativada. O empenho volta a observar apenas a dotação.",
       };
     } catch (e) {
@@ -158,6 +159,23 @@ export async function proporPorPercentualAction(_prev: EstadoDaProgramacao, form
       return { sucesso: `Versão ${String(r.numero)} do cronograma registrada pelos percentuais mensais: ${String(r.cotas)} cota(s).` };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível registrar o cronograma pelos percentuais.") };
+    }
+  });
+}
+
+/** V36 (TR 5.9.3.33) — a periodicidade em que o empenho é conferido contra as cotas, desde uma data, por ato. */
+export async function declararPeriodicidadeAction(_prev: EstadoDaProgramacao, formData: FormData): Promise<EstadoDaProgramacao> {
+  return comComandoDoFormulario(formData, async () => {
+    const periodicidade = String(formData.get("periodicidade") ?? "").trim();
+    const atoRef = String(formData.get("atoRef") ?? "").trim();
+    const vigenteDesde = dataCivilDoFormulario(String(formData.get("vigenteDesde") ?? "").trim());
+    if (vigenteDesde === null) return { erro: "Informe a data desde quando vale." };
+    try {
+      await declararPeriodicidade({ exercicio: exercicioDoFormulario(formData), periodicidade, vigenteDesde, atoRef });
+      revalidatePath("/planejamento/cmd-mba");
+      return { sucesso: "Periodicidade registrada. A partir da data informada, o empenho é conferido contra a soma das cotas do período." };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível registrar a periodicidade.") };
     }
   });
 }

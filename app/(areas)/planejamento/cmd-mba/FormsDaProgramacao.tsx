@@ -14,6 +14,7 @@ import {
   liberarCotaAction,
   proporDaLoaAction,
   proporPorPercentualAction,
+  declararPeriodicidadeAction,
   type EstadoDaProgramacao,
 } from "./actions";
 
@@ -134,7 +135,7 @@ export function FormLimitacao({
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]" data-situacao-da-limitacao={ativa ? "ligada" : "desligada"}>
         Situação atual: <strong>{ativa ? "ativa" : "inativa"}</strong>.{" "}
         {ativa
-          ? "O empenho observa também a cota mensal da fonte."
+          ? "O empenho observa também a cota da fonte no período de controle."
           : "O empenho observa apenas a dotação; o cronograma tem caráter de planejamento."}
       </p>
       <input name="exercicio" type="hidden" value={exercicio} />
@@ -298,6 +299,51 @@ export function FormCronogramaPorPercentual({ exercicio }: { readonly exercicio:
       <Mensagem acao="cronograma-por-percentual" estado={estado} />
       <button className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`} disabled={pendente} type="submit">
         {pendente ? "Registrando…" : "Registrar a versão pelos percentuais"}
+      </button>
+    </form>
+  );
+}
+
+const ROTULO_DA_PERIODICIDADE: Readonly<Record<string, string>> = { MENSAL: "mensal", BIMESTRAL: "bimestral", TRIMESTRAL: "trimestral", SEMESTRAL: "semestral" };
+
+/** V36 (TR 5.9.3.33) — a PERIODICIDADE do controle das cotas: o período em que o empenho é conferido contra a cota. */
+export function FormPeriodicidade({ exercicio, vigente }: { readonly exercicio: number; readonly vigente: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaProgramacao, FormData>(declararPeriodicidadeAction, {});
+  const ref = useRef<HTMLFormElement>(null);
+  if (estado.sucesso !== undefined) ref.current?.reset();
+  return (
+    <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-acao="periodicidade-das-cotas" ref={ref}>
+      <ChaveDeComando />
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Periodicidade do controle das cotas</h2>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]" data-periodicidade-vigente={vigente}>
+        Hoje o controle é <strong>{ROTULO_DA_PERIODICIDADE[vigente] ?? vigente}</strong>. Com a limitação ativa, o empenho é conferido contra a soma
+        das cotas e liberações do período (mês, bimestre, trimestre ou semestre do ano civil); a cota não passa de um
+        período para o seguinte.
+      </p>
+      <input name="exercicio" type="hidden" value={exercicio} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Periodicidade</span>
+          <select className={CAMPO} defaultValue="" name="periodicidade" required>
+            <option disabled value="">Escolha…</option>
+            <option value="MENSAL">Mensal</option>
+            <option value="BIMESTRAL">Bimestral</option>
+            <option value="TRIMESTRAL">Trimestral</option>
+            <option value="SEMESTRAL">Semestral</option>
+          </select>
+        </label>
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Vale desde</span>
+          <input className={CAMPO} name="vigenteDesde" required type="date" />
+        </label>
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Ato que fixa</span>
+          <input className={CAMPO} name="atoRef" placeholder="Decreto 31/2026" required />
+        </label>
+      </div>
+      <Mensagem acao="periodicidade-das-cotas" estado={estado} />
+      <button className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`} disabled={pendente} type="submit">
+        {pendente ? "Registrando…" : "Registrar a periodicidade"}
       </button>
     </form>
   );

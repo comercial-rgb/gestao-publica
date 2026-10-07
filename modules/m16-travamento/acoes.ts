@@ -816,6 +816,7 @@ export type NomeDeServico =
   | "proporCmdPorPercentual"
   | "proporMbaDaLoa"
   | "registrarVersaoCmd"
+  | "declararPeriodicidadeDasCotas"
   | "registrarVersaoMba"
   | "liberarProgramacao"
   | "registrarEventoLimitacao"
@@ -1453,6 +1454,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V36 — TR 5.9.3.37: a versão do CMD pelo percentual de cada mês, sob a mesma ação.
   proporCmdPorPercentual: "CRIAR_VERSAO_CMD",
   registrarVersaoCmd: "CRIAR_VERSAO_CMD",
+  // V36 — TR 5.9.3.33: a periodicidade em que o guard cobra as cotas, sob a ação de quem fixa o cronograma.
+  declararPeriodicidadeDasCotas: "CRIAR_VERSAO_CMD",
   proporMbaDaLoa: "CRIAR_VERSAO_MBA",
   registrarVersaoMba: "CRIAR_VERSAO_MBA",
   liberarProgramacao: "LIBERAR_PROGRAMACAO",
@@ -3290,6 +3293,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   obrasNoPortal: "leitura pública (V36 — as obras publicadas no portal, com a posição financeira; sem sessão por desenho: só o que foi publicado)",
   obraNoPortal: "leitura pública (V36 — uma obra publicada: cadastro, posição, medições aprovadas e anexos; não publicada responde como inexistente)",
   baixarAnexoPublicoDaObra: "leitura pública (V36 — o anexo de obra publicada no portal; o resto responde como inexistente)",
+  periodicidadeVigente: "leitura (V36 — a periodicidade vigente do controle das cotas num instante; o guard do CMD e o acompanhamento)",
   borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",
   acompanhamentoDasCotasCmd: "leitura (V36 — previsto × realizado das cotas de despesa por fonte e mês; o realizado é o consumido do guard do cronograma)",

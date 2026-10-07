@@ -11,6 +11,9 @@ import {
   liberarProgramacao,
   proporCmdDaLoa,
   proporCmdPorPercentual,
+  declararPeriodicidadeDasCotas,
+  periodicidadeVigente,
+  type PeriodicidadeDasCotas,
   proporMbaDaLoa,
   registrarEventoLimitacao,
 } from "../../modules/m02-planejamento/programacao";
@@ -564,5 +567,31 @@ export async function proporCronogramaPorPercentual(p: {
 }): Promise<{ readonly versaoId: string; readonly cotas: number; readonly numero: number }> {
   return comEscritaAutenticada("CRIAR_VERSAO_CMD", (criadoPor) =>
     proporCmdPorPercentual(cliente(), { exercicio: p.exercicio, atoRef: p.atoRef, vigenteDesde: p.vigenteDesde, percentuais: [...p.percentuais], criadoPor })
+  );
+}
+
+/** V36 (TR 5.9.3.33) — a periodicidade do controle das cotas vigente hoje e o ato que a fixou (sem ato: mensal). */
+export async function lerPeriodicidadeDasCotas(p: { readonly exercicio: number }): Promise<{ readonly vigente: PeriodicidadeDasCotas; readonly atoRef: string | null; readonly desde: Date | null }> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  const db = cliente();
+  const agora = new Date();
+  const vigente = await periodicidadeVigente(db, p.exercicio, agora);
+  const ato = await db.periodicidadeDasCotasCmd.findFirst({
+    where: { exercicio: p.exercicio, vigenteDesde: { lte: agora } },
+    orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
+    select: { atoRef: true, vigenteDesde: true },
+  });
+  return { vigente, atoRef: ato?.atoRef ?? null, desde: ato?.vigenteDesde ?? null };
+}
+
+/** V36 (TR 5.9.3.33) — declara a periodicidade do controle das cotas; as recusas são do M02. */
+export async function declararPeriodicidade(p: {
+  readonly exercicio: number;
+  readonly periodicidade: string;
+  readonly vigenteDesde: Date;
+  readonly atoRef: string;
+}): Promise<{ readonly periodicidadeId: string }> {
+  return comEscritaAutenticada("CRIAR_VERSAO_CMD", (criadoPor) =>
+    declararPeriodicidadeDasCotas(cliente(), { ...p, periodicidade: p.periodicidade as PeriodicidadeDasCotas, criadoPor })
   );
 }

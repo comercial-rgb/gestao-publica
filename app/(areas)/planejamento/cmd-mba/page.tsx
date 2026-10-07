@@ -7,6 +7,7 @@ import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/Tabe
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
   lerAcompanhamentoDasCotas,
+  lerPeriodicidadeDasCotas,
   lerCmdVigente,
   lerConfrontoMba,
   lerLimitacaoDeEmpenho,
@@ -21,7 +22,7 @@ import {
 } from "../../../../lib/portas/programacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
-import { FormCronogramaPorPercentual, FormLimitacao, FormLiberacao, FormProporDaLoa } from "./FormsDaProgramacao";
+import { FormCronogramaPorPercentual, FormLimitacao, FormLiberacao, FormPeriodicidade, FormProporDaLoa } from "./FormsDaProgramacao";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -99,14 +100,16 @@ export default async function CmdMbaPage({
   let mba: PlanoProgramacao;
   let confronto: ConfrontoMbaDaTela;
   let acompanhamento: readonly LinhaAcompanhamentoDasCotas[];
+  let periodicidade: Awaited<ReturnType<typeof lerPeriodicidadeDasCotas>>;
   let limitacao: { readonly ativa: boolean; readonly atoRef: string | null; readonly motivo: string | null; readonly desde: Date | null; readonly criadoPor: string | null };
   try {
-    [cmd, mba, confronto, limitacao, acompanhamento] = await Promise.all([
+    [cmd, mba, confronto, limitacao, acompanhamento, periodicidade] = await Promise.all([
       lerCmdVigente({ exercicio: exercicio }),
       lerMbaVigente({ exercicio: exercicio }),
       lerConfrontoMba({ exercicio: exercicio }),
       lerLimitacaoDeEmpenho({ exercicio: exercicio }),
       lerAcompanhamentoDasCotas({ exercicio: exercicio }),
+      lerPeriodicidadeDasCotas({ exercicio: exercicio }),
     ]);
   } catch (erro) {
     return (
@@ -282,6 +285,7 @@ export default async function CmdMbaPage({
       <FormCronogramaPorPercentual exercicio={exercicio} />
       <FormProporDaLoa exercicio={exercicio} peca="MBA" />
       <FormLimitacao ativa={limitacao.ativa} exercicio={exercicio} />
+      <FormPeriodicidade exercicio={exercicio} vigente={periodicidade.vigente} />
       {cmd.vigente !== null && cmd.vigente.linhas.length > 0 ? (
         <FormLiberacao
           exercicio={exercicio}
@@ -297,7 +301,7 @@ export default async function CmdMbaPage({
           </>
         ) : null}
         A <strong>limitação de empenho</strong> é ativada por exercício. Enquanto inativa, o cronograma tem caráter de
-        planejamento; quando ativa, o empenho fica limitado à cota da fonte no mês, e fonte <strong>sem cota</strong>{" "}
+        planejamento; quando ativa, o empenho fica limitado à cota da fonte no período de controle (o mês, salvo outra periodicidade registrada), e fonte <strong>sem cota</strong>{" "}
         no mês tem o empenho recusado. As{" "}
         <a href="/receita/arrecadacoes" className="text-[color:var(--color-primary)] hover:underline">arrecadações</a>{" "}
         consideradas no confronto podem ser consultadas na área de Receita.
@@ -445,6 +449,9 @@ const COLUNAS_ACOMPANHAMENTO: readonly ColunaTabela<LinhaAcompanhamentoDasCotas>
   { chave: "previsto", cabecalho: "Previsto", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.previsto} /> },
   { chave: "realizado", cabecalho: "Realizado", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.realizado} /> },
   { chave: "saldo", cabecalho: "Saldo", alinhamento: "direita", largura: "9rem", celula: (l) => <strong><ValorMonetario valor={l.saldo} /></strong> },
+  // V36 (TR 5.9.3.33) — o período do controle e o saldo dele: o que o empenho ainda pode consumir no período.
+  { chave: "periodo", cabecalho: "Período", alinhamento: "centro", largura: "6rem", celula: (l) => (l.periodicidade === "MENSAL" ? "mês" : l.periodo.split(" a ").map((m) => MESES[Number(m) - 1] ?? m).join("–")) },
+  { chave: "saldoDoPeriodo", cabecalho: "Saldo do período", alinhamento: "direita", largura: "9rem", celula: (l) => <span data-saldo-do-periodo={`${l.fonteCodigo}-${String(l.mes)}`}><ValorMonetario valor={l.saldoDoPeriodo} /></span> },
 ];
 
 const COLUNAS_CONFRONTO: readonly ColunaTabela<LinhaConfronto>[] = [
