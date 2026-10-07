@@ -367,6 +367,12 @@ inteiro: 136 validadas (eram 134), 191 ausentes (eram 193).
   Medições depois das correções: periodicidade 9/9, borderô 2/2, cronograma e acompanhamento verdes; typecheck do
   app e do backend limpos; percursos da periodicidade (duas corridas) e da décima rodada verdes. A base fictícia guarda
   dois atos de 06/10 das primeiras corridas (anteriores à regra de alinhamento; sem efeito: o último é mensal).
+- **Publicado em 07/10/2026 (madrugada):** `2b561190` na main (commits `da4ca0c4`, `3e2693c4`, `a8bb8c85`; Actions
+  37567684417 verde), `/release` = `2b56119`. Backup antes:
+  `/var/backups/gestao-publica/esperanca-antes-v36k-20261007T033501Z.dump`. Migration
+  `20261108110000_v36_periodicidade_das_cotas` aplicada em produção; sem atualização de permissões. Conferido com o
+  administrador: filtro de assinatura em `/relatorios/pagamentos`, formulário do borderô em `/financeiro/movimentacao`
+  e formulário da periodicidade em `/planejamento/cmd-mba` (controle vigente: mensal, nenhum ato em produção).
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
