@@ -1,4 +1,4 @@
-import { competenciaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
+import { competenciaCivil, diaCivil, fimDoDiaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { travar } from "../../packages/locks/index.js";
@@ -54,10 +54,14 @@ export function mesesDoPeriodo(periodicidade: PeriodicidadeDasCotas, mes: number
   return { primeiro: Math.floor((mes - 1) / n) * n + 1, quantidade: n };
 }
 
-/** A periodicidade vigente no instante: o ato de maior `vigenteDesde` até ele (empate: o gravado por último). Sem ato, MENSAL. */
+/**
+ * A periodicidade vigente no DIA CIVIL do instante: o ato de maior `vigenteDesde` até o fim daquele dia (empate: o
+ * gravado por último). Sem ato, MENSAL. Por dia, e não por instante: um ato que "vale desde 01/03" vale para o empenho
+ * de 01/03 às 09:00, ainda que o ato tenha sido gravado com meio-dia.
+ */
 export async function periodicidadeVigente(tx: Pick<Tx, "periodicidadeDasCotasCmd">, exercicio: number, instante: Date): Promise<PeriodicidadeDasCotas> {
   const ato = await tx.periodicidadeDasCotasCmd.findFirst({
-    where: { exercicio, vigenteDesde: { lte: instante } },
+    where: { exercicio, vigenteDesde: { lte: fimDoDiaCivil(diaCivil(instante)) } },
     orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
     select: { periodicidade: true },
   });
@@ -164,15 +168,28 @@ export async function exigirCotaCmd(
           select: { id: true, valor: true },
         });
 
-  // ── (3) TRAVA AS COTAS DO PERÍODO (posto 3) — antes de somar o consumido. Ver a corrida no cabeçalho: com período,
-  // dois empenhos em meses diferentes do MESMO período travam o mesmo conjunto e serializam. ──
-  await travar(tx, "CotaCmd", cotasDoPeriodo.map((c) => c.id));
+  // ── (3) TRAVA (posto 3) — antes de somar o consumido. Ver a corrida no cabeçalho.
+  // ⚠️ A CHAVE É (exercício, fonte, mês), NÃO O ID DA LINHA DE COTA. O id é da VERSÃO do cronograma: com uma versão
+  // nova no meio do período, um empenho de janeiro (versão 1) e um de fevereiro (versão 2) travariam linhas diferentes,
+  // leriam o mesmo consumido e passariam os dois (achado da auditoria da V36). A chave estável se cruza em qualquer
+  // versão; travam-se todos os meses do período, e dois empenhos do mesmo período serializam. ──
+  await travar(tx, "CotaCmd", meses.map((m) => `cmd:${String(ficha.exercicio)}:${ficha.fonteId}:${String(m)}`));
 
   // ── (4) O TETO = Σ cotas do período + Σ liberações do período (TR 4.44). ──
   const liberacoes = await tx.liberacaoProgramacao.findMany({
     where: { exercicio: ficha.exercicio, fonteId: ficha.fonteId, mes: { in: meses } },
-    select: { valor: true },
+    select: { valor: true, mes: true },
   });
+  // ⚠️ COTA ZERO CONTINUA SENDO BLOQUEIO DO MÊS, também no período: programar 0 é o jeito declarado de travar um mês
+  // (ver a recusa da cota ausente acima). Sem isto, no bimestral a cota de fevereiro destravaria o janeiro zerado.
+  // Só a liberação DO PRÓPRIO MÊS reabre o mês.
+  if (periodicidade !== "MENSAL" && toMoney(cota.valor.toFixed(2)).isZero() && !liberacoes.some((l) => l.mes === mes && !toMoney(l.valor.toFixed(2)).isZero())) {
+    throw new Error(
+      `LIMITAÇÃO DE EMPENHO: a cota da fonte ${ficha.fonte.codigo} no mês ${mes}/${ficha.exercicio} é zero, o que bloqueia ` +
+        `o mês mesmo com o controle por ${ROTULO_DO_PERIODO[periodicidade]}. Para empenhar nele, libere cota do próprio mês ` +
+        `ou publique uma versão nova do cronograma. Nada foi gravado.`
+    );
+  }
   const liberado = liberacoes.reduce(
     (acc, l) => toMoney(acc.plus(toMoney(l.valor.toFixed(2)))),
     toMoney("0.00")

@@ -8,7 +8,7 @@ import { arrecadadoPorFonte } from "../m04-receita/consultas.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { previsaoPorFonte } from "./consultas.js";
-import { diaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
+import { diaCivil, inicioDoDiaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { mesesDoPeriodo, PERIODICIDADES_DAS_COTAS, periodicidadeVigente, ROTULO_DO_PERIODO, type PeriodicidadeDasCotas } from "../m05-despesa/guard-cmd.js";
 import {
@@ -310,6 +310,22 @@ export async function declararPeriodicidadeDasCotas(
     if (atual === d.periodicidade) {
       throw new Error(`O controle das cotas de ${String(d.exercicio)} já é ${d.periodicidade.toLowerCase()} nessa data. Nada foi gravado.`);
     }
+    // ⚠️ SÓ NA VIRADA DE PERÍODO, das duas réguas (achado da auditoria da V36). Mudar no meio de um período juntaria
+    // ao período novo um mês já julgado pela régua anterior: declarar bimestral em 15/02 devolveria a fevereiro a sobra
+    // de janeiro, a rolagem que o controle mensal proíbe; e trocar bimestral por trimestral em 01/04 deixaria a cota de
+    // abril ser usada em março (bimestre mar–abr) e de novo em abril (trimestre abr–jun). A data tem de ser o dia 1 de
+    // um mês que abre período na periodicidade nova, na vigente nessa data e na vigente na véspera.
+    const dia = diaCivil(d.vigenteDesde);
+    const mes = Number(dia.slice(5, 7));
+    const vespera = await periodicidadeVigente(tx, d.exercicio, new Date(inicioDoDiaCivil(dia).getTime() - 1));
+    const desalinhada = [d.periodicidade, atual, vespera].find((per) => mesesDoPeriodo(per, mes).primeiro !== mes);
+    if (!dia.endsWith("-01") || desalinhada !== undefined) {
+      throw new Error(
+        `A periodicidade só muda na virada de um período: o dia 1 de um mês que abra período no controle ` +
+          `${(desalinhada ?? d.periodicidade).toLowerCase()} (${dia.split("-").reverse().join("/")} não é). Mudar no meio do período ` +
+          `deixaria a cota de um mês já encerrado ser usada de novo. Nada foi gravado.`
+      );
+    }
     const p = await tx.periodicidadeDasCotasCmd.create({
       data: { exercicio: d.exercicio, periodicidade: d.periodicidade, vigenteDesde: d.vigenteDesde, atoRef: d.atoRef, criadoPor: d.criadoPor },
       select: { id: true },
@@ -547,9 +563,11 @@ export interface LinhaAcompanhamentoCmd {
   readonly periodo: string;
   readonly periodicidade: PeriodicidadeDasCotas;
   /**
-   * V36 — o saldo do PERÍODO, o que o guard deixa empenhar nele: Σ (cotas + liberações) dos meses do período, todas
-   * pela versão do cronograma vigente no fim do período, menos o empenhado líquido no período. No mensal, igual ao
-   * saldo do mês.
+   * V36 — o saldo do PERÍODO: Σ (cotas + liberações) dos meses do período, todas pela versão do cronograma vigente no
+   * fim do período, menos o empenhado líquido no período. É o que o guard deixa empenhar NO FIM do período. O guard usa
+   * a versão e a periodicidade vigentes na DATA de cada empenho; com uma versão nova no meio do período, um empenho
+   * anterior a ela foi julgado pela versão anterior, e este saldo não o reproduz (diz o estado de agora, não o de então).
+   * No mensal, igual ao saldo do mês.
    */
   readonly saldoDoPeriodo: string;
 }

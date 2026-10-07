@@ -285,7 +285,7 @@ export default async function CmdMbaPage({
       <FormCronogramaPorPercentual exercicio={exercicio} />
       <FormProporDaLoa exercicio={exercicio} peca="MBA" />
       <FormLimitacao ativa={limitacao.ativa} exercicio={exercicio} />
-      <FormPeriodicidade exercicio={exercicio} vigente={periodicidade.vigente} />
+      <FormPeriodicidade exercicio={exercicio} vigente={periodicidade.vigente} atos={periodicidade.atos.map((a) => ({ periodicidade: a.periodicidade, desde: dataBr(a.desde), atoRef: a.atoRef }))} />
       {cmd.vigente !== null && cmd.vigente.linhas.length > 0 ? (
         <FormLiberacao
           exercicio={exercicio}

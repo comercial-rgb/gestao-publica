@@ -351,6 +351,22 @@ inteiro: 136 validadas (eram 134), 191 ausentes (eram 193).
 - **5.9.3.34 continua ausente, com a decisão nomeada:** em que meses o crédito adicional entra na cota (mês do decreto,
   meses restantes em partes iguais, proporção do cronograma) e o que a anulação de dotação faz com a cota programada.
 - Catálogo inteiro: 137 validadas, 190 ausentes. Censo 544 nomes (+1, nenhuma ação nova).
+- **Auditoria de invariantes antes de publicar** (agente auditor sobre `0f93293d..3e2693c4`): seis achados, todos
+  tratados no commit seguinte, cada um com teste e mutação acusada:
+  1. ALTA — corrida no guard com versão nova do cronograma no meio do período (a trava era pelo id da linha da
+     versão): passou a travar a chave estável (exercício, fonte, mês) de todos os meses do período (t6b, 5 rodadas;
+     a mutação de volta ao id fica vermelha). Fecha também a mesma corrida que já existia no mensal entre versões.
+  2. MÉDIA — cota zero deixava de bloquear o mês dentro do período: volta a bloquear, salvo liberação do próprio
+     mês (t3c).
+  3. MÉDIA — mudar a periodicidade no meio de um período devolvia cota de mês encerrado: a declaração só vale no dia
+     1 de um mês que abra período na régua nova, na vigente na data e na da véspera (t3b; o percurso passou a 01/11).
+  4. BAIXA — o saldo do período no relatório é o do fim do período, não o que o guard aplicou a empenho anterior a
+     uma versão nova: documentado no tipo.
+  5. BAIXA — vigência da periodicidade comparada por instante: passou a dia civil (t3b, empenho às 08:00 do dia 1).
+  6. BAIXA — borderô de período encerrado mudava com estorno posterior: só conta o estorno até o fim do período (t2).
+  Medições depois das correções: periodicidade 9/9, borderô 2/2, cronograma e acompanhamento verdes; typecheck do
+  app e do backend limpos; percursos da periodicidade (duas corridas) e da décima rodada verdes. A base fictícia guarda
+  dois atos de 06/10 das primeiras corridas (anteriores à regra de alinhamento; sem efeito: o último é mensal).
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.

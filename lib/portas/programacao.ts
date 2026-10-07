@@ -17,7 +17,7 @@ import {
   proporMbaDaLoa,
   registrarEventoLimitacao,
 } from "../../modules/m02-planejamento/programacao";
-import { anoCivil, mesCivil } from "../../packages/datas/index";
+import { anoCivil, diaCivil, fimDoDiaCivil, mesCivil } from "../../packages/datas/index";
 
 /**
  * PORTA — PROGRAMAÇÃO FINANCEIRA (M02: CMD e MBA. TR 4.18/4.19/4.43/4.44, LRF arts. 8º, 9º e 13).
@@ -571,17 +571,18 @@ export async function proporCronogramaPorPercentual(p: {
 }
 
 /** V36 (TR 5.9.3.33) — a periodicidade do controle das cotas vigente hoje e o ato que a fixou (sem ato: mensal). */
-export async function lerPeriodicidadeDasCotas(p: { readonly exercicio: number }): Promise<{ readonly vigente: PeriodicidadeDasCotas; readonly atoRef: string | null; readonly desde: Date | null }> {
+export async function lerPeriodicidadeDasCotas(p: { readonly exercicio: number }): Promise<{ readonly vigente: PeriodicidadeDasCotas; readonly atoRef: string | null; readonly desde: Date | null; readonly atos: readonly { readonly periodicidade: string; readonly desde: Date; readonly atoRef: string }[] }> {
   await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const db = cliente();
   const agora = new Date();
   const vigente = await periodicidadeVigente(db, p.exercicio, agora);
   const ato = await db.periodicidadeDasCotasCmd.findFirst({
-    where: { exercicio: p.exercicio, vigenteDesde: { lte: agora } },
+    where: { exercicio: p.exercicio, vigenteDesde: { lte: fimDoDiaCivil(diaCivil(agora)) } },
     orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }, { id: "desc" }],
     select: { atoRef: true, vigenteDesde: true },
   });
-  return { vigente, atoRef: ato?.atoRef ?? null, desde: ato?.vigenteDesde ?? null };
+  const atos = await db.periodicidadeDasCotasCmd.findMany({ where: { exercicio: p.exercicio }, orderBy: [{ vigenteDesde: "asc" }, { criadoEm: "asc" }], select: { periodicidade: true, vigenteDesde: true, atoRef: true } });
+  return { vigente, atoRef: ato?.atoRef ?? null, desde: ato?.vigenteDesde ?? null, atos: atos.map((a) => ({ periodicidade: a.periodicidade, desde: a.vigenteDesde, atoRef: a.atoRef })) };
 }
 
 /** V36 (TR 5.9.3.33) — declara a periodicidade do controle das cotas; as recusas são do M02. */

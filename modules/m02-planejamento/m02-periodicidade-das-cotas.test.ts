@@ -7,7 +7,7 @@ import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho } from "../m05-despesa/dominio.js";
 import { mesesDoPeriodo } from "../m05-despesa/guard-cmd.js";
 import { empenhar } from "../m05-despesa/servico.js";
-import { acompanhamentoDasCotasCmd, declararPeriodicidadeDasCotas, registrarEventoLimitacao, registrarVersaoCmd } from "./programacao.js";
+import { acompanhamentoDasCotasCmd, declararPeriodicidadeDasCotas, liberarProgramacao, registrarEventoLimitacao, registrarVersaoCmd } from "./programacao.js";
 
 /**
  * V36 — A PERIODICIDADE DO CONTROLE DAS COTAS (TR 5.9.3.33). Contas à mão, N=2 fontes (A e B), cota de 1.000,00 por
@@ -109,6 +109,29 @@ describe("M02 V36 — periodicidade do controle das cotas", () => {
     expect(await prisma.periodicidadeDasCotasCmd.count()).toBe(1);
   });
 
+  it("t3b: só na virada de período, nas duas réguas — e a vigência vale pelo dia civil, não pela hora", async () => {
+    const declarar = (periodicidade: "BIMESTRAL" | "TRIMESTRAL" | "SEMESTRAL", desde: string) =>
+      declararPeriodicidadeDasCotas(prisma, { exercicio: 2026, periodicidade, vigenteDesde: new Date(desde), atoRef: "X", criadoPor: POR });
+    expect(await recusa(() => declarar("BIMESTRAL", "2026-02-01T15:00:00Z"))).toMatch(/só muda na virada de um período[\s\S]*bimestral \(01\/02\/2026 não é\)/);
+    expect(await recusa(() => declarar("BIMESTRAL", "2026-03-15T15:00:00Z"))).toMatch(/só muda na virada de um período/);
+    await declarar("BIMESTRAL", "2026-03-01T15:00:00Z");
+    // abril abre trimestre, mas fica no meio do bimestre mar–abr vigente na véspera: a cota de abril seria usada duas vezes
+    expect(await recusa(() => declarar("TRIMESTRAL", "2026-04-01T15:00:00Z"))).toMatch(/só muda na virada de um período[\s\S]*bimestral/);
+    expect(await prisma.periodicidadeDasCotasCmd.count()).toBe(1);
+    // o ato vale desde 01/03 (gravado ao meio-dia): o empenho de 01/03 às 08:00 já é julgado pelo bimestre (teto 2.000,00)
+    await emp("ficha-a", "NE-1", "1500.00", "2026-03-01T11:00:00Z");
+  });
+
+  it("t3c: cota zero continua bloqueando o mês dentro do período; a liberação do próprio mês o reabre", async () => {
+    const cotas = [A, B].flatMap((fonteId) => [1, 2, 3, 4].map((mes) => ({ fonteId, mes, valor: fonteId === A && mes === 1 ? "0.00" : "1000.00" })));
+    await registrarVersaoCmd(prisma, { exercicio: 2026, atoRef: "DEC-ZERO", vigenteDesde: new Date("2026-01-01T04:00:00Z"), criadoPor: POR, cotas });
+    await bimestral();
+    expect(await recusa(() => emp("ficha-a", "NE-1", "1000.00", "2026-01-10T15:00:00Z"))).toMatch(/cota da fonte 500 no mês 1\/2026 é zero/);
+    await emp("ficha-a", "NE-2", "1000.00", "2026-02-10T15:00:00Z");
+    await liberarProgramacao(prisma, { exercicio: 2026, fonteId: A, mes: 1, valor: "300.00", atoRef: "DEC-LIB", motivo: "reabre janeiro para a folha", criadoPor: POR });
+    await emp("ficha-a", "NE-3", "300.00", "2026-01-20T15:00:00Z");
+  });
+
   it("t4: quem não fixa o cronograma não declara a periodicidade", async () => {
     const u = await prisma.usuario.create({ data: { identificador: "so.le.cmd@cg.pb.gov.br", nome: "Só lê", criadoPor: "TESTE" }, select: { id: true } });
     const p = await prisma.perfil.create({ data: { nome: "SO_LE_CMD", descricao: "x", criadoPor: "TESTE", permissoes: { create: [{ acao: "CONSULTAR_PLANEJAMENTO" as never, criadoPor: "TESTE" }] } }, select: { id: true } });
@@ -142,6 +165,20 @@ describe("M02 V36 — periodicidade do controle das cotas", () => {
       expect(rs.filter((x) => x.status === "fulfilled")).toHaveLength(1);
       const motivo = rs.find((x) => x.status === "rejected");
       expect(motivo?.status === "rejected" ? String(motivo.reason) : "").toMatch(/ESTOURADA na fonte 500, bimestre de 1\/2026 a 2\/2026/);
+    }
+  }, 180000);
+
+  it("t6b: corrida com VERSÃO NOVA no meio do bimestre — janeiro julgado pela versão 1, fevereiro pela 2: ainda um só passa (5 rodadas)", async () => {
+    const cotas = [A, B].flatMap((fonteId) => [1, 2, 3, 4].map((mes) => ({ fonteId, mes, valor: "1000.00" })));
+    for (let r = 0; r < 5; r++) {
+      if (r > 0) await semear();
+      await bimestral();
+      await registrarVersaoCmd(prisma, { exercicio: 2026, atoRef: `DEC-2-${String(r)}`, vigenteDesde: new Date("2026-02-01T03:00:00Z"), criadoPor: POR, cotas });
+      const rs = await Promise.allSettled([
+        emp("ficha-a", `NE-J${String(r)}`, "1200.00", "2026-01-20T15:00:00Z"),
+        emp("ficha-a2", `NE-F${String(r)}`, "1200.00", "2026-02-20T15:00:00Z"),
+      ]);
+      expect(rs.filter((x) => x.status === "fulfilled")).toHaveLength(1);
     }
   }, 180000);
 });

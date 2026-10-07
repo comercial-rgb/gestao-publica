@@ -63,6 +63,11 @@ describe("M09 V36 — borderô dos movimentos bancários", () => {
     await mov("cb-b", "DEPOSITO", "1.00", "2026-10-01T02:30:00Z", "c-rec-fin");
     const b = await borderoDosMovimentos(prisma, { contaBancariaId: "cb-b", de: inicioDoDiaCivil("2026-09-01"), ate: fimDoDiaCivil("2026-09-30") });
     expect(b?.entradas.toFixed(2)).toBe("51.00");
+    // estornado DEPOIS do período: continua no borderô de setembro (o documento de um período encerrado não muda)
+    const tardio = await mov("cb-b", "DEPOSITO", "25.00", "2026-09-28T15:00:00Z", "c-rec-fin");
+    await estornarMovimentoBancario(prisma, { movimentoId: tardio.movimentoId, motivo: "depósito devolvido pelo banco", data: new Date("2026-10-02T15:00:00Z"), criadoPor: POR });
+    const setembro = await borderoDosMovimentos(prisma, { contaBancariaId: "cb-b", de: inicioDoDiaCivil("2026-09-01"), ate: fimDoDiaCivil("2026-09-30") });
+    expect([setembro?.entradas.toFixed(2), setembro?.foraPorEstorno]).toEqual(["76.00", 2]);
     const outubro = await borderoDosMovimentos(prisma, { contaBancariaId: "cb-b", de: inicioDoDiaCivil("2026-10-01"), ate: fimDoDiaCivil("2026-10-31") });
     expect(outubro?.linhas.map((l) => l.valor.toFixed(2))).toEqual(["99.00"]);
     expect(await borderoDosMovimentos(prisma, { contaBancariaId: "nao-existe", de: inicioDoDiaCivil("2026-09-01"), ate: fimDoDiaCivil("2026-09-30") })).toBeNull();

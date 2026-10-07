@@ -9,8 +9,9 @@ type Tx = Pick<PrismaClient, "contaBancaria" | "movimentoBancario">;
  * movimentos que o tesoureiro leva ao banco (depósitos, saques, aplicações, resgates, rendimentos e tarifas), com o
  * total de entradas e de saídas.
  *
- * Entram só os movimentos VIGENTES: o estorno e o movimento estornado se anulam, e relacioná-los num borderô seria
- * pedir ao banco uma operação desfeita. A quantidade deixada de fora vai no documento, para ninguém ler a ausência
+ * Entram só os movimentos VIGENTES NO FIM DO PERÍODO: o estorno e o movimento estornado até ali se anulam, e
+ * relacioná-los num borderô seria pedir ao banco uma operação desfeita. O estorno feito DEPOIS do período não tira o
+ * movimento do borderô daquele período: o documento de um período encerrado não muda depois de emitido. A quantidade deixada de fora vai no documento, para ninguém ler a ausência
  * como esquecimento. O sentido de cada tipo é o de `SENTIDO_MOVIMENTO_BANCARIO`, o mesmo do caixa e da conciliação.
  *
  * É LEITURA: o borderô não grava nada. O documento sai com o hash do conteúdo pelo motor de PDF, e o mesmo período
@@ -56,7 +57,7 @@ export async function borderoDosMovimentos(
   const movimentos = await prisma.movimentoBancario.findMany({
     where: { contaBancariaId: r.contaBancariaId, data: { gte: r.de, lte: r.ate } },
     orderBy: [{ data: "asc" }, { criadoEm: "asc" }, { id: "asc" }],
-    select: { id: true, data: true, tipo: true, valor: true, historico: true, estornoDeId: true, fonte: { select: { codigo: true } }, estornos: { select: { id: true } } },
+    select: { id: true, data: true, tipo: true, valor: true, historico: true, estornoDeId: true, fonte: { select: { codigo: true } }, estornos: { where: { data: { lte: r.ate } }, select: { id: true } } },
   });
   const vigentes = movimentos.filter((m) => m.estornoDeId === null && m.estornos.length === 0);
   const linhas: LinhaDoBordero[] = vigentes.map((m) => ({

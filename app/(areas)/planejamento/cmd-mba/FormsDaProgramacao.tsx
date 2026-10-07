@@ -307,7 +307,7 @@ export function FormCronogramaPorPercentual({ exercicio }: { readonly exercicio:
 const ROTULO_DA_PERIODICIDADE: Readonly<Record<string, string>> = { MENSAL: "mensal", BIMESTRAL: "bimestral", TRIMESTRAL: "trimestral", SEMESTRAL: "semestral" };
 
 /** V36 (TR 5.9.3.33) — a PERIODICIDADE do controle das cotas: o período em que o empenho é conferido contra a cota. */
-export function FormPeriodicidade({ exercicio, vigente }: { readonly exercicio: number; readonly vigente: string }): React.ReactElement {
+export function FormPeriodicidade({ exercicio, vigente, atos }: { readonly exercicio: number; readonly vigente: string; readonly atos: readonly { readonly periodicidade: string; readonly desde: string; readonly atoRef: string }[] }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaProgramacao, FormData>(declararPeriodicidadeAction, {});
   const ref = useRef<HTMLFormElement>(null);
   if (estado.sucesso !== undefined) ref.current?.reset();
@@ -318,8 +318,15 @@ export function FormPeriodicidade({ exercicio, vigente }: { readonly exercicio: 
       <p className="mb-3 text-xs text-[color:var(--color-ink-2)]" data-periodicidade-vigente={vigente}>
         Hoje o controle é <strong>{ROTULO_DA_PERIODICIDADE[vigente] ?? vigente}</strong>. Com a limitação ativa, o empenho é conferido contra a soma
         das cotas e liberações do período (mês, bimestre, trimestre ou semestre do ano civil); a cota não passa de um
-        período para o seguinte.
+        período para o seguinte. A mudança só vale a partir do primeiro dia de um período.
       </p>
+      {atos.length === 0 ? null : (
+        <ul className="mb-3 space-y-0.5 text-xs text-[color:var(--color-ink-2)]" data-atos-de-periodicidade>
+          {atos.map((a, i) => (
+            <li key={`${a.atoRef}-${String(i)}`}>{ROTULO_DA_PERIODICIDADE[a.periodicidade] ?? a.periodicidade} desde {a.desde} ({a.atoRef})</li>
+          ))}
+        </ul>
+      )}
       <input name="exercicio" type="hidden" value={exercicio} />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <label className="text-xs text-[color:var(--color-ink-2)]">
