@@ -1,6 +1,7 @@
 import "dotenv/config";
 import type { Page } from "puppeteer";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
+import { diaCivil } from "../packages/datas/index.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, type Navegador } from "./percursos-navegador.js";
 
 /**
@@ -23,7 +24,8 @@ const conferir = (ok: boolean, o: string): void => {
   if (!ok) falhas.push(o);
 };
 const marca = String(Date.now()).slice(-6);
-const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
+// O dia civil do ENTE, pela régua de `packages/datas` (nunca um fuso cravado aqui).
+const hoje = diaCivil(new Date());
 
 async function texto(page: Page, form: string, nome: string, valor: string): Promise<void> {
   await page.$eval(`${form} [name='${nome}']`, (el, v) => {

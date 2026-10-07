@@ -10,7 +10,7 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 | HEAD | `50a725c3` em `apresentacao/contabilidade` (o registro e a publicação vêm nos commits seguintes) |
 | Catálogo | 619 de 2.037 verificadas. As 285 de contabilidade (5.9 e 5.10): 88 validadas, 31 implementadas sem percurso, 119 parciais, 45 ausentes, 2 de terceiro. |
 | Último resultado | Rodada de 07/10 (seção "Rodada das áreas que faltavam"): cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas ao PPA e à LDO 6/6 em percurso; testes dirigidos verdes; mutações acusadas. |
-| Próximo passo | Publicar a rodada de 07/10 (backup, publicar, conferir migrations 20261108130000 a 20261108150000). Depois: rever o auxiliar recusa() dos testes antigos da V36; decisões do ente pendentes (5.9.3.34 cotas do crédito adicional; 5.10.2.4 finalidade FUNDEB/saúde; estágio em liquidação). |
+| Próximo passo | Publicar a rodada de 07/10 (backup, publicar, conferir migrations 20261108130000 a 20261108150000). Depois: decisões do ente pendentes (5.9.3.34 cotas do crédito adicional; 5.10.2.4 finalidade FUNDEB/saúde; estágio em liquidação). |
 
 ### Como o catálogo foi verificado
 Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra
@@ -455,20 +455,32 @@ Catálogo inteiro: 148 validadas, 179 ausentes, 202 parciais, 84 implementadas s
   valor dela que o ato de alteração versiona.
 
 **Testes e provas (dirigidos):** m09-cheques 8/8, cheques-porta 3/3, m05-despesa-sem-empenho-previo 2/2,
-m05-em-liquidacao 5/5, m02b-emendas-do-planejamento 8/8, m02b-alteracao, m02b-emendas, m11-documento-fiscal,
+m05-em-liquidacao 5/5, m02b-emendas-do-planejamento 11/11, m02b-alteracao, m02b-emendas, m11-documento-fiscal,
 m05-pagamentos-efetuados, m05-consultas-execucao, locks e m16-censo (553) verdes. Mutações acusadas: cheques 7,
-sem empenho 2, em liquidação 8, emendas 7. Typecheck backend e app-sem-rotas limpos.
+sem empenho 2, em liquidação 8, emendas 11. Typecheck backend e app-sem-rotas limpos.
 **Percursos (base fictícia, next dev 3011):** cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas 6/6.
 
 **Achado de instrumento (regra "não atestar pela papelada"):** o erro do Prisma traz um trecho do código-fonte, e um
 teste de recusa casava com a mensagem de negócio escrita na linha vizinha do `create` que estourou — a mutação da dupla
 liberação do bloqueio ficou verde por isso. O auxiliar `recusa()` dos testes desta rodada troca erro do banco por
-"(erro do banco)". **Pendência:** os testes anteriores com o mesmo auxiliar (parcerias, periodicidade, audiências e
-outros da V36) não foram revisados para esse caso.
+"(erro do banco)" (os testes antigos foram revistos; ver abaixo).
 
 **Auditorias:** cheques (2 médios, 5 baixos) e sem empenho/em liquidação (6 achados) tratados acima; não tratado, com o
 motivo: códigos de conta da fixture do teste de cheques (padrão das fixtures do M05) e o vazamento mínimo da recusa do
 avulso (número já usado na conta, inerente à unicidade).
+
+**Auditoria das emendas (antes de publicar):** uma alta — a trava da peça só serializava emenda contra emenda, e um ato
+manual simultâneo a uma sanção podia deixar a linha com valor que o banco recusa; agora `registrarAtoDeAlteracaoDoPlanejamento`,
+`acrescentarItemAoAtoDeAlteracao` e `gravarItensNoAtoDaLei` também travam `PecaDoPlanejamento` (t9, mutação). Tratados
+também: a gravação no ato sem autorização própria ganhou guarda de chamador (t11: só a sanção a chama; mutação com uma
+porta falsa acusada); a mesma lei é comparada pelo dia civil, não pelo instante; contas do teste e do percurso em
+Decimal; os quatro percursos desta rodada leem o dia pelo `packages/datas`; negação da liberação (t8); corrida de duas
+sanções pela mesma lei nova (t10). Não tratado, com o motivo: o ato reaproveitado guarda o fundamento da primeira
+emenda (cada item guarda a sua emenda na justificativa e no vínculo da sanção; ato é append-only).
+
+**Auxiliar recusa() nos testes antigos:** revisados os 13 arquivos que o definem (11 com a mesma troca; nos 2 do
+MANAD, que devolvem o erro, uma asserção de que não é erro do banco); os 13 seguem verdes (79 testes), logo nenhuma
+asserção deles dependia do trecho de código do Prisma.
 
 **Pendências desta rodada:** a base fictícia ficou com liquidações sem pagamento criadas pelos percursos (fila do art.
 141 da fonte delas); metade "contas em liquidação" da 5.10.1.42 depende de decisão contábil do ente.

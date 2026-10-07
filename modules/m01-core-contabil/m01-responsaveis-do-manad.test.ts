@@ -54,6 +54,8 @@ async function recusa(p: Promise<unknown>): Promise<Error> {
     (x: unknown) => x
   );
   expect(e, "a operação deveria ter sido recusada").toBeInstanceOf(Error);
+  // Erro do Prisma traz trecho do CÓDIGO-FONTE: casar a mensagem com ele seria atestar pela papelada.
+  expect((e as Error).message, "erro do banco não é recusa de negócio").not.toMatch(/invocation in/);
   return e as Error;
 }
 

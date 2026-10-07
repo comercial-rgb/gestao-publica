@@ -61,7 +61,9 @@ async function recusa(input: Partial<CadastrarContaBancariaInput>): Promise<stri
     await cadastrarContaBancaria(prisma, { ...BASE, ...input });
     return "gravou";
   } catch (e) {
-    return e instanceof Error ? e.message : String(e);
+    // Erro do Prisma traz trecho do CÓDIGO-FONTE ("invocation in ... → linha"): casar com ele seria atestar pela papelada.
+    const m = e instanceof Error ? e.message : String(e);
+    return /invocation in/.test(m) ? `(erro do banco) ${m.trim().split(/\r?\n/).pop() ?? ""}` : m;
   }
 }
 

@@ -1,6 +1,9 @@
 import "dotenv/config";
 import type { Page } from "puppeteer";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
+import { diaCivil } from "../packages/datas/index.js";
+import { toMoney, type Money } from "../packages/contracts/index.js";
+import { formatarMoeda } from "../lib/format/moeda.js";
 import { criarMetaAnualLdo, criarPrevisaoReceitaPpa } from "../modules/m02b-plurianual/servico.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, type Navegador } from "./percursos-navegador.js";
 
@@ -30,7 +33,8 @@ const conferir = (ok: boolean, o: string): void => {
   if (!ok) falhas.push(o);
 };
 const marca = String(Date.now()).slice(-6);
-const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Fortaleza" }).format(new Date());
+// O dia civil do ENTE, pela régua de `packages/datas` (nunca um fuso cravado aqui).
+const hoje = diaCivil(new Date());
 
 async function texto(page: Page, form: string, nome: string, valor: string): Promise<void> {
   await page.$eval(`${form} [name='${nome}']`, (el, v) => {
@@ -52,10 +56,11 @@ try {
       dividaPublicaConsolidada: "30000000.00", dividaConsolidadaLiquida: "25000000.00", receitaPrimariaPpp: "0.00", despesaPrimariaPpp: "0.00", impactoSaldoPpp: "0.00", criadoPor: ADMIN,
     })).metaAnualId };
   }
-  const vigente = async (g: "receitaTotal" | "receitaPrimaria"): Promise<number> => {
+  const vigente = async (g: "receitaTotal" | "receitaPrimaria"): Promise<Money> => {
     const m = await prisma.metaAnualLdo.findUniqueOrThrow({ where: { id: meta!.id }, select: { [g]: true } as never });
     const ajustes = await prisma.alteracaoDeValorPlanejado.findMany({ where: { metaAnualLdoId: meta!.id, grandeza: g }, select: { valorAjuste: true } });
-    return Number((m as Record<string, { toString(): string }>)[g]!.toString()) + ajustes.reduce((s, a) => s + Number(a.valorAjuste), 0);
+    const original = toMoney((m as Record<string, { toFixed(n: number): string }>)[g]!.toFixed(2));
+    return ajustes.reduce((t, a) => toMoney(t.plus(a.valorAjuste.toFixed(2))), original);
   };
   const fonte = await prisma.fonteRecurso.findFirstOrThrow({ where: { codigo: "500" }, select: { id: true } });
   const naturezas = await prisma.naturezaReceita.findMany({ where: { codigo: { startsWith: "1" } }, orderBy: { codigo: "asc" }, take: 2, select: { id: true } });
@@ -114,8 +119,9 @@ try {
   // ── 1. LDO: duas emendas pela tela ──
   const primaria = `META_ANUAL_LDO::${meta.id}::receitaPrimaria`;
   const total = `META_ANUAL_LDO::${meta.id}::receitaTotal`;
-  const folga = (await vigente("receitaTotal")) - (await vigente("receitaPrimaria"));
-  const aMais = `${(Math.floor(folga) + 1_000_000).toLocaleString("pt-BR")},00`;
+  const folga = toMoney((await vigente("receitaTotal")).minus(await vigente("receitaPrimaria")));
+  // A folga entre a total e a primária, mais um milhão: o bastante para a primária passar a total.
+  const aMais = formatarMoeda(toMoney(folga.plus("1000000.00")).toFixed(2)).texto;
   const r1 = await cadastrar(telaLdo, `Só a primária ${marca}`, [{ linha: primaria, valor: aMais }]);
   const r2 = await cadastrar(telaLdo, `Primária e total ${marca}`, [{ linha: primaria, valor: "5.000.000,00" }, { linha: total, valor: "5.000.000,00" }]);
   const e1 = await ultimaEmenda({ ldoId: ldo.id }, `Só a primária ${marca}`);

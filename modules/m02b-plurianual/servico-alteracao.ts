@@ -2,6 +2,8 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { diaCivil } from "../../packages/datas/index.js";
+import { travar } from "../../packages/locks/index.js";
 import {
   GRANDEZAS_DO_ALVO,
   MODELO_DO_ALVO,
@@ -281,6 +283,9 @@ export async function registrarAtoDeAlteracaoDoPlanejamento(
       ACAO_DO_SERVICO.registrarAtoDeAlteracaoDoPlanejamento,
       "ENTE"
     );
+    // V36 — A PEÇA TRAVADA ANTES DE LER, como na sanção das emendas: sem isso, um ato manual e uma sanção simultâneos
+    // leriam os mesmos ajustes, o guard aprovaria os dois e a linha ficaria com o valor que o banco recusa (auditoria).
+    await travar(tx, "PecaDoPlanejamento", [dados.pecaId]);
 
     if (dados.peca === "PPA") {
       const p = await tx.planoPlurianual.findUnique({
@@ -349,6 +354,7 @@ export async function acrescentarItemAoAtoDeAlteracao(
 
     const peca = ato.planoId !== null ? "PPA" : "LDO";
     const pecaId = ato.planoId ?? ato.ldoId!;
+    await travar(tx, "PecaDoPlanejamento", [pecaId]);
     const itens = resolver([dados.item]);
     await exigirItensViaveis(tx, peca, pecaId, ato.data, itens);
 
@@ -386,12 +392,15 @@ export async function gravarItensNoAtoDaLei(
   }
 ): Promise<{ readonly atoId: string; readonly alteracaoIds: readonly string[] }> {
   if (p.itens.length === 0) throw new Error("A lei não traz item aprovado: não há ato de alteração a gravar.");
+  // A trava da peça é exigência DESTA função, não favor de quem chama (reentrante na mesma transação).
+  await travar(tx, "PecaDoPlanejamento", [p.pecaId]);
   const itens = resolver(p.itens);
   const existente = await tx.atoDeAlteracaoDoPlanejamento.findFirst({
     where: { ...(p.peca === "PPA" ? { planoId: p.pecaId } : { ldoId: p.pecaId }), ano: p.ano, numero: p.numero },
     select: { id: true, data: true, dataPublicacao: true },
   });
-  if (existente !== null && (existente.data.getTime() !== p.data.getTime() || existente.dataPublicacao.getTime() !== p.dataPublicacao.getTime())) {
+  // Pelo DIA CIVIL do ente, não pelo instante: o ato manual e a sanção ancoram o mesmo dia em horas diferentes.
+  if (existente !== null && (diaCivil(existente.data) !== diaCivil(p.data) || diaCivil(existente.dataPublicacao) !== diaCivil(p.dataPublicacao))) {
     throw new Error(
       `A lei nº ${p.numero}/${String(p.ano)} já está registrada nesta peça com outra data ou outra publicação. A sanção pela ` +
         `mesma lei tem de usar as datas dela. Nada foi gravado.`

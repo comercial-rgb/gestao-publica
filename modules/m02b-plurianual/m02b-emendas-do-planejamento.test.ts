@@ -11,6 +11,10 @@ import {
   sancionarEmendaAoPlanejamento,
 } from "./emendas-do-planejamento.js";
 import { criarLdo, criarMetaAnualLdo, criarPlanoPlurianual, criarPrevisaoReceitaPpa } from "./servico.js";
+import { registrarAtoDeAlteracaoDoPlanejamento } from "./servico-alteracao.js";
+import { toMoney } from "../../packages/contracts/index.js";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join } from "node:path";
 
 /**
  * V36 — EMENDAS AO PPA E À LDO (TR 5.9.1.21-23 e 5.9.2.11-13). Contas à mão:
@@ -128,7 +132,7 @@ describe("M02b — emendas ao PPA e à LDO", () => {
     expect([s1.itensAprovados, s2.itensAprovados, s2.atoId === s1.atoId]).toEqual([2, 1, true]);
     const ato = await prisma.atoDeAlteracaoDoPlanejamento.findUniqueOrThrow({ where: { id: s1.atoId! }, select: { numero: true, ano: true, planoId: true, itens: { select: { previsaoReceitaPpaId: true, valorAjuste: true } } } });
     expect([ato.numero, ato.ano, ato.planoId, ato.itens.length]).toEqual(["31", 2027, planoId, 3]);
-    const soma = (id: string): string => ato.itens.filter((i) => i.previsaoReceitaPpaId === id).reduce((s, i) => s + Number(i.valorAjuste), 0).toFixed(2);
+    const soma = (id: string): string => ato.itens.filter((i) => i.previsaoReceitaPpaId === id).reduce((s, i) => toMoney(s.plus(i.valorAjuste.toFixed(2))), toMoney("0.00")).toFixed(2);
     expect([soma(a), soma(b)]).toEqual(["100010.00", "-50000.00"]);
     const lidas = await emendasDaPeca(prisma, "PPA", planoId);
     expect(lidas.map((e) => [e.situacao, e.lei, e.itens.map((i) => i.sancionado)])).toEqual([
@@ -178,5 +182,51 @@ describe("M02b — emendas ao PPA e à LDO", () => {
     expect(await recusa(() => sancionarEmendaAoPlanejamento(prisma, { ...lei, criadoPor: soEmenda, emendaId: e.id, resultado: "APROVADA" }))).toMatch(/SANCIONAR_EMENDA_AO_ORCAMENTO/);
     expect(await recusa(() => cadastrarEmendaAoPlanejamento(prisma, { ...emenda, criadoPor: soLoa, peca: "PPA", pecaId: planoId, itens: [{ alvo: "PREVISAO_RECEITA_PPA", alvoId: a, grandeza: "valor", valor: "1.00" }] }))).toMatch(/CADASTRAR_EMENDA_AO_ORCAMENTO/);
     expect(await recusa(() => bloquearLinhaParaEmendas(prisma, { alvo: "PREVISAO_RECEITA_PPA", alvoId: a, grandeza: "valor", motivo: "tentativa sem poder", criadoPor: soLoa }))).toMatch(/CADASTRAR_EMENDA_AO_ORCAMENTO/);
+    const bl = await bloquearLinhaParaEmendas(prisma, { alvo: "PREVISAO_RECEITA_PPA", alvoId: b, grandeza: "valor", motivo: "bloqueio para a negação", criadoPor: POR });
+    expect(await recusa(() => revogarBloqueioDeEmendaAoPlanejamento(prisma, { bloqueioId: bl.id, motivo: "tentativa sem poder", criadoPor: soLoa }))).toMatch(/CADASTRAR_EMENDA_AO_ORCAMENTO/);
+  });
+
+  it("t9: a sanção e o ato manual simultâneos sobre a mesma linha — a trava da peça serializa, e o guard recusa o segundo", async () => {
+    // B vale 400.000,00: −300.000,00 pela emenda e −200.000,00 pelo ato manual, juntos, deixariam −100.000,00.
+    const e = await doPpa([{ alvoId: b, valor: "-300000.00" }]);
+    const rs = await Promise.allSettled([
+      sancionarEmendaAoPlanejamento(prisma, { ...lei, emendaId: e.id, resultado: "APROVADA" }),
+      registrarAtoDeAlteracaoDoPlanejamento(prisma, { peca: "PPA", pecaId: planoId, numero: "40", ano: 2027, data: D("2027-06-10"), dataPublicacao: D("2027-06-12"), fundamento: "Lei de revisão do plano", itens: [{ alvo: "PREVISAO_RECEITA_PPA", alvoId: b, grandeza: "valor", valorAjuste: "-200000.00" }], criadoPor: POR }),
+    ]);
+    expect(rs.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(((rs.find((r) => r.status === "rejected") as PromiseRejectedResult).reason as Error).message).toMatch(/ALTERAÇÃO RECUSADA na previsão de receita 11140211/);
+    const ajustes = await prisma.alteracaoDeValorPlanejado.findMany({ where: { previsaoReceitaPpaId: b }, select: { valorAjuste: true } });
+    expect(ajustes.reduce((t, x) => toMoney(t.plus(x.valorAjuste.toFixed(2))), toMoney("400000.00")).isNegative()).toBe(false);
+  });
+
+  it("t10: duas sanções simultâneas pela mesma lei nova caem num ato só", async () => {
+    const e1 = await doPpa([{ alvoId: a, valor: "1.00" }]);
+    const e2 = await doPpa([{ alvoId: b, valor: "2.00" }]);
+    const rs = await Promise.allSettled([
+      sancionarEmendaAoPlanejamento(prisma, { ...lei, leiNumero: "77", emendaId: e1.id, resultado: "APROVADA" }),
+      sancionarEmendaAoPlanejamento(prisma, { ...lei, leiNumero: "77", emendaId: e2.id, resultado: "APROVADA" }),
+    ]);
+    expect(rs.map((r) => r.status)).toEqual(["fulfilled", "fulfilled"]);
+    const atos = await prisma.atoDeAlteracaoDoPlanejamento.findMany({ where: { planoId, numero: "77" }, select: { _count: { select: { itens: true } } } });
+    expect(atos.map((x) => x._count.itens)).toEqual([2]);
+  });
+
+  it("t11: a gravação no ato sem autorização própria só é chamada pela sanção (porta sem fechadura fica vermelha)", () => {
+    const raiz = join(import.meta.dirname, "..", "..");
+    const achados: string[] = [];
+    const varrer = (dir: string): void => {
+      for (const nome of readdirSync(dir)) {
+        if (nome === "node_modules" || nome.startsWith(".") || nome === "doador") continue;
+        const caminho = join(dir, nome);
+        if (statSync(caminho).isDirectory()) varrer(caminho);
+        else if (/\.(ts|tsx|mts)$/.test(nome) && !nome.endsWith(".test.ts")) {
+          // A CHAMADA (nome seguido de parêntese), fora da própria definição: citar o nome num texto não é chamar.
+          const chama = readFileSync(caminho, "utf8").split(/\r?\n/).some((l) => /gravarItensNoAtoDaLei\s*\(/.test(l) && !/function gravarItensNoAtoDaLei/.test(l));
+          if (chama) achados.push(caminho.slice(raiz.length + 1).replace(/\\/g, "/"));
+        }
+      }
+    };
+    for (const d of ["modules", "lib", "app", "scripts", "packages"]) varrer(join(raiz, d));
+    expect(achados.sort()).toEqual(["modules/m02b-plurianual/emendas-do-planejamento.ts"]);
   });
 });
