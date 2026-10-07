@@ -7,12 +7,12 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 
 | Campo | Valor |
 |---|---|
-| HEAD | `577d2d36` (publicado; main e `/release` = `577d2d3`) em `apresentacao/contabilidade` |
-| Catálogo | 619 de 2.037 verificadas. As 285 de contabilidade (5.9 e 5.10): 88 validadas, 31 implementadas sem percurso, 119 parciais, 45 ausentes, 2 de terceiro. |
-| Último resultado | Rodada de 07/10 (seção "Rodada das áreas que faltavam"): cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas ao PPA e à LDO 6/6 em percurso; testes dirigidos verdes; mutações acusadas. |
-| Próximo passo | Decisões do ente pendentes: 5.9.3.34 (meses em que o crédito adicional entra na cota e o que a anulação faz nas cotas); 5.10.2.4 (finalidade FUNDEB/saúde no pagamento); estágio contábil em liquidação (metade da 5.10.1.42). Sem decisão, as ausências restantes da contabilidade dependem de terceiro (importações PPA/LDO/LOA, consolidação por entidade, retorno bancário, DARF). |
+| HEAD | `fac7c0f6` (publicado como `461c0ae`; main e `/release` = `461c0ae`) em `apresentacao/contabilidade` |
+| Catálogo | 619 de 2.037 verificadas (152 validadas, 204 parciais, 173 ausentes). As 285 de contabilidade (5.9 e 5.10): 92 validadas, 31 implementadas sem percurso, 121 parciais, 39 ausentes, 2 de terceiro. |
+| Último resultado | Segunda rodada de 07/10 (seção "Segunda rodada das áreas que faltavam"): balancete por fonte 4/4, fontes da natureza e rateio 7/7, prévia 8/8, transferências do PPA 5/5 em percurso; regressão M05+M03+censo+travas+balanço 378/378; publicada em produção (backup `esperanca-antes-v36n-20261007T210629Z.dump`, 4 migrations, sonda nas 6 telas). |
+| Próximo passo | Construir o que falta sem decisão: subempenho (5.10.1.7), multas de trânsito (5.10.1.45), código reduzido automático (5.9.1.8). Decisões do ente: conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 ou .99); 5.9.3.34; 5.10.2.4; estágio em liquidação. Restantes dependem de terceiro. |
 
-### Segunda rodada das áreas que faltavam (07/10/2026, local, não publicada)
+### Segunda rodada das áreas que faltavam (07/10/2026, publicada como 461c0ae)
 
 Regime: profundidade (dotação, reserva, razão, transação, travas) e superfície (balancete, telas).
 
@@ -20,11 +20,15 @@ Regime: profundidade (dotação, reserva, razão, transação, travas) e superf�
 |---|---|---|---|---|
 | Balancete por fonte (5.10.1.111, PARCIAL) | `d301e3d` | saldo anterior, débito, crédito e saldo final por conta x fonte, resumo por fonte, recorte por contas e fontes; o que não tem fonte aparece como "sem fonte" ou "não identificada" | /relatorios/livros/balancete-por-fonte | m12-balancete-por-fonte 4/4, 7 mutações; percurso 4/4 |
 | Fontes da natureza com percentual e previsão por rateio (5.9.3.4 e 5.9.3.7, VALIDADAS) | `9f68202` | composição de fontes por natureza (soma <= 100%, fonte do resíduo), rateio da previsão da LOA tudo ou nada | /receita/naturezas/fontes; formulário em /planejamento/receita-prevista | m04-fontes-da-natureza 10/10, mutações; percurso 7/7; auditoria: exercício aberto, corrida determinística, trava da natureza |
-| Prévia da alteração orçamentária (5.9.3.23 PARCIAL, 5.9.3.24 VALIDADA) | este commit | prévia em lotes, bloqueio das anulações (tipo de movimento próprio, roteiro próprio), aprovação, minuta de decreto ou projeto de lei, efetivação que gera o decreto e executa o crédito numa transação, descarte | /planejamento/previas | m03-previa 14/14 e runtime 1/1 (gestao_app), mutações; regressão M05+M03+censo+travas+balanço 41 arquivos/378 testes; percurso 8/8; duas auditorias (10 + 6 achados, corrigidos) |
+| Prévia da alteração orçamentária (5.9.3.23 PARCIAL, 5.9.3.24 VALIDADA) | `aa908c6` | prévia em lotes, bloqueio das anulações (tipo de movimento próprio, roteiro próprio), aprovação, minuta de decreto ou projeto de lei, efetivação que gera o decreto e executa o crédito numa transação, descarte | /planejamento/previas | m03-previa 14/14 e runtime 1/1 (gestao_app), mutações; regressão M05+M03+censo+travas+balanço 41 arquivos/378 testes; percurso 8/8; duas auditorias (10 + 6 achados, corrigidos) |
 
 Migrations: `20261108160000_v36_fontes_da_natureza_da_receita`, `20261108170000_v36_previa_da_alteracao_orcamentaria`,
 `20261108180000_v36_bloqueio_de_previa` (enum). Aplicadas na base fictícia, deriva vazia. Fila de travas: posto
 `PreviaDeAlteracao` (2) antes da ficha, os seguintes renumerados; `NaturezaDaReceita` no fim.
+
+| Transferências financeiras previstas no PPA (5.9.1.17, VALIDADA) | `fac7c0f` | previsão por entidade de destino e ano do quadriênio, correção versionada com motivo, quadro com totais | /planejamento/ppa/transferencias | m02b-transferencias-previstas 4/4, 5 mutações; percurso 5/5 |
+
+Publicação: Actions 37687618403 verde; `/release` = `461c0ae`; migrations 160000, 170000, 180000 e 190000 aplicadas; backup `/var/backups/gestao-publica/esperanca-antes-v36n-20261007T210629Z.dump`; sonda de produção com o administrador nas 6 telas (balancete por fonte, fontes da natureza, receita prevista com rateio, prévias, transferências do PPA, roteiros orçamentários com o bloqueio) — 6/6.
 
 **Decisões pendentes do ente desta rodada:**
 - A conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 bloqueio de crédito ou 6.2.2.1.2.99 outras indisponibilidades). Até ela, em produção e na base da apresentação a prévia com anulação é recusada com a mensagem que diz onde defini-la. A base fictícia tem a .99, publicada pelo percurso como escolha de demonstração.
