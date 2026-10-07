@@ -577,6 +577,7 @@ export const ACERVO: readonly RelatorioNav[] = [
   { href: "/patrimonio/incorporacoes", numero: "Incorporados", rotulo: "Bens Incorporados e a Incorporar", descricao: "Liquidações de capital com o já incorporado e o que falta incorporar, e os bens incorporados, com filtros da dotação." },
   { href: "/patrimonio/meus-bens", numero: "Meus bens", rotulo: "Bens sob minha responsabilidade", descricao: "Bens sob sua responsabilidade." },
   { href: "/patrimonio/frota", numero: "Frota", rotulo: "Frota", descricao: "Veículos e máquinas, dono e locador, situação no mês e abastecimento." },
+  { href: "/patrimonio/frota/multas", numero: "Multas", rotulo: "Multas de Trânsito", descricao: "Multas dos veículos da frota: auto, infração, valor, infrator e baixa, com o controle contábil." },
   { href: "/patrimonio/farmacias", numero: "Farmácias", rotulo: "Farmácias Públicas", descricao: "Farmácias públicas, responsável técnico e estoque de medicamentos do mês." },
 ];
 
@@ -869,6 +870,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Frota e farmácias", itens: [
         { href: "/patrimonio/frota", rotulo: "Frota" },
+        { href: "/patrimonio/frota/multas", rotulo: "Multas de trânsito" },
         { href: "/patrimonio/farmacias", rotulo: "Farmácias públicas" },
       ] },
     ],

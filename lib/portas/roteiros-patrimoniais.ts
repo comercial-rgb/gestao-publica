@@ -40,12 +40,13 @@ export async function declararRoteiroPatrimonialNaTela(input: {
   readonly fundamento: string;
 }): Promise<string> {
   const [familia, chave] = input.movimento.split("|");
-  if ((familia !== "PRECATORIO" && familia !== "CONVENIO" && familia !== "ADIANTAMENTO") || chave === undefined || chave === "") {
+  // A propriedade, não a lista: toda família declarável no domínio é escolhível na tela (o domínio confere as classes).
+  if (familia === undefined || !Object.prototype.hasOwnProperty.call(FAMILIAS_DE_ROTEIRO, familia) || chave === undefined || chave === "") {
     throw new Error("Escolha o movimento na lista. Nada foi gravado.");
   }
   return comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_ORCAMENTARIO", async (criadoPor) => {
     const r = await declararRoteiroPatrimonial(cliente(), {
-      familia, chave,
+      familia: familia as FamiliaDoRoteiro, chave,
       contaDebitoCodigo: input.contaDebitoCodigo, contaCreditoCodigo: input.contaCreditoCodigo,
       historicoPadrao: input.historicoPadrao, fundamento: input.fundamento, criadoPor,
     });

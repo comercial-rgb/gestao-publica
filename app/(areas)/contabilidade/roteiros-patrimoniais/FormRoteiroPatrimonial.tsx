@@ -45,7 +45,7 @@ export function FormRoteiroPatrimonial({
           rotulo="Conta debitada"
           catalogo="contas-analiticas"
           placeholder="Digite o início do código ou parte do nome"
-          ajuda="Precatórios lançam nas classes 1 a 4; convênios, nas classes 7 e 8."
+          ajuda="Precatórios lançam nas classes 1 a 4; convênios, adiantamentos e multas de trânsito, nas classes 7 e 8."
           largura={2}
         />
         <CampoReferenciado

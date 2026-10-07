@@ -48,7 +48,7 @@ export default async function RoteirosPatrimoniaisPage(): Promise<React.ReactEle
       {cabecalho}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
-        Cada movimento de precatório e de convênio gera um lançamento com as contas declaradas aqui.{" "}
+        Cada movimento de precatório, convênio, adiantamento e multa de trânsito gera um lançamento com as contas declaradas aqui.{" "}
         <strong>Movimento sem roteiro não é aceito.</strong> Uma nova declaração cria outra versão, sem alterar o que já foi lançado.
       </div>
 

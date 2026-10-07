@@ -55,3 +55,31 @@ concessão por unidade não abriria nada). Leitura:
 `TABELA-MODELO-VEICULO-TCE`: a "Tabela de modelo do veículo" citada no §4.52 não está nos documentos oficiais obtidos
 (nem nas tabelas de domínio do Captura 2.0). O número é digitado como consta no Tribunal; o sistema confere só o
 formato. Sem ele, o veículo fica nomeado na prévia.
+
+## V36 — Multas de trânsito (07/10/2026)
+
+`multas.ts`; schema `prisma/schema/m36-multas.prisma`; tela `/patrimonio/frota/multas` (TR 5.10.1.45).
+
+- **O que se registra:** o veículo (na frota e não baixado no dia da infração), o auto (órgão autuador e número, únicos
+  juntos e comparados na forma canônica: sem acento, maiúsculas, separador do órgão como hífen), a data da infração, a da
+  notificação (não futura, não anterior à infração), o vencimento, o local, a infração como consta do auto, o valor e o
+  INFRATOR: a pessoa física do cadastro único (M19). Sem cadastro de condutor nem CNH: o infrator é `Pessoa`.
+- **Os lançamentos de controle:** registro e baixa lançam no subsistema de CONTROLE pelo roteiro que a contabilidade
+  declara (família MULTA_DE_TRANSITO do roteiro patrimonial declarado, chaves REGISTRO e BAIXA). Nenhuma conta no código:
+  sem a declaração, a multa é recusada dizendo onde declarar. O registro lança na data da notificação.
+- **A baixa** (uma por multa): paga pelo ente, ressarcida pelo infrator ou cancelada em recurso lançam pelo roteiro da
+  BAIXA, que só é aceito se debitar a conta que o registro DESTA multa creditou (o roteiro é versionado; sem isso uma
+  versão nova deixaria o controle das multas antigas aberto). O registro indevido é o ESTORNO do lançamento do registro
+  (mesmas contas invertidas, `estornoDeId`), sem depender do roteiro da baixa.
+- **Ação:** CADASTRAR_FROTA para registrar e baixar (nenhuma ação nova); leitura CONSULTAR_PATRIMONIO. Quem só consulta
+  vê o CPF do infrator mascarado.
+- **Trava:** a do veículo (BemDaFrota); o mesmo auto em dois veículos ao mesmo tempo esbarra no índice único e é
+  recusado com o motivo.
+- **Fora daqui, nomeado:** o pagamento da multa pelo ente segue o empenho do M05, com a natureza que o ente escolher;
+  a cobrança do infrator (desconto em folha, guia) não existe no sistema (a reposição ao erário é pendência do M33); a
+  tabela de infrações do CTB, a pontuação e o cadastro de condutores (cláusulas da frota) não foram construídos.
+  `lancamentoId` da multa e da baixa não tem chave estrangeira para o razão (o vínculo é `origemTipo`/`origemId`).
+
+Teste: `m36-multas.test.ts` t1 a t9 (N=2 infratores; sem roteiro; recusas com o motivo; autorização; auto em forma
+canônica; notificação futura e dia inexistente; baixa que não fecha o registro e o estorno do registro indevido;
+competência travada; corrida no índice único). Percurso: `scripts/percurso-v36-multas-de-transito.mts`.

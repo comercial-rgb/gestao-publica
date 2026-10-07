@@ -1259,6 +1259,8 @@ export type NomeDeServico =
   | "registrarSituacaoDaFrota"
   | "anularSituacaoDaFrota"
   | "registrarAbastecimento"
+  | "registrarMultaDeTransito"
+  | "baixarMultaDeTransito"
   | "anularAbastecimento"
   | "cadastrarFarmacia"
   | "publicarVersaoDaFarmacia"
@@ -2107,6 +2109,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarSituacaoDaFrota: "CADASTRAR_FROTA",
   anularSituacaoDaFrota: "CADASTRAR_FROTA",
   registrarAbastecimento: "REGISTRAR_ABASTECIMENTO",
+  // V36 — TR 5.10.1.45: as multas de trânsito dos veículos são da gestão da frota (nenhuma ação nova).
+  registrarMultaDeTransito: "CADASTRAR_FROTA",
+  baixarMultaDeTransito: "CADASTRAR_FROTA",
   anularAbastecimento: "REGISTRAR_ABASTECIMENTO",
   cadastrarFarmacia: "CADASTRAR_FARMACIA",
   publicarVersaoDaFarmacia: "CADASTRAR_FARMACIA",
@@ -3354,6 +3359,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   quadroDeTransferenciasPrevistas: "leitura (V36 — as transferências financeiras previstas no PPA, entidade x ano, vigentes — não muta)",
   quadroDoEmpenhoRepartido: "leitura (V36 — o empenho e os subempenhos dele: empenhado, liquidado direto, repartido, livre e o saldo de cada um — não muta)",
   lerSubempenhosDoEmpenho: "leitura (V36 — o mesmo quadro do empenho repartido, para a tela — não muta)",
+  listarMultasDeTransito: "leitura (V36 — as multas de trânsito com a situação, o total em aberto e por infrator — não muta)",
   listarPrevias: "leitura (V36 — as prévias de alteração orçamentária do exercício, com a situação derivada — não muta)",
   detalharPrevia: "leitura (V36 — uma prévia com os itens por lote, o bloqueio de cada anulação e os totais por fonte — não muta)",
   reservarNaTransacao: "composável interno (V36 — a reserva de dotação na transação de quem chama; o reservar do repositório e a prévia, que autorizam)",

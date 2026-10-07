@@ -2380,9 +2380,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o M36 (prisma/schema/m36-frota.prisma) tem veículo, máquina e abastecimento, sem multa nem infrator.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio (roteiro das multas declarado pela tela com demais controles 7.9.9/8.9.9 como escolha de demonstração), 2026-10-07 · passos: veículo cadastrado pela tela da frota → roteiros REGISTRO e BAIXA declarados pela tela → duas multas de infratores diferentes com o lançamento de controle → o mesmo auto escrito de outro jeito recusado → baixa como ressarcida com o lançamento de volta → a tabela mostra a situação e o em aberto por infrator · obtido: 7/7 e, na segunda rodada (roteiro já declarado), 6/6; a leitura sem a gestão da frota não executada (a base não tem esse usuário) · artefato: scripts/percurso-v36-multas-de-transito.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — multas de trânsito dos veículos da frota (modules/m36-frota/multas.ts; schema m36-multas.prisma): auto (órgão e número, únicos em forma canônica), infração, datas, valor e o INFRATOR (pessoa física do cadastro único); registro e baixa lançam no subsistema de controle pelo roteiro que a contabilidade declara (família MULTA_DE_TRANSITO, sem conta no código; sem declaração, recusa dizendo onde declarar); a baixa só fecha o controle se debitar a conta que o registro creditou, e o registro indevido é o estorno do lançamento do registro; em aberto por infrator. m36-multas.test.ts t1 a t9 (N=2 infratores, recusas com o motivo, autorização, competência travada, corrida no índice único); 20 mutações acusadas. Fora: pagamento pelo empenho e cobrança do infrator seguem os fluxos próprios; tabela do CTB, pontuação e condutores não construídos.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.46",

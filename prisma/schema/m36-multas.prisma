@@ -1,0 +1,62 @@
+// ----------------------------------------------------------------------------
+// V36 (TR 5.10.1.45) — MULTAS DE TRÂNSITO dos veículos da frota.
+//
+// A multa identifica o veículo, o auto de infração (órgão autuador e número), a infração, o valor e o INFRATOR (pessoa
+// física do cadastro único). O registro e a baixa lançam no subsistema de CONTROLE pelas contas que a contabilidade
+// declara (roteiro da família MULTA_DE_TRANSITO, `modules/m01-core-contabil/roteiro-patrimonial-declarado.ts`); sem a
+// declaração, o registro é recusado com o motivo. Regra: `modules/m36-frota/multas.ts`.
+//
+// APPEND-ONLY: a situação é derivada (em aberto até a baixa); a baixa é linha nova, uma por multa.
+// ----------------------------------------------------------------------------
+
+model MultaDeTransito {
+  id String @id @default(cuid())
+
+  veiculoId String
+  veiculo   VeiculoDaFrota @relation("MultasDoVeiculo", fields: [veiculoId], references: [id])
+
+  /// Quem lavrou o auto (DETRAN, PRF, órgão municipal de trânsito...) e o número do auto de infração.
+  orgaoAutuador String @db.VarChar(120)
+  numeroDoAuto  String @db.VarChar(30)
+
+  dataDaInfracao   DateTime
+  /// A data em que o ente recebeu a notificação: é a data do lançamento de controle.
+  dataDaNotificacao DateTime
+  local            String
+  /// A infração como consta do auto (enquadramento e descrição).
+  infracao         String
+  valor            Decimal  @db.Decimal(18, 2)
+  vencimento       DateTime?
+
+  infratorId String
+  infrator   Pessoa @relation("InfratorDaMulta", fields: [infratorId], references: [id])
+
+  /// O lançamento de controle do registro (origemTipo MULTA_DE_TRANSITO_REGISTRO).
+  lancamentoId String @unique
+
+  baixa BaixaDaMultaDeTransito?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([orgaoAutuador, numeroDoAuto])
+  @@index([veiculoId, dataDaInfracao])
+  @@index([infratorId])
+}
+
+/// O fim da multa no controle: PAGA_PELO_ENTE, RESSARCIDA_PELO_INFRATOR, CANCELADA_EM_RECURSO ou REGISTRO_INDEVIDO.
+model BaixaDaMultaDeTransito {
+  id      String          @id @default(cuid())
+  multaId String          @unique
+  multa   MultaDeTransito @relation(fields: [multaId], references: [id])
+
+  tipo       String   @db.VarChar(30)
+  data       DateTime
+  observacao String
+
+  /// O lançamento de controle da baixa (origemTipo MULTA_DE_TRANSITO_BAIXA).
+  lancamentoId String @unique
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

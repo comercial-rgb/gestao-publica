@@ -494,6 +494,9 @@ export const TABELAS = [
   // V27 — frota (M36) e farmácia pública (M37).
   "AnulacaoDeAbastecimento",
   "AbastecimentoDaFrota",
+  // V36 — as multas de trânsito (antes do veículo e da pessoa).
+  "BaixaDaMultaDeTransito",
+  "MultaDeTransito",
   "AnulacaoDeSituacaoDaFrota",
   "MudancaDeSituacaoDaFrota",
   "VersaoDoVeiculo",

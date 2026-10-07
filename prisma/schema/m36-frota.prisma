@@ -53,6 +53,8 @@ model VeiculoDaFrota {
   versoes      VersaoDoVeiculo[]
   situacoes    MudancaDeSituacaoDaFrota[]   @relation("SituacaoDoVeiculo")
   abastecimentos AbastecimentoDaFrota[]     @relation("AbastecimentoDoVeiculo")
+  /// V36 — as multas de trânsito do veículo (m36-multas.prisma). VIRTUAL.
+  multas         MultaDeTransito[]          @relation("MultasDoVeiculo")
 
   criadoEm  DateTime @default(now())
   criadoPor String

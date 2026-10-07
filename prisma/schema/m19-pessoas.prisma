@@ -101,6 +101,8 @@ model Pessoa {
   /// back-relations V27 (M36 frota) — VIRTUAIS: dono e locador de veículo e de máquina.
   veiculosComoProprietario VersaoDoVeiculo[] @relation("ProprietarioDoVeiculo")
   veiculosComoLocador      VersaoDoVeiculo[] @relation("LocadorDoVeiculo")
+  /// V36 — as multas de trânsito em que a pessoa é o infrator (m36-multas.prisma). VIRTUAL.
+  multasDeTransito         MultaDeTransito[] @relation("InfratorDaMulta")
   maquinasComoProprietario VersaoDaMaquina[] @relation("ProprietarioDaMaquina")
   maquinasComoLocador      VersaoDaMaquina[] @relation("LocadorDaMaquina")
   comissoesPatrimoniais   MembroDeComissaoPatrimonial[] @relation("MembroDeComissaoPatrimonial")

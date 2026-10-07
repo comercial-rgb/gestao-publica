@@ -19,7 +19,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
  * A tabela antiga segue valendo enquanto não houver declaração (`roteiroPatrimonialVigente` cai nela).
  */
 
-export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO" | "PERDAS_DIVIDA_ATIVA" | "APROPRIACAO_PESSOAL";
+export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO" | "PERDAS_DIVIDA_ATIVA" | "APROPRIACAO_PESSOAL" | "MULTA_DE_TRANSITO";
 
 interface DefinicaoDaFamilia {
   readonly rotulo: string;
@@ -88,6 +88,17 @@ export const FAMILIAS_DE_ROTEIRO: Readonly<Record<FamiliaDoRoteiro, DefinicaoDaF
       // V35 — os encargos patronais sobre o 13º e as férias (MCASP 18.3): D VPD 3.1.2 / C encargos sociais a pagar 2.1.1.4 (P).
       { chave: "APROPRIACAO/ENCARGOS_DECIMO_TERCEIRO", rotulo: "Encargos patronais sobre o 13º apropriado (VPD contra encargos a pagar)" },
       { chave: "APROPRIACAO/ENCARGOS_FERIAS", rotulo: "Encargos patronais sobre as férias apropriadas (VPD contra encargos a pagar)" },
+    ],
+  },
+  // V36 — o controle das multas de trânsito dos veículos da frota (modules/m36-frota/multas.ts): lançado no registro da
+  // notificação, baixado quando a multa é paga, ressarcida, cancelada ou anulada por registro indevido.
+  MULTA_DE_TRANSITO: {
+    rotulo: "Multas de trânsito",
+    subsistema: "CONTROLE",
+    classes: ["7", "8"],
+    chaves: [
+      { chave: "REGISTRO", rotulo: "Registro da multa de trânsito notificada (controle até a baixa)" },
+      { chave: "BAIXA", rotulo: "Baixa da multa (paga, ressarcida pelo infrator, cancelada ou registro indevido)" },
     ],
   },
 };
@@ -166,7 +177,7 @@ export async function listarRoteirosPatrimoniais(prisma: PrismaClient): Promise<
 }
 
 export const zDeclararRoteiroPatrimonial = z.object({
-  familia: z.enum(["PRECATORIO", "CONVENIO", "ADIANTAMENTO", "PERDAS_DIVIDA_ATIVA", "APROPRIACAO_PESSOAL"]),
+  familia: z.enum(["PRECATORIO", "CONVENIO", "ADIANTAMENTO", "PERDAS_DIVIDA_ATIVA", "APROPRIACAO_PESSOAL", "MULTA_DE_TRANSITO"]),
   chave: z.string().trim().min(1, "Escolha o movimento."),
   contaDebitoCodigo: z.string().trim().min(1, "Escolha a conta debitada."),
   contaCreditoCodigo: z.string().trim().min(1, "Escolha a conta creditada."),
