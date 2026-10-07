@@ -190,6 +190,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       movimentoBancarioId: true,
       obraId: true,
       audienciaPublicaId: true,
+      contratoPppId: true,
     },
   });
   if (a === null) return null;
@@ -227,6 +228,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   if (a.obraId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   // V36 — o documento da audiência pública: peça do planejamento, leitura do ente (como a LOA).
   if (a.audienciaPublicaId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
+  // V36 — o documento da parceria público-privada: contrato do ENTE, leitura de licitações no ente (a mesma da tela).
+  if (a.contratoPppId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "ente" };
   return null;
 }
 
@@ -312,6 +315,8 @@ export interface AnexarNaTela {
   readonly obraId?: string | undefined;
   /** V36 — o documento da audiência pública; ato do ente. */
   readonly audienciaPublicaId?: string | undefined;
+  /** V36 — o documento da parceria público-privada; ato do ente. */
+  readonly contratoPppId?: string | undefined;
 }
 
 export async function anexarNaTela(
@@ -396,4 +401,10 @@ export async function lerAnexosDaObra(obraId: string): Promise<readonly AnexoNaL
 export async function lerAnexosDaAudiencia(audienciaPublicaId: string): Promise<readonly AnexoNaLista[]> {
   const sessao = await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   return listarAnexosDoPagamentoOuMovimento(cliente(), { audienciaPublicaId }, sessao.identificador);
+}
+
+/** V36 — os anexos de uma parceria público-privada, para a aba da tela da parceria. Leitura de licitações. */
+export async function lerAnexosDaPpp(contratoPppId: string): Promise<readonly AnexoNaLista[]> {
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_LICITACOES");
+  return listarAnexosDoPagamentoOuMovimento(cliente(), { contratoPppId }, sessao.identificador);
 }

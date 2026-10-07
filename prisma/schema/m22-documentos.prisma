@@ -183,6 +183,9 @@ model Anexo {
   /// V36 (TR 5.9.1.2) — o documento da audiência pública (ata, lista de presença, apresentação). Ato do ENTE.
   audienciaPublicaId String?
   audienciaPublica   AudienciaPublica? @relation("AnexoDaAudienciaPublica", fields: [audienciaPublicaId], references: [id])
+  /// V36 (TR 5.10.1.88) — o documento da parceria público-privada (contrato, aditivos, garantias). Ato do ENTE.
+  contratoPppId String?
+  contratoPpp   ContratoPPP? @relation("AnexoDaPpp", fields: [contratoPppId], references: [id])
 
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
@@ -214,6 +217,7 @@ model Anexo {
   @@index([pagamentoId])
   @@index([movimentoBancarioId])
   @@index([audienciaPublicaId])
+  @@index([contratoPppId])
   @@index([ocorrenciaDeFiscalizacaoId])
   @@index([medicaoDaOrdemId])
   @@index([sha256])

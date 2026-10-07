@@ -19,6 +19,7 @@ const ITENS: readonly ItemHub[] = [
   // com as medições que autorizam a liquidação. O item sem `href` descrevia o que o
   // sistema fazia sem oferecer onde fazê-lo.
   { titulo: "Obras e medições", descricao: "Cadastro de obras (IN/INSS/DC 100/2003) e medições que autorizam a liquidação. Quem mede não aprova, e os períodos de medição não se sobrepõem.", href: "/licitacoes/obras" },
+  { titulo: "Parcerias público-privadas", descricao: "Contratos de PPP (Lei 11.079/2004): tipo, empresa parceira, situação, parcelas por exercício, documentos e os empenhos vinculados.", href: "/licitacoes/ppp" },
 ];
 
 export default function LicitacoesPage(): React.ReactElement {

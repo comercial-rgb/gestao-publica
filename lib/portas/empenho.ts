@@ -259,6 +259,8 @@ export async function registrarEmpenho(input: {
   readonly dividaId?: string;
   /** V22: a campanha publicitária que o empenho custeia (o M05 confere que existe). */
   readonly campanhaPublicitariaId?: string;
+  /** V36: a parceria público-privada que o empenho executa (o M05 confere que existe). */
+  readonly contratoPppId?: string;
   /** V32: o precatório que o empenho paga (o M05 confere inscrição e elemento 91). */
   readonly precatorioId?: string;
   /** V22: a solicitação autorizada de origem — o M05 confere situação e conteúdo, sob trava. */
@@ -644,6 +646,10 @@ export async function rotuloDoVinculoDoEmpenho(v: VinculoDoEmpenho): Promise<str
     case "dividaId": {
       const r = await db.dividaConsolidada.findUnique({ where: { id: v.id }, select: { identificador: true } });
       return r === null ? null : `dívida ${r.identificador}`;
+    }
+    case "contratoPppId": {
+      const r = await db.contratoPPP.findUnique({ where: { id: v.id }, select: { numero: true, parceiroPrivado: true } });
+      return r === null ? null : `parceria ${r.numero} — ${r.parceiroPrivado}`;
     }
   }
 }

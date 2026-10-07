@@ -69,6 +69,8 @@ export const zAnexar = z
     obraId: z.string().min(1).optional(),
     // ── V36: a ata, a lista de presença e a apresentação da audiência pública do planejamento ──
     audienciaPublicaId: z.string().min(1).optional(),
+    // ── V36: o contrato, os aditivos e as garantias da parceria público-privada ──
+    contratoPppId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -95,12 +97,13 @@ export const zAnexar = z
         d.movimentoBancarioId,
         d.obraId,
         d.audienciaPublicaId,
+        d.contratoPppId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento, movimento bancário, obra ou audiência pública. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento, movimento bancário, obra, audiência pública ou parceria público-privada. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -146,6 +149,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       movimentoBancarioId: d.movimentoBancarioId ?? null,
       obraId: d.obraId ?? null,
       audienciaPublicaId: d.audienciaPublicaId ?? null,
+      contratoPppId: d.contratoPppId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -215,6 +219,7 @@ export async function anexarArquivo(
         movimentoBancarioId: d.movimentoBancarioId ?? null,
         obraId: d.obraId ?? null,
         audienciaPublicaId: d.audienciaPublicaId ?? null,
+        contratoPppId: d.contratoPppId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -274,9 +279,16 @@ async function escopoDoDono(
     readonly movimentoBancarioId?: string | undefined;
     readonly obraId?: string | undefined;
     readonly audienciaPublicaId?: string | undefined;
+    readonly contratoPppId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  // V36: a parceria público-privada é contrato do ENTE; ela tem de existir.
+  if (d.contratoPppId !== undefined) {
+    const c = await tx.contratoPPP.findUnique({ where: { id: d.contratoPppId }, select: { id: true } });
+    if (c === null) throw new Error(`Parceria público-privada ${d.contratoPppId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
   // V36: a audiência pública é ato do ENTE (M02b); ela tem de existir.
   if (d.audienciaPublicaId !== undefined) {
     const a = await tx.audienciaPublica.findUnique({ where: { id: d.audienciaPublicaId }, select: { id: true } });

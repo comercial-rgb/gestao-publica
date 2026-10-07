@@ -540,6 +540,7 @@ export const DIMENSOES_DO_EMPENHO = [
   "precatorioId",
   "consorcioId",
   "ordemDeCompraId",
+  "contratoPppId",
 ] as const;
 
 /**
@@ -627,6 +628,19 @@ async function exigirVinculoDeConvenio(tx: Tx, p: EmpenharParams): Promise<void>
         `vigência do instrumento (Portaria Conjunta MGI/MF/CGU nº 33/2023, art. 44, incisos I e IX). ` +
         `Nada foi gravado.`
     );
+  }
+}
+
+/** V36 (TR 5.10.1.89) — a parceria público-privada vinculada tem de existir. Voluntária: sem ela, nada a conferir. */
+async function exigirVinculoDePpp(tx: Tx, p: EmpenharParams): Promise<void> {
+  if (p.contratoPppId === undefined) return;
+  const c = await tx.contratoPPP.findUnique({ where: { id: p.contratoPppId }, select: { numero: true, vigenciaInicio: true, vigenciaFim: true } });
+  if (c === null) throw new Error(`Parceria público-privada ${p.contratoPppId} não existe. Nada foi gravado.`);
+  // Como o empenho de contrato: a despesa da parceria é realizada dentro da vigência dela, pelo dia civil do ente.
+  const [dia, ini, fim] = [diaCivil(p.data), diaCivil(c.vigenciaInicio), diaCivil(c.vigenciaFim)];
+  if (dia < ini || dia > fim) {
+    const br = (s: string): string => s.split("-").reverse().join("/");
+    throw new Error(`O empenho de ${br(dia)} está fora da vigência da parceria ${c.numero} (${br(ini)} a ${br(fim)}). Nada foi gravado.`);
   }
 }
 
@@ -1196,6 +1210,7 @@ export function criarDespesaRepositoryPrisma(
         // M28 (V22) — o vínculo com o CONVÊNIO: voluntário, mas tem de existir.
         await exigirVinculoDeConvenio(tx, p);
         await exigirVinculoDeCampanha(tx, p);
+        await exigirVinculoDePpp(tx, p);
         await exigirVinculoDePrecatorio(tx, p);
 
         // V22 — emitido de SOLICITAÇÃO: ela tem de estar autorizada, não empenhada, e casar com
@@ -1237,6 +1252,8 @@ export function criarDespesaRepositoryPrisma(
             convenioId: p.convenioId ?? null,
             // V22 — a campanha publicitária que este empenho custeia. A anulação a COPIA.
             campanhaPublicitariaId: p.campanhaPublicitariaId ?? null,
+            // V36 (TR 5.10.1.89) — a parceria público-privada. A anulação a COPIA (DIMENSOES_DO_EMPENHO).
+            contratoPppId: p.contratoPppId ?? null,
             // V32 — o precatório que este empenho paga. A anulação o COPIA (DIMENSOES_DO_EMPENHO).
             precatorioId: p.precatorioId ?? null,
             // V22 — a solicitação autorizada de origem (única; a anulação NÃO a copia).

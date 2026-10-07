@@ -76,6 +76,8 @@ export interface EmpenharParams {
   readonly convenioId?: string | undefined;
   /** V22 — a campanha publicitária que este empenho custeia. VOLUNTÁRIO. A anulação a COPIA. */
   readonly campanhaPublicitariaId?: string | undefined;
+  /** V36 (TR 5.10.1.89) — a parceria público-privada que o empenho executa. VOLUNTÁRIO. A anulação a COPIA. */
+  readonly contratoPppId?: string | undefined;
   /** V32 — o precatório que este empenho paga. VOLUNTÁRIO. A anulação o COPIA. */
   readonly precatorioId?: string | undefined;
   /** V22 — a solicitação autorizada de origem. A anulação NÃO a copia (é origem, não dimensão). */

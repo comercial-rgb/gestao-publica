@@ -585,6 +585,9 @@ export const TABELAS = [
   "RoteiroPatrimonialDeclarado",
   "DeParaReceitaAlienacao",
   "DeParaFonteAlienacao",
+  // V36 — a situação e as parcelas da parceria (antes do contrato).
+  "SituacaoDaPpp",
+  "ParcelaDaPpp",
   "ContratoPPP",
   "TipoReceitaSagres",
   "FichaOrcamentaria",

@@ -348,6 +348,8 @@ export const zEmpenharInput = z
     convenioId: z.string().min(1).optional(),
     /** V22 — a CAMPANHA PUBLICITÁRIA que o empenho custeia. VOLUNTÁRIO; o adapter confere que existe. */
     campanhaPublicitariaId: z.string().min(1).optional(),
+    /** V36 (TR 5.10.1.89) — a PARCERIA PÚBLICO-PRIVADA que o empenho executa. VOLUNTÁRIO; o adapter confere que existe. */
+    contratoPppId: z.string().min(1).optional(),
     /**
      * V32 — o PRECATÓRIO que este empenho paga. VOLUNTÁRIO; o adapter confere que existe, que está
      * inscrito e que a ficha é de sentenças judiciais (elemento 91). É ele que faz o `pagar` baixar o

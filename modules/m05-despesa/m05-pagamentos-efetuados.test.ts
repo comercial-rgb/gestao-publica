@@ -9,6 +9,7 @@ import { roteiroPagamentoRestos } from "../m08-restos-a-pagar/dominio.js";
 import { pagarRestosAPagar } from "../m08-restos-a-pagar/restos.js";
 import { empenharDe2026, liquidarDe2026, pagarDe2026, semearM08, FONTE, POR } from "../m08-restos-a-pagar/fixture-m08.js";
 import { inicioDoDiaCivil, fimDoDiaCivil } from "../../packages/datas/index.js";
+import { anexarArquivo } from "../m22-documentos/anexos.js";
 import type { M05Deps } from "./ports.js";
 
 /**
@@ -98,17 +99,21 @@ describe("M05 — pagamentos efetuados num período", () => {
   it("t4 (V36, TR 5.10.2.4): com ou sem documento anexado, assinado ou não — a assinatura vale no documento do pagamento ou da ordem dele", async () => {
     const todo = periodo("2026-01-01", "2027-12-31");
     const pags = new Map((await prisma.pagamento.findMany({ where: { numero: { in: ["NP-1", "NP-2", "NP-RP"] } }, select: { id: true, numero: true, liquidacaoId: true, fonteId: true } })).map((p) => [p.numero, p]));
-    const doc = (id: string, dono: Record<string, string>) =>
-      prisma.anexo.create({ data: { id, nomeOriginal: id + ".pdf", mimeType: "application/pdf", tamanhoBytes: 10, sha256: id.padEnd(64, "0"), ...dono, criadoPor: POR } });
+    // O documento entra por `anexarArquivo` (o M22 proíbe anexo criado fora dele); a assinatura é gravada direto, que
+    // é o que o filtro lê.
+    const doc = async (nome: string, dono: { pagamentoId: string } | { ordemDePagamentoId: string }): Promise<string> =>
+      (await anexarArquivo(prisma, { nomeOriginal: `${nome}.pdf`, mimeType: "application/pdf", conteudo: new TextEncoder().encode(`%PDF-1.4
+% ${nome}
+`), ...dono, criadoPor: POR })).anexoId;
     // NP-1: documento próprio, assinado. NP-2: documento próprio, sem assinatura. NP-RP: sem documento próprio, mas a
     // ORDEM de pagamento dele tem documento assinado.
-    await doc("anx-np1", { pagamentoId: pags.get("NP-1")!.id });
-    await prisma.assinaturaDeDocumento.create({ data: { modo: "SIMPLES", assinadoPor: POR, hashConteudo: "a".repeat(64), anexoId: "anx-np1" } });
-    await doc("anx-np2", { pagamentoId: pags.get("NP-2")!.id });
+    const np1 = await doc("np1", { pagamentoId: pags.get("NP-1")!.id });
+    await prisma.assinaturaDeDocumento.create({ data: { modo: "SIMPLES", assinadoPor: POR, hashConteudo: "a".repeat(64), anexoId: np1 } });
+    await doc("np2", { pagamentoId: pags.get("NP-2")!.id });
     const rp = pags.get("NP-RP")!;
     const ordem = await prisma.ordemDePagamento.create({ data: { numero: "OP-RP", liquidacaoId: rp.liquidacaoId, valor: "300.00", dataPrevista: new Date("2027-02-01T12:00:00Z"), contaBancaria: "CC-001", fonteId: rp.fonteId, historico: "ordem", criadoPor: POR }, select: { id: true } });
-    await doc("anx-op", { ordemDePagamentoId: ordem.id });
-    await prisma.assinaturaDeDocumento.create({ data: { modo: "SIMPLES", assinadoPor: POR, hashConteudo: "b".repeat(64), anexoId: "anx-op" } });
+    const op = await doc("op", { ordemDePagamentoId: ordem.id });
+    await prisma.assinaturaDeDocumento.create({ data: { modo: "SIMPLES", assinadoPor: POR, hashConteudo: "b".repeat(64), anexoId: op } });
     await prisma.pagamento.update({ where: { id: rp.id }, data: { ordemDePagamentoId: ordem.id } });
 
     const nums = async (r: { comAnexo?: boolean; assinado?: boolean }) => (await pagamentosEfetuados(prisma, { ...todo, ...r })).map((l) => l.numero);

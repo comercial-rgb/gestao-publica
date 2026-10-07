@@ -189,6 +189,8 @@ export const LICITACOES: readonly RelatorioNav[] = [
   { href: "/licitacoes/ordens-de-compra", numero: "Ordens", rotulo: "Ordens de compra", descricao: "Ordens de compra ordinárias, globais e estimativas, com recebimento por item." },
   { href: "/licitacoes/documentos-fiscais", numero: "Notas", rotulo: "Documentos fiscais recebidos", descricao: "Notas fiscais, recibos e CT-e recebidos do fornecedor, com conferência dos itens." },
   { href: "/licitacoes/obras", numero: "Obras", rotulo: "Obras e medições", descricao: "Cadastro de obras e medições que autorizam a liquidação." },
+  // V36: os contratos de parceria público-privada (Lei 11.079), com situação, parcelas, documentos e empenhos.
+  { href: "/licitacoes/ppp", numero: "PPP", rotulo: "Parcerias público-privadas", descricao: "Contratos de parceria público-privada: situação, parcelas por exercício, documentos e empenhos." },
 ];
 
 export const PLANEJAMENTO: readonly RelatorioNav[] = [
@@ -796,6 +798,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Execução e fiscalização", itens: [
         { href: "/licitacoes/fiscalizacao", rotulo: "Fiscalização" },
         { href: "/licitacoes/obras", rotulo: "Obras e medições" },
+        { href: "/licitacoes/ppp", rotulo: "Parcerias público-privadas" },
         { href: "/licitacoes/documentos-fiscais", rotulo: "Recebimento de notas" },
       ] },
     ],

@@ -674,7 +674,7 @@ function doTipo(tipo: RecorteDeEmpenhos["tipoDoEmpenho"]): Prisma.EmpenhoWhereIn
 }
 
 /** As dimensões do empenho que um cadastro usa para abrir "os empenhos deste registro". */
-export const DIMENSOES_CONSULTAVEIS = ["obraId", "convenioId", "precatorioId", "consorcioId", "dividaId"] as const;
+export const DIMENSOES_CONSULTAVEIS = ["obraId", "convenioId", "precatorioId", "consorcioId", "dividaId", "contratoPppId"] as const;
 export interface VinculoDoEmpenho {
   readonly dimensao: (typeof DIMENSOES_CONSULTAVEIS)[number];
   readonly id: string;

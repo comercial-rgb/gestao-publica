@@ -10,7 +10,8 @@
 model ContratoPPP {
   id String @id @default(cuid())
 
-  numero String
+  /// V36 — único: dois cadastros do mesmo contrato dividiriam os empenhos e o Anexo 13 (achado da auditoria).
+  numero String @unique
   objeto String
   /// O parceiro privado (a concessionária).
   parceiroPrivado String
@@ -24,8 +25,54 @@ model ContratoPPP {
   /// A CONTRAPRESTAÇÃO ANUAL — a despesa de caráter continuado que conta no teto de 5% da RCL.
   contraprestacaoAnual Decimal @db.Decimal(18, 2)
 
+  /// V36 (TR 5.10.1.87) — o TIPO da parceria (Lei 11.079, art. 2º): PATROCINADA ou ADMINISTRATIVA (CHECK na migration).
+  /// Nulo só nos registros anteriores à V36; o cadastro pela tela o exige.
+  tipo String? @db.VarChar(15)
+
+  situacoes SituacaoDaPpp[]
+  parcelas  ParcelaDaPpp[]
+  empenhos  Empenho[] @relation("EmpenhosDaPpp")
+  anexos    Anexo[]   @relation("AnexoDaPpp")
+
   criadoPor String
   criadoEm  DateTime @default(now())
 
   @@index([vigenciaInicio, vigenciaFim])
+}
+
+/// V36 (TR 5.10.1.87) — A SITUAÇÃO DA PARCERIA, append-only: cada mudança é uma linha com a data e o motivo; a vigente é
+/// a de data mais recente (empate: a gravada por último). O cadastro grava a primeira, EM_EXECUCAO. Rol do sistema (não
+/// normativo): EM_EXECUCAO, SUSPENSA, ENCERRADA, RESCINDIDA (CHECK na migration).
+model SituacaoDaPpp {
+  id String @id @default(cuid())
+
+  contratoPppId String
+  contratoPpp   ContratoPPP @relation(fields: [contratoPppId], references: [id])
+
+  situacao String   @db.VarChar(15)
+  data     DateTime
+  motivo   String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contratoPppId, data])
+}
+
+/// V36 (TR 5.10.1.87) — AS PARCELAS DA PARCERIA por exercício: o valor que o contrato prevê pagar em cada ano (o fluxo
+/// plurianual que o Demonstrativo das PPP pede). Append-only: informar de novo o mesmo ano substitui o valor vigente e
+/// deixa o anterior no histórico (vale a gravada por último).
+model ParcelaDaPpp {
+  id String @id @default(cuid())
+
+  contratoPppId String
+  contratoPpp   ContratoPPP @relation(fields: [contratoPppId], references: [id])
+
+  ano   Int
+  valor Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contratoPppId, ano])
 }

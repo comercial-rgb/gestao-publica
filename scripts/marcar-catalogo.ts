@@ -977,19 +977,19 @@ const MAPA: Readonly<Record<string, Marca>> = {
 
   // ── 5.10.1.87-89 · PARCERIAS PÚBLICO-PRIVADAS (M12) ─────────────────────
   "5.10.1.87": {
-    situacao: "PARCIAL",
-    evidencia:
-      "`ContratoPPP` existe com número, objeto, parceiro privado, vigência, valor global e contraprestação anual — o mínimo para o RREO Anexo 13 existir sem inventar (modules/m12-relatorios/m12-rreo-anexo13.test.ts prova o teto de 5% da RCL). ⚠️ FALTAM o TIPO da parceria e a SITUAÇÃO que a cláusula pede, e não há tela. O próprio schema registra que o layout completo da Tabela 13 é pendência de DADO: ele entra quando houver contrato real para modelar contra, não reconstruído de memória. Pendência PPP-CADASTRO-COMPLETO.",
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V36 (modules/m11-licitacoes/parcerias-publico-privadas.ts; migration aditiva 20261108120000): cadastro da parceria com número, TIPO (Lei 11.079, art. 2º: concessão patrocinada ou administrativa; CHECK), empresa parceira, objeto, vigência, valor global e contraprestação anual; SITUAÇÃO append-only (em execução no cadastro; suspensa, encerrada, rescindida com data e motivo; a vigente é a de data mais recente); PARCELAS por exercício, informadas (o contrato as fixa), coladas em lote todas ou nenhuma, dentro da vigência, e substituíveis com histórico. Sob CADASTRAR_CONTRATO no ente (nenhuma ação nova). Tela /licitacoes/ppp (lista, cadastro, detalhe com parcelas e total). m11-parcerias-publico-privadas.test.ts 8/8 (N=2 parcerias; número único no banco com cadastro simultâneo; situação sem data futura e vigente pelo dia civil; leitor de parcelas que recusa formato malformado; recusas com o motivo; negação pela ação), mutações acusadas; auditoria de invariantes da V36 tratada. Ressalva: o RREO Anexo 13 continua lendo a contraprestação anual; o leiaute completo da Tabela 13 segue pendência de dado (ver o schema).",
+    rota_verificada: "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · percurso scripts/percurso-v36-parcerias.mts 7/7 · cadastrada pela lista; linha de parcela ruim recusada nomeando a linha, nada gravado; parcelas gravadas e somadas na tela; suspensa com motivo e a repetição recusada.",
   },
   "5.10.1.88": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia:
-      "Verificado: `Anexo` NÃO tem coluna para `ContratoPPP`. O rol de donos do anexo é fechado por decisão (um `donoTipo` livre faria o banco deixar de garantir que o registro existe), e a PPP não entrou nele no ENT03b — o molde cobriu convênio, precatório, consórcio, obra e auditoria. Custo: uma migration aditiva com a coluna e uma linha no descritor. Pendência PPP-ANEXOS.",
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V36: a parceria virou dono de Anexo no M22 (coluna contratoPppId; escopo do ente; a parceria tem de existir; leitura de licitações); aba Anexos no detalhe da parceria. m11-parcerias-publico-privadas.test.ts t6 (dono único, parceria inexistente recusada), mutação acusada.",
+    rota_verificada: "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · percurso scripts/percurso-v36-parcerias.mts 7/7 · contrato anexado pela aba Anexos e baixado (200); sem consulta de licitações, o download responde 404.",
   },
   "5.10.1.89": {
-    situacao: "AUSENTE_CONFIRMADO",
-    evidencia:
-      "Verificado: `Empenho` NÃO tem `contratoPppId`. Os vínculos que existem são contrato, dívida, obra, convênio, precatório e consórcio. Mesmo custo e mesma forma do .88. Pendência PPP-VINCULO-EMPENHO.",
+    situacao: "VALIDADO_LOCALMENTE",
+    evidencia: "V36: Empenho.contratoPppId (voluntário; o M05 confere que a parceria existe), copiado pelas anulações (DIMENSOES_DO_EMPENHO; m05-dimensoes-das-anulacoes acusa a ausência), pelo duplicar e pelo campo \"Parceria público-privada\" do formulário de empenho (busca por número, empresa ou objeto). Consulta pela parceria: o detalhe lista os empenhos com o líquido de anulações e o total (empenhosDaParceria), e /relatorios/gerenciais?ppp= recorta a consulta gerencial. m11-parcerias-publico-privadas.test.ts t6 (N=2 parcerias e um empenho sem parceria; anulação parcial descontada), mutações acusadas.",
+    rota_verificada: "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · percurso scripts/percurso-v36-parcerias.mts 7/7 · empenho emitido pela tela com a parceria aparece no detalhe dela com o líquido.",
   },
 
   // ── 5.10.1.90 · ENCERRAMENTO E IMUTABILIDADE (M16 + M08) ────────────────

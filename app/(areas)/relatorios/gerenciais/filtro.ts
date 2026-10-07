@@ -33,6 +33,7 @@ const PARAMETRO_DO_VINCULO: readonly (readonly [string, VinculoDoEmpenho["dimens
   ["precatorio", "precatorioId"],
   ["consorcio", "consorcioId"],
   ["divida", "dividaId"],
+  ["ppp", "contratoPppId"],
 ];
 
 type Params = Record<string, string | string[] | undefined>;

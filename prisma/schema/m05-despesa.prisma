@@ -221,6 +221,11 @@ model Empenho {
   consorcioId String?
   consorcio   ConsorcioPublico? @relation(fields: [consorcioId], references: [id])
 
+  /// V36 (TR 5.10.1.89) — a PARCERIA PÚBLICO-PRIVADA que este empenho executa (contraprestação, aporte). A anulação
+  /// copia o campo, como copia os demais vínculos (DIMENSOES_DO_EMPENHO).
+  contratoPppId String?
+  contratoPpp   ContratoPPP? @relation("EmpenhosDaPpp", fields: [contratoPppId], references: [id])
+
   /// V5 — a ordem de compra da qual este empenho nasceu. NULLABLE: nem todo empenho
   /// vem de ordem. A anulação COPIA este campo, como copia o contratoId.
   ordemDeCompraId String?
@@ -291,6 +296,7 @@ model Empenho {
   @@index([estornoDeId])
   @@index([credorCpfCnpj])
   @@index([ordemDeCompraId])
+  @@index([contratoPppId])
 
   /// M22 (ENT03a) — o documento gerado para assinatura. Campo VIRTUAL.
   anexos Anexo[]

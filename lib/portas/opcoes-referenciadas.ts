@@ -271,6 +271,23 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       };
     },
   },
+  // V36 (TR 5.10.1.89) — a parceria público-privada que o empenho executa. Leitura de quem consulta a despesa.
+  "ppps-para-empenho": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const linhas = await cliente().contratoPPP.findMany({
+        where: {
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(p.q === "" ? {} : { OR: [{ numero: contem(p.q) }, { parceiroPrivado: contem(p.q) }, { objeto: contem(p.q) }] }),
+        },
+        orderBy: [{ numero: "asc" }],
+        skip: skip(p), take,
+        select: { id: true, numero: true, parceiroPrivado: true, objeto: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((l) => ({ valor: l.id, rotulo: `${l.numero} — ${l.parceiroPrivado}`, detalhe: l.objeto })), temMais: r.temMais };
+    },
+  },
   // V36 — a obra cadastrada (M11) a que a obra prevista na LDO se refere. Identificador e descrição, o que a LDO
   // imprime; a leitura é a do planejamento, de quem digita a LDO.
   "obras-para-ldo": {

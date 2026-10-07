@@ -374,6 +374,48 @@ inteiro: 136 validadas (eram 134), 191 ausentes (eram 193).
   administrador: filtro de assinatura em `/relatorios/pagamentos`, formulário do borderô em `/financeiro/movimentacao`
   e formulário da periodicidade em `/planejamento/cmd-mba` (controle vigente: mensal, nenhum ato em produção).
 
+**Décima primeira rodada (07/10/2026, pedido "pode seguir pelo que faltou").** Regime: superfície no cadastro e na
+tela; o vínculo novo do empenho passou pelos testes de integridade das anulações. Catálogo inteiro: 140 validadas (eram
+137), 188 ausentes (eram 190).
+- **Parcerias público-privadas** (TR 5.10.1.87-89; M11 cadastra, M05 vincula, M22 guarda o documento):
+  - cadastro completo em `/licitacoes/ppp` (número, tipo da Lei 11.079 art. 2º, empresa, objeto, vigência, valor
+    global, contraprestação anual), situação append-only com data e motivo, parcelas por exercício coladas em lote
+    (todas ou nenhuma, dentro da vigência, substituíveis com histórico); sob CADASTRAR_CONTRATO (nenhuma ação nova);
+  - a parceria é dono de `Anexo` (aba Anexos, leitura de licitações);
+  - `Empenho.contratoPppId` voluntário, conferido no M05, copiado pelas anulações (o teste de dimensões o cobra), pelo
+    duplicar, e escolhido no formulário de empenho; o detalhe da parceria lista os empenhos com o líquido de anulações
+    e o total, e `/relatorios/gerenciais?ppp=` recorta a consulta gerencial;
+  - migration `20261108120000_v36_parceria_publico_privada` (aditiva; CHECKs do tipo, da situação e do valor), aplicada
+    na fictícia, diff vazio. Censo 547 nomes (+3, nenhuma ação nova).
+  - Teste `m11-parcerias-publico-privadas.test.ts` 6/6 (N=2 parcerias; anulação parcial descontada; negação pela
+    ação); cinco mutações acusadas (vínculo fora das dimensões, parceria não conferida no empenho e no anexo, parcela
+    vigente pela mais antiga, parcela fora da vigência). Percurso `scripts/percurso-v36-parcerias.mts` 7/7.
+  - Ressalva: o RREO Anexo 13 continua lendo a contraprestação anual; a Tabela 13 completa segue pendência de dado.
+- **Defeito da rodada anterior, achado pela guarda do M22:** o teste dos filtros de pagamento criava `Anexo` direto no
+  banco, o que a guarda t15 de `m22-documentos.test.ts` proíbe (passou despercebido porque essa guarda não estava na
+  seleção daquela rodada). O teste passou a usar `anexarArquivo`; os dois verdes.
+- Ambiente: o Docker Desktop estava parado (máquina reiniciada); subido de novo antes de gerar a migration. A primeira
+  geração saiu vazia por isso e foi refeita.
+- Achados do percurso: a base fictícia não tem pessoa com papel de credor (o empenho do percurso foi pelo caminho
+  "credor sem cadastro"), e o texto da ficha no formulário mudou de formato desde os percursos antigos (o percurso
+  novo lê "disponível R$").
+- **Auditoria de invariantes antes de publicar** (nada grave; nove achados). Tratados, cada um com teste e mutação:
+  1. o leitor de parcelas aceitava valor malformado e mudava a escala ("1.250.00" virava 125.000,00): só os formatos
+     declarados passam; os outros são recusados nomeando a linha (t4);
+  2. situação com data futura valia já e travava a correção: recusada (t2);
+  3. a situação vigente comparava instante e a validação, dia civil: as duas pelo dia civil (t2b);
+  4. o detalhe mostrava número, credor e valor de empenho a quem só lê licitações: sem CONSULTAR_DESPESA no ente a
+     tela diz o motivo e não lista;
+  5. o anexo da parceria era lido com licitações em qualquer escopo: passou ao ente, como a tela;
+  6. número do contrato sem unicidade: índice único (migration aditiva `20261108120100_v36_ppp_numero_unico`; a
+     produção não tem nenhuma PPP); dois cadastros simultâneos, um só grava (t1b);
+  7. o empenho aceitava parceria fora da vigência: recusado pelo dia civil, como o de contrato (t6);
+  9. a negação de `registrarSituacaoDaParceria` entrou na t5.
+  Não tratado, com o motivo: (8) a chave estrangeira do empenho com `ON DELETE SET NULL` é o padrão de todos os
+  vínculos do empenho, o papel de runtime não apaga `ContratoPPP`, e trocá-la exigiria remover a restrição (DROP), que a
+  regra de migration proíbe; os códigos de conta da fixture do teste seguem o padrão das outras fixtures do M05.
+  Depois das correções: parceria 8/8, m22-documentos e dimensões verdes; typecheck limpo; percurso 7/7.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.

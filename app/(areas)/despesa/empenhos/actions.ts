@@ -63,6 +63,7 @@ export async function empenharAction(
     const obraId = String(formData.get("obraId") ?? "").trim();
     const dividaId = String(formData.get("dividaId") ?? "").trim();
     const campanhaPublicitariaId = String(formData.get("campanhaPublicitariaId") ?? "").trim();
+    const contratoPppId = String(formData.get("contratoPppId") ?? "").trim();
     const precatorioId = String(formData.get("precatorioId") ?? "").trim();
     const solicitacaoDeEmpenhoId = String(formData.get("solicitacaoDeEmpenhoId") ?? "").trim();
 
@@ -96,6 +97,7 @@ export async function empenharAction(
         ...(obraId !== "" ? { obraId } : {}),
         ...(dividaId !== "" ? { dividaId } : {}),
         ...(campanhaPublicitariaId !== "" ? { campanhaPublicitariaId } : {}),
+        ...(contratoPppId !== "" ? { contratoPppId } : {}),
         ...(precatorioId !== "" ? { precatorioId } : {}),
         ...(solicitacaoDeEmpenhoId !== "" ? { solicitacaoDeEmpenhoId } : {}),
       });

@@ -345,6 +345,15 @@ export function FormEmpenho({
             largura={1}
           />
           <CampoReferenciado
+            key={`ppp-${rodada}`}
+            name="contratoPppId"
+            rotulo="Parceria público-privada"
+            catalogo="ppps-para-empenho"
+            placeholder="Número do contrato ou empresa parceira"
+            ajuda="Vincule quando a despesa é contraprestação ou aporte de uma parceria cadastrada."
+            largura={1}
+          />
+          <CampoReferenciado
             key={`precatorio-${rodada}`}
             name="precatorioId"
             rotulo="Precatório"

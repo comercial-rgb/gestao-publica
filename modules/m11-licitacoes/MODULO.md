@@ -567,3 +567,11 @@ sobreposição (não existe fonte).
   precisam ser aplicados **também em dev/prod** — o Prisma não os expressa).
 - `documento-fiscal.ts`, `xml-nfe.ts`; `prisma/schema/m11-compras.prisma` (documento recebido);
   `prisma/sql/uq_documento_fiscal_chave.sql`, `uq_documento_fiscal_arquivo_hash.sql`.
+
+## V36 — parcerias público-privadas
+
+O `ContratoPPP` (schema em `m12-ppp.prisma`, nascido para o RREO Anexo 13) ganhou cadastro aqui, em
+`parcerias-publico-privadas.ts`, porque PPP é contrato administrativo (Lei 11.079): tipo (concessão patrocinada ou
+administrativa), situação append-only e parcelas por exercício informadas — o sistema não as calcula. Tudo sob
+CADASTRAR_CONTRATO no ente. O empenho pode apontar a parceria (`Empenho.contratoPppId`, dimensão copiada pelas
+anulações), e o detalhe da parceria soma o empenhado líquido. A parceria é dono de `Anexo` no M22.

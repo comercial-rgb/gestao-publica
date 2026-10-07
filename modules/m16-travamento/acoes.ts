@@ -983,6 +983,9 @@ export type NomeDeServico =
   | "cadastrarLimite"
   | "cadastrarObra"
   | "publicarObraNoPortal"
+  | "cadastrarParceriaPublicoPrivada"
+  | "registrarSituacaoDaParceria"
+  | "informarParcelasDaParceria"
   | "cadastrarLinhaDemonstrativo"
   | "travar"
   | "destravar"
@@ -1666,6 +1669,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarObra: "CADASTRAR_OBRA",
   // V36 — TR 5.10.1.54: pôr a obra no portal (ou retirá-la), sob a ação de quem cadastra a obra.
   publicarObraNoPortal: "CADASTRAR_OBRA",
+  // V36 — TR 5.10.1.87: a parceria público-privada é contrato administrativo (Lei 11.079); quem cadastra contrato
+  // a cadastra, muda a situação e informa as parcelas. Ato do ENTE.
+  cadastrarParceriaPublicoPrivada: "CADASTRAR_CONTRATO",
+  registrarSituacaoDaParceria: "CADASTRAR_CONTRATO",
+  informarParcelasDaParceria: "CADASTRAR_CONTRATO",
 
   cadastrarPessoa: "CADASTRAR_PESSOA",
   alterarPessoa: "ALTERAR_PESSOA",
@@ -3294,6 +3302,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   obraNoPortal: "leitura pública (V36 — uma obra publicada: cadastro, posição, medições aprovadas e anexos; não publicada responde como inexistente)",
   baixarAnexoPublicoDaObra: "leitura pública (V36 — o anexo de obra publicada no portal; o resto responde como inexistente)",
   periodicidadeVigente: "leitura (V36 — a periodicidade vigente do controle das cotas num instante; o guard do CMD e o acompanhamento)",
+  empenhosDaParceria: "leitura (V36 — os empenhos de uma parceria público-privada, com o líquido de cada um; tela da parceria)",
   borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",
   acompanhamentoDasCotasCmd: "leitura (V36 — previsto × realizado das cotas de despesa por fonte e mês; o realizado é o consumido do guard do cronograma)",
