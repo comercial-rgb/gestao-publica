@@ -170,8 +170,10 @@ try {
   await entrar(n, outra, "atestador@ficticio.local", "Ficticio#2026");
   await outra.goto(`${n.base}${consulta}`, { waitUntil: "domcontentloaded" });
   const t = await outra.evaluate(() => document.body.innerText);
-  const motivo = (/[^.\n]*(acesso|permiss)[^.\n]*/i.exec(t)?.[0] ?? "").replace(/\s+/g, " ").trim().slice(0, 100);
-  conferir(!t.includes(avulso) && !t.includes("Fornecedor Fictício da Devolução") && motivo !== "", `sem consulta da tesouraria: a tela não abre ("${motivo}")`);
+  // O motivo é o destino da recusa: a tela de acesso, nomeando a consulta que faltou (não uma palavra solta na página).
+  const destino = new URL(outra.url());
+  const recusada = destino.pathname === "/sem-acesso" && destino.searchParams.get("acao") === "CONSULTAR_FINANCEIRO";
+  conferir(recusada && !t.includes(avulso) && !t.includes("Fornecedor Fictício da Devolução"), `sem consulta da tesouraria: a tela não abre (${destino.pathname}?acao=${destino.searchParams.get("acao") ?? ""})`);
 } finally {
   await nav.close();
   await prisma.$disconnect();

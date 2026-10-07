@@ -84,10 +84,11 @@ export default async function LiquidacoesPage({
       opcoesDasEntradasDeMaterial(),
       documentosConferidosParaLiquidar(),
     ]);
-    liquidacoes = lista;
-    const ids = lista.map((l) => l.id);
+    // V36 — o recorte das despesas realizadas sem empenho prévio.
+    liquidacoes = sp["semEmpenhoPrevio"] === "1" ? lista.filter((l) => l.despesaSemEmpenhoPrevio) : lista;
+    const ids = liquidacoes.map((l) => l.id);
     const [nomes, notas, anexos] = await Promise.all([
-      nomesDosCredores(lista.map((l) => l.credorCpfCnpj)),
+      nomesDosCredores(liquidacoes.map((l) => l.credorCpfCnpj)),
       notasDasLiquidacoes(ids),
       lerAnexosDasLiquidacoes(ids),
     ]);
@@ -148,6 +149,20 @@ export default async function LiquidacoesPage({
       </div>
 
       <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} debitos={debitos} />
+
+      <nav aria-label="Recorte das liquidações" className="flex gap-3 text-xs" data-recorte-sem-empenho>
+        {sp["semEmpenhoPrevio"] === "1" ? (
+          <>
+            <a className="underline" href={`/despesa/liquidacoes?exercicio=${recorte.exercicio}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}`}>Todas as liquidações</a>
+            <span className="font-semibold">Só as despesas sem empenho prévio</span>
+          </>
+        ) : (
+          <>
+            <span className="font-semibold">Todas as liquidações</span>
+            <a className="underline" href={`/despesa/liquidacoes?exercicio=${recorte.exercicio}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}&semEmpenhoPrevio=1`}>Só as despesas sem empenho prévio</a>
+          </>
+        )}
+      </nav>
 
       {liquidacoes.length === 0 ? (
         <EstadoVazio
@@ -310,11 +325,12 @@ function colunas(x: Extras): readonly ColunaTabela<LiquidacaoDaTela>[] {
 /** ⚠️ O CSV É A TELA (TR 7.48). */
 function csvLiquidacoes(liquidacoes: readonly LiquidacaoDaTela[]): string {
   return paraCsv(
-    ["Nº", "Data", "Empenho", "Credor", "Fonte", "Atesto", "Liquidado", "Pago", "A pagar", "Situação"],
+    ["Nº", "Data", "Empenho", "Credor", "Fonte", "Atesto", "Liquidado", "Pago", "A pagar", "Situação", "Sem empenho prévio"],
     liquidacoes.map((l) => [
       l.numero, dataBr(l.data), l.empenhoNumero, l.credorCpfCnpj, l.fonteCodigo, l.responsavelAtesto,
       formatarMoeda(l.liquidadoLiquido).texto, formatarMoeda(l.pago).texto, formatarMoeda(l.saldoAPagar).texto,
       l.anulado ? "Anulada" : l.saldoAPagar === "0.00" ? "Paga" : "Na fila",
+      l.despesaSemEmpenhoPrevio ? "Sim" : "Não",
     ])
   );
 }

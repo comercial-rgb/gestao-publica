@@ -157,6 +157,14 @@ export function FormLiquidacao({
           />
         </label>
 
+        <label className="flex items-start gap-2 text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
+          <input type="checkbox" name="despesaSemEmpenhoPrevio" className="mt-0.5" />
+          <span>
+            <span className="font-semibold">Despesa realizada sem empenho prévio</span>
+            <span className="block text-[11px] text-[color:var(--color-ink-3)]">Marque quando o serviço ou o material foi entregue antes de o empenho ser emitido, e o empenho veio depois para regularizar.</span>
+          </span>
+        </label>
+
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
           <span className={ROTULO}>Documento fiscal conferido (opcional)</span>
           <select name="documentoFiscalId" defaultValue="" className={CAMPO}>

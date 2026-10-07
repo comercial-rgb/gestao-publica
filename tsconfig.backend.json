@@ -97,6 +97,7 @@
     "test/ui/livros-com-termos.test.ts",
     "test/ui/busca-da-ficha.test.ts",
     "test/ui/pagamentos-efetuados-pdf.test.ts",
+    "test/ui/cheques-porta.test.ts",
     "test/ui/bordero-de-movimentos-pdf.test.ts",
     "test/ui/ofx-texto.test.ts",
     "test/ui/conciliacao-pdf.test.ts",

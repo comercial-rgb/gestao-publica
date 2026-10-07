@@ -9,12 +9,20 @@ import { formatarDocumento } from "../../../../packages/documento/index";
 import { FormAnexo } from "../../documentos/FormAnexo";
 
 export function SituacaoDaLiquidacao({ l }: { readonly l: LiquidacaoDaTela }): React.ReactElement {
-  return l.anulado ? (
+  const situacao = l.anulado ? (
     <Badge status="erro">Anulada</Badge>
   ) : l.saldoAPagar === "0.00" ? (
     <Badge status="ok">Paga</Badge>
   ) : (
     <Badge status="alerta">Na fila</Badge>
+  );
+  if (!l.despesaSemEmpenhoPrevio) return situacao;
+  // V36 — a despesa foi realizada antes do empenho: aparece junto da situação, em toda lista e no resumo.
+  return (
+    <span className="flex flex-col items-start gap-1" data-sem-empenho-previo>
+      {situacao}
+      <Badge status="alerta">Sem empenho prévio</Badge>
+    </span>
   );
 }
 

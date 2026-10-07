@@ -986,6 +986,8 @@ export interface LiquidacaoNaLista {
   /** liquidadoLiquido − pago: o que ainda entra na fila do art. 141. */
   readonly saldoAPagar: Money;
   readonly anulado: boolean;
+  /** V36 (TR 5.10.1.30) — a despesa foi realizada sem empenho prévio. */
+  readonly despesaSemEmpenhoPrevio: boolean;
   // A ORIGEM — de qual empenho esta liquidação saiu.
   readonly empenhoId: string;
   readonly empenhoNumero: string;
@@ -1006,6 +1008,7 @@ export async function listarLiquidacoes(
       numero: true,
       data: true,
       responsavelAtesto: true,
+      despesaSemEmpenhoPrevio: true,
       valor: true,
       estornoDeId: true,
       anulacaoParcialDeId: true,
@@ -1043,6 +1046,7 @@ export async function listarLiquidacoes(
       pago,
       saldoAPagar: toMoney(liquidadoLiquido.minus(pago)),
       anulado: l.estornos.length > 0,
+      despesaSemEmpenhoPrevio: l.despesaSemEmpenhoPrevio,
       empenhoId: l.empenhoId,
       empenhoNumero: l.empenho.numero,
       credorCpfCnpj: l.empenho.credorCpfCnpj,

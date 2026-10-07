@@ -296,6 +296,8 @@ export interface LiquidarParams {
   readonly documentoFiscalId?: string | undefined;
   /** M11 (ENT03b) — a medição aprovada, quando o empenho tem obra. Ver `zLiquidarInput`. */
   readonly medicaoId?: string | undefined;
+  /** V36 (TR 5.10.1.30) — despesa realizada sem empenho prévio (só informação). */
+  readonly despesaSemEmpenhoPrevio?: boolean | undefined;
   /**
    * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO desta liquidação.
    *

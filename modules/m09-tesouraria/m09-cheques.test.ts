@@ -5,6 +5,9 @@ import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { anularPagamento, pagar } from "../m05-despesa/servico-bloco2.js";
 import { anularPagamentoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { empenharDe2026, liquidarDe2026, semearM08, FONTE, POR, R_PAGAMENTO } from "../m08-restos-a-pagar/fixture-m08.js";
+
+/** A perna de caixa do roteiro da fixture (lida dele, não repetida aqui). */
+const CAIXA = R_PAGAMENTO.find((p) => p.tipo === "CREDITO" && p.subsistema === "PATRIMONIAL")?.conta ?? "";
 import { fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 import { cancelarChequeAvulso, chequesEmitidos, registrarChequeAvulso, totaisDosCheques } from "./cheques.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
@@ -12,15 +15,15 @@ import type { M05Deps } from "../m05-despesa/ports.js";
 /**
  * V36 — CHEQUES (TR 5.10.2.42). Contas à mão:
  *
- *   NE1/NL1 1.000; NP-1 paga 1.000,00 em 01/09 com o cheque 000101 e retenção de INSS de 80,00
- *       → cheque de PAGAMENTO, valor de face 920,00 (o líquido, que é o que sai do banco).
+ *   NE1/NL1 1.000; NP-1 paga 1.000,00 em 01/09 com o cheque 000101 e DUAS retenções, 80,00 e 15,00
+ *       → cheque de PAGAMENTO, valor de face 905,00 (o líquido, que é o que sai do banco).
  *   NE2/NL2 500; NP-2 paga 500,00 em 01/09 com o cheque 000102 e é ANULADO por inteiro em 10/09
  *       → cheque CANCELADO desde 10/09 (antes disso, emitido).
  *   NE3/NL3 300; NP-3 paga 300,00 em 01/09 com o cheque 000103 e tem anulação PARCIAL de 100,00
  *       → cheque segue EMITIDO por 300,00 (o documento emitido não muda).
  *   Avulsos em CC-001: 000104 de 250,00 em 05/09 (devolução) e 000105 de 70,00 em 06/09, cancelado em 08/09.
  *
- *   Setembro inteiro: 5 cheques; emitido 920 + 300 + 250 = 1.470,00; cancelado 500 + 70 = 570,00.
+ *   Setembro inteiro: 5 cheques; emitido 905 + 300 + 250 = 1.455,00; cancelado 500 + 70 = 570,00.
  */
 const prisma = criarPrismaDeTeste();
 await exigirBanco(prisma);
@@ -39,16 +42,18 @@ const recusa = async (f: () => Promise<unknown>): Promise<string> => {
 describe("M09 — cheques de pagamento e avulsos numa consulta só", () => {
   let deps: M05Deps;
   let avulsoCancelado: string;
+  /** A NL2, com o pagamento anulado, volta à cabeça da fila: é a que se paga de novo no t5b. */
+  let l2: string;
 
-  const pagarComCheque = async (liquidacaoId: string, numero: string, valor: string, cheque: string, retencao?: string) =>
+  const pagarComCheque = async (liquidacaoId: string, numero: string, valor: string, cheque: string, retencoes?: readonly [string, string][]) =>
     (
       await pagar(
         { liquidacaoId, numero, valor, data: D("2026-09-01"), contaBancaria: "CC-001", fonteId: FONTE, historico: `pgto ${numero}`, criadoPor: POR, numeroDoCheque: cheque },
         R_PAGAMENTO,
         deps,
-        retencao === undefined
+        retencoes === undefined
           ? undefined
-          : { contaDisponibilidade: "1.1.1.1.2.00.00", retencoes: [{ tipoConsignacaoId: "t-tc", credorConsignatario: "INSS", valor: retencao, contaConsignacaoAPagar: "2.1.8.8.1.01.00" }] }
+          : { contaDisponibilidade: CAIXA, retencoes: retencoes.map(([credor, valor]) => ({ tipoConsignacaoId: "t-tc", credorConsignatario: credor, valor, contaConsignacaoAPagar: "2.1.8.8.1.01.00" })) }
       )
     ).pagamentoId;
 
@@ -59,8 +64,8 @@ describe("M09 — cheques de pagamento e avulsos numa consulta só", () => {
     await prisma.tipoConsignacao.create({ data: { id: "t-tc", codigo: "INSS", descricao: "INSS retido (teste)", contaPassivoId: "t-inss", criadoPor: POR } });
 
     const l1 = await liquidarDe2026(deps, await empenharDe2026(deps, "NE1", "1000.00"), "NL1", "1000.00");
-    await pagarComCheque(l1, "NP-1", "1000.00", "000101", "80.00");
-    const l2 = await liquidarDe2026(deps, await empenharDe2026(deps, "NE2", "500.00"), "NL2", "500.00");
+    await pagarComCheque(l1, "NP-1", "1000.00", "000101", [["INSS", "80.00"], ["Instituto de Previdência", "15.00"]]);
+    l2 = await liquidarDe2026(deps, await empenharDe2026(deps, "NE2", "500.00"), "NL2", "500.00");
     const p2 = await pagarComCheque(l2, "NP-2", "500.00", "000102");
     const l3 = await liquidarDe2026(deps, await empenharDe2026(deps, "NE3", "300.00"), "NL3", "300.00");
     const p3 = await pagarComCheque(l3, "NP-3", "300.00", "000103");
@@ -78,14 +83,14 @@ describe("M09 — cheques de pagamento e avulsos numa consulta só", () => {
   it("t1: a consulta une as duas origens, com o líquido no cheque de pagamento e a situação de cada um", async () => {
     const ls = await chequesEmitidos(prisma, { ...periodo("2026-09-01", "2026-09-30"), incluirDePagamento: true });
     expect(ls.map((l) => [l.numero, l.origem, l.valor.toFixed(2), l.situacao])).toEqual([
-      ["000101", "PAGAMENTO", "920.00", "EMITIDO"],
+      ["000101", "PAGAMENTO", "905.00", "EMITIDO"],
       ["000102", "PAGAMENTO", "500.00", "CANCELADO"],
       ["000103", "PAGAMENTO", "300.00", "EMITIDO"],
       ["000104", "AVULSO", "250.00", "EMITIDO"],
       ["000105", "AVULSO", "70.00", "CANCELADO"],
     ]);
     const t = totaisDosCheques(ls);
-    expect([t.quantidade, t.emitido.toFixed(2), t.cancelado.toFixed(2)]).toEqual([5, "1470.00", "570.00"]);
+    expect([t.quantidade, t.emitido.toFixed(2), t.cancelado.toFixed(2)]).toEqual([5, "1455.00", "570.00"]);
     const np2 = ls.find((l) => l.numero === "000102");
     expect([np2?.finalidade, np2?.motivoDoCancelamento, np2?.credorCpfCnpj]).toEqual(["Pagamento NP-2 — empenho NE2", "pagamento em duplicidade", "12345678000195"]);
     expect(ls.find((l) => l.numero === "000105")?.motivoDoCancelamento).toBe("cheque preenchido errado");
@@ -131,6 +136,40 @@ describe("M09 — cheques de pagamento e avulsos numa consulta só", () => {
     const falha = rs.find((r) => r.status === "rejected") as PromiseRejectedResult;
     expect((falha.reason as Error).message).toMatch(/O cheque 000200 já foi emitido/);
   });
+
+  it("t5b: a corrida que a conferência não vê — o pagamento cai na unicidade, volta inteiro e diz o motivo", async () => {
+    const pagamentosAntes = await prisma.pagamento.count();
+    // Determinístico, sem depender de quem chega primeiro: uma transação grava o avulso 000600 e fica ABERTA. O
+    // pagamento confere o número (não vê a linha não confirmada), segue e para no índice único, esperando. Só quando o
+    // banco mostra essa espera a primeira transação confirma — e o pagamento recebe a violação de unicidade.
+    let inserido = (): void => undefined;
+    let liberar = (): void => undefined;
+    const gravou = new Promise<void>((r) => (inserido = r));
+    const segura = new Promise<void>((r) => (liberar = r));
+    const avulso = prisma.$transaction(
+      async (tx) => {
+        await tx.cheque.create({ data: { contaBancariaId: "cb1", numero: "000600", origem: "AVULSO", data: D("2026-09-20"), valor: "10.00", favorecido: "Beltrano", finalidade: "devolução", criadoPor: POR } });
+        inserido();
+        await segura;
+      },
+      { timeout: 60000 }
+    );
+    await gravou;
+    const pagamento = pagarComCheque(l2, "NP-2B", "500.00", "000600").then(
+      () => "(pagou)",
+      (e: unknown) => (e as Error).message
+    );
+    for (let i = 0; i < 200; i += 1) {
+      const [linha] = await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()`;
+      if ((linha?.n ?? 0n) > 0n) break;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    liberar();
+    await avulso;
+    expect(await pagamento).toMatch(/^O cheque 000600 já foi emitido na conta CC-001\. Nada foi gravado\.$/);
+    expect(await prisma.cheque.count({ where: { numero: "000600" } })).toBe(1);
+    expect(await prisma.pagamento.count()).toBe(pagamentosAntes);
+  }, 60000);
 
   it("t6: o cancelamento — só do avulso, uma vez, não antes da emissão, não no futuro", async () => {
     const de = await prisma.cheque.findFirstOrThrow({ where: { numero: "000101" }, select: { id: true } });

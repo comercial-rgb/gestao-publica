@@ -2142,6 +2142,7 @@ export function criarDespesaRepositoryPrisma(
             valor: p.valor.toFixed(2),
             data: p.data,
             responsavelAtesto: p.responsavelAtesto,
+            despesaSemEmpenhoPrevio: p.despesaSemEmpenhoPrevio === true,
             notaFiscalChave: notaDoDocumento.notaFiscalChave ?? p.notaFiscalChave ?? null,
             notaFiscalNum: notaDoDocumento.notaFiscalNum ?? p.notaFiscalNum ?? null,
             notaFiscalSerie: notaDoDocumento.notaFiscalSerie ?? p.notaFiscalSerie ?? null,
@@ -2366,17 +2367,26 @@ export function criarDespesaRepositoryPrisma(
         });
 
         if (p.cheque !== undefined) {
-          await tx.cheque.create({
-            data: {
-              contaBancariaId: conta.id,
-              numero: p.cheque.numero,
-              origem: "PAGAMENTO",
-              pagamentoId: pag.id,
-              data: p.data,
-              valor: p.cheque.valor.toFixed(2),
-              criadoPor: p.criadoPor,
-            },
-          });
+          try {
+            await tx.cheque.create({
+              data: {
+                contaBancariaId: conta.id,
+                numero: p.cheque.numero,
+                origem: "PAGAMENTO",
+                pagamentoId: pag.id,
+                data: p.data,
+                valor: p.cheque.valor.toFixed(2),
+                criadoPor: p.criadoPor,
+              },
+            });
+          } catch (e) {
+            // A corrida que a conferência acima não vê (outro pagamento ou um avulso com o mesmo número, ao mesmo
+            // tempo): a unicidade do banco decide, e a transação inteira volta com a mensagem de negócio.
+            if (typeof e === "object" && e !== null && (e as { code?: unknown }).code === "P2002") {
+              throw new Error(`O cheque ${p.cheque.numero} já foi emitido na conta ${conta.codigo}. Nada foi gravado.`);
+            }
+            throw e;
+          }
         }
 
         // M07 — o razão do consignatário, na MESMA transação. Se qualquer

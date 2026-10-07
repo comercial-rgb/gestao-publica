@@ -90,6 +90,8 @@ export async function liquidarAction(
     const historico = String(formData.get("historico") ?? "").trim();
     const dataBruta = String(formData.get("data") ?? "").trim();
     const documentoFiscalId = String(formData.get("documentoFiscalId") ?? "").trim();
+    // V36 — a caixa marcada diz que a despesa foi realizada antes do empenho.
+    const despesaSemEmpenhoPrevio = formData.get("despesaSemEmpenhoPrevio") === "on";
 
     if (empenhoId === "") return { erro: "Escolha o empenho a liquidar." };
     if (dataBruta === "") return { erro: "A data da liquidação é obrigatória." };
@@ -108,6 +110,7 @@ export async function liquidarAction(
         responsavelAtesto,
         historico,
         ...(documentoFiscalId !== "" ? { documentoFiscalId } : {}),
+        ...(despesaSemEmpenhoPrevio ? { despesaSemEmpenhoPrevio: true } : {}),
         ...(entradasDeMaterial.length > 0 ? { entradasDeMaterial } : {}),
       });
       revalidatePath("/despesa/liquidacoes");

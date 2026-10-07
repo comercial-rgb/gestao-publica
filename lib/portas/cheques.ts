@@ -29,6 +29,12 @@ export interface FiltroDosCheques {
 }
 
 const DIA = /^\d{4}-\d{2}-\d{2}$/;
+/** O dia existe no calendário: "2026-09-31" passa na forma e rolaria para 01/10 em silêncio (achado da auditoria). */
+const diaValido = (d: string): boolean => DIA.test(d) && diaCivil(inicioDoDiaCivil(d)) === d;
+function exigirDia(d: string, oQue: string): string {
+  if (!diaValido(d)) throw new Error(`A data ${oQue} não é uma data válida. Nada foi gravado.`);
+  return d;
+}
 const ehOrigem = (v: string): v is OrigemDoCheque => v === "PAGAMENTO" || v === "AVULSO";
 const ehSituacao = (v: string): v is SituacaoDoCheque => v === "EMITIDO" || v === "CANCELADO";
 
@@ -38,7 +44,7 @@ export function filtroDosCheques(sp: Record<string, string | string[] | undefine
   const hoje = diaCivil(new Date());
   const de = s("de") === "" ? `${hoje.slice(0, 8)}01` : s("de");
   const ate = s("ate") === "" ? hoje : s("ate");
-  if (!DIA.test(de) || !DIA.test(ate)) return { erro: "Informe o período com datas válidas." };
+  if (!diaValido(de) || !diaValido(ate)) return { erro: "Informe o período com datas válidas." };
   if (de > ate) return { erro: "A data inicial do período é posterior à final." };
   const origem = s("origem");
   const situacao = s("situacao");
@@ -120,7 +126,7 @@ export async function registrarChequeAvulsoPelaTela(input: {
       await registrarChequeAvulso(cliente(), {
         contaBancariaId: input.contaBancariaId,
         numero: input.numero,
-        data: meioDiaCivil(input.dia),
+        data: meioDiaCivil(exigirDia(input.dia, "do cheque")),
         valor: input.valor,
         favorecido: input.favorecido,
         finalidade: input.finalidade,
@@ -132,6 +138,6 @@ export async function registrarChequeAvulsoPelaTela(input: {
 
 export async function cancelarChequeAvulsoPelaTela(input: { readonly chequeId: string; readonly dia: string; readonly motivo: string }): Promise<void> {
   await comEscritaAutenticada("ESTORNAR_MOVIMENTO_BANCARIO", async (criadoPor) => {
-    await cancelarChequeAvulso(cliente(), { chequeId: input.chequeId, data: meioDiaCivil(input.dia), motivo: input.motivo, criadoPor });
+    await cancelarChequeAvulso(cliente(), { chequeId: input.chequeId, data: meioDiaCivil(exigirDia(input.dia, "do cancelamento")), motivo: input.motivo, criadoPor });
   });
 }

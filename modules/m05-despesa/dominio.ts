@@ -441,6 +441,8 @@ export const zLiquidarInput = z.object({
    * transação. Ver `exigirMedicaoAprovadaDaObra`.
    */
   medicaoId: z.string().min(1).optional(),
+  /** V36 (TR 5.10.1.30) — a despesa foi realizada sem empenho prévio; o empenho a regulariza. Só informação. */
+  despesaSemEmpenhoPrevio: z.boolean().optional(),
   /**
    * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO, quando a despesa é de material.
    *

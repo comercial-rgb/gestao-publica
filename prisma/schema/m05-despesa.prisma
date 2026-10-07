@@ -330,6 +330,9 @@ model Liquidacao {
   valor             Decimal  @db.Decimal(18, 2)
   data              DateTime
   responsavelAtesto String
+  /// V36 (TR 5.10.1.30) — a despesa foi realizada SEM EMPENHO PRÉVIO (Lei 4.320, art. 60) e o empenho veio depois, para
+  /// regularizá-la. Informação declarada por quem liquida; não muda lançamento nem saldo. As anulações ficam com o padrão.
+  despesaSemEmpenhoPrevio Boolean @default(false)
 
   /// V23 — o MOTIVO da anulação (inteira ou parcial) da liquidação: SAGRES EstornoLiquidacao §4.11,
   /// obrigatório, até 120. Nulo na liquidação genuína e nas anulações gravadas antes (inventar um

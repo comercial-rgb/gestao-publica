@@ -77,6 +77,8 @@ export interface LiquidacaoDaTela {
   readonly pago: string;
   readonly saldoAPagar: string;
   readonly anulado: boolean;
+  /** V36 — a despesa foi realizada sem empenho prévio. */
+  readonly despesaSemEmpenhoPrevio: boolean;
   readonly empenhoId: string;
   readonly empenhoNumero: string;
   readonly credorCpfCnpj: string;
@@ -114,6 +116,8 @@ export async function registrarLiquidacao(input: {
   readonly data: Date;
   readonly responsavelAtesto: string;
   readonly historico: string;
+  /** V36 — a despesa foi realizada sem empenho prévio (o empenho a regulariza). */
+  readonly despesaSemEmpenhoPrevio?: boolean;
   /** V5: o documento fiscal conferido que lastreia esta liquidação. */
   readonly documentoFiscalId?: string;
   /**
@@ -200,6 +204,7 @@ function paraTela(l: LiquidacaoNaLista): LiquidacaoDaTela {
     pago: l.pago.toFixed(2),
     saldoAPagar: l.saldoAPagar.toFixed(2),
     anulado: l.anulado,
+    despesaSemEmpenhoPrevio: l.despesaSemEmpenhoPrevio,
     empenhoId: l.empenhoId,
     empenhoNumero: l.empenhoNumero,
     credorCpfCnpj: l.credorCpfCnpj,
