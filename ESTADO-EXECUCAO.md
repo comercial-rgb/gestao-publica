@@ -313,6 +313,12 @@ cronograma por percentual (dinheiro, ao centavo), superfície no resto. Catálog
   reprovisionado; diff de schema vazio. Censo 543 nomes (+4, nenhuma ação nova).
 - Medições: typecheck do app e do backend limpos; menu contra o servidor, leitura exige ação e m22-documentos 40/40;
   percurso `scripts/percurso-v36-nona-rodada.mts` 9/9 (a negação com o motivo "Acesso a esta consulta" e download 404).
+- **Publicado em 06/10/2026 (noite):** `fb9116ad` na main (rodada `d357039b`; Actions 37560600337 verde), `/release` =
+  `fb9116a`. Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36j-20261007T020232Z.dump`. Migration
+  `20261108100000_v36_audiencias_e_obras_da_ldo` aplicada em produção; sem atualização de permissões. Conferido com o
+  administrador: `/planejamento/audiencias` com o formulário, a LDO com "Prever obra" e o demonstrativo de obras com
+  200. **Achado pela conferência:** a página inicial do Planejamento tem lista própria de atalhos e não mostrava as
+  audiências (o menu lateral já mostrava); entrada acrescentada no commit seguinte e republicada.
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
