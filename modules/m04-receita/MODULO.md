@@ -213,3 +213,16 @@ receita.tipo == ANULACAO        => não se anula uma anulação
 - `ementario-oficial.ts`: descrição oficial de um código real pelo agregador do ementário STN 2026 + o Tipo.
 - **Pendente:** deduções de rendimentos (tipo 4) e outras (tipo 5) não têm fato; a natureza redutora antiga continua
   lida pela base de impostos para bases anteriores.
+
+## V36 — as fontes da natureza com percentual (TR 5.9.3.4)
+
+`fontes-da-natureza.ts`, schema `m04-fontes-da-natureza.prisma`. O ente declara, por natureza, em que fontes a receita
+se reparte e em que percentual (`definirFontesDaNatureza`, sob PARAMETRIZAR_ROTEIRO_ORCAMENTARIO, a mesma ação do
+cadastro da natureza). Tela `/receita/naturezas/fontes` (leitura CONSULTAR_RECEITA).
+
+- A soma não passa de 100%; o cadastro aceita a composição incompleta, e quem rateia só aceita a que fecha em 100%.
+- Uma fonte por composição; a fonte do resíduo (o centavo que o percentual não fecha) é declarada e tem de estar nela.
+- Versionada e insert-only: a vigente é a mais recente da natureza (`composicoesVigentes`). A publicação trava a
+  natureza (posto `NaturezaDaReceita`, 42) antes de gravar, e a hora é a de depois da trava.
+- `ratearPelaComposicao` trunca cada parte a duas casas e dá o resto à fonte do resíduo — o desenho do rateio de custos.
+- Teste: `m04-fontes-da-natureza.test.ts` (10). Percurso: `scripts/percurso-v36-fontes-da-natureza.mts`.

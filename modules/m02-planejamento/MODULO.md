@@ -331,3 +331,19 @@ mutações provadas: sinal, escolha do tipo e recusa. O guard do plano oficial c
 **Pendência nomeada:**
 - bases anteriores à V35: previsões e reprevisões gravadas sem lançamento não são reprocessadas. A produção de
   Esperança foi configurada já com a previsão no razão.
+
+## V36 — a previsão da receita da LOA por rateio (TR 5.9.3.7)
+
+`previsao-por-rateio.ts` (`preverReceitaPorRateio`, sob CRIAR_RECEITA_PREVISTA). O operador informa a natureza e o
+valor; o serviço reparte pela composição vigente da natureza (M04, `fontes-da-natureza.ts`) e grava uma previsão por
+fonte com o lançamento de 1º de janeiro (D 5.2.1.1.1 / C 6.2.1.1, as constantes de `criarReceitaPrevista`). Tela: o
+formulário na `/planejamento/receita-prevista`, só com as naturezas de composição completa.
+
+- Tudo ou nada: exercício aberto (`exigirExercicioAberto`), composição de 100% e nenhuma previsão já gravada para as
+  fontes são conferidos antes de gravar; a corrida que passa pela conferência cai na chave única e desfaz o rateio
+  inteiro, nomeando a fonte (t7, determinístico).
+- A parte que trunca a zero não vira previsão. Natureza de categoria 7 ou 8 é intraorçamentária (o critério da carga).
+- **Pendência nomeada `PREVISAO-LINHA-A-LINHA-SEM-GUARDA-DE-EXERCICIO`:** o `criarReceitaPrevista` (adapter
+  `criarReceitaPrevistaRepositoryPrisma`) grava a previsão e o lançamento de 1º de janeiro sem conferir o exercício
+  aberto. Hoje ele só é alcançado pela carga da LOA e por scripts; acrescentar a guarda mexe nesses chamadores e é
+  unidade própria (achado da auditoria do rateio, 07/10/2026).

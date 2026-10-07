@@ -6,6 +6,9 @@ import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { DEDUCAO_SAGRES, lerReceitaPrevista } from "../../../../lib/portas/receita-prevista";
 import { anoCivil } from "../../../../packages/datas/index";
 import { FormDoDetalhe } from "./FormDoDetalhe";
+import { FormDoRateio, type NaturezaQueRateia } from "./FormDoRateio";
+import { naturezasQueRateiam } from "../../../../lib/portas/fontes-da-natureza";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -21,9 +24,14 @@ export default async function ReceitaPrevistaPage({ searchParams }: { readonly s
   const sp = await searchParams;
   const exercicio = /^\d{4}$/.test(sp["exercicio"] ?? "") ? Number(sp["exercicio"]) : anoCivil(new Date());
   let linhas: Awaited<ReturnType<typeof lerReceitaPrevista>>;
+  let rateaveis: readonly NaturezaQueRateia[] = [];
+  let podeRatear = false;
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
-    linhas = await lerReceitaPrevista(exercicio);
+    const [l, permitidas] = await Promise.all([lerReceitaPrevista(exercicio), acoesPermitidas(["CRIAR_RECEITA_PREVISTA"])]);
+    linhas = l;
+    podeRatear = permitidas.has("CRIAR_RECEITA_PREVISTA");
+    if (podeRatear) rateaveis = await naturezasQueRateiam();
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -48,6 +56,7 @@ export default async function ReceitaPrevistaPage({ searchParams }: { readonly s
           <strong>{semSubtipo} dedução(ões) sem o tipo.</strong> A previsão da receita fica fora do balancete de janeiro até o registro.
         </div>
       ) : null}
+      {podeRatear ? <FormDoRateio exercicio={exercicio} naturezas={rateaveis} /> : null}
       <Card>
         {linhas.length === 0 ? (
           <p className="text-xs text-[color:var(--color-ink-3)]">Nenhuma linha de receita prevista no exercício.</p>

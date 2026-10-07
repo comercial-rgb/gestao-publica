@@ -300,6 +300,7 @@ export const EXECUCAO_RECEITA: readonly RelatorioNav[] = [
   { href: "/receita/deducoes", numero: "Deduções", rotulo: "Deduções da receita", descricao: "Retenção do FUNDEB na origem, registrada como dedução da receita arrecadada, com estorno." },
   // V7 B1 — a primeira unidade tributária: cadastrar, parametrizar e SIMULAR (sem lançar nem constituir dívida).
   { href: "/receita/naturezas", numero: "Naturezas", rotulo: "Naturezas de receita", descricao: "Ementário da receita: os códigos em que a arrecadação é classificada." },
+  { href: "/receita/naturezas/fontes", numero: "Fontes por natureza", rotulo: "Fontes por natureza da receita", descricao: "Em que fontes a receita de cada natureza se reparte, com percentual, para ratear a previsão." },
   { href: "/receita/imoveis", numero: "Imóveis", rotulo: "Cadastro imobiliário", descricao: "Cadastro imobiliário, proprietários e simulação do imposto." },
   { href: "/receita/parametros-tributarios", numero: "Parâmetros", rotulo: "Parâmetros do tributo", descricao: "Fórmulas, alíquotas e valores dos tributos municipais por exercício." },
 ];
@@ -716,6 +717,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
     grupos: [
       { rotulo: "Classificação e previsão", itens: [
         { href: "/receita/naturezas", rotulo: "Naturezas de receita" },
+        { href: "/receita/naturezas/fontes", rotulo: "Fontes por natureza da receita" },
         { href: "/planejamento/receita-prevista", rotulo: "Previsão da receita" },
         { href: "/planejamento/reprevisao", rotulo: "Reprevisão" },
       ] },
@@ -940,6 +942,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/planejamento/fontes-de-recurso", rotulo: "Fontes de recurso" },
         { href: "/contabilidade/natureza-das-fontes", rotulo: "Natureza das fontes" },
         { href: "/receita/naturezas", rotulo: "Naturezas de receita" },
+        { href: "/receita/naturezas/fontes", rotulo: "Fontes por natureza da receita" },
         { href: "/contabilidade/exportacoes-federais/classificacao", rotulo: "Classificação para a Receita" },
       ] },
       { rotulo: "Responsáveis e acesso", itens: [

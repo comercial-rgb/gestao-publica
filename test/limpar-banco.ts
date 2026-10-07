@@ -568,6 +568,9 @@ export const TABELAS = [
   "LancamentoContabil",
   "ContaPcasp",
   // M02 — planejamento
+  // V36 — as fontes de cada natureza da receita, com percentual (antes da natureza e da fonte).
+  "ItemDaComposicaoDeFontes",
+  "ComposicaoDeFontesDaNatureza",
   "ReceitaPrevista",
   "ReceitaReprevista",
   "DeParaRclAnexo3",

@@ -1176,9 +1176,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): NaturezaReceita não tem relação com fonte; o vínculo nasce em cada ReceitaPrevista, com valor absoluto e sem percentual. FALTA: lista de fontes por natureza com percentual e soma <= 100%.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador e contador (só consulta) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · passos: /receita/naturezas/fontes → natureza 11125003 com 500 (60,5%) e 540 (39,5%), sobra na 540 → a lista mostra 100% → composição de 110% recusada com o motivo, nada gravado → o contador lê a lista sem o formulário · obtido: 7/7 · artefato: scripts/percurso-v36-fontes-da-natureza.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — a natureza da receita passou a ter as suas fontes com percentual: modules/m04-receita/fontes-da-natureza.ts (definirFontesDaNatureza, sob PARAMETRIZAR_ROTEIRO_ORCAMENTARIO, a ação do cadastro da natureza), tabelas ComposicaoDeFontesDaNatureza e ItemDaComposicaoDeFontes (migration 20261108160000, CHECK percentual > 0 e <= 100). Uma ou mais fontes; a soma não passa de 100% (recusa nomeando a soma), fonte repetida e fonte do resíduo fora da composição são recusadas; natureza e fonte têm de existir. Versionada e insert-only (a vigente é a mais recente, com a natureza travada na publicação). Tela /receita/naturezas/fontes (leitura CONSULTAR_RECEITA; o formulário só para quem cadastra naturezas). m04-fontes-da-natureza.test.ts 10/10 (t2 duas naturezas e duas versões; t4 as recusas; t7b a trava); mutações acusadas.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.5",
@@ -1218,9 +1218,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há rateio automático da receita da LOA por percentual de fonte; o valor é informado por linha natureza x fonte. FALTA: o cadastro de 5.9.3.4 e a divisão do valor.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador e contador (só consulta) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · passos: /planejamento/receita-prevista → natureza 11125003, 1.000,01 → 605,00 na 500 e 395,01 na 540, dois lançamentos → a lista mostra as duas linhas → o segundo rateio é recusado nomeando as fontes → o contador lê a lista sem o formulário · obtido: 7/7 · artefato: scripts/percurso-v36-fontes-da-natureza.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — a receita da LOA pode ser informada por um valor só, rateado automaticamente pelos percentuais das fontes da natureza: modules/m02-planejamento/previsao-por-rateio.ts (preverReceitaPorRateio, sob CRIAR_RECEITA_PREVISTA). Cada parte é truncada a duas casas e o centavo de sobra vai à fonte declarada na composição; grava uma ReceitaPrevista por fonte com o lançamento de 1º de janeiro (as contas de criarReceitaPrevista). Tudo ou nada: exercício aberto, composição de 100% e nenhuma previsão já existente para as fontes conferidos antes de gravar; a corrida cai na chave única e desfaz o rateio inteiro nomeando a fonte. Formulário na /planejamento/receita-prevista, só com as naturezas de composição completa. m04-fontes-da-natureza.test.ts (t1 três terços de 1.000,00 com o centavo na fonte do resíduo e as seis partidas no orçamentário; t3 composição incompleta recusada; t5 tudo ou nada; t6 intraorçamentária e parte zero; t7 corrida determinística; t7c exercício inexistente e encerrado; t8 sem a ação, recusa nomeando-a); mutações acusadas.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.8",

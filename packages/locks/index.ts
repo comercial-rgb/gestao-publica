@@ -424,6 +424,14 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: o ato de alteração que a sanção grava não trava nada.
    */
   PecaDoPlanejamento: 41,
+  /**
+   * V36 — A NATUREZA DA RECEITA na publicação da composição de fontes (M04, `fontes-da-natureza.ts`). A vigente é a
+   * mais recente por `criadoEm`; sem serializar as publicações da mesma natureza, a hora gravada seria a do início de
+   * cada transação, e a que terminasse por último poderia não ser a vigente. Trava, e só então carimba a hora.
+   *
+   * ⚠️ ÚLTIMO POSTO: a publicação não trava mais nada.
+   */
+  NaturezaDaReceita: 42,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

@@ -1,0 +1,52 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M04 — AS FONTES DE CADA NATUREZA DA RECEITA, COM PERCENTUAL (TR 5.9.3.4), E O RATEIO DA PREVISÃO (TR 5.9.3.7).
+///
+/// O cadastro da natureza diz em que fontes a receita dela se reparte e em que percentual. A soma dos percentuais não
+/// passa de 100 (o cadastro aceita uma composição incompleta); o rateio da previsão da LOA só aceita a composição que
+/// fecha em 100, porque o que sobrasse ficaria previsto em fonte nenhuma.
+///
+/// Versionada e insert-only: uma nova composição é outra linha, e a vigente é a mais recente da natureza. Corrigir é
+/// publicar outra; a previsão já rateada não muda, porque o rateio grava as previsões (natureza x fonte) e não lê a
+/// composição depois.
+///
+/// O centavo que o percentual não fecha (1.000,00 em três terços) vai à FONTE DO RESÍDUO, declarada na composição — o
+/// mesmo desenho do rateio de custos (M12): sem dono declarado, o centavo dependeria da ordem das linhas.
+model ComposicaoDeFontesDaNatureza {
+  id String @id @default(cuid())
+
+  naturezaReceitaId String
+  naturezaReceita   NaturezaReceita @relation("ComposicoesDeFontes", fields: [naturezaReceitaId], references: [id], onDelete: Restrict)
+
+  /// A fonte que recebe o centavo de sobra no rateio. Tem de ser uma das fontes da composição (conferido no serviço).
+  fonteDoResiduoId String
+  fonteDoResiduo   FonteRecurso @relation("ResiduoDaComposicao", fields: [fonteDoResiduoId], references: [id], onDelete: Restrict)
+
+  /// O ato ou o motivo da composição (lei, decreto, parecer da contabilidade).
+  fundamento String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  itens ItemDaComposicaoDeFontes[]
+
+  @@index([naturezaReceitaId, criadoEm])
+}
+
+model ItemDaComposicaoDeFontes {
+  id String @id @default(cuid())
+
+  composicaoId String
+  composicao   ComposicaoDeFontesDaNatureza @relation(fields: [composicaoId], references: [id], onDelete: Restrict)
+
+  fonteId String
+  fonte   FonteRecurso @relation("FonteDaComposicao", fields: [fonteId], references: [id], onDelete: Restrict)
+
+  /// 1 = exercício atual, 2 = anterior — a mesma dimensão da `ReceitaPrevista`.
+  exercicioFonte Int @default(1)
+
+  /// Percentual (50 = 50 %), seis casas. CHECK: > 0 e <= 100.
+  percentual Decimal @db.Decimal(9, 6)
+
+  @@unique([composicaoId, fonteId, exercicioFonte])
+  @@index([fonteId])
+}

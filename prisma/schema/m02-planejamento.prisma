@@ -260,6 +260,9 @@ model FonteRecurso {
 
   fichas            FichaOrcamentaria[]
   receitasPrevistas ReceitaPrevista[]
+  /// V36 — composições de fontes das naturezas da receita (m04-fontes-da-natureza.prisma). VIRTUAIS.
+  residuoDeComposicoes ComposicaoDeFontesDaNatureza[] @relation("ResiduoDaComposicao")
+  itensDeComposicoes   ItemDaComposicaoDeFontes[]     @relation("FonteDaComposicao")
   /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
   previsoesPpa      PrevisaoReceitaPpa[]
   // back-relations M04/M05 — campos VIRTUAIS, não geram coluna.
@@ -405,6 +408,8 @@ model NaturezaReceita {
   nivelContaManad   Int?
 
   receitasPrevistas ReceitaPrevista[]
+  /// V36 — as composições de fontes desta natureza (m04-fontes-da-natureza.prisma). VIRTUAL.
+  composicoesDeFontes ComposicaoDeFontesDaNatureza[] @relation("ComposicoesDeFontes")
   /// back-relations M02b (PPA) — campos VIRTUAIS, não geram coluna.
   previsoesPpa       PrevisaoReceitaPpa[]
   receitasAnteriores ReceitaAnteriorPpa[]

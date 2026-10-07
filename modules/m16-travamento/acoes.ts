@@ -1203,6 +1203,9 @@ export type NomeDeServico =
   | "declararContaDaReceita"
   // M04 V22 — o ementário da receita (cadastro das naturezas de receita do ente)
   | "cadastrarNaturezaReceita"
+  // V36 (TR 5.9.3.4 e 5.9.3.7) — as fontes da natureza com percentual, e a previsão da LOA rateada por elas
+  | "definirFontesDaNatureza"
+  | "preverReceitaPorRateio"
   // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
   | "acrescentarFonteAoRol"
   | "removerFonteDoRol"
@@ -2031,6 +2034,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // o código em que a registra (segregação do 6.4) — nem `CRIAR_RECEITA_PREVISTA`, que é ato da
   // LOA de um exercício sobre um código que já existe.
   cadastrarNaturezaReceita: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V36 — as fontes de uma natureza, com percentual, são parte do cadastro dela: a mesma autoridade de quem a cria.
+  definirFontesDaNatureza: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V36 — prever a receita da LOA por rateio é prever a receita: a mesma autoridade da previsão linha a linha.
+  preverReceitaPorRateio: "CRIAR_RECEITA_PREVISTA",
   // ── M07 V11 V8.3 — os tipos de consignação ──
   cadastrarTipoDeConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
   redefinirContaDaConsignacao: "GERIR_TIPOS_DE_CONSIGNACAO",
@@ -3321,6 +3328,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerLinhaDoAlvo: "leitura (V36 — a linha planejada de um alvo do ato de alteração, com a peça e o rótulo — não muta)",
   gravarItensNoAtoDaLei: "composável interno (V36 — grava os itens aprovados no ato de alteração da lei, pelo guard do ato, DENTRO da sanção da emenda ao PPA ou à LDO, que já autorizou SANCIONAR_EMENDA_AO_ORCAMENTO)",
   emendasDaPeca: "leitura (V36 — as emendas de uma peça do planejamento com a situação derivada — não muta)",
+  composicoesVigentes: "leitura (V36 — a composição de fontes vigente de cada natureza da receita — não muta)",
   balancetePorFonte: "leitura (V36 — balancete analítico por fonte de recursos: as somas do razão agrupadas pela fonte que o resolver da MSC acha no fato — não muta)",
   bloqueiosDaPeca: "leitura (V36 — os bloqueios vivos das linhas de uma peça para emendas — não muta)",
   chequesEmitidos: "leitura (V36 — os cheques emitidos num período, de pagamento e avulsos, numa consulta só; tela de cheques)",
