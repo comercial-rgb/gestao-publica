@@ -77,6 +77,11 @@ export const TABELAS = [
   "PlanilhaOrcamentariaDaObra",
   "PreviaDePlanilhaOrcamentaria",
   "PublicacaoDaObra",
+  // V36 — as obras previstas na LDO e as audiências públicas (antes da obra, da LDO e do órgão).
+  "ObraPrevistaLdo",
+  "SituacaoDaSolicitacao",
+  "SolicitacaoDaAudiencia",
+  "AudienciaPublica",
   // A obra sem órgão escapava da limpeza (só caía pela cascata do Orgao): a planilha cria obra sem órgão.
   "Obra",
   "EstornoDeAditivoPorItens",

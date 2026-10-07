@@ -17,6 +17,7 @@ const ROTULO_DO_ANEXO_DA_LDO: Readonly<Record<(typeof ANEXOS_DA_LDO)[number], st
   "divida-consolidada": "Dívida consolidada",
   "margem-expansao": "Margem de expansão das despesas obrigatórias",
   prioridades: "Prioridades e metas",
+  "obras-e-conservacao": "Obras e conservação do patrimônio",
 };
 
 const tamanho = (b: number): string => (b >= 1_048_576 ? `${(Math.round((b / 1_048_576) * 10) / 10).toString().replace(".", ",")} MB` : `${String(Math.max(1, Math.round(b / 1024)))} KB`);

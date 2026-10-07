@@ -196,6 +196,8 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "Plano Plurianual: programas, indicadores, ações e metas do quadriênio (CF art. 165, § 1º)." },
   { href: "/planejamento/ldo", numero: "LDO", rotulo: "Lei de Diretrizes Orçamentárias", descricao: "Lei de Diretrizes Orçamentárias: prioridades e anexos de metas e riscos fiscais." },
   { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações do PPA." },
+  // V36: a participação popular na elaboração das peças (LRF art. 48).
+  { href: "/planejamento/audiencias", numero: "Audiências", rotulo: "Audiências públicas", descricao: "Audiências públicas do PPA, da LDO e da LOA, com as solicitações da comunidade e os documentos." },
   // V18/C13: a lei que altera a peça já aprovada. O original fica; o vigente é derivado.
   { href: "/planejamento/alteracoes", numero: "Alterações", rotulo: "Alterações do PPA e da LDO", descricao: "Alterações do PPA e da LDO por lei ou decreto, com o valor original e o vigente." },
   { href: "/planejamento/unidades-orcamentarias", numero: "Unidades", rotulo: "Unidades orçamentárias", descricao: "Natureza jurídica, secretário responsável e ato de nomeação de cada unidade orçamentária, com histórico." },
@@ -637,6 +639,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/planejamento/ppa", rotulo: "Plano Plurianual" },
         { href: "/planejamento/ppa/programas", rotulo: "Programas, objetivos e metas" },
         { href: "/planejamento/ppa/estrutura", rotulo: "Estrutura temática" },
+        { href: "/planejamento/audiencias", rotulo: "Audiências públicas" },
         { href: "/planejamento/programas-e-acoes", rotulo: "Programas e ações do orçamento" },
       ] },
       { rotulo: "LDO", itens: [

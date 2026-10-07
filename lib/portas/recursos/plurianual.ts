@@ -186,7 +186,7 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
   descricao:
     "Lei de diretrizes orçamentárias de cada exercício e sua tramitação (envio ao Legislativo, devolução e sanção), " +
     "com as prioridades e os anexos da LRF: metas anuais, riscos fiscais, renúncia de receita, alienação de bens, " +
-    "projeção do RPPS, dívida consolidada e margem de expansão. Os anexos são emitidos em PDF no detalhe.",
+    "projeção do RPPS, dívida consolidada, margem de expansão e as obras previstas. Os anexos são emitidos em PDF no detalhe.",
   campos: [
     { nome: "exercicio", rotulo: "Exercício", ...ANO, obrigatorio: true, largura: 1, placeholder: "2026" },
     { nome: "inicioVigencia", rotulo: "Início da vigência", tipo: "data", obrigatorio: true, largura: 1 },
@@ -301,6 +301,20 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
         { nome: "novasDespesasObrigatorias", rotulo: "Novas despesas obrigatórias continuadas (R$)", ...DINHEIRO },
       ],
     },
+    {
+      nome: "obra-prevista", rotulo: "Prever obra (obras e conservação do patrimônio)", acaoDoCenso: "CADASTRAR_LDO",
+      aviso: "LRF, art. 45: projeto novo só entra no orçamento depois de atendidos os em andamento e a conservação do patrimônio.",
+      campos: [
+        { nome: "orgaoId", rotulo: "Entidade responsável", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "obraId", rotulo: "Obra já cadastrada (se houver)", tipo: "referencia", catalogo: "obras-para-ldo", largura: 2 },
+        { nome: "descricao", rotulo: "Descrição da obra", tipo: "texto", obrigatorio: true, largura: 3 },
+        { nome: "dataInicio", rotulo: "Data de início", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "valorPrevisto", rotulo: "Valor previsto (R$)", ...DINHEIRO },
+        { nome: "valorConservacao", rotulo: "Gastos com conservação (R$)", ...DINHEIRO },
+        { nome: "valorNovosProjetos", rotulo: "Valor em novos projetos (R$)", ...DINHEIRO },
+        { nome: "valorNoExercicio", rotulo: "Valor no exercício da LDO (R$)", ...DINHEIRO, ajuda: "Não pode exceder o valor previsto." },
+      ],
+    },
   ],
   permissoes: { criar: "CADASTRAR_LDO" },
   abas: ["dados", "historico", "relacionados"],
@@ -313,5 +327,6 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
     { rotulo: "Dívida consolidada (PDF)", href: "/planejamento/ldo/{id}/anexos/divida-consolidada", explicacao: "Estoque projetado e relação com a RCL." },
     { rotulo: "Margem de expansão (PDF)", href: "/planejamento/ldo/{id}/anexos/margem-expansao", explicacao: "LRF, art. 4º, § 2º, V: despesas obrigatórias de caráter continuado." },
     { rotulo: "Prioridades e metas (PDF)", href: "/planejamento/ldo/{id}/anexos/prioridades", explicacao: "As prioridades que entram no próximo orçamento." },
+    { rotulo: "Obras e conservação do patrimônio (PDF)", href: "/planejamento/ldo/{id}/anexos/obras-e-conservacao", explicacao: "LRF, art. 45: as obras previstas, com a conservação e os novos projetos." },
   ],
 });

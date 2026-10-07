@@ -516,6 +516,8 @@ model Obra {
   anexos          Anexo[]
   /// V36 — os atos de publicação no portal da transparência (m11-publicacao-da-obra.prisma). VIRTUAL.
   publicacoes PublicacaoDaObra[] @relation("PublicacoesDaObra")
+  /// V36 — as previsões desta obra nas LDO (TR 5.9.2.16). VIRTUAL.
+  previsoesNaLdo ObraPrevistaLdo[] @relation("PrevisoesDaObraNaLdo")
   camposAdicionais ValorDeCampoAdicional[] @relation("CampoAdicionalDeObra")
 
   criadoEm  DateTime @default(now())

@@ -48,7 +48,12 @@ function revalidarDono(dono: {
   readonly pagamentoId?: string | undefined;
   readonly movimentoBancarioId?: string | undefined;
   readonly obraId?: string | undefined;
+  readonly audienciaPublicaId?: string | undefined;
 }): void {
+  if (dono.audienciaPublicaId !== undefined) {
+    revalidatePath(`/planejamento/audiencias/${dono.audienciaPublicaId}`);
+    return;
+  }
   if (dono.obraId !== undefined) {
     revalidatePath(`/licitacoes/obras/${dono.obraId}`);
     return;
@@ -132,6 +137,7 @@ export async function anexarArquivoAction(
     const pagamentoId = texto(formData, "pagamentoId");
     const movimentoBancarioId = texto(formData, "movimentoBancarioId");
     const obraId = texto(formData, "obraId");
+    const audienciaPublicaId = texto(formData, "audienciaPublicaId");
 
     const dono = {
       ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
@@ -148,6 +154,7 @@ export async function anexarArquivoAction(
       ...(pagamentoId !== "" ? { pagamentoId } : {}),
       ...(movimentoBancarioId !== "" ? { movimentoBancarioId } : {}),
       ...(obraId !== "" ? { obraId } : {}),
+      ...(audienciaPublicaId !== "" ? { audienciaPublicaId } : {}),
     };
 
     try {

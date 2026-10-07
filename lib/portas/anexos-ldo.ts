@@ -1,10 +1,12 @@
 import { cliente } from "./cliente";
 import { toMoney } from "../../packages/contracts/index.js";
+import { diaCivilBr } from "../../packages/datas/index.js";
 import {
   anexoAlienacaoBens,
   anexoDividaConsolidada,
   anexoMargemExpansao,
   anexoMetasAnuais,
+  anexoObrasEConservacao,
   anexoPrioridades,
   anexoProjecaoRpps,
   anexoRenunciaReceita,
@@ -205,6 +207,27 @@ export async function montarAnexoDaLdo(
         }))
       );
     }
+
+    // V36 — as obras previstas na LDO (TR 5.9.2.17), na ordem do órgão e da data de início.
+    case "obras-e-conservacao": {
+      const linhas = await prisma.obraPrevistaLdo.findMany({
+        where: { ldoId },
+        orderBy: [{ orgao: { codigo: "asc" } }, { dataInicio: "asc" }, { id: "asc" }],
+        include: { orgao: { select: { codigo: true, nome: true } } },
+      });
+      return anexoObrasEConservacao(
+        ex,
+        linhas.map((o) => ({
+          orgao: `${o.orgao.codigo} — ${o.orgao.nome}`,
+          descricao: o.descricao,
+          dataInicio: diaCivilBr(o.dataInicio),
+          valorPrevisto: toMoney(o.valorPrevisto.toFixed(2)),
+          valorConservacao: toMoney(o.valorConservacao.toFixed(2)),
+          valorNovosProjetos: toMoney(o.valorNovosProjetos.toFixed(2)),
+          valorNoExercicio: toMoney(o.valorNoExercicio.toFixed(2)),
+        }))
+      );
+    }
   }
 }
 
@@ -226,6 +249,7 @@ export async function anexosDisponiveis(
     anexoDividaConsolidada(0, []),
     anexoMargemExpansao(0, []),
     anexoPrioridades(0, []),
+    anexoObrasEConservacao(0, []),
   ].map((a) => ({ chave: a.chave, titulo: a.titulo }));
 }
 

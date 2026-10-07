@@ -95,6 +95,17 @@ export interface MargemDto {
   readonly novasDespesasObrigatorias: Money;
 }
 
+/** V36 — a obra prevista na LDO (TR 5.9.2.16). A data de início chega já como dia civil (dd/mm/aaaa). */
+export interface ObraPrevistaDto {
+  readonly orgao: string;
+  readonly descricao: string;
+  readonly dataInicio: string;
+  readonly valorPrevisto: Money;
+  readonly valorConservacao: Money;
+  readonly valorNovosProjetos: Money;
+  readonly valorNoExercicio: Money;
+}
+
 export interface PrioridadeDto {
   readonly descricaoAcao: string;
   readonly produto: string;
@@ -503,6 +514,50 @@ export function anexoPrioridades(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 9 — OBRAS E CONSERVAÇÃO DO PATRIMÔNIO (LRF art. 45 · TR 5.9.2.17)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const BASE_OBRAS = "LRF art. 45, parágrafo único — Projetos em andamento e conservação do patrimônio público";
+
+/**
+ * V36 — o relatório que o art. 45 manda o Executivo encaminhar junto com o projeto da LDO: cada obra com a entidade
+ * responsável, a data de início e os quatro valores. As quatro colunas de dinheiro SOMAM (são valores da mesma
+ * natureza, obra a obra), e o total é a soma das linhas, nada além.
+ */
+export function anexoObrasEConservacao(exercicio: number, obras: readonly ObraPrevistaDto[]): AnexoLdo {
+  const linhas: LinhaAnexo[] = obras.map((o) => ({
+    orgao: o.orgao,
+    descricao: o.descricao,
+    dataInicio: o.dataInicio,
+    valorPrevisto: o.valorPrevisto,
+    valorConservacao: o.valorConservacao,
+    valorNovosProjetos: o.valorNovosProjetos,
+    valorNoExercicio: o.valorNoExercicio,
+  }));
+  return {
+    chave: "obras-e-conservacao",
+    titulo: "Demonstrativo de Obras e Conservação do Patrimônio",
+    baseLegal: BASE_OBRAS,
+    exercicio,
+    colunas: [
+      { chave: "orgao", rotulo: "Entidade responsável" },
+      { chave: "descricao", rotulo: "Obra" },
+      { chave: "dataInicio", rotulo: "Início" },
+      { chave: "valorPrevisto", rotulo: "Valor previsto", numerica: true },
+      { chave: "valorConservacao", rotulo: "Conservação", numerica: true },
+      { chave: "valorNovosProjetos", rotulo: "Novos projetos", numerica: true },
+      { chave: "valorNoExercicio", rotulo: "No exercício", numerica: true },
+    ],
+    linhas,
+    totais: totaisDe(linhas, ["valorPrevisto", "valorConservacao", "valorNovosProjetos", "valorNoExercicio"]),
+    notas: [
+      ...(linhas.length === 0 ? [notaDeAnexoVazio("obras previstas", BASE_OBRAS)] : []),
+      NOTA_LIMITE_DE_FONTE,
+    ],
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // O ROL — para a rota parametrizada saber o que existe
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -515,6 +570,7 @@ export const ANEXOS_DA_LDO = [
   "divida-consolidada",
   "margem-expansao",
   "prioridades",
+  "obras-e-conservacao",
 ] as const;
 
 export type ChaveAnexoLdo = (typeof ANEXOS_DA_LDO)[number];

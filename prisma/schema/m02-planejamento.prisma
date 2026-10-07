@@ -51,6 +51,9 @@ model Orgao {
   obras    Obra[]
   /// ENT03b — as auditorias internas deste órgão. Campo VIRTUAL.
   auditorias AuditoriaInterna[]
+  /// V36 — as solicitações de audiência pública que este órgão analisa e as obras que ele executa na LDO. VIRTUAIS.
+  solicitacoesDeAudiencia SolicitacaoDaAudiencia[] @relation("SolicitacoesDeAudiencia")
+  obrasPrevistasNaLdo     ObraPrevistaLdo[]        @relation("ObrasPrevistasDoOrgao")
 }
 
 model UnidadeOrcamentaria {

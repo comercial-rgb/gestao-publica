@@ -267,3 +267,13 @@ responde 404, como "não existe". `attachment` e `nosniff`, como na rota interna
 sanção e exercício sem lei: fora do portal.
 
 Pendência: PPA e LDO não têm documentos anexados no cadastro (só a LOA tem); a lei do PPA aparece pela referência.
+
+## V36 — audiências públicas e obras previstas na LDO
+
+- **Audiências públicas** (`audiencias.ts`, tela `/planejamento/audiencias`): a audiência, as solicitações da comunidade
+  (bairro, solicitante e contato, órgão que analisa) e a situação de cada uma. A situação é append-only
+  (`SituacaoDaSolicitacao`): a vigente é a mais recente e "recebida" é a ausência de linha. Tudo sob CADASTRAR_PPA no
+  ente — quem monta as peças registra as audiências delas. A audiência é dono de `Anexo` no M22.
+- **Obras previstas na LDO** (`obras-da-ldo.ts`, ação "Prever obra" no detalhe da LDO, sob CADASTRAR_LDO): o vínculo com a
+  obra do M11 é opcional, porque a LDO prevê obra que ainda não tem cadastro. O demonstrativo é o nono anexo da LDO,
+  `obras-e-conservacao` (LRF art. 45, parágrafo único), com totais coluna a coluna.

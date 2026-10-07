@@ -1278,6 +1278,10 @@ export type NomeDeServico =
   | "criarPrioridadeLdo"
   | "criarMetaAnualLdo"
   | "criarRiscoFiscal"
+  | "criarObraPrevistaLdo"
+  | "registrarAudienciaPublica"
+  | "registrarSolicitacaoDaAudiencia"
+  | "registrarSituacaoDaSolicitacao"
   | "criarRenunciaReceitaLdo"
   | "criarAlienacaoBemLdo"
   | "criarAplicacaoAlienacaoLdo"
@@ -2105,6 +2109,13 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarMargemExpansaoLdo: "CADASTRAR_METAS_FISCAIS_LDO",
   // O Anexo de Riscos Fiscais (art. 4º §3º).
   criarRiscoFiscal: "CADASTRAR_RISCOS_FISCAIS_LDO",
+  // V36 — TR 5.9.2.16: a obra prevista é parte da peça que o setor da LDO digita.
+  criarObraPrevistaLdo: "CADASTRAR_LDO",
+  // V36 — TR 5.9.1.1: as audiências públicas do planejamento (e as solicitações e a situação delas), sob a ação de
+  // quem monta as peças do planejamento. Ato do ENTE.
+  registrarAudienciaPublica: "CADASTRAR_PPA",
+  registrarSolicitacaoDaAudiencia: "CADASTRAR_PPA",
+  registrarSituacaoDaSolicitacao: "CADASTRAR_PPA",
   criarRenunciaReceitaLdo: "CADASTRAR_RENUNCIA_RECEITA_LDO",
   // A alienação prevista e a aplicação do produto (art. 44) são o mesmo demonstrativo.
   criarAlienacaoBemLdo: "CADASTRAR_ALIENACAO_LDO",

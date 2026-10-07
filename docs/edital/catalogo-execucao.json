@@ -378,9 +378,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cadastro de audiência pública (schema, módulos, telas). modules/m02b-plurianual/MODULO.md e docs/varreduras/varredura-v18-versao-do-planejamento.md registram como outro domínio; o M21 trata pedido de acesso, não audiência. FALTA: AudienciaPublica com as solicitações da comunidade (bairro, contato, órgão analisador, status).",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-nona-rodada.mts 9/9 · audiência criada pela lista; duas solicitações; acolher sem parecer recusado dizendo o motivo, nada gravado; com parecer a tabela mostra Acolhida/Recebida com bairro, contato e parecer; quem não lê o planejamento não abre.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: AudienciaPublica, SolicitacaoDaAudiencia e SituacaoDaSolicitacao (migration aditiva 20261108100000, CHECKs da peça e da situação); modules/m02b-plurianual/audiencias.ts — registrarAudienciaPublica, registrarSolicitacaoDaAudiencia (descrição, bairro, solicitante, contato, órgão responsável pela análise) e registrarSituacaoDaSolicitacao (append-only; a vigente é a mais recente, sem linha = recebida; acolher ou não acolher exige parecer; repetir a vigente é recusado), todos sob CADASTRAR_PPA no ente. m02b-audiencias.test.ts 4/4 (N=2 solicitações de órgãos diferentes; recusas com o motivo; negação pela ação), três mutações acusadas. Tela: /planejamento/audiencias (lista, criação, detalhe com a tabela das solicitações e as ações).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.1.2",
@@ -392,9 +392,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): sem a audiência (5.9.1.1) não há a que anexar. O anexo do M22 existe e funciona (leis orçamentárias usam ANEXAR_ARQUIVO), mas cada dono é uma FK própria em Anexo. FALTA: o dono audiência e a aba de anexos.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-nona-rodada.mts 9/9 · ata anexada pela aba Anexos, listada e baixada (200); para quem não lê o planejamento o download responde 404.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: a audiência pública virou dono de Anexo no M22 (coluna audienciaPublicaId, escopo do ente; a audiência tem de existir; leitura CONSULTAR_PLANEJAMENTO no ente, como a LOA); aba Anexos no detalhe da audiência com FormAnexo e ListaDeAnexos; download pela rota de documentos com a autorização por registro. m02b-audiencias.test.ts t4 (dono único, audiência inexistente recusada), mutação acusada; m22-documentos 40/40 com o menu e a leitura.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.1.3",
@@ -1036,9 +1036,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cadastro de obras previstas na LDO. Obra (prisma/schema/m11-licitacoes.prisma) é cadastro de contratação, sem início, valor previsto, conservação nem novos projetos. FALTA: o cadastro.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-nona-rodada.mts 9/9 · valor no exercício acima do previsto recusado dizendo os dois valores, nada gravado; a válida gravada com os valores digitados e no histórico da LDO.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: ObraPrevistaLdo (migration aditiva 20261108100000; CHECK de valores não negativos e do valor no exercício até o previsto); modules/m02b-plurianual/obras-da-ldo.ts — criarObraPrevistaLdo sob CADASTRAR_LDO: entidade responsável (órgão), obra cadastrada opcional (busca por identificador ou descrição), descrição, data de início, valor previsto, gastos com conservação, novos projetos e valor no exercício da LDO. m02b-obras-da-ldo.test.ts 3/3 (N=2 órgãos; recusas com o motivo; negação pela ação), mutação acusada. Tela: detalhe da LDO, ação \"Prever obra\", e o histórico.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.2.17",
@@ -1050,9 +1050,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o demonstrativo de obras e conservação do patrimônio não está entre os oito anexos de modules/m02b-plurianual/anexos/ldo.ts, e falta o cadastro que o alimentaria (5.9.2.16).",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-nona-rodada.mts 9/9 · o demonstrativo sai em PDF (200, application/pdf).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: anexo \"obras-e-conservacao\" da LDO — modules/m02b-plurianual/anexos/ldo.ts anexoObrasEConservacao (LRF art. 45, parágrafo único), colunas entidade, obra, início e os quatro valores, totais coluna a coluna; montado em lib/portas/anexos-ldo.ts, emitido em PDF por /planejamento/ldo/[id]/anexos/obras-e-conservacao e também no portal do planejamento (rótulo próprio). m02b-obras-da-ldo.test.ts t1 (totais à mão com N=2), m02b-anexos-ldo.test.ts com o rol de nove anexos.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.2.18",

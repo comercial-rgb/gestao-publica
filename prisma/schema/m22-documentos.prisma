@@ -180,6 +180,9 @@ model Anexo {
   /// V36 (TR 5.10.2.21) — o documento do movimento bancário (aviso do banco, contrato de aplicação). Ato do ENTE.
   movimentoBancarioId String?
   movimentoBancario   MovimentoBancario? @relation("AnexoDoMovimentoBancario", fields: [movimentoBancarioId], references: [id])
+  /// V36 (TR 5.9.1.2) — o documento da audiência pública (ata, lista de presença, apresentação). Ato do ENTE.
+  audienciaPublicaId String?
+  audienciaPublica   AudienciaPublica? @relation("AnexoDaAudienciaPublica", fields: [audienciaPublicaId], references: [id])
 
   /// O relatório circunstanciado gerado a partir deste anexo (origem SISTEMA). Campo VIRTUAL.
   relatorioCircunstanciado RelatorioCircunstanciado? @relation("AnexoDoRelatorioCircunstanciado")
@@ -210,6 +213,7 @@ model Anexo {
   @@index([leiOrcamentariaAnualId])
   @@index([pagamentoId])
   @@index([movimentoBancarioId])
+  @@index([audienciaPublicaId])
   @@index([ocorrenciaDeFiscalizacaoId])
   @@index([medicaoDaOrdemId])
   @@index([sha256])

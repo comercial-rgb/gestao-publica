@@ -67,6 +67,8 @@ export const zAnexar = z
     movimentoBancarioId: z.string().min(1).optional(),
     // ── V36: os documentos da obra (projeto, alvará, fotos), que o portal mostra quando a obra é publicada ──
     obraId: z.string().min(1).optional(),
+    // ── V36: a ata, a lista de presença e a apresentação da audiência pública do planejamento ──
+    audienciaPublicaId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -92,12 +94,13 @@ export const zAnexar = z
         d.pagamentoId,
         d.movimentoBancarioId,
         d.obraId,
+        d.audienciaPublicaId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento, movimento bancário ou obra. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento, movimento bancário, obra ou audiência pública. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -142,6 +145,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       pagamentoId: d.pagamentoId ?? null,
       movimentoBancarioId: d.movimentoBancarioId ?? null,
       obraId: d.obraId ?? null,
+      audienciaPublicaId: d.audienciaPublicaId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -210,6 +214,7 @@ export async function anexarArquivo(
         pagamentoId: d.pagamentoId ?? null,
         movimentoBancarioId: d.movimentoBancarioId ?? null,
         obraId: d.obraId ?? null,
+        audienciaPublicaId: d.audienciaPublicaId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -268,9 +273,16 @@ async function escopoDoDono(
     readonly pagamentoId?: string | undefined;
     readonly movimentoBancarioId?: string | undefined;
     readonly obraId?: string | undefined;
+    readonly audienciaPublicaId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  // V36: a audiência pública é ato do ENTE (M02b); ela tem de existir.
+  if (d.audienciaPublicaId !== undefined) {
+    const a = await tx.audienciaPublica.findUnique({ where: { id: d.audienciaPublicaId }, select: { id: true } });
+    if (a === null) throw new Error(`Audiência pública ${d.audienciaPublicaId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
   // V36: a obra é cadastro do ENTE (cadastrarObra autoriza no ente); a obra tem de existir.
   if (d.obraId !== undefined) {
     const o = await tx.obra.findUnique({ where: { id: d.obraId }, select: { id: true } });

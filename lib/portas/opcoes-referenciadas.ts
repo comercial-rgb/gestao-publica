@@ -271,6 +271,24 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       };
     },
   },
+  // V36 — a obra cadastrada (M11) a que a obra prevista na LDO se refere. Identificador e descrição, o que a LDO
+  // imprime; a leitura é a do planejamento, de quem digita a LDO.
+  "obras-para-ldo": {
+    leitura: "CONSULTAR_PLANEJAMENTO",
+    async buscar(_s, p) {
+      const linhas = await cliente().obra.findMany({
+        where: {
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          ...(p.q === "" ? {} : { OR: [{ identificador: contem(p.q) }, { descricao: contem(p.q) }] }),
+        },
+        orderBy: [{ identificador: "asc" }],
+        skip: skip(p), take,
+        select: { id: true, identificador: true, descricao: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((l) => ({ valor: l.id, rotulo: `${l.identificador} — ${l.descricao}` })), temMais: r.temMais };
+    },
+  },
   // V32 — a dívida fundada (operação de crédito) em que a guia registra o INGRESSO do empréstimo.
   "dividas-fundadas": {
     leitura: "CONSULTAR_DIVIDA",

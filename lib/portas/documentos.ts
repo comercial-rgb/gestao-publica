@@ -189,6 +189,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       pagamento: { select: { liquidacao: { select: { empenho: { select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } } } },
       movimentoBancarioId: true,
       obraId: true,
+      audienciaPublicaId: true,
     },
   });
   if (a === null) return null;
@@ -224,6 +225,8 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   // V36 — o documento da obra: quem lê licitações (a tela da obra) lê o anexo dela. Publicada no portal, o anexo
   // também sai sem sessão, pela rota pública, que confere a publicação.
   if (a.obraId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
+  // V36 — o documento da audiência pública: peça do planejamento, leitura do ente (como a LOA).
+  if (a.audienciaPublicaId !== null) return { acao: "CONSULTAR_PLANEJAMENTO", nivel: "ente" };
   return null;
 }
 
@@ -307,6 +310,8 @@ export interface AnexarNaTela {
   readonly movimentoBancarioId?: string | undefined;
   /** V36 — o documento da obra; ato do ente. */
   readonly obraId?: string | undefined;
+  /** V36 — o documento da audiência pública; ato do ente. */
+  readonly audienciaPublicaId?: string | undefined;
 }
 
 export async function anexarNaTela(
@@ -385,4 +390,10 @@ export async function lerDocumentosDoMovimento(id: string): Promise<DocumentosDo
 export async function lerAnexosDaObra(obraId: string): Promise<readonly AnexoNaLista[]> {
   const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_LICITACOES");
   return listarAnexosDoPagamentoOuMovimento(cliente(), { obraId }, sessao.identificador);
+}
+
+/** V36 — os anexos de uma audiência pública, para a aba da tela da audiência. Leitura do planejamento no ente. */
+export async function lerAnexosDaAudiencia(audienciaPublicaId: string): Promise<readonly AnexoNaLista[]> {
+  const sessao = await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return listarAnexosDoPagamentoOuMovimento(cliente(), { audienciaPublicaId }, sessao.identificador);
 }

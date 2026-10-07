@@ -394,6 +394,8 @@ model LeiDiretrizesOrcamentarias {
   dividas        DividaConsolidadaLdo[]
   projecoesRpps  ProjecaoAtuarialRpps[]
   margens        MargemExpansaoLdo[]
+  /// V36 — as obras previstas (LRF art. 45, TR 5.9.2.16). VIRTUAL.
+  obrasPrevistas ObraPrevistaLdo[] @relation("ObrasPrevistasNaLdo")
   /// Os atos que alteraram esta LDO (V18/C13).
   atosDeAlteracao AtoDeAlteracaoDoPlanejamento[]
 

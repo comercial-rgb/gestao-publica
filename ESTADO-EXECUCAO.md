@@ -295,6 +295,25 @@ cronograma por percentual (dinheiro, ao centavo), superfície no resto. Catálog
   deduções, o cronograma por percentual, o "Duplicar" na arrecadação e nos pagamentos e a tela de obras com 200. O
   servidor de desenvolvimento foi parado antes da conferência de tipos do `publicar`, que passou de primeira.
 
+**Nona rodada (06/10/2026, pedido "continue para finalizar").** Regime: superfície (cadastros, relatório). Módulo M02b
+(planejamento plurianual), com o dono novo de anexo no M22. Catálogo inteiro: 134 validadas (eram 130), 193 ausentes
+(eram 197).
+- **Audiências públicas** (TR 5.9.1.1-2): `AudienciaPublica`, `SolicitacaoDaAudiencia` e `SituacaoDaSolicitacao`
+  (append-only; vigente = a mais recente; sem linha = recebida; acolher ou não acolher exige parecer), em
+  `modules/m02b-plurianual/audiencias.ts`, sob CADASTRAR_PPA no ente (nenhuma ação nova). Tela `/planejamento/audiencias`
+  (lista, criação, detalhe com a tabela das solicitações, ações e aba Anexos; menu do Planejamento). A audiência é dono
+  de `Anexo` (`audienciaPublicaId`; leitura CONSULTAR_PLANEJAMENTO no ente). Teste 4/4, três mutações acusadas
+  (vigente pela mais antiga, repetição aceita, anexo sem conferir a audiência).
+- **Obras previstas na LDO e o demonstrativo** (TR 5.9.2.16-17): `ObraPrevistaLdo` (órgão, obra cadastrada opcional,
+  descrição, início e os quatro valores; CHECK do valor no exercício até o previsto), `criarObraPrevistaLdo` sob
+  CADASTRAR_LDO; ação "Prever obra" no detalhe da LDO; anexo `obras-e-conservacao` (LRF art. 45, parágrafo único) em
+  PDF no detalhe e no portal do planejamento. Teste 3/3 com mutação; anexos da LDO 26/26 com o rol de nove.
+  Defeito de texto corrigido antes do registro: a recusa mostrava "500000.01"; passou a "R$ 500.000,01" (`emProsa`).
+- Migration `20261108100000_v36_audiencias_e_obras_da_ldo` (aditiva, zero DROP), aplicada na fictícia; papel de runtime
+  reprovisionado; diff de schema vazio. Censo 543 nomes (+4, nenhuma ação nova).
+- Medições: typecheck do app e do backend limpos; menu contra o servidor, leitura exige ação e m22-documentos 40/40;
+  percurso `scripts/percurso-v36-nona-rodada.mts` 9/9 (a negação com o motivo "Acesso a esta consulta" e download 404).
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.

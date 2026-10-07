@@ -9,6 +9,7 @@ import {
   anexoDividaConsolidada,
   anexoMargemExpansao,
   anexoMetasAnuais,
+  anexoObrasEConservacao,
   anexoPrioridades,
   anexoProjecaoRpps,
   anexoRenunciaReceita,
@@ -360,7 +361,7 @@ describe("t5 — determinismo e procedência", () => {
   });
 
   it("o rol e o guarda de chave concordam", () => {
-    expect(ANEXOS_DA_LDO.length).toBe(8);
+    expect(ANEXOS_DA_LDO.length).toBe(9);
     for (const c of ANEXOS_DA_LDO) expect(ehChaveDeAnexo(c)).toBe(true);
     expect(ehChaveDeAnexo("anexo-que-nao-existe")).toBe(false);
 
@@ -375,6 +376,7 @@ describe("t5 — determinismo e procedência", () => {
       anexoDividaConsolidada(0, []),
       anexoMargemExpansao(0, []),
       anexoPrioridades(0, []),
+      anexoObrasEConservacao(0, []),
     ].map((a) => a.chave);
     expect([...ANEXOS_DA_LDO].sort()).toEqual(produzidas.sort());
   });

@@ -24,6 +24,7 @@ import {
   criarRenunciaReceitaLdo,
   criarRiscoFiscal,
 } from "../../../modules/m02b-plurianual/servico.js";
+import { criarObraPrevistaLdo } from "../../../modules/m02b-plurianual/obras-da-ldo.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import type { LinhaDoHistorico } from "../../molde/tipos.js";
@@ -514,6 +515,7 @@ export async function verLdo(id: string): Promise<DetalheLido | null> {
       dividas: { orderBy: { ano: "asc" }, select: { id: true, ano: true, dividaConsolidada: true, deducoes: true, receitaCorrenteLiquida: true, percentualRcl: true, criadoEm: true, criadoPor: true } },
       projecoesRpps: { orderBy: { ano: "asc" }, select: { id: true, ano: true, receitasPrevidenciarias: true, despesasPrevidenciarias: true, resultadoPrevidenciario: true, saldoFinanceiro: true, criadoEm: true, criadoPor: true } },
       margens: { orderBy: { ano: "asc" }, select: { id: true, ano: true, aumentoPermanenteReceita: true, reducaoPermanenteDespesa: true, novasDespesasObrigatorias: true, criadoEm: true, criadoPor: true } },
+      obrasPrevistas: { orderBy: { criadoEm: "asc" }, select: { id: true, descricao: true, dataInicio: true, valorPrevisto: true, valorConservacao: true, valorNovosProjetos: true, valorNoExercicio: true, criadoEm: true, criadoPor: true, orgao: { select: { codigo: true, nome: true } }, obra: { select: { identificador: true } } } },
     },
   });
   if (l === null) return null;
@@ -540,6 +542,16 @@ export async function verLdo(id: string): Promise<DetalheLido | null> {
     ]),
     ...l.dividas.map((d) => linha(d.id, `Dívida consolidada ${d.ano}`, d.criadoEm, d.criadoPor, `Deduções ${d.deducoes.toFixed(2)} · RCL ${d.receitaCorrenteLiquida.toFixed(2)} · ${d.percentualRcl.toFixed(6)} da RCL`, d.dividaConsolidada.toFixed(2))),
     ...l.projecoesRpps.map((p) => linha(p.id, `Projeção do RPPS ${p.ano}`, p.criadoEm, p.criadoPor, `Receitas ${p.receitasPrevidenciarias.toFixed(2)} · despesas ${p.despesasPrevidenciarias.toFixed(2)} · resultado ${p.resultadoPrevidenciario.toFixed(2)} · saldo ${p.saldoFinanceiro.toFixed(2)}`)),
+    ...l.obrasPrevistas.map((o) =>
+      linha(
+        o.id,
+        `Obra prevista: ${o.descricao}${o.obra === null ? "" : ` (obra ${o.obra.identificador})`}`,
+        o.criadoEm,
+        o.criadoPor,
+        `${o.orgao.codigo} — ${o.orgao.nome} · início ${diaCivilBr(o.dataInicio)} · conservação ${o.valorConservacao.toFixed(2)} · novos projetos ${o.valorNovosProjetos.toFixed(2)} · no exercício ${o.valorNoExercicio.toFixed(2)}`,
+        o.valorPrevisto.toFixed(2)
+      )
+    ),
     ...l.margens.map((m) => linha(m.id, `Margem de expansão ${m.ano}`, m.criadoEm, m.criadoPor, `Aumento de receita ${m.aumentoPermanenteReceita.toFixed(2)} · redução de despesa ${m.reducaoPermanenteDespesa.toFixed(2)} · novas obrigatórias ${m.novasDespesasObrigatorias.toFixed(2)}`)),
   ];
   return {
@@ -549,6 +561,7 @@ export async function verLdo(id: string): Promise<DetalheLido | null> {
       { texto: situacao, tom: situacao === "SANCIONADA" ? "ok" : "neutro" },
       { texto: `${l.prioridades.length} prioridade(s)`, tom: "neutro" },
       { texto: `${l.metasAnuais.length} meta(s) anual(is)`, tom: l.metasAnuais.length === 0 ? "alerta" : "neutro" },
+      { texto: `${l.obrasPrevistas.length} obra(s) prevista(s)`, tom: "neutro" },
     ],
     dados: [
       { rotulo: "Exercício", valor: String(l.exercicio) },
@@ -567,13 +580,15 @@ export async function verLdo(id: string): Promise<DetalheLido | null> {
 /** As opções da LDO: a ação (M02) para a prioridade e — CONTEXTUAL — as alienações DESTA LDO. */
 export async function opcoesDaLdo(ldoId?: string): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [acoes, alienacoes] = await Promise.all([
+  const [acoes, alienacoes, orgaos] = await Promise.all([
     prisma.acao.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" } }),
     ldoId === undefined ? [] : prisma.alienacaoBemLdo.findMany({ where: { ldoId }, select: { id: true, descricaoBem: true, valorAlienacao: true }, orderBy: { criadoEm: "asc" } }),
+    prisma.orgao.findMany({ select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" } }),
   ]);
   return {
     acaoId: acoes.map((x) => ({ valor: x.id, rotulo: `${x.codigo} — ${x.descricao}` })),
     alienacaoId: alienacoes.map((x) => ({ valor: x.id, rotulo: `${x.descricaoBem} (${x.valorAlienacao.toFixed(2)})` })),
+    orgaoId: orgaos.map((x) => ({ valor: x.id, rotulo: `${x.codigo} — ${x.nome}` })),
   };
 }
 
@@ -678,6 +693,22 @@ export async function acaoDaLdo(acao: string, ldoId: string, c: Campos): Promise
       );
       return;
     }
+    case "obra-prevista":
+      await comEscritaAutenticada("CADASTRAR_LDO", (criadoPor) =>
+        criarObraPrevistaLdo(cliente(), {
+          ldoId,
+          orgaoId: t(c, "orgaoId"),
+          ...(opcional(c, "obraId") !== undefined ? { obraId: t(c, "obraId") } : {}),
+          descricao: t(c, "descricao"),
+          dataInicio: dia(c, "dataInicio"),
+          valorPrevisto: decimal(c, "valorPrevisto"),
+          valorConservacao: decimal(c, "valorConservacao"),
+          valorNovosProjetos: decimal(c, "valorNovosProjetos"),
+          valorNoExercicio: decimal(c, "valorNoExercicio"),
+          criadoPor,
+        })
+      );
+      return;
     case "divida-consolidada":
       await comEscritaAutenticada("CADASTRAR_METAS_FISCAIS_LDO", (criadoPor) =>
         criarDividaConsolidadaLdo(cliente(), {

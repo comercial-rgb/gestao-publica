@@ -1,0 +1,106 @@
+// ============================================================================
+// V36 — M02b: AS AUDIÊNCIAS PÚBLICAS DO PLANEJAMENTO (TR 5.9.1.1-2) E AS OBRAS PREVISTAS NA LDO (TR 5.9.2.16-17).
+//
+// AUDIÊNCIA PÚBLICA: a LRF (art. 48, § 1º, I) manda incentivar a participação popular e realizar audiências durante a
+// elaboração e a discussão do PPA, da LDO e da LOA. O registro é do ENTE, como toda peça do M02b. Cada solicitação da
+// comunidade tem bairro, solicitante com contato e o órgão que a analisa; a SITUAÇÃO é append-only: cada mudança é
+// uma linha com o parecer, e a vigente é a mais recente. Sem linha, a solicitação está "recebida".
+//
+// OBRA PREVISTA NA LDO: LRF art. 45 — a LOA só inclui projeto novo depois de atendidos os em andamento e contempladas
+// as despesas de conservação do patrimônio, nos termos da LDO; o parágrafo único manda o Executivo encaminhar o
+// relatório com essas informações junto com o projeto da LDO. Uma linha por obra, com os quatro valores que o TR pede.
+// O vínculo com a obra cadastrada (M11) é opcional: a LDO prevê obras que ainda não têm cadastro.
+// ============================================================================
+
+model AudienciaPublica {
+  id String @id @default(cuid())
+
+  /// O exercício da peça em discussão (o PPA pelo primeiro ano do quadriênio).
+  exercicio Int
+  /// A peça discutida: PPA, LDO ou LOA (CHECK na migration).
+  peca      String   @db.VarChar(3)
+  data      DateTime
+  local     String
+  pauta     String
+
+  solicitacoes SolicitacaoDaAudiencia[]
+  anexos       Anexo[]                  @relation("AnexoDaAudienciaPublica")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([exercicio])
+}
+
+model SolicitacaoDaAudiencia {
+  id String @id @default(cuid())
+
+  audienciaId String
+  audiencia   AudienciaPublica @relation(fields: [audienciaId], references: [id])
+
+  descricao          String
+  bairro             String
+  solicitanteNome    String
+  /// Telefone, e-mail ou endereço, como o solicitante informou.
+  solicitanteContato String
+
+  /// O órgão responsável pela análise.
+  orgaoId String
+  orgao   Orgao  @relation("SolicitacoesDeAudiencia", fields: [orgaoId], references: [id])
+
+  situacoes SituacaoDaSolicitacao[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([audienciaId])
+  @@index([orgaoId])
+}
+
+/// Cada mudança de situação da solicitação, com o parecer. A vigente é a mais recente.
+model SituacaoDaSolicitacao {
+  id String @id @default(cuid())
+
+  solicitacaoId String
+  solicitacao   SolicitacaoDaAudiencia @relation(fields: [solicitacaoId], references: [id])
+
+  /// EM_ANALISE, ACOLHIDA ou NAO_ACOLHIDA (CHECK na migration). "Recebida" é a ausência de linha.
+  situacao String @db.VarChar(20)
+  parecer  String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([solicitacaoId, criadoEm])
+}
+
+model ObraPrevistaLdo {
+  id String @id @default(cuid())
+
+  ldoId String
+  ldo   LeiDiretrizesOrcamentarias @relation("ObrasPrevistasNaLdo", fields: [ldoId], references: [id])
+
+  /// A entidade responsável pela obra (o órgão do ente).
+  orgaoId String
+  orgao   Orgao  @relation("ObrasPrevistasDoOrgao", fields: [orgaoId], references: [id])
+
+  /// A obra cadastrada no M11, quando já existe.
+  obraId String?
+  obra   Obra?   @relation("PrevisoesDaObraNaLdo", fields: [obraId], references: [id])
+
+  descricao  String
+  dataInicio DateTime
+
+  valorPrevisto      Decimal @db.Decimal(18, 2)
+  valorConservacao   Decimal @db.Decimal(18, 2)
+  valorNovosProjetos Decimal @db.Decimal(18, 2)
+  /// O valor da obra no exercício da LDO. Não excede o valor previsto.
+  valorNoExercicio   Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([ldoId])
+  @@index([orgaoId])
+  @@index([obraId])
+}
