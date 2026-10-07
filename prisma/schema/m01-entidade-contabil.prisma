@@ -64,6 +64,8 @@ model EntidadeContabil {
   criadoPor String
 
   versoes              VersaoDaEntidadeContabil[]
+  /// V36 — as transferências financeiras previstas no PPA para esta entidade. VIRTUAL.
+  transferenciasPrevistasNoPpa PrevisaoDeTransferenciaPpa[] @relation("TransferenciasPrevistasParaEntidade")
   declaracoesDeTitular DeclaracaoDeTitularDaConta[]
   arrecadacoes         ReceitaArrecadada[]
   atribuicoes          AtribuicaoDeEntidadeDaArrecadacao[]

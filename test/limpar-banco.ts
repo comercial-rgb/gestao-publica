@@ -323,6 +323,8 @@ export const TABELAS = [
   "PublicoAlvo",
   "AreaTematica",
   "EixoEstruturante",
+  // V36 — as transferências financeiras previstas no PPA (antes do plano e da entidade).
+  "PrevisaoDeTransferenciaPpa",
   "PlanoPlurianual",
   // M10 — patrimonial
   "MemoriaDeAtualizacao",

@@ -293,3 +293,14 @@ metas fiscais anuais da LDO), com grandeza e sinal.
   (LDO-SEM-PREVISAO-ORCAMENTARIA). Quando tiver, entra como alvo do ato e a emenda a alcança sem mudar de forma.
 - **Trava `PecaDoPlanejamento`** (posto 41, último): numeração por peça e sanções da mesma lei serializadas.
 - **Autoridades:** as das emendas da LOA (CADASTRAR_/SANCIONAR_EMENDA_AO_ORCAMENTO); nenhuma ação nova.
+
+## V36 — as transferências financeiras previstas no PPA (TR 5.9.1.17)
+
+`transferencias-previstas.ts`, schema `m02b-transferencias-ppa.prisma`; tela `/planejamento/ppa/transferencias`.
+
+- Por entidade de destino (o cadastro de entidades contábeis) e por ano do quadriênio, com finalidade. É previsão: não
+  lança no razão; o fato realizado é a `TransferenciaEntreUgs`.
+- Versionada e insert-only: a primeira versão nasce positiva; as seguintes corrigem com motivo (podem zerar). A vigente é a
+  de maior versão; a corrida de duas correções esbarra na chave única `[plano, entidade, ano, versao]` (t3, determinístico).
+- `preverTransferenciaNoPpa` sob CADASTRAR_PPA; o quadro (`quadroDeTransferenciasPrevistas`) soma por ano e por entidade.
+- Teste: `m02b-transferencias-previstas.test.ts` (4). Percurso: `scripts/percurso-v36-transferencias-ppa.mts`.

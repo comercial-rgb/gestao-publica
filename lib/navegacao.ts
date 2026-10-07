@@ -196,6 +196,7 @@ export const LICITACOES: readonly RelatorioNav[] = [
 export const PLANEJAMENTO: readonly RelatorioNav[] = [
   // V4 §8 (M02b): as peças que vêm ANTES da LOA.
   { href: "/planejamento/ppa", numero: "PPA", rotulo: "Plano Plurianual", descricao: "Plano Plurianual: programas, indicadores, ações e metas do quadriênio (CF art. 165, § 1º)." },
+  { href: "/planejamento/ppa/transferencias", numero: "Transferências", rotulo: "Transferências previstas no PPA", descricao: "O que o ente prevê transferir a cada entidade em cada ano do quadriênio." },
   { href: "/planejamento/ldo", numero: "LDO", rotulo: "Lei de Diretrizes Orçamentárias", descricao: "Lei de Diretrizes Orçamentárias: prioridades e anexos de metas e riscos fiscais." },
   { href: "/planejamento/ppa/estrutura", numero: "Estrutura", rotulo: "Estrutura temática do PPA", descricao: "Eixos, áreas temáticas, públicos-alvo e macroações do PPA." },
   // V36: a participação popular na elaboração das peças (LRF art. 48).
@@ -644,6 +645,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
     grupos: [
       { rotulo: "PPA", itens: [
         { href: "/planejamento/ppa", rotulo: "Plano Plurianual" },
+        { href: "/planejamento/ppa/transferencias", rotulo: "Transferências previstas no PPA" },
         { href: "/planejamento/ppa/programas", rotulo: "Programas, objetivos e metas" },
         { href: "/planejamento/ppa/estrutura", rotulo: "Estrutura temática" },
         { href: "/planejamento/audiencias", rotulo: "Audiências públicas" },

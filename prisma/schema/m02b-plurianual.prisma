@@ -64,6 +64,8 @@
 model PlanoPlurianual {
   /// V36 — as emendas ao PPA e à LDO (m02b-emendas-do-planejamento.prisma). VIRTUAL.
   emendas EmendaAoPlanejamento[] @relation("EmendasDoPpa")
+  /// V36 — as previsões de transferências financeiras por entidade e ano (m02b-transferencias-ppa.prisma). VIRTUAL.
+  transferenciasPrevistas PrevisaoDeTransferenciaPpa[] @relation("TransferenciasDoPpa")
   id String @id @default(cuid())
 
   /// O primeiro exercício do quadriênio.

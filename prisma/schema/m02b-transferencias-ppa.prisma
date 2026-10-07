@@ -1,0 +1,33 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M02b — A PREVISÃO DAS TRANSFERÊNCIAS FINANCEIRAS NO PPA (TR 5.9.1.17), por entidade de destino e por ano.
+///
+/// A transferência financeira concedida (o duodécimo da Câmara, o repasse ao fundo de previdência, o repasse a uma
+/// autarquia) prevista em cada ano do quadriênio, com a entidade a que se destina (o cadastro de entidades contábeis do
+/// ente). É PREVISÃO: não lança no razão nem toca a execução — o fato realizado é a `TransferenciaEntreUgs`.
+///
+/// Versionada e insert-only: (plano, entidade, ano) tem uma linha por versão; a vigente é a de maior versão. Corrigir é
+/// gravar a versão seguinte, com o motivo. A chave única decide a corrida de duas correções simultâneas.
+model PrevisaoDeTransferenciaPpa {
+  id String @id @default(cuid())
+
+  planoId String
+  plano   PlanoPlurianual @relation("TransferenciasDoPpa", fields: [planoId], references: [id], onDelete: Restrict)
+
+  entidadeId String
+  entidade   EntidadeContabil @relation("TransferenciasPrevistasParaEntidade", fields: [entidadeId], references: [id], onDelete: Restrict)
+
+  ano    Int
+  versao Int
+
+  /// CHECK: >= 0, e > 0 na primeira versão (zerar a previsão é uma correção, com motivo).
+  valor      Decimal @db.Decimal(18, 2)
+  finalidade String
+  /// O motivo da correção (obrigatório da versão 2 em diante — CHECK).
+  motivo     String?
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([planoId, entidadeId, ano, versao])
+  @@index([entidadeId])
+}

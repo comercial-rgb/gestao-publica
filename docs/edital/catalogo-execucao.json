@@ -602,9 +602,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há previsão de transferência financeira no PPA nem na LOA. TransferenciaEntreUgs é o fato realizado, lançado no razão, não a previsão. FALTA: previsão por ano do PPA com a entidade de destino.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador e contador (só consulta) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · passos: /planejamento/ppa/transferencias → Câmara 1.200.000,00 em 2029 e previdência 500.000,00 em 2028 → correção sem motivo recusada → correção com motivo para 1.250.000,00 → o quadro mostra os vigentes e as versões → o contador lê sem o formulário · obtido: 5/5 · artefato: scripts/percurso-v36-transferencias-ppa.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — previsão das transferências financeiras no PPA por entidade de destino e por ano do quadriênio: modules/m02b-plurianual/transferencias-previstas.ts (preverTransferenciaNoPpa, sob CADASTRAR_PPA), tabela PrevisaoDeTransferenciaPpa (migration 20261108190000; CHECK de valor, versão, motivo e finalidade). A entidade é a do cadastro de entidades contábeis; o ano tem de estar no quadriênio; correção versionada com motivo; quadro vigente com total por ano e por entidade. Tela /planejamento/ppa/transferencias (leitura CONSULTAR_PLANEJAMENTO no ente). m02b-transferencias-previstas.test.ts 4/4 (duas entidades, correção versionada, recusas, corrida determinística, negação nomeando CADASTRAR_PPA); 5 mutações acusadas.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.1.18",

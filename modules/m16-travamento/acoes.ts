@@ -1205,6 +1205,8 @@ export type NomeDeServico =
   | "cadastrarNaturezaReceita"
   // V36 (TR 5.9.3.4 e 5.9.3.7) — as fontes da natureza com percentual, e a previsão da LOA rateada por elas
   | "definirFontesDaNatureza"
+  // V36 (TR 5.9.1.17) — a previsão das transferências financeiras por entidade e ano do PPA
+  | "preverTransferenciaNoPpa"
   // V36 (TR 5.9.3.23 e 5.9.3.24) — a prévia da alteração orçamentária, com o bloqueio das anulações
   | "criarPrevia"
   | "acrescentarLoteAPrevia"
@@ -2042,6 +2044,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarNaturezaReceita: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V36 — as fontes de uma natureza, com percentual, são parte do cadastro dela: a mesma autoridade de quem a cria.
   definirFontesDaNatureza: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V36 — prever as transferências financeiras do quadriênio é parte do cadastro do PPA.
+  preverTransferenciaNoPpa: "CADASTRAR_PPA",
   // V36 — a prévia é o decreto antes de nascer: prepará-la (criar, acrescentar lote, descartar) é a autoridade de quem
   // cria o decreto, nas unidades das fichas, porque o bloqueio mexe no disponível delas; aprovar e efetivar é a de quem
   // executa o crédito (a efetivação cobra também CRIAR_DECRETO_DE_CREDITO no ente, no corpo do serviço).
@@ -3342,6 +3346,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerLinhaDoAlvo: "leitura (V36 — a linha planejada de um alvo do ato de alteração, com a peça e o rótulo — não muta)",
   gravarItensNoAtoDaLei: "composável interno (V36 — grava os itens aprovados no ato de alteração da lei, pelo guard do ato, DENTRO da sanção da emenda ao PPA ou à LDO, que já autorizou SANCIONAR_EMENDA_AO_ORCAMENTO)",
   emendasDaPeca: "leitura (V36 — as emendas de uma peça do planejamento com a situação derivada — não muta)",
+  quadroDeTransferenciasPrevistas: "leitura (V36 — as transferências financeiras previstas no PPA, entidade x ano, vigentes — não muta)",
   listarPrevias: "leitura (V36 — as prévias de alteração orçamentária do exercício, com a situação derivada — não muta)",
   detalharPrevia: "leitura (V36 — uma prévia com os itens por lote, o bloqueio de cada anulação e os totais por fonte — não muta)",
   reservarNaTransacao: "composável interno (V36 — a reserva de dotação na transação de quem chama; o reservar do repositório e a prévia, que autorizam)",
