@@ -887,6 +887,8 @@ export type NomeDeServico =
   | "transferirEntreContas"
   | "registrarMovimentoBancario"
   | "estornarMovimentoBancario"
+  | "registrarChequeAvulso"
+  | "cancelarChequeAvulso"
   | "abrirConciliacao"
   | "encerrarConciliacao"
   | "registrarPendenciaManual"
@@ -1541,6 +1543,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   transferirEntreContas: "TRANSFERIR_ENTRE_CONTAS",
   registrarMovimentoBancario: "REGISTRAR_MOVIMENTO_BANCARIO",
   estornarMovimentoBancario: "ESTORNAR_MOVIMENTO_BANCARIO",
+  // V36 (TR 5.10.2.42) — o cheque avulso: quem registra movimento da conta registra o cheque; quem estorna, cancela.
+  registrarChequeAvulso: "REGISTRAR_MOVIMENTO_BANCARIO",
+  cancelarChequeAvulso: "ESTORNAR_MOVIMENTO_BANCARIO",
   // ⚠️ ABRIR e ENCERRAR são ações SEPARADAS. Encerrar é o ato que o controle interno lê
   // como "isto foi conferido", e quem opera a conciliação no dia a dia não é
   // necessariamente quem assina o fechamento — é a segregação do TR 6.4, a mesma que
@@ -3303,6 +3308,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   baixarAnexoPublicoDaObra: "leitura pública (V36 — o anexo de obra publicada no portal; o resto responde como inexistente)",
   periodicidadeVigente: "leitura (V36 — a periodicidade vigente do controle das cotas num instante; o guard do CMD e o acompanhamento)",
   empenhosDaParceria: "leitura (V36 — os empenhos de uma parceria público-privada, com o líquido de cada um; tela da parceria)",
+  chequesEmitidos: "leitura (V36 — os cheques emitidos num período, de pagamento e avulsos, numa consulta só; tela de cheques)",
   borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",
   acompanhamentoDasCotasCmd: "leitura (V36 — previsto × realizado das cotas de despesa por fonte e mês; o realizado é o consumido do guard do cronograma)",

@@ -246,6 +246,7 @@ export const FINANCEIRO: readonly RelatorioNav[] = [
   { href: "/financeiro/conciliacao/periodo", numero: "Períodos", rotulo: "Conciliação por período", descricao: "Abertura, justificativa de pendências e encerramento da conciliação mensal." },
   { href: "/financeiro/conciliacao/extratos", numero: "Extratos", rotulo: "Extratos importados", descricao: "Os extratos bancários como o banco os mandou, com a situação de cada lançamento e a impressão." },
   { href: "/financeiro/movimentacao", numero: "Movimentação", rotulo: "Movimentação Bancária", descricao: "Depósitos, saques, aplicações, resgates, rendimentos e tarifas bancárias." },
+  { href: "/financeiro/cheques", numero: "Cheques", rotulo: "Cheques", descricao: "Cheques emitidos em pagamentos e cheques avulsos numa consulta só, com o registro e o cancelamento do avulso." },
   { href: "/financeiro/lotes", numero: "Lotes", rotulo: "Lotes e Borderô", descricao: "Agrupamento de ordens de pagamento, borderô e baixa pelo retorno bancário." },
 ];
 
@@ -739,6 +740,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Contas e disponibilidades", itens: [
         { href: "/financeiro/contas-bancarias", rotulo: "Contas bancárias" },
         { href: "/financeiro/movimentacao", rotulo: "Movimentação bancária" },
+        { href: "/financeiro/cheques", rotulo: "Cheques" },
       ] },
       { rotulo: "Pagamentos", itens: [
         { href: "/despesa/ordens", rotulo: "Ordens de pagamento" },

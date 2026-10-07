@@ -539,6 +539,9 @@ export const TABELAS = [
   "DecretoCredito",
   "LeiCredito",
   "DisponibilidadeRecursoNovo",
+  // V36 — os cheques (de pagamento e avulsos) e o cancelamento do avulso.
+  "CancelamentoDeCheque",
+  "Cheque",
   // M05 — despesa
   "Pagamento",
   "Liquidacao",

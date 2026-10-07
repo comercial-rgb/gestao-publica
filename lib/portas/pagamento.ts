@@ -302,6 +302,8 @@ export async function registrarPagamento(input: {
    * homologado, sequestro de verba). Só texto; quem decide se é exigida é o `pagar`, na transação.
    */
   readonly justificativaOrdemConstitucional?: string | undefined;
+  /** V36 — o número do cheque, quando o pagamento sai por cheque (o cheque nasce na mesma transação). */
+  readonly numeroDoCheque?: string | undefined;
 }): Promise<string> {
   // ⚠️ V6 P1.2 — A PERNA DE DISPONIBILIDADE É A CONTA CONTÁBIL DA CONTA BANCÁRIA QUE PAGA, lida
   // do cadastro (fail-closed). Vinha de uma constante (1.1.1.1.2.00.00) enquanto as contas
@@ -382,6 +384,7 @@ export async function registrarPagamento(input: {
         ...(input.justificativaOrdemConstitucional !== undefined && input.justificativaOrdemConstitucional !== ""
           ? { justificativaOrdemConstitucional: input.justificativaOrdemConstitucional }
           : {}),
+        ...(input.numeroDoCheque !== undefined && input.numeroDoCheque !== "" ? { numeroDoCheque: input.numeroDoCheque } : {}),
       },
       roteiroPagamento({
         // V24 — a obrigação que ESTA liquidação creditou (salário, encargo, fornecedor), e não sempre

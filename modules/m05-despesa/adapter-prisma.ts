@@ -2286,6 +2286,18 @@ export function criarDespesaRepositoryPrisma(
         // FUNDEB — bastava usar a conta do FUNDEB, e os dois "casavam". Ver `guard-fonte`.
         await exigirFonteDaFicha(tx, p.liquidacaoId, p.fonteId);
 
+        // V36 (TR 5.10.2.42) — o número do cheque é único na conta. Conferido ANTES de gravar: a `@@unique` é a rede
+        // final, mas estouraria como erro de constraint depois do lançamento já composto.
+        if (p.cheque !== undefined) {
+          const usado = await tx.cheque.findUnique({
+            where: { contaBancariaId_numero: { contaBancariaId: conta.id, numero: p.cheque.numero } },
+            select: { id: true },
+          });
+          if (usado !== null) {
+            throw new Error(`O cheque ${p.cheque.numero} já foi emitido na conta ${conta.codigo}. Nada foi gravado.`);
+          }
+        }
+
         // T07 — A ORDEM DE PAGAMENTO, quando houver. DENTRO da transação e antes de
         // gravar: entre conferir e gravar, outra transação poderia consumir a mesma
         // autorização — e a `@unique` em `ordemDePagamentoId` é a rede final, mas uma
@@ -2328,6 +2340,7 @@ export function criarDespesaRepositoryPrisma(
           p.justificativaQuebraOrdem
         );
 
+
         // O lançamento COMPOSTO: as pernas do pagamento (caixa = líquido) já vêm
         // com as pernas de passivo das retenções. O motor do ledger validou o
         // conjunto (ΣD == ΣC por subsistema) antes de qualquer I/O.
@@ -2351,6 +2364,20 @@ export function criarDespesaRepositoryPrisma(
           },
           select: { id: true },
         });
+
+        if (p.cheque !== undefined) {
+          await tx.cheque.create({
+            data: {
+              contaBancariaId: conta.id,
+              numero: p.cheque.numero,
+              origem: "PAGAMENTO",
+              pagamentoId: pag.id,
+              data: p.data,
+              valor: p.cheque.valor.toFixed(2),
+              criadoPor: p.criadoPor,
+            },
+          });
+        }
 
         // M07 — o razão do consignatário, na MESMA transação. Se qualquer
         // retenção falhar (tipo inativo, por exemplo), o pagamento INTEIRO

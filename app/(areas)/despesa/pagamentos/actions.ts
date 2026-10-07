@@ -44,6 +44,8 @@ export async function pagarAction(
     const dataBruta = String(formData.get("data") ?? "").trim();
     // T07 — vazio = pagamento sem ordem (o caminho de sempre).
     const ordemDePagamentoId = String(formData.get("ordemDePagamentoId") ?? "").trim();
+    // V36 — vazio = o pagamento não sai por cheque.
+    const numeroDoCheque = String(formData.get("numeroDoCheque") ?? "").trim();
 
     const retencoes = lerRetencoes(formData);
     if (typeof retencoes === "string") return { erro: retencoes };
@@ -103,11 +105,12 @@ export async function pagarAction(
         ...(operacaoFiscal !== undefined ? { operacaoFiscal } : {}),
         ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
         ...(justificativaOrdemConstitucional !== "" ? { justificativaOrdemConstitucional } : {}),
+        ...(numeroDoCheque !== "" ? { numeroDoCheque } : {}),
       });
       revalidatePath("/despesa/pagamentos");
       revalidatePath("/despesa/liquidacoes");
       revalidatePath("/despesa/empenhos");
-      return { sucesso: `Pagamento ${numero} registrado.` };
+      return { sucesso: numeroDoCheque !== "" ? `Pagamento ${numero} registrado, com o cheque ${numeroDoCheque}.` : `Pagamento ${numero} registrado.` };
     } catch (e) {
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível pagar." };
     }

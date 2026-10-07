@@ -523,6 +523,11 @@ export const zPagarInput = z.object({
    * Sem ela, pagar um precatório na frente de quem tem preferência é rejeitado (fail-closed).
    */
   justificativaOrdemConstitucional: z.string().trim().min(20).optional(),
+  /**
+   * V36 (TR 5.10.2.42) — o NÚMERO DO CHEQUE, quando o pagamento sai por cheque. O cheque nasce na mesma transação,
+   * com o valor de face = líquido do pagamento (bruto − retenções), e o número é único na conta bancária.
+   */
+  numeroDoCheque: z.string().trim().min(1).max(15).optional(),
 });
 
 export const zAnularLiquidacaoInput = z.object({

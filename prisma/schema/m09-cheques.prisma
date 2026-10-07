@@ -1,0 +1,57 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M09 — CHEQUES (TR 5.10.2.42): os emitidos na rotina de pagamento e os avulsos, numa consulta só.
+///
+/// Um cheque é um DOCUMENTO de saída de dinheiro, não um fato contábil: o dinheiro que ele leva já está no razão pelo
+/// fato que o originou (o Pagamento; ou, no avulso, o movimento que a tesouraria registra por conta própria). Por isso
+/// esta tabela não tem lançamento e não entra em saldo nenhum.
+///
+///  · PAGAMENTO — nasce DENTRO da transação do `pagar()`, com o valor de face fixado na emissão: o LÍQUIDO do pagamento
+///    (bruto − retenções), que é o que sai do banco para o credor. Um por pagamento. Fica cancelado quando o pagamento
+///    é anulado por inteiro (derivado; sem linha de cancelamento).
+///  · AVULSO — cheque que não pertence a pagamento de despesa (devolução, transferência, suprimento...). Registro da
+///    tesouraria com data, valor, favorecido e finalidade; o cancelamento é a linha de `CancelamentoDeCheque`.
+///
+/// O número é único POR CONTA (o talão é da conta). Insert-only: corrigir é cancelar e emitir outro.
+model Cheque {
+  id String @id @default(cuid())
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation("ChequesDaConta", fields: [contaBancariaId], references: [id])
+
+  numero String @db.VarChar(15)
+  /// PAGAMENTO ou AVULSO (CHECK na migration, que também amarra os campos de cada origem).
+  origem String @db.VarChar(10)
+
+  pagamentoId String?    @unique
+  pagamento   Pagamento? @relation("ChequeDoPagamento", fields: [pagamentoId], references: [id], onDelete: Restrict)
+
+  /// Data de emissão. No de pagamento, a data do pagamento.
+  data  DateTime
+  /// Valor de face. No de pagamento, o líquido na emissão.
+  valor Decimal  @db.Decimal(18, 2)
+  /// Só no avulso (no de pagamento, o favorecido é o credor do empenho).
+  favorecido String?
+  finalidade String?
+
+  cancelamento CancelamentoDeCheque?
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@unique([contaBancariaId, numero])
+  @@index([data])
+}
+
+/// O cancelamento do cheque AVULSO (o de pagamento cancela com a anulação do pagamento). Um por cheque.
+model CancelamentoDeCheque {
+  id String @id @default(cuid())
+
+  chequeId String @unique
+  cheque   Cheque @relation(fields: [chequeId], references: [id])
+
+  data   DateTime
+  motivo String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+}

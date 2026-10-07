@@ -244,6 +244,12 @@ export function FormPagamento({
         {/* A fonte acompanha a conta: o usuário não a digita (TR 5.23). */}
         <input type="hidden" name="fonteId" value={selecionada?.fonteId ?? ""} />
 
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Número do cheque (opcional)</span>
+          <input name="numeroDoCheque" maxLength={15} placeholder="000123" className={CAMPO} />
+          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">Só quando o pagamento sai por cheque. O cheque fica com o valor líquido, depois das retenções.</span>
+        </label>
+
         {/*
           ⚠️ A ORDEM É OPCIONAL, e a tela diz por quê em vez de deixar o campo mudo. Os
           pagamentos anteriores a T07 não têm ordem, e inventar uma autorização retroativa

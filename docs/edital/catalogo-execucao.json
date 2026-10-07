@@ -3934,9 +3934,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há cheque: Pagamento não guarda meio nem número de cheque, e não existe cheque avulso nem consulta.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · percurso scripts/percurso-v36-cheques.mts 9/9 · empenho, liquidação e pagamento pela tela com o número do cheque; a consulta mostra o cheque do pagamento com valor, credor e empenho; avulso registrado pela tela na mesma consulta; o número do cheque do pagamento recusado no avulso com o motivo; avulso cancelado com motivo e filtrado como cancelado; sem consulta da tesouraria a tela não abre.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m09-tesouraria/cheques.ts e prisma/schema/m09-cheques.prisma (migration 20261108130000) — o cheque de PAGAMENTO nasce DENTRO da transação do pagar() do M05 (campo numeroDoCheque), com o valor de face = líquido (bruto menos retenções) e o número único na conta, conferido antes de gravar; o AVULSO (registrarChequeAvulso, cancelarChequeAvulso, sob REGISTRAR_ e ESTORNAR_MOVIMENTO_BANCARIO, no ente) tem data, valor, favorecido e finalidade, cancelamento com motivo, sem data futura nem anterior à emissão; chequesEmitidos une os dois por período, conta, origem e situação (a do fim do período; o de pagamento fica cancelado com a anulação TOTAL do pagamento). Sem lançamento: o cheque é documento. Tela /financeiro/cheques; quem não consulta a despesa no ente vê só os avulsos, com o motivo. m09-cheques.test.ts 7/7 (líquido no cheque, situação no fim do período, filtros, unicidade entre origens e contas, corrida, cancelamento, negação com a ação); 4 mutações acusadas.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.43",

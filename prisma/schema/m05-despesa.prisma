@@ -410,6 +410,8 @@ model Liquidacao {
 /// conta" é uma regra que não dá para checar. `Pagamento.contaBancaria` guarda
 /// o código, e o adapter confere a fonte contra esta tabela.
 model ContaBancaria {
+  /// V36 — os cheques emitidos desta conta (m09-cheques.prisma).
+  cheques Cheque[] @relation("ChequesDaConta")
   /// V35 — as deduções retidas na origem desta conta. VIRTUAL.
   deducoesRealizadas DeducaoDaReceitaRealizada[] @relation("DeducaoDaConta")
   /// V26 — as transferências entre UGs (m01-unidade-gestora.prisma).
@@ -476,6 +478,8 @@ model ContaBancaria {
 
 model Pagamento {
   id           String     @id @default(cuid())
+  /// V36 — o cheque emitido na rotina de pagamento (m09-cheques.prisma).
+  cheque Cheque? @relation("ChequeDoPagamento")
   /// V26 — retenção própria do Tesouro (m07-retencao-propria.prisma).
   retencoesProprias RetencaoPropriaDoPagamento[] @relation("RetencoesPropriasDoPagamento")
   /// V28 — os descontos dos contracheques que este pagamento reteve.

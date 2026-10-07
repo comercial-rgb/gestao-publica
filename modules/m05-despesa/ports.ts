@@ -312,6 +312,8 @@ export interface LiquidarParams {
 
 export interface PagarParams {
   readonly pagamentoId: string;
+  /** V36 (TR 5.10.2.42) — o cheque emitido neste pagamento: número e valor de face (o líquido). */
+  readonly cheque?: { readonly numero: string; readonly valor: Money } | undefined;
   readonly liquidacaoId: string;
   readonly numero: string;
   /**

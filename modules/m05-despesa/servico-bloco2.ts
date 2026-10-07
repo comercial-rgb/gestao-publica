@@ -252,6 +252,10 @@ export async function pagar(
       ...((retencoes?.proprias ?? []).length > 0
         ? { retencoesProprias: retencoes?.proprias }
         : {}),
+      // V36 — o cheque, pelo LÍQUIDO: é o que sai do banco para o credor.
+      ...(dados.numeroDoCheque !== undefined
+        ? { cheque: { numero: dados.numeroDoCheque, valor: composto.valorLiquido } }
+        : {}),
     },
     {
       id: lancamentoId,
