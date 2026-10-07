@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 
 | Campo | Valor |
 |---|---|
-| HEAD | `50a725c3` em `apresentacao/contabilidade` (o registro e a publicação vêm nos commits seguintes) |
+| HEAD | `577d2d36` (publicado; main e `/release` = `577d2d3`) em `apresentacao/contabilidade` |
 | Catálogo | 619 de 2.037 verificadas. As 285 de contabilidade (5.9 e 5.10): 88 validadas, 31 implementadas sem percurso, 119 parciais, 45 ausentes, 2 de terceiro. |
 | Último resultado | Rodada de 07/10 (seção "Rodada das áreas que faltavam"): cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas ao PPA e à LDO 6/6 em percurso; testes dirigidos verdes; mutações acusadas. |
-| Próximo passo | Publicar a rodada de 07/10 (backup, publicar, conferir migrations 20261108130000 a 20261108150000). Depois: decisões do ente pendentes (5.9.3.34 cotas do crédito adicional; 5.10.2.4 finalidade FUNDEB/saúde; estágio em liquidação). |
+| Próximo passo | Decisões do ente pendentes: 5.9.3.34 (meses em que o crédito adicional entra na cota e o que a anulação faz nas cotas); 5.10.2.4 (finalidade FUNDEB/saúde no pagamento); estágio contábil em liquidação (metade da 5.10.1.42). Sem decisão, as ausências restantes da contabilidade dependem de terceiro (importações PPA/LDO/LOA, consolidação por entidade, retorno bancário, DARF). |
 
 ### Como o catálogo foi verificado
 Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra
@@ -481,6 +481,12 @@ emenda (cada item guarda a sua emenda na justificativa e no vínculo da sanção
 **Auxiliar recusa() nos testes antigos:** revisados os 13 arquivos que o definem (11 com a mesma troca; nos 2 do
 MANAD, que devolvem o erro, uma asserção de que não é erro do banco); os 13 seguem verdes (79 testes), logo nenhuma
 asserção deles dependia do trecho de código do Prisma.
+
+**Publicado em 07/10/2026 (tarde):** `577d2d36` na main (rodada até `b7269c97`; Actions 37645561672 verde), `/release` =
+`577d2d3`. Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36m-20261007T153331Z.dump`. Migrations
+`20261108130000_v36_cheques`, `20261108140000_v36_despesa_sem_empenho_previo` e `20261108150000_v36_emendas_ao_ppa_e_a_ldo`
+aplicadas; sem atualização de permissões (nenhuma ação nova). Sonda somente leitura com o administrador: `/financeiro/cheques`,
+`/despesa/em-liquidacao`, `/planejamento/emendas-do-plano` (200), o campo do cheque no pagamento e a caixa na liquidação.
 
 **Pendências desta rodada:** a base fictícia ficou com liquidações sem pagamento criadas pelos percursos (fila do art.
 141 da fonte delas); metade "contas em liquidação" da 5.10.1.42 depende de decisão contábil do ente.
