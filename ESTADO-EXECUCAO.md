@@ -415,6 +415,11 @@ tela; o vínculo novo do empenho passou pelos testes de integridade das anulaç�
   vínculos do empenho, o papel de runtime não apaga `ContratoPPP`, e trocá-la exigiria remover a restrição (DROP), que a
   regra de migration proíbe; os códigos de conta da fixture do teste seguem o padrão das outras fixtures do M05.
   Depois das correções: parceria 8/8, m22-documentos e dimensões verdes; typecheck limpo; percurso 7/7.
+- **Publicado em 07/10/2026 (manhã):** `dd181c22` na main (rodada `5a15a930`; Actions 37621241826 verde), `/release` =
+  `dd181c2`. Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36l-20261007T122557Z.dump`. Migrations
+  `20261108120000_v36_parceria_publico_privada` e `20261108120100_v36_ppp_numero_unico` aplicadas (a produção não tinha
+  PPP; conferido antes do índice único); sem atualização de permissões. Conferido com o administrador: `/licitacoes/ppp`
+  com o cadastro, o campo da parceria no formulário de empenho e o atalho na página de licitações.
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
