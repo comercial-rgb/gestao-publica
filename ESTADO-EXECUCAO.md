@@ -261,6 +261,34 @@ Catálogo inteiro: 619 de 2.037 verificadas, 127 validadas.
   código -1 depois de 51 s (sem erro de tipo impresso); a mesma conferência, direta e na segunda corrida, passou limpa
   em 17 s. O servidor de desenvolvimento da 3011 (heap de 8 GB) estava de pé ao mesmo tempo: carga de memória.
 
+**Oitava rodada (06/10/2026, pedido "continue fechando os pendentes").** Regime: profundidade no lote de deduções e no
+cronograma por percentual (dinheiro, ao centavo), superfície no resto. Catálogo inteiro: 130 validadas (eram 127),
+197 ausentes (eram 203).
+- **Duplicar nas rotinas financeiras** (`5142ffb6`; TR 5.10.2.5): "Duplicar" nas listas de arrecadação, dedução,
+  transferência entre unidades, movimento bancário e pagamento reabre a tela com o formulário preenchido
+  (`lib/portas/duplicacao.ts`, `components/ui/Duplicacao.tsx`); grava a action de sempre. Não vêm a data, o número e os
+  vínculos de uso único. Percurso `percurso-v36-duplicar-registros.mts` 8/8, com mutação (sem o preenchimento, vermelho).
+  Implementado sem percurso completo: movimento (a fictícia não tem) e gravação de pagamento duplicado (as liquidações
+  da fictícia estão pagas).
+- **Lote de deduções com uma conta** (`5142ffb6`; TR 5.10.2.11, M04): `registrarDeducoesEmLote`, tudo ou nada, pelo
+  corpo da dedução avulsa (extraído para `gravarDeducaoNaTransacao`); a linha recusada é nomeada. Teste 3/3 com mutação;
+  a avulsa segue 7/7. Validado.
+- **Cronograma pelo percentual de cada mês** (TR 5.9.3.37, M02): `distribuirPorPercentuais` (resto no último mês com
+  percentual) e `proporCmdPorPercentual` (versão nova). Teste 4/4; a primeira mutação SOBREVIVEU (o caso de 1.000,00
+  não tinha resto) e o teste passou a usar 1.000,01; as duas acusam. Defeito de texto corrigido: a soma saía "99.00%".
+  A action da tela convertia a data com "-03:00" cravado; passou a `meioDiaCivil`. Validado.
+- **Aviso de débito do credor** (TR 5.10.1.38, M10): dívida ativa com saldo por documento, como aviso no empenho, na
+  liquidação e no pagamento; falha de consulta é dita. Teste com mutação. Sem percurso: a fictícia não tem dívida ativa
+  nem roteiro de inscrição (contas do ente).
+- **Obra no portal da transparência** (TR 5.10.1.54, M11 e M22): ato de publicação append-only (`PublicacaoDaObra`,
+  migration `20261107100000_v36_publicacao_da_obra`, aplicada na fictícia; papel de runtime reprovisionado), páginas
+  públicas `/transparencia/obras` e `/transparencia/obras/[id]` e download público do anexo, todos 404 para obra não
+  publicada. **Achado:** `Anexo.obraId` existia sem escritor — a obra não aceitava documento; passou a ser dono no M22
+  (escopo do ente, leitura de licitações) e a tela da obra ganhou a aba Anexos. Teste 4/4 com duas mutações; m22 21/21.
+  Validado (percurso `percurso-v36-oitava-rodada.mts` 5/5: anexar, publicar, ver e baixar sem sessão, retirar e 404).
+- Guardas: censo 5/5 (539 nomes), formulários na mesma página, fronteira, leitura exige ação e rotas vivas 16/16;
+  typecheck do app e do backend limpos; diff de schema vazio na fictícia.
+
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
 - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36-20261006T014639Z.dump`.

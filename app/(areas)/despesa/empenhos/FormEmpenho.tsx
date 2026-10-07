@@ -13,7 +13,8 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { empenharAction, type EstadoEmpenho } from "./actions";
+import { debitosDoCredorAction, empenharAction, type EstadoEmpenho } from "./actions";
+import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
 
 /**
  * A ficha como ESTE form a consome.
@@ -141,6 +142,22 @@ export function FormEmpenho({
   // Quando o documento digitado não está no cadastro de credores, a tela passa sozinha para o credor
   // sem cadastro, com o documento já preenchido — e diz por quê.
   const [credorNaoCadastrado, setCredorNaoCadastrado] = useState(false);
+  // V36 (TR 5.10.1.38) — o débito do credor escolhido em dívida ativa, consultado no servidor a cada credor novo.
+  const [debito, setDebito] = useState<{ readonly inscricoes: number; readonly saldo: string } | "indisponivel" | undefined>(undefined);
+  useEffect(() => {
+    const doc = [...credor.doc].filter((c) => c >= "0" && c <= "9").join("");
+    if (doc.length !== 11 && doc.length !== 14) {
+      setDebito(undefined);
+      return;
+    }
+    let vivo = true;
+    void debitosDoCredorAction(doc).then((r) => {
+      if (vivo) setDebito(r ?? undefined);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [credor.doc]);
   const [valor, setValor] = useState<{ cru: string; versao: number }>({ cru: "", versao: 0 });
   const [categoria, setCategoria] = useState<Categoria>("");
   const [tipo, setTipo] = useState<"ORDINARIO" | "GLOBAL" | "ESTIMATIVO">("ORDINARIO");
@@ -431,6 +448,11 @@ export function FormEmpenho({
             </button>
           </div>
         )}
+        {debito !== undefined ? (
+          <div className="sm:col-span-2 lg:col-span-3">
+            <AvisoDeDebitoDoCredor debito={debito} />
+          </div>
+        ) : null}
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Valor (R$)</span>

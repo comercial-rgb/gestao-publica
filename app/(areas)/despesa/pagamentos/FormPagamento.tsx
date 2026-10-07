@@ -1,5 +1,6 @@
 "use client";
 
+import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
 import { useActionState, useId, useRef, useState, useTransition } from "react";
 import { CampoValor } from "../../../../components/ui/Campos";
 import {
@@ -96,6 +97,7 @@ export function FormPagamento({
   opcoesDaRetencao,
   liquidacaoInicial,
   copia,
+  debitos = {},
 }: {
   readonly liquidacoes: readonly LiquidacaoPagavel[];
   /** V33 — a liquidação que veio escolhida de outra tela (a pagar, dossiê). Fora da fila, é ignorada. */
@@ -106,6 +108,8 @@ export function FormPagamento({
   readonly opcoesDaRetencao: OpcoesDaRetencaoParaTela;
   /** V36 — preenchimento a partir de um pagamento existente; número, data, ordem e retenções ficam para o usuário. */
   readonly copia?: CopiaParaPagamento | undefined;
+  /** V36 (TR 5.10.1.38) — os débitos inscritos em dívida ativa dos credores da fila, por documento. */
+  readonly debitos?: Readonly<Record<string, { readonly inscricoes: number; readonly saldo: string }>>;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoPagamento, FormData>(
     pagarAction,
@@ -197,6 +201,7 @@ export function FormPagamento({
               </option>
             ))}
           </select>
+          <AvisoDeDebitoDoCredor debito={alvo === undefined ? undefined : debitos[alvo.credorCpfCnpj]} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">

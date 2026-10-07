@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { duplicarEmpenhoDaTela, registrarEmpenho } from "../../../../lib/portas/empenho";
 import { desmascararValor } from "../../../../lib/format/mascaras";
+import { lerDebitosDosCredores } from "../../../../lib/portas/debitos-do-credor";
 import { meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
@@ -134,4 +135,18 @@ export async function duplicarEmpenhoAction(_prev: EstadoDuplicacao, formData: F
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível duplicar o empenho." };
     }
   });
+}
+
+/**
+ * V36 (TR 5.10.1.38) — os débitos do credor em dívida ativa, para o aviso no formulário do empenho. Leitura: só traduz;
+ * quem soma é o M10 e quem autoriza é a porta (leitura da despesa). Se a consulta falhar, a tela DIZ que não consultou
+ * ("indisponivel") — silêncio pareceria "sem débito".
+ */
+export async function debitosDoCredorAction(documento: string): Promise<{ readonly inscricoes: number; readonly saldo: string } | "indisponivel" | null> {
+  try {
+    const r = await lerDebitosDosCredores([documento]);
+    return r[documento] ?? null;
+  } catch {
+    return "indisponivel";
+  }
 }

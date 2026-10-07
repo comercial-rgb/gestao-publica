@@ -813,6 +813,7 @@ export type NomeDeServico =
   | "criarReceitaPrevista"
   | "reprevisarReceita"
   | "proporCmdDaLoa"
+  | "proporCmdPorPercentual"
   | "proporMbaDaLoa"
   | "registrarVersaoCmd"
   | "registrarVersaoMba"
@@ -980,6 +981,7 @@ export type NomeDeServico =
   | "estornarMovimentoContratual"
   | "cadastrarLimite"
   | "cadastrarObra"
+  | "publicarObraNoPortal"
   | "cadastrarLinhaDemonstrativo"
   | "travar"
   | "destravar"
@@ -1444,6 +1446,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   reprevisarReceita: "REPREVISAR_RECEITA",
 
   proporCmdDaLoa: "CRIAR_VERSAO_CMD",
+  // V36 — TR 5.9.3.37: a versão do CMD pelo percentual de cada mês, sob a mesma ação.
+  proporCmdPorPercentual: "CRIAR_VERSAO_CMD",
   registrarVersaoCmd: "CRIAR_VERSAO_CMD",
   proporMbaDaLoa: "CRIAR_VERSAO_MBA",
   registrarVersaoMba: "CRIAR_VERSAO_MBA",
@@ -1653,6 +1657,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   estornarMovimentoContratual: "ESTORNAR_MOVIMENTO_CONTRATUAL",
   cadastrarLimite: "CADASTRAR_LIMITE",
   cadastrarObra: "CADASTRAR_OBRA",
+  // V36 — TR 5.10.1.54: pôr a obra no portal (ou retirá-la), sob a ação de quem cadastra a obra.
+  publicarObraNoPortal: "CADASTRAR_OBRA",
 
   cadastrarPessoa: "CADASTRAR_PESSOA",
   alterarPessoa: "ALTERAR_PESSOA",
@@ -3116,6 +3122,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   contaDaReceitaVigente: "leitura (a VPA declarada que cobre uma natureza de receita, pelo prefixo mais longo)",
   exigirContaDaReceita: "guard (fail-closed antes da arrecadação: natureza sem VPA declarada recusa nomeando onde declarar)",
   listarContasDaReceita: "leitura (as declarações de VPA vigentes, uma por prefixo)",
+  debitosInscritosDosDocumentos: "leitura (V36 — inscrições de dívida ativa com saldo e o saldo somado, por CPF/CNPJ; o aviso de débito do credor no empenho, na liquidação e no pagamento)",
   saldoAIncorporarDaLiquidacao: "leitura (o líquido de uma liquidação menos o já incorporado ao patrimônio; o teto de adquirirBem confere o mesmo dentro da trava)",
   liquidoDaLiquidacaoNaTx: "leitura (V36 — o líquido de UMA liquidação, descontadas as anulações parciais vivas; o teto de adquirirBem e o relatório de incorporação leem a mesma)",
   incorporadoDaLiquidacaoNaTx: "leitura (V36 — as aquisições vivas de uma liquidação, descontados os estornos; o teto de adquirirBem e o relatório de incorporação leem a mesma)",
@@ -3268,6 +3275,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   balancete: "leitura (Balancete de verificação — TR 5.94)",
   // ── M02 — programação financeira: leitores e o gerador de decreto ──
   confrontoMba: "leitura (o confronto do art. 9º — meta × arrecadado)",
+  obraEstaPublicada: "leitura (V36 — o ato mais recente de publicação da obra no portal decide; sem ato, não está)",
+  obrasNoPortal: "leitura pública (V36 — as obras publicadas no portal, com a posição financeira; sem sessão por desenho: só o que foi publicado)",
+  obraNoPortal: "leitura pública (V36 — uma obra publicada: cadastro, posição, medições aprovadas e anexos; não publicada responde como inexistente)",
+  baixarAnexoPublicoDaObra: "leitura pública (V36 — o anexo de obra publicada no portal; o resto responde como inexistente)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",
   acompanhamentoDasCotasCmd: "leitura (V36 — previsto × realizado das cotas de despesa por fonte e mês; o realizado é o consumido do guard do cronograma)",
   gerarDecretoCmd: "leitura (compõe o texto do decreto — TR 4.19)",

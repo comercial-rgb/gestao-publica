@@ -1638,9 +1638,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há percentual por mês no cronograma; registrarVersaoCmd aceita cotas manuais sem tela e sem divisão por percentual.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-oitava-rodada.mts 5/5 · soma 99% recusada com a soma na tela e nada gravado; 100% grava a versão nova, janeiro = 10% de cada fonte.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m02-planejamento/programacao-dominio.ts — distribuirPorPercentuais: cada mês leva o truncamento de total × p / 100 e o último mês com percentual positivo absorve o resto, Σ == total ao centavo; recusa 12 meses diferente, percentual negativo, mais de duas casas e soma diferente de 100,00% (dizendo a soma). modules/m02-planejamento/programacao.ts — proporCmdPorPercentual: a previsão de cada fonte (a base de proporCmdDaLoa) dividida pelos percentuais, numa versão NOVA do cronograma (append-only), sob CRIAR_VERSAO_CMD. m02-cmd-por-percentual.test.ts 4/4 (contas à mão; N=2 fontes; versão 1 e 2; soma errada não grava; negação pela ação), duas mutações acusadas (o resto sempre em dezembro; sem a conferência da soma). Tela: /planejamento/cmd-mba, \"Cronograma mensal pelo percentual de cada mês\", com a soma mostrada enquanto se digita.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.38",
@@ -2283,8 +2283,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): nenhuma validação de débito do credor no empenho, na liquidação ou no pagamento; a dívida ativa (M10) e os lançamentos (M34) existem isolados.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m10-patrimonial/divida-ativa.ts — debitosInscritosDosDocumentos: por CPF/CNPJ, as inscrições em dívida ativa com saldo e o saldo somado, pelo saldoDaDividaAtivaEm do M10 (quitada ou cancelada não conta). AVISO, não bloqueio, nas três emissões: na liquidação e no pagamento, ao escolher o empenho ou a liquidação; no empenho, ao escolher o credor (consulta no servidor; se a consulta falhar, a tela diz que não consultou). Reter ou compensar o débito é regra do ente, fora da fonte. m10-debitos-do-credor.test.ts (N=2 devedores com saldo, um cancelado, um sem dívida), mutação acusada. FALTA o percurso com aviso: a base fictícia não tem dívida ativa nem roteiro de inscrição, e inscrever exige as contas do ente.",
+      "situacao": "IMPLEMENTADO_NAO_VALIDADO"
     },
     {
       "id": "5.10.1.39",
@@ -2506,9 +2506,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o portal da transparência não tem obras; modules/m13-transparencia/MODULO.md lista obras entre o que não foi feito.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-oitava-rodada.mts 5/5 · obra cadastrada, documento anexado pela aba, publicada, vista e baixada (200) sem sessão; retirada com motivo, detalhe e download 404.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: a obra no portal da transparência por ATO de publicação (PublicacaoDaObra, append-only, migration aditiva 20261107100000; modules/m11-licitacoes/obra-no-portal.ts, sob CADASTRAR_OBRA): publicar ou retirar (com motivo); o portal (/transparencia/obras e /transparencia/obras/[id], sem sessão) mostra cadastro, valores (valor da obra, contratado, empenhado, medido aprovado, percentual executado), medições aprovadas e os documentos; obra não publicada responde 404 como inexistente, e o anexo dela também (/transparencia/obras/anexo/[id], baixarAnexoPublicoDaObra no M22). Para haver anexos, a obra virou dono de Anexo no M22 (a coluna existia sem escritor; escopo do ente, leitura de licitações) e a tela da obra ganhou a aba Anexos. m11-obra-no-portal.test.ts 4/4 (N=2 obras e anexos; retirar e republicar; recusas com o motivo; dono único), duas mutações acusadas; m22-documentos 21/21 e os anexos do pagamento 4/4 depois do dono novo.",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.55",

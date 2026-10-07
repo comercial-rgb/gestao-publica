@@ -1,0 +1,25 @@
+// ============================================================================
+// V36 — A OBRA NO PORTAL DA TRANSPARÊNCIA (TR 5.10.1.54).
+//
+// ⚠️ PUBLICAR É UM ATO, E É APPEND-ONLY. Pôr a obra no portal expõe o cadastro, os valores e os ANEXOS dela a qualquer
+// pessoa, sem sessão. Isso não acontece por padrão nem por efeito colateral do cadastro: alguém publica, com nome e
+// data, e pode retirar. Cada ato é uma linha; a situação vigente é a do ato mais recente. Retirar não apaga o ato de
+// publicar — o portal deixa de mostrar, e o histórico diz quando esteve público e por decisão de quem.
+// ============================================================================
+
+model PublicacaoDaObra {
+  id String @id @default(cuid())
+
+  obraId String
+  obra   Obra   @relation("PublicacoesDaObra", fields: [obraId], references: [id])
+
+  /// true = a obra passa a estar no portal; false = é retirada.
+  publicada Boolean
+  /// Por que se retira (obrigatório na retirada; opcional ao publicar).
+  motivo    String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([obraId, criadoEm])
+}

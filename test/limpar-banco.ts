@@ -76,6 +76,7 @@ export const TABELAS = [
   "ItemDaPlanilhaOrcamentaria",
   "PlanilhaOrcamentariaDaObra",
   "PreviaDePlanilhaOrcamentaria",
+  "PublicacaoDaObra",
   // A obra sem órgão escapava da limpeza (só caía pela cascata do Orgao): a planilha cria obra sem órgão.
   "Obra",
   "EstornoDeAditivoPorItens",

@@ -47,6 +47,8 @@ export interface DonoDoAnexo {
   readonly pagamentoId?: string | undefined;
   /** V36 — o documento do movimento bancário. */
   readonly movimentoBancarioId?: string | undefined;
+  /** V36 — o documento da obra. */
+  readonly obraId?: string | undefined;
 }
 
 export function FormAnexo({
@@ -114,6 +116,7 @@ export function FormAnexo({
       ) : null}
       {dono.pagamentoId !== undefined ? <input type="hidden" name="pagamentoId" value={dono.pagamentoId} /> : null}
       {dono.movimentoBancarioId !== undefined ? <input type="hidden" name="movimentoBancarioId" value={dono.movimentoBancarioId} /> : null}
+      {dono.obraId !== undefined ? <input type="hidden" name="obraId" value={dono.obraId} /> : null}
 
       <div>
         <label htmlFor={idArquivo} className={CLASSE_ROTULO}>

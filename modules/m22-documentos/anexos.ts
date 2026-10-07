@@ -65,6 +65,8 @@ export const zAnexar = z
     // ── V36: o documento do registro de pagamento e o do movimento bancário ──
     pagamentoId: z.string().min(1).optional(),
     movimentoBancarioId: z.string().min(1).optional(),
+    // ── V36: os documentos da obra (projeto, alvará, fotos), que o portal mostra quando a obra é publicada ──
+    obraId: z.string().min(1).optional(),
     criadoPor: z.string().min(1),
   })
   .refine(
@@ -89,12 +91,13 @@ export const zAnexar = z
         d.normaOrcamentariaId,
         d.pagamentoId,
         d.movimentoBancarioId,
+        d.obraId,
       ].filter((v) => v !== undefined).length === 1,
     {
       message:
         "Um anexo pertence a EXATAMENTE UM registro: processo, movimento de processo, " +
         "comunicado, pessoa, borderô, empenho, liquidação, ordem de pagamento, termo patrimonial, " +
-        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento ou movimento bancário. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
+        "documento fiscal, guia de recolhimento, ocorrência de fiscalização, medição da ordem de serviço, lei orçamentária, decreto de crédito, decreto de realocação, norma orçamentária, pagamento, movimento bancário ou obra. Sem dono, ninguém sabe quem pode lê-lo; com dois, não se sabe qual " +
         "regra de acesso vale.",
     }
   );
@@ -138,6 +141,7 @@ export async function gravarAnexoNaTransacao(tx: Tx, input: AnexarInput): Promis
       normaOrcamentariaId: d.normaOrcamentariaId ?? null,
       pagamentoId: d.pagamentoId ?? null,
       movimentoBancarioId: d.movimentoBancarioId ?? null,
+      obraId: d.obraId ?? null,
       criadoPor: d.criadoPor,
     },
     select: { id: true },
@@ -205,6 +209,7 @@ export async function anexarArquivo(
       normaOrcamentariaId: d.normaOrcamentariaId ?? null,
         pagamentoId: d.pagamentoId ?? null,
         movimentoBancarioId: d.movimentoBancarioId ?? null,
+        obraId: d.obraId ?? null,
         criadoPor: d.criadoPor,
       },
       select: { id: true },
@@ -262,9 +267,16 @@ async function escopoDoDono(
     readonly normaOrcamentariaId?: string | undefined;
     readonly pagamentoId?: string | undefined;
     readonly movimentoBancarioId?: string | undefined;
+    readonly obraId?: string | undefined;
   }
 ): Promise<EscopoDoFato> {
   if (d.pessoaId !== undefined) return "ENTE";
+  // V36: a obra é cadastro do ENTE (cadastrarObra autoriza no ente); a obra tem de existir.
+  if (d.obraId !== undefined) {
+    const o = await tx.obra.findUnique({ where: { id: d.obraId }, select: { id: true } });
+    if (o === null) throw new Error(`Obra ${d.obraId} não existe. Nada foi gravado.`);
+    return "ENTE";
+  }
   // V36: o documento do PAGAMENTO segue a UG do pagamento — a mesma régua do M16 para o próprio pagamento (o
   // escopo { pagamento } anda até a ficha). Como o empenho e a liquidação: anexar no nível do ente não dá poder
   // sobre o pagamento de outra unidade.
@@ -545,4 +557,21 @@ export async function podeVerComunicado(
     select: { setorId: true },
   });
   return lotacoes.some((l) => setores.has(l.setorId));
+}
+
+/**
+ * V36 (TR 5.10.1.54) — UM ANEXO DE OBRA, SEM SESSÃO: só o da obra PUBLICADA no portal agora (o ato mais recente de
+ * `PublicacaoDaObra`). Anexo de obra não publicada, de outro dono ou inexistente responde `null` — o mesmo 404, para o
+ * portal não confirmar a existência do que não publicou.
+ */
+export async function baixarAnexoPublicoDaObra(prisma: PrismaClient, anexoId: string): Promise<AnexoEntregue | null> {
+  const a = await prisma.anexo.findUnique({
+    where: { id: anexoId },
+    select: { id: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, obraId: true },
+  });
+  if (a === null || a.obraId === null) return null;
+  const ultimo = await prisma.publicacaoDaObra.findFirst({ where: { obraId: a.obraId }, orderBy: [{ criadoEm: "desc" }, { id: "desc" }], select: { publicada: true } });
+  if (ultimo?.publicada !== true) return null;
+  const conteudo = await lerArquivo(a.id, a.sha256);
+  return { id: a.id, nomeOriginal: a.nomeOriginal, mimeType: a.mimeType, tamanhoBytes: a.tamanhoBytes, sha256: a.sha256, conteudo };
 }

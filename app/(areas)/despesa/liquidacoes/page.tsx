@@ -1,4 +1,5 @@
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
+import { lerDebitosDosCredores } from "../../../../lib/portas/debitos-do-credor";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import {
@@ -66,6 +67,7 @@ export default async function LiquidacoesPage({
   let documentos: readonly { readonly id: string; readonly rotulo: string }[];
   let extras: Extras;
   let numeroSugerido = "";
+  let debitos: Awaited<ReturnType<typeof lerDebitosDosCredores>> = {};
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     // V37 — o próximo número livre do exercício, já no campo (só lê; o numerador continua conferindo na gravação).
@@ -105,6 +107,8 @@ export default async function LiquidacoesPage({
         ehMaterial: empenhoEhDeMaterial(e.naturezaCodigo),
         naturezaCodigo: e.naturezaCodigo,
       }));
+    // V36 (TR 5.10.1.38) — o aviso de débito do credor, para os credores da lista de liquidáveis.
+    debitos = await lerDebitosDosCredores(liquidaveis.map((e) => e.credorCpfCnpj));
   } catch (erro) {
     // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO: o genérico faria o servidor procurar
     // defeito no sistema quando o que falta é escopo — e a mensagem do erro já diz quem
@@ -143,7 +147,7 @@ export default async function LiquidacoesPage({
         de <strong>material de consumo</strong> registra também as entradas no almoxarifado.
       </div>
 
-      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} />
+      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} debitos={debitos} />
 
       {liquidacoes.length === 0 ? (
         <EstadoVazio

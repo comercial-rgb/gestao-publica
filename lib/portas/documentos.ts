@@ -188,6 +188,7 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
       liquidacao: { select: { empenho: { select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } },
       pagamento: { select: { liquidacao: { select: { empenho: { select: { ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } } } },
       movimentoBancarioId: true,
+      obraId: true,
     },
   });
   if (a === null) return null;
@@ -220,6 +221,9 @@ async function leituraDoDonoDoAnexo(anexoId: string): Promise<LeituraDoDono | nu
   // do ente, como a movimentação.
   if (a.pagamento !== null) return { despesaDaUnidade: a.pagamento.liquidacao.empenho.ficha.unidadeOrc.codigo };
   if (a.movimentoBancarioId !== null) return { acao: "CONSULTAR_FINANCEIRO", nivel: "ente" };
+  // V36 — o documento da obra: quem lê licitações (a tela da obra) lê o anexo dela. Publicada no portal, o anexo
+  // também sai sem sessão, pela rota pública, que confere a publicação.
+  if (a.obraId !== null) return { acao: "CONSULTAR_LICITACOES", nivel: "algum" };
   return null;
 }
 
@@ -301,6 +305,8 @@ export interface AnexarNaTela {
   readonly pagamentoId?: string | undefined;
   /** V36 — o documento do movimento bancário; ato do ente. */
   readonly movimentoBancarioId?: string | undefined;
+  /** V36 — o documento da obra; ato do ente. */
+  readonly obraId?: string | undefined;
 }
 
 export async function anexarNaTela(
@@ -373,4 +379,10 @@ export async function lerDocumentosDoMovimento(id: string): Promise<DocumentosDo
     contaBancaria: `${m.contaBancaria.codigo} — ${m.contaBancaria.descricao}`,
     anexos: await listarAnexosDoPagamentoOuMovimento(cliente(), { movimentoBancarioId: m.id }, sessao.identificador),
   };
+}
+
+/** V36 — os anexos de uma obra, para a aba da tela da obra. Leitura de licitações. */
+export async function lerAnexosDaObra(obraId: string): Promise<readonly AnexoNaLista[]> {
+  const sessao = await exigirLeituraEmAlgumEscopo("CONSULTAR_LICITACOES");
+  return listarAnexosDoPagamentoOuMovimento(cliente(), { obraId }, sessao.identificador);
 }

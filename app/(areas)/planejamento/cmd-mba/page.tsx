@@ -21,7 +21,7 @@ import {
 } from "../../../../lib/portas/programacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
-import { FormLimitacao, FormLiberacao, FormProporDaLoa } from "./FormsDaProgramacao";
+import { FormCronogramaPorPercentual, FormLimitacao, FormLiberacao, FormProporDaLoa } from "./FormsDaProgramacao";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -279,6 +279,7 @@ export default async function CmdMbaPage({
         opera. Os três formulários exigem o ato que os autoriza; a minuta dele sai do botão acima.
       */}
       <FormProporDaLoa exercicio={exercicio} peca="CMD" />
+      <FormCronogramaPorPercentual exercicio={exercicio} />
       <FormProporDaLoa exercicio={exercicio} peca="MBA" />
       <FormLimitacao ativa={limitacao.ativa} exercicio={exercicio} />
       {cmd.vigente !== null && cmd.vigente.linhas.length > 0 ? (

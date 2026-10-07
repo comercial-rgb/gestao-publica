@@ -47,7 +47,12 @@ function revalidarDono(dono: {
   readonly normaOrcamentariaId?: string | undefined;
   readonly pagamentoId?: string | undefined;
   readonly movimentoBancarioId?: string | undefined;
+  readonly obraId?: string | undefined;
 }): void {
+  if (dono.obraId !== undefined) {
+    revalidatePath(`/licitacoes/obras/${dono.obraId}`);
+    return;
+  }
   if (dono.pagamentoId !== undefined) {
     revalidatePath(`/despesa/pagamentos/${dono.pagamentoId}`);
     return;
@@ -126,6 +131,7 @@ export async function anexarArquivoAction(
     const normaOrcamentariaId = texto(formData, "normaOrcamentariaId");
     const pagamentoId = texto(formData, "pagamentoId");
     const movimentoBancarioId = texto(formData, "movimentoBancarioId");
+    const obraId = texto(formData, "obraId");
 
     const dono = {
       ...(termoPatrimonialId !== "" ? { termoPatrimonialId } : {}),
@@ -141,6 +147,7 @@ export async function anexarArquivoAction(
       ...(normaOrcamentariaId !== "" ? { normaOrcamentariaId } : {}),
       ...(pagamentoId !== "" ? { pagamentoId } : {}),
       ...(movimentoBancarioId !== "" ? { movimentoBancarioId } : {}),
+      ...(obraId !== "" ? { obraId } : {}),
     };
 
     try {

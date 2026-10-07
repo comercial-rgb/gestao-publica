@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { anoCivil } from "../../../../packages/datas/index";
+import { anoCivil, meioDiaCivil } from "../../../../packages/datas/index";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import {
   configurarLimitacaoDeEmpenho,
   liberarCotaDaProgramacao,
+  proporCronogramaPorPercentual,
   proporProgramacaoDaLoa,
 } from "../../../../lib/portas/programacao";
 
@@ -30,7 +31,8 @@ export interface EstadoDaProgramacao {
 
 function dataCivilDoFormulario(bruto: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(bruto)) return null;
-  return new Date(`${bruto}T12:00:00.000-03:00`);
+  // V36 — pelo calendário do ente (packages/datas), e não por um "-03:00" cravado.
+  return meioDiaCivil(bruto);
 }
 
 function exercicioDoFormulario(formData: FormData): number {
@@ -132,6 +134,30 @@ export async function liberarCotaAction(
       return { sucesso: "Liberação registrada. O limite do mês foi ampliado no valor informado." };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível registrar a liberação.") };
+    }
+  });
+}
+
+/**
+ * V36 (TR 5.9.3.37) — UMA VERSÃO DO CRONOGRAMA PELO PERCENTUAL DE CADA MÊS. Os doze percentuais chegam com vírgula
+ * ou ponto; a soma e as casas são conferidas no domínio, que recusa dizendo a soma.
+ */
+export async function proporPorPercentualAction(_prev: EstadoDaProgramacao, formData: FormData): Promise<EstadoDaProgramacao> {
+  return comComandoDoFormulario(formData, async () => {
+    const atoRef = String(formData.get("atoRef") ?? "").trim();
+    const vigenteDesde = dataCivilDoFormulario(String(formData.get("vigenteDesde") ?? ""));
+    if (atoRef === "") return { erro: "Informe o ato que autoriza o cronograma." };
+    if (vigenteDesde === null) return { erro: "Informe a data em que o ato passa a viger." };
+    const percentuais = formData.getAll("percentual").map((p) => {
+      const t = String(p).trim().replace(",", ".");
+      return t === "" ? "0" : t;
+    });
+    try {
+      const r = await proporCronogramaPorPercentual({ exercicio: exercicioDoFormulario(formData), atoRef, vigenteDesde, percentuais });
+      revalidatePath("/planejamento/cmd-mba");
+      return { sucesso: `Versão ${String(r.numero)} do cronograma registrada pelos percentuais mensais: ${String(r.cotas)} cota(s).` };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível registrar o cronograma pelos percentuais.") };
     }
   });
 }

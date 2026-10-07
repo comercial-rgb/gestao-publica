@@ -982,3 +982,28 @@ export async function estornarRecebimentoNaTx(
     });
   }
 }
+
+/**
+ * V36 (TR 5.10.1.38) — OS DÉBITOS INSCRITOS DE CADA DOCUMENTO: para cada CPF/CNPJ pedido que tem dívida ativa com saldo,
+ * quantas inscrições e o saldo somado, pelo MESMO `saldoDaDividaAtivaEm` do M10 (inscrição, atualização, recebimento,
+ * cancelamento e estornos). Documento sem dívida, ou com todas quitadas, não aparece.
+ *
+ * É a "validação de débitos com o credor" do empenho, da liquidação e do pagamento: AVISO na tela, e não bloqueio — a
+ * regra que impediria pagar a quem deve ao município (retenção, compensação) é decisão do ente e não está na fonte.
+ */
+export async function debitosInscritosDosDocumentos(
+  tx: Tx,
+  documentos: readonly string[]
+): Promise<ReadonlyMap<string, { readonly inscricoes: number; readonly saldo: Money }>> {
+  const unicos = [...new Set(documentos.filter((d) => d !== ""))];
+  if (unicos.length === 0) return new Map();
+  const dividas = await tx.dividaAtiva.findMany({ where: { devedorDocumento: { in: unicos } }, select: { id: true, devedorDocumento: true } });
+  const out = new Map<string, { inscricoes: number; saldo: Money }>();
+  for (const d of dividas) {
+    const saldo = await saldoDaDividaAtivaEm(tx, d.id);
+    if (!saldo.greaterThan(0)) continue;
+    const atual = out.get(d.devedorDocumento) ?? { inscricoes: 0, saldo: toMoney("0.00") };
+    out.set(d.devedorDocumento, { inscricoes: atual.inscricoes + 1, saldo: toMoney(atual.saldo.plus(saldo)) });
+  }
+  return out;
+}

@@ -1,3 +1,4 @@
+import { Decimal } from "decimal.js";
 import { z } from "zod";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -11,6 +12,7 @@ import { diaCivil, janelaCivilDeMeses } from "../../packages/datas/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import {
   bimestreDoMes,
+  distribuirPorPercentuais,
   gerarTextoDecreto,
   proporCotasDaLoa,
   proporMetasDaLoa,
@@ -86,6 +88,35 @@ export async function proporMbaDaLoa(
     const previsao = await previsaoPorFonte(tx, { exercicio: d.exercicio });
     const distribuicao = proporMetasDaLoa(previsao);
     return gravarVersaoMba(tx, d, 1, distribuicao);
+  });
+}
+
+/**
+ * V36 (TR 5.9.3.37) — UMA VERSÃO DO CMD COM O PERCENTUAL DE CADA MÊS: o usuário diz quanto do ano vai em cada mês, e
+ * a previsão de cada fonte (a mesma base de `proporCmdDaLoa`) é dividida por esses percentuais, fechando ao centavo
+ * (`distribuirPorPercentuais`). É uma versão NOVA, append-only: a 1 se ainda não há cronograma, a seguinte se já há.
+ */
+const zProporPorPercentual = zPropor.extend({
+  percentuais: z.array(z.string().trim().regex(/^\d{1,3}(\.\d{1,2})?$/,"Percentual com até duas casas, ponto decimal.")).length(12, "Informe os 12 meses."),
+});
+export async function proporCmdPorPercentual(
+  prisma: PrismaClient,
+  input: z.input<typeof zProporPorPercentual>
+): Promise<{ readonly versaoId: string; readonly cotas: number; readonly numero: number }> {
+  const d = zProporPorPercentual.parse(input);
+  const percentuais = d.percentuais.map((p) => new Decimal(p));
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.proporCmdPorPercentual, "ENTE");
+    const previsao = await previsaoPorFonte(tx, { exercicio: d.exercicio });
+    const dist = new Map<string, readonly Money[]>();
+    for (const [fonteId, total] of previsao) {
+      if (total.lessThanOrEqualTo(0)) continue;
+      dist.set(fonteId, distribuirPorPercentuais(total, percentuais));
+    }
+    if (dist.size === 0) throw new Error(`O exercício ${String(d.exercicio)} não tem previsão positiva em fonte nenhuma: não há o que distribuir. Nada foi gravado.`);
+    const numero = await proximoNumeroCmd(tx, d.exercicio);
+    const r = await gravarVersaoCmd(tx, d, numero, dist);
+    return { ...r, numero };
   });
 }
 

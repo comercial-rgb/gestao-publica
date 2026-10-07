@@ -398,13 +398,13 @@ export { baixarAnexo };
  */
 export async function listarAnexosDoPagamentoOuMovimento(
   prisma: PrismaClient,
-  dono: { readonly pagamentoId: string } | { readonly movimentoBancarioId: string },
+  dono: { readonly pagamentoId: string } | { readonly movimentoBancarioId: string } | { readonly obraId: string },
   usuarioIdent: string
 ): Promise<readonly AnexoNaLista[]> {
   const u = await prisma.usuario.findUnique({ where: { identificador: usuarioIdent }, select: { ativo: true } });
   if (u === null || !u.ativo) return [];
   const anexos = await prisma.anexo.findMany({
-    where: "pagamentoId" in dono ? { pagamentoId: dono.pagamentoId } : { movimentoBancarioId: dono.movimentoBancarioId },
+    where: "pagamentoId" in dono ? { pagamentoId: dono.pagamentoId } : "obraId" in dono ? { obraId: dono.obraId } : { movimentoBancarioId: dono.movimentoBancarioId },
     select: { id: true, nomeOriginal: true, mimeType: true, tamanhoBytes: true, sha256: true, criadoEm: true, criadoPor: true },
     orderBy: { criadoEm: "asc" },
   });

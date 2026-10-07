@@ -10,6 +10,7 @@ import {
   gerarDecretoMba,
   liberarProgramacao,
   proporCmdDaLoa,
+  proporCmdPorPercentual,
   proporMbaDaLoa,
   registrarEventoLimitacao,
 } from "../../modules/m02-planejamento/programacao";
@@ -552,4 +553,16 @@ export async function lerAcompanhamentoDasCotas(p: { readonly exercicio: number 
   const fontes = await db.fonteRecurso.findMany({ select: { id: true, codigo: true } });
   const codigoPorId = new Map(fontes.map((f) => [f.id, f.codigo]));
   return linhas.map((l) => ({ ...l, fonteCodigo: codigoPorId.get(l.fonteId) ?? l.fonteId }));
+}
+
+/** V36 (TR 5.9.3.37) — a versão do CMD pelo percentual de cada mês; a conta e as recusas são do M02. */
+export async function proporCronogramaPorPercentual(p: {
+  readonly exercicio: number;
+  readonly atoRef: string;
+  readonly vigenteDesde: Date;
+  readonly percentuais: readonly string[];
+}): Promise<{ readonly versaoId: string; readonly cotas: number; readonly numero: number }> {
+  return comEscritaAutenticada("CRIAR_VERSAO_CMD", (criadoPor) =>
+    proporCmdPorPercentual(cliente(), { exercicio: p.exercicio, atoRef: p.atoRef, vigenteDesde: p.vigenteDesde, percentuais: [...p.percentuais], criadoPor })
+  );
 }

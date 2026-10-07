@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef } from "react";
+import { useActionState, useRef, useState } from "react";
 import { CampoValor } from "../../../../components/ui/Campos";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import {
@@ -13,6 +13,7 @@ import {
   configurarLimitacaoAction,
   liberarCotaAction,
   proporDaLoaAction,
+  proporPorPercentualAction,
   type EstadoDaProgramacao,
 } from "./actions";
 
@@ -239,6 +240,64 @@ export function FormLiberacao({
       <Mensagem acao="liberar-cota" estado={estado} />
       <button className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`} disabled={pendente} type="submit">
         {pendente ? "Registrando…" : "Registrar a liberação"}
+      </button>
+    </form>
+  );
+}
+
+/**
+ * V36 (TR 5.9.3.37) — O CRONOGRAMA PELO PERCENTUAL DE CADA MÊS. O usuário diz quanto do ano vai em cada mês; a
+ * previsão de cada fonte é dividida por esses percentuais, ao centavo. A soma tem de dar 100%: a tela mostra a soma
+ * enquanto se digita, e quem recusa é o servidor.
+ */
+export function FormCronogramaPorPercentual({ exercicio }: { readonly exercicio: number }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaProgramacao, FormData>(proporPorPercentualAction, {});
+  const ref = useRef<HTMLFormElement>(null);
+  const [valores, setValores] = useState<readonly string[]>(() => new Array<string>(12).fill(""));
+  const soma = valores.reduce((a, v) => {
+    const n = Number(v.replace(",", "."));
+    return Number.isFinite(n) ? a + Math.round(n * 100) : a;
+  }, 0);
+  return (
+    <form action={action} className={CLASSE_PAINEL_FORMULARIO} data-acao="cronograma-por-percentual" ref={ref}>
+      <ChaveDeComando />
+      <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Cronograma mensal pelo percentual de cada mês</h2>
+      <p className="mb-3 text-xs text-[color:var(--color-ink-2)]">
+        Informe o percentual do ano em cada mês. A previsão de receita de cada fonte é dividida por esses percentuais, e a
+        diferença de centavos fica no último mês com percentual. Registra uma versão nova do cronograma.
+      </p>
+      <input name="exercicio" type="hidden" value={exercicio} />
+      <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-6">
+        {MESES.map((m, i) => (
+          <label className="text-xs text-[color:var(--color-ink-2)]" key={m}>
+            <span className={ROTULO}>{m} (%)</span>
+            <input
+              className={CAMPO}
+              inputMode="decimal"
+              name="percentual"
+              placeholder="0,00"
+              value={valores[i] ?? ""}
+              onChange={(e) => setValores((vs) => vs.map((x, k) => (k === i ? e.target.value : x)))}
+            />
+          </label>
+        ))}
+      </div>
+      <p className="mt-2 text-xs" data-soma-dos-percentuais={(soma / 100).toFixed(2)}>
+        Soma: <strong>{(soma / 100).toFixed(2).replace(".", ",")}%</strong>{soma === 10000 ? "" : " — tem de somar 100,00%"}
+      </p>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Ato que autoriza</span>
+          <input className={CAMPO} name="atoRef" placeholder="Decreto 12/2026" required />
+        </label>
+        <label className="text-xs text-[color:var(--color-ink-2)]">
+          <span className={ROTULO}>Passa a viger em</span>
+          <input className={CAMPO} name="vigenteDesde" required type="date" />
+        </label>
+      </div>
+      <Mensagem acao="cronograma-por-percentual" estado={estado} />
+      <button className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`} disabled={pendente} type="submit">
+        {pendente ? "Registrando…" : "Registrar a versão pelos percentuais"}
       </button>
     </form>
   );

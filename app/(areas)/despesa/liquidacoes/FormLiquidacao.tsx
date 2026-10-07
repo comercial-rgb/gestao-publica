@@ -11,6 +11,7 @@ import {
 import { liquidarAction, type EstadoLiquidacao } from "./actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
+import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
 import { formatarDocumento } from "../../../../packages/documento/index";
 
 /**
@@ -56,6 +57,7 @@ export function FormLiquidacao({
   documentos = [],
   empenhoInicial,
   numeroSugerido,
+  debitos = {},
 }: {
   readonly empenhos: readonly EmpenhoLiquidavel[];
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
@@ -64,6 +66,8 @@ export function FormLiquidacao({
   readonly empenhoInicial?: string | undefined;
   /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
   readonly numeroSugerido?: string | undefined;
+  /** V36 (TR 5.10.1.38) — os débitos inscritos em dívida ativa dos credores da lista, por documento. */
+  readonly debitos?: Readonly<Record<string, { readonly inscricoes: number; readonly saldo: string }>>;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoLiquidacao, FormData>(
     liquidarAction,
@@ -122,6 +126,7 @@ export function FormLiquidacao({
               </option>
             ))}
           </select>
+          <AvisoDeDebitoDoCredor debito={alvo === undefined ? undefined : debitos[alvo.credorCpfCnpj]} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">

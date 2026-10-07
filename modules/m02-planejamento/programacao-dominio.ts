@@ -97,6 +97,38 @@ export function proporMetasDaLoa(
   return out;
 }
 
+/**
+ * V36 (TR 5.9.3.37) — DISTRIBUI `total` pelos PERCENTUAIS informados para cada mês. A mesma honestidade de
+ * `distribuirEmParcelas`: cada mês leva `truncar2(total × p / 100)` e o ÚLTIMO MÊS COM PERCENTUAL POSITIVO absorve o
+ * resto, para Σ == total ao centavo (o resto não vai para um mês de 0%, que ficaria com valor que ninguém pediu).
+ *
+ * Recusa: quantidade diferente de 12, percentual negativo, mais de duas casas, ou Σ ≠ 100,00 — dizendo a soma.
+ */
+export function distribuirPorPercentuais(total: Money, percentuais: readonly Decimal[]): readonly Money[] {
+  if (percentuais.length !== 12) throw new Error(`Informe o percentual dos 12 meses (recebidos ${String(percentuais.length)}).`);
+  if (total.lessThan(0)) throw new Error(`Distribuição de valor NEGATIVO (${total.toFixed(2)}).`);
+  percentuais.forEach((p, i) => {
+    if (p.lessThan(0)) throw new Error(`O percentual do mês ${String(i + 1)} é negativo (${p.toFixed(2)}).`);
+    if (p.decimalPlaces() > 2) throw new Error(`O percentual do mês ${String(i + 1)} tem mais de duas casas (${p.toString()}).`);
+  });
+  const soma = percentuais.reduce((a, p) => a.plus(p), new Decimal(0));
+  if (!soma.equals(100)) throw new Error(`Os percentuais dos 12 meses somam ${soma.toFixed(2).replace(".", ",")}%, e têm de somar 100,00%.`);
+  const ultimoPositivo = percentuais.reduce((u, p, i) => (p.greaterThan(0) ? i : u), -1);
+  const parcelas: Money[] = [];
+  let acumulado = toMoney("0.00");
+  percentuais.forEach((p, i) => {
+    if (i === ultimoPositivo) {
+      parcelas.push(toMoney("0.00")); // o resto entra depois do laço
+      return;
+    }
+    const v = truncar2(total.times(p).dividedBy(100) as Money);
+    parcelas.push(v);
+    acumulado = toMoney(acumulado.plus(v));
+  });
+  parcelas[ultimoPositivo] = toMoney(total.minus(acumulado));
+  return parcelas;
+}
+
 /** O bimestre (1-6) de um mês (1-12). Jan/fev = 1, mar/abr = 2, ... */
 export function bimestreDoMes(mes: number): number {
   if (mes < 1 || mes > 12) {
