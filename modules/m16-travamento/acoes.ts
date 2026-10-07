@@ -3321,6 +3321,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerLinhaDoAlvo: "leitura (V36 — a linha planejada de um alvo do ato de alteração, com a peça e o rótulo — não muta)",
   gravarItensNoAtoDaLei: "composável interno (V36 — grava os itens aprovados no ato de alteração da lei, pelo guard do ato, DENTRO da sanção da emenda ao PPA ou à LDO, que já autorizou SANCIONAR_EMENDA_AO_ORCAMENTO)",
   emendasDaPeca: "leitura (V36 — as emendas de uma peça do planejamento com a situação derivada — não muta)",
+  balancetePorFonte: "leitura (V36 — balancete analítico por fonte de recursos: as somas do razão agrupadas pela fonte que o resolver da MSC acha no fato — não muta)",
   bloqueiosDaPeca: "leitura (V36 — os bloqueios vivos das linhas de uma peça para emendas — não muta)",
   chequesEmitidos: "leitura (V36 — os cheques emitidos num período, de pagamento e avulsos, numa consulta só; tela de cheques)",
   borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",

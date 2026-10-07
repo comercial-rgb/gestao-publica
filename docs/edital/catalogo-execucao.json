@@ -3304,9 +3304,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o balancete é por conta, sem recorte por fonte; a fonte existe nos fatos (arrecadadoPorFonte, despesaPorFonte, extraorcamentarioPorFonte, restosAPagarPorFonte) mas não há balancete por fonte.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · passos: /relatorios/livros/balancete-por-fonte do exercício → linha de maior movimento igual ao domínio → recorte 6.2.2 + fonte 500 organizado por fonte → resumo da fonte → atestador sem CONSULTAR_RELATORIOS vai a /sem-acesso · obtido: 4/4 · artefato: scripts/percurso-v36-balancete-por-fonte.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — balancete analítico por fonte de recursos: modules/m12-relatorios/balancete-por-fonte.ts (balancetePorFonte) parte cada conta do razão pela fonte do fato que a movimentou, com as MESMAS peças da MSC (somasPorContaELancamento do M01 e resolverDimensoes do M14): saldo anterior, débito, crédito e saldo final por conta x fonte, resumo por fonte, recorte por uma ou mais contas (início do código) e uma ou mais fontes; o que não tem fonte aparece como 'sem fonte' (encerramento, fato patrimonial) ou 'fonte não identificada' (lançamento sem documento de origem), contado — somadas as fontes, cada conta reconstitui o balancete de verificação. Contas de receita e despesa são as do PCASP (6.2.1, 6.2.2), no mesmo balancete. Tela /relatorios/livros/balancete-por-fonte (CONSULTAR_RELATORIOS), visão por conta ou por fonte, CSV. m12-balancete-por-fonte.test.ts 4/4 (duas fontes, saldo anterior de junho, lançamento avulso não identificado, identidade com o balancete comum, recortes e resumo); 7 mutações acusadas. Percurso scripts/percurso-v36-balancete-por-fonte.mts 4/4 (2026-10-07, base fictícia: 113 linhas iguais às do domínio, recorte 6.2.2 na fonte 500 pela tela, resumo conferido, sem consulta de relatórios a tela recusa nomeando CONSULTAR_RELATORIOS). FALTA: o código de fonte do cadastro é só a especificação de três dígitos (FonteRecurso.codigo VarChar(3)), sem o indicador de exercício; 'resumir por especificação' é por isso o mesmo agrupamento de 'resumir por fonte'.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.112",

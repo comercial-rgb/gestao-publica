@@ -8,6 +8,7 @@ import {
   type LancamentoDoDiario,
   type RazaoAnalitico,
 } from "../../modules/m12-relatorios/livros";
+import { balancetePorFonte, type BalancetePorFonte } from "../../modules/m12-relatorios/balancete-por-fonte";
 
 /**
  * PORTA — LIVROS OBRIGATÓRIOS (Diário, Razão analítico, Balancete). Os motores já existem desde
@@ -99,3 +100,25 @@ export async function tituloDaConta(codigo: string): Promise<string | null> {
   const c = await cliente().contaPcasp.findUnique({ where: { codigo }, select: { nome: true } });
   return c?.nome ?? null;
 }
+
+/**
+ * V36 — O BALANCETE POR FONTE DE RECURSOS. A regra é do M12 (`balancete-por-fonte.ts`); aqui só a
+ * descrição de cada fonte para a tela. Contas e fontes chegam como texto do formulário, separadas por
+ * vírgula ou espaço.
+ */
+export async function gerarBalancetePorFonte(p: {
+  readonly desde: Date;
+  readonly ate: Date;
+  readonly contas: string;
+  readonly fontes: string;
+}): Promise<BalancetePorFonte & { readonly descricoes: ReadonlyMap<string, string> }> {
+  const lista = (s: string): string[] => s.split(/[\s,;]+/).map((x) => x.trim()).filter((x) => x !== "");
+  const prisma = cliente();
+  const [b, fontes] = await Promise.all([
+    balancetePorFonte(prisma, { desde: p.desde, ate: p.ate, contas: lista(p.contas), fontes: lista(p.fontes) }),
+    prisma.fonteRecurso.findMany({ orderBy: { codigo: "asc" }, select: { codigo: true, descricao: true } }),
+  ]);
+  return { ...b, descricoes: new Map(fontes.map((f) => [f.codigo, f.descricao])) };
+}
+export { SEM_FONTE, FONTE_NAO_IDENTIFICADA } from "../../modules/m12-relatorios/balancete-por-fonte";
+export type { LinhaPorFonte } from "../../modules/m12-relatorios/balancete-por-fonte";
