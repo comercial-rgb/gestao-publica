@@ -695,6 +695,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/despesa/empenhos", rotulo: "Empenhos" },
         { href: "/despesa/liquidacoes", rotulo: "Liquidações" },
         { href: "/despesa/a-pagar", rotulo: "A pagar por credor" },
+        { href: "/despesa/em-liquidacao", rotulo: "Empenhos e restos em liquidação" },
         { href: "/despesa/anulacoes", rotulo: "Anulações e estornos" },
         { href: "/licitacoes/documentos-fiscais", rotulo: "Documentos fiscais" },
         { href: "/despesa/assinaturas", rotulo: "Assinatura dos documentos" },

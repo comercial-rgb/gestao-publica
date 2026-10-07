@@ -3308,6 +3308,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   baixarAnexoPublicoDaObra: "leitura pública (V36 — o anexo de obra publicada no portal; o resto responde como inexistente)",
   periodicidadeVigente: "leitura (V36 — a periodicidade vigente do controle das cotas num instante; o guard do CMD e o acompanhamento)",
   empenhosDaParceria: "leitura (V36 — os empenhos de uma parceria público-privada, com o líquido de cada um; tela da parceria)",
+  empenhosEmLiquidacao: "leitura (V36 — os empenhos e restos não processados com nota conferida ainda não liquidada; tela de empenhos em liquidação)",
   chequesEmitidos: "leitura (V36 — os cheques emitidos num período, de pagamento e avulsos, numa consulta só; tela de cheques)",
   borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",

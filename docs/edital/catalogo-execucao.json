@@ -2339,8 +2339,8 @@
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
       "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o estágio 'em liquidação' (6.2.2.1.3.02) está DORMENTE em modules/m01-core-contabil/roteiros.ts; não há relatório de empenhos e restos em liquidação. O estágio é facultativo no MCASP.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — atendida a listagem de EMPENHOS E RESTOS COM VERIFICAÇÃO DE MATERIAIS: modules/m05-despesa/em-liquidacao.ts (empenhosEmLiquidacao) lista o empenho do exercício e o resto NÃO processado com saldo a liquidar (posicaoAPagar, fase A_LIQUIDAR) que tem nota fiscal CONFERIDA com valor não liquidado (situacaoDoDocumentoFiscal e saldoDoDocumentoFiscal do M11); em liquidação = min(saldo do empenho, a liquidar das notas); a nota é do empenho que aponta ou do empenho único da sua ordem de compra (ordem com mais de um empenho não atribui e é contada à parte). Tela /despesa/em-liquidacao (CONSULTAR_DESPESA pelo recorte autorizado), recorte por origem, totais de exercício e restos, CSV. m05-em-liquidacao.test.ts 3/3 (N=2 notas no NE1, teto pelo saldo, nota só registrada fora, nota liquidada fora, ordem com empenho único e com dois, restos após o encerramento); 5 mutações acusadas. Percurso scripts/percurso-v36-em-liquidacao.mts 5/5 (2026-10-07, base fictícia: empenho pela tela, nota conferida, a tela mostra 300,00 em liquidação, o recorte de restos o exclui, a liquidação pela tela com a nota o tira da lista, sem consulta da despesa a tela não abre). FALTA a outra metade — 'por sua natureza possuem lançamentos em contas orçamentárias em liquidação': o estágio 6.2.2.1.3.02 está dormente (decisão SEM-ESTAGIO-EM-LIQUIDACAO do M01) e nos restos a conta 6.3.1.2 é zerada no mesmo lançamento; ativá-lo é decisão contábil do ente (roteiro, estorno e guard da obrigação), não do sistema.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.1.43",
