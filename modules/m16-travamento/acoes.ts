@@ -3290,6 +3290,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   obrasNoPortal: "leitura pública (V36 — as obras publicadas no portal, com a posição financeira; sem sessão por desenho: só o que foi publicado)",
   obraNoPortal: "leitura pública (V36 — uma obra publicada: cadastro, posição, medições aprovadas e anexos; não publicada responde como inexistente)",
   baixarAnexoPublicoDaObra: "leitura pública (V36 — o anexo de obra publicada no portal; o resto responde como inexistente)",
+  borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",
   acompanhamentoDasCotasCmd: "leitura (V36 — previsto × realizado das cotas de despesa por fonte e mês; o realizado é o consumido do guard do cronograma)",
   gerarDecretoCmd: "leitura (compõe o texto do decreto — TR 4.19)",

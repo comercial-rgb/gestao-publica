@@ -94,4 +94,33 @@ describe("M05 — pagamentos efetuados num período", () => {
     const grupos = agruparPagamentos(await pagamentosEfetuados(prisma, todo), "conta");
     expect(grupos.map((g) => [g.chave, g.linhas.length, g.liquido.toFixed(2)])).toEqual([["CC-001", 3, "1260.00"]]);
   });
+
+  it("t4 (V36, TR 5.10.2.4): com ou sem documento anexado, assinado ou não — a assinatura vale no documento do pagamento ou da ordem dele", async () => {
+    const todo = periodo("2026-01-01", "2027-12-31");
+    const pags = new Map((await prisma.pagamento.findMany({ where: { numero: { in: ["NP-1", "NP-2", "NP-RP"] } }, select: { id: true, numero: true, liquidacaoId: true, fonteId: true } })).map((p) => [p.numero, p]));
+    const doc = (id: string, dono: Record<string, string>) =>
+      prisma.anexo.create({ data: { id, nomeOriginal: id + ".pdf", mimeType: "application/pdf", tamanhoBytes: 10, sha256: id.padEnd(64, "0"), ...dono, criadoPor: POR } });
+    // NP-1: documento próprio, assinado. NP-2: documento próprio, sem assinatura. NP-RP: sem documento próprio, mas a
+    // ORDEM de pagamento dele tem documento assinado.
+    await doc("anx-np1", { pagamentoId: pags.get("NP-1")!.id });
+    await prisma.assinaturaDeDocumento.create({ data: { modo: "SIMPLES", assinadoPor: POR, hashConteudo: "a".repeat(64), anexoId: "anx-np1" } });
+    await doc("anx-np2", { pagamentoId: pags.get("NP-2")!.id });
+    const rp = pags.get("NP-RP")!;
+    const ordem = await prisma.ordemDePagamento.create({ data: { numero: "OP-RP", liquidacaoId: rp.liquidacaoId, valor: "300.00", dataPrevista: new Date("2027-02-01T12:00:00Z"), contaBancaria: "CC-001", fonteId: rp.fonteId, historico: "ordem", criadoPor: POR }, select: { id: true } });
+    await doc("anx-op", { ordemDePagamentoId: ordem.id });
+    await prisma.assinaturaDeDocumento.create({ data: { modo: "SIMPLES", assinadoPor: POR, hashConteudo: "b".repeat(64), anexoId: "anx-op" } });
+    await prisma.pagamento.update({ where: { id: rp.id }, data: { ordemDePagamentoId: ordem.id } });
+
+    const nums = async (r: { comAnexo?: boolean; assinado?: boolean }) => (await pagamentosEfetuados(prisma, { ...todo, ...r })).map((l) => l.numero);
+    expect(await nums({ comAnexo: true })).toEqual(["NP-1", "NP-2"]);
+    expect(await nums({ comAnexo: false })).toEqual(["NP-RP"]);
+    expect(await nums({ assinado: true })).toEqual(["NP-1", "NP-RP"]);
+    expect(await nums({ assinado: false })).toEqual(["NP-2"]);
+    expect(await nums({ comAnexo: true, assinado: false })).toEqual(["NP-2"]);
+    expect((await pagamentosEfetuados(prisma, todo)).map((l) => [l.numero, l.comAnexo, l.assinado])).toEqual([
+      ["NP-1", true, true],
+      ["NP-2", true, false],
+      ["NP-RP", false, true],
+    ]);
+  });
 });

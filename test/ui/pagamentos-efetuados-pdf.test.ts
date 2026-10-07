@@ -6,7 +6,7 @@ import type { FiltroDosPagamentos, PagamentoEfetuadoDaTela, PagamentosEfetuadosD
 const linha = (numero: string, conta: string, pago: string, retido: string, liquido: string): PagamentoEfetuadoDaTela => ({
   id: numero, numero, data: new Date("2026-07-10T15:00:00Z"), origem: "EXERCICIO", exercicioDaDotacao: 2026, empenhoId: "e", empenhoNumero: "NE-1",
   liquidacaoNumero: "1", credorCpfCnpj: "12345678000195", credorNome: "Fornecedor", fonteCodigo: "500", contaBancaria: conta,
-  pagoVivo: pago, retido, liquido, anulado: false,
+  pagoVivo: pago, retido, liquido, anulado: false, comAnexo: numero === "P-1", assinado: numero === "P-1",
 });
 const a = linha("P-1", "CC-1", "1000.00", "40.00", "960.00");
 const b = linha("P-2", "CC-2", "300.00", "0.00", "300.00");
@@ -31,21 +31,26 @@ const dados = (agrupado: boolean, extra: PagamentosEfetuadosDaTela["extra"] = co
   totais: { pagoVivo: "1300.00", retido: "40.00", liquido: "1260.00" },
   opcoes: { credores: [], fontes: [], contas: [] },
 });
-const filtro = (agrupar: FiltroDosPagamentos["agrupar"], comRetencoes = true): FiltroDosPagamentos => ({ desde: "2026-01-01", ate: "2026-12-31", credor: "", fonte: "", conta: "", agrupar, comRetencoes });
+const filtro = (agrupar: FiltroDosPagamentos["agrupar"], comRetencoes = true): FiltroDosPagamentos => ({ desde: "2026-01-01", ate: "2026-12-31", credor: "", fonte: "", conta: "", agrupar, comRetencoes, anexo: "", assinatura: "" });
 
 describe("PDF dos pagamentos efetuados", () => {
+  it("V36: a coluna Documentos diz anexo e assinatura por linha, e os filtros de documento vão para o cabeçalho", () => {
+    const d = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: { ...filtro(""), anexo: "sim", assinatura: "nao" }, dados: dados(false) });
+    expect(d.secoes[0]?.linhas.slice(0, 2).map((l) => l[7])).toEqual(["anexo, assinado", "-"]);
+    expect(d.filtros).toEqual(["Só os com documento anexado", "Só os não assinados"]);
+  });
   it("sem grupo: uma seção, com a linha de total; sem retenções, as colunas somem", () => {
     const d = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro(""), dados: dados(false) });
     expect(d.secoes).toHaveLength(2);
-    expect(d.secoes[0]?.linhas.at(-1)).toEqual(["", "", "", "", "Total", "", "", "1.300,00", "40,00", "1.260,00"]);
+    expect(d.secoes[0]?.linhas.at(-1)).toEqual(["", "", "", "", "Total", "", "", "", "1.300,00", "40,00", "1.260,00"]);
     const sem = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro("", false), dados: dados(false) });
     expect(sem.secoes[0]?.colunas.map((c) => c.rotulo)).not.toContain("Retido");
   });
   it("agrupado: uma seção por grupo com o subtotal, e o total geral", () => {
     const d = documentoDosPagamentosEfetuados({ ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro("conta"), dados: dados(true) });
     expect(d.secoes.map((s) => s.titulo)).toEqual(["conta CC-1", "conta CC-2", "Total geral", "Dispêndios extraorçamentários"]);
-    expect(d.secoes[0]?.linhas.at(-1)?.slice(7)).toEqual(["1.000,00", "40,00", "960,00"]);
-    expect(d.secoes[2]?.linhas).toEqual([["", "", "", "", "Total", "", "", "1.300,00", "40,00", "1.260,00"]]);
+    expect(d.secoes[0]?.linhas.at(-1)?.slice(8)).toEqual(["1.000,00", "40,00", "960,00"]);
+    expect(d.secoes[2]?.linhas).toEqual([["", "", "", "", "Total", "", "", "", "1.300,00", "40,00", "1.260,00"]]);
     expect(d.filtros).toEqual(["Agrupado por conta bancária"]);
   });
   it("os dispêndios extraorçamentários: seção própria com o estornado e o total, fora do total dos pagamentos; sem acesso, o motivo", () => {
@@ -58,7 +63,7 @@ describe("PDF dos pagamentos efetuados", () => {
       ["", "", "Total", "", "", "", "", "200,00"],
     ]);
     // O total dos pagamentos não absorveu o extra.
-    expect(d.secoes[0]?.linhas.at(-1)?.[7]).toBe("1.300,00");
+    expect(d.secoes[0]?.linhas.at(-1)?.[8]).toBe("1.300,00");
     const sem = documentoDosPagamentosEfetuados({
       ente: "E", periodoDoRecorte: "Exercício 2026", filtro: filtro(""),
       dados: dados(false, { disponivel: false, motivo: "Os dispêndios extraorçamentários pedem a consulta do financeiro." }),

@@ -133,6 +133,35 @@ export default async function MovimentacaoPage({
           )}
         </section>
 
+        {contas.length === 0 ? null : (
+          <section className="space-y-2" aria-label="Borderô dos movimentos">
+            <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Borderô dos movimentos</h2>
+            <p className="text-xs text-[color:var(--color-ink-2)]">
+              Relaciona os movimentos vigentes da conta no período, com o total de entradas e de saídas, para levar ao banco.
+            </p>
+            {/* V36 (TR 5.10.2.22) — GET para a rota do PDF: emitir o borderô não grava nada. */}
+            <form method="get" action="/financeiro/movimentacao/bordero" target="_blank" className="flex flex-wrap items-end gap-3 text-xs" data-form-bordero>
+              <label>
+                <span className="block font-semibold">Conta</span>
+                <select name="conta" defaultValue={selecionada?.id ?? ""} className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-1)] px-2">
+                  {contas.map((c) => (
+                    <option key={c.id} value={c.id}>{c.codigo} — {c.descricao}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="block font-semibold">De</span>
+                <input type="date" name="desde" required defaultValue={`${ate.slice(0, 8)}01`} className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-1)] px-2" />
+              </label>
+              <label>
+                <span className="block font-semibold">Até</span>
+                <input type="date" name="ate" required defaultValue={ate} className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-1)] px-2" />
+              </label>
+              <button type="submit" className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 font-semibold text-[color:var(--color-acao-tinta)]">Emitir borderô (PDF)</button>
+            </form>
+          </section>
+        )}
+
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">
             Últimos movimentos

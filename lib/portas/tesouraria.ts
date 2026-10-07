@@ -27,7 +27,8 @@ import { estadoDoLote } from "../../modules/m09-tesouraria/lote";
 // operador precisava ler: qual conta parametrizar.
 import { ConciliacaoNaoFechaError, MapeamentoContabilAusenteError, type ArrecadacaoSemConta } from "../../modules/m09-tesouraria/conciliacao";
 import { atribuirContaAArrecadacao } from "../../modules/m09-tesouraria/atribuicao-de-conta";
-import { diaCivil, diaCivilBr, fimDoDiaCivil, meioDiaCivil } from "../../packages/datas/index";
+import { diaCivil, diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil, meioDiaCivil } from "../../packages/datas/index";
+import { borderoDosMovimentos, type BorderoDeMovimentos } from "../../modules/m09-tesouraria/bordero-de-movimentos";
 import { sumMoney, toMoney, type Money } from "../../packages/contracts/index";
 
 /**
@@ -553,3 +554,11 @@ export async function registrarRetorno(
 
 /** Reexportado para a tela mostrar a data como o ente a lê. */
 export { diaCivil, diaCivilBr };
+
+/**
+ * V36 (TR 5.10.2.22) — o borderô dos movimentos bancários de uma conta num período (dias civis do ente). A rota cobra
+ * a leitura do financeiro no ente antes; conta inexistente devolve null.
+ */
+export async function lerBorderoDosMovimentos(contaBancariaId: string, desde: string, ate: string): Promise<BorderoDeMovimentos | null> {
+  return borderoDosMovimentos(cliente(), { contaBancariaId, de: inicioDoDiaCivil(desde), ate: fimDoDiaCivil(ate) });
+}

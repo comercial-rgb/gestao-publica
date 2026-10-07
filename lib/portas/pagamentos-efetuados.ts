@@ -24,7 +24,12 @@ export interface FiltroDosPagamentos {
   readonly conta: string;
   readonly agrupar: "" | AgrupamentoDosPagamentos;
   readonly comRetencoes: boolean;
+  /** V36 (TR 5.10.2.4) — "" (todos), "sim" ou "nao". */
+  readonly anexo: "" | "sim" | "nao";
+  readonly assinatura: "" | "sim" | "nao";
 }
+
+const simNao = (v: string): "" | "sim" | "nao" => (v === "sim" || v === "nao" ? v : "");
 
 const um = (v: string | string[] | undefined): string => (Array.isArray(v) ? (v[0] ?? "") : (v ?? "")).trim();
 const ehDia = (v: string): boolean => /^\d{4}-\d{2}-\d{2}$/.test(v);
@@ -42,6 +47,8 @@ export function filtroDosPagamentos(sp: Record<string, string | string[] | undef
     conta: um(sp["conta"]),
     agrupar: agrupar === "credor" || agrupar === "fonte" || agrupar === "conta" ? agrupar : "",
     comRetencoes: um(sp["retencoes"]) !== "nao",
+    anexo: simNao(um(sp["anexo"])),
+    assinatura: simNao(um(sp["assinatura"])),
   };
 }
 
@@ -62,6 +69,8 @@ export interface PagamentoEfetuadoDaTela {
   readonly retido: string;
   readonly liquido: string;
   readonly anulado: boolean;
+  readonly comAnexo: boolean;
+  readonly assinado: boolean;
 }
 
 export interface TotaisDaTela {
@@ -104,13 +113,15 @@ export interface PagamentosEfetuadosDaTela {
 export async function lerPagamentosEfetuados(f: FiltroDosPagamentos, unidadeCodigo: string | undefined): Promise<PagamentosEfetuadosDaTela> {
   const prisma = cliente();
   const periodo = { de: inicioDoDiaCivil(f.desde), ate: fimDoDiaCivil(f.ate), ...(unidadeCodigo !== undefined ? { unidadeCodigo } : {}) };
-  const filtrado = f.credor !== "" || f.fonte !== "" || f.conta !== "";
+  const filtrado = f.credor !== "" || f.fonte !== "" || f.conta !== "" || f.anexo !== "" || f.assinatura !== "";
   const [linhas, todas] = await Promise.all([
     pagamentosEfetuados(prisma, {
       ...periodo,
       ...(f.credor !== "" ? { credorCpfCnpj: f.credor } : {}),
       ...(f.fonte !== "" ? { fonteCodigo: f.fonte } : {}),
       ...(f.conta !== "" ? { contaBancaria: f.conta } : {}),
+      ...(f.anexo !== "" ? { comAnexo: f.anexo === "sim" } : {}),
+      ...(f.assinatura !== "" ? { assinado: f.assinatura === "sim" } : {}),
     }),
     // As opções dos filtros ignoram os próprios filtros (senão o select colapsaria na opção escolhida).
     filtrado ? pagamentosEfetuados(prisma, periodo) : null,
@@ -135,6 +146,8 @@ export async function lerPagamentosEfetuados(f: FiltroDosPagamentos, unidadeCodi
     retido: l.retido.toFixed(2),
     liquido: l.liquido.toFixed(2),
     anulado: l.anulado,
+    comAnexo: l.comAnexo,
+    assinado: l.assinado,
   }));
   const porId = new Map(tela.map((t) => [t.id, t]));
   const emTexto = (t: ReturnType<typeof totaisDosPagamentos>): TotaisDaTela => ({ pagoVivo: t.pagoVivo.toFixed(2), retido: t.retido.toFixed(2), liquido: t.liquido.toFixed(2) });

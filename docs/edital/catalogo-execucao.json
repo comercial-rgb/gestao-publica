@@ -3388,9 +3388,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio com a etapa financeira do semeador, 2026-10-05 · percurso scripts/percurso-v36-elos.mts, 15/15: /despesa/pagamentos → 'lançamento' abre o lançamento do pagamento.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): a linha do pagamento oferece estorno total ou parcial append-only (FormAnular; smoke-cadeia-despesa.ts); desde a V36 leva ao lançamento do pagamento e ao empenho na seção do pagamento (percurso-v36-elos.ts). FALTA: anexos no pagamento (o M22 não tem esse alvo).",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-05 e 2026-10-06 · percursos scripts/percurso-v36-elos.mts 15/15 (lançamento do pagamento) e scripts/percurso-v36-anexos-do-pagamento.mts (anexado, listado e baixado).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): Sobre o pagamento realizado: visualizar (/despesa/pagamentos/[id], pelo link \"documentos\" da lista), estornar total ou parcial append-only (FormAnular; smoke-cadeia-despesa.ts), consultar o lançamento (elo para o lançamento e o empenho, percurso-v36-elos.ts) e incluir anexos (desde a V36 o pagamento é dono de Anexo no M22; ver 5.10.2.68).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.4",
@@ -3402,9 +3402,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): /despesa/pagamentos não tem filtros; o pagamento não tem marca de assinatura, anexo nem finalidade (FUNDEB, FMS).",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-decima-rodada.mts 7/7 · com documento: a tela lista exatamente o que o banco tem (1 de 30) e sem documento o resto; assinados: 0 no banco e 0 na tela (a base fictícia não tem pagamento assinado; o caso com dado está no teste).",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: no relatório de pagamentos efetuados (/relatorios/pagamentos), os filtros \"Documento anexado\" (com/sem) e \"Assinatura eletrônica\" (assinados/não assinados) e a coluna Documentos, também no CSV e no PDF (modules/m05-despesa/pagamentos-efetuados.ts: assinado = assinatura em documento do pagamento OU da ordem de pagamento dele). m05-pagamentos-efetuados.test.ts t4 (N=3 pagamentos: documento próprio assinado, documento próprio sem assinatura, ordem assinada), duas mutações acusadas (sem o caminho da ordem; \"sem anexo\" ignorado); pagamentos-efetuados-pdf 4/4. FALTA, por decisão do ente: \"finalidade FUNDEB e FMS informados\" — o pagamento não tem campo de finalidade; derivá-la da fonte (540 a 546 são do FUNDEB na tabela da STN) ou da unidade do Fundo Municipal de Saúde é regra do ente, não do sistema.",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.10.2.5",
@@ -3654,9 +3654,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): o borderô existe para lote de pagamento (gerarBordero), não para movimento bancário (depósito, saque, aplicação).",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador (e atestador@ficticio.local para a negação) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-06 · percurso scripts/percurso-v36-decima-rodada.mts 7/7 · dois rendimentos registrados pela tela; o borderô do dia relaciona os dois (entradas somadas) e sai em PDF (200); período invertido 400; sem leitura do financeiro 403 com o motivo.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36: modules/m09-tesouraria/bordero-de-movimentos.ts — borderoDosMovimentos: os movimentos VIGENTES de uma conta num período (dia civil do ente), com o sentido de SENTIDO_MOVIMENTO_BANCARIO, o total de entradas e de saídas e a contagem dos que ficaram fora por estorno; leitura, nada gravado. PDF em lib/pdf/bordero-de-movimentos.ts (banco, agência e conta; entrada e saída em colunas; total; visto do tesoureiro e do ordenador), rota /financeiro/movimentacao/bordero (leitura do financeiro no ente; período inválido 400; conta inexistente 404). m09-bordero-de-movimentos.test.ts 2/2 (N=2 contas, estorno, fora do período, borda de dia civil), mutação acusada (estornados entrando); bordero-de-movimentos-pdf 2/2. Tela: /financeiro/movimentacao, \"Borderô dos movimentos\".",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.2.23",

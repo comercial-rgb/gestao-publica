@@ -318,7 +318,25 @@ cronograma por percentual (dinheiro, ao centavo), superfície no resto. Catálog
   `20261108100000_v36_audiencias_e_obras_da_ldo` aplicada em produção; sem atualização de permissões. Conferido com o
   administrador: `/planejamento/audiencias` com o formulário, a LDO com "Prever obra" e o demonstrativo de obras com
   200. **Achado pela conferência:** a página inicial do Planejamento tem lista própria de atalhos e não mostrava as
-  audiências (o menu lateral já mostrava); entrada acrescentada no commit seguinte e republicada.
+  audiências (o menu lateral já mostrava); entrada acrescentada no commit seguinte e republicada (`0f93293d`, Actions
+  37561125327 verde; conferido o link na página).
+
+**Décima rodada (06/10/2026, pedido "pode seguir").** Regime: superfície (filtros, documento de leitura). Catálogo
+inteiro: 136 validadas (eram 134), 191 ausentes (eram 193).
+- **Filtros da consulta de pagamentos** (TR 5.10.2.4, M05): em `/relatorios/pagamentos`, "Documento anexado" e
+  "Assinatura eletrônica" (com e sem), coluna Documentos, também no CSV e no PDF. Assinado = assinatura em documento do
+  pagamento ou da ordem de pagamento dele. Teste t4 com N=3 e duas mutações acusadas. **Fica PARCIAL**, com o motivo:
+  "finalidade FUNDEB e FMS" não existe no pagamento, e derivá-la da fonte ou da unidade do fundo é regra do ente.
+  Limite do percurso: a base fictícia não tem pagamento assinado; o filtro "assinados" no navegador só mostrou o
+  vazio, e o caso com dado está no teste.
+- **Borderô dos movimentos bancários** (TR 5.10.2.22, M09): `borderoDosMovimentos` (vigentes da conta no período, pelo
+  dia civil, com entradas e saídas e a contagem dos estornados) e o PDF por `/financeiro/movimentacao/bordero`, com
+  formulário na tela de movimentação. Leitura, nada gravado; sem número próprio (o hash do conteúdo identifica). Teste
+  2/2 com mutação, PDF 2/2. Validado.
+- **5.10.2.3** passou a validado pela evidência que já existia: as quatro partes (ver, estornar, lançamento, anexos)
+  têm percurso desde a V36.
+- Medições: typecheck do app e do backend limpos (o teste novo do PDF entrou nas listas dos tsconfig como o irmão
+  dele); censo 5/5; percurso `scripts/percurso-v36-decima-rodada.mts` 7/7 (negação 403 com a ação que falta).
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.

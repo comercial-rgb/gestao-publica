@@ -19,18 +19,19 @@ function secao(titulo: string | undefined, linhas: readonly PagamentoEfetuadoDaT
     l.credorNome ?? formatarDocumento(l.credorCpfCnpj),
     l.fonteCodigo,
     l.contaBancaria,
+    [l.comAnexo ? "anexo" : null, l.assinado ? "assinado" : null].filter((x) => x !== null).join(", ") || "-",
     brl(l.pagoVivo),
   ];
   return {
     ...(titulo !== undefined ? { titulo } : {}),
     colunas: [
-      { rotulo: "Data" }, { rotulo: "Nº" }, { rotulo: "Origem" }, { rotulo: "Empenho" }, { rotulo: "Credor" }, { rotulo: "Fonte" }, { rotulo: "Conta" },
+      { rotulo: "Data" }, { rotulo: "Nº" }, { rotulo: "Origem" }, { rotulo: "Empenho" }, { rotulo: "Credor" }, { rotulo: "Fonte" }, { rotulo: "Conta" }, { rotulo: "Documentos" },
       { rotulo: "Pago", alinhamento: "direita" },
       ...(comRetencoes ? [{ rotulo: "Retido", alinhamento: "direita" as const }, { rotulo: "Líquido", alinhamento: "direita" as const }] : []),
     ],
     linhas: [
       ...linhas.map((l) => [...base(l), ...(comRetencoes ? [brl(l.retido), brl(l.liquido)] : [])]),
-      ["", "", "", "", "Total", "", "", brl(total.pagoVivo), ...(comRetencoes ? [brl(total.retido), brl(total.liquido)] : [])],
+      ["", "", "", "", "Total", "", "", "", brl(total.pagoVivo), ...(comRetencoes ? [brl(total.retido), brl(total.liquido)] : [])],
     ],
     totais: [linhas.length],
   };
@@ -75,6 +76,8 @@ export function documentoDosPagamentosEfetuados(p: {
       f.credor !== "" ? `Credor: ${credor?.nome ?? formatarDocumento(f.credor)}` : null,
       f.fonte !== "" ? `Fonte: ${f.fonte}` : null,
       f.conta !== "" ? `Conta bancária: ${f.conta}` : null,
+      f.anexo !== "" ? (f.anexo === "sim" ? "Só os com documento anexado" : "Só os sem documento anexado") : null,
+      f.assinatura !== "" ? (f.assinatura === "sim" ? "Só os assinados eletronicamente" : "Só os não assinados") : null,
       f.agrupar !== "" ? `Agrupado por ${f.agrupar === "conta" ? "conta bancária" : f.agrupar}` : null,
     ].filter((x): x is string => x !== null),
     secoes: [...secoes, secaoExtra],

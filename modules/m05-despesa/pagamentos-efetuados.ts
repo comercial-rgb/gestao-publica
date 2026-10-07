@@ -41,6 +41,10 @@ export interface PagamentoEfetuado {
   readonly retido: Money;
   readonly liquido: Money;
   readonly anulado: boolean;
+  /** V36 (TR 5.10.2.4) — o pagamento tem documento anexado (aba Documentos do pagamento). */
+  readonly comAnexo: boolean;
+  /** V36 (TR 5.10.2.4) — algum documento do pagamento ou da ordem de pagamento dele tem assinatura eletrônica. */
+  readonly assinado: boolean;
 }
 
 export interface RecorteDosPagamentos {
@@ -51,7 +55,19 @@ export interface RecorteDosPagamentos {
   readonly fonteCodigo?: string | undefined;
   readonly contaBancaria?: string | undefined;
   readonly unidadeCodigo?: string | undefined;
+  /** V36 (TR 5.10.2.4) — só os com documento anexado (true) ou só os sem (false). */
+  readonly comAnexo?: boolean | undefined;
+  /** V36 (TR 5.10.2.4) — só os assinados (true) ou só os não assinados (false). */
+  readonly assinado?: boolean | undefined;
 }
+
+/** "Assinado": uma assinatura em documento do PAGAMENTO ou da ORDEM de pagamento que o autorizou. */
+const ASSINADO = {
+  OR: [
+    { anexos: { some: { assinaturas: { some: {} } } } },
+    { ordemDePagamento: { anexos: { some: { assinaturas: { some: {} } } } } },
+  ],
+};
 
 export async function pagamentosEfetuados(prisma: Tx, r: RecorteDosPagamentos): Promise<readonly PagamentoEfetuado[]> {
   const originais = await prisma.pagamento.findMany({
@@ -61,6 +77,8 @@ export async function pagamentosEfetuados(prisma: Tx, r: RecorteDosPagamentos): 
       data: { gte: r.de, lte: r.ate },
       ...(r.fonteCodigo !== undefined ? { fonte: { codigo: r.fonteCodigo } } : {}),
       ...(r.contaBancaria !== undefined ? { contaBancaria: r.contaBancaria } : {}),
+      ...(r.comAnexo === true ? { anexos: { some: {} } } : r.comAnexo === false ? { anexos: { none: {} } } : {}),
+      ...(r.assinado === true ? ASSINADO : r.assinado === false ? { NOT: ASSINADO } : {}),
       liquidacao: {
         empenho: {
           ...(r.credorCpfCnpj !== undefined ? { credorCpfCnpj: r.credorCpfCnpj } : {}),
@@ -76,6 +94,8 @@ export async function pagamentosEfetuados(prisma: Tx, r: RecorteDosPagamentos): 
       valor: true,
       contaBancaria: true,
       fonte: { select: { codigo: true } },
+      anexos: { select: { _count: { select: { assinaturas: true } } } },
+      ordemDePagamento: { select: { anexos: { select: { _count: { select: { assinaturas: true } } } } } },
       liquidacao: { select: { numero: true, empenho: { select: { id: true, numero: true, credorCpfCnpj: true, ficha: { select: { exercicio: true } } } } } },
     },
   });
@@ -111,6 +131,8 @@ export async function pagamentosEfetuados(prisma: Tx, r: RecorteDosPagamentos): 
       retido: ret,
       liquido: toMoney(pagoVivo.minus(ret)),
       anulado: totalmenteAnulados.has(p.id),
+      comAnexo: p.anexos.length > 0,
+      assinado: [...p.anexos, ...(p.ordemDePagamento?.anexos ?? [])].some((a) => a._count.assinaturas > 0),
     };
   });
 }

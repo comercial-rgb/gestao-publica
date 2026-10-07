@@ -63,6 +63,8 @@ export default async function PagamentosEfetuadosPage({
   if (f.conta !== "") query.set("conta", f.conta);
   if (f.agrupar !== "") query.set("agrupar", f.agrupar);
   if (!f.comRetencoes) query.set("retencoes", "nao");
+  if (f.anexo !== "") query.set("anexo", f.anexo);
+  if (f.assinatura !== "") query.set("assinatura", f.assinatura);
 
   return (
     <div className="space-y-4">
@@ -120,6 +122,22 @@ export default async function PagamentosEfetuadosPage({
           <select name="retencoes" defaultValue={f.comRetencoes ? "" : "nao"} className={CAMPO}>
             <option value="">Mostrar retido e líquido</option>
             <option value="nao">Só o valor pago</option>
+          </select>
+        </label>
+        <label>
+          <span className="block font-semibold">Documento anexado</span>
+          <select name="anexo" defaultValue={f.anexo} className={CAMPO}>
+            <option value="">Todos</option>
+            <option value="sim">Com documento</option>
+            <option value="nao">Sem documento</option>
+          </select>
+        </label>
+        <label>
+          <span className="block font-semibold">Assinatura eletrônica</span>
+          <select name="assinatura" defaultValue={f.assinatura} className={CAMPO}>
+            <option value="">Todos</option>
+            <option value="sim">Assinados</option>
+            <option value="nao">Não assinados</option>
           </select>
         </label>
         <button type="submit" className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 font-semibold text-[color:var(--color-acao-tinta)]">Filtrar</button>
@@ -255,6 +273,7 @@ function Tabela({ linhas, comRetencoes }: { readonly linhas: readonly PagamentoE
             <th scope="col" className="py-1.5 pr-3">Credor</th>
             <th scope="col" className="py-1.5 pr-3">Fonte</th>
             <th scope="col" className="py-1.5 pr-3">Conta</th>
+            <th scope="col" className="py-1.5 pr-3">Documentos</th>
             <th scope="col" className="py-1.5 pr-3 text-right">Pago</th>
             {comRetencoes ? (
               <>
@@ -274,6 +293,7 @@ function Tabela({ linhas, comRetencoes }: { readonly linhas: readonly PagamentoE
               <td className="py-1.5 pr-3">{l.credorNome ?? formatarDocumento(l.credorCpfCnpj)}</td>
               <td className="py-1.5 pr-3">{l.fonteCodigo}</td>
               <td className="py-1.5 pr-3">{l.contaBancaria}</td>
+              <td className="py-1.5 pr-3" data-documentos>{[l.comAnexo ? "com anexo" : null, l.assinado ? "assinado" : null].filter((x) => x !== null).join(", ") || "—"}</td>
               <td className="py-1.5 pr-3 text-right"><ValorMonetario valor={l.pagoVivo} /></td>
               {comRetencoes ? (
                 <>
@@ -292,11 +312,11 @@ function Tabela({ linhas, comRetencoes }: { readonly linhas: readonly PagamentoE
 /** O CSV é a tela: as mesmas linhas e colunas, com os mesmos filtros. */
 function csv(linhas: readonly PagamentoEfetuadoDaTela[]): string {
   return paraCsv(
-    ["Data", "Nº", "Origem", "Exercício da dotação", "Empenho", "Liquidação", "Credor", "CPF/CNPJ", "Fonte", "Conta bancária", "Pago", "Retido", "Líquido", "Situação"],
+    ["Data", "Nº", "Origem", "Exercício da dotação", "Empenho", "Liquidação", "Credor", "CPF/CNPJ", "Fonte", "Conta bancária", "Pago", "Retido", "Líquido", "Situação", "Documento anexado", "Assinado"],
     linhas.map((l) => [
       dataBr(l.data), l.numero, l.origem === "RESTOS" ? "Restos a pagar" : "Exercício", String(l.exercicioDaDotacao), l.empenhoNumero, l.liquidacaoNumero,
       l.credorNome ?? "", formatarDocumento(l.credorCpfCnpj), l.fonteCodigo, l.contaBancaria,
-      formatarMoeda(l.pagoVivo).texto, formatarMoeda(l.retido).texto, formatarMoeda(l.liquido).texto, l.anulado ? "Anulado" : "Pago",
+      formatarMoeda(l.pagoVivo).texto, formatarMoeda(l.retido).texto, formatarMoeda(l.liquido).texto, l.anulado ? "Anulado" : "Pago", l.comAnexo ? "Sim" : "Não", l.assinado ? "Sim" : "Não",
     ])
   );
 }
