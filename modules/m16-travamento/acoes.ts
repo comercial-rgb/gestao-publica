@@ -888,6 +888,10 @@ export type NomeDeServico =
   | "registrarMovimentoBancario"
   | "estornarMovimentoBancario"
   | "registrarChequeAvulso"
+  | "cadastrarEmendaAoPlanejamento"
+  | "bloquearLinhaParaEmendas"
+  | "revogarBloqueioDeEmendaAoPlanejamento"
+  | "sancionarEmendaAoPlanejamento"
   | "cancelarChequeAvulso"
   | "abrirConciliacao"
   | "encerrarConciliacao"
@@ -1545,6 +1549,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   estornarMovimentoBancario: "ESTORNAR_MOVIMENTO_BANCARIO",
   // V36 (TR 5.10.2.42) — o cheque avulso: quem registra movimento da conta registra o cheque; quem estorna, cancela.
   registrarChequeAvulso: "REGISTRAR_MOVIMENTO_BANCARIO",
+  // V36 (TR 5.9.1.21-23 e 5.9.2.11-13) — as emendas ao PPA e à LDO, com as autoridades das emendas da LOA.
+  cadastrarEmendaAoPlanejamento: "CADASTRAR_EMENDA_AO_ORCAMENTO",
+  bloquearLinhaParaEmendas: "CADASTRAR_EMENDA_AO_ORCAMENTO",
+  revogarBloqueioDeEmendaAoPlanejamento: "CADASTRAR_EMENDA_AO_ORCAMENTO",
+  sancionarEmendaAoPlanejamento: "SANCIONAR_EMENDA_AO_ORCAMENTO",
   cancelarChequeAvulso: "ESTORNAR_MOVIMENTO_BANCARIO",
   // ⚠️ ABRIR e ENCERRAR são ações SEPARADAS. Encerrar é o ato que o controle interno lê
   // como "isto foi conferido", e quem opera a conciliação no dia a dia não é
@@ -3309,6 +3318,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   periodicidadeVigente: "leitura (V36 — a periodicidade vigente do controle das cotas num instante; o guard do CMD e o acompanhamento)",
   empenhosDaParceria: "leitura (V36 — os empenhos de uma parceria público-privada, com o líquido de cada um; tela da parceria)",
   empenhosEmLiquidacao: "leitura (V36 — os empenhos e restos não processados com nota conferida ainda não liquidada; tela de empenhos em liquidação)",
+  lerLinhaDoAlvo: "leitura (V36 — a linha planejada de um alvo do ato de alteração, com a peça e o rótulo — não muta)",
+  gravarItensNoAtoDaLei: "composável interno (V36 — grava os itens aprovados no ato de alteração da lei, pelo guard do ato, DENTRO da sanção da emenda ao PPA ou à LDO, que já autorizou SANCIONAR_EMENDA_AO_ORCAMENTO)",
+  emendasDaPeca: "leitura (V36 — as emendas de uma peça do planejamento com a situação derivada — não muta)",
+  bloqueiosDaPeca: "leitura (V36 — os bloqueios vivos das linhas de uma peça para emendas — não muta)",
   chequesEmitidos: "leitura (V36 — os cheques emitidos num período, de pagamento e avulsos, numa consulta só; tela de cheques)",
   borderoDosMovimentos: "leitura (V36 — o borderô dos movimentos bancários vigentes de uma conta num período, com entradas e saídas; tela de movimentação)",
   posicaoFinanceiraDaObra: "leitura (V36 — valor da obra, contratado atualizado, empenhado líquido e percentual executado de uma obra; tela de obras)",

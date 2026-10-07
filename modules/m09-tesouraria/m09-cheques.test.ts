@@ -34,7 +34,10 @@ const recusa = async (f: () => Promise<unknown>): Promise<string> => {
   try {
     await f();
   } catch (e) {
-    return (e as Error).message;
+    const m = (e as Error).message;
+    // O erro do Prisma traz um trecho do CÓDIGO-FONTE junto ("invocation in ... → 197 ..."), e esse trecho pode conter a
+    // própria mensagem de negócio da linha vizinha: casar com ele seria atestar pela papelada. Erro do banco não é recusa.
+    return /invocation in/.test(m) ? `(erro do banco) ${m.trim().split(/\r?\n/).pop() ?? ""}` : m;
   }
   return "(nao recusou)";
 };

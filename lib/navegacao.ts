@@ -212,6 +212,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   // V29: o orçamento do exercício seguinte, importado de um exercício executado e alterado antes de virar fichas.
   { href: "/planejamento/proposta-orcamentaria", numero: "Proposta", rotulo: "Proposta Orçamentária", descricao: "O orçamento do exercício seguinte a partir das receitas e fichas de um exercício executado, com reajuste e alterações, até gerar as fichas." },
   { href: "/planejamento/emendas", numero: "Emendas", rotulo: "Emendas ao Orçamento", descricao: "Emendas da Câmara ao projeto da lei orçamentária, bloqueio de dotações para emenda e sanção total ou parcial." },
+  { href: "/planejamento/emendas-do-plano", numero: "Emendas ao PPA e à LDO", rotulo: "Emendas ao PPA e à LDO", descricao: "Emendas da Câmara ao plano plurianual e às diretrizes orçamentárias, bloqueio de linhas e sanção total ou parcial." },
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },
@@ -660,6 +661,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       { rotulo: "Próximo exercício", itens: [
         { href: "/planejamento/proposta-orcamentaria", rotulo: "Importar e preparar a proposta" },
         { href: "/planejamento/emendas", rotulo: "Emendas ao projeto" },
+        { href: "/planejamento/emendas-do-plano", rotulo: "Emendas ao PPA e à LDO" },
         { href: "/planejamento/comparacao-de-exercicios", rotulo: "Comparação de exercícios" },
       ] },
       { rotulo: "Detalhamento e programação", itens: [

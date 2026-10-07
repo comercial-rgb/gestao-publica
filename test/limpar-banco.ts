@@ -588,6 +588,12 @@ export const TABELAS = [
   "RoteiroPatrimonialDeclarado",
   "DeParaReceitaAlienacao",
   "DeParaFonteAlienacao",
+  // V36 — as emendas ao PPA e à LDO (filhos antes da emenda).
+  "ItemSancionadoDoPlanejamento",
+  "SancaoDaEmendaAoPlanejamento",
+  "ItemDaEmendaAoPlanejamento",
+  "BloqueioDeEmendaAoPlanejamento",
+  "EmendaAoPlanejamento",
   // V36 — a situação e as parcelas da parceria (antes do contrato).
   "SituacaoDaPpp",
   "ParcelaDaPpp",

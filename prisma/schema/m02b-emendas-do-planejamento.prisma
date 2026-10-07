@@ -1,0 +1,130 @@
+// ============================================================================
+// V36 — EMENDAS AO PPA E À LDO (TR 5.9.1.21 a 5.9.1.23 e 5.9.2.11 a 5.9.2.13), no M02b.
+//
+// O mesmo rito das emendas ao projeto da LOA (m02b-emendas.prisma) — cadastro com o vereador e o texto jurídico,
+// bloqueio do que não pode ser emendado, sanção total, parcial ou veto —, com o alvo da peça: o item aponta a MESMA
+// linha planejada que o ato de alteração do planejamento alcança (previsão de receita, programa e ação do PPA; metas
+// fiscais anuais da LDO), com a mesma grandeza e o mesmo sinal. A emenda não cria valor sozinha: a SANÇÃO grava o ATO
+// DE ALTERAÇÃO DO PLANEJAMENTO com os itens aprovados, pelo serviço e pelo guard que já existem — sem segunda aritmética.
+//
+// ⚠️ "DOTAÇÃO" NA LDO: a LDO deste sistema não tem previsão orçamentária (pendência LDO-SEM-PREVISAO-ORCAMENTARIA); o
+// que a emenda à LDO altera é a META FISCAL anual, que é o único valor da LDO que o ato de alteração versiona.
+//
+// ⚠️ INSERT-ONLY EM TODAS AS TABELAS. A situação da emenda é DERIVADA da sanção; o bloqueio vivo é o que nenhuma
+// revogação desfez. Os CHECKs da migration amarram peça, alvo e grandeza como no `AlteracaoDeValorPlanejado`.
+// ============================================================================
+
+model EmendaAoPlanejamento {
+  id String @id @default(cuid())
+
+  /// Exatamente uma das duas (CHECK).
+  planoId String?
+  plano   PlanoPlurianual?            @relation("EmendasDoPpa", fields: [planoId], references: [id], onDelete: Restrict)
+  ldoId   String?
+  ldo     LeiDiretrizesOrcamentarias? @relation("EmendasDaLdo", fields: [ldoId], references: [id], onDelete: Restrict)
+
+  /// Sequencial por peça (1, 2, 3...), atribuído pelo sistema sob a trava da peça.
+  numero        Int
+  data          DateTime
+  objetivo      String
+  justificativa String
+  vereador      String
+  textoJuridico String
+
+  itens  ItemDaEmendaAoPlanejamento[]
+  sancao SancaoDaEmendaAoPlanejamento?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([planoId, numero])
+  @@unique([ldoId, numero])
+}
+
+/// O acréscimo (+) ou a redução (−) que a emenda propõe numa linha planejada. Nunca zero (CHECK).
+model ItemDaEmendaAoPlanejamento {
+  id       String               @id @default(cuid())
+  emendaId String
+  emenda   EmendaAoPlanejamento @relation(fields: [emendaId], references: [id])
+
+  /// Exatamente um alvo, e a grandeza é coluna dele (CHECK, o mesmo rol do ato de alteração).
+  previsaoReceitaPpaId String?
+  previsaoReceitaPpa   PrevisaoReceitaPpa? @relation("ItensDeEmendaDaPrevisao", fields: [previsaoReceitaPpaId], references: [id], onDelete: Restrict)
+  programaPpaId        String?
+  programaPpa          ProgramaPpa?        @relation("ItensDeEmendaDoPrograma", fields: [programaPpaId], references: [id], onDelete: Restrict)
+  acaoPpaId            String?
+  acaoPpa              AcaoPpa?            @relation("ItensDeEmendaDaAcao", fields: [acaoPpaId], references: [id], onDelete: Restrict)
+  metaAnualLdoId       String?
+  metaAnualLdo         MetaAnualLdo?       @relation("ItensDeEmendaDaMeta", fields: [metaAnualLdoId], references: [id], onDelete: Restrict)
+
+  grandeza String  @db.VarChar(40)
+  valor    Decimal @db.Decimal(18, 2)
+
+  sancionado ItemSancionadoDoPlanejamento?
+
+  @@index([emendaId])
+}
+
+model SancaoDaEmendaAoPlanejamento {
+  id       String               @id @default(cuid())
+  emendaId String               @unique
+  emenda   EmendaAoPlanejamento @relation(fields: [emendaId], references: [id])
+
+  resultado ResultadoDaSancao
+  data      DateTime
+
+  /// O ato de alteração que levou os itens aprovados à peça. Nulo só na REJEITADA (CHECK); a aprovação total e a
+  /// parcial têm ato. Duas emendas sancionadas pela mesma lei apontam o mesmo ato.
+  atoId String?
+  ato   AtoDeAlteracaoDoPlanejamento? @relation("SancoesDeEmendas", fields: [atoId], references: [id], onDelete: Restrict)
+  /// O número e o ano da lei da sanção ou do veto (no veto total não há ato de alteração, mas há a lei ou o despacho).
+  leiNumero String
+  leiAno    Int
+
+  itensAprovados ItemSancionadoDoPlanejamento[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+model ItemSancionadoDoPlanejamento {
+  id       String                       @id @default(cuid())
+  sancaoId String
+  sancao   SancaoDaEmendaAoPlanejamento @relation(fields: [sancaoId], references: [id])
+  itemId   String                       @unique
+  item     ItemDaEmendaAoPlanejamento   @relation(fields: [itemId], references: [id])
+  /// O item do ato de alteração que esta aprovação gravou.
+  alteracaoId String                    @unique
+  alteracao   AlteracaoDeValorPlanejado @relation("AlteracaoDaEmenda", fields: [alteracaoId], references: [id])
+
+  @@index([sancaoId])
+}
+
+/// O bloqueio de uma linha planejada (alvo + grandeza) para emendas. Liberar é outro registro que o revoga.
+model BloqueioDeEmendaAoPlanejamento {
+  id String @id @default(cuid())
+
+  previsaoReceitaPpaId String?
+  previsaoReceitaPpa   PrevisaoReceitaPpa? @relation("BloqueiosDeEmendaDaPrevisao", fields: [previsaoReceitaPpaId], references: [id], onDelete: Restrict)
+  programaPpaId        String?
+  programaPpa          ProgramaPpa?        @relation("BloqueiosDeEmendaDoPrograma", fields: [programaPpaId], references: [id], onDelete: Restrict)
+  acaoPpaId            String?
+  acaoPpa              AcaoPpa?            @relation("BloqueiosDeEmendaDaAcao", fields: [acaoPpaId], references: [id], onDelete: Restrict)
+  metaAnualLdoId       String?
+  metaAnualLdo         MetaAnualLdo?       @relation("BloqueiosDeEmendaDaMeta", fields: [metaAnualLdoId], references: [id], onDelete: Restrict)
+
+  grandeza String @db.VarChar(40)
+  motivo   String
+
+  revogaDeId  String?                         @unique
+  revogaDe    BloqueioDeEmendaAoPlanejamento?  @relation("RevogacaoDoBloqueioDoPlanejamento", fields: [revogaDeId], references: [id], onDelete: Restrict)
+  revogadoPor BloqueioDeEmendaAoPlanejamento?  @relation("RevogacaoDoBloqueioDoPlanejamento")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([previsaoReceitaPpaId])
+  @@index([programaPpaId])
+  @@index([acaoPpaId])
+  @@index([metaAnualLdoId])
+}

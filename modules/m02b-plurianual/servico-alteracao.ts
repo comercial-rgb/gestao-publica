@@ -44,7 +44,7 @@ type Tx = Omit<
 >;
 
 /** A linha planejada, como o guard precisa dela: a peça a que pertence e os valores originais. */
-interface LinhaDoAlvo {
+export interface LinhaDoAlvo {
   readonly pecaId: string;
   readonly original: Readonly<Record<string, Money>>;
   /** Como a linha se chama na tela e na mensagem de recusa. */
@@ -61,7 +61,7 @@ interface LinhaDoAlvo {
  * isso que este leitor existe em vez de uma coluna `planoId` na `AlteracaoDeValorPlanejado`:
  * aquela coluna seria uma segunda verdade sobre um vínculo que o schema já tem.
  */
-async function lerLinhaDoAlvo(
+export async function lerLinhaDoAlvo(
   tx: Tx,
   alvo: AlvoDaAlteracao,
   alvoId: string
@@ -358,4 +358,67 @@ export async function acrescentarItemAoAtoDeAlteracao(
     });
     return { itemId: criado.id };
   });
+}
+
+/**
+ * V36 — GRAVA ITENS NUM ATO DE ALTERAÇÃO, DENTRO DA TRANSAÇÃO DE QUEM JÁ AUTORIZOU: a SANÇÃO DA EMENDA ao PPA ou à LDO
+ * (`sancionarEmendaAoPlanejamento`, que cobra SANCIONAR_EMENDA_AO_ORCAMENTO). O efeito da sanção é o ato de alteração —
+ * pelo MESMO guard de `registrarAtoDeAlteracaoDoPlanejamento` (os dois estados, os itens somados juntos) —, e cobrar
+ * aqui ALTERAR_PLANEJAMENTO repetiria o critério que a sanção da LOA já recusou: o ajuste é efeito da sanção, não ato
+ * próprio de quem a registra.
+ *
+ * A lei é a chave: se a peça já tem o ato com este número e ano (outra emenda sancionada pela mesma lei), os itens
+ * entram NELE — duas emendas da mesma lei num ato só, como a lei é uma só. A data e a publicação têm de ser as do ato
+ * existente; divergir é recusa, não escolha silenciosa de uma das duas.
+ */
+export async function gravarItensNoAtoDaLei(
+  tx: Tx,
+  p: {
+    readonly peca: "PPA" | "LDO";
+    readonly pecaId: string;
+    readonly numero: string;
+    readonly ano: number;
+    readonly data: Date;
+    readonly dataPublicacao: Date;
+    readonly fundamento: string;
+    readonly itens: readonly ItemDeAlteracaoInput[];
+    readonly criadoPor: string;
+  }
+): Promise<{ readonly atoId: string; readonly alteracaoIds: readonly string[] }> {
+  if (p.itens.length === 0) throw new Error("A lei não traz item aprovado: não há ato de alteração a gravar.");
+  const itens = resolver(p.itens);
+  const existente = await tx.atoDeAlteracaoDoPlanejamento.findFirst({
+    where: { ...(p.peca === "PPA" ? { planoId: p.pecaId } : { ldoId: p.pecaId }), ano: p.ano, numero: p.numero },
+    select: { id: true, data: true, dataPublicacao: true },
+  });
+  if (existente !== null && (existente.data.getTime() !== p.data.getTime() || existente.dataPublicacao.getTime() !== p.dataPublicacao.getTime())) {
+    throw new Error(
+      `A lei nº ${p.numero}/${String(p.ano)} já está registrada nesta peça com outra data ou outra publicação. A sanção pela ` +
+        `mesma lei tem de usar as datas dela. Nada foi gravado.`
+    );
+  }
+  await exigirItensViaveis(tx, p.peca, p.pecaId, p.data, itens);
+  const atoId =
+    existente?.id ??
+    (
+      await tx.atoDeAlteracaoDoPlanejamento.create({
+        data: {
+          planoId: p.peca === "PPA" ? p.pecaId : null,
+          ldoId: p.peca === "LDO" ? p.pecaId : null,
+          numero: p.numero,
+          ano: p.ano,
+          data: p.data,
+          dataPublicacao: p.dataPublicacao,
+          fundamento: p.fundamento,
+          criadoPor: p.criadoPor,
+        },
+        select: { id: true },
+      })
+    ).id;
+  const alteracaoIds: string[] = [];
+  for (const i of itens) {
+    const criado = await tx.alteracaoDeValorPlanejado.create({ data: { atoId, ...dadosDoItem(i, p.criadoPor) } as never, select: { id: true } });
+    alteracaoIds.push(criado.id);
+  }
+  return { atoId, alteracaoIds };
 }

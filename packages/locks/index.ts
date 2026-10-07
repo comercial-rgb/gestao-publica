@@ -416,6 +416,14 @@ export const ORDEM_DOS_LOCKS = {
    * diferença duas vezes. O trinco é pela origem. Último posto: depois dele só o funil do razão e a linha.
    */
   AjusteDePerdasDaDividaAtiva: 40,
+  /**
+   * V36 — A PEÇA DO PLANEJAMENTO (PPA ou LDO) nas EMENDAS (M02b, `emendas-do-planejamento.ts`). Duas corridas: dois
+   * cadastros simultâneos leriam o mesmo "último número de emenda"; duas sanções pela mesma lei leriam "nenhum ato" e
+   * criariam dois. Cadastro, bloqueio e sanção travam a peça ANTES de ler.
+   *
+   * ⚠️ ÚLTIMO POSTO, e por construção: o ato de alteração que a sanção grava não trava nada.
+   */
+  PecaDoPlanejamento: 41,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;
