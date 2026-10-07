@@ -286,6 +286,8 @@ model Empenho {
 
   reserva     ReservaEmpenho?
   liquidacoes Liquidacao[]
+  /// V36 (TR 5.10.1.7) — os subempenhos deste empenho global ou estimativo (m05-subempenho.prisma). VIRTUAL.
+  subempenhos Subempenho[] @relation("SubempenhosDoEmpenho")
   /// back-relation M08 — campo VIRTUAL, não gera coluna.
   inscricoesRestos InscricaoRestosAPagar[]
   /// back-relation V6 P2.3b — o elo com a folha que o gerou, quando veio de uma apropriação.
@@ -332,6 +334,11 @@ model Liquidacao {
   /// medição tem de ser da mesma obra.
   medicaoId String?
   medicao   MedicaoDeObra? @relation(fields: [medicaoId], references: [id])
+
+  /// V36 (TR 5.10.1.7) — o SUBEMPENHO que esta liquidação consome. Só na liquidação original: a anulação (inteira ou
+  /// parcial) não o copia, e o saldo do subempenho se lê pela família da liquidação (CHECK em migration).
+  subempenhoId String?
+  subempenho   Subempenho? @relation("LiquidacaoDoSubempenho", fields: [subempenhoId], references: [id])
 
   numero            String
   valor             Decimal  @db.Decimal(18, 2)
@@ -394,6 +401,7 @@ model Liquidacao {
   @@unique([empenhoId, numero])
   @@index([empenhoId])
   @@index([estornoDeId])
+  @@index([subempenhoId])
   /// A fila do art. 141 ordena por data de liquidação.
   @@index([data])
   @@index([documentoFiscalId])

@@ -1,0 +1,46 @@
+// ----------------------------------------------------------------------------
+// V36 (TR 5.10.1.7) — SUBEMPENHO sobre o empenho GLOBAL ou ESTIMATIVO.
+//
+// O subempenho REPARTE o empenho: a dotação e o crédito empenhado já foram consumidos e lançados no
+// empenho (o pai), e o subempenho não lança nada no razão nem toca a ficha. Ele reserva parte do saldo
+// a liquidar do pai para uma parcela (a fatura do mês do estimativo, a etapa do global), e a liquidação
+// que o informa é a liquidação do pai, abatida também do saldo dele. Regra: `modules/m05-despesa/subempenho.ts`.
+//
+// APPEND-ONLY: o saldo do subempenho é derivado (valor − anulações − liquidado líquido); a anulação é
+// linha nova, nunca UPDATE.
+// ----------------------------------------------------------------------------
+
+model Subempenho {
+  id        String  @id @default(cuid())
+  empenhoId String
+  empenho   Empenho @relation("SubempenhosDoEmpenho", fields: [empenhoId], references: [id])
+  /// Sequencial dentro do empenho (1, 2, 3...), atribuído sob a trava da ficha do empenho.
+  numero    Int
+  valor     Decimal  @db.Decimal(18, 2)
+  data      DateTime
+  historico String
+
+  anulacoes   AnulacaoDeSubempenho[]
+  liquidacoes Liquidacao[]           @relation("LiquidacaoDoSubempenho")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([empenhoId, numero])
+  @@index([empenhoId])
+}
+
+/// A anulação do saldo NÃO LIQUIDADO de um subempenho: o valor volta ao saldo livre do empenho (não à ficha).
+model AnulacaoDeSubempenho {
+  id           String     @id @default(cuid())
+  subempenhoId String
+  subempenho   Subempenho @relation(fields: [subempenhoId], references: [id])
+  valor        Decimal    @db.Decimal(18, 2)
+  data         DateTime
+  motivo       String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([subempenhoId])
+}

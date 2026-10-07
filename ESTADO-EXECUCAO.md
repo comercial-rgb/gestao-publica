@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 
 | Campo | Valor |
 |---|---|
-| HEAD | `fac7c0f6` (publicado como `461c0ae`; main e `/release` = `461c0ae`) em `apresentacao/contabilidade` |
-| Catálogo | 619 de 2.037 verificadas (152 validadas, 204 parciais, 173 ausentes). As 285 de contabilidade (5.9 e 5.10): 92 validadas, 31 implementadas sem percurso, 121 parciais, 39 ausentes, 2 de terceiro. |
-| Último resultado | Segunda rodada de 07/10 (seção "Segunda rodada das áreas que faltavam"): balancete por fonte 4/4, fontes da natureza e rateio 7/7, prévia 8/8, transferências do PPA 5/5 em percurso; regressão M05+M03+censo+travas+balanço 378/378; publicada em produção (backup `esperanca-antes-v36n-20261007T210629Z.dump`, 4 migrations, sonda nas 6 telas). |
-| Próximo passo | Construir o que falta sem decisão: subempenho (5.10.1.7), multas de trânsito (5.10.1.45), código reduzido automático (5.9.1.8). Decisões do ente: conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 ou .99); 5.9.3.34; 5.10.2.4; estágio em liquidação. Restantes dependem de terceiro. |
+| HEAD | o commit do subempenho, sobre `b65f9642`, em `apresentacao/contabilidade` (main e `/release` = `461c0ae`; o subempenho ainda não publicado) |
+| Catálogo | 619 de 2.037 verificadas (153 validadas, 204 parciais, 172 ausentes). As 285 de contabilidade (5.9 e 5.10): 93 validadas, 31 implementadas sem percurso, 121 parciais, 38 ausentes, 2 de terceiro. |
+| Último resultado | Subempenho (seção "Terceira rodada"): m05-subempenho 12/12, runtime 1/1, 19 mutações acusadas, vizinhos M05+censo 92/92, percurso 6/6. Antes: segunda rodada de 07/10 (seção "Segunda rodada das áreas que faltavam"): balancete por fonte 4/4, fontes da natureza e rateio 7/7, prévia 8/8, transferências do PPA 5/5 em percurso; regressão M05+M03+censo+travas+balanço 378/378; publicada em produção (backup `esperanca-antes-v36n-20261007T210629Z.dump`, 4 migrations, sonda nas 6 telas). |
+| Próximo passo | Construir o que falta sem decisão: multas de trânsito (5.10.1.45), código reduzido automático (5.9.1.8). Decisões do ente: conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 ou .99); 5.9.3.34; 5.10.2.4; estágio em liquidação. Restantes dependem de terceiro. |
 
 ### Segunda rodada das áreas que faltavam (07/10/2026, publicada como 461c0ae)
 
@@ -38,6 +38,20 @@ Publicação: Actions 37687618403 verde; `/release` = `461c0ae`; migrations 1600
 **Instrumento corrigido:** o script de mutação da sessão lia "nenhum teste rodou" (erro de compilação) como verde; agora diz INCONCLUSIVO, provado nas duas direções.
 
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
+
+### Terceira rodada — subempenho (07/10/2026)
+
+Regime: profundidade (saldo do empenho, liquidação, anulações, trava, autorização).
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Subempenho sobre o empenho global e o estimativo (5.10.1.7, VALIDADA) | subempenho numerado no empenho (NE/1, NE/2), sem lançamento nem ficha; liquidação informando o subempenho; o global liquidado direto não aceita subempenho e o global repartido não se liquida direto; anulação do saldo do subempenho; anulação parcial e total do empenho e estorno da anulação de liquidação conferem o quadro | /despesa/empenhos/[id] (seção Subempenhos, com "Liquidar" por linha); /despesa/liquidacoes (campo Subempenho) | m05-subempenho 12/12; contrato-runtime-subempenho 1/1 (gestao_app, e nada se reescreve); 19 mutações, todas acusadas; m05 + m05b + tipo + anulação parcial + concorrência + dimensões + censo 92/92; typecheck backend, app e scripts limpos; percurso 6/6 |
+
+Migration: `20261108200000_v36_subempenho` (Subempenho, AnulacaoDeSubempenho, Liquidacao.subempenhoId, CHECKs; aditiva). Aplicada na base fictícia e na de teste, deriva vazia. Censo: `emitirSubempenho` (EMPENHAR) e `anularSaldoDoSubempenho` (ANULAR_EMPENHO_PARCIAL), nenhuma ação nova (563).
+
+Auditoria (8 achados): corrigidos o estorno da anulação parcial de liquidação fora da guarda (e o defeito antigo do mesmo caminho, que deixava o liquidado passar do empenhado), o estado misto do global (agora exclusivo: direto ou pelos subempenhos), mensagens com id interno e valor sem formato, testes de borda de data, estimativo liquidado direto, empenho anulado e o teste do papel de runtime. Ficaram como pendência nomeada: SUBEMPENHO-EM-RESTOS, SUBEMPENHO-NAS-LIQUIDACOES-AUTOMATICAS (parcela de contrato, folha, encargos e importador liquidam sem subempenho; no global repartido, recusa com o motivo), integridade liquidação-subempenho só no domínio. A anulação do saldo lê o subempenho antes de autorizar (distingue existência por id; o mesmo desenho da duplicação).
+
+Desenho declarado: o subempenho não lança no razão (o crédito empenhado já foi lançado no pai; lançá-lo de novo duplicaria a despesa empenhada) — nenhuma conta inventada. O percurso deixou na base fictícia subempenhos no empenho 2026NE9006490 (uma corrida caiu por queda de navegação durante a recompilação do servidor e foi repetida).
 
 ### Como o catálogo foi verificado
 Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra

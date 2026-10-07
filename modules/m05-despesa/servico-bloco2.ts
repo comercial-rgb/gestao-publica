@@ -88,6 +88,7 @@ export async function liquidar(
       ...(dados.notaFiscalValor !== undefined ? { notaFiscalValor: dados.notaFiscalValor } : {}),
       ...(dados.documentoFiscalId !== undefined ? { documentoFiscalId: dados.documentoFiscalId } : {}),
       ...(dados.medicaoId !== undefined ? { medicaoId: dados.medicaoId } : {}),
+      ...(dados.subempenhoId !== undefined ? { subempenhoId: dados.subempenhoId } : {}),
       ...(dados.despesaSemEmpenhoPrevio === true ? { despesaSemEmpenhoPrevio: true } : {}),
       // ⚠️ M10 (ENT06 item 2) — as entradas de almoxarifado ATRAVESSAM o serviço sem que ele
       // saiba o que é um almoxarifado. Quem decide se elas são exigíveis é o adapter, dentro

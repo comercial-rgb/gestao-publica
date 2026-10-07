@@ -58,6 +58,8 @@ export function FormLiquidacao({
   empenhoInicial,
   numeroSugerido,
   debitos = {},
+  subempenhos = {},
+  subempenhoInicial,
 }: {
   readonly empenhos: readonly EmpenhoLiquidavel[];
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
@@ -68,6 +70,10 @@ export function FormLiquidacao({
   readonly numeroSugerido?: string | undefined;
   /** V36 (TR 5.10.1.38) — os débitos inscritos em dívida ativa dos credores da lista, por documento. */
   readonly debitos?: Readonly<Record<string, { readonly inscricoes: number; readonly saldo: string }>>;
+  /** V36 (TR 5.10.1.7) — os empenhos repartidos em subempenhos: o livre e os subempenhos com saldo. */
+  readonly subempenhos?: Readonly<Record<string, { readonly livre: string; readonly subempenhos: readonly { readonly id: string; readonly rotulo: string; readonly saldo: string }[] }>>;
+  /** V36 — o subempenho que veio escolhido da tela do empenho. */
+  readonly subempenhoInicial?: string | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoLiquidacao, FormData>(
     liquidarAction,
@@ -92,6 +98,7 @@ export function FormLiquidacao({
 
   const alvo = empenhos.find((e) => e.id === escolhido);
   const deMaterial = alvo?.ehMaterial === true;
+  const repartido = alvo === undefined ? undefined : subempenhos[alvo.id];
 
   return (
     <form
@@ -128,6 +135,18 @@ export function FormLiquidacao({
           </select>
           <AvisoDeDebitoDoCredor debito={alvo === undefined ? undefined : debitos[alvo.credorCpfCnpj]} />
         </label>
+
+        {repartido !== undefined ? (
+          <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-1">
+            <span className={ROTULO}>Subempenho</span>
+            <select key={alvo?.id} name="subempenhoId" defaultValue={repartido.subempenhos.some((s) => s.id === subempenhoInicial) ? subempenhoInicial : ""} className={CAMPO}>
+              <option value="">Direto no empenho · livre R$ {formatarMoeda(repartido.livre).texto}</option>
+              {repartido.subempenhos.map((s) => (
+                <option key={s.id} value={s.id}>{s.rotulo} · saldo R$ {formatarMoeda(s.saldo).texto}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Nº da liquidação</span>

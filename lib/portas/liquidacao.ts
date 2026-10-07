@@ -120,6 +120,8 @@ export async function registrarLiquidacao(input: {
   readonly despesaSemEmpenhoPrevio?: boolean;
   /** V5: o documento fiscal conferido que lastreia esta liquidação. */
   readonly documentoFiscalId?: string;
+  /** V36 (TR 5.10.1.7) — o subempenho que esta liquidação consome. Quem confere é o domínio. */
+  readonly subempenhoId?: string;
   /**
    * M10 (ENT06 item 2) — AS ENTRADAS NO ALMOXARIFADO, quando a despesa é de material.
    *

@@ -517,3 +517,47 @@ parcelas (`m05b`, `m05-concorrencia` t5) passaram a GLOBAL, com o motivo no come
   inventado). A metade "contas orçamentárias em liquidação" não tem conteúdo: o estágio 6.2.2.1.3.02 está dormente
   (decisão SEM-ESTAGIO-EM-LIQUIDACAO do M01).
 - **`pagar()` e o cheque:** ver `modules/m09-tesouraria/MODULO.md` (V36 — Cheques).
+
+## V36 — Subempenho sobre o empenho global e o estimativo (07/10/2026)
+
+`subempenho.ts` e `subempenho-saldo.ts`; schema `prisma/schema/m05-subempenho.prisma` (TR 5.10.1.7).
+
+- **O que é:** uma repartição do empenho. Reserva parte do saldo a liquidar do empenho (o pai) para uma parcela. **Não
+  lança no razão e não toca a ficha**: o crédito empenhado já foi lançado no pai, e lançá-lo de novo duplicaria a despesa
+  empenhada. A liquidação que informa o subempenho (`Liquidacao.subempenhoId`, só na original; as anulações se ligam
+  pela família) é a liquidação do pai, pelo mesmo roteiro.
+- **O quadro** (`quadroDoEmpenhoRepartido`): empenhado, liquidado direto, repartido (Σ valor − anulações dos subs),
+  livre = empenhado − liquidado direto − repartido; por sub, o liquidado líquido e o saldo.
+- **As guardas**, todas sob a trava da ficha do empenho:
+  - emissão só sobre GLOBAL ou ESTIMATIVO original e não anulado, data no exercício aberto e não anterior ao empenho,
+    valor no livre;
+  - o GLOBAL com liquidação feita **direto** nele não aceita subempenho (a cláusula). A liquidação de um subempenho
+    não impede o seguinte, senão o segundo subempenho nunca existiria. E a outra face: o GLOBAL com valor repartido não
+    se liquida direto (sem ela, subempenho, liquidação direta e novo subempenho recusado deixariam a ordem das operações
+    decidir se a regra vale). O global se liquida OU direto OU pelos subempenhos. O estimativo não tem essa restrição;
+  - liquidação com subempenho: do mesmo empenho, data não anterior à dele, valor no saldo dele; liquidação direta num
+    empenho repartido: no livre;
+  - anulação parcial do empenho: só o livre; anulação total: recusada enquanto houver valor repartido;
+  - estorno da anulação parcial de uma liquidação: trava a ficha antes da liquidação e confere o liquidado de volta no
+    empenhado (defeito antigo do caminho: o empenho anulado em parte depois deixava o liquidado passar dele), no saldo do
+    subempenho ou, na direta de empenho repartido, no livre;
+  - a anulação do saldo do subempenho (`AnulacaoDeSubempenho`, append-only, ação ANULAR_EMPENHO_PARCIAL) devolve ao
+    livre só o não liquidado.
+- **Leitores que não mudaram, e por quê:** em liquidação, a pagar, dossiê e consultas leem empenhado − liquidado do pai,
+  que continua certo (o subempenho não é fato contábil).
+- **Pendência nomeada SUBEMPENHO-EM-RESTOS:** a liquidação de restos a pagar (`liquidarRestosAPagar`, M08) não lê os
+  subempenhos; o empenho inscrito em restos se liquida pelo saldo dele, e o quadro passa a mostrar a liquidação como
+  direta (livre negativo) com o subempenho ainda com saldo, que não se anula em exercício encerrado.
+- **Pendência nomeada SUBEMPENHO-NAS-LIQUIDACOES-AUTOMATICAS:** a liquidação da parcela do contrato, a certificação da
+  folha, os encargos e o importador chamam `liquidar` sem subempenho. Num empenho repartido elas consomem o livre e, no
+  global repartido, são recusadas com o motivo (fail-closed); liquida-se pela tela informando o subempenho.
+- **Integridade só no domínio:** nada no banco impede `Liquidacao.subempenhoId` de apontar para subempenho de outro
+  empenho (a guarda é do adapter, sob a trava); a FK ficou com o padrão do Prisma, e `gestao_app` não apaga subempenho
+  (`test/runtime/contrato-runtime-subempenho.test.ts`).
+- **Pendência nomeada SUBEMPENHO-NA-REMESSA:** o leiaute do TCM-BA (`pag-emp2.ts`) repete o número do empenho no campo do
+  subempenho; o ente é da Paraíba (SAGRES), e o leiaute baiano não foi tocado.
+
+Teste: `m05-subempenho.test.ts` (t1 N=2 no estimativo; t2 a regra do global; t3 as recusas; t4 a anulação do sub e o
+estorno da liquidação; t5 as anulações do empenho repartido; t6 a corrida determinística na trava da ficha; t7 a
+autorização; t8 o estimativo liquidado direto; t9 o global repartido; t10 o estorno da anulação da liquidação; t11 a
+data civil na hora de borda; t12 empenho anulado). Mutações: 19, todas acusadas. Percurso: `scripts/percurso-v36-subempenho.mts`.

@@ -20,6 +20,8 @@ import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { proximoNumeroDeDocumento } from "../../../../../lib/portas/empenho";
 import { acoesPermitidas } from "../../../../../lib/portas/molde";
 import { FormDuplicar } from "./FormDuplicar";
+import { FormAnularSubempenho, FormEmitirSubempenho } from "./FormsDoSubempenho";
+import { lerSubempenhosDaTela, type QuadroDosSubempenhos } from "../../../../../lib/portas/subempenhos";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
@@ -178,7 +180,11 @@ export default async function DetalheDoEmpenhoPage({
 
   const d = resultado.dossie;
   // V36 — duplicar é emitir: o formulário só aparece para quem empenha (o domínio cobra de novo, na ficha).
-  const podeDuplicar = (await acoesPermitidas(["EMPENHAR"])).has("EMPENHAR");
+  const permitidas = await acoesPermitidas(["EMPENHAR", "ANULAR_EMPENHO_PARCIAL"]);
+  const podeDuplicar = permitidas.has("EMPENHAR");
+  // V36 (TR 5.10.1.7) — o subempenho só existe no global e no estimativo; a leitura vem depois do dossiê (acesso conferido).
+  const repartivel = d.tipo === "GLOBAL" || d.tipo === "ESTIMATIVO";
+  const subempenhos = repartivel ? await lerSubempenhosDaTela(d.id, d.numero) : null;
   const numeroSugerido = podeDuplicar ? await proximoNumeroDeDocumento(d.origem.exercicio) : "";
 
   return (
@@ -214,6 +220,14 @@ export default async function DetalheDoEmpenhoPage({
 
       <Origem dossie={d} />
       <Valores dossie={d} />
+      {subempenhos !== null ? (
+        <Subempenhos
+          empenhoId={d.id}
+          quadro={subempenhos}
+          podeEmitir={permitidas.has("EMPENHAR") && d.status !== "ANULADO"}
+          podeAnular={permitidas.has("ANULAR_EMPENHO_PARCIAL") && d.status !== "ANULADO"}
+        />
+      ) : null}
       <Liquidacoes dossie={d} />
       <Anulacoes dossie={d} />
       <Lancamentos dossie={d} />
@@ -384,6 +398,77 @@ function Linha({
 }
 
 /** LIQUIDAÇÕES — e, dentro de cada uma, os pagamentos e as retenções deles. */
+/** V36 (TR 5.10.1.7) — os SUBEMPENHOS do empenho global ou estimativo: o quadro, a emissão e a anulação do saldo. */
+function Subempenhos({
+  empenhoId,
+  quadro: q,
+  podeEmitir,
+  podeAnular,
+}: {
+  readonly empenhoId: string;
+  readonly quadro: QuadroDosSubempenhos;
+  readonly podeEmitir: boolean;
+  readonly podeAnular: boolean;
+}): React.ReactElement {
+  const comSaldo = q.subempenhos.filter((s) => s.saldo !== "0.00");
+  const celula = "border-b border-[color:var(--color-border)] px-2 py-1.5 align-top";
+  return (
+    <Card>
+      <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Subempenhos</h2>
+      <dl className="mb-3 grid gap-3 text-xs sm:grid-cols-4" data-quadro-subempenhos>
+        <Campo rotulo="Empenhado"><ValorMonetario valor={q.empenhado} /></Campo>
+        <Campo rotulo="Liquidado direto no empenho"><ValorMonetario valor={q.liquidadoDireto} /></Campo>
+        <Campo rotulo="Repartido em subempenhos"><ValorMonetario valor={q.repartido} /></Campo>
+        <Campo rotulo="Saldo livre"><span data-saldo-livre><ValorMonetario valor={q.livre} /></span></Campo>
+      </dl>
+      {q.subempenhos.length === 0 ? (
+        <p className="text-xs text-[color:var(--color-ink-3)]">Nenhum subempenho emitido sobre este empenho.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs" data-tabela-subempenhos>
+            <thead>
+              <tr className="uppercase tracking-wide text-[color:var(--color-ink-2)]">
+                <th scope="col" className={celula}>Subempenho</th>
+                <th scope="col" className={celula}>Data</th>
+                <th scope="col" className={celula}>Parcela</th>
+                <th scope="col" className={`${celula} text-right`}>Valor</th>
+                <th scope="col" className={`${celula} text-right`}>Anulado</th>
+                <th scope="col" className={`${celula} text-right`}>Liquidado</th>
+                <th scope="col" className={`${celula} text-right`}>Saldo</th>
+                <th scope="col" className={celula}><span className="sr-only">Liquidar</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {q.subempenhos.map((s) => (
+                <tr key={s.id} data-subempenho={s.rotulo}>
+                  <td className={celula}>{s.rotulo}</td>
+                  <td className={celula}>{s.data.split("-").reverse().join("/")}</td>
+                  <td className={celula}>{s.historico}</td>
+                  <td className={`${celula} text-right tabular-nums`}><ValorMonetario valor={s.valor} /></td>
+                  <td className={`${celula} text-right tabular-nums`}><ValorMonetario valor={s.anulado} /></td>
+                  <td className={`${celula} text-right tabular-nums`}><ValorMonetario valor={s.liquidado} /></td>
+                  <td className={`${celula} text-right tabular-nums`} data-saldo><ValorMonetario valor={s.saldo} /></td>
+                  <td className={celula}>
+                    {s.saldo !== "0.00" ? (
+                      <Link href={`/despesa/liquidacoes?empenho=${empenhoId}&subempenho=${s.id}`} className="text-[color:var(--color-primary)] hover:underline">Liquidar</Link>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {podeEmitir || (podeAnular && comSaldo.length > 0) ? (
+        <div className="mt-4 grid gap-6 border-t border-[color:var(--color-border)] pt-3 lg:grid-cols-2" data-chrome>
+          {podeEmitir ? <FormEmitirSubempenho empenhoId={empenhoId} livre={q.livre} /> : null}
+          {podeAnular && comSaldo.length > 0 ? <FormAnularSubempenho empenhoId={empenhoId} subempenhos={comSaldo.map((s) => ({ id: s.id, rotulo: s.rotulo, saldo: s.saldo }))} /> : null}
+        </div>
+      ) : null}
+    </Card>
+  );
+}
+
 function Liquidacoes({
   dossie: d,
 }: {

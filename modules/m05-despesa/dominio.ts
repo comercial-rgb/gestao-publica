@@ -449,6 +449,8 @@ export const zLiquidarInput = z.object({
    * transação. Ver `exigirMedicaoAprovadaDaObra`.
    */
   medicaoId: z.string().min(1).optional(),
+  /** V36 (TR 5.10.1.7) — o subempenho que esta liquidação consome. Quem confere é o adapter, sob a trava da ficha. */
+  subempenhoId: z.string().min(1).optional(),
   /** V36 (TR 5.10.1.30) — a despesa foi realizada sem empenho prévio; o empenho a regulariza. Só informação. */
   despesaSemEmpenhoPrevio: z.boolean().optional(),
   /**

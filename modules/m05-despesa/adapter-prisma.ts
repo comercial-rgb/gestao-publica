@@ -64,6 +64,7 @@ import {
 } from "../m29-precatorios/servico.js";
 import { anoCivil, diaCivil } from "../../packages/datas/index.js";
 import { exigirUsoDoNumero } from "./numerador.js";
+import { conferirSubempenhoDaLiquidacao, quadroDoEmpenhoRepartido, reais as reaisDoAdapter } from "./subempenho-saldo.js";
 import type { Tx as TxDoRazao } from "../m01-core-contabil/razao.js";
 // M10 — a dívida. A amortização nasce DENTRO do pagamento e morre com ele.
 import {
@@ -1443,6 +1444,16 @@ export function criarDespesaRepositoryPrisma(
         // na MESMA ordem.
         await travarFichas(tx, [original.fichaId]);
 
+        // V36 (TR 5.10.1.7) — o empenho repartido em subempenhos não se anula inteiro enquanto algum deles tiver valor:
+        // a parcela ficaria apontando para um empenho que deixou de existir. Anula-se antes o saldo de cada subempenho.
+        const repartido = await quadroDoEmpenhoRepartido(tx, original.id);
+        if (repartido.repartido.greaterThan(0)) {
+          throw new Error(
+            `O empenho está repartido em subempenhos (${reaisDoAdapter(repartido.repartido)}). Antes de anulá-lo inteiro, anule o saldo não liquidado de cada ` +
+              "subempenho e, do que já foi liquidado neles, a liquidação. Nada foi gravado."
+          );
+        }
+
         await criarLancamento(tx, lancamento);
 
         // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
@@ -1550,6 +1561,15 @@ export function criarDespesaRepositoryPrisma(
               `anulação pede ${p.valor.toFixed(2)}. Anular abaixo do liquidado ` +
               `deixaria despesa reconhecida sem empenho que a cubra — anule a ` +
               `liquidação primeiro.`
+          );
+        }
+        // V36 (TR 5.10.1.7) — o que está repartido em subempenhos também não se anula pelo empenho: anula-se pelo subempenho.
+        const repartido = await quadroDoEmpenhoRepartido(tx, original.id);
+        if (p.valor.greaterThan(repartido.livre)) {
+          throw new Error(
+            `ANULAÇÃO PARCIAL MAIOR QUE O SALDO LIVRE do empenho ${original.numero}: ${reaisDoAdapter(repartido.livre)} livres, ` +
+              `${reaisDoAdapter(repartido.repartido)} repartidos em subempenhos, e a anulação pede ${reaisDoAdapter(p.valor)}. ` +
+              "Anule antes o saldo do subempenho. Nada foi gravado."
           );
         }
 
@@ -1899,7 +1919,33 @@ export function criarDespesaRepositoryPrisma(
           if (parcial.estornos.length > 0) {
             throw new Error(`Anulação parcial ${parcial.numero} já foi estornada.`);
           }
+          // V36 (TR 5.10.1.7) — o estorno DEVOLVE valor ao liquidado do empenho (e do subempenho da liquidação original).
+          // Trava-se a FICHA do empenho antes da liquidação (a ordem dos postos), a mesma trava da emissão e da anulação
+          // do subempenho e da liquidação, e confere-se que o liquidado de volta ainda cabe: no empenhado (o empenho pode
+          // ter sido anulado em parte depois da anulação da liquidação), no saldo do subempenho (ele pode ter tido o saldo
+          // anulado) ou, na liquidação direta de empenho repartido, no livre.
+          const doEmpenho = await tx.empenho.findUniqueOrThrow({ where: { id: parcial.empenhoId }, select: { fichaId: true, numero: true } });
+          await travarFichas(tx, [doEmpenho.fichaId]);
           await travarLiquidacoes(tx, [parcial.anulacaoParcialDeId]);
+          const devolvido = toMoney(parcial.valor.toFixed(2));
+          const empenhadoAgora = await empenhadoLiquidoDoEmpenho(tx, parcial.empenhoId);
+          const liquidadoAgora = await liquidadoLiquido(tx, parcial.empenhoId);
+          if (liquidadoAgora.plus(devolvido).greaterThan(empenhadoAgora)) {
+            throw new Error(
+              `O estorno devolveria ${reaisDoAdapter(devolvido)} ao liquidado do empenho ${doEmpenho.numero}, que passaria do empenhado ` +
+                `(${reaisDoAdapter(empenhadoAgora)}, já liquidados ${reaisDoAdapter(liquidadoAgora)}): o empenho foi anulado em parte depois. Nada foi gravado.`
+            );
+          }
+          const original = await tx.liquidacao.findUniqueOrThrow({ where: { id: parcial.anulacaoParcialDeId }, select: { subempenhoId: true } });
+          const repartido = await quadroDoEmpenhoRepartido(tx, parcial.empenhoId);
+          const sub = original.subempenhoId === null ? undefined : repartido.subempenhos.find((s) => s.id === original.subempenhoId);
+          if (sub !== undefined ? devolvido.greaterThan(sub.saldo) : repartido.subempenhos.length > 0 && devolvido.greaterThan(repartido.livre)) {
+            throw new Error(
+              sub !== undefined
+                ? `O estorno devolveria ${reaisDoAdapter(devolvido)} ao subempenho ${doEmpenho.numero}/${String(sub.numero)}, que tem só ${reaisDoAdapter(sub.saldo)} de saldo (parte foi anulada depois). Nada foi gravado.`
+                : `O estorno devolveria ${reaisDoAdapter(devolvido)} à liquidação direta do empenho ${doEmpenho.numero}, que tem só ${reaisDoAdapter(repartido.livre)} livres (o resto está em subempenhos). Nada foi gravado.`
+            );
+          }
 
           await criarLancamento(tx, lancamento);
           // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
@@ -2151,6 +2197,16 @@ export function criarDespesaRepositoryPrisma(
           );
         }
 
+        // V36 (TR 5.10.1.7) — O SUBEMPENHO: a liquidação que o informa cabe no saldo dele; a direta, num empenho
+        // repartido, cabe no livre (o repartido está reservado aos subempenhos). Sob a mesma trava da ficha.
+        conferirSubempenhoDaLiquidacao(await quadroDoEmpenhoRepartido(tx, p.empenhoId), {
+          numeroDoEmpenho: empenho.numero,
+          tipo: empenho.tipo,
+          subempenhoId: p.subempenhoId,
+          valor: p.valor,
+          data: p.data,
+        });
+
         // ⚠️ M11 (ENT03b) — LIQUIDAR OBRA EXIGE MEDIÇÃO APROVADA (Lei 14.133, art. 140).
         //
         // O guard é UNIDIRECIONAL, como o do `obraId` no empenho: empenho COM obra exige
@@ -2178,6 +2234,7 @@ export function criarDespesaRepositoryPrisma(
             id: p.liquidacaoId,
             empenhoId: p.empenhoId,
             medicaoId: p.medicaoId ?? null,
+            subempenhoId: p.subempenhoId ?? null,
             numero: p.numero,
             valor: p.valor.toFixed(2),
             data: p.data,

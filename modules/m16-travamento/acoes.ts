@@ -848,6 +848,8 @@ export type NomeDeServico =
   | "liberarReserva"
   | "empenhar"
   | "duplicarEmpenho"
+  | "emitirSubempenho"
+  | "anularSaldoDoSubempenho"
   | "anularEmpenho"
   | "anularEmpenhoParcial"
   | "liquidar"
@@ -1508,6 +1510,9 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   empenhar: "EMPENHAR",
   // V36 — TR 5.10.1.12: a duplicação é uma emissão (chama `empenhar`), sob a mesma ação.
   duplicarEmpenho: "EMPENHAR",
+  // V36 — TR 5.10.1.7: o subempenho reparte o empenho (o mesmo ato de empenhar); a anulação do saldo dele é a do empenho parcial.
+  emitirSubempenho: "EMPENHAR",
+  anularSaldoDoSubempenho: "ANULAR_EMPENHO_PARCIAL",
   anularEmpenho: "ANULAR_EMPENHO",
   anularEmpenhoParcial: "ANULAR_EMPENHO_PARCIAL",
   liquidar: "LIQUIDAR",
@@ -3347,6 +3352,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   gravarItensNoAtoDaLei: "composável interno (V36 — grava os itens aprovados no ato de alteração da lei, pelo guard do ato, DENTRO da sanção da emenda ao PPA ou à LDO, que já autorizou SANCIONAR_EMENDA_AO_ORCAMENTO)",
   emendasDaPeca: "leitura (V36 — as emendas de uma peça do planejamento com a situação derivada — não muta)",
   quadroDeTransferenciasPrevistas: "leitura (V36 — as transferências financeiras previstas no PPA, entidade x ano, vigentes — não muta)",
+  quadroDoEmpenhoRepartido: "leitura (V36 — o empenho e os subempenhos dele: empenhado, liquidado direto, repartido, livre e o saldo de cada um — não muta)",
+  lerSubempenhosDoEmpenho: "leitura (V36 — o mesmo quadro do empenho repartido, para a tela — não muta)",
   listarPrevias: "leitura (V36 — as prévias de alteração orçamentária do exercício, com a situação derivada — não muta)",
   detalharPrevia: "leitura (V36 — uma prévia com os itens por lote, o bloqueio de cada anulação e os totais por fonte — não muta)",
   reservarNaTransacao: "composável interno (V36 — a reserva de dotação na transação de quem chama; o reservar do repositório e a prévia, que autorizam)",

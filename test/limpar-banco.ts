@@ -552,6 +552,9 @@ export const TABELAS = [
   // M05 — despesa
   "Pagamento",
   "Liquidacao",
+  // V36 — o subempenho (depois da liquidação que o informa, antes do empenho).
+  "AnulacaoDeSubempenho",
+  "Subempenho",
   "ContaBancaria",
   "MovimentoDotacao",
   "ReservaEmpenho",
