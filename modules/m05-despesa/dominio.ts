@@ -28,7 +28,9 @@ export type TipoMovimentoDotacao =
   | "EMPENHO"
   | "EMPENHO_ANULADO"
   | "REALOCACAO_ACRESCIMO"
-  | "REALOCACAO_REDUCAO";
+  | "REALOCACAO_REDUCAO"
+  | "BLOQUEIO_DE_PREVIA"
+  | "BLOQUEIO_DE_PREVIA_LIBERADO";
 
 export const TIPOS_MOVIMENTO: readonly TipoMovimentoDotacao[] = [
   "DOTACAO_INICIAL",
@@ -40,6 +42,8 @@ export const TIPOS_MOVIMENTO: readonly TipoMovimentoDotacao[] = [
   "EMPENHO_ANULADO",
   "REALOCACAO_ACRESCIMO",
   "REALOCACAO_REDUCAO",
+  "BLOQUEIO_DE_PREVIA",
+  "BLOQUEIO_DE_PREVIA_LIBERADO",
 ] as const;
 
 /**
@@ -63,6 +67,10 @@ const SINAIS: Record<
   // lugar da aritmética — o QDD, o saldo e a reconciliação leem esta tabela.
   REALOCACAO_ACRESCIMO: { saldo: "autorizado", sinal: 1 },
   REALOCACAO_REDUCAO: { saldo: "autorizado", sinal: -1 },
+  // V36 — o bloqueio da anulação de uma prévia de alteração orçamentária torna o valor INDISPONÍVEL como a reserva (no
+  // PCASP os dois moram sob CRÉDITO INDISPONÍVEL), e por isso soma no mesmo saldo; a conta é a do roteiro próprio.
+  BLOQUEIO_DE_PREVIA: { saldo: "reservado", sinal: 1 },
+  BLOQUEIO_DE_PREVIA_LIBERADO: { saldo: "reservado", sinal: -1 },
 };
 
 /** Total por tipo, como sai de um GROUP BY no banco. */

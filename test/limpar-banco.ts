@@ -528,6 +528,11 @@ export const TABELAS = [
   // M06 — ordem cronológica
   "JustificativaQuebraOrdem",
   // M03 — créditos adicionais
+  // V36 — a prévia da alteração orçamentária (antes do decreto, da reserva e da ficha).
+  "DesfechoDaPrevia",
+  "AprovacaoDaPrevia",
+  "ItemDaPrevia",
+  "PreviaDeAlteracao",
   "ItemCredito",
   "DecretoEncerramento",
   // M03 V21 — a realocação por lei específica (remanejamento, transposição, transferência).

@@ -216,6 +216,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/qdd", numero: "QDD", rotulo: "Quadro de Detalhamento da Despesa", descricao: "Quadro de Detalhamento da Despesa: dotação inicial, créditos e dotação atualizada." },
   { href: "/planejamento/cmd-mba", numero: "CMD/MBA", rotulo: "Programação Financeira (CMD/MBA)", descricao: "Cronograma mensal de desembolso e metas bimestrais de arrecadação (LRF arts. 8º e 13)." },
   { href: "/planejamento/creditos-adicionais", numero: "Créditos adicionais", rotulo: "Créditos Adicionais", descricao: "Créditos suplementares, especiais e extraordinários, com leis, decretos e limite legal." },
+  { href: "/planejamento/previas", numero: "Prévias", rotulo: "Prévias de alteração orçamentária", descricao: "O crédito adicional antes do decreto: movimentos em lotes, bloqueio das anulações, aprovação, minuta e efetivação." },
   { href: "/planejamento/creditos-adicionais/normas-no-tribunal", numero: "Leis no Tribunal", rotulo: "Leis no Tribunal de Contas", descricao: "O protocolo de cada lei orçamentária no banco de legislação do Tribunal, e as leis publicadas sem ele." },
   { href: "/planejamento/realocacoes", numero: "Realocações", rotulo: "Remanejamento, Transposição e Transferência", descricao: "Movimentação de dotação entre programações autorizada por lei específica, com as fichas cedentes e as recebedoras." },
   { href: "/planejamento/recursos-novos", numero: "Recurso novo", rotulo: "Disponibilidade de Recurso Novo", descricao: "Superávit financeiro, excesso de arrecadação e operações de crédito que lastreiam créditos adicionais (Lei 4.320, art. 43)." },
@@ -690,6 +691,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Alterações orçamentárias", itens: [
         { href: "/planejamento/creditos-adicionais", rotulo: "Créditos adicionais" },
+        { href: "/planejamento/previas", rotulo: "Prévias de alteração orçamentária" },
         { href: "/planejamento/realocacoes", rotulo: "Remanejamento, transposição e transferência" },
         { href: "/planejamento/recursos-novos", rotulo: "Recursos para créditos adicionais" },
         { href: "/contabilidade/superavit", rotulo: "Superávit financeiro por fonte" },

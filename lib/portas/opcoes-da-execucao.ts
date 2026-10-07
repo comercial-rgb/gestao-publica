@@ -219,7 +219,8 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
                 ],
               };
       const linhas = await cliente().reservaDotacao.findMany({
-        where: { ...filtro, estornoDeId: null, estornos: { none: {} } },
+        // V36 — o bloqueio de uma prévia de alteração orçamentária não é reserva para empenho (o M05 recusa).
+        where: { ...filtro, estornoDeId: null, estornos: { none: {} }, itemDaPrevia: { is: null } },
         orderBy: { criadoEm: "desc" },
         skip: (p.pagina - 1) * TAMANHO,
         take: TAMANHO + 1,

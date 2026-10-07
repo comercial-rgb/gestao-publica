@@ -38,6 +38,17 @@ export interface ExecutarCreditoParams {
   readonly decretoId: string;
   readonly itens: readonly (ItemCreditoDados & { readonly itemId: string })[];
   readonly criadoPor: string;
+  /**
+   * V36 — o que roda NA MESMA transação, logo depois de travar as fichas e antes de ler o decreto: a efetivação da
+   * prévia de alteração orçamentária desbloqueia as anulações, cria o decreto e grava o desfecho aqui, para que o
+   * crédito e o desbloqueio sejam um ato só (`modules/m03-creditos/previa.ts`). Ausente no decreto digitado.
+   */
+  readonly preparar?: ((tx: import("../m05-despesa/adapter-prisma.js").Tx) => Promise<void>) | undefined;
+  /**
+   * V36 — o que roda NA MESMA transação ANTES de travar as fichas: a efetivação da prévia trava a linha da prévia aqui,
+   * na mesma ordem (prévia, depois fichas) de todas as outras operações dela, para que nenhuma se abrace com esta.
+   */
+  readonly antesDeTravar?: ((tx: import("../m05-despesa/adapter-prisma.js").Tx) => Promise<void>) | undefined;
 }
 
 export interface AnularCreditoParams {

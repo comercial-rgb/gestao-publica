@@ -59,9 +59,17 @@ export async function conferirDotacaoContraRazao(
   tx: Tx,
   contas: ContasDoOrcamento
 ): Promise<readonly ConfrontoOrcamentario[]> {
+  // V36 — o bloqueio da prévia de alteração orçamentária soma no saldo reservado da ficha, mas credita a conta do
+  // roteiro PRÓPRIO (o ente a escolhe sob crédito indisponível). A conta da reserva é conferida sem ele, e o bloqueio
+  // contra a conta do roteiro dele.
+  const roteiroDoBloqueio = await tx.roteiroOrcamentario.findFirst({
+    where: { tipo: "BLOQUEIO_DE_PREVIA" },
+    select: { contaCredito: { select: { codigo: true } } },
+  });
+  const contaDoBloqueio = roteiroDoBloqueio?.contaCredito.codigo ?? null;
   const [somas, movimentos] = await Promise.all([
     somasPorConta(tx, {
-      codigos: [contas.disponivel, contas.reservado, contas.empenhado],
+      codigos: [contas.disponivel, contas.reservado, contas.empenhado, ...(contaDoBloqueio !== null ? [contaDoBloqueio] : [])],
       ate: null,
     }),
     tx.movimentoDotacao.findMany({ select: { tipo: true, valor: true } }),
@@ -78,6 +86,8 @@ export async function conferirDotacaoContraRazao(
     totais[m.tipo] = toMoney((totais[m.tipo] ?? toMoney("0.00")).plus(v));
   }
   const saldos = calcularSaldos(totais);
+  const zero = toMoney("0.00");
+  const bloqueado = toMoney((totais.BLOQUEIO_DE_PREVIA ?? zero).minus(totais.BLOQUEIO_DE_PREVIA_LIBERADO ?? zero));
 
   const confrontos: ConfrontoOrcamentario[] = [
     {
@@ -88,8 +98,12 @@ export async function conferirDotacaoContraRazao(
     {
       conta: contas.reservado,
       peloRazao: saldoCredor(porCodigo.get(contas.reservado)),
-      pelosMovimentos: saldos.reservado,
+      pelosMovimentos: toMoney(saldos.reservado.minus(bloqueado)),
     },
+    // Sem roteiro do bloqueio não há bloqueio gravado (o movimento recusa sem ele): a conferência não tem o que comparar.
+    ...(contaDoBloqueio !== null && contaDoBloqueio !== contas.reservado
+      ? [{ conta: contaDoBloqueio, peloRazao: saldoCredor(porCodigo.get(contaDoBloqueio)), pelosMovimentos: bloqueado }]
+      : []),
     {
       conta: contas.empenhado,
       peloRazao: saldoCredor(porCodigo.get(contas.empenhado)),

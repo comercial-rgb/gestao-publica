@@ -316,6 +316,8 @@ model CodigoAcompanhamento {
 
 model FichaOrcamentaria {
   id        String @id @default(cuid())
+  /// V36 — os itens de prévias de alteração orçamentária desta ficha (m03-previas.prisma). VIRTUAL.
+  itensDePrevia ItemDaPrevia[] @relation("ItensDePrevia")
   exercicio Int
   numero    Int
 

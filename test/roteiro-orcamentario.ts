@@ -101,6 +101,14 @@ const FIXTURE_CONTA_CREDITO_ESPECIAL_REABERTO = "5.2.2.1.2.02.02";
 const FIXTURE_CONTA_CREDITO_EXTRAORDINARIO_REABERTO = "5.2.2.1.2.03.02";
 
 /**
+ * V36 — O BLOQUEIO DA ANULAÇÃO DA PRÉVIA DE ALTERAÇÃO ORÇAMENTÁRIA. FIXTURE, e não classificação: sob CRÉDITO
+ * INDISPONÍVEL o plano tem o bloqueio (.01, a limitação de empenho), o pré-empenhado (.02, que é a reserva) e outras
+ * indisponibilidades (.99); qual o ente usa para o bloqueio da prévia é decisão dele, na tela do roteiro. O roteiro de
+ * produção não é semeado.
+ */
+const FIXTURE_CONTA_BLOQUEIO_DE_PREVIA = "6.2.2.1.2.99.00";
+
+/**
  * ⚠️ APELIDO COM CORREÇÃO DE CÓDIGO: era `6.2.2.1.3.00.00` (sintética); agora aponta
  * para a analítica oficial `6.2.2.1.3.01.00` (Crédito Empenhado a Liquidar).
  */
@@ -130,6 +138,7 @@ const CONTAS: readonly {
   { codigo: CONTA_REALOCACAO_ACRESCIMO, nome: "Alteracao da lei orcamentaria - acrescimo", naturezaSaldo: "DEVEDORA" },
   { codigo: CONTA_REALOCACAO_REDUCAO, nome: "Alteracao da lei orcamentaria - reducao", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_RESERVADO, nome: "Crédito reservado", naturezaSaldo: "CREDORA" },
+  { codigo: FIXTURE_CONTA_BLOQUEIO_DE_PREVIA, nome: "Outras indisponibilidades", naturezaSaldo: "CREDORA" },
   { codigo: CONTA_CREDITO_EMPENHADO, nome: "Crédito empenhado", naturezaSaldo: "CREDORA" },
 
   // ⚠️ A DDR (7.4) — e ela mora AQUI pelo mesmo motivo que os roteiros de dotação: a
@@ -181,7 +190,9 @@ const ROTEIROS: readonly {
     | "RESERVA"
     | "RESERVA_LIBERADA"
     | "REALOCACAO_ACRESCIMO"
-    | "REALOCACAO_REDUCAO";
+    | "REALOCACAO_REDUCAO"
+    | "BLOQUEIO_DE_PREVIA"
+    | "BLOQUEIO_DE_PREVIA_LIBERADO";
   tipoCredito?: "SUPLEMENTAR" | "ESPECIAL" | "EXTRAORDINARIO";
   abertura?: "ABERTO" | "REABERTO";
   debito: string;
@@ -204,6 +215,9 @@ const ROTEIROS: readonly {
   // V21 — a realocação por lei específica, com as contas REAIS do plano (5.2.2.1.9.02).
   { tipo: "REALOCACAO_ACRESCIMO", debito: CONTA_REALOCACAO_ACRESCIMO, credito: CONTA_CREDITO_DISPONIVEL },
   { tipo: "REALOCACAO_REDUCAO", debito: CONTA_CREDITO_DISPONIVEL, credito: CONTA_REALOCACAO_REDUCAO },
+  // V36 — o bloqueio da prévia: do disponível para a indisponibilidade da fixture, e de volta.
+  { tipo: "BLOQUEIO_DE_PREVIA", debito: CONTA_CREDITO_DISPONIVEL, credito: FIXTURE_CONTA_BLOQUEIO_DE_PREVIA },
+  { tipo: "BLOQUEIO_DE_PREVIA_LIBERADO", debito: FIXTURE_CONTA_BLOQUEIO_DE_PREVIA, credito: CONTA_CREDITO_DISPONIVEL },
 ];
 
 /**

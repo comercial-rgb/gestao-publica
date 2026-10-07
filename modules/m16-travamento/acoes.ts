@@ -1205,6 +1205,12 @@ export type NomeDeServico =
   | "cadastrarNaturezaReceita"
   // V36 (TR 5.9.3.4 e 5.9.3.7) — as fontes da natureza com percentual, e a previsão da LOA rateada por elas
   | "definirFontesDaNatureza"
+  // V36 (TR 5.9.3.23 e 5.9.3.24) — a prévia da alteração orçamentária, com o bloqueio das anulações
+  | "criarPrevia"
+  | "acrescentarLoteAPrevia"
+  | "aprovarPrevia"
+  | "descartarPrevia"
+  | "efetivarPrevia"
   | "preverReceitaPorRateio"
   // M09 V16 (TR 5.10.2.6) — o rol de fontes da conta bancária, o cadastro que faltava
   | "acrescentarFonteAoRol"
@@ -2036,6 +2042,14 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarNaturezaReceita: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
   // V36 — as fontes de uma natureza, com percentual, são parte do cadastro dela: a mesma autoridade de quem a cria.
   definirFontesDaNatureza: "PARAMETRIZAR_ROTEIRO_ORCAMENTARIO",
+  // V36 — a prévia é o decreto antes de nascer: prepará-la (criar, acrescentar lote, descartar) é a autoridade de quem
+  // cria o decreto, nas unidades das fichas, porque o bloqueio mexe no disponível delas; aprovar e efetivar é a de quem
+  // executa o crédito (a efetivação cobra também CRIAR_DECRETO_DE_CREDITO no ente, no corpo do serviço).
+  criarPrevia: "CRIAR_DECRETO_DE_CREDITO",
+  acrescentarLoteAPrevia: "CRIAR_DECRETO_DE_CREDITO",
+  descartarPrevia: "CRIAR_DECRETO_DE_CREDITO",
+  aprovarPrevia: "EXECUTAR_CREDITO",
+  efetivarPrevia: "EXECUTAR_CREDITO",
   // V36 — prever a receita da LOA por rateio é prever a receita: a mesma autoridade da previsão linha a linha.
   preverReceitaPorRateio: "CRIAR_RECEITA_PREVISTA",
   // ── M07 V11 V8.3 — os tipos de consignação ──
@@ -3328,6 +3342,11 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerLinhaDoAlvo: "leitura (V36 — a linha planejada de um alvo do ato de alteração, com a peça e o rótulo — não muta)",
   gravarItensNoAtoDaLei: "composável interno (V36 — grava os itens aprovados no ato de alteração da lei, pelo guard do ato, DENTRO da sanção da emenda ao PPA ou à LDO, que já autorizou SANCIONAR_EMENDA_AO_ORCAMENTO)",
   emendasDaPeca: "leitura (V36 — as emendas de uma peça do planejamento com a situação derivada — não muta)",
+  listarPrevias: "leitura (V36 — as prévias de alteração orçamentária do exercício, com a situação derivada — não muta)",
+  detalharPrevia: "leitura (V36 — uma prévia com os itens por lote, o bloqueio de cada anulação e os totais por fonte — não muta)",
+  reservarNaTransacao: "composável interno (V36 — a reserva de dotação na transação de quem chama; o reservar do repositório e a prévia, que autorizam)",
+  liberarReservaNaTransacao: "composável interno (V36 — a liberação da reserva na transação de quem chama; o liberarReserva do repositório e a prévia, que autorizam)",
+  criarDecretoNaTransacao: "composável interno (V36 — o decreto de crédito na transação de quem chama; o criarDecreto do repositório e a efetivação da prévia, que autorizam)",
   composicoesVigentes: "leitura (V36 — a composição de fontes vigente de cada natureza da receita — não muta)",
   balancetePorFonte: "leitura (V36 — balancete analítico por fonte de recursos: as somas do razão agrupadas pela fonte que o resolver da MSC acha no fato — não muta)",
   bloqueiosDaPeca: "leitura (V36 — os bloqueios vivos das linhas de uma peça para emendas — não muta)",

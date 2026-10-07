@@ -223,6 +223,6 @@ cadastro da natureza). Tela `/receita/naturezas/fontes` (leitura CONSULTAR_RECEI
 - A soma não passa de 100%; o cadastro aceita a composição incompleta, e quem rateia só aceita a que fecha em 100%.
 - Uma fonte por composição; a fonte do resíduo (o centavo que o percentual não fecha) é declarada e tem de estar nela.
 - Versionada e insert-only: a vigente é a mais recente da natureza (`composicoesVigentes`). A publicação trava a
-  natureza (posto `NaturezaDaReceita`, 42) antes de gravar, e a hora é a de depois da trava.
+  natureza (posto `NaturezaDaReceita` da fila de travas) antes de gravar, e a hora é a de depois da trava.
 - `ratearPelaComposicao` trunca cada parte a duas casas e dá o resto à fonte do resíduo — o desenho do rateio de custos.
 - Teste: `m04-fontes-da-natureza.test.ts` (10). Percurso: `scripts/percurso-v36-fontes-da-natureza.mts`.

@@ -1,0 +1,96 @@
+/// ═══════════════════════════════════════════════════════════════════════════════════════
+/// M03 — A PRÉVIA DA ALTERAÇÃO ORÇAMENTÁRIA DA DESPESA (TR 5.9.3.23 e 5.9.3.24).
+///
+/// A prévia é o crédito adicional antes do decreto: tipo de crédito, origem do recurso e os movimentos (suplementação e
+/// anulação por ficha), informados em um ou mais LOTES. Aprovada, ela é EFETIVADA sem redigitar: a efetivação cria o
+/// decreto contra a lei escolhida e executa o crédito pelo mesmo caminho do decreto digitado (`executarCredito`, com
+/// todas as guardas), numa transação só.
+///
+/// O BLOQUEIO: cada anulação da prévia reserva o valor na ficha a anular (`ReservaDotacao`, M05 — o mesmo fato da
+/// reserva de dotação, com o lançamento D crédito disponível / C crédito reservado). A reserva de bloqueio não serve a
+/// empenho nem se libera pela tela de reservas; ela se desfaz só na efetivação (logo antes da anulação do decreto, na
+/// mesma transação) ou no descarte da prévia.
+///
+/// Sem coluna de situação: aprovada é a existência da `AprovacaoDaPrevia`; efetivada ou descartada é o `DesfechoDaPrevia`,
+/// UM por prévia (a chave única decide a corrida entre efetivar e descartar).
+model PreviaDeAlteracao {
+  id String @id @default(cuid())
+
+  exercicio Int
+  numero    Int
+
+  tipoCredito   TipoCredito
+  origemRecurso OrigemRecurso
+  /// O objeto da alteração, como vai à minuta.
+  descricao String
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  itens     ItemDaPrevia[]
+  aprovacao AprovacaoDaPrevia?
+  desfecho  DesfechoDaPrevia?
+
+  @@unique([exercicio, numero])
+}
+
+model ItemDaPrevia {
+  id String @id @default(cuid())
+
+  previaId String
+  previa   PreviaDeAlteracao @relation(fields: [previaId], references: [id], onDelete: Restrict)
+
+  /// O lote em que o item entrou (1, 2, ...).
+  lote Int
+
+  fichaId String
+  ficha   FichaOrcamentaria @relation("ItensDePrevia", fields: [fichaId], references: [id], onDelete: Restrict)
+
+  tipo  TipoItemCredito
+  valor Decimal         @db.Decimal(18, 2)
+
+  /// O bloqueio da anulação (CHECK: só a anulação tem, e tem sempre).
+  reservaId String?         @unique
+  reserva   ReservaDotacao? @relation("BloqueioDaPrevia", fields: [reservaId], references: [id], onDelete: Restrict)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+
+  @@index([previaId])
+  @@index([fichaId])
+}
+
+model AprovacaoDaPrevia {
+  id String @id @default(cuid())
+
+  previaId String            @unique
+  previa   PreviaDeAlteracao @relation(fields: [previaId], references: [id], onDelete: Restrict)
+
+  data    DateTime
+  parecer String?
+
+  /// O que foi aprovado: a efetivação recusa se a prévia tiver outro número de itens ou outro total.
+  quantidadeDeItens Int
+  totalSuplementado Decimal @db.Decimal(18, 2)
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+}
+
+model DesfechoDaPrevia {
+  id String @id @default(cuid())
+
+  previaId String            @unique
+  previa   PreviaDeAlteracao @relation(fields: [previaId], references: [id], onDelete: Restrict)
+
+  /// EFETIVADA ou DESCARTADA (CHECK na migration, com o decreto e o motivo de cada um).
+  tipo String @db.VarChar(10)
+
+  decretoId String?         @unique
+  decreto   DecretoCredito? @relation("DecretoDaPrevia", fields: [decretoId], references: [id], onDelete: Restrict)
+
+  motivo String?
+
+  criadoPor String
+  criadoEm  DateTime @default(now())
+}

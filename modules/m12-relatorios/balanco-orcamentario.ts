@@ -243,6 +243,9 @@ export async function lerDespesas(
       // não compromete crédito no Anexo 12.
       case "RESERVA":
       case "RESERVA_LIBERADA":
+      // V36 — o bloqueio da prévia de alteração orçamentária também não é execução nem altera a dotação.
+      case "BLOQUEIO_DE_PREVIA":
+      case "BLOQUEIO_DE_PREVIA_LIBERADO":
         break;
       default: {
         // ⚠️ EXAUSTIVO desde a V21: um tipo novo de movimento de dotação NÃO COMPILA até alguém

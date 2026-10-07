@@ -29,6 +29,11 @@ enum TipoMovimentoDotacao {
   /// um quarto valor de TipoCredito — aquele enum governa o limite, e dez sítios o enumeram.
   REALOCACAO_ACRESCIMO
   REALOCACAO_REDUCAO
+  /// V36 — o BLOQUEIO da anulação de uma prévia de alteração orçamentária (m03-previas.prisma) e a liberação dele. Torna o
+  /// valor indisponível como a reserva, mas NÃO é pré-empenho: a conta é a do roteiro próprio, que o ente parametriza
+  /// (o PCASP tem, sob CRÉDITO INDISPONÍVEL, o bloqueio, o pré-empenhado e outras indisponibilidades).
+  BLOQUEIO_DE_PREVIA
+  BLOQUEIO_DE_PREVIA_LIBERADO
 }
 
 enum TipoEmpenho {
@@ -92,6 +97,8 @@ model MovimentoDotacao {
 
 model ReservaDotacao {
   id      String            @id @default(cuid())
+  /// V36 — quando esta reserva é o BLOQUEIO de uma anulação de prévia de alteração (m03-previas.prisma). VIRTUAL.
+  itemDaPrevia ItemDaPrevia? @relation("BloqueioDaPrevia")
   fichaId String
   ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])
   valor   Decimal           @db.Decimal(18, 2)

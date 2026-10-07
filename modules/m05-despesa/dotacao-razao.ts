@@ -68,6 +68,9 @@ export const LANCA_PELO_ROTEIRO_ORCAMENTARIO: Record<TipoMovimentoDotacao, boole
   /** V21 — a realocação lança pelo roteiro do seu tipo (5.2.2.1.9.02 contra o crédito disponível). */
   REALOCACAO_ACRESCIMO: true,
   REALOCACAO_REDUCAO: true,
+  /** V36 — o bloqueio da prévia lança pelo roteiro próprio, parametrizado pelo ente (fail-closed sem ele). */
+  BLOQUEIO_DE_PREVIA: true,
+  BLOQUEIO_DE_PREVIA_LIBERADO: true,
 };
 
 export interface MovimentoDotacaoParams {
@@ -269,6 +272,14 @@ export async function registrarMovimentoDotacao(
           },
         });
 
+  if (roteiro === null && (p.tipo === "BLOQUEIO_DE_PREVIA" || p.tipo === "BLOQUEIO_DE_PREVIA_LIBERADO")) {
+    // V36 — a prévia com anulação é a primeira a cair aqui num ente novo (o roteiro do bloqueio não é semeado, porque a
+    // conta é escolha da contabilidade): a mensagem diz o que fazer, em português de quem opera a tela.
+    throw new Error(
+      "A contabilidade ainda não definiu em que conta o bloqueio da prévia de alteração orçamentária entra. " +
+        "Defina-a em Contabilidade, nos roteiros orçamentários (bloqueio da prévia e bloqueio da prévia desfeito). Nada foi gravado."
+    );
+  }
   if (roteiro === null) {
     const qual =
       p.tipoCredito === undefined

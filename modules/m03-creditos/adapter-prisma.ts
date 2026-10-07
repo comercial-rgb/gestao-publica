@@ -345,6 +345,56 @@ const PORT_DESLIGADO =
   "DECLARADA e não conferida contra os fatos.";
 
 /**
+ * O DECRETO de crédito adicional, na transação de quem chama (V36: a efetivação da prévia cria o decreto e executa o
+ * crédito num ato só). O `criarDecreto` do repositório a chama com o client.
+ */
+export async function criarDecretoNaTransacao(tx: Tx, d: DecretoParaPersistir): Promise<string> {
+  // ═══ ⚠️ ABERTO OU REABERTO — A GUARDA DA CF ART. 167 § 2º (V11 V8.6) ═══
+  //
+  // Fecha `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`. A pendência dizia que faltava um FATO; o
+  // fato existia — o decreto aponta para a lei, e cada um tem o seu ano —, faltava LER a
+  // diferença. E ler é melhor que perguntar: uma caixa de seleção entre "aberto" e "reaberto"
+  // é uma escolha que se erra, e o erro vai direto para o balancete do TCE.
+  //
+  // ⚠️ AQUI, E NÃO NO `executarCredito`: um decreto ilegal não deve NASCER. Deixá-lo nascer e
+  // recusar só na execução criaria um documento que o ente vê na tela, cita em ofício, e que
+  // nunca vai poder ser executado.
+  const lei = await tx.leiCredito.findUnique({
+    where: { id: d.leiId },
+    select: { ano: true, tipoCredito: true, dataPublicacao: true, numero: true },
+  });
+  if (lei === null) {
+    throw new Error(`Lei de crédito ${d.leiId} não existe. Nada foi gravado.`);
+  }
+  const classificacao = classificarAbertura({
+    tipoCredito: lei.tipoCredito as TipoDeCreditoAdicional,
+    leiAno: lei.ano,
+    leiDataPublicacao: lei.dataPublicacao,
+    decretoAno: d.ano,
+  });
+  if (classificacao.recusa !== null) {
+    throw new Error(
+      `Decreto ${d.numero}/${d.ano} contra a lei ${lei.numero}/${lei.ano}: ${classificacao.recusa}`
+    );
+  }
+
+  const criado = await tx.decretoCredito.create({
+    data: {
+      id: d.id,
+      leiId: d.leiId,
+      numero: d.numero,
+      ano: d.ano,
+      data: d.data,
+      origemRecurso: d.origemRecurso,
+      criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+
+  return criado.id;
+}
+
+/**
  * @param portas M02/M04/M12 — OPCIONAIS. Ausentes = a disponibilidade segue DECLARADA
  * e não conferida (fail-open com log). Ver `PortasDoRecursoNovo`.
  */
@@ -371,52 +421,13 @@ export function criarCreditoRepositoryPrisma(
     },
 
     async criarDecreto(d: DecretoParaPersistir): Promise<string> {
-      // ═══ ⚠️ ABERTO OU REABERTO — A GUARDA DA CF ART. 167 § 2º (V11 V8.6) ═══
-      //
-      // Fecha `CREDITO-ESPECIAL-ABERTO-OU-REABERTO`. A pendência dizia que faltava um FATO; o
-      // fato existia — o decreto aponta para a lei, e cada um tem o seu ano —, faltava LER a
-      // diferença. E ler é melhor que perguntar: uma caixa de seleção entre "aberto" e "reaberto"
-      // é uma escolha que se erra, e o erro vai direto para o balancete do TCE.
-      //
-      // ⚠️ AQUI, E NÃO NO `executarCredito`: um decreto ilegal não deve NASCER. Deixá-lo nascer e
-      // recusar só na execução criaria um documento que o ente vê na tela, cita em ofício, e que
-      // nunca vai poder ser executado.
-      const lei = await prisma.leiCredito.findUnique({
-        where: { id: d.leiId },
-        select: { ano: true, tipoCredito: true, dataPublicacao: true, numero: true },
-      });
-      if (lei === null) {
-        throw new Error(`Lei de crédito ${d.leiId} não existe. Nada foi gravado.`);
-      }
-      const classificacao = classificarAbertura({
-        tipoCredito: lei.tipoCredito as TipoDeCreditoAdicional,
-        leiAno: lei.ano,
-        leiDataPublicacao: lei.dataPublicacao,
-        decretoAno: d.ano,
-      });
-      if (classificacao.recusa !== null) {
-        throw new Error(
-          `Decreto ${d.numero}/${d.ano} contra a lei ${lei.numero}/${lei.ano}: ${classificacao.recusa}`
-        );
-      }
-
-      const criado = await prisma.decretoCredito.create({
-        data: {
-          id: d.id,
-          leiId: d.leiId,
-          numero: d.numero,
-          ano: d.ano,
-          data: d.data,
-          origemRecurso: d.origemRecurso,
-          criadoPor: d.criadoPor,
-        },
-        select: { id: true },
-      });
-      return criado.id;
+      return criarDecretoNaTransacao(prisma, d);
     },
 
     async executarCredito(p: ExecutarCreditoParams): Promise<readonly string[]> {
       return prisma.$transaction(async (tx) => {
+        // V36 — a trava da prévia de alteração orçamentária, antes das fichas (ver o port).
+        if (p.antesDeTravar !== undefined) await p.antesDeTravar(tx);
         // ⚠️ A ANULAÇÃO DE DOTAÇÃO CONSOME DISPONÍVEL (o guard "não se anula o que
         // já foi empenhado" soma o razão e decide) — logo tem a MESMA corrida do
         // empenho. E um decreto toca VÁRIAS fichas: `travarFichas` as ordena por id
@@ -425,6 +436,9 @@ export function criarCreditoRepositoryPrisma(
           tx,
           p.itens.map((i) => i.fichaId)
         );
+
+        // V36 — a efetivação da prévia: desbloqueio, decreto e desfecho, nesta transação (ver o port).
+        if (p.preparar !== undefined) await p.preparar(tx);
 
         const decreto = await tx.decretoCredito.findUniqueOrThrow({
           where: { id: p.decretoId },

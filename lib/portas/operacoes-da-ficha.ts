@@ -35,6 +35,8 @@ export interface ReservaDaFicha {
   readonly criadoEm: Date;
   readonly criadoPor: string;
   readonly processo: { readonly id: string; readonly numero: string } | null;
+  /** V36 — a reserva é o bloqueio de uma prévia de alteração orçamentária: só a prévia a desfaz. */
+  readonly previa: { readonly id: string; readonly rotulo: string } | null;
 }
 
 export interface OperacoesDaFicha {
@@ -68,6 +70,7 @@ export async function lerOperacoesDaFicha(fichaId: string): Promise<OperacoesDaF
       processo: { select: { id: true, numeroProcesso: true } },
       estornos: { select: { id: true } },
       empenhos: { select: { empenho: { select: { valor: true } } } },
+      itemDaPrevia: { select: { previa: { select: { id: true, numero: true, exercicio: true } } } },
     },
   });
   const reservas = linhas.map((r) => {
@@ -84,6 +87,7 @@ export async function lerOperacoesDaFicha(fichaId: string): Promise<OperacoesDaF
       criadoEm: r.criadoEm,
       criadoPor: r.criadoPor,
       processo: r.processo === null ? null : { id: r.processo.id, numero: r.processo.numeroProcesso },
+      previa: r.itemDaPrevia === null ? null : { id: r.itemDaPrevia.previa.id, rotulo: `prévia nº ${String(r.itemDaPrevia.previa.numero)}/${String(r.itemDaPrevia.previa.exercicio)}` },
     };
   });
   let empenhos: readonly EmpenhoDaTela[] | null = null;

@@ -302,6 +302,9 @@ describe("M02/M05 — a dotação no razão", () => {
     // crédito adicional que sumisse deixaria o teste verde se a lista fosse só de nomes.
     expect(tipos.sort()).toEqual([
       "ANULACAO_CREDITO",
+      // V36 — o bloqueio da prévia de alteração orçamentária e a liberação dele, com roteiro próprio (fixture).
+      "BLOQUEIO_DE_PREVIA",
+      "BLOQUEIO_DE_PREVIA_LIBERADO",
       "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",
       "CREDITO_ADICIONAL",

@@ -97,16 +97,23 @@ export const ORDEM_DOS_LOCKS = {
    * liquidação, ou uma inscrição) e SÓ ENTÃO decide sobre o exercício inteiro.
    */
   Exercicio: 1,
-  FichaOrcamentaria: 2,
+  /**
+   * V36 — A PRÉVIA DE ALTERAÇÃO ORÇAMENTÁRIA (M03, `previa.ts`). Acrescentar lote, aprovar, descartar e efetivar se
+   * enfileiram por ela; e ela vem ANTES da ficha, porque a efetivação trava as fichas do decreto (e o lote, as do bloqueio)
+   * depois de saber que é a vez dela. Sem a trava, um lote com anulação confirmado depois de um descarte deixaria o
+   * bloqueio preso para sempre.
+   */
+  PreviaDeAlteracao: 2,
+  FichaOrcamentaria: 3,
   /**
    * M02 — A COTA DO CMD (TR 4.43). Vem LOGO DEPOIS da ficha, e o motivo é uma corrida que o
    * `travarFichas` NÃO cobre: dois empenhos de fichas DIFERENTES da MESMA fonte travam fichas
    * diferentes e nunca se cruzam — cada um lê o consumido da fonte no mês no mesmo estado, e os
    * DOIS passam, estourando a cota. É a mesma lição da ficha (6fa5d4e) e do contrato (e0e7e9f),
-   * num grão novo (fonte × mês). O empenho trava a ficha (2) e SÓ ENTÃO a cota (3) — nenhum
+   * num grão novo (fonte × mês). O empenho trava a ficha e SÓ ENTÃO a cota — nenhum
    * caminho sobe a fila de volta.
    */
-  CotaCmd: 3,
+  CotaCmd: 4,
   /**
    * M03 — a disponibilidade de recurso novo. Vem LOGO DEPOIS da ficha porque é isso
    * que o decreto faz: trava as fichas que vai suplementar e só então decide se a
@@ -114,18 +121,18 @@ export const ORDEM_DOS_LOCKS = {
    * suplementar fichas DIFERENTES da mesma fonte e nunca se cruzar, cada um lendo
    * `usado` no mesmo estado e os dois passando.
    */
-  DisponibilidadeRecursoNovo: 4,
-  Contrato: 5,
+  DisponibilidadeRecursoNovo: 5,
+  Contrato: 6,
   /**
    * V5 — A ORDEM DE COMPRA. Vem DEPOIS do contrato: o empenho trava a ficha, o contrato
    * (se houver) e SÓ ENTÃO a ordem, antes de somar o empenhado contra ela. Dois empenhos
    * concorrentes numa ordem GLOBAL/ESTIMATIVA leriam o mesmo residual e os dois
    * passariam. Nenhum caminho trava a ordem e depois volta para a ficha ou o contrato.
    */
-  OrdemDeCompra: 6,
-  Liquidacao: 7,
-  InscricaoRestosAPagar: 8,
-  DividaConsolidada: 9,
+  OrdemDeCompra: 7,
+  Liquidacao: 8,
+  InscricaoRestosAPagar: 9,
+  DividaConsolidada: 10,
   /**
    * M04 — O RECONHECIMENTO (TR 5.87). Vem ANTES da dívida ativa porque o caminho natural é
    * reconhecer → arrecadar/inscrever: a arrecadação vinculada e a RECLASSIFICAÇÃO em dívida
@@ -133,12 +140,12 @@ export const ORDEM_DOS_LOCKS = {
    * trava o reconhecimento e SÓ ENTÃO move o crédito para a dívida ativa. Nenhum caminho sobe
    * a fila de volta (nada trava a dívida ativa e depois decide sobre o reconhecimento).
    */
-  ReceitaReconhecida: 10,
-  DividaAtiva: 11,
+  ReceitaReconhecida: 11,
+  DividaAtiva: 12,
   /** M10 — o almoxarifado. A ENTRADA decide sobre a LIQUIDAÇÃO primeiro. */
-  ClasseDeMaterial: 12,
+  ClasseDeMaterial: 13,
   /** M10 — as provisões. Ninguém as trava antes de nada. */
-  ProvisaoMatematica: 13,
+  ProvisaoMatematica: 14,
   /**
    * M21 — A SEQUÊNCIA DO PROTOCOLO (ENT02). Último posto: a abertura de processo não
    * trava mais nada depois dele, e nada trava um processo antes de decidir sobre a
@@ -153,7 +160,7 @@ export const ORDEM_DOS_LOCKS = {
    * O trinco é sobre o EXERCÍCIO (a fila é por exercício), não sobre o processo: o
    * processo ainda não existe quando se decide o número dele.
    */
-  SequenciaDeProtocolo: 14,
+  SequenciaDeProtocolo: 15,
   /**
    * M23 — A SEQUÊNCIA DO COMUNICADO (ENT02). Mesma corrida do protocolo, num grão
    * diferente: a numeração é por (exercício, tipo, setor remetente), então o id
@@ -163,7 +170,7 @@ export const ORDEM_DOS_LOCKS = {
    * setor passaria pela mesma fila, e a Educação esperaria a Saúde para numerar um
    * documento que não disputa numeração nenhuma com ela.
    */
-  SequenciaDeComunicado: 15,
+  SequenciaDeComunicado: 16,
   /**
    * M27 — A SEQUÊNCIA DO CHAMADO DE SUPORTE (ENT02). Único no produto inteiro, e não
    * por entidade: quem atende olha uma fila só, e dois chamados "42" de entidades
@@ -172,7 +179,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ A FILA É UMA SÓ, ENTÃO O TRINCO É UM SÓ. O id travado é a constante abaixo —
    * não há eixo por onde repartir a fila sem repartir a numeração junto.
    */
-  SequenciaDeChamado: 16,
+  SequenciaDeChamado: 17,
   /**
    * M09 — A SEQUÊNCIA DO LOTE DE PAGAMENTO (ENT03). Último posto, e ele não sobe a fila:
    * compor um lote não decide sobre ficha, contrato nem liquidação — ele AGRUPA ordens que
@@ -186,7 +193,7 @@ export const ORDEM_DOS_LOCKS = {
    * O trinco é sobre o EXERCÍCIO (a fila é por exercício), não sobre o lote: o lote ainda
    * não existe quando se decide o número dele.
    */
-  SequenciaDeLoteDePagamento: 17,
+  SequenciaDeLoteDePagamento: 18,
   /**
    * M09 — A CONTA BANCÁRIA (ENT03a, TR 5.62). Último posto, e ele não sobe a fila.
    *
@@ -197,10 +204,10 @@ export const ORDEM_DOS_LOCKS = {
    * ambos "há saldo", os dois gravam, e a conta fecha o dia com −200.
    *
    * Por que o ÚLTIMO posto: quem mexe na conta bancária já autorizou tudo o que
-   * precisava antes. O pagamento trava a liquidação (6) e o resto a pagar (7) e só
+   * precisava antes. O pagamento trava a liquidação e o resto a pagar e só
    * então toca o caixa; nenhum caminho trava a conta e depois decide sobre uma ficha.
    */
-  ContaBancaria: 18,
+  ContaBancaria: 19,
   /**
    * ⚠️ ENT03b — OS TRÊS CADASTROS COM TETO PRÓPRIO. Postos 18, 19 e 20, e eles vêm DEPOIS
    * da conta bancária porque nenhum deles é tocado no caminho do pagamento.
@@ -220,11 +227,11 @@ export const ORDEM_DOS_LOCKS = {
    *
    * ⚠️ A ORDEM ENTRE OS TRÊS É ARBITRÁRIA E ISSO NÃO IMPORTA — nenhum caminho do repositório
    * trava dois deles na mesma transação. O que importa é que sejam TODOS depois de 17: um
-   * pagamento de precatório trava a liquidação (6) e a conta (17) antes de chegar aqui.
+   * pagamento de precatório trava a liquidação e a conta antes de chegar aqui.
    */
-  Convenio: 19,
-  Precatorio: 20,
-  ConsorcioPublico: 21,
+  Convenio: 20,
+  Precatorio: 21,
+  ConsorcioPublico: 22,
 
   /**
    * ENT05 — A POSIÇÃO FÍSICA DE ESTOQUE (material × depósito). ÚLTIMO POSTO, e ele não
@@ -244,27 +251,27 @@ export const ORDEM_DOS_LOCKS = {
    * A chave é `materialId:depositoId`: travar o material inteiro serializaria depósitos
    * que não disputam nada entre si.
    */
-  PosicaoFisicaDeEstoque: 22,
+  PosicaoFisicaDeEstoque: 23,
   /**
    * V6 P1.1 — O ITEM DA SOLICITAÇÃO DE COMPRA. Duas ordens concorrentes alocando o MESMO
    * saldo pendente de um item leriam o mesmo Σ e as duas passariam (soma-decide-grava). O
-   * vínculo trava a ordem (6) e SÓ ENTÃO os itens da solicitação; nenhum caminho trava o
+   * vínculo trava a ordem e SÓ ENTÃO os itens da solicitação; nenhum caminho trava o
    * item e depois volta para a ordem. Último posto: nada abaixo dele é travado depois.
    */
-  ItemDeSolicitacaoDeCompra: 23,
+  ItemDeSolicitacaoDeCompra: 24,
   /**
    * V6.2 P3 — A SOLICITAÇÃO DA CARTA DE SERVIÇOS. A corrida é ler-decidir-gravar sobre o ESTADO
    * da solicitação: duas exigências simultâneas leriam "nenhuma pendente" e as duas gravariam;
-   * uma decisão e uma resposta do requerente se cruzariam. O protocolo (14) só é travado na
+   * uma decisão e uma resposta do requerente se cruzariam. O protocolo só é travado na
    * abertura, quando a solicitação ainda não existe; os atos sobre ela travam só este posto.
    */
-  SolicitacaoDeServico: 24,
+  SolicitacaoDeServico: 25,
   /**
    * V7 M1 U4 — A MANIFESTAÇÃO DE OUVIDORIA. Duas respostas conclusivas simultâneas leriam "nenhuma
    * conclusiva" e as duas encerrariam. Os atos sobre ela travam só este posto (a abertura trava o
    * protocolo, 14, antes de a manifestação existir).
    */
-  ManifestacaoDeOuvidoria: 25,
+  ManifestacaoDeOuvidoria: 26,
   /**
    * V11 V5.3 — O PEDIDO DE ACESSO À INFORMAÇÃO. A corrida é ler-decidir-gravar sobre os FATOS:
    * duas respostas simultâneas leem "ainda não respondido" e as duas entregam, e o pedido passa
@@ -272,10 +279,10 @@ export const ORDEM_DOS_LOCKS = {
    * `prisma/sql/uq_fato_do_pedido_de_acesso.sql` são a rede embaixo; este posto é o que permite
    * ao caso de uso RECUSAR com o motivo certo em vez de estourar violação de índice.
    *
-   * A abertura trava o protocolo (14), antes de o pedido existir; os atos sobre ele travam só
+   * A abertura trava o protocolo, antes de o pedido existir; os atos sobre ele travam só
    * este posto.
    */
-  PedidoDeAcessoAInformacao: 26,
+  PedidoDeAcessoAInformacao: 27,
   /**
    * V11 V5.3 — A CONFIGURAÇÃO DO ACESSO. Posto de TABELA, não de linha: `publicarConfiguracao`
    * lê `MAX(versao)` e grava `MAX+1`, e duas publicações simultâneas leem o mesmo máximo. O
@@ -285,7 +292,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ O MESMO DESENHO EXISTE NO M34 (`VersaoDaConfiguracaoDaCertidao`) e ele NÃO foi travado
    * aqui: mexer no M34 é outra unidade. Pendência `CONFIGURACAO-DA-CERTIDAO-SEM-TRINCO`.
    */
-  ConfiguracaoDoAcessoAInformacao: 27,
+  ConfiguracaoDoAcessoAInformacao: 28,
   /**
    * M21 V11 V8 — O HORÁRIO DO GUICHÊ. A capacidade de um horário é um SALDO, e o desenho é o
    * mesmo de sempre: CONTA as reservas vivas, DECIDE, GRAVA. Sob READ COMMITTED, duas pessoas
@@ -299,7 +306,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ E É O ÚLTIMO POSTO. Nada do atendimento presencial toca ficha, contrato ou razão; ele
    * não sobe a fila de volta, e ninguém que já o travou precisa de um posto anterior.
    */
-  HorarioDeGuiche: 28,
+  HorarioDeGuiche: 29,
   /**
    * M21 V11 V8.1 — O DOCUMENTO NO AGENDAMENTO PÚBLICO. O portal aceita UM atendimento vivo por
    * documento e por serviço, e essa contagem corre exatamente como qualquer outra: dois envios
@@ -310,7 +317,7 @@ export const ORDEM_DOS_LOCKS = {
    * disputa, depois o documento de quem o pede. Dois envios para lugares DIFERENTES pegam
    * trincos de horário diferentes e se encontram aqui, que é onde precisam se encontrar.
    */
-  AtendimentoPorDocumento: 29,
+  AtendimentoPorDocumento: 30,
 
   /**
    * M07 V15 C34 — A RETENÇÃO, quando um recolhimento diz QUAIS retenções ele quita.
@@ -324,22 +331,22 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por uma razão medida: nenhum caminho que trava este recurso precisa,
    * DEPOIS, travar qualquer outro. O recolhimento confere fonte e conta bancária ANTES (sem
    * trinco, por leitura) e grava as parcelas no fim da transação. Pôr este posto antes do
-   * `ContaBancaria` (18) criaria a possibilidade de inversão no dia em que um recolhimento
+   * `ContaBancaria` criaria a possibilidade de inversão no dia em que um recolhimento
    * passasse a travar a conta — e a inversão é o que esta tabela existe para recusar.
    */
-  MovimentoExtraorcamentario: 30,
+  MovimentoExtraorcamentario: 31,
   /**
    * V22 — A SOLICITAÇÃO DE EMPENHO. A corrida é de ESTADO, não de saldo: emitir o empenho e
    * cancelar (ou rejeitar) a mesma solicitação leem a situação no mesmo estado, as duas veem
    * "autorizada, sem empenho", e as duas gravam — a solicitação termina cancelada E empenhada.
    * Autorizar, rejeitar, cancelar e emitir travam a solicitação ANTES de derivar a situação.
    *
-   * ⚠️ ÚLTIMO POSTO, e por construção: o empenho trava a ficha (2), a cota (3), o contrato (5)
-   * e a ordem (6) e SÓ ENTÃO a solicitação, logo antes de gravar; os atos da própria
+   * ⚠️ ÚLTIMO POSTO, e por construção: o empenho trava a ficha, a cota, o contrato
+   * e a ordem e SÓ ENTÃO a solicitação, logo antes de gravar; os atos da própria
    * solicitação não travam mais nada depois dela. A unicidade de `Empenho.solicitacaoDeEmpenhoId`
    * continua sendo a garantia dura contra duas emissões.
    */
-  SolicitacaoDeEmpenho: 31,
+  SolicitacaoDeEmpenho: 32,
   /**
    * V22 — O NUMERADOR DO EXERCÍCIO (M05, `numerador.ts`). A corrida é a de sempre: duas reservas
    * leem o mesmo "maior número usado" e as duas escolhem o seguinte — a unicidade do banco recusa
@@ -348,7 +355,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: a reserva roda em transação PRÓPRIA, antes do empenho, e
    * não trava mais nada depois dela.
    */
-  NumeradorDoExercicio: 32,
+  NumeradorDoExercicio: 33,
   /**
    * V26 — O NÚMERO DA GUIA DE RECEITA POR RETENÇÃO (M04, `receita-por-retencao.ts`). Duas retenções
    * próprias em pagamentos simultâneos leriam o mesmo "maior número de receita do exercício" e a
@@ -357,7 +364,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: o pagamento grava a receita por retenção como ÚLTIMA perna da
    * transação, depois da liquidação, da retenção de terceiros, da amortização e do precatório.
    */
-  NumeradorDaReceita: 33,
+  NumeradorDaReceita: 34,
   /**
    * V27 — O VEÍCULO OU A MÁQUINA DA FROTA (M36). A corrida é de ESTADO: duas versões simultâneas leriam o mesmo "último
    * número de versão", e duas situações no mesmo dia leriam "nenhuma situação hoje" — o arquivo do mês sairia com a
@@ -365,14 +372,14 @@ export const ORDEM_DOS_LOCKS = {
    *
    * ⚠️ ÚLTIMO POSTO, e por construção: os atos da frota não travam mais nada depois do bem.
    */
-  BemDaFrota: 34,
+  BemDaFrota: 35,
   /**
    * V27 — A FARMÁCIA PÚBLICA (M37). Duas versões simultâneas leriam o mesmo "último número de versão". O informe de
    * estoque também trava a farmácia, para que o "último informe do mês" seja um só.
    *
    * ⚠️ ÚLTIMO POSTO: os atos da farmácia não travam mais nada depois dela.
    */
-  FarmaciaPublica: 35,
+  FarmaciaPublica: 36,
   /**
    * V29 — A PROPOSTA ORÇAMENTÁRIA (M02). A corrida é entre AJUSTAR e EFETIVAR: o ajuste confere "ainda não
    * efetivada" e grava; a efetivação lê as linhas e cria as fichas. Sem trava, um ajuste gravado depois da leitura
@@ -382,7 +389,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: criar ficha e receita prevista não trava nada (o corpo da ficha não chama
    * `travar`). Se a efetivação um dia passar a travar ficha ou exercício, este recurso tem de subir na fila.
    */
-  PropostaOrcamentaria: 36,
+  PropostaOrcamentaria: 37,
   /**
    * V32 — O EMPENHO QUE CONCEDE DIÁRIAS OU SUPRIMENTO DE FUNDOS (M05, `adiantamentos.ts`). A corrida é de
    * saldo: duas concessões simultâneas sobre o mesmo empenho leriam o mesmo "ainda cabe" e as duas
@@ -391,7 +398,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: a concessão confere o empenho por leitura, trava aqui e grava o
    * lançamento de controle e a concessão; não trava mais nada depois.
    */
-  AdiantamentoDoEmpenho: 37,
+  AdiantamentoDoEmpenho: 38,
   /**
    * V33 — A IMPLANTAÇÃO DE SALDOS DE UM EXERCÍCIO (M01, `implantacao-de-saldos.ts`). A corrida é de unicidade: duas
    * implantações simultâneas de balancetes diferentes leriam "nenhuma viva" e gravariam as duas. O trinco é por
@@ -400,7 +407,7 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: a implantação trava aqui, confere e grava o lançamento pelo funil do razão,
    * que não usa estes trincos.
    */
-  ImplantacaoDeSaldos: 38,
+  ImplantacaoDeSaldos: 39,
   /**
    * V35 — A DEDUÇÃO DA RECEITA (M04, `deducao-da-receita.ts`). A corrida é de saldo: duas deduções simultâneas da
    * mesma natureza e fonte leriam o mesmo "ainda cabe" e passariam juntas do arrecadado. O trinco é pelo par
@@ -409,13 +416,13 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO, e por construção: a dedução confere o cadastro por leitura, trava aqui e grava o lançamento
    * pelo funil do razão e a linha; não trava mais nada depois.
    */
-  DeducaoDaReceita: 39,
+  DeducaoDaReceita: 40,
   /**
    * V35 — O AJUSTE PARA PERDAS DA DÍVIDA ATIVA (M10, `ajuste-de-perdas.ts`). A corrida é de saldo: duas apurações
    * simultâneas da mesma origem, em cortes diferentes, leriam o mesmo saldo da retificadora e lançariam a mesma
    * diferença duas vezes. O trinco é pela origem. Último posto: depois dele só o funil do razão e a linha.
    */
-  AjusteDePerdasDaDividaAtiva: 40,
+  AjusteDePerdasDaDividaAtiva: 41,
   /**
    * V36 — A PEÇA DO PLANEJAMENTO (PPA ou LDO) nas EMENDAS (M02b, `emendas-do-planejamento.ts`). Duas corridas: dois
    * cadastros simultâneos leriam o mesmo "último número de emenda"; duas sanções pela mesma lei leriam "nenhum ato" e
@@ -423,7 +430,7 @@ export const ORDEM_DOS_LOCKS = {
    *
    * ⚠️ ÚLTIMO POSTO, e por construção: o ato de alteração que a sanção grava não trava nada.
    */
-  PecaDoPlanejamento: 41,
+  PecaDoPlanejamento: 42,
   /**
    * V36 — A NATUREZA DA RECEITA na publicação da composição de fontes (M04, `fontes-da-natureza.ts`). A vigente é a
    * mais recente por `criadoEm`; sem serializar as publicações da mesma natureza, a hora gravada seria a do início de
@@ -431,7 +438,7 @@ export const ORDEM_DOS_LOCKS = {
    *
    * ⚠️ ÚLTIMO POSTO: a publicação não trava mais nada.
    */
-  NaturezaDaReceita: 42,
+  NaturezaDaReceita: 43,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

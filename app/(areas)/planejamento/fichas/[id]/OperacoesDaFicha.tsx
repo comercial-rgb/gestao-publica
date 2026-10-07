@@ -60,7 +60,12 @@ export function OperacoesDaFichaSecao({
       cabecalho: "",
       celula: (r) =>
         // Montado também depois de liberada, para a confirmação não sumir com o próprio sucesso.
-        podeLiberar && (r.liberada || toMoney(r.saldo).greaterThan(0)) ? (
+        // V36 — o bloqueio de uma prévia se desfaz pela prévia (efetivação ou descarte), não aqui.
+        r.previa !== null ? (
+          <Link className={LINK} href={`/planejamento/previas/${r.previa.id}`}>
+            Bloqueio da {r.previa.rotulo}
+          </Link>
+        ) : podeLiberar && (r.liberada || toMoney(r.saldo).greaterThan(0)) ? (
           <FormLiberarReserva fichaId={o.fichaId} reservaId={r.id} rotulo={`a reserva de ${dataBr(r.criadoEm)}`} liberada={r.liberada} />
         ) : null,
     },

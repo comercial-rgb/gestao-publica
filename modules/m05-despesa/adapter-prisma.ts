@@ -1064,6 +1064,135 @@ async function espelharFichaDoOriginal(
 }
 
 /**
+ * A RESERVA DE DOTAÇÃO dentro de uma transação de quem chama (V36: a prévia de alteração orçamentária bloqueia as
+ * anulações com reservas, todas na transação da prévia). Mesmo corpo do `reservar` do repositório, que agora a chama.
+ */
+export async function reservarNaTransacao(tx: Tx, p: ReservarParams, opcoes: { readonly bloqueioDePrevia?: boolean } = {}): Promise<string> {
+  // V36 — o bloqueio da anulação da prévia é a mesma retenção do disponível, com o tipo de movimento (e o roteiro) próprio.
+  const tipoDoMovimento = opcoes.bloqueioDePrevia === true ? "BLOQUEIO_DE_PREVIA" : "RESERVA";
+  // 1º LOCK: a ficha. ANTES da soma — ver `travarFichas`.
+  await travarFichas(tx, [p.fichaId]);
+
+  // M08 — fail-closed: exercício da ficha tem de estar aberto.
+  await exigirExercicioDaFichaAberto(tx, p.fichaId, "reserva de dotação");
+  await garantirDotacaoInicial(tx, p.fichaId, p.criadoPor);
+
+  // INVARIANTE 5: saldo do SUM REAL, dentro da transação E sob o lock.
+  // ⚠️ CORRENTE: o guard pergunta "há dinheiro disponível AGORA para reservar?".
+  // Cortado por competência, ele ignoraria um crédito adicional já concedido e
+  // recusaria uma reserva legítima; cortado por registro, o mesmo.
+  const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId, { eixo: "CORRENTE" }));
+  exigirSaldo(saldos.disponivel, p.valor, p.fichaId);
+
+  const reserva = await tx.reservaDotacao.create({
+    data: {
+      id: p.reservaId,
+      fichaId: p.fichaId,
+      valor: p.valor.toFixed(2),
+      historico: p.historico,
+      processoId: p.processoId ?? null,
+      criadoPor: p.criadoPor,
+    },
+    select: { id: true },
+  });
+
+  // A RESERVA CONSOME O DISPONÍVEL — e agora isso aparece no razão (D disponível /
+  // C reservado). Sem esta perna, o disponível do razão ignoraria o reservado e a
+  // amarração A1-orc não fecharia.
+  await registrarMovimentoDotacao(tx, {
+    fichaId: p.fichaId,
+    tipo: tipoDoMovimento,
+    valor: p.valor.toFixed(2),
+    origemTipo: tipoDoMovimento,
+    origemId: reserva.id,
+    criadoPor: p.criadoPor,
+    // ⚠️ A ReservaDotacao NÃO TEM coluna de data (só `criadoEm`) — a data do FATO
+    // aqui É a da criação. Declarado: quando a reserva ganhar data própria, ela
+    // entra aqui e o corte da MSC passa a segui-la.
+  });
+
+  // INVARIANTE 3: cache recalculado do SUM.
+  await recalcularCache(tx, p.fichaId);
+
+
+  return reserva.id;
+}
+
+/**
+ * A LIBERAÇÃO DA RESERVA dentro de uma transação de quem chama. `daPrevia` só a prévia passa: é o que desfaz o
+ * bloqueio de uma anulação (V36); a liberação pela tela de reservas recusa o bloqueio.
+ */
+export async function liberarReservaNaTransacao(
+  tx: Tx,
+  p: LiberarReservaParams,
+  /** `daPrevia`: só a prévia desfaz o bloqueio dela; `data`: a data do fato (a do decreto, na efetivação). */
+  opcoes: { readonly daPrevia?: boolean; readonly data?: Date } = {}
+): Promise<string> {
+  const original = await tx.reservaDotacao.findUnique({
+    where: { id: p.reservaOriginalId },
+    select: {
+      id: true,
+      fichaId: true,
+      valor: true,
+      estornos: { select: { id: true } },
+      empenhos: { select: { empenhoId: true } },
+      itemDaPrevia: { select: { previa: { select: { numero: true, exercicio: true } } } },
+    },
+  });
+  if (original === null) {
+    throw new Error(`Reserva ${p.reservaOriginalId} não encontrada.`);
+  }
+  if (original.estornos.length > 0) {
+    throw new Error(`Reserva ${p.reservaOriginalId} já foi liberada.`);
+  }
+  // V36 — o BLOQUEIO de uma anulação de prévia de alteração orçamentária só se desfaz pela prévia (efetivação ou
+  // descarte). Liberado pela tela de reservas, a prévia aprovada seria efetivada sobre um valor já desbloqueado.
+  if (original.itemDaPrevia !== null && opcoes.daPrevia !== true) {
+    const pv = original.itemDaPrevia.previa;
+    throw new Error(
+      `A reserva ${p.reservaOriginalId} é o bloqueio da prévia de alteração orçamentária nº ${String(pv.numero)}/${String(pv.exercicio)}: ` +
+        `ela se libera ao efetivar ou descartar a prévia. Nada foi gravado.`
+    );
+  }
+  if (original.empenhos.length > 0) {
+    throw new Error(
+      `Reserva ${p.reservaOriginalId} já foi empenhada — não há o que liberar.`
+    );
+  }
+
+  // Devolve saldo, mas grava e recalcula o cache — mesmo motivo da anulação.
+  await travarFichas(tx, [original.fichaId]);
+
+  const liberacao = await tx.reservaDotacao.create({
+    data: {
+      id: p.reservaLiberacaoId,
+      fichaId: original.fichaId,
+      valor: original.valor,
+      historico: p.historico,
+      estornoDeId: original.id,
+      criadoPor: p.criadoPor,
+    },
+    select: { id: true },
+  });
+
+  await registrarMovimentoDotacao(tx, {
+    fichaId: original.fichaId,
+    tipo: original.itemDaPrevia !== null ? "BLOQUEIO_DE_PREVIA_LIBERADO" : "RESERVA_LIBERADA",
+    valor: original.valor.toFixed(2),
+    origemTipo: original.itemDaPrevia !== null ? "BLOQUEIO_DE_PREVIA_LIBERADO" : "RESERVA_LIBERADA",
+    origemId: liberacao.id,
+    estornoDeId: original.id,
+    criadoPor: p.criadoPor,
+    // idem: a liberação não tem data própria — salvo a do bloqueio da prévia, que se desfaz na data do decreto.
+    ...(opcoes.data !== undefined ? { data: opcoes.data } : {}),
+  });
+
+  await recalcularCache(tx, original.fichaId);
+
+  return liberacao.id;
+}
+
+/**
  * `contratos` é OPCIONAL: quem não usa o M11 constrói o adapter sem ele, e o
  * caminho sem contrato segue idêntico. Quem informa `contratoId` num empenho e
  * NÃO ligou o port recebe erro — nunca um vínculo não validado.
@@ -1087,53 +1216,7 @@ export function criarDespesaRepositoryPrisma(
 
   return {
     async reservar(p: ReservarParams): Promise<string> {
-      return prisma.$transaction(async (tx) => {
-        // 1º LOCK: a ficha. ANTES da soma — ver `travarFichas`.
-        await travarFichas(tx, [p.fichaId]);
-
-        // M08 — fail-closed: exercício da ficha tem de estar aberto.
-        await exigirExercicioDaFichaAberto(tx, p.fichaId, "reserva de dotação");
-        await garantirDotacaoInicial(tx, p.fichaId, p.criadoPor);
-
-        // INVARIANTE 5: saldo do SUM REAL, dentro da transação E sob o lock.
-        // ⚠️ CORRENTE: o guard pergunta "há dinheiro disponível AGORA para reservar?".
-        // Cortado por competência, ele ignoraria um crédito adicional já concedido e
-        // recusaria uma reserva legítima; cortado por registro, o mesmo.
-        const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId, { eixo: "CORRENTE" }));
-        exigirSaldo(saldos.disponivel, p.valor, p.fichaId);
-
-        const reserva = await tx.reservaDotacao.create({
-          data: {
-            id: p.reservaId,
-            fichaId: p.fichaId,
-            valor: p.valor.toFixed(2),
-            historico: p.historico,
-            processoId: p.processoId ?? null,
-            criadoPor: p.criadoPor,
-          },
-          select: { id: true },
-        });
-
-        // A RESERVA CONSOME O DISPONÍVEL — e agora isso aparece no razão (D disponível /
-        // C reservado). Sem esta perna, o disponível do razão ignoraria o reservado e a
-        // amarração A1-orc não fecharia.
-        await registrarMovimentoDotacao(tx, {
-          fichaId: p.fichaId,
-          tipo: "RESERVA",
-          valor: p.valor.toFixed(2),
-          origemTipo: "RESERVA",
-          origemId: reserva.id,
-          criadoPor: p.criadoPor,
-          // ⚠️ A ReservaDotacao NÃO TEM coluna de data (só `criadoEm`) — a data do FATO
-          // aqui É a da criação. Declarado: quando a reserva ganhar data própria, ela
-          // entra aqui e o corte da MSC passa a segui-la.
-        });
-
-        // INVARIANTE 3: cache recalculado do SUM.
-        await recalcularCache(tx, p.fichaId);
-
-        return reserva.id;
-      });
+      return prisma.$transaction((tx) => reservarNaTransacao(tx, p));
     },
 
     async empenhar(
@@ -1162,10 +1245,18 @@ export function criarDespesaRepositoryPrisma(
         if (p.reservaId !== undefined) {
           const reserva = await tx.reservaDotacao.findUnique({
             where: { id: p.reservaId },
-            select: { id: true, fichaId: true, valor: true, empenhos: true, estornos: true },
+            select: { id: true, fichaId: true, valor: true, empenhos: true, estornos: true, itemDaPrevia: { select: { previa: { select: { numero: true, exercicio: true } } } } },
           });
           if (reserva === null) {
             throw new Error(`Reserva ${p.reservaId} não encontrada.`);
+          }
+          // V36 — o bloqueio de uma anulação de prévia de alteração orçamentária não é reserva para empenho: o valor está
+          // retido para ser anulado pelo decreto que a prévia vai gerar.
+          if (reserva.itemDaPrevia !== null) {
+            throw new Error(
+              `A reserva ${p.reservaId} é o bloqueio da prévia de alteração orçamentária nº ` +
+                `${String(reserva.itemDaPrevia.previa.numero)}/${String(reserva.itemDaPrevia.previa.exercicio)} e não serve a empenho. Nada foi gravado.`
+            );
           }
           if (reserva.fichaId !== p.fichaId) {
             throw new Error(
@@ -1875,58 +1966,7 @@ export function criarDespesaRepositoryPrisma(
     },
 
     async liberarReserva(p: LiberarReservaParams): Promise<string> {
-      return prisma.$transaction(async (tx) => {
-        const original = await tx.reservaDotacao.findUnique({
-          where: { id: p.reservaOriginalId },
-          select: {
-            id: true,
-            fichaId: true,
-            valor: true,
-            estornos: { select: { id: true } },
-            empenhos: { select: { empenhoId: true } },
-          },
-        });
-        if (original === null) {
-          throw new Error(`Reserva ${p.reservaOriginalId} não encontrada.`);
-        }
-        if (original.estornos.length > 0) {
-          throw new Error(`Reserva ${p.reservaOriginalId} já foi liberada.`);
-        }
-        if (original.empenhos.length > 0) {
-          throw new Error(
-            `Reserva ${p.reservaOriginalId} já foi empenhada — não há o que liberar.`
-          );
-        }
-
-        // Devolve saldo, mas grava e recalcula o cache — mesmo motivo da anulação.
-        await travarFichas(tx, [original.fichaId]);
-
-        const liberacao = await tx.reservaDotacao.create({
-          data: {
-            id: p.reservaLiberacaoId,
-            fichaId: original.fichaId,
-            valor: original.valor,
-            historico: p.historico,
-            estornoDeId: original.id,
-            criadoPor: p.criadoPor,
-          },
-          select: { id: true },
-        });
-
-        await registrarMovimentoDotacao(tx, {
-          fichaId: original.fichaId,
-          tipo: "RESERVA_LIBERADA",
-          valor: original.valor.toFixed(2),
-          origemTipo: "RESERVA_LIBERADA",
-          origemId: liberacao.id,
-          estornoDeId: original.id,
-          criadoPor: p.criadoPor,
-          // idem: a liberação não tem data própria.
-        });
-
-        await recalcularCache(tx, original.fichaId);
-        return liberacao.id;
-      });
+      return prisma.$transaction((tx) => liberarReservaNaTransacao(tx, p));
     },
 
     async saldosReais(

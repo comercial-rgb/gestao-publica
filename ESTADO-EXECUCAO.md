@@ -12,6 +12,29 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 | Último resultado | Rodada de 07/10 (seção "Rodada das áreas que faltavam"): cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas ao PPA e à LDO 6/6 em percurso; testes dirigidos verdes; mutações acusadas. |
 | Próximo passo | Decisões do ente pendentes: 5.9.3.34 (meses em que o crédito adicional entra na cota e o que a anulação faz nas cotas); 5.10.2.4 (finalidade FUNDEB/saúde no pagamento); estágio contábil em liquidação (metade da 5.10.1.42). Sem decisão, as ausências restantes da contabilidade dependem de terceiro (importações PPA/LDO/LOA, consolidação por entidade, retorno bancário, DARF). |
 
+### Segunda rodada das áreas que faltavam (07/10/2026, local, não publicada)
+
+Regime: profundidade (dotação, reserva, razão, transação, travas) e superfície (balancete, telas).
+
+| Unidade | Commit | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|---|
+| Balancete por fonte (5.10.1.111, PARCIAL) | `d301e3d` | saldo anterior, débito, crédito e saldo final por conta x fonte, resumo por fonte, recorte por contas e fontes; o que não tem fonte aparece como "sem fonte" ou "não identificada" | /relatorios/livros/balancete-por-fonte | m12-balancete-por-fonte 4/4, 7 mutações; percurso 4/4 |
+| Fontes da natureza com percentual e previsão por rateio (5.9.3.4 e 5.9.3.7, VALIDADAS) | `9f68202` | composição de fontes por natureza (soma <= 100%, fonte do resíduo), rateio da previsão da LOA tudo ou nada | /receita/naturezas/fontes; formulário em /planejamento/receita-prevista | m04-fontes-da-natureza 10/10, mutações; percurso 7/7; auditoria: exercício aberto, corrida determinística, trava da natureza |
+| Prévia da alteração orçamentária (5.9.3.23 PARCIAL, 5.9.3.24 VALIDADA) | este commit | prévia em lotes, bloqueio das anulações (tipo de movimento próprio, roteiro próprio), aprovação, minuta de decreto ou projeto de lei, efetivação que gera o decreto e executa o crédito numa transação, descarte | /planejamento/previas | m03-previa 14/14 e runtime 1/1 (gestao_app), mutações; regressão M05+M03+censo+travas+balanço 41 arquivos/378 testes; percurso 8/8; duas auditorias (10 + 6 achados, corrigidos) |
+
+Migrations: `20261108160000_v36_fontes_da_natureza_da_receita`, `20261108170000_v36_previa_da_alteracao_orcamentaria`,
+`20261108180000_v36_bloqueio_de_previa` (enum). Aplicadas na base fictícia, deriva vazia. Fila de travas: posto
+`PreviaDeAlteracao` (2) antes da ficha, os seguintes renumerados; `NaturezaDaReceita` no fim.
+
+**Decisões pendentes do ente desta rodada:**
+- A conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 bloqueio de crédito ou 6.2.2.1.2.99 outras indisponibilidades). Até ela, em produção e na base da apresentação a prévia com anulação é recusada com a mensagem que diz onde defini-la. A base fictícia tem a .99, publicada pelo percurso como escolha de demonstração.
+
+**Pendências nomeadas:** `PREVISAO-LINHA-A-LINHA-SEM-GUARDA-DE-EXERCICIO` (M02); o encerramento do exercício não recusa bloqueios de prévia vivos; a entidade da 5.9.3.23 (sem dimensão de entidade na despesa); o indicador de exercício da fonte no balancete (5.10.1.111).
+
+**Instrumento corrigido:** o script de mutação da sessão lia "nenhum teste rodou" (erro de compilação) como verde; agora diz INCONCLUSIVO, provado nas duas direções.
+
+**Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
+
 ### Como o catálogo foi verificado
 Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra
 código, testes e percursos. A marca diz quando o sistema atende por outro caminho com o mesmo efeito (estorno no lugar

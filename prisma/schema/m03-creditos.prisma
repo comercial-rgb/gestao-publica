@@ -92,6 +92,8 @@ model LeiCredito {
 
 model DecretoCredito {
   id     String     @id @default(cuid())
+  /// V36 — a prévia de que este decreto saiu, quando saiu de uma (m03-previas.prisma). VIRTUAL.
+  desfechoDaPrevia DesfechoDaPrevia? @relation("DecretoDaPrevia")
   /// V26 — o PDF do decreto, que o SAGRES exige junto (§4.6).
   anexos Anexo[] @relation("AnexoDoDecreto")
   leiId  String

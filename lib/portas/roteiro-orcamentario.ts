@@ -121,6 +121,22 @@ export const PARES_DO_ROTEIRO: readonly ParDeRoteiro[] = [
     rotulo: "Reserva liberada",
     explicacao: "A devolução do saldo reservado que não virou empenho — o inverso da reserva.",
   },
+  // V36 — o bloqueio da anulação de uma prévia de alteração orçamentária: indisponível, mas não pré-empenhado.
+  {
+    tipo: "BLOQUEIO_DE_PREVIA",
+    tipoCredito: null,
+    abertura: null,
+    rotulo: "Bloqueio da prévia de alteração orçamentária",
+    explicacao:
+      "O valor que uma prévia vai anular fica indisponível até a prévia ser efetivada ou descartada. Não é reserva para empenho: no PCASP, sob crédito indisponível, há o bloqueio, o pré-empenhado e outras indisponibilidades, e a escolha é da contabilidade. Sem este roteiro, a prévia com anulação é recusada.",
+  },
+  {
+    tipo: "BLOQUEIO_DE_PREVIA_LIBERADO",
+    tipoCredito: null,
+    abertura: null,
+    rotulo: "Bloqueio da prévia desfeito",
+    explicacao: "A devolução do valor bloqueado ao crédito disponível, na efetivação ou no descarte da prévia — o inverso do bloqueio.",
+  },
   // V21 — a realocação por lei específica (CF art. 167, VI). Duas linhas, uma por perna do ato.
   {
     tipo: "REALOCACAO_ACRESCIMO",

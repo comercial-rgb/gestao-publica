@@ -1442,9 +1442,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): não há prévia de alteração orçamentária: o decreto grava direto o movimento na dotação; rascunho.ts da tela de créditos é só validação de forma. FALTA: lote de prévias, aprovação, efetivação sem redigitação e impressão de projeto de lei.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador e contador (só consulta) · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · passos: /planejamento/previas → prévia por anulação com +100,00/−100,00 → segundo lote +50,00/−50,00 → minuta do decreto com 150,00 → aprovar → efetivar contra a Lei 613/2025 com o número do decreto → decreto com 4 movimentos e a dotação alterada → segunda prévia descartada → o contador lê sem formulários · obtido: 8/8 · artefato: scripts/percurso-v36-previas.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — prévia da alteração orçamentária da despesa: modules/m03-creditos/previa.ts (criarPrevia, acrescentarLoteAPrevia, aprovarPrevia, descartarPrevia, efetivarPrevia), tabelas PreviaDeAlteracao, ItemDaPrevia, AprovacaoDaPrevia e DesfechoDaPrevia (migration 20261108170000). Informa tipo de crédito, origem do recurso e os movimentos (suplementação e anulação por ficha, com valor), em vários lotes; a aprovação confere o balanceamento por fonte; a efetivação gera o decreto contra a lei escolhida e executa o crédito pelo mesmo executarCredito do decreto digitado (teto da lei, limite da LOA, recurso novo, disponível, lançamentos), numa transação só, sem redigitar; minuta de decreto ou de projeto de lei para impressão (/planejamento/previas/[id]/minuta), com número, data e redação em branco. Travas: a prévia antes das fichas, as fichas em ordem; a aprovação guarda o que aprovou e a efetivação recusa a prévia que mudou. m03-previa.test.ts 14/14 (dois lotes, efetivação, balanceamento por fonte, recusas que desfazem tudo, descarte, exercício encerrado, corrida efetivar x descartar, lote esperando a trava, autoridade por unidade); mutações acusadas. FALTA: a entidade da cláusula — a despesa não tem a dimensão de entidade contábil (a mesma ausência estrutural de 5.10.1.3).",
+      "situacao": "PARCIAL"
     },
     {
       "id": "5.9.3.24",
@@ -1456,9 +1456,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M02, siafic-cg:M03",
       "destino_proposto": "",
-      "rota_verificada": "",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): sem prévia (5.9.3.23) não há bloqueio da dotação a anular nem desbloqueio na efetivação; ReservaDotacao do M05 existe mas não se liga a alteração orçamentária.",
-      "situacao": "AUSENTE_CONFIRMADO"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio (roteiro do bloqueio publicado como escolha de demonstração), 2026-10-07 · passos: prévia com anulação de 100,00 → a ficha mostra 100,00 indisponíveis → segundo lote, 150,00 → efetivada, reservado de volta ao anterior → segunda prévia bloqueia 10,00 e o descarte desfaz · obtido: 8/8 · artefato: scripts/percurso-v36-previas.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — o bloqueio da dotação a anular: cada anulação da prévia reserva o valor na ficha (reservarNaTransacao do M05, com saldo conferido sob a trava da ficha) com o tipo de movimento próprio BLOQUEIO_DE_PREVIA, que vai ao razão pelo roteiro próprio (não é o pré-empenho da reserva); a efetivação desfaz o bloqueio na data do decreto, na mesma transação da anulação, e o descarte o desfaz também (BLOQUEIO_DE_PREVIA_LIBERADO). O bloqueio não serve a empenho, não se libera pela tela de reservas e não aparece como reserva disponível. m03-previa.test.ts (t1 o bloqueio; t2 as duas recusas nomeando a prévia; t3 o desbloqueio na efetivação; t6 no descarte; t11 a conta do roteiro próprio, o desbloqueio na data do decreto e a recusa sem roteiro); mutações acusadas. Em produção, a prévia com anulação é recusada até a contabilidade publicar o roteiro do bloqueio (a conta, sob crédito indisponível, é decisão dela).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.9.3.25",

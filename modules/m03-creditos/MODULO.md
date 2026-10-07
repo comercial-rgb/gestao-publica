@@ -254,3 +254,36 @@ Teste: `m03-limite-da-loa.test.ts`:
 - anulação devolve o limite;
 - lei sem percentual;
 - recusa nomeada.
+
+## V36 — a prévia da alteração orçamentária (TR 5.9.3.23 e 5.9.3.24)
+
+`previa.ts`, schema `m03-previas.prisma`; tela `/planejamento/previas` (lista, detalhe por prévia, minuta para impressão).
+
+- **Ciclo:** criar (com o primeiro lote) → acrescentar lotes → aprovar → efetivar; descartar em qualquer ponto antes do
+  desfecho. Sem coluna de situação: aprovada é a `AprovacaoDaPrevia`; efetivada ou descartada é o `DesfechoDaPrevia`, um
+  por prévia.
+- **Bloqueio:** cada anulação reserva o valor na ficha (`reservarNaTransacao` do M05 com o tipo de movimento próprio
+  `BLOQUEIO_DE_PREVIA`), e se desfaz na efetivação (na data do decreto) ou no descarte (`BLOQUEIO_DE_PREVIA_LIBERADO`).
+  O bloqueio não é pré-empenho: a conta é a do roteiro próprio, que a contabilidade parametriza na tela dos roteiros
+  orçamentários (sem ele, a prévia com anulação é recusada). A reserva de bloqueio não serve a empenho, não se libera pela
+  tela de reservas, e não aparece como reserva disponível nas telas de empenho e da ficha.
+- **Efetivação sem redigitar:** o decreto nasce dos itens pelo `executarCredito` do decreto digitado (todas as guardas);
+  o hook `antesDeTravar` trava a prévia e o `preparar` (dentro da transação dele) desfaz os bloqueios, cria o decreto
+  (`criarDecretoNaTransacao`) e grava o desfecho. Recusa de qualquer guarda desfaz tudo. A lei tem de ser do mesmo tipo
+  de crédito; a aprovação guarda quantos itens e quanto de suplementação aprovou, e a efetivação recusa a prévia que mudou.
+- **Travas:** toda operação sobre uma prévia existente trava a prévia pela fila de travas (posto `PreviaDeAlteracao`,
+  logo antes da ficha; os postos seguintes foram renumerados) antes das fichas; as fichas de um lote são travadas juntas,
+  em ordem. Não é `FOR UPDATE`: travar linha exige UPDATE, que o papel de runtime não tem (provado em
+  `test/runtime/contrato-runtime-previa.test.ts`).
+- **Conferência razão × dotação:** o bloqueio soma no saldo reservado da ficha e é conferido contra a conta do roteiro
+  próprio; a conta da reserva, sem ele (`conferir-dotacao.ts`).
+- **Autorização:** criar, acrescentar e descartar sob CRIAR_DECRETO_DE_CREDITO nas unidades de todas as fichas da prévia;
+  aprovar e efetivar sob EXECUTAR_CREDITO, e a efetivação cobra também CRIAR_DECRETO_DE_CREDITO no ente.
+- **Datas:** a aprovação não é anterior ao último lote; o decreto, do exercício da prévia, não é anterior à aprovação nem
+  futuro. O descarte confere o exercício da prévia aberto.
+- **Minuta:** decreto ou projeto de lei, com os dados da prévia; número, data e redação em branco (são do ente).
+- Teste: `m03-previa.test.ts` (14). Percurso: `scripts/percurso-v36-previas.mts`.
+- **Pendências:** a conta do roteiro do bloqueio é decisão da contabilidade (bloqueio de crédito ou outras
+  indisponibilidades) — até ela, em produção e na base da apresentação, a prévia com anulação é recusada com a mensagem
+  que diz onde defini-la; só a base fictícia tem o roteiro, publicado pelo percurso como escolha de demonstração; o encerramento do exercício não recusa bloqueios de prévia vivos (o descarte depois do
+  encerramento é recusado, e o bloqueio fica até a contabilidade decidir).
