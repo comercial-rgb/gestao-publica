@@ -288,6 +288,12 @@ cronograma por percentual (dinheiro, ao centavo), superfície no resto. Catálog
   Validado (percurso `percurso-v36-oitava-rodada.mts` 5/5: anexar, publicar, ver e baixar sem sessão, retirar e 404).
 - Guardas: censo 5/5 (539 nomes), formulários na mesma página, fronteira, leitura exige ação e rotas vivas 16/16;
   typecheck do app e do backend limpos; diff de schema vazio na fictícia.
+- **Publicado em 06/10/2026 (noite):** `37fa4e13` na main (rodada `6ad685d1`; Actions 37551045019 verde), `/release` =
+  `37fa4e1`. Backup antes: `/var/backups/gestao-publica/esperanca-antes-v36i-20261007T001242Z.dump`. Migration
+  `20261107100000_v36_publicacao_da_obra` aplicada em produção (última em `_prisma_migrations`); sem atualização de
+  permissões. Conferido: `/transparencia/obras` 200 sem sessão e obra inexistente 404; com o administrador, o lote de
+  deduções, o cronograma por percentual, o "Duplicar" na arrecadação e nos pagamentos e a tela de obras com 200. O
+  servidor de desenvolvimento foi parado antes da conferência de tipos do `publicar`, que passou de primeira.
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.
