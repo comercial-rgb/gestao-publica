@@ -447,9 +447,18 @@ export async function situacaoDoDocumentoFiscal(
     select: { tipo: true, data: true, criadoEm: true },
     orderBy: [{ data: "asc" }, { criadoEm: "asc" }],
   });
-  if (movs.some((m) => m.tipo === "CANCELAMENTO")) return "CANCELADO";
-  if (movs.some((m) => m.tipo === "SUBSTITUICAO")) return "SUBSTITUIDO";
-  if (movs.some((m) => m.tipo === "CONFERENCIA")) return "CONFERIDO";
+  return situacaoPelosMovimentos(movs.map((m) => m.tipo));
+}
+
+/**
+ * V36 — A REGRA DA SITUAÇÃO, pelos tipos de movimento do documento (cancelamento vence substituição, que vence
+ * conferência). Pura, para quem lê muitos documentos de uma vez (o relatório de empenhos em liquidação) usar a MESMA
+ * regra sem uma consulta por documento.
+ */
+export function situacaoPelosMovimentos(tipos: readonly string[]): "REGISTRADO" | "CONFERIDO" | "CANCELADO" | "SUBSTITUIDO" {
+  if (tipos.includes("CANCELAMENTO")) return "CANCELADO";
+  if (tipos.includes("SUBSTITUICAO")) return "SUBSTITUIDO";
+  if (tipos.includes("CONFERENCIA")) return "CONFERIDO";
   return "REGISTRADO";
 }
 

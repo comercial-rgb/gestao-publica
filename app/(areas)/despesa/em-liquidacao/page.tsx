@@ -51,8 +51,8 @@ export default async function EmLiquidacaoPage({ searchParams }: { readonly sear
   }
   const filtro = (o: string): string => `/despesa/em-liquidacao?exercicio=${String(recorte.exercicio)}${recorte.unidadeCodigo !== undefined ? `&ug=${recorte.unidadeCodigo}` : ""}${o !== "" ? `&origem=${o}` : ""}`;
   const csv = paraCsv(
-    ["Empenho", "Origem", "Credor", "Fonte", "Saldo a liquidar", "Notas conferidas", "Em liquidação"],
-    dados.linhas.map((l) => [l.empenhoNumero, l.origem, l.credor, l.fonteCodigo, formatarMoeda(l.saldoALiquidar).texto, l.notas.map((n) => `${n.rotulo} (${formatarMoeda(n.aLiquidar).texto})`).join("; "), formatarMoeda(l.emLiquidacao).texto])
+    ["Empenho", "Origem", "Credor", "Fonte", "Saldo a liquidar", "Notas conferidas", "Já liquidado", "Em liquidação"],
+    dados.linhas.map((l) => [l.empenhoNumero, l.origem, l.credor, l.fonteCodigo, formatarMoeda(l.saldoALiquidar).texto, l.notas.map((n) => `${n.rotulo} (${formatarMoeda(n.valor).texto})`).join("; "), formatarMoeda(l.liquidado).texto, formatarMoeda(l.emLiquidacao).texto])
   );
   return (
     <div className="space-y-4">
@@ -60,7 +60,7 @@ export default async function EmLiquidacaoPage({ searchParams }: { readonly sear
       <PageHeader titulo="Em liquidação" subtitulo={`${descreverRecorte(recorte)}: empenhos e restos com a entrega verificada e ainda não liquidada`} />
 
       <p className="text-xs text-[color:var(--color-ink-2)]">
-        Entram aqui o empenho do exercício e o resto a pagar não processado que ainda têm saldo a liquidar e já têm nota fiscal conferida com valor não liquidado. O valor em liquidação é o menor entre o saldo do empenho e o que as notas conferidas ainda têm a liquidar.
+        Entram aqui o empenho do exercício e o resto a pagar não processado que ainda têm saldo a liquidar e cujas notas fiscais conferidas somam mais do que já foi liquidado. O valor em liquidação é essa diferença, limitada ao saldo do empenho.
       </p>
 
       <nav aria-label="Origem" className="flex gap-3 text-xs" data-filtro-origem>
@@ -75,7 +75,7 @@ export default async function EmLiquidacaoPage({ searchParams }: { readonly sear
 
       {dados.notasSemAtribuicao > 0 ? (
         <p className="text-xs text-[color:var(--color-ink-2)]" data-notas-sem-atribuicao>
-          {dados.notasSemAtribuicao} nota(s) conferida(s) de ordem de compra com mais de um empenho ficaram fora: a nota não diz de qual empenho é cada parte. Indique o empenho na nota para que ela entre aqui.
+          {dados.notasSemAtribuicao} nota(s) conferida(s) de ordem de compra com mais de um empenho ficaram fora: a nota não diz de qual dos empenhos da ordem ela é. Para entrar aqui, a nota precisa apontar o empenho.
         </p>
       ) : null}
 
@@ -96,6 +96,7 @@ export default async function EmLiquidacaoPage({ searchParams }: { readonly sear
                   <th className={celula}>Fonte</th>
                   <th className={`${celula} text-right`}>Saldo a liquidar</th>
                   <th className={celula}>Notas conferidas</th>
+                  <th className={`${celula} text-right`}>Já liquidado</th>
                   <th className={`${celula} text-right`}>Em liquidação</th>
                 </tr>
               </thead>
@@ -110,19 +111,20 @@ export default async function EmLiquidacaoPage({ searchParams }: { readonly sear
                     <td className={celula}>
                       <ul className="space-y-0.5 text-xs">
                         {l.notas.map((n) => (
-                          <li key={n.id}>{n.rotulo}, recebida em {n.recebidaEm}: <ValorMonetario valor={n.aLiquidar} /></li>
+                          <li key={n.id}>{n.rotulo}, recebida em {n.recebidaEm}: <ValorMonetario valor={n.valor} /></li>
                         ))}
                       </ul>
                     </td>
+                    <td className={`${celula} text-right`}><ValorMonetario valor={l.liquidado} /></td>
                     <td className={`${celula} text-right font-semibold`}><ValorMonetario valor={l.emLiquidacao} /></td>
                   </tr>
                 ))}
                 <tr>
-                  <td className={`${celula} font-semibold`} colSpan={6}>Em liquidação do exercício</td>
+                  <td className={`${celula} font-semibold`} colSpan={7}>Em liquidação do exercício</td>
                   <td className={`${celula} text-right font-semibold`} data-total-exercicio><ValorMonetario valor={dados.totais.exercicio} /></td>
                 </tr>
                 <tr>
-                  <td className={`${celula} font-semibold`} colSpan={6}>Em liquidação de restos</td>
+                  <td className={`${celula} font-semibold`} colSpan={7}>Em liquidação de restos</td>
                   <td className={`${celula} text-right font-semibold`} data-total-restos><ValorMonetario valor={dados.totais.restos} /></td>
                 </tr>
               </tbody>

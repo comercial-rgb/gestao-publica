@@ -4,16 +4,17 @@ import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { criarM05Deps } from "./adapter-prisma.js";
 import { liquidar } from "./servico-bloco2.js";
 import { empenhosEmLiquidacao, totalEmLiquidacao } from "./em-liquidacao.js";
-import { empenharDe2026, R_LIQUIDACAO, semearM08, POR } from "../m08-restos-a-pagar/fixture-m08.js";
+import { empenharDe2026, R_EMPENHO, R_LIQUIDACAO, semearM08, FONTE, POR } from "../m08-restos-a-pagar/fixture-m08.js";
+import { empenhar } from "./servico.js";
+import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { conferirDocumentoFiscal, registrarDocumentoFiscal } from "../m11-licitacoes/documento-fiscal.js";
 import { encerrarExercicioComRestos } from "../m08-restos-a-pagar/encerramento.js";
 import type { M05Deps } from "./ports.js";
 
 /**
- * V36 — EMPENHOS E RESTOS EM LIQUIDAÇÃO (TR 5.10.1.42). Contas à mão (credor da fixture, emitente das notas):
+ * V36 — EMPENHOS E RESTOS EM LIQUIDAÇÃO (TR 5.10.1.42). Conta no EMPENHO, min(saldo, notas conferidas − liquidado). Contas à mão (credor da fixture, emitente das notas):
  *
- *   NE1 1.000 · nota conferida de 400 apontando o empenho, e outra de 300 já liquidada com ela (saldo 700)
- *                                                                             → em liquidação 400 (verificado 400, uma nota só)
+ *   NE1 1.000 · notas conferidas de 400 e de 300; liquidado 300 (com a de 300)  → verificado 700 − liquidado 300 = 400
  *   NE2   500 · nota conferida de 800                                          → em liquidação 500 (o saldo é o teto)
  *   NE3   300 · nota só REGISTRADA (sem conferência)                          → fora
  *   NE4   600 · nota conferida de 600, já liquidada por inteiro com ela        → fora (saldo zero)
@@ -79,14 +80,15 @@ describe("M05 — empenhos e restos em liquidação", () => {
   it("t1: no exercício, só os com nota conferida e saldo — o menor entre o saldo e o verificado", async () => {
     const r = await empenhosEmLiquidacao(prisma, { exercicio: 2026 });
     expect(r.empenhos.map((e) => [e.empenhoNumero, e.situacao, e.saldoALiquidar.toFixed(2), e.verificado.toFixed(2), e.emLiquidacao.toFixed(2)]).sort()).toEqual([
-      ["NE1", "EXERCICIO", "700.00", "400.00", "400.00"],
+      ["NE1", "EXERCICIO", "700.00", "700.00", "400.00"],
       ["NE2", "EXERCICIO", "500.00", "800.00", "500.00"],
       ["NE5", "EXERCICIO", "200.00", "150.00", "150.00"],
     ]);
     const t = totalEmLiquidacao(r.empenhos);
     expect([t.exercicio.toFixed(2), t.restos.toFixed(2)]).toEqual(["1050.00", "0.00"]);
     expect(r.notasSemAtribuicao).toBe(0);
-    expect(r.empenhos.find((e) => e.empenhoNumero === "NE1")?.notas.map((n) => n.aLiquidar.toFixed(2))).toEqual(["400.00"]);
+    const ne1 = r.empenhos.find((e) => e.empenhoNumero === "NE1");
+    expect([ne1?.liquidado.toFixed(2), ne1?.notas.map((n) => n.valor.toFixed(2))]).toEqual(["300.00", ["400.00", "300.00"]]);
   });
 
   it("t2: encerrado o exercício, os mesmos viram restos não processados em liquidação", async () => {
@@ -109,5 +111,37 @@ describe("M05 — empenhos e restos em liquidação", () => {
     const r = await empenhosEmLiquidacao(prisma, { exercicio: 2026 });
     expect(r.empenhos.map((e) => e.empenhoNumero).sort()).toEqual(["NE1", "NE2", "NE5"]);
     expect(r.notasSemAtribuicao).toBe(1);
+  });
+
+  it("t4: a liquidação gravada SEM escolher a nota também conta — a entrega liquidada não fica em liquidação", async () => {
+    const ne9 = await empenharDe2026(deps, "NE9", "1000.00");
+    await nota("400.00", { empenhoId: ne9 }, true);
+    await liquidar({ empenhoId: ne9, numero: "NL9", valor: "400.00", data: D("2026-08-01"), responsavelAtesto: "Fulano", historico: "liq sem a nota", criadoPor: POR }, R_LIQUIDACAO, deps);
+    const ne10 = await empenharDe2026(deps, "NE10", "1000.00");
+    await nota("400.00", { empenhoId: ne10 }, true);
+    await liquidar({ empenhoId: ne10, numero: "NL10", valor: "100.00", data: D("2026-08-01"), responsavelAtesto: "Fulano", historico: "liq parcial sem a nota", criadoPor: POR }, R_LIQUIDACAO, deps);
+    const r = await empenhosEmLiquidacao(prisma, { exercicio: 2026 });
+    const por = new Map(r.empenhos.map((e) => [e.empenhoNumero, e.emLiquidacao.toFixed(2)]));
+    expect([por.has("NE9"), por.get("NE10")]).toEqual([false, "300.00"]);
+  });
+
+  it("t5: o recorte por unidade — a outra unidade não aparece nem no contador de notas sem atribuição", async () => {
+    await prisma.unidadeOrcamentaria.create({ data: { id: "uo-02", codigo: "01002", descricao: "Saúde", orgaoId: "org-01" } });
+    await criarFichaDeTeste(prisma, { id: "ficha-02", exercicio: 2026, numero: 2, orgaoId: "org-01", unidadeOrcId: "uo-02", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg", acaoId: "aca", naturezaDespesaId: "nd", fonteId: FONTE, valorDotado: "100000.00" });
+    const daSaude = async (numero: string): Promise<string> =>
+      (await empenhar({ fichaId: "ficha-02", numero, tipo: "ORDINARIO", valor: "100.00", data: D("2026-06-01"), credorCpfCnpj: "12345678000195", historico: `empenho ${numero}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMPENHO, deps)).empenhoId;
+    const ns1 = await daSaude("NS1");
+    await nota("80.00", { empenhoId: ns1 }, true);
+    // A ordem com um empenho de cada unidade: a nota dela não se atribui, e só quem vê as duas a conta.
+    const ns2 = await daSaude("NS2");
+    const ne11 = await empenharDe2026(deps, "NE11", "100.00");
+    const ordem = await prisma.ordemDeCompra.create({ data: { numero: "OC-EL-3", tipo: "ORDINARIA", fornecedorId: emitenteId, dataEmissao: D("2026-06-01"), finalidade: "Entrega dividida", criadoPor: POR }, select: { id: true } });
+    await prisma.empenho.updateMany({ where: { id: { in: [ns2, ne11] } }, data: { ordemDeCompraId: ordem.id } });
+    await nota("30.00", { ordemId: ordem.id }, true);
+
+    const educacao = await empenhosEmLiquidacao(prisma, { exercicio: 2026, unidadeCodigo: "01001" });
+    expect([educacao.empenhos.map((e) => e.empenhoNumero).sort(), educacao.notasSemAtribuicao]).toEqual([["NE1", "NE2", "NE5"], 0]);
+    const ente = await empenhosEmLiquidacao(prisma, { exercicio: 2026 });
+    expect([ente.empenhos.map((e) => e.empenhoNumero).sort(), ente.notasSemAtribuicao]).toEqual([["NE1", "NE2", "NE5", "NS1"], 1]);
   });
 });

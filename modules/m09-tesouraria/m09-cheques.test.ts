@@ -159,11 +159,16 @@ describe("M09 — cheques de pagamento e avulsos numa consulta só", () => {
       () => "(pagou)",
       (e: unknown) => (e as Error).message
     );
-    for (let i = 0; i < 200; i += 1) {
+    let vista = false;
+    for (let i = 0; i < 400 && !vista; i += 1) {
       const [linha] = await prisma.$queryRaw<{ n: bigint }[]>`SELECT count(*) AS n FROM pg_stat_activity WHERE wait_event_type = 'Lock' AND datname = current_database()`;
-      if ((linha?.n ?? 0n) > 0n) break;
-      await new Promise((r) => setTimeout(r, 25));
+      vista = (linha?.n ?? 0n) > 0n;
+      if (!vista) await new Promise((r) => setTimeout(r, 25));
     }
+    // Sem a espera vista, o pagamento cairia na conferência (mesma mensagem) e o teste passaria por vacuidade: aí ele
+    // FALHA, nomeando o motivo, em vez de aprovar sem ter provado a tradução da unicidade (achado da auditoria).
+    if (!vista) liberar();
+    expect(vista, "o pagamento não chegou a esperar o índice único em 10 s: a corrida não foi exercitada").toBe(true);
     liberar();
     await avulso;
     expect(await pagamento).toMatch(/^O cheque 000600 já foi emitido na conta CC-001\. Nada foi gravado\.$/);

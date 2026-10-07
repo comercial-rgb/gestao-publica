@@ -19,8 +19,9 @@ export interface LinhaEmLiquidacao {
   readonly credor: string;
   readonly fonteCodigo: string;
   readonly saldoALiquidar: string;
+  readonly liquidado: string;
   readonly emLiquidacao: string;
-  readonly notas: readonly { readonly id: string; readonly rotulo: string; readonly recebidaEm: string; readonly aLiquidar: string }[];
+  readonly notas: readonly { readonly id: string; readonly rotulo: string; readonly recebidaEm: string; readonly valor: string }[];
 }
 
 export interface TelaEmLiquidacao {
@@ -43,8 +44,9 @@ export async function lerEmLiquidacao(p: { readonly exercicio: number; readonly 
       credor: nomes.get(e.credorCpfCnpj) ?? e.credorCpfCnpj,
       fonteCodigo: e.fonteCodigo,
       saldoALiquidar: e.saldoALiquidar.toFixed(2),
+      liquidado: e.liquidado.toFixed(2),
       emLiquidacao: e.emLiquidacao.toFixed(2),
-      notas: e.notas.map((n) => ({ id: n.id, rotulo: n.rotulo, recebidaEm: br(n.dataRecebimento), aLiquidar: n.aLiquidar.toFixed(2) })),
+      notas: e.notas.map((n) => ({ id: n.id, rotulo: n.rotulo, recebidaEm: br(n.dataRecebimento), valor: n.valor.toFixed(2) })),
     })),
     totais: { exercicio: t.exercicio.toFixed(2), restos: t.restos.toFixed(2) },
     notasSemAtribuicao: r.notasSemAtribuicao,

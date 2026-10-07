@@ -120,8 +120,9 @@ try {
   await outra.goto(`${n.base}${tela}`, { waitUntil: "domcontentloaded" });
   const t = await outra.evaluate(() => document.body.innerText);
   const destino = new URL(outra.url());
-  const recusa = destino.pathname === "/sem-acesso" ? `sem-acesso, ${destino.searchParams.get("acao") ?? ""}` : (/Esta unidade não está no seu acesso[^\n]*/.exec(t)?.[0] ?? "");
-  conferir(recusa.includes("CONSULTAR_DESPESA") || /não está no seu acesso/.test(recusa), `sem consulta da despesa: a tela não abre (${recusa.slice(0, 100)})`);
+  // O motivo tem de ser O da falta de consulta da despesa — não "unidade fora do acesso", que é outra recusa.
+  const recusa = destino.pathname === "/sem-acesso" ? `sem-acesso ${destino.searchParams.get("acao") ?? ""}` : (/ação de leitura cobrada é CONSULTAR_DESPESA/.exec(t)?.[0] ?? "");
+  conferir(/CONSULTAR_DESPESA/.test(recusa) && !t.includes(`NF-e 7${marca}`), `sem consulta da despesa: a tela não abre (${recusa.slice(0, 100)})`);
 } finally {
   await nav.close();
   await prisma.$disconnect();
