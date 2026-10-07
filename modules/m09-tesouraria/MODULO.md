@@ -279,3 +279,18 @@ A parcial de pagamento herda a conta do original. Antes, ela entrava no lado int
 Agora é ENTRADA pelo valor dela: é dinheiro voltando, e o M05 só aceita parcial em pagamento sem
 retenção. A parcial estornada sai dos dois lados, como o par anulado. A fila do lote passou a ser a do
 M06 (`liquidacoesComSaldo`). Caracterização: `m09-pagamento-parcial-conciliacao.test.ts`.
+
+## V36 — Cheques (07/10/2026)
+
+`cheques.ts` e `prisma/schema/m09-cheques.prisma`. O cheque é DOCUMENTO, não fato contábil: nenhum caso de uso daqui
+lança no razão ou mexe em saldo.
+
+- **De pagamento:** nasce dentro da transação do `pagar()` do M05 (campo `numeroDoCheque`), com o valor de face fixado
+  na emissão = líquido do pagamento (`composto.valorLiquido`, bruto menos todas as retenções). Um por pagamento.
+  Cancelado = pagamento anulado POR INTEIRO (derivado); a anulação parcial não muda o documento emitido.
+- **Avulso:** `registrarChequeAvulso` / `cancelarChequeAvulso`, sob REGISTRAR_ e ESTORNAR_MOVIMENTO_BANCARIO (no ente).
+  O dinheiro que ele movimenta é registrado na movimentação bancária; aqui fica o documento.
+- **Número único por conta** (o talão é da conta), entre as duas origens: conferido antes de gravar e, na corrida, a
+  unicidade do banco devolve a mesma mensagem de negócio.
+- **Consulta** `chequesEmitidos`: por data de emissão, situação no fim do período. A porta só pede os de pagamento a quem
+  lê a despesa no ente (credor e empenho são dado da despesa).

@@ -277,3 +277,19 @@ Pendência: PPA e LDO não têm documentos anexados no cadastro (só a LOA tem);
 - **Obras previstas na LDO** (`obras-da-ldo.ts`, ação "Prever obra" no detalhe da LDO, sob CADASTRAR_LDO): o vínculo com a
   obra do M11 é opcional, porque a LDO prevê obra que ainda não tem cadastro. O demonstrativo é o nono anexo da LDO,
   `obras-e-conservacao` (LRF art. 45, parágrafo único), com totais coluna a coluna.
+
+## V36 — Emendas ao PPA e à LDO (07/10/2026)
+
+`emendas-do-planejamento.ts` e `prisma/schema/m02b-emendas-do-planejamento.prisma`. O rito das emendas da LOA com o
+alvo da peça: o item aponta a mesma linha que o ato de alteração alcança (previsão de receita, programa e ação do PPA;
+metas fiscais anuais da LDO), com grandeza e sinal.
+
+- **A sanção grava o ato de alteração** da lei pelo guard do ato (`gravarItensNoAtoDaLei` em `servico-alteracao.ts`,
+  composável interno: sem autorização própria, chamado só pela sanção, que cobra SANCIONAR_EMENDA_AO_ORCAMENTO). Duas
+  emendas sancionadas pela mesma lei entram no MESMO ato; a mesma lei com outra data é recusada. Veto não grava ato.
+- **Viabilidade na sanção, não no cadastro:** é na sanção que o item vira valor, e o guard confere os dois estados
+  (vigente e na data da lei). O cadastro confere peça, linha, grandeza, repetição e bloqueio.
+- **"Dotação" na LDO = meta fiscal anual** (decisão local e reversível): a LDO não tem previsão orçamentária
+  (LDO-SEM-PREVISAO-ORCAMENTARIA). Quando tiver, entra como alvo do ato e a emenda a alcança sem mudar de forma.
+- **Trava `PecaDoPlanejamento`** (posto 41, último): numeração por peça e sanções da mesma lei serializadas.
+- **Autoridades:** as das emendas da LOA (CADASTRAR_/SANCIONAR_EMENDA_AO_ORCAMENTO); nenhuma ação nova.

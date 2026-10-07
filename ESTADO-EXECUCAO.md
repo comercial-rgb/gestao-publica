@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 
 | Campo | Valor |
 |---|---|
-| HEAD | `6ee38bdf` em `apresentacao/contabilidade` (este registro vem no commit seguinte) |
-| Catálogo | 619 de 2.037 verificadas (antes 436). As 285 de contabilidade (5.9 e 5.10): 0 sem verificar; 46 validadas, 29 implementadas sem percurso, 124 parciais, 84 ausentes, 2 de terceiro. |
-| Último resultado | Percursos na base fictícia: adiantamentos 19/19, a pagar 7/7, vínculos 15/15, leituras 6/6. Testes dirigidos verdes (abaixo). |
-| Próximo passo | Publicado (abaixo). Seguir pelas lacunas "construir" do levantamento, na ordem de valor: nota de estorno em PDF, termos do Diário e do Razão, combobox da ficha no empenho, relatório de pagamentos com filtros e retenções, importação do extrato OFX pela tela, PDF da conciliação. |
+| HEAD | `50a725c3` em `apresentacao/contabilidade` (o registro e a publicação vêm nos commits seguintes) |
+| Catálogo | 619 de 2.037 verificadas. As 285 de contabilidade (5.9 e 5.10): 88 validadas, 31 implementadas sem percurso, 119 parciais, 45 ausentes, 2 de terceiro. |
+| Último resultado | Rodada de 07/10 (seção "Rodada das áreas que faltavam"): cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas ao PPA e à LDO 6/6 em percurso; testes dirigidos verdes; mutações acusadas. |
+| Próximo passo | Publicar a rodada de 07/10 (backup, publicar, conferir migrations 20261108130000 a 20261108150000). Depois: rever o auxiliar recusa() dos testes antigos da V36; decisões do ente pendentes (5.9.3.34 cotas do crédito adicional; 5.10.2.4 finalidade FUNDEB/saúde; estágio em liquidação). |
 
 ### Como o catálogo foi verificado
 Sete varreduras somente leitura, uma por fatia das 183 cláusulas que estavam sem verificar, cada cláusula contra
@@ -420,6 +420,58 @@ tela; o vínculo novo do empenho passou pelos testes de integridade das anulaç�
   `20261108120000_v36_parceria_publico_privada` e `20261108120100_v36_ppp_numero_unico` aplicadas (a produção não tinha
   PPP; conferido antes do índice único); sem atualização de permissões. Conferido com o administrador: `/licitacoes/ppp`
   com o cadastro, o campo da parceria no formulário de empenho e o atalho na página de licitações.
+
+### Rodada das áreas que faltavam (07/10/2026, pedido "siga pelas areas que faltaram criar de acordo com seu levantamento")
+Regime: profundidade no pagamento (cheque na transação do `pagar()`), no ato de alteração (sanção das emendas pelo
+guard do ato) e no relatório em liquidação (aritmética do M05/M08/M11, sem segunda versão); superfície nas telas.
+Catálogo inteiro: 148 validadas, 179 ausentes, 202 parciais, 84 implementadas sem percurso; 619 de 2.037 verificadas.
+
+- **Cheques** (M09, `9871845a` + achados em `b65e0635`/`46a3afe6`; TR 5.10.2.42, validada): `Cheque` e
+  `CancelamentoDeCheque` (migration `20261108130000_v36_cheques`, CHECKs de origem, valor e número). O número do cheque
+  entra no formulário de pagamento e o cheque nasce na MESMA transação do `pagar()`, com o valor de face = líquido
+  (`composto.valorLiquido`); número único por conta, conferido antes de gravar e, na corrida, traduzido da unicidade
+  (t5b determinístico: segura o avulso aberto, espera o pagamento travar no índice — `pg_stat_activity` — e exige ter
+  visto a espera). Avulso com registro e cancelamento (ações REGISTRAR_/ESTORNAR_MOVIMENTO_BANCARIO, no ente), sem data
+  futura, impossível ou anterior à emissão. Consulta `/financeiro/cheques`: as duas origens por período, conta, origem
+  e situação (a do fim do período); quem não lê a despesa no ente vê só os avulsos, com o motivo
+  (`test/ui/cheques-porta.test.ts`). O cheque é documento: nenhum lançamento.
+- **Despesa sem empenho prévio** (`b65e0635`; TR 5.10.1.30, validada): `Liquidacao.despesaSemEmpenhoPrevio`
+  (migration `20261108140000`, padrão falso), caixa no formulário de liquidação, marca junto da situação, recorte
+  `?semEmpenhoPrevio=1` e coluna no CSV. Só informação: a liquidação continua exigindo empenho (o caso é a despesa
+  realizada antes do empenho que a regulariza); t2 prova que o lançamento é o mesmo.
+- **Empenhos e restos em liquidação** (`09c1166c` + `46a3afe6`; TR 5.10.1.42, PARCIAL): `/despesa/em-liquidacao` lista
+  o empenho do exercício e o resto não processado com saldo a liquidar cujas notas fiscais CONFERIDAS somam mais que o
+  liquidado; em liquidação = min(saldo, notas conferidas − liquidado), a conta no EMPENHO (a liquidação gravada sem
+  escolher a nota também conta — achado da auditoria), situação da nota pela regra do M11 (`situacaoPelosMovimentos`,
+  extraída), duas leituras em lote. A outra metade da cláusula (contas "em liquidação") segue sem conteúdo: estágio
+  6.2.2.1.3.02 dormente por decisão do M01.
+- **Emendas ao PPA e à LDO** (M02b, `50a725c3`; TR 5.9.1.21-23 e 5.9.2.11-13, validadas): cinco tabelas
+  (migration `20261108150000`, CHECKs de peça, alvo e grandeza, item não zero, sanção sem ato só na rejeitada), trava
+  nova `PecaDoPlanejamento` (posto 41). Cadastro, bloqueio e liberação sob CADASTRAR_EMENDA_AO_ORCAMENTO, sanção sob
+  SANCIONAR_EMENDA_AO_ORCAMENTO (as das emendas da LOA; nenhuma ação nova). A sanção grava o ATO DE ALTERAÇÃO da lei
+  pelo guard do ato (`gravarItensNoAtoDaLei`, composável interno; `registrarAtoDeAlteracaoDoPlanejamento` intacto), duas
+  emendas da mesma lei no mesmo ato. Tela `/planejamento/emendas-do-plano`. **Decisão local e reversível, declarada:**
+  na LDO a "dotação" da emenda é a META FISCAL anual — a LDO do sistema não tem previsão orçamentária, e a meta é o único
+  valor dela que o ato de alteração versiona.
+
+**Testes e provas (dirigidos):** m09-cheques 8/8, cheques-porta 3/3, m05-despesa-sem-empenho-previo 2/2,
+m05-em-liquidacao 5/5, m02b-emendas-do-planejamento 8/8, m02b-alteracao, m02b-emendas, m11-documento-fiscal,
+m05-pagamentos-efetuados, m05-consultas-execucao, locks e m16-censo (553) verdes. Mutações acusadas: cheques 7,
+sem empenho 2, em liquidação 8, emendas 7. Typecheck backend e app-sem-rotas limpos.
+**Percursos (base fictícia, next dev 3011):** cheques 9/9, sem empenho prévio 3/3, em liquidação 5/5, emendas 6/6.
+
+**Achado de instrumento (regra "não atestar pela papelada"):** o erro do Prisma traz um trecho do código-fonte, e um
+teste de recusa casava com a mensagem de negócio escrita na linha vizinha do `create` que estourou — a mutação da dupla
+liberação do bloqueio ficou verde por isso. O auxiliar `recusa()` dos testes desta rodada troca erro do banco por
+"(erro do banco)". **Pendência:** os testes anteriores com o mesmo auxiliar (parcerias, periodicidade, audiências e
+outros da V36) não foram revisados para esse caso.
+
+**Auditorias:** cheques (2 médios, 5 baixos) e sem empenho/em liquidação (6 achados) tratados acima; não tratado, com o
+motivo: códigos de conta da fixture do teste de cheques (padrão das fixtures do M05) e o vazamento mínimo da recusa do
+avulso (número já usado na conta, inerente à unicidade).
+
+**Pendências desta rodada:** a base fictícia ficou com liquidações sem pagamento criadas pelos percursos (fila do art.
+141 da fonte delas); metade "contas em liquidação" da 5.10.1.42 depende de decisão contábil do ente.
 
 ### Publicado em 05/10/2026 (noite)
 - Versão `2e48adab` na 3000 (Actions run 37401113592 verde); sem migration nesta rodada.

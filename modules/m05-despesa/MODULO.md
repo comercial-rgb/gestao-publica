@@ -504,3 +504,16 @@ ou outras"), anulação automática do saldo do estimativo no fim do ano (a insc
 
 Teste: `m05-tipo-do-empenho.test.ts` (N=2 parcelas, os três tipos, o estorno). Fixtures que liquidavam ordinário em
 parcelas (`m05b`, `m05-concorrencia` t5) passaram a GLOBAL, com o motivo no comentário.
+
+## V36 — Despesa sem empenho prévio e empenhos em liquidação (07/10/2026)
+
+- **`Liquidacao.despesaSemEmpenhoPrevio`** (TR 5.10.1.30): informação declarada por quem liquida — a despesa foi
+  realizada antes do empenho, que veio depois para regularizá-la (Lei 4.320, art. 60). Não muda lançamento nem saldo; a
+  liquidação continua exigindo empenho. As anulações ficam com o padrão (a lista mostra só os originais).
+- **`em-liquidacao.ts`** (TR 5.10.1.42, metade da verificação): empenho do exercício ou resto não processado com saldo
+  a liquidar cujas notas fiscais CONFERIDAS somam mais que o liquidado do empenho. A conta é no EMPENHO, não na nota: o
+  vínculo liquidação→nota é opcional, e contar pela nota deixaria em liquidação a entrega já liquidada sem a nota.
+  Nota sem empenho é do empenho único da sua ordem de compra; ordem com mais de um empenho não atribui (sem rateio
+  inventado). A metade "contas orçamentárias em liquidação" não tem conteúdo: o estágio 6.2.2.1.3.02 está dormente
+  (decisão SEM-ESTAGIO-EM-LIQUIDACAO do M01).
+- **`pagar()` e o cheque:** ver `modules/m09-tesouraria/MODULO.md` (V36 — Cheques).
