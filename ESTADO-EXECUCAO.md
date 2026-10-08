@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `9adb5141` em `apresentacao/contabilidade`, publicado como `c61a102` (main e `/release` = `c61a102`) |
+| HEAD | `c0fb150f` em `apresentacao/contabilidade` (a publicação desta segunda rodada está no fim da seção dela) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Percurso das trilhas 9/9 (`scripts/percurso-v37-trilhas-conectadas.mts`), saldo na data 3/3, receita por natureza 6/6 e 8/8; bateria dos 107 arquivos que emitem empenho 998/999 (a falha era de fixture antiga, corrigida, 5/5). |
 | Próximo passo | Seguir as trilhas que o levantamento deixou abertas (abaixo); depois o resto sem decisão do catálogo da contabilidade. |
@@ -41,6 +41,39 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Segunda rodada da V37 (08/10/2026): exportação, fornecedor por busca e as guardas que estavam vermelhas
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Exportação dos demonstrativos | "Exportar CSV" e "Imprimir" em 22 relatórios que não exportavam: RGF 1 a 6, RREO 2, 3, 6, 7, 8, 10 a 14, consistência, balanço patrimonial, variações patrimoniais, eliminações, limite do Legislativo e balancete. O CSV é montado dos quadros da tela (`BotaoCsvDasTabelas`, `tabelasParaCsv`), um bloco por quadro com o título | /relatorios/rgf/*, /relatorios/rreo/*, demais | csv-das-tabelas 2/2 (texto esperado escrito à mão); percurso 22/22 baixando o arquivo de verdade |
+| Fornecedor por busca | ordem de compra e formação de ordem: o campo Fornecedor é busca por documento ou nome (catálogo `fornecedores`, valor = id da pessoa), com "Cadastrar este fornecedor" e a volta com o fornecedor escolhido; antes era um select com as 500 primeiras pessoas por documento | /licitacoes/ordens-de-compra, /licitacoes/solicitacoes/[id] | fornecedores-catalogo 2/2 (25 pessoas, fora da primeira página; recusa sem leitura de licitações com o motivo), 3 mutações acusadas; percurso |
+| Mais trilhas | ordem de serviço → "Empenhar por este contrato" (o contrato chega escolhido); dedução → "guias desta receita no mês" | /licitacoes/contratos/[id]/ordens/[ordemId], /receita/deducoes | percurso (o passo da ordem de serviço NÃO EXECUTADO: a base fictícia não tem ordem de serviço emitida) |
+
+Percurso: `scripts/percurso-v37-exportacao-e-cadastros.mts`, 24/24 com 1 não executado. Duas rodadas intermediárias caíram por motivo
+fora do código, registrado: a navegação parou no aviso de "dados não salvos" do formulário em que o percurso digitara
+(o percurso passou a aceitar o diálogo), e o servidor de desenvolvimento devolveu 500 `frame.join is not a function` na
+primeira compilação de uma rota logo depois de reiniciar (a mesma rota passou antes e depois).
+
+**Guardas vermelhas desde a V36, achadas ao rodar `test/ui` e corrigidas (nenhuma tinha sido rodada nas rodadas anteriores):**
+- chave de comando: `despesa/empenhos/actions.ts` tinha uma leitura (débitos do credor) entre as escritas, e a V37 acrescentou outra;
+  as duas foram para `leitura-actions.ts`, declarado com o motivo;
+- fronteira da UI: `lib/pdf/bordero-de-movimentos.ts` importava tipo do módulo M09; agora pela porta da tesouraria;
+- `id` literal: os `datalist` da prévia (duplicado de fato: o lote aparece em dois formulários da mesma página) e das fontes
+  da natureza passaram a `useId`;
+- jargão do menu: a expressão com `` acusava "Multas de trânsito" (sem a flag `u`, "â" não é letra); bordas Unicode,
+  com o teste m6b nas duas direções e 2 mutações acusadas.
+
+O aviso de vazio (`EstadoVazio`) ganhou `role="status"` e `data-estado-vazio`.
+
+**Medido nos testes de banco:** `limparBanco` leva 3 a 4 s; depois de baterias grandes o banco de teste incha e os hooks de
+10 s estouram no primeiro teste do arquivo (fornecedores-catalogo, contexto-ug); depois de VACUUM ANALYZE, 2/2 e 4/4. O
+limite não foi aumentado. Pendência: TESTE-HOOK-PERTO-DO-LIMITE.
+
+**Pendências nomeadas:** a ficha da ordem de compra ainda é um select com até 500 fichas (o mesmo defeito do fornecedor);
+o balanço patrimonial e as variações da base fictícia recusam emitir porque a conta 1.1.1.1.1.19.00 não está classificada
+como financeiro ou permanente (dado da base, a recusa está certa); adiantamento sem atalho de cadastro (o beneficiário é
+digitado, não há beco).
 
 ## V36 — catálogo da contabilidade e lacunas construídas (05/10/2026; vale sobre a V35 abaixo)
 
