@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `5caf0533` em `apresentacao/contabilidade`, publicado como `129f708` (main e `/release` = `129f708`) |
+| HEAD | `343fa0b3` em `apresentacao/contabilidade` (a publicar; a anterior publicada é `129f708`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
-| Último resultado | Percurso das trilhas 9/9 (`scripts/percurso-v37-trilhas-conectadas.mts`), saldo na data 3/3, receita por natureza 6/6 e 8/8; bateria dos 107 arquivos que emitem empenho 998/999 (a falha era de fixture antiga, corrigida, 5/5). |
-| Próximo passo | Seguir as trilhas que o levantamento deixou abertas (abaixo); depois o resto sem decisão do catálogo da contabilidade. |
+| Último resultado | Percurso das compras pela busca 8/8 (do cadastro do material à liquidação com entrada no almoxarifado); 16 arquivos de M05/M08/M10/M16/M33 e o catálogo, 208/208; liquidação de material pela tela, que era recusada desde a V22, corrigida. |
+| Próximo passo | Publicar; conferir na base publicada se houve anulação total com entrada física antes da correção; depois LIQUIDACAO-RECEBIMENTO-DIGITADO e LIQUIDACAO-EMPENHO-EM-LISTA. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,52 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Terceira rodada da V37 (08/10/2026): da compra à liquidação pela tela, e dois defeitos de transação
+
+Pedido: "Pode seguir construindo". Regime: superfície nos campos de busca; **profundidade** na liquidação e na anulação
+(transação, ordem de locks, os dois eixos do estoque).
+
+| Unidade | Commit | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|---|
+| Material e fornecedor por busca nas compras | `8d977bf9` | material por código, CATMAT ou descrição (só ativos) na solicitação, na pesquisa de preços e na ordem de compra; quem cotou, por busca; o fornecedor da ordem só entre os credores vigentes (a ordem emitida para quem não era credor chegava ao empenho com o credor recusado); o detalhe da ordem deixou de ler as três listas que não chegavam a campo nenhum; o descritor da ordem declara fornecedor, processo e ficha como busca | `/licitacoes/solicitacoes`, `/licitacoes/pesquisas-de-precos`, `/licitacoes/ordens-de-compra` e o detalhe | `test/ui/fornecedores-catalogo.test.ts` 5/5 (t1b credor vigente N=2 fora do papel, t4 materiais N=2 e desabilitado); 9 mutações vermelhas, 1 equivalente na primeira forma e fechada com a página cheia |
+| Liquidação de material pela tela | `343fa0b3` | **defeito desde a V22**: a conferência do número da liquidação trava o numerador (último posto) e a entrada no almoxarifado trava depois liquidação, classe e estoque; toda liquidação de material com número só de dígitos — o que a tela manda — caía na guarda de inversão. Os cinco caminhos que gravam liquidação com número conferem agora no fim da transação | `/despesa/liquidacoes?empenho=` | t1b, t1c (número reservado recusado e nada fica), t8c, t8d do `m10-almoxarifado`; vermelhos antes, mutações vermelhas |
+| Duas linhas físicas numa liquidação | `343fa0b3` | **defeito**: classe, estoque, classe da linha seguinte — a guarda recusava; agora duas passadas ordenadas | idem | t9b do `m10-estoque-fisico`, vermelho antes |
+| A anulação total desfaz o eixo físico | `343fa0b3` | **furo**: a cascata estornava só o movimento contábil da entrada; o material de uma compra desfeita ficava na posição. Agora estorna as entradas físicas na mesma transação, e recusa nomeando material, depósito e quantidades se o material da posição ou do lote já saiu | anular a liquidação | t9c, t9d (classe com saldo de sobra, posição curta); 2 mutações vermelhas |
+| Material da entrada na liquidação por busca | `343fa0b3` | catálogo `materiais-de-estoque`: só os materiais da classe escolhida na linha, com a leitura da despesa; substitui o `select` de até 2.000 | `/despesa/liquidacoes` | t4 do catálogo; mutação do recorte por classe vermelha |
+
+**Percurso** `scripts/percurso-v37-compras-por-busca.mts`, na base fictícia, HEAD `343fa0b3`, 8/8 na última corrida
+(e os passos 4a e 4b, 2/2, numa corrida anterior, porque não se repetem): classe contábil, grupo, unidade, dois
+materiais e depósito cadastrados pela tela; pesquisa de preços com material e cotação pela busca; a pessoa que cotou e
+não é credora não se oferece como fornecedor, aparece "Cadastrar este fornecedor", o papel de credor é concedido e a
+ordem volta com ela escolhida; ordem emitida com fornecedor, ficha e material pela busca; "Empenhar esta ordem" chega
+com ordem, ficha e valor; empenho gravado; "Liquidar este empenho" com entrada de 10 un no ALM-01 e material pela busca.
+
+**Auditoria** (agente auditor-de-invariantes) sobre o diff da liquidação: atomicidade confirmada; achou a inversão
+das duas linhas físicas, a espera cruzada nova entre caminhos que travavam o numerador antes ou depois da linha
+(resolvida com uma ordem só), a perna física da anulação e uma conta do PCASP sem fonte num teste (trocada pela
+conta já usada). Comentários do numerador e da anulação atualizados.
+
+**Comandos:** typecheck dos quatro projetos 0 erro; cobertura dos tsconfig 2.276/2.276; 16 arquivos de M05, M08,
+M10, M16, M33 e o catálogo, 208/208; `chave-de-comando`, `descritores-consistentes`, `menu-do-contador` 12/12;
+censo 5/5 (o composável novo declarado). Seleção, não suíte completa (instrução vigente).
+
+**Instrumento medido:** timeouts de hook de 10 s voltaram cinco vezes nesta rodada, sempre depois de várias corridas
+de mutação; VACUUM ANALYZE no banco de teste e a repetição passaram todas. A primeira corrida de mutação do catálogo
+derrubou também t1 e t3, sem saída guardada; a repetição derrubou só o t4 (o alvo). O servidor de desenvolvimento
+ficou inerte duas vezes depois de recompilar (sem pedido ao catálogo, e "frame.join"); reiniciado, passou.
+
+**Pendências nomeadas:**
+- `LIQUIDACAO-RECEBIMENTO-DIGITADO`: na liquidação, "Recebimento da ordem de compra" é um campo de texto que espera o
+  identificador interno do recebimento; deveria ser escolha entre os recebimentos da ordem do empenho.
+- `LIQUIDACAO-EMPENHO-EM-LISTA`: o empenho da liquidação ainda é um `select` com todos os empenhos liquidáveis do
+  recorte.
+- `ALMOXARIFADO-MATERIAL-EM-LISTA`: no almoxarifado (depósito/bloqueio, requisição, inventário) o material ainda é
+  lista; o catálogo `materiais-de-estoque` já serve, falta a leitura própria do almoxarifado.
+- `CREDOR-ENCERRADO-NA-PAGINA`: o fornecedor de papel encerrado sai só no filtro depois da consulta; a página pode
+  vir mais curta, com "há mais" (como no catálogo de credores do empenho).
+- Em produção, as liquidações de material feitas antes desta correção não existem (eram recusadas); as anulações
+  totais antigas com entrada física, se houver, deixaram a perna física viva — conferir na base publicada.
 
 ### Segunda rodada da V37 (08/10/2026): exportação, fornecedor por busca e as guardas que estavam vermelhas
 
