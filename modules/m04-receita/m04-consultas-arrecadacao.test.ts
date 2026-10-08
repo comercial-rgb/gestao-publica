@@ -91,11 +91,12 @@ describe("M04 — as leituras da arrecadação (TR 4.59)", () => {
   async function arrecada(
     valor: string,
     numero: string,
-    dia: string
+    dia: string,
+    naturezaReceita = "11121101"
   ): Promise<string> {
     const r = await registrarArrecadacao(
       {
-        exercicio: 2026, naturezaReceita: "11121101", fonte: "500", co: "0001",
+        exercicio: 2026, naturezaReceita, fonte: "500", co: "0001",
         exercicioFonte: 1, valor, dataArrecadacao: new Date(`2026-03-${dia}T12:00:00Z`),
         numeroReceita: numero, criadoPor: POR,
       },
@@ -170,6 +171,24 @@ describe("M04 — as leituras da arrecadação (TR 4.59)", () => {
     expect(recorte.linhas.length).toBe(1);
     expect(recorte.linhas[0]!.id).toBe(g1);
     expect(recorte.total.toFixed(2)).toBe("1500.00");
+  });
+
+  it("t2b: V37 — o recorte por natureza (o drill-down dos demonstrativos), com a anulação dela; N=2 naturezas", async () => {
+    const g1 = await arrecada("1500.00", "2026RC000001", "10");
+    await arrecada("800.00", "2026RC000002", "15", "11130501");
+    await arrecada("300.00", "2026RC000003", "16", "11130501");
+    await anularArrecadacao({ receitaId: g1, dataAnulacao: new Date("2026-03-20T12:00:00Z"), numeroReceita: "2026RC000001", criadoPor: POR }, deps);
+
+    const iss = await listarArrecadacoes(prisma, { exercicio: 2026, naturezaCodigo: "11130501" });
+    expect(iss.linhas.map((l) => l.numeroReceita).sort()).toEqual(["2026RC000002", "2026RC000003"]);
+    expect(iss.total.toFixed(2)).toBe("1100.00");
+    const iptu = await listarArrecadacoes(prisma, { exercicio: 2026, naturezaCodigo: "11121101" });
+    // A guia e a anulação dela, que é da mesma natureza: líquido zero.
+    expect(iptu.linhas.length).toBe(2);
+    expect(iptu.total.toFixed(2)).toBe("0.00");
+    // Com o mês junto (a janela), o recorte se compõe.
+    const issAte15 = await listarArrecadacoes(prisma, { exercicio: 2026, naturezaCodigo: "11130501", fim: new Date("2026-03-15T23:59:59Z") });
+    expect(issAte15.total.toFixed(2)).toBe("800.00");
   });
 
   it("t3: o rol da LOA é o vocabulário da arrecadação", async () => {

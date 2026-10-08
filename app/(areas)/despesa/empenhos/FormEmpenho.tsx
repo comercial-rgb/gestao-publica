@@ -117,6 +117,7 @@ export function FormEmpenho({
   fichas,
   ordemPadrao = "",
   solicitacaoPadrao = "",
+  reservaPadrao = "",
   numeroSugerido,
   credorPadrao,
   podeCadastrarCredor = false,
@@ -125,6 +126,8 @@ export function FormEmpenho({
   readonly ordemPadrao?: string;
   /** V22: a solicitação autorizada vinda da tela de solicitações ("Emitir empenho"). */
   readonly solicitacaoPadrao?: string;
+  /** V37 — a reserva vinda da ficha ("Empenhar com esta reserva"): sugere a ficha e o valor. */
+  readonly reservaPadrao?: string;
   /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
   readonly numeroSugerido?: string | undefined;
   /** V37 — o credor que volta escolhido do atalho de cadastro (`?credor=` da URL). */
@@ -319,6 +322,8 @@ export function FormEmpenho({
           catalogo="reservas-para-empenho"
           placeholder="Ficha, processo ou texto"
           largura={1}
+          valorInicial={reservaPadrao}
+          avisarInicial
           aoEscolher={(o) => aplicarOrigem("reserva", o)}
         />
       </fieldset>

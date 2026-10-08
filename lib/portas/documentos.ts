@@ -341,6 +341,9 @@ export interface DocumentosDoPagamento {
   readonly liquidacaoNumero: string;
   readonly unidadeCodigo: string;
   readonly contaBancaria: string;
+  /** V37 — para os atalhos da tela: o empenho e a liquidação do pagamento. */
+  readonly empenhoId: string;
+  readonly liquidacaoId: string;
   readonly anulado: boolean;
   readonly anexos: readonly AnexoNaLista[];
 }
@@ -352,7 +355,7 @@ export async function lerDocumentosDoPagamento(id: string): Promise<DocumentosDo
     where: { id },
     select: {
       id: true, numero: true, data: true, valor: true, contaBancaria: true, estornoDeId: true, anulacaoParcialDeId: true, estornos: { select: { id: true } },
-      liquidacao: { select: { numero: true, empenho: { select: { numero: true, credorCpfCnpj: true, ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } },
+      liquidacao: { select: { id: true, numero: true, empenho: { select: { id: true, numero: true, credorCpfCnpj: true, ficha: { select: { unidadeOrc: { select: { codigo: true } } } } } } } },
     },
   });
   // Só o pagamento original: a anulação (total ou parcial) é outra linha de Pagamento, e não é registro de pagamento.
@@ -362,6 +365,7 @@ export async function lerDocumentosDoPagamento(id: string): Promise<DocumentosDo
     id: p.id, numero: p.numero, data: p.data, valor: p.valor.toFixed(2), credorCpfCnpj: p.liquidacao.empenho.credorCpfCnpj,
     empenhoNumero: p.liquidacao.empenho.numero, liquidacaoNumero: p.liquidacao.numero, unidadeCodigo: p.liquidacao.empenho.ficha.unidadeOrc.codigo,
     contaBancaria: p.contaBancaria, anulado: p.estornos.length > 0,
+    empenhoId: p.liquidacao.empenho.id, liquidacaoId: p.liquidacao.id,
     anexos: await listarAnexosDoPagamentoOuMovimento(cliente(), { pagamentoId: p.id }, sessao.identificador),
   };
 }
@@ -373,6 +377,9 @@ export interface DocumentosDoMovimento {
   readonly valor: string;
   readonly historico: string;
   readonly contaBancaria: string;
+  /** V37 — para os atalhos da tela: a conta e o lançamento contábil do movimento. */
+  readonly contaBancariaId: string;
+  readonly lancamentoId: string;
   readonly anexos: readonly AnexoNaLista[];
 }
 
@@ -381,12 +388,14 @@ export async function lerDocumentosDoMovimento(id: string): Promise<DocumentosDo
   const sessao = await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const m = await cliente().movimentoBancario.findUnique({
     where: { id },
-    select: { id: true, tipo: true, data: true, valor: true, historico: true, contaBancaria: { select: { codigo: true, descricao: true } } },
+    select: { id: true, tipo: true, data: true, valor: true, historico: true, contaBancariaId: true, lancamentoId: true, contaBancaria: { select: { codigo: true, descricao: true } } },
   });
   if (m === null) return null;
   return {
     id: m.id, tipo: m.tipo, data: m.data, valor: m.valor.toFixed(2), historico: m.historico,
     contaBancaria: `${m.contaBancaria.codigo} — ${m.contaBancaria.descricao}`,
+    contaBancariaId: m.contaBancariaId,
+    lancamentoId: m.lancamentoId,
     anexos: await listarAnexosDoPagamentoOuMovimento(cliente(), { movimentoBancarioId: m.id }, sessao.identificador),
   };
 }

@@ -77,9 +77,11 @@ export async function lerArrecadacoes(p: {
   readonly exercicio: number;
   readonly inicio?: Date | undefined;
   readonly fim?: Date | undefined;
+  readonly naturezaCodigo?: string | undefined;
 }): Promise<ArrecadacaoDoPeriodo> {
   const { linhas, total } = await listarArrecadacoes(cliente(), {
     exercicio: p.exercicio,
+    ...(p.naturezaCodigo !== undefined ? { naturezaCodigo: p.naturezaCodigo } : {}),
     ...(p.inicio !== undefined ? { inicio: p.inicio } : {}),
     ...(p.fim !== undefined ? { fim: p.fim } : {}),
   });

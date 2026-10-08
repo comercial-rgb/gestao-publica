@@ -1,3 +1,5 @@
+import { acoesPermitidas } from "../../../../lib/portas/molde";
+import Link from "next/link";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { subempenhosParaLiquidar } from "../../../../lib/portas/subempenhos";
 import { lerDebitosDosCredores } from "../../../../lib/portas/debitos-do-credor";
@@ -94,7 +96,8 @@ export default async function LiquidacoesPage({
       notasDasLiquidacoes(ids),
       lerAnexosDasLiquidacoes(ids),
     ]);
-    extras = { nomes, notas, anexos };
+    const permitidas = await acoesPermitidas(["PAGAR"]);
+    extras = { nomes, notas, anexos, podePagar: permitidas.has("PAGAR"), exercicio: recorte.exercicio };
     opcoesDeMaterial = opcoes;
     documentos = docs;
     // Só o que ainda tem o que liquidar — e o anulado sai fora: não há saldo num fato
@@ -199,6 +202,9 @@ interface Extras {
   readonly anexos: ReadonlyMap<string, readonly AnexoNaLista[]>;
   /** V37 — o próximo número livre, para a anulação da linha. */
   readonly numeroSugerido?: string;
+  /** V37 — o passo seguinte da trilha: pagar a liquidação com saldo, para quem paga. */
+  readonly podePagar?: boolean;
+  readonly exercicio?: number;
 }
 
 /**
@@ -242,7 +248,7 @@ function colunas(x: Extras): readonly ColunaTabela<LiquidacaoDaTela>[] {
     cabecalho: "Empenho",
     alinhamento: "esquerda",
     largura: "7rem",
-    celula: (l) => l.empenhoNumero,
+    celula: (l) => <Link className="text-[color:var(--color-primary)] hover:underline" href={`/despesa/empenhos/${l.empenhoId}`}>{l.empenhoNumero}</Link>,
   },
   {
     chave: "credor",
@@ -318,9 +324,17 @@ function colunas(x: Extras): readonly ColunaTabela<LiquidacaoDaTela>[] {
     // Só se anula o que ainda não foi pago. Estornável = nada pago (senão o pagamento ficaria órfão).
     celula: (l) =>
       l.saldoAPagar === "0.00" || l.anulado ? (
-        <span className="text-xs text-[color:var(--color-ink-3)]">—</span>
+        <Link className="text-xs text-[color:var(--color-primary)] hover:underline" href={`/despesa/documento/LIQUIDACAO/${l.id}`}>Documento</Link>
       ) : (
-        <FormAnular tipo="liquidacao" id={l.id} anulavelSaldo={l.saldoAPagar} estornavel={l.pago === "0.00"} numeroSugerido={x.numeroSugerido} />
+        <span className="flex flex-col gap-1">
+          {x.podePagar === true ? (
+            <Link className="text-xs font-semibold text-[color:var(--color-primary)] hover:underline" href={`/despesa/pagamentos?exercicio=${String(x.exercicio ?? "")}&liquidacao=${l.id}`} data-proximo-passo="pagar">
+              Pagar
+            </Link>
+          ) : null}
+          <Link className="text-xs text-[color:var(--color-primary)] hover:underline" href={`/despesa/documento/LIQUIDACAO/${l.id}`}>Documento</Link>
+          <FormAnular tipo="liquidacao" id={l.id} anulavelSaldo={l.saldoAPagar} estornavel={l.pago === "0.00"} numeroSugerido={x.numeroSugerido} />
+        </span>
       ),
   },
   ];

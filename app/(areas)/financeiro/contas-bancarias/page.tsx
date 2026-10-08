@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
@@ -111,6 +112,12 @@ export default async function ContasBancariasPage(): Promise<React.ReactElement>
                   {c.identificacaoBancaria === null ? "" : ` · ${c.identificacaoBancaria}`}
                 </span>
               </div>
+              {/* V37 — da conta para o que se faz com ela, sem voltar ao menu. */}
+              <nav aria-label={`Atalhos da conta ${c.codigo}`} className="mt-1 flex flex-wrap gap-3 text-xs" data-chrome data-atalhos-da-conta={c.codigo}>
+                <Link className="text-[color:var(--color-primary)] hover:underline" href={`/financeiro/movimentacao?conta=${c.id}`}>Movimentação e saldo</Link>
+                <Link className="text-[color:var(--color-primary)] hover:underline" href={`/financeiro/conciliacao/periodo?conta=${c.id}`}>Conciliação do período</Link>
+                <Link className="text-[color:var(--color-primary)] hover:underline" href="/financeiro/conciliacao">Conciliação e extratos</Link>
+              </nav>
               <p className="mt-1 text-xs" data-papel={`titular-${c.codigo}`}>
                 {c.titularNome === null ? (
                   <span className="text-[color:var(--color-status-alerta-fg)]">

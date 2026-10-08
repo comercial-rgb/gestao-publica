@@ -36,8 +36,10 @@ export default async function DocumentosDoMovimentoPage({ params }: { readonly p
     <div className="space-y-4">
       <SincronizarContexto />
       <PageHeader titulo="Documentos do movimento bancário" subtitulo={`${ROTULO_TIPO[m.tipo] ?? m.tipo} em ${dataBr(m.data)}`} />
-      <p className="text-sm">
-        <Link className="text-[color:var(--color-primary)] underline" href="/financeiro/movimentacao">Voltar à movimentação bancária</Link>
+      <p className="flex flex-wrap gap-4 text-sm" data-chrome>
+        <Link className="text-[color:var(--color-primary)] underline" href={`/financeiro/movimentacao?conta=${m.contaBancariaId}`}>Voltar à movimentação desta conta</Link>
+        <Link className="text-[color:var(--color-primary)] underline" href={`/contabilidade/lancamentos/${m.lancamentoId}`}>Lançamento contábil</Link>
+        <Link className="text-[color:var(--color-primary)] underline" href={`/financeiro/conciliacao/periodo?conta=${m.contaBancariaId}`}>Conciliação do período</Link>
       </p>
       <Card>
         <dl className="grid gap-3 text-xs sm:grid-cols-3" data-movimento={m.id}>

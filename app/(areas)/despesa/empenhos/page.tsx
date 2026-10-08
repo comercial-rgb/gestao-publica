@@ -139,6 +139,7 @@ export default async function EmpenhosPage({
         }))}
         ordemPadrao={typeof sp["ordemId"] === "string" ? sp["ordemId"] : ""}
         solicitacaoPadrao={typeof sp["solicitacaoId"] === "string" ? sp["solicitacaoId"] : ""}
+        reservaPadrao={typeof sp["reservaId"] === "string" ? sp["reservaId"] : ""}
       />
 
       {empenhos.length === 0 ? (

@@ -20,11 +20,14 @@ export function OperacoesDaFichaSecao({
   disponivel,
   podeReservar,
   podeLiberar,
+  podeEmpenhar = false,
 }: {
   readonly o: OperacoesDaFicha;
   readonly disponivel: string;
   readonly podeReservar: boolean;
   readonly podeLiberar: boolean;
+  /** V37 — o passo seguinte da trilha: empenhar com a reserva, para quem empenha. */
+  readonly podeEmpenhar?: boolean;
 }): React.ReactElement {
   const colunasReserva: readonly ColunaTabela<ReservaDaFicha>[] = [
     { chave: "data", cabecalho: "Data", celula: (r) => dataBr(r.criadoEm) },
@@ -65,8 +68,17 @@ export function OperacoesDaFichaSecao({
           <Link className={LINK} href={`/planejamento/previas/${r.previa.id}`}>
             Bloqueio da {r.previa.rotulo}
           </Link>
-        ) : podeLiberar && (r.liberada || toMoney(r.saldo).greaterThan(0)) ? (
-          <FormLiberarReserva fichaId={o.fichaId} reservaId={r.id} rotulo={`a reserva de ${dataBr(r.criadoEm)}`} liberada={r.liberada} />
+        ) : (podeLiberar && (r.liberada || toMoney(r.saldo).greaterThan(0))) || (podeEmpenhar && !r.liberada && toMoney(r.saldo).greaterThan(0)) ? (
+          <span className="flex flex-wrap items-center gap-3">
+            {podeEmpenhar && !r.liberada && toMoney(r.saldo).greaterThan(0) ? (
+              <Link className={LINK} href={`/despesa/empenhos?exercicio=${String(o.exercicio)}&reservaId=${r.id}`} data-proximo-passo="empenhar">
+                Empenhar com esta reserva
+              </Link>
+            ) : null}
+            {podeLiberar && (r.liberada || toMoney(r.saldo).greaterThan(0)) ? (
+              <FormLiberarReserva fichaId={o.fichaId} reservaId={r.id} rotulo={`a reserva de ${dataBr(r.criadoEm)}`} liberada={r.liberada} />
+            ) : null}
+          </span>
         ) : null,
     },
   ];

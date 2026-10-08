@@ -305,11 +305,14 @@ export async function listarArrecadacoes(
     readonly exercicio: number;
     readonly inicio?: Date | undefined;
     readonly fim?: Date | undefined;
+    /** V37 — o recorte por natureza (código), para o drill-down dos demonstrativos da receita. */
+    readonly naturezaCodigo?: string | undefined;
   }
 ): Promise<ArrecadacoesDoPeriodo> {
   const receitas = await prisma.receitaArrecadada.findMany({
     where: {
       exercicio: p.exercicio,
+      ...(p.naturezaCodigo !== undefined ? { naturezaReceita: { codigo: p.naturezaCodigo } } : {}),
       ...(p.inicio !== undefined || p.fim !== undefined
         ? {
             dataArrecadacao: {

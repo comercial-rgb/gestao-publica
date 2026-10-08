@@ -245,7 +245,7 @@ export default async function APagarPage({ searchParams }: { readonly searchPara
                       {o.fase === "LIQUIDADO_A_PAGAR" && o.situacao === "EXERCICIO" && o.liquidacaoId !== null && permitidas.has("PAGAR") ? (
                         <Link className={LINK} href={`/despesa/pagamentos?exercicio=${String(recorte.exercicio)}&liquidacao=${o.liquidacaoId}`}>Pagar</Link>
                       ) : o.fase === "A_LIQUIDAR" && o.situacao === "EXERCICIO" && permitidas.has("LIQUIDAR") ? (
-                        <Link className={LINK} href={`/despesa/liquidacoes?exercicio=${String(recorte.exercicio)}`}>Liquidar</Link>
+                        <Link className={LINK} href={`/despesa/liquidacoes?exercicio=${String(recorte.exercicio)}&empenho=${o.empenhoId}`}>Liquidar</Link>
                       ) : o.inscricaoId !== null ? (
                         <Link className={LINK} href={`/despesa/restos-a-pagar/${o.inscricaoId}`}>Inscrição em restos</Link>
                       ) : null}

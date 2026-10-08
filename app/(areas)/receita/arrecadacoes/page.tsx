@@ -1,4 +1,5 @@
 import { Badge } from "../../../../components/ui/Badge";
+import { janelaCivilDoMes } from "../../../../packages/datas/index";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
@@ -87,6 +88,14 @@ export default async function ArrecadacoesPage({
     />
   );
 
+  // V37 — o recorte que os demonstrativos da receita mandam (?natureza= e ?mes=AAAA-MM): a lista e o total seguem.
+  const naturezaPedida = typeof sp["natureza"] === "string" && /^\d{8}$/.test(sp["natureza"]) ? sp["natureza"] : undefined;
+  const mesPedido = typeof sp["mes"] === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp["mes"]) ? sp["mes"] : undefined;
+  const janela = mesPedido !== undefined ? janelaCivilDoMes(mesPedido) : undefined;
+  const recorteDaLista = {
+    ...(naturezaPedida !== undefined ? { naturezaCodigo: naturezaPedida } : {}),
+    ...(janela !== undefined ? { inicio: janela.inicio, fim: janela.fim } : {}),
+  };
   let periodo: ArrecadacaoDoPeriodo;
   let naturezas: readonly NaturezaDaTela[];
   let contas: Awaited<ReturnType<typeof lerContasBancariasParaGuia>>;
@@ -95,7 +104,7 @@ export default async function ArrecadacoesPage({
   let copia: CopiaDaArrecadacao | null = null;
   try {
     [periodo, naturezas, contas, copia] = await Promise.all([
-      lerArrecadacoes({ exercicio }),
+      lerArrecadacoes({ exercicio, ...recorteDaLista }),
       lerNaturezasPrevistas({ exercicio }),
       lerContasBancariasParaGuia(),
       duplicar === "" ? Promise.resolve(null) : lerCopiaDaArrecadacao(duplicar),
@@ -121,6 +130,16 @@ export default async function ArrecadacoesPage({
     <div className="space-y-4">
       <SincronizarContexto />
       {cabecalho}
+
+      {naturezaPedida !== undefined || mesPedido !== undefined ? (
+        <p className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-2 text-sm" data-recorte-da-lista>
+          <span>
+            Mostrando só as guias {naturezaPedida !== undefined ? <>da receita <strong>{naturezaPedida}</strong></> : null}
+            {mesPedido !== undefined ? <> de <strong>{mesPedido.split("-").reverse().join("/")}</strong></> : null}.
+          </span>
+          <a className="text-[color:var(--color-primary)] underline" href={`/receita/arrecadacoes?exercicio=${String(exercicio)}`}>Ver todas</a>
+        </p>
+      ) : null}
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         O <strong>total</strong> corresponde à receita realizada líquida (arrecadações menos anulações),

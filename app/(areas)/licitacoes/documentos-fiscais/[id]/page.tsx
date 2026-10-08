@@ -87,7 +87,7 @@ export default async function Detalhe({
             ) : null}
             {detalhe.situacao === "CONFERIDO" ? (
               <Link
-                href="/despesa/liquidacoes"
+                href={detalhe.empenhoId !== null ? `/despesa/liquidacoes?empenho=${detalhe.empenhoId}` : "/despesa/liquidacoes"}
                 className="font-medium text-[color:var(--color-primary)] hover:underline"
               >
                 Liquidar com este documento

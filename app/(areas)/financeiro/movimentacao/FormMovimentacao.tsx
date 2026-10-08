@@ -70,18 +70,21 @@ export function FormMovimentacao({
   contas,
   contasContabeis,
   copia,
+  contaPadrao = "",
 }: {
   readonly contas: readonly ContaParaMovimento[];
   readonly contasContabeis: readonly ContaContabilParaMovimento[];
   /** V36 — preenchimento a partir de um movimento existente; a data fica para o usuário. */
   readonly copia?: CopiaParaMovimento | undefined;
+  /** V37 — a conta que veio do link ("Movimentação e saldo" da conta): o formulário já nasce nela. */
+  readonly contaPadrao?: string;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoMovimento, FormData>(
     registrarMovimentoAction,
     {}
   );
   const ref = useRef<HTMLFormElement>(null);
-  const [contaId, setContaId] = useState(copia?.contaId ?? "");
+  const [contaId, setContaId] = useState(copia?.contaId ?? contaPadrao);
   // ⚠️ `useId` — esta página tem mais de um formulário, e id repetido quebra o
   // `label for` e o leitor de tela. Ver `test/ui/formularios-na-mesma-pagina.test.tsx`.
   const idFontes = `fontes-da-conta-${useId()}`;

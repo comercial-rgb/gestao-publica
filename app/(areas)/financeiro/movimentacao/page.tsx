@@ -71,6 +71,7 @@ export default async function MovimentacaoPage({
         <FormMovimentacao
           key={copia === null ? "nova" : duplicar}
           copia={copia ?? undefined}
+          contaPadrao={contas.some((c) => c.id === contaParam) ? contaParam : ""}
           contas={contas.map((c) => ({
             id: c.id,
             codigo: c.codigo,

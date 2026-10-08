@@ -1,3 +1,4 @@
+import { toMoney } from "../../../../../packages/contracts/index";
 import Link from "next/link";
 import { Badge, type StatusBadge } from "../../../../../components/ui/Badge";
 import { Card } from "../../../../../components/ui/Card";
@@ -180,7 +181,7 @@ export default async function DetalheDoEmpenhoPage({
 
   const d = resultado.dossie;
   // V36 — duplicar é emitir: o formulário só aparece para quem empenha (o domínio cobra de novo, na ficha).
-  const permitidas = await acoesPermitidas(["EMPENHAR", "ANULAR_EMPENHO_PARCIAL"]);
+  const permitidas = await acoesPermitidas(["EMPENHAR", "ANULAR_EMPENHO_PARCIAL", "LIQUIDAR"]);
   const podeDuplicar = permitidas.has("EMPENHAR");
   // V36 (TR 5.10.1.7) — o subempenho só existe no global e no estimativo; a leitura vem depois do dossiê (acesso conferido).
   const repartivel = d.tipo === "GLOBAL" || d.tipo === "ESTIMATIVO";
@@ -206,6 +207,12 @@ export default async function DetalheDoEmpenhoPage({
             Nota de Empenho (PDF)
           </a>
           <BotaoImprimir aoAbrir={imprimirAoAbrir} />
+          {/* V37 — o passo seguinte da trilha, daqui: a liquidação com este empenho já escolhido. */}
+          {permitidas.has("LIQUIDAR") && d.status !== "ANULADO" && toMoney(d.saldoALiquidar).greaterThan(0) ? (
+            <Link href={`/despesa/liquidacoes?exercicio=${d.origem.exercicio}&empenho=${d.id}`} className="rounded-[var(--radius-md)] bg-[color:var(--color-primary)] px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90" data-proximo-passo="liquidar">
+              Liquidar este empenho
+            </Link>
+          ) : null}
           <Link href="/despesa/empenhos" className="text-xs text-[color:var(--color-primary)] hover:underline">
             Voltar à lista de empenhos
           </Link>

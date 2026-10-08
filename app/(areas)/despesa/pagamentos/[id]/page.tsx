@@ -47,8 +47,10 @@ export default async function DocumentosDoPagamentoPage({ params }: { readonly p
     <div className="space-y-4">
       <SincronizarContexto />
       <PageHeader titulo={`Documentos do pagamento ${p.numero}`} subtitulo="Comprovantes e documentos anexados ao pagamento" />
-      <p className="text-sm">
+      <p className="flex flex-wrap gap-4 text-sm" data-chrome>
         <Link className="text-[color:var(--color-primary)] underline" href="/despesa/pagamentos">Voltar aos pagamentos</Link>
+        <Link className="text-[color:var(--color-primary)] underline" href={`/despesa/empenhos/${p.empenhoId}`}>Empenho {p.empenhoNumero}</Link>
+        <Link className="text-[color:var(--color-primary)] underline" href={`/despesa/documento/LIQUIDACAO/${p.liquidacaoId}`}>Liquidação {p.liquidacaoNumero}</Link>
       </p>
       <Card>
         <dl className="grid gap-3 text-xs sm:grid-cols-3" data-pagamento={p.id}>

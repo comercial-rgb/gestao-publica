@@ -35,6 +35,7 @@ export interface OrdemDaTela {
   readonly contaBancaria: string;
   readonly fonteCodigo: string;
   readonly historico: string;
+  readonly liquidacaoId: string;
   readonly liquidacaoNumero: string;
   readonly empenhoNumero: string;
   readonly credorCpfCnpj: string;
@@ -185,6 +186,7 @@ function paraTela(o: OrdemNaLista): OrdemDaTela {
     contaBancaria: o.contaBancaria,
     fonteCodigo: o.fonteCodigo,
     historico: o.historico,
+    liquidacaoId: o.liquidacaoId,
     liquidacaoNumero: o.liquidacaoNumero,
     empenhoNumero: o.empenhoNumero,
     credorCpfCnpj: o.credorCpfCnpj,

@@ -235,10 +235,11 @@ export default async function OrdensDePagamentoPage({
                     <span className="text-[color:var(--color-ink-2)]">
                       Autorizada — registre o pagamento na{" "}
                       <a
-                        href="/despesa/pagamentos"
+                        href={`/despesa/pagamentos?liquidacao=${o.liquidacaoId}`}
+                        data-proximo-passo="pagar"
                         className="text-[color:var(--color-primary)] hover:underline"
                       >
-                        fila de pagamentos
+                        fila de pagamentos, com esta liquidação já escolhida
                       </a>
                       .
                     </span>

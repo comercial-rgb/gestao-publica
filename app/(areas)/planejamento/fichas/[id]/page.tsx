@@ -24,7 +24,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   const [detalhe, operacoes, permitidas] = await Promise.all([
     verFicha(id),
     lerOperacoesDaFicha(id),
-    acoesPermitidas(["RESERVAR_DOTACAO", "LIBERAR_RESERVA"]),
+    acoesPermitidas(["RESERVAR_DOTACAO", "LIBERAR_RESERVA", "EMPENHAR"]),
   ]);
   if (detalhe === null || operacoes === null) notFound();
   const disponivel = detalhe.dados.find((d) => d.rotulo === "Disponível")?.valor ?? "0.00";
@@ -45,6 +45,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
         disponivel={disponivel}
         podeReservar={permitidas.has("RESERVAR_DOTACAO")}
         podeLiberar={permitidas.has("LIBERAR_RESERVA")}
+        podeEmpenhar={permitidas.has("EMPENHAR")}
       />
     </div>
   );

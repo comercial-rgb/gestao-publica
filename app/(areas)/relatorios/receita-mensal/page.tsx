@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
@@ -95,7 +96,7 @@ export default async function ReceitaMensalPage({
               </thead>
               <tbody>
                 {doAno.linhas.map((l) => (
-                  <LinhasDaNatureza key={l.naturezaCodigo} linha={l} comFontes={comFontes} />
+                  <LinhasDaNatureza key={l.naturezaCodigo} linha={l} comFontes={comFontes} exercicio={exercicio} />
                 ))}
                 <tr className="border-t-2 border-[color:var(--color-border-strong)] font-semibold" data-total-geral>
                   <td className="py-1.5 pr-2">Total</td>
@@ -162,12 +163,24 @@ export default async function ReceitaMensalPage({
   );
 }
 
-function LinhasDaNatureza({ linha, comFontes }: { readonly linha: LinhaDaReceitaPorNatureza; readonly comFontes: boolean }): React.ReactElement {
+function LinhasDaNatureza({ linha, comFontes, exercicio }: { readonly linha: LinhaDaReceitaPorNatureza; readonly comFontes: boolean; readonly exercicio: number }): React.ReactElement {
+  // V37 — drill-down: a receita abre as guias dela no exercício, e o valor do mês, as guias daquele mês.
+  const guias = `/receita/arrecadacoes?exercicio=${String(exercicio)}&natureza=${linha.naturezaCodigo}`;
   return (
     <>
       <tr className="border-t border-[color:var(--color-border)]" data-natureza={linha.naturezaCodigo}>
-        <td className="py-1.5 pr-2"><span className="tabular-nums">{linha.naturezaCodigo}</span> {linha.naturezaDescricao}</td>
-        {linha.meses.map((v, i) => <td key={MESES[i]} className={CELULA}><ValorMonetario valor={v} /></td>)}
+        <td className="py-1.5 pr-2"><Link className="text-[color:var(--color-primary)] hover:underline" href={guias}><span className="tabular-nums">{linha.naturezaCodigo}</span> {linha.naturezaDescricao}</Link></td>
+        {linha.meses.map((v, i) => (
+          <td key={MESES[i]} className={CELULA}>
+            {v === "0.00" ? (
+              <ValorMonetario valor={v} />
+            ) : (
+              <Link className="hover:underline" href={`${guias}&mes=${String(exercicio)}-${String(i + 1).padStart(2, "0")}`} aria-label={`Guias da receita ${linha.naturezaCodigo} em ${MESES[i] ?? ""}`}>
+                <ValorMonetario valor={v} />
+              </Link>
+            )}
+          </td>
+        ))}
         <td className="py-1.5 text-right font-semibold" data-total-da-linha><ValorMonetario valor={linha.total} /></td>
       </tr>
       {comFontes

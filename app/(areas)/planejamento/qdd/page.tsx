@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -119,7 +120,7 @@ export default async function QddPage({
       )}
 
       <p className="text-xs text-[color:var(--color-ink-3)]">
-        A <strong>execução</strong> de cada ficha (empenhado, liquidado e pago) pode ser consultada em{" "}
+        O número da ficha abre a ficha, com a reserva, os empenhos dela e o caminho para empenhar. A <strong>execução</strong> de cada ficha (empenhado, liquidado e pago) pode ser consultada em{" "}
         <a href="/despesa/empenhos" className="text-[color:var(--color-primary)] hover:underline">Despesa · Empenhos</a> e no
         RREO Anexo 1.
       </p>
@@ -180,7 +181,7 @@ function Chave({ l }: { readonly l: LinhaQdd }): React.ReactElement {
 }
 
 const COLUNAS: readonly ColunaTabela<LinhaQdd>[] = [
-  { chave: "ficha", cabecalho: "Ficha", alinhamento: "direita", largura: "4rem", celula: (l) => l.numero },
+  { chave: "ficha", cabecalho: "Ficha", alinhamento: "direita", largura: "4rem", celula: (l) => <Link className="text-[color:var(--color-primary)] hover:underline" href={`/planejamento/fichas/${l.fichaId}`}>{l.numero}</Link> },
   { chave: "chave", cabecalho: "Órgão›Unidade›Programa›Função›Subfunção›Ação›Fonte›CO›Natureza", alinhamento: "esquerda", celula: (l) => <Chave l={l} /> },
   { chave: "descricao", cabecalho: "Descrição", alinhamento: "esquerda", celula: (l) => l.naturezaDescricao },
   { chave: "inicial", cabecalho: "Dotação inicial", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.dotacaoInicial} /> },
