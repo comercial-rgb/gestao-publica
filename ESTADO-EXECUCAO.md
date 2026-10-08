@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `343fa0b3` em `apresentacao/contabilidade` (a publicar; a anterior publicada é `129f708`) |
+| HEAD | `3de799a8` em `apresentacao/contabilidade`, publicado como `b1d7e9c` (main e `/release` = `b1d7e9c`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Percurso das compras pela busca 8/8 (do cadastro do material à liquidação com entrada no almoxarifado); 16 arquivos de M05/M08/M10/M16/M33 e o catálogo, 208/208; liquidação de material pela tela, que era recusada desde a V22, corrigida. |
-| Próximo passo | Publicar; conferir na base publicada se houve anulação total com entrada física antes da correção; depois LIQUIDACAO-RECEBIMENTO-DIGITADO e LIQUIDACAO-EMPENHO-EM-LISTA. |
+| Próximo passo | LIQUIDACAO-RECEBIMENTO-DIGITADO e LIQUIDACAO-EMPENHO-EM-LISTA; depois ALMOXARIFADO-MATERIAL-EM-LISTA. |
 
 ### O que passou a funcionar, e a rota
 
@@ -85,8 +85,17 @@ ficou inerte duas vezes depois de recompilar (sem pedido ao catálogo, e "frame.
   lista; o catálogo `materiais-de-estoque` já serve, falta a leitura própria do almoxarifado.
 - `CREDOR-ENCERRADO-NA-PAGINA`: o fornecedor de papel encerrado sai só no filtro depois da consulta; a página pode
   vir mais curta, com "há mais" (como no catálogo de credores do empenho).
-- Em produção, as liquidações de material feitas antes desta correção não existem (eram recusadas); as anulações
-  totais antigas com entrada física, se houver, deixaram a perna física viva — conferir na base publicada.
+- ~~Conferir anulações antigas com entrada física em produção~~: conferido na base publicada, só leitura — 0 material,
+  0 movimento físico, 0 movimento do almoxarifado, 0 credor, 0 ordem de compra. Os defeitos não deixaram dado errado.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37c-20261008T141952Z.dump`; `npm run publicar`
+(tipos aprovados, digesto 63642debed10); Actions 37791882314 verde; `/release` = `b1d7e9c`; sonda de produção só
+leitura 8/8 (as três telas de compras e a de liquidação abrem com a busca e sem `select` de material ou fornecedor; os
+quatro catálogos novos respondem 200) e apagada. Sem migration.
+
+**Atenção para quem usa a produção:** o fornecedor da ordem de compra passou a ser só credor vigente, e a produção
+não tem credor nenhum: a primeira ordem passa pelo "Cadastrar este fornecedor", que concede o papel e volta com ele
+escolhido (percorrido na base fictícia local).
 
 ### Segunda rodada da V37 (08/10/2026): exportação, fornecedor por busca e as guardas que estavam vermelhas
 
