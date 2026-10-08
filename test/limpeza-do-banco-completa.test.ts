@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { afterAll, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "./banco.js";
-import { TABELAS } from "./limpar-banco.js";
+import { limparBanco, truncarTudo } from "./limpar-banco.js";
 
 /**
  * ═══ A LIMPEZA DO BANCO DE TESTE ALCANÇA TODA TABELA? ATÉ AQUI, NINGUÉM CONFERIA (V11 V8.9) ═══
@@ -14,7 +14,10 @@ import { TABELAS } from "./limpar-banco.js";
  * mensagens que apontavam para o domínio ("Republicar a mesma decisão não é um fato novo") — a
  * política publicada no primeiro teste sobrevivendo até o último.
  *
- * ═══ ⚠️ O QUE ESTE GUARD AFIRMA NÃO É "A LISTA CONTÉM TODA TABELA" ═══
+ * ⚠️ V37 — A LISTA SAIU (a limpeza acha as tabelas no catálogo), e com ela os guardas t1 e t2 que a conferiam. Fica
+ * o t3, que afirma o EFEITO. O texto abaixo é a história do guarda antigo.
+ *
+ * ═══ ⚠️ O QUE ESTE GUARD AFIRMAVA NÃO ERA "A LISTA CONTÉM TODA TABELA" ═══
  * Seria uma afirmação ERRADA, e medi-la assim daria 56 acusações falsas. `TRUNCATE ... CASCADE`
  * alcança, além da tabela listada, TODA tabela que a referencia por chave estrangeira — de
  * `ItemDoLote` a `MovimentoDoBordero`, a maior parte do schema é filha de alguém listado e é
@@ -47,50 +50,42 @@ async function tabelasDoBanco(): Promise<readonly string[]> {
   return linhas.map((l) => l.table_name).filter((t) => !FORA_DA_LIMPEZA.has(t));
 }
 
-/** As arestas filha -> mãe, lidas do catálogo do Postgres. */
-async function arestasDeFk(): Promise<readonly { readonly filha: string; readonly mae: string }[]> {
-  return prisma.$queryRawUnsafe<{ readonly filha: string; readonly mae: string }[]>(
-    `SELECT c.conrelid::regclass::text AS filha, c.confrelid::regclass::text AS mae
-       FROM pg_constraint c
-       JOIN pg_class f ON f.oid = c.conrelid
-       JOIN pg_namespace n ON n.oid = f.relnamespace
-      WHERE c.contype = 'f' AND n.nspname = 'public'`
-  );
-}
-
-const semAspas = (t: string): string => t.replaceAll('"', "");
-
 describe("a limpeza do banco de teste alcança TODAS as tabelas", () => {
-  it("t1 — toda tabela do schema é truncada: pela lista ou pelo CASCADE de quem a referencia", async () => {
-    const noBanco = await tabelasDoBanco();
-    const arestas = (await arestasDeFk()).map((a) => ({ filha: semAspas(a.filha), mae: semAspas(a.mae) }));
+  /**
+   * ⚠️ V37 — O EFEITO, NÃO A LISTA. A limpeza deixou de truncar a lista com CASCADE (31 s medidos) e passou a apagar
+   * as tabelas COM LINHA, achadas no catálogo do banco, em passadas até esvaziar. O que se afirma aqui é o que ela
+   * promete: depois dela, NENHUMA tabela do esquema tem linha, e a sequência recomeça. A cadeia órgão → unidade →
+   * ficha tem chaves RESTRICT (a mãe só sai depois da filha); a pessoa leva versão e papel, filhas fora da lista.
+   */
+  it("t3 — depois da limpeza nenhuma tabela do esquema tem linha, e a sequência recomeça", async () => {
+    await limparBanco(prisma);
+    await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
+    await prisma.unidadeOrcamentaria.create({ data: { id: "uo-01", codigo: "02001", descricao: "Educação", orgaoId: "org-01" } });
+    await prisma.funcao.create({ data: { id: "fun-12", codigo: "12", nome: "Educação" } });
+    await prisma.subfuncao.create({ data: { id: "sub-361", codigo: "361", nome: "Ensino fundamental" } });
+    await prisma.programa.create({ data: { id: "prg", codigo: "0010", descricao: "P" } });
+    await prisma.acao.create({ data: { id: "aca", codigo: "2010", descricao: "A", tipo: "ATIVIDADE" } });
+    await prisma.naturezaDespesa.create({ data: { id: "nd-30", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material de consumo" } });
+    await prisma.fonteRecurso.create({ data: { id: "fnt-500", codigo: "500", descricao: "Livre", codigoTce: "500" } });
+    const base = { exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg", acaoId: "aca", naturezaDespesaId: "nd-30", fonteId: "fnt-500", exercicioFonte: 1, valorDotado: "0.00" };
+    await prisma.fichaOrcamentaria.create({ data: { ...base, id: "fic-1", numero: 1 } });
+    await prisma.pessoa.create({ data: { id: "pes", documento: "11222333000181", tipo: "JURIDICA", criadoPor: "t3", versoes: { create: { nome: "Fornecedor", criadoPor: "t3" } }, movimentos: { create: { papel: "CREDOR", movimento: "CONCEDIDO", data: new Date("2026-01-02T15:00:00Z"), criadoPor: "t3" } } } });
+    const sequencia = await prisma.$queryRawUnsafe<{ s: string }[]>(`SELECT pg_get_serial_sequence('"MovimentoPatrimonial"', 'sequencia') AS s`);
+    const nomeDaSequencia = sequencia[0]?.s ?? "";
+    expect(nomeDaSequencia).not.toBe("");
+    await prisma.$queryRawUnsafe(`SELECT nextval('${nomeDaSequencia}'), nextval('${nomeDaSequencia}')`);
 
-    // Fecho transitivo: quem é truncado arrasta quem o referencia.
-    const alcancadas = new Set<string>(TABELAS);
-    let cresceu = true;
-    while (cresceu) {
-      cresceu = false;
-      for (const a of arestas) {
-        if (alcancadas.has(a.mae) && !alcancadas.has(a.filha)) {
-          alcancadas.add(a.filha);
-          cresceu = true;
-        }
-      }
+    await truncarTudo(prisma);
+
+    const comLinha: string[] = [];
+    for (const t of await tabelasDoBanco()) {
+      const r = await prisma.$queryRawUnsafe<{ tem: boolean }[]>(`SELECT EXISTS (SELECT 1 FROM "${t}") AS tem`);
+      if (r[0]?.tem === true) comLinha.push(t);
     }
-
-    // ⚠️ AS DUAS DIREÇÕES, e elas acusam coisas diferentes. `foraDoAlcance` é estado vazando de um
-    // teste para o outro. `naListaSemExistir` é uma tabela removida do schema e esquecida aqui — e
-    // o `TRUNCATE` dela derrubaria a limpeza INTEIRA com "relation does not exist", levando junto
-    // todo arquivo que chama `limparBanco`.
-    const foraDoAlcance = noBanco.filter((t) => !alcancadas.has(t));
-    const naListaSemExistir = [...new Set(TABELAS)].filter((t) => !noBanco.includes(t));
-
-    expect({ foraDoAlcance, naListaSemExistir }).toEqual({ foraDoAlcance: [], naListaSemExistir: [] });
-  });
-
-  it("t2 — e a lista não tem repetição (o TRUNCATE listaria a mesma tabela duas vezes)", () => {
-    const vistas = new Set<string>();
-    const repetidas = TABELAS.filter((t) => (vistas.has(t) ? true : (vistas.add(t), false)));
-    expect(repetidas).toEqual([]);
+    expect(comLinha).toEqual([]);
+    const proximo = await prisma.$queryRawUnsafe<{ n: bigint }[]>(`SELECT nextval('${nomeDaSequencia}') AS n`);
+    expect(String(proximo[0]?.n)).toBe("1");
+    // E o banco volta ao estado que os outros arquivos esperam ao começar.
+    await limparBanco(prisma);
   });
 });

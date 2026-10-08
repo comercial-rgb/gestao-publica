@@ -11,637 +11,15 @@ import { semearLicenciamentoDeTeste } from "./licenciamento-teste.js";
  * e M04 quebraram — eles apagavam o lançamento sem saber que existia um empenho
  * pendurado nele. Cada módulo novo quebraria os anteriores da mesma forma.
  *
- * `TRUNCATE ... CASCADE` é INDEPENDENTE DE ORDEM: o Postgres resolve o grafo de
- * FKs sozinho. Ao criar uma tabela nova, acrescente-a à lista — e só.
+ * ⚠️ V37 — SEM LISTA DE TABELAS. Até aqui havia uma lista de ~490 tabelas para o `TRUNCATE ... CASCADE`, com a
+ * instrução "ao criar uma tabela nova, acrescente-a". A limpeza passou a achar no CATÁLOGO DO BANCO as tabelas com
+ * linha e apagá-las em passadas, independente de ordem (ver `truncarTudo`); a lista não limpava mais nada, e o
+ * guarda que a conferia passou a vigiar papelada. Ele foi trocado pelo efeito: `limpeza-do-banco-completa.test.ts`
+ * t3 afirma que, depois da limpeza, nenhuma tabela do esquema tem linha. Tabela nova não pede cadastro aqui.
  *
  * Só rode isto contra o banco de TESTE (o guarda-chuva de `db-teste.ts` garante
  * que a suíte nunca alcança o de dev).
  */
-export const TABELAS = [
-  // ── ENT02 — M21 protocolo · M22 documentos · M23 comunicação · M24 notificações ──
-  // ── M27 ajuda e suporte ──
-  "PesquisaDeSatisfacao",
-  "MovimentoDoChamado",
-  "Chamado",
-  "NivelDeSeveridade",
-  "AjudaDeRota",
-  // ── M26 designer de relatórios ──
-  "ResultadoDaExecucao",
-  "MovimentoDaExecucao",
-  "ExecucaoDeRelatorio",
-  "DistribuicaoDeModelo",
-  "RetiradaDeModelo",
-  "ColunaDoModelo",
-  "ModeloDeRelatorio",
-  // ── M25 campos adicionais ──
-  "ValorDeCampoAdicional",
-  "OpcaoDeCampoAdicional",
-  "DefinicaoDeCampoAdicional",
-  // A ordem aqui é irrelevante (TRUNCATE CASCADE resolve o grafo), mas a lista tem de
-  // ser COMPLETA: uma tabela esquecida faz o processo 1/2026 de um teste sobreviver ao
-  // seguinte, e a numeração — que reinicia por exercício — passa a começar em 2.
-  "Notificacao",
-  "MovimentoDoComunicado",
-  "DestinatarioDoComunicado",
-  "TagAplicadaAoComunicado",
-  "TagDeComunicado",
-  "Comunicado",
-  "TipoDeComunicadoPorSetor",
-  "TipoDeComunicado",
-  "AssinaturaDeDocumento",
-  "SignatarioDaFila",
-  "FilaDeAssinatura",
-  // ── V7 B1 (cadastro imobiliário e parâmetros do tributo) ──
-  "ParametroTributario",
-  "TabelaDeParametrosTributarios",
-  "EncerramentoDoVinculoComImovel",
-  "VinculoDePessoaComImovel",
-  "AtributoDaVersaoDoImovel",
-  "VersaoDoImovel",
-  "Imovel",
-  // ── V7 M2 U8 (agenda e formulários da fiscalização) ──
-  "RespostaDoFormularioDeOcorrencia",
-  "PerguntaDoFormularioDeOcorrencia",
-  "MudancaDeSituacaoDoTipoDeOcorrencia",
-  "RealizacaoDeFiscalizacao",
-  "CancelamentoDeFiscalizacao",
-  "ReagendamentoDeFiscalizacao",
-  // ── V7 M2 (ponte contratual) ──
-  // U7 — a medição da ordem pela planilha e o estorno da medição (antes do vínculo, do item da planilha e da medição).
-  "ItemMedidoDaOrdemNaPlanilha",
-  "MedicaoDaOrdemNaPlanilha",
-  "EstornoDeMedicaoDaOrdem",
-  "RevogacaoDeVinculoDaPlanilha",
-  "VinculoDeItemDaPlanilhaAoContrato",
-  "ItemDaPlanilhaOrcamentaria",
-  "PlanilhaOrcamentariaDaObra",
-  "PreviaDePlanilhaOrcamentaria",
-  "PublicacaoDaObra",
-  // V36 — as obras previstas na LDO e as audiências públicas (antes da obra, da LDO e do órgão).
-  "ObraPrevistaLdo",
-  "SituacaoDaSolicitacao",
-  "SolicitacaoDaAudiencia",
-  "AudienciaPublica",
-  // A obra sem órgão escapava da limpeza (só caía pela cascata do Orgao): a planilha cria obra sem órgão.
-  "Obra",
-  "EstornoDeAditivoPorItens",
-  "AlteracaoDeItemPorAditivo",
-  "AditivoPorItensDoContrato",
-  "AlocacaoDaLiquidacaoNaParcela",
-  "ItemRecebidoDefinitivamente",
-  "RecebimentoDefinitivo",
-  "DecisaoDeControversia",
-  "ConferenciaDoItemMedido",
-  "RecebimentoProvisorio",
-  "ItemMedidoNaOrdem",
-  "MedicaoDaOrdemDeServico",
-  "MovimentoDeExecucaoDaOrdem",
-  "CancelamentoDeSaldoDaOrdem",
-  "DescarteDaOrdemDeServico",
-  "EmissaoDaOrdemDeServico",
-  "ItemDaOrdemDeServico",
-  "OrdemDeServicoDoContrato",
-  "RegimeDeMedicaoDoContrato",
-  "RevogacaoDeAdministradorDaFiscalizacao",
-  "AdministradorDaFiscalizacao",
-  // ── V7 M2.1 — o contrato acompanhado ──
-  "AprovacaoDeMedicao",
-  "ItemMedido",
-  "MedicaoPorItens",
-  "ResolucaoDeOcorrencia",
-  "OcorrenciaDeFiscalizacao",
-  "OrdemDeFiscalizacao",
-  "VersaoDoTipoDeOcorrencia",
-  "TipoDeOcorrenciaDoEnte",
-  "ItemDoContrato",
-  "RevogacaoDeDesignacaoNoContrato",
-  "DesignacaoNoContrato",
-  // ── V7 M1 U4 — a ouvidoria sem conta e a avaliação dos serviços ──
-  "RemocaoDeAvaliacao",
-  "AvaliacaoDeServico",
-  "MetodologiaDeAvaliacao",
-  "EnvioPublicoSemConta",
-  "RespostaDaOuvidoria",
-  "TriagemDaManifestacao",
-  "ManifestacaoDeOuvidoria",
-  // ── V6.2 P3 — a carta de serviços, as solicitações e a representação ──
-  "AnexoDaSolicitacao",
-  "DecisaoDaSolicitacao",
-  "PropostaDeAlteracaoCadastral",
-  "SolicitacaoDeServico",
-  "PublicacaoDoServico",
-  "VersaoDoServico",
-  "ServicoDaCarta",
-  "RevogacaoDeRepresentacao",
-  "RepresentacaoDePessoa",
-  "Anexo",
-  "MovimentoDaTaxa",
-  "TaxaDoProcesso",
-  "MovimentoDeApensamento",
-  "MovimentoDoProcesso",
-  "RequerenteAdicionalDoProcesso",
-  "EtapaDoProcesso",
-  "Processo",
-  "EtapaDoRoteiro",
-  "Subassunto",
-  "Assunto",
-  "UsuarioDoSetor",
-  "Setor",
-  // Orquestração V3 (4.2) — o registro das atualizações versionadas de permissões. Sem
-  // truncar, a v1 aplicada por um teste "já estaria aplicada" para o seguinte.
-  "AtualizacaoDePermissoes",
-  // V3 (pacote 2) — o vínculo usuário↔pessoa (append-only).
-  "VinculoUsuarioPessoa",
-  // M18 — SAGRES Captura 2.0: execução de submissão
-  "ExecucaoCaptura",
-  // M20 — importadores: tem `arquivoHash` ÚNICO. Sem truncar, o hash de um teste vaza para o
-  // seguinte e a idempotência recusa a PRIMEIRA importação (lição do S7).
-  "ImportacaoArquivo",
-  // M09 — transferência entre contas (TR 5.61)
-  "TransferenciaEntreContas",
-  // M02 — programação financeira: CMD, MBA, limitação (TR 4.18/4.43/4.44)
-  "CotaCmd",
-  "VersaoCmd",
-  "MetaMba",
-  "VersaoMba",
-  "LiberacaoProgramacao",
-  "PeriodicidadeDasCotasCmd",
-  "EventoLimitacaoEmpenho",
-  "TemplateDecreto",
-  // M16 — autenticação e registro de operação (TR 4.55 · 6.1-6.3)
-  "RegistroDeOperacao",
-  "ComandoDeBorda",
-  "TentativaDeLogin",
-  "SessaoRevogada",
-  "SessaoAberta",
-  "CredencialDeUsuario",
-  // M16 — travamento, usuários, perfis e permissões (TR 4.52-4.56)
-  "MovimentoTravamento",
-  "VinculoUsuarioPerfil",
-  "PermissaoDePerfil",
-  "Perfil",
-  "Usuario",
-  // M05 — roteiro do subsistema orçamentário
-  "RoteiroOrcamentario",
-  // M05 V8.9 — o eixo da dotação adicional, e o roteiro do ramo por fonte
-  "PoliticaDaDotacaoAdicional",
-  "RoteiroDaDotacaoPorFonte",
-  // ⚠️ AS TRÊS QUE O GUARD DA V8.9 ENCONTROU — e elas estavam de fora há lotes.
-  //
-  // Nenhuma tem chave estrangeira para tabela nenhuma, então o `TRUNCATE ... CASCADE` (que é o
-  // que limpa a maior parte do schema sem estar nesta lista) nunca chegava nelas: o de-para do
-  // SIGA e a certidão de fornecedor de um teste sobreviviam ao arquivo seguinte. Ver
-  // `limpeza-do-banco-completa.test.ts`, que afirma o ALCANCE — lista mais fecho do CASCADE —
-  // em vez de confiar em quem cria tabela lembrar desta lista.
-  "CertidaoFornecedor",
-  "DeParaContaSiga",
-  "DeParaFonteSiga",
-  // ── M10 — o histórico da política de divulgação de localização (V10 T3) ──
-  "MudancaDaDivulgacaoDaLocalizacao",
-  // ── M34 B2 — lançamento tributário e certidão (V10 T2) ──
-  "BaseConsultadaNaCertidao",
-  "SolicitacaoDeCertidao",
-  "VersaoDaConfiguracaoDaCertidao",
-  "CorrecaoDoLancamento",
-  "ConstituicaoDoLancamento",
-  "VencimentoDoLancamento",
-  "ResponsavelPeloLancamento",
-  "LancamentoTributario",
-  "LoteDeLancamentoTributario",
-  // ── M35 — licenciamento comercial (V10 T1). Antes do EnteConfig na lista por clareza; a
-  // ordem é irrelevante (TRUNCATE CASCADE resolve o grafo), a COMPLETUDE não é. ──
-  "EventoDeLicenciamento",
-  "HabilitacaoDeModulo",
-  "ContratoComercial",
-  // M14 — exports federais (config do ente e matriz de ICs exigidas)
-  "EnteConfig",
-  "IcExigidaPorConta",
-  // M21 — a configuracao do acesso a informacao (V11 V5.1). Nasce vazia em producao, e e assim que
-  // os testes tem de encontra-la: uma configuracao deixada por um arquivo de teste faria o seguinte
-  // medir prazo contra uma norma que ele nao publicou.
-  "VersaoDaConfiguracaoDoAcessoAInformacao",
-  // M14 — eSocial (V11 V2.1): o REGISTRO do leiaute. Nascem vazias em produção e é assim que os
-  // testes têm de encontrá-las — um pacote deixado por um arquivo de teste faria o seguinte medir
-  // consistência contra um leiaute que ele não registrou.
-  "LeiauteDoESocial",
-  "EventoDoLeiaute",
-  "CampoDoEvento",
-  // M14 — MANAD (registros 0050 e 0100)
-  "ManadContabilista",
-  "VersaoDaApresentacaoDoEnte",
-  "ManadEmpresaGeradora",
-  // M12 — mapeamento dos demonstrativos (parametrização)
-  "PrefixoDaLinha",
-  "LinhaDemonstrativo",
-  // M10 — almoxarifado e provisões
-  // ── ENT05 — M11 A COMPRA (TR 5.17) ──
-  "MovimentoDoDocumentoFiscal",
-  "ItemDeDocumentoFiscal",
-  "DocumentoFiscalRecebido",
-  "AlocacaoDeSolicitacaoNaOrdem",
-  "MovimentoDaOrdemDeCompra",
-  "RecebimentoDeItem",
-  "RecebimentoDeOrdem",
-  "ItemDeOrdemDeCompra",
-  "OrdemDeCompra",
-  "CotacaoDePreco",
-  "ItemDePesquisaDePrecos",
-  "PesquisaDePrecos",
-  "MovimentoDaSolicitacao",
-  "ItemDeSolicitacaoDeCompra",
-  "SolicitacaoDeCompra",
-  "MaterialElementoDespesa",
-  "MaterialMarca",
-  "MarcaAprovada",
-  // ── ENT05 ITEM 3 — o repontamento de conta ──
-  "MigracaoDeConta",
-  // ── ENT05 — M10 patrimônio, EIXO DE GESTÃO (TR 5.19) ──
-  "ItemDeTermoPatrimonial",
-  "TermoPatrimonial",
-  "ContagemDeBem",
-  "InventarioDeBens",
-  "MovimentoDeGestaoDoBem",
-  "MembroDeComissaoPatrimonial",
-  "ComissaoPatrimonial",
-  "LocalizacaoFisica",
-  "FormulaDeAvaliacao",
-  "MotivoDeBaixa",
-  "TipoDeIncorporacao",
-  // ── ENT05 — M10 almoxarifado, EIXO FÍSICO (TR 5.18) ──
-  "ContagemDeInventario",
-  "InventarioDeEstoque",
-  "BloqueioDeEstoque",
-  "CotaDeConsumo",
-  "MovimentoFisicoDeEstoque",
-  "ItemDeRequisicaoDeMaterial",
-  "RequisicaoDeMaterial",
-  "LoteDeMaterial",
-  "ParametroDeEstoque",
-  "MaterialUnidade",
-  "Material",
-  "GrupoDeMaterial",
-  "UnidadeDeMedida",
-  "Deposito",
-  "MovimentoAlmoxarifado",
-  "RoteiroAlmoxarifado",
-  "ClasseDeMaterial",
-  "MovimentoProvisao",
-  "RoteiroProvisao",
-  "ProvisaoMatematica",
-  // M10 — dívida ativa
-  "MovimentoDividaAtiva",
-  "RoteiroDividaAtiva",
-  "DividaAtiva",
-  // M10 — dívida consolidada
-  "ParcelaDaDivida",
-  "MovimentoDivida",
-  "RoteiroDivida",
-  "DividaConsolidada",
-  // M11 — licitações e contratos
-  "MovimentoContratual",
-  "Contrato",
-  "HomologacaoProcesso",
-  "ProcessoLicitatorio",
-  "LimiteContratacao",
-  // M02b — planejamento plurianual (V4 §8): filhos antes dos pais, por legibilidade (o CASCADE resolve)
-  "AplicacaoAlienacaoLdo",
-  "AlienacaoBemLdo",
-  "MargemExpansaoLdo",
-  "ProjecaoAtuarialRpps",
-  "DividaConsolidadaLdo",
-  "RenunciaReceitaLdo",
-  "RiscoFiscal",
-  "MetaAnualLdo",
-  "PrioridadeLdo",
-  "LeiDiretrizesOrcamentarias",
-  "ReceitaAnteriorPpa",
-  "PrevisaoReceitaPpa",
-  // V36 — o código reduzido da despesa do PPA (antes do plano e da classificação).
-  "CodigoReduzidoDaDespesaPpa",
-  "AcaoPpa",
-  "IndicadorPrograma",
-  "ProgramaPpa",
-  "Macroacao",
-  "PublicoAlvo",
-  "AreaTematica",
-  "EixoEstruturante",
-  // V36 — as transferências financeiras previstas no PPA (antes do plano e da entidade).
-  "PrevisaoDeTransferenciaPpa",
-  "PlanoPlurianual",
-  // M10 — patrimonial
-  "MemoriaDeAtualizacao",
-  "ExecucaoDeAtualizacao",
-  "VersaoDeParametroDeAtualizacao",
-  "MovimentoPatrimonial",
-  "BemPatrimonial",
-  "RoteiroPatrimonial",
-  "ClasseDeBens",
-  // M09 — tesouraria (extrato + conciliação)
-  "VinculoConciliacao",
-  "AtribuicaoDeContaDaArrecadacao",
-  // V11 V9 — a entidade contábil. ⚠️ AS TRÊS FILHAS AQUI, A MÃE LÁ EMBAIXO: estas apontam para
-  // `ReceitaArrecadada` e `ContaBancaria`, e por isso saem ANTES delas; `EntidadeContabil` é
-  // apontada por `ReceitaArrecadada`, e por isso sai DEPOIS. Juntar as quatro num bloco só
-  // quebraria a FK numa ponta ou na outra.
-  "AtribuicaoDeEntidadeDaArrecadacao",
-  // V35 — a dedução da receita realizada e o parâmetro do limite do Legislativo (este sem FK nenhuma: só a lista o alcança)
-  "DeducaoDaReceitaRealizada",
-  "ParametroDoLimiteDoLegislativo",
-  // V35 — filha de FonteRecurso: sai antes dela
-  "FonteForaDoLimiteDeSuplementacao",
-  // V35 C2 — as notas explicativas: sem FK
-  "NotaExplicativa",
-  // V35 — o Anexo 10 do RREO: as linhas antes da projeção
-  // V35 A3 — o controle 5.3/6.3 dos restos: o elo antes da inscrição e do lançamento; as contas antes da declaração
-  "ControleDoRestoAPagar",
-  "ContaDoControleDosRestos",
-  "DeclaracaoDoControleDosRestos",
-  "LinhaDaProjecaoAtuarialDoRreo",
-  "ProjecaoAtuarialDoRreo",
-  // V35 — o ajuste para perdas: a apuração aponta o percentual e o lançamento; sai antes dos dois
-  "ApuracaoDoAjusteDePerdas",
-  "PercentualDePerdaDaDividaAtiva",
-  // V35 — a apropriação do 13º e das férias: itens antes da apropriação, ela antes do parâmetro e do lançamento
-  "ItemDaApropriacaoPorCompetencia",
-  "ApropriacaoPorCompetencia",
-  "ParametroDaApropriacaoDeFerias",
-  "BaixaDoAdiantamentoDoDecimoTerceiro",
-  "AcertoDoDecimoTerceiro",
-  "DeclaracaoDeTitularDaConta",
-  "VersaoDaEntidadeContabil",
-  // V6 P2 — M32 pessoal (filhas antes das mães)
-  "ProrrogacaoContratoTrabalho",
-  "ContratoTrabalho",
-  "AvaliacaoExperiencia",
-  // M33 folha (V6 P2.3) — filhas antes das mães
-  // V6.1 — a certificação (atesto) e a liquidação da folha
-  // V6.2 — os encargos do empregador
-  // V7 M1 U3 — o ajuste para baixo e a guia de recolhimento
-  "CancelamentoDaGuia",
-  "BaixaDaGuia",
-  "GuiaDeRecolhimento",
-  "AjusteDosEncargos",
-  "LiquidacaoDosEncargos",
-  "EmpenhoDosEncargos",
-  "CertificacaoDosEncargos",
-  "ApuracaoDeEncargos",
-  "ComponenteDoGrupoDeEmpenho",
-  // V24 — o FAP e a aprovação dele.
-  "AprovacaoDoFatorAcidentario",
-  "FatorAcidentarioDePrevencao",
-  "EstabelecimentoDaLotacao",
-  "AprovacaoDoEncargo",
-  "IncidenciaDoEncargo",
-  "VersaoDoEncargo",
-  "ComponenteDeEncargo",
-  "LiquidacaoDaFolha",
-  "CertificacaoDaFolha",
-  "RevogacaoDeDesignacao",
-  "DesignacaoNaFolha",
-  "EmpenhoDaFolha",
-  "ApropriacaoDaFolha",
-  "RubricaDoGrupoDeEmpenho",
-  "GrupoDeEmpenhoDaFolha",
-  "LinhaDoContracheque",
-  "Contracheque",
-  "FechamentoDaFolha",
-  "CancelamentoDoCalculo",
-  // V11 V9.5 — o FATO de abrangência vem ANTES do cálculo, e a ausência dele aqui não era
-  // cosmética: `AbrangenciaDoCalculo_calculoId_fkey` é RESTRICT, então `limparBanco` falhava ao
-  // apagar `CalculoDaFolha` e o `beforeEach` derrubava o teste seguinte com um erro de FK que não
-  // fala do assunto nenhum — três casos de `m33-versao-da-rubrica` vermelhos por isso. É a mesma
-  // armadilha que `FuncaoDePessoal` já tinha armado: tabela nova que nenhum compilador cobra daqui.
-  "AbrangenciaDoCalculo",
-  "CalculoDaFolha",
-  "FolhaDePagamento",
-  "LancamentoDaFolha",
-  // V11 V4.2 — a coluna declarada vem antes da política (FK).
-  "ColunaPublicadaDePessoal",
-  "PoliticaDePublicacaoDePessoal",
-  // V11 V9.1 — o parâmetro do 13º: a FILHA antes da MÃE, e as duas antes de `Rubrica`.
-  // `RubricaDaBaseDoDecimoTerceiro` aponta para `ParametroDoDecimoTerceiro` e para `Rubrica`; o
-  // parâmetro aponta para `Rubrica` três vezes (13º, adiantamento e abatimento). Sem as duas
-  // aqui, `limparBanco` no `beforeEach` deixaria o parâmetro do caso anterior de pé — e o teste
-  // da "versão vigente" passaria pelo motivo errado, lendo a versão de outro caso.
-  "RubricaDaBaseDoDecimoTerceiro",
-  "ParametroDoDecimoTerceiro",
-  // ⚠️ V13 — O PARÂMETRO DO ADIANTAMENTO SALARIAL VEM ANTES DE `Rubrica`, e nenhum compilador
-  // cobra esta linha. Ele aponta para `Rubrica` DUAS vezes (adiantamento e abatimento) com FK
-  // RESTRICT: sem ele aqui, `limparBanco` falharia ao apagar `Rubrica` e o `beforeEach`
-  // derrubaria o teste SEGUINTE com um erro de FK que não fala do assunto nenhum — a mesma
-  // armadilha que `AbrangenciaDoCalculo` e `FuncaoDePessoal` já armaram nesta suíte.
-  "ParametroDoAdiantamentoSalarial",
-  // V11 V1.1 — as versões e as dependências vêm antes da rubrica (FK).
-  "DependenciaDaVersaoDaRubrica",
-  "VersaoDaRubrica",
-  "Rubrica",
-  "FaixaIrrf",
-  "TabelaIrrf",
-  "FaixaDeContribuicao",
-  "TabelaDeContribuicao",
-  "TabelaSalarioFamilia",
-  "AnotacaoServidor",
-  "HistoricoVinculo",
-  "EncerramentoDeFinalidadeDependente",
-  "FinalidadeDependente",
-  "Dependente",
-  "Treinamento",
-  "Portaria",
-  "Vinculo",
-  "Servidor",
-  "CalendarioRh",
-  "Lotacao",
-  "Cargo",
-  // ⚠️ V11 V9.4 — a FUNÇÃO DE PESSOAL (TR 5.12.50). A ausência dela aqui NÃO dá erro de
-  // compilação nem de schema: dá um segundo teste que falha por `codigo` duplicado, porque a
-  // fixture do primeiro sobreviveu ao `beforeEach`. Foi assim que ela foi descoberta — doze
-  // testes vermelhos num arquivo cujo primeiro caso passava.
-  "FuncaoDePessoal",
-  "LancamentoExtrato",
-  "ExtratoBancario",
-  // M07 — extraorçamentário
-  // V26 — a retenção própria do Tesouro (elo pagamento → receita) e a classificação do ente.
-  // V26 — o cadastro que o SAGRES pede (programa, ação, ordenador, responsável pelo sistema, receita prevista, Tramita).
-  "DeclaracaoDoPrograma",
-  "DeclaracaoDaAcao",
-  "EncerramentoDaDesignacaoDeOrdenador",
-  "DesignacaoDeOrdenador",
-  "DeclaracaoDoResponsavelSiafic",
-  "DetalheDaReceitaPrevista",
-  "IdentificacaoNoTramita",
-  "LicitacaoNoTribunal",
-  "NormaOrcamentariaNoTce",
-  "AgrupamentoDaFolhaNaLiquidacao",
-  "DotacaoDoProjetoDaLoa",
-  "ReceitaDoProjetoDaLoa",
-  "ProgramaDoProjetoDaLoa",
-  "AcaoDoProjetoDaLoa",
-  "UnidadeDoProjetoDaLoa",
-  "VersaoDoProjetoDaLoa",
-  // V29 — a proposta orçamentária do exercício seguinte (antes da ficha e da receita prevista de origem).
-  "EfetivacaoDaProposta",
-  "AjusteDeReceitaDaProposta",
-  "LinhaDeReceitaDaProposta",
-  // V36 — emendas ao projeto da LOA
-  "ItemSancionado",
-  "SancaoDaEmenda",
-  "ItemDaEmenda",
-  "EmendaAoOrcamento",
-  "BloqueioDeEmenda",
-  "AjusteDeDespesaDaProposta",
-  "LinhaDeDespesaDaProposta",
-  "PropostaOrcamentaria",
-  "TransferenciaEntreUgs",
-  "ContabilizacaoDaTransferenciaEntreUgs",
-  // V27 — frota (M36) e farmácia pública (M37).
-  "AnulacaoDeAbastecimento",
-  "AbastecimentoDaFrota",
-  // V36 — as multas de trânsito (antes do veículo e da pessoa).
-  "BaixaDaMultaDeTransito",
-  "MultaDeTransito",
-  "AnulacaoDeSituacaoDaFrota",
-  "MudancaDeSituacaoDaFrota",
-  "VersaoDoVeiculo",
-  "VeiculoDaFrota",
-  "VersaoDaMaquina",
-  "MaquinaDaFrota",
-  "ItemDoInformeDeEstoque",
-  "InformeDeEstoqueDaFarmacia",
-  "VersaoDaFarmacia",
-  "FarmaciaPublica",
-  "EncerramentoDaUnidadeGestora",
-  "UnidadeGestora",
-  "IrDoContrachequeRetido",
-  "ApropriacaoDaConsignacaoPropria",
-  "RetencaoPropriaDoPagamento",
-  "ClassificacaoDaRetencaoPropria",
-  // V24 — retenção calculada: a memória, o perfil fiscal e as tabelas normativas.
-  "CalculoDaRetencao",
-  "PerfilFiscalDoFornecedor",
-  "NaturezaDaRetencaoDoIR",
-  "ServicoDaRetencaoPrevidenciaria",
-  "ParametroDaRetencaoPrevidenciaria",
-  "BaseMinimaDaRetencaoPrevidenciaria",
-  "ItemDaListaDoISS",
-  "MovimentoExtraorcamentario",
-  "TipoConsignacao",
-  // M08 — exercício / restos a pagar
-  "RoteiroEncerramento",
-  "ContaNaVirada",
-  "MovimentoRestosAPagar",
-  "InscricaoRestosAPagar",
-  "EncerramentoExercicio",
-  "Exercicio",
-  // M06 — ordem cronológica
-  "JustificativaQuebraOrdem",
-  // M03 — créditos adicionais
-  // V36 — a prévia da alteração orçamentária (antes do decreto, da reserva e da ficha).
-  "DesfechoDaPrevia",
-  "AprovacaoDaPrevia",
-  "ItemDaPrevia",
-  "PreviaDeAlteracao",
-  "ItemCredito",
-  "DecretoEncerramento",
-  // M03 V21 — a realocação por lei específica (remanejamento, transposição, transferência).
-  "ItemDeRealocacao",
-  "AnulacaoDeRealocacao",
-  "AtoDeRealocacao",
-  // M02 V21 — a declaração da unidade para a prestação de contas.
-  "DeclaracaoDaUnidadeOrcamentaria",
-  "DecretoCredito",
-  "LeiCredito",
-  "DisponibilidadeRecursoNovo",
-  // V36 — os cheques (de pagamento e avulsos) e o cancelamento do avulso.
-  "CancelamentoDeCheque",
-  "Cheque",
-  // M05 — despesa
-  "Pagamento",
-  "Liquidacao",
-  // V36 — o subempenho (depois da liquidação que o informa, antes do empenho).
-  "AnulacaoDeSubempenho",
-  "Subempenho",
-  "ContaBancaria",
-  "MovimentoDotacao",
-  "ReservaEmpenho",
-  "Empenho",
-  // V22 — o numerador dos documentos que o sistema numera (sem FK: a chave é texto).
-  "NumeroReservado", "ContaDoPlanoDoTribunal", "ImportacaoDoPlanoDoTribunal",
-  // V22 — a campanha publicitária (M05), vínculo da nota de empenho.
-  "CampanhaPublicitaria",
-  // V22 — a Lei Orçamentária Anual (projeto e aprovação).
-  "LeiOrcamentariaAnual",
-  "AprovacaoDaLeiOrcamentaria",
-  "ReservaDotacao",
-  // M04 — receita
-  "ReceitaArrecadada",
-  "TipoLancamentoReceitaSagres",
-  // V11 V9 — a MÃE, depois de `ContaBancaria` e de `ReceitaArrecadada`, que a apontam. As três
-  // filhas estão lá em cima, ao lado de `AtribuicaoDeContaDaArrecadacao`.
-  "EntidadeContabil",
-  // M01 — ledger
-  "PartidaContabil",
-  "LancamentoContabil",
-  "ContaPcasp",
-  // M02 — planejamento
-  // V36 — as fontes de cada natureza da receita, com percentual (antes da natureza e da fonte).
-  "ItemDaComposicaoDeFontes",
-  "ComposicaoDeFontesDaNatureza",
-  "ReceitaPrevista",
-  "ReceitaReprevista",
-  "DeParaRclAnexo3",
-  "DeParaOrgaoPoder",
-  "DeParaBaseImpostoAsps",
-  "DeParaFonteClasseAsps",
-  "DeParaFundebReceita",
-  "DeParaFonteClasseEducacao",
-  // V11 V9.3 — a natureza da fonte para o controle da disponibilidade (PCASP 7.2.1.1).
-  "DeParaFonteNaturezaDdr",
-  "ContaDaLiquidacaoPorElemento",
-  "DescontoDoContrachequeRetido",
-  "ConsignacaoDaRubrica",
-  "ContaDaReceitaPorNatureza",
-  "DecisaoDaPrestacaoDoAdiantamento",
-  "PrestacaoDeContasDoAdiantamento",
-  "ConcessaoDeAdiantamento",
-  "RoteiroPatrimonialDeclarado",
-  "DeParaReceitaAlienacao",
-  "DeParaFonteAlienacao",
-  // V36 — as emendas ao PPA e à LDO (filhos antes da emenda).
-  "ItemSancionadoDoPlanejamento",
-  "SancaoDaEmendaAoPlanejamento",
-  "ItemDaEmendaAoPlanejamento",
-  "BloqueioDeEmendaAoPlanejamento",
-  "EmendaAoPlanejamento",
-  // V36 — a situação e as parcelas da parceria (antes do contrato).
-  "SituacaoDaPpp",
-  "ParcelaDaPpp",
-  "ContratoPPP",
-  "TipoReceitaSagres",
-  "FichaOrcamentaria",
-  "Subelemento",
-  "NaturezaDespesa",
-  "NaturezaReceita",
-  "CodigoAcompanhamento",
-  "FonteRecurso",
-  "Acao",
-  "Programa",
-  "Subfuncao",
-  "Funcao",
-  "UnidadeOrcamentaria",
-  "Orgao",
-  // M05 — T07: a ordem de pagamento (movimentos antes da ordem, pela FK)
-  "MovimentoDaOrdemDePagamento",
-  "MovimentoDaSolicitacaoDeEmpenho",
-  "SolicitacaoDeEmpenho",
-  "OrdemDePagamento",
-  // M19 — pessoas e credores (cadastro append-only: pessoa, versões e papéis)
-  "MovimentoDePapelDaPessoa",
-  "VersaoDePessoa",
-  "Pessoa",
-  // base — integração
-  "IntegracaoInbox",
-  "EventoFiscalOutbox",
-] as const;
 
 /**
  * SÓ A LIMPEZA, sem semear ninguém.
@@ -655,6 +33,8 @@ export const TABELAS = [
  * Todo o resto da suíte continua usando `limparBanco`.
  */
 /**
+ * (HISTÓRIA, até a V37: a forma por TRUNCATE. A medição que a substituiu está dentro da função.)
+ *
  * ⚠️ TRUNCA SÓ O QUE TEM LINHA — E ISSO FOI MEDIDO, NÃO SUPOSTO.
  *
  * `TRUNCATE` de 141 tabelas VAZIAS custava **1,8 segundo**. O custo não é das linhas:
@@ -681,23 +61,72 @@ export const TABELAS = [
  * hoje (a suíte é serial), e a espécie de coisa que deixa de ser inofensiva sem aviso.
  */
 export async function truncarTudo(prisma: PrismaClient): Promise<void> {
-  const existencias = TABELAS.map(
-    (t) => `SELECT '"${t}"' AS t WHERE EXISTS (SELECT 1 FROM "${t}")`
-  ).join(" UNION ALL ");
-
-  // ⚠️ O DELIMITADOR É NOMEADO (`$limpeza$`), E NÃO `$$` — E ISSO CUSTOU UMA DEPURAÇÃO.
-  // Com `$$`, o driver ACEITA a chamada, não levanta erro nenhum e NÃO EXECUTA o bloco:
+  // ⚠️ V37 — DELETE NAS TABELAS COM LINHA, NÃO TRUNCATE ... CASCADE. Medido no banco de teste, depois de um arquivo
+  // deixar 28 tabelas com linha: a detecção custou 0,4 s e o `TRUNCATE <28> CASCADE` custou 31 s (em outra corrida,
+  // 13,6 s). O CASCADE arrasta o fecho das chaves estrangeiras — centenas de tabelas VAZIAS —, e cada uma (e cada
+  // índice) ganha um relfilenode novo no volume do Docker. Era a causa dos "Hook timed out in 10000ms" no PRIMEIRO
+  // teste de cada arquivo (a limpeza do que o arquivo anterior deixou), que a V36 e a V37 atribuíram a inchaço.
+  //
+  // O DELETE só toca o que tem linha. Sem ordem conhecida, ele repete as passadas: a tabela recusada por chave
+  // estrangeira (uma filha ainda com linha) fica para a passada seguinte. O que sobrar preso (um ciclo) vai para o
+  // TRUNCATE antigo — correto e lento, nunca errado. Toda sequência de tabela do esquema recomeça, como o
+  // RESTART IDENTITY com CASCADE fazia (ele alcançava as tabelas vazias também).
+  //
+  // ⚠️ A DETECÇÃO PERCORRE O CATÁLOGO DO BANCO, NÃO A LISTA: a lista só alcança as filhas pelo CASCADE (ver
+  // limpeza-do-banco-completa.test.ts). Sem o CASCADE, uma filha com linha fora da lista seguraria a mãe — e o estado
+  // vazaria. O banco diz quais tabelas existem; _prisma_migrations é a exceção nomeada de sempre.
+  //
+  // ⚠️ O DELIMITADOR É NOMEADO ($limpeza$), E NÃO $$ — E ISSO CUSTOU UMA DEPURAÇÃO.
+  // Com $$, o driver ACEITA a chamada, não levanta erro nenhum e NÃO EXECUTA o bloco:
   // o banco continua com as linhas do teste anterior, e a falha aparece longe daqui,
   // como "Unique constraint failed on Perfil.nome" no arquivo seguinte. Um delimitador
   // com nome não colide com a substituição de parâmetros do driver.
   await prisma.$executeRawUnsafe(`
     DO $limpeza$
-    DECLARE lista text;
+    DECLARE
+      tabela text;
+      tem boolean;
+      com_linha text[] := '{}';
+      restantes text[];
+      apagou boolean;
+      passadas int := 0;
+      seq text;
     BEGIN
-      SELECT string_agg(t, ', ') INTO lista FROM (${existencias}) q;
-      IF lista IS NOT NULL THEN
-        EXECUTE 'TRUNCATE TABLE ' || lista || ' RESTART IDENTITY CASCADE';
+      FOR tabela IN
+        SELECT quote_ident(c.relname) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND c.relname <> '_prisma_migrations'
+      LOOP
+        EXECUTE 'SELECT EXISTS (SELECT 1 FROM ' || tabela || ')' INTO tem;
+        IF tem THEN com_linha := com_linha || tabela; END IF;
+      END LOOP;
+      restantes := com_linha;
+      WHILE cardinality(restantes) > 0 AND passadas < 200 LOOP
+        passadas := passadas + 1;
+        apagou := false;
+        FOREACH tabela IN ARRAY restantes LOOP
+          BEGIN
+            EXECUTE 'DELETE FROM ' || tabela;
+            restantes := array_remove(restantes, tabela);
+            apagou := true;
+          -- Qualquer recusa de integridade (classe 23): a chave da filha (RESTRICT), ou a ação SET NULL de uma filha que
+          -- bate num CHECK ou NOT NULL dela (medido: HistoricoVinculo). A filha também tem linha e sai numa passada; a mãe
+          -- tenta de novo na seguinte.
+          EXCEPTION WHEN integrity_constraint_violation THEN NULL;
+          END;
+        END LOOP;
+        EXIT WHEN NOT apagou;
+      END LOOP;
+      IF cardinality(restantes) > 0 THEN
+        EXECUTE 'TRUNCATE TABLE ' || array_to_string(restantes, ', ') || ' RESTART IDENTITY CASCADE';
       END IF;
+      FOR seq IN
+        SELECT DISTINCT s.oid::regclass::text FROM pg_class s
+          JOIN pg_depend d ON d.objid = s.oid AND d.classid = 'pg_class'::regclass AND d.deptype IN ('a', 'i')
+          JOIN pg_class t ON t.oid = d.refobjid JOIN pg_namespace tn ON tn.oid = t.relnamespace
+         WHERE s.relkind = 'S' AND tn.nspname = 'public'
+      LOOP
+        EXECUTE 'ALTER SEQUENCE ' || seq || ' RESTART';
+      END LOOP;
     END $limpeza$;
   `);
 }
