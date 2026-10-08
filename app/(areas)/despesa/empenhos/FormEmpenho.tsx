@@ -372,7 +372,7 @@ export function FormEmpenho({
             type="search"
             value={buscaFicha}
             onChange={(e) => setBuscaFicha(e.target.value)}
-            placeholder="Número, natureza, fonte, unidade, programa ou ação"
+            placeholder="Número, natureza, fonte, unidade, programa, ação ou código reduzido"
             className={CAMPO}
             data-busca-da-ficha
           />

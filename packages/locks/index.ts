@@ -436,9 +436,16 @@ export const ORDEM_DOS_LOCKS = {
    * mais recente por `criadoEm`; sem serializar as publicações da mesma natureza, a hora gravada seria a do início de
    * cada transação, e a que terminasse por último poderia não ser a vigente. Trava, e só então carimba a hora.
    *
-   * ⚠️ ÚLTIMO POSTO: a publicação não trava mais nada.
+   * ⚠️ A publicação não trava mais nada depois.
    */
   NaturezaDaReceita: 43,
+  /**
+   * V36 — O PLANO PLURIANUAL na atribuição dos códigos reduzidos da despesa (M02b, `codigo-reduzido.ts`): o número é o
+   * próximo do plano, e duas ações cadastradas ao mesmo tempo leriam o mesmo "último". Trava o plano, e só então lê.
+   *
+   * ⚠️ ÚLTIMO POSTO: a atribuição não trava mais nada.
+   */
+  PlanoPlurianual: 44,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

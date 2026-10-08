@@ -62,6 +62,8 @@
 /// virar na passagem do quadriênio. É a mesma doutrina do `LimiteContratacao`
 /// (M11), onde o limite vigente é o de maior `vigenciaInicio <= D`.
 model PlanoPlurianual {
+  /// V36 — os códigos reduzidos da despesa do PPA (m02b-codigo-reduzido.prisma). VIRTUAL.
+  codigosReduzidos CodigoReduzidoDaDespesaPpa[] @relation("CodigosReduzidosDoPlano")
   /// V36 — as emendas ao PPA e à LDO (m02b-emendas-do-planejamento.prisma). VIRTUAL.
   emendas EmendaAoPlanejamento[] @relation("EmendasDoPpa")
   /// V36 — as previsões de transferências financeiras por entidade e ano (m02b-transferencias-ppa.prisma). VIRTUAL.

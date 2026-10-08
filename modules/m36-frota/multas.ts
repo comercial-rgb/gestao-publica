@@ -61,7 +61,7 @@ const zDia = z
  * e "DETRAN-PB" são o mesmo órgão). Sem acento, maiúsculas, e no órgão qualquer separador vira hífen.
  */
 export function orgaoAutuadorCanonico(s: string): string {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return s.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 export function numeroDoAutoCanonico(s: string): string {
   return s.toUpperCase().replace(/\s+/g, "");

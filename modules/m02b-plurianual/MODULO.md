@@ -304,3 +304,24 @@ metas fiscais anuais da LDO), com grandeza e sinal.
   de maior versão; a corrida de duas correções esbarra na chave única `[plano, entidade, ano, versao]` (t3, determinístico).
 - `preverTransferenciaNoPpa` sob CADASTRAR_PPA; o quadro (`quadroDeTransferenciasPrevistas`) soma por ano e por entidade.
 - Teste: `m02b-transferencias-previstas.test.ts` (4). Percurso: `scripts/percurso-v36-transferencias-ppa.mts`.
+
+## V36 — Código reduzido da despesa do PPA (07/10/2026)
+
+`codigo-reduzido.ts`; schema `prisma/schema/m02b-codigo-reduzido.prisma`; tela `/planejamento/ppa/codigos-reduzidos` (TR 5.9.1.8).
+
+- **O que é:** um número sequencial no plano para cada combinação de unidade (o órgão vem dela), função, subfunção,
+  programa e ação. A ação é única no programa e o programa no plano, então cada ação do PPA tem a sua combinação.
+- **Automático:** `criarAcaoPpa` atribui na mesma transação (a ação nova nasce com o código). O gerador do plano atribui
+  às ações antigas na ordem da classificação (algarismos comparados como números); a sem unidade, função ou subfunção fica
+  nomeada. O número dado não muda.
+- **Trava:** posto `PlanoPlurianual` (o último do registro). Índice único na combinação e no número do plano.
+- **A unidade é da classificação** (`unidadeExecutoraId`, o nome da AcaoPpa): o código é ato do ente e não muda a decisão
+  de `escopo.ts` (o canário do `unidadeOrcId` do M02b inclui a tabela nova).
+- **Na execução:** a busca da dotação do empenho acha a ficha pelo código reduzido do PPA vigente no exercício ("reduzido
+  12"), pela combinação da ficha (`lib/portas/empenho.ts`).
+- **Não construído (cláusula irmã 5.9.3.22):** reordenar antes do início da execução. Exigirá versionar a numeração (a
+  tabela é só de acréscimo) e um marco do início da execução, que hoje não existe.
+
+Teste: `m02b-codigo-reduzido.test.ts` t1 a t5 (N=2 automático; gerador em ordem, nomeando a sem classificação, idempotente;
+corrida determinística na trava; autorização; ordem numérica) e `test/ui/codigos-reduzidos-busca.test.ts` (o número é
+exato). Percurso: `scripts/percurso-v36-codigos-reduzidos.mts`.

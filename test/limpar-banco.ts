@@ -316,6 +316,8 @@ export const TABELAS = [
   "LeiDiretrizesOrcamentarias",
   "ReceitaAnteriorPpa",
   "PrevisaoReceitaPpa",
+  // V36 — o código reduzido da despesa do PPA (antes do plano e da classificação).
+  "CodigoReduzidoDaDespesaPpa",
   "AcaoPpa",
   "IndicadorPrograma",
   "ProgramaPpa",

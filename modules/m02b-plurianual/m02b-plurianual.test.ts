@@ -478,8 +478,10 @@ describe("t5 — nenhuma entidade do M02b tem unidade gestora", () => {
    * fato não tem UG, e é ato do ENTE. Não existe terceira via". Planejamento plurianual é
    * ato do ente por natureza — o PPA é lei municipal, não peça de unidade.
    */
-  it("⚠️ nenhuma das 20 tabelas do M02b tem coluna `unidadeOrcId`", async () => {
+  it("⚠️ nenhuma das 21 tabelas do M02b tem coluna `unidadeOrcId`", async () => {
     const TABELAS_M02B = [
+      // V36 — o código reduzido da despesa: a unidade é da classificação, com o nome da AcaoPpa (`unidadeExecutoraId`).
+      "CodigoReduzidoDaDespesaPpa",
       "PlanoPlurianual",
       "EixoEstruturante",
       "AreaTematica",

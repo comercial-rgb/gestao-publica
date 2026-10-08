@@ -1,0 +1,35 @@
+// ----------------------------------------------------------------------------
+// V36 (TR 5.9.1.8) — O CÓDIGO REDUZIDO DA DESPESA DO PPA.
+//
+// Um número curto, sequencial no plano, para cada combinação de unidade orçamentária (e o órgão dela), função,
+// subfunção, programa e ação das ações do PPA — o atalho que a execução digita no lugar da classificação inteira. Nasce
+// AUTOMATICAMENTE quando a ação do PPA é cadastrada já classificada; o gerador do plano atribui às que faltarem (a
+// combinação nova recebe o próximo número; a que já tem código o mantém). Regra: `modules/m02b-plurianual/codigo-reduzido.ts`.
+// ----------------------------------------------------------------------------
+
+model CodigoReduzidoDaDespesaPpa {
+  id String @id @default(cuid())
+
+  planoId String
+  plano   PlanoPlurianual @relation("CodigosReduzidosDoPlano", fields: [planoId], references: [id])
+  numero  Int
+
+  /// A unidade da CLASSIFICAÇÃO (o mesmo nome da AcaoPpa): o código reduzido é ato do ente, não fato de unidade — a
+  /// segregação por unidade (`escopo.ts`) continua vindo só da ficha.
+  unidadeExecutoraId String
+  unidadeExecutora   UnidadeOrcamentaria @relation("CodigosReduzidosDaUnidade", fields: [unidadeExecutoraId], references: [id])
+  funcaoId     String
+  funcao       Funcao              @relation("CodigosReduzidosDaFuncao", fields: [funcaoId], references: [id])
+  subfuncaoId  String
+  subfuncao    Subfuncao           @relation("CodigosReduzidosDaSubfuncao", fields: [subfuncaoId], references: [id])
+  programaId   String
+  programa     Programa            @relation("CodigosReduzidosDoPrograma", fields: [programaId], references: [id])
+  acaoId       String
+  acao         Acao                @relation("CodigosReduzidosDaAcao", fields: [acaoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([planoId, numero])
+  @@unique([planoId, unidadeExecutoraId, funcaoId, subfuncaoId, programaId, acaoId], map: "CodigoReduzidoDaDespesaPpa_combinacao_key")
+}

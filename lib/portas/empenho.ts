@@ -205,10 +205,26 @@ export async function listarFichasParaEmpenho(p: {
   readonly exercicio: number;
   readonly unidadeCodigo?: string | undefined;
 }): Promise<readonly FichaDaTela[]> {
-  const fichas = await listarFichas(cliente(), {
+  const prisma = cliente();
+  const fichas = await listarFichas(prisma, {
     exercicio: p.exercicio,
     ...(p.unidadeCodigo !== undefined ? { unidadeCodigo: p.unidadeCodigo } : {}),
   });
+  // V36 (TR 5.9.1.8) — o código reduzido do PPA vigente no exercício, pela combinação da ficha (unidade, função,
+  // subfunção, programa, ação): entra no texto da classificação, e a busca da dotação o encontra ("reduzido 12").
+  const reduzidos = new Map<string, number>();
+  const plano = await prisma.planoPlurianual.findFirst({ where: { anoInicio: { lte: p.exercicio }, anoFim: { gte: p.exercicio } }, orderBy: { anoInicio: "desc" }, select: { id: true } });
+  if (plano !== null && fichas.length > 0) {
+    const [combinacoes, codigos] = await Promise.all([
+      prisma.fichaOrcamentaria.findMany({ where: { id: { in: fichas.map((f) => f.id) } }, select: { id: true, unidadeOrcId: true, funcaoId: true, subfuncaoId: true, programaId: true, acaoId: true } }),
+      prisma.codigoReduzidoDaDespesaPpa.findMany({ where: { planoId: plano.id }, select: { numero: true, unidadeExecutoraId: true, funcaoId: true, subfuncaoId: true, programaId: true, acaoId: true } }),
+    ]);
+    const porCombinacao = new Map(codigos.map((c) => [[c.unidadeExecutoraId, c.funcaoId, c.subfuncaoId, c.programaId, c.acaoId].join("|"), c.numero]));
+    for (const f of combinacoes) {
+      const n = porCombinacao.get([f.unidadeOrcId, f.funcaoId, f.subfuncaoId, f.programaId, f.acaoId].join("|"));
+      if (n !== undefined) reduzidos.set(f.id, n);
+    }
+  }
   return fichas.map((f: FichaNaLista) => ({
     id: f.id,
     numero: f.numero,
@@ -217,7 +233,7 @@ export async function listarFichasParaEmpenho(p: {
     fonteCodigo: f.fonteCodigo,
     naturezaCodigo: f.naturezaCodigo,
     naturezaDescricao: f.naturezaDescricao,
-    classificacao: f.classificacao,
+    classificacao: reduzidos.has(f.id) ? `${f.classificacao} · reduzido ${String(reduzidos.get(f.id))}` : f.classificacao,
     saldoDisponivel: f.saldoDisponivel.toFixed(2),
   }));
 }

@@ -57,6 +57,8 @@ model Orgao {
 }
 
 model UnidadeOrcamentaria {
+  /// V36 — os códigos reduzidos da despesa do PPA (m02b-codigo-reduzido.prisma). VIRTUAL.
+  codigosReduzidosPpa CodigoReduzidoDaDespesaPpa[] @relation("CodigosReduzidosDaUnidade")
   id        String @id @default(cuid())
   /// V26 — os ordenadores designados para a unidade (m05-ordenador-e-siafic.prisma).
   ordenadores DesignacaoDeOrdenador[] @relation("OrdenadorDaUnidade")
@@ -125,6 +127,8 @@ model UnidadeOrcamentaria {
 
 /// Portaria STN 42/1999.
 model Funcao {
+  /// V36 — os códigos reduzidos da despesa do PPA (m02b-codigo-reduzido.prisma). VIRTUAL.
+  codigosReduzidosPpa CodigoReduzidoDaDespesaPpa[] @relation("CodigosReduzidosDaFuncao")
   id     String @id @default(cuid())
   codigo String @unique @db.VarChar(2)
   nome   String
@@ -136,6 +140,8 @@ model Funcao {
 
 /// Portaria STN 42/1999.
 model Subfuncao {
+  /// V36 — os códigos reduzidos da despesa do PPA (m02b-codigo-reduzido.prisma). VIRTUAL.
+  codigosReduzidosPpa CodigoReduzidoDaDespesaPpa[] @relation("CodigosReduzidosDaSubfuncao")
   id     String @id @default(cuid())
   codigo String @unique @db.VarChar(3)
   nome   String
@@ -146,6 +152,8 @@ model Subfuncao {
 }
 
 model Programa {
+  /// V36 — os códigos reduzidos da despesa do PPA (m02b-codigo-reduzido.prisma). VIRTUAL.
+  codigosReduzidosPpa CodigoReduzidoDaDespesaPpa[] @relation("CodigosReduzidosDoPrograma")
   id                  String  @id @default(cuid())
   /// V26 — os dados da prestação de contas (m02-programa-e-acao.prisma).
   declaracoes DeclaracaoDoPrograma[]
@@ -165,6 +173,8 @@ model Programa {
 }
 
 model Acao {
+  /// V36 — os códigos reduzidos da despesa do PPA (m02b-codigo-reduzido.prisma). VIRTUAL.
+  codigosReduzidosPpa CodigoReduzidoDaDespesaPpa[] @relation("CodigosReduzidosDaAcao")
   id        String   @id @default(cuid())
   /// V26 — os dados da prestação de contas (m02-programa-e-acao.prisma).
   declaracoes DeclaracaoDaAcao[]

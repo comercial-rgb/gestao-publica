@@ -1,4 +1,5 @@
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { atribuirCodigoReduzidoNaTransacao } from "./codigo-reduzido.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import {
@@ -299,7 +300,7 @@ export async function criarIndicadorPrograma(
 export async function criarAcaoPpa(
   prisma: PrismaClient,
   input: CriarAcaoPpaInput
-): Promise<{ readonly acaoPpaId: string }> {
+): Promise<{ readonly acaoPpaId: string; readonly codigoReduzido: number }> {
   const dados = zCriarAcaoPpaInput.parse(input);
 
   return prisma.$transaction(async (tx) => {
@@ -307,7 +308,7 @@ export async function criarAcaoPpa(
 
     const pp = await tx.programaPpa.findUnique({
       where: { id: dados.programaPpaId },
-      select: { id: true },
+      select: { id: true, planoId: true, programaId: true },
     });
     if (pp === null) {
       throw new Error(`Programa do PPA ${dados.programaPpaId} não existe.`);
@@ -346,7 +347,17 @@ export async function criarAcaoPpa(
       },
       select: { id: true },
     });
-    return { acaoPpaId: criada.id };
+    // V36 (TR 5.9.1.8) — o código reduzido da combinação, na mesma transação: a ação nasce com ele.
+    const codigo = await atribuirCodigoReduzidoNaTransacao(tx, {
+      planoId: pp.planoId,
+      unidadeExecutoraId: dados.unidadeExecutoraId,
+      funcaoId: dados.funcaoId,
+      subfuncaoId: dados.subfuncaoId,
+      programaId: pp.programaId,
+      acaoId: dados.acaoId,
+      criadoPor: dados.criadoPor,
+    });
+    return { acaoPpaId: criada.id, codigoReduzido: codigo.numero };
   });
 }
 

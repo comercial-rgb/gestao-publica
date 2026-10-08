@@ -1297,6 +1297,7 @@ export type NomeDeServico =
   | "criarProgramaPpa"
   | "criarIndicadorPrograma"
   | "criarAcaoPpa"
+  | "gerarCodigosReduzidosDoPlano"
   | "criarPrevisaoReceitaPpa"
   | "criarReceitaAnteriorPpa"
   | "criarLdo"
@@ -2157,6 +2158,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarProgramaPpa: "CADASTRAR_PROGRAMA_PPA",
   criarIndicadorPrograma: "CADASTRAR_PROGRAMA_PPA",
   criarAcaoPpa: "CADASTRAR_PROGRAMA_PPA",
+  // V36 — TR 5.9.1.8: os códigos reduzidos das ações que já existiam, pelo mesmo crachá de quem cadastra a ação.
+  gerarCodigosReduzidosDoPlano: "CADASTRAR_PROGRAMA_PPA",
   // A receita do quadriênio e a série histórica que a instrui.
   criarPrevisaoReceitaPpa: "CADASTRAR_RECEITA_PPA",
   criarReceitaAnteriorPpa: "CADASTRAR_RECEITA_PPA",
@@ -3360,6 +3363,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   quadroDoEmpenhoRepartido: "leitura (V36 — o empenho e os subempenhos dele: empenhado, liquidado direto, repartido, livre e o saldo de cada um — não muta)",
   lerSubempenhosDoEmpenho: "leitura (V36 — o mesmo quadro do empenho repartido, para a tela — não muta)",
   listarMultasDeTransito: "leitura (V36 — as multas de trânsito com a situação, o total em aberto e por infrator — não muta)",
+  atribuirCodigoReduzidoNaTransacao: "composto (V36 — atribui o código reduzido DENTRO da transação de criarAcaoPpa ou de gerarCodigosReduzidosDoPlano, que já autorizaram)",
+  listarCodigosReduzidos: "leitura (V36 — os códigos reduzidos da despesa do PPA com a classificação — não muta)",
   listarPrevias: "leitura (V36 — as prévias de alteração orçamentária do exercício, com a situação derivada — não muta)",
   detalharPrevia: "leitura (V36 — uma prévia com os itens por lote, o bloqueio de cada anulação e os totais por fonte — não muta)",
   reservarNaTransacao: "composável interno (V36 — a reserva de dotação na transação de quem chama; o reservar do repositório e a prévia, que autorizam)",
