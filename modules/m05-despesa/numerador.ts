@@ -146,7 +146,10 @@ interface TxDoNumerador extends TxComRaw {
 
 /**
  * A CONFERÊNCIA NA GRAVAÇÃO — chamada pelo adapter do M05 DENTRO da transação que grava o empenho ou a
- * liquidação, logo antes do `create` (o trinco do numerador é o último posto da fila).
+ * liquidação (o trinco do numerador é o último posto da fila). No EMPENHO, logo antes do `create`. Na LIQUIDAÇÃO
+ * (e nas anulações, no estorno e na liquidação de restos), NO FIM da transação, depois de gravar (V37): a entrada
+ * no almoxarifado trava classe e estoque, de posto menor, e todos os caminhos que gravam liquidação com número
+ * seguem a mesma ordem — a linha primeiro, o numerador por último. A recusa desfaz a transação inteira.
  *
  * Número de texto: nada a conferir (o numerador só reserva números). Número numérico reservado: só
  * passa quem traz a chave da reserva — ou a liquidação que leva o número do PRÓPRIO empenho, que é a

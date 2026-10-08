@@ -209,6 +209,46 @@ try {
         ]);
         const empenho = await prisma.empenho.findFirst({ where: { ordemDeCompraId: ordem.id }, select: { numero: true, valor: true } });
         conferir(r5.tipo === "ok" && empenho !== null && empenho.valor.toFixed(2) === "249.00", `empenho gravado pela ordem: nº ${String(empenho?.numero ?? "-")}, R$ ${empenho?.valor.toFixed(2) ?? "-"} (${r5.texto.slice(0, 80)})`);
+
+        // ── 6. "Liquidar este empenho", com a entrada no almoxarifado: o material pela busca, só os da classe da linha ──
+        const doEmpenho = await prisma.empenho.findFirst({ where: { ordemDeCompraId: ordem.id }, select: { id: true, ficha: { select: { unidadeOrcId: true } } } });
+        if (doEmpenho !== null) {
+          if ((await prisma.deposito.findFirst({ where: { codigo: "ALM-01" } })) === null) {
+            await irPara(n, page, `${ALMOX}/depositos`);
+            const rd = await preencherEEnviar(page, "criar-depositos", [
+              { sel: '[name="codigo"]', valor: "ALM-01" },
+              { sel: '[name="nome"]', valor: "Almoxarifado central" },
+              { sel: 'select[name="unidadeOrcId"]', valor: doEmpenho.ficha.unidadeOrcId, tipo: "select" },
+            ]);
+            conferir(rd.tipo === "ok", `depósito ALM-01 cadastrado pela tela (${rd.texto.slice(0, 60)})`);
+          } else console.log("   depósito ALM-01 já existe");
+          const deposito = await prisma.deposito.findFirstOrThrow({ where: { codigo: "ALM-01" }, select: { id: true } });
+          await irPara(n, page, `/despesa/empenhos/${doEmpenho.id}`);
+          await Promise.all([page.waitForNavigation({ waitUntil: "networkidle2" }), page.click('a[data-proximo-passo="liquidar"]')]);
+          const L = 'form[data-acao="liquidar"]';
+          await page.waitForSelector(`${L}[data-material="sim"]`, { timeout: 60000 }).catch(() => undefined);
+          const selectDeMaterial = await page.$(`${L} select[name="entradas.0.materialId"]`);
+          // Com a classe 3.01 escolhida na linha, a busca acha o material dela; o de outra classe não viria.
+          const rl = await preencherEEnviar(page, "liquidar", [
+            // O valor se digita no campo com máscara (o 'name' fica no escondido): o 1º é o da liquidação, o 2º o da linha.
+            { sel: '[data-mascara="valor"]', valor: "249,00", indice: 0 },
+            { sel: '[name="data"]', valor: "2026-10-08", tipo: "data" },
+            { sel: '[name="atesto"]', valor: "Servidor do almoxarifado (fictício)" },
+            { sel: '[name="historico"]', valor: `Recebimento da ordem ${numeroDaOrdem}` },
+            { sel: 'select[name="entradas.0.classeDeMaterialId"]', valor: classe.id, tipo: "select" },
+            { sel: '[data-mascara="valor"]', valor: "249,00", indice: 1 },
+            { sel: "entradas.0.materialId", valor: mat1.id, busca: "papel", tipo: "referencia" },
+            { sel: 'select[name="entradas.0.depositoId"]', valor: deposito.id, tipo: "select" },
+            { sel: '[name="entradas.0.quantidade"]', valor: "10" },
+            { sel: '[name="entradas.0.valorUnitario"]', valor: "24.90" },
+          ]);
+          const liq = await prisma.liquidacao.findFirst({ where: { empenhoId: doEmpenho.id }, select: { numero: true, valor: true } });
+          const entrada = await prisma.movimentoFisicoDeEstoque.findFirst({ where: { materialId: mat1.id, depositoId: deposito.id }, orderBy: { dataMovimento: "desc" }, select: { quantidade: true, valorTotal: true } });
+          conferir(
+            selectDeMaterial === null && rl.tipo === "ok" && liq?.valor.toFixed(2) === "249.00" && entrada?.quantidade.toFixed(0) === "10",
+            `liquidação ${liq?.numero ?? "-"} de R$ ${liq?.valor.toFixed(2) ?? "-"} com entrada de 10 un de MAT-0001 no ALM-01, material escolhido pela busca (${rl.texto.slice(0, 70)})`
+          );
+        }
       }
     }
   }

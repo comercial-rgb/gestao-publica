@@ -216,25 +216,22 @@ function paraTela(l: LiquidacaoNaLista): LiquidacaoDaTela {
 
 /**
  * V4 (§6) — AS OPÇÕES DAS ENTRADAS DE MATERIAL da tela de liquidação: as classes ativas (com a
- * conta que declaram), os materiais ativos (com a classe e se controlam lote) e os depósitos
- * ativos. Só leitura; o domínio confere tudo de novo dentro da transação.
+ * conta que declaram) e os depósitos ativos. O MATERIAL vem pela busca (catálogo `materiais-de-estoque`,
+ * V37), não numa lista de até 2.000. Só leitura; o domínio confere tudo de novo dentro da transação.
  */
 export interface OpcoesDasEntradasDeMaterial {
   readonly classes: readonly { readonly id: string; readonly rotulo: string; readonly contaCodigo: string }[];
-  readonly materiais: readonly { readonly id: string; readonly rotulo: string; readonly classeDeMaterialId: string; readonly controlaLote: boolean }[];
   readonly depositos: readonly { readonly id: string; readonly rotulo: string }[];
 }
 
 export async function opcoesDasEntradasDeMaterial(): Promise<OpcoesDasEntradasDeMaterial> {
   const prisma = cliente();
-  const [classes, materiais, depositos] = await Promise.all([
+  const [classes, depositos] = await Promise.all([
     prisma.classeDeMaterial.findMany({ where: { ativa: true }, select: { id: true, codigo: true, descricao: true, contaContabil: { select: { codigo: true } } }, orderBy: { codigo: "asc" }, take: 500 }),
-    prisma.material.findMany({ where: { ativo: true }, select: { id: true, codigo: true, descricaoSucinta: true, classeDeMaterialId: true, controlaLote: true }, orderBy: { codigo: "asc" }, take: 2000 }),
     prisma.deposito.findMany({ where: { ativo: true }, select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" }, take: 300 }),
   ]);
   return {
     classes: classes.map((c) => ({ id: c.id, rotulo: `${c.codigo} — ${c.descricao}`, contaCodigo: c.contaContabil.codigo })),
-    materiais: materiais.map((m) => ({ id: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta}`, classeDeMaterialId: m.classeDeMaterialId, controlaLote: m.controlaLote })),
     depositos: depositos.map((d) => ({ id: d.id, rotulo: `${d.codigo} — ${d.nome}` })),
   };
 }

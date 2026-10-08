@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useState } from "react";
 import { CampoValor } from "../../../../components/ui/Campos";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_CAMPO as CAMPO,
@@ -20,7 +21,6 @@ import { formatarDocumento } from "../../../../packages/documento/index";
  */
 export interface OpcoesDasEntradasDeMaterial {
   readonly classes: readonly { readonly id: string; readonly rotulo: string; readonly contaCodigo: string }[];
-  readonly materiais: readonly { readonly id: string; readonly rotulo: string; readonly classeDeMaterialId: string; readonly controlaLote: boolean }[];
   readonly depositos: readonly { readonly id: string; readonly rotulo: string }[];
 }
 
@@ -241,15 +241,15 @@ export function FormLiquidacao({
                 <span className={ROTULO}>Recebimento da ordem de compra (opcional)</span>
                 <input name={`entradas.${i}.recebimentoDeItemId`} placeholder="recebimento já registrado" className={CAMPO} />
               </label>
-              <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-2">
-                <span className={ROTULO}>Material (opcional)</span>
-                <select name={`entradas.${i}.materialId`} defaultValue="" className={CAMPO}>
-                  <option value="">— sem entrada física —</option>
-                  {opcoesDeMaterial.materiais.map((m) => (
-                    <option key={m.id} value={m.id}>{m.rotulo}{m.controlaLote ? " (controla lote)" : ""}</option>
-                  ))}
-                </select>
-              </label>
+              {/* A busca oferece só os materiais da classe escolhida nesta linha; em branco, não há entrada física. */}
+              <CampoReferenciado
+                name={`entradas.${i}.materialId`}
+                rotulo="Material (opcional; em branco, sem entrada física)"
+                catalogo="materiais-de-estoque"
+                contexto={[`entradas.${i}.classeDeMaterialId`]}
+                placeholder="Código, CATMAT ou descrição"
+                largura={2}
+              />
               <label className="text-xs text-[color:var(--color-ink-2)]">
                 <span className={ROTULO}>Depósito</span>
                 <select name={`entradas.${i}.depositoId`} defaultValue="" className={CAMPO}>

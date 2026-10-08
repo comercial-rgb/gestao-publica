@@ -32,7 +32,7 @@ import {
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { criarM05DepsComAlmoxarifado } from "./adapter-m05-almox.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
-import { liquidar } from "../m05-despesa/servico-bloco2.js";
+import { anularLiquidacao, liquidar } from "../m05-despesa/servico-bloco2.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { Decimal } from "../../packages/contracts/index.js";
@@ -768,7 +768,102 @@ describe("t8 · ⚠️ A AUTORIZAÇÃO É DO SERVIDOR — e ela é cobrada por A
   });
 });
 
+/** V37 — UMA liquidação, DUAS linhas físicas: 100 un a 5,00 no DEP01 e 50 un a 5,00 no DEP02 (750,00). */
+async function liquidarEmDoisDepositos(n: string): Promise<string> {
+  const e = await empenhar(
+    {
+      fichaId: FICHA, numero: `NE-2L-${n}`, tipo: "ORDINARIO", valor: "750.00",
+      data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195",
+      historico: "compra de material para dois depósitos", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
+      criadoPor: POR,
+    },
+    R_EMPENHO,
+    deps
+  );
+  const l = await liquidar(
+    {
+      empenhoId: e.empenhoId, numero: `00000${n}`, valor: "750.00",
+      data: new Date("2026-03-01T15:00:00.000Z"), responsavelAtesto: "Almoxarife",
+      historico: "material recebido nos dois depósitos", criadoPor: POR,
+      entradasDeMaterial: [
+        { classeDeMaterialId: classeId, valor: "500.00", fisica: { materialId, depositoId, quantidade: "100", valorUnitario: "5.00" } },
+        { classeDeMaterialId: classeId, valor: "250.00", fisica: { materialId, depositoId: deposito2Id, quantidade: "50", valorUnitario: "5.00" } },
+      ],
+    },
+    R_LIQUIDACAO,
+    deps
+  );
+  return l.liquidacaoId;
+}
+
 describe("t9 · a amarração dos dois eixos, conferida", () => {
+  it("t9c (V37): ANULAR a liquidação desfaz a perna FÍSICA junto com a contábil — os dois eixos voltam a zero (N=2)", async () => {
+    // ⚠️ Achado da auditoria da V37: a cascata da anulação total estornava só o movimento CONTÁBIL da entrada. A perna
+    // física ficava viva — 150 un nas prateleiras de uma compra desfeita, e a posição física divergindo do razão.
+    const liq = await liquidarEmDoisDepositos("81");
+    await anularLiquidacao({ liquidacaoId: liq, numero: "0000082", data: new Date("2026-04-01T12:00:00Z"), historico: "material devolvido ao fornecedor", criadoPor: POR }, deps);
+    const p1 = await posicaoDoMaterial(prisma, materialId, depositoId);
+    const p2 = await posicaoDoMaterial(prisma, materialId, deposito2Id);
+    expect([p1.quantidade.toFixed(0), p2.quantidade.toFixed(0)]).toEqual(["0", "0"]);
+    expect(await prisma.movimentoFisicoDeEstoque.count({ where: { tipo: "ESTORNO_ENTRADA" } })).toBe(2);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("0.00");
+    expect(p1.valor.plus(p2.valor).toFixed(2)).toBe("0.00");
+  });
+
+  it("t9d (V37): anular depois que SAIU material de um dos depósitos é recusado com o motivo — e nada muda", async () => {
+    const liq = await liquidarEmDoisDepositos("83");
+    // Outra compra da MESMA classe no DEP01: a classe tem saldo de sobra (1.200 depois da saída), e só a POSIÇÃO do
+    // material no DEP02 (40 un) não comporta desfazer as 50 que entraram — é a recusa física que este teste vigia.
+    await entrada("100", "5.00", "2026-03-02");
+    await registrarSaidaFisica(prisma, { materialId, depositoId: deposito2Id, quantidade: "10", dataMovimento: new Date("2026-03-10T15:00:00.000Z"), motivo: "consumo do setor", criadoPor: POR });
+    await expect(
+      anularLiquidacao({ liquidacaoId: liq, numero: "0000084", data: new Date("2026-04-01T12:00:00Z"), historico: "material devolvido ao fornecedor", criadoPor: POR }, deps)
+    ).rejects.toThrow(/DEIXARIA O ESTOQUE FÍSICO NEGATIVO/);
+    expect(await prisma.movimentoFisicoDeEstoque.count({ where: { tipo: "ESTORNO_ENTRADA" } })).toBe(0);
+    expect(await prisma.movimentoAlmoxarifado.count({ where: { tipo: "ESTORNO_ENTRADA" } })).toBe(0);
+    expect((await posicaoDoMaterial(prisma, materialId, deposito2Id)).quantidade.toFixed(0)).toBe("40");
+  });
+
+  it("t9b (V37): UMA liquidação com DUAS linhas de entrada física (N=2) grava as duas — sem inversão na ordem de locks", async () => {
+    // ⚠️ Achado da auditoria da V37: o port processava linha a linha — classe (posto 13), estoque (posto 23), e a
+    // classe da linha seguinte DEPOIS do estoque. A guarda de ordem recusava toda liquidação com duas linhas físicas,
+    // o que a tela permite ("Mais uma classe de material"). Os testes acima liquidam sempre com uma linha só.
+    const e = await empenhar(
+      {
+        fichaId: FICHA, numero: "NE-2L", tipo: "ORDINARIO", valor: "750.00",
+        data: new Date("2026-01-15T12:00:00Z"), credorCpfCnpj: "12345678000195",
+        historico: "compra de material para dois depósitos", categoriaOrdemCronologica: "FORNECIMENTO_BENS",
+        criadoPor: POR,
+      },
+      R_EMPENHO,
+      deps
+    );
+    const l = await liquidar(
+      {
+        empenhoId: e.empenhoId, numero: "0000071", valor: "750.00",
+        data: new Date("2026-03-01T15:00:00.000Z"), responsavelAtesto: "Almoxarife",
+        historico: "material recebido nos dois depósitos", criadoPor: POR,
+        entradasDeMaterial: [
+          { classeDeMaterialId: classeId, valor: "500.00", fisica: { materialId, depositoId, quantidade: "100", valorUnitario: "5.00" } },
+          { classeDeMaterialId: classeId, valor: "250.00", fisica: { materialId, depositoId: deposito2Id, quantidade: "50", valorUnitario: "5.00" } },
+        ],
+      },
+      R_LIQUIDACAO,
+      deps
+    );
+    const fisicos = await prisma.movimentoFisicoDeEstoque.findMany({
+      where: { movimentoAlmoxarifado: { liquidacaoId: l.liquidacaoId } },
+      select: { depositoId: true, quantidade: true, movimentoAlmoxarifado: { select: { valor: true } } },
+      orderBy: { quantidade: "desc" },
+    });
+    // Cada perna física amarrada ao movimento contábil DA SUA linha (500 com os 100 do DEP01, 250 com os 50 do DEP02).
+    expect(fisicos.map((f) => [f.depositoId, f.quantidade.toFixed(0), f.movimentoAlmoxarifado?.valor.toFixed(2)])).toEqual([
+      [depositoId, "100", "500.00"],
+      [deposito2Id, "50", "250.00"],
+    ]);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("750.00");
+  });
+
   it("Σ dos movimentos físicos de saída == saldo da classe consumido no razão", async () => {
     await entrada("100", "5.00", "2026-03-01");
     await entrada("100", "9.00", "2026-03-05");

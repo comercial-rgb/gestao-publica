@@ -13,7 +13,7 @@ import {
   aoAnularLiquidacaoTotal,
   registrarEntradaAlmoxarifadoNaTx,
 } from "./almoxarifado.js";
-import { registrarEntradaFisicaNaTx } from "./estoque-fisico.js";
+import { estornarEntradasFisicasDaLiquidacaoNaTx, registrarEntradaFisicaNaTx } from "./estoque-fisico.js";
 
 /**
  * O M10 IMPLEMENTANDO OS PORTS QUE O M05 DECLAROU.
@@ -24,7 +24,12 @@ import { registrarEntradaFisicaNaTx } from "./estoque-fisico.js";
  */
 export function criarAoAnularLiquidacaoPortPrisma(): AoAnularLiquidacaoPort {
   return {
-    aoAnularTotal: (tx, liquidacaoId) => aoAnularLiquidacaoTotal(tx, liquidacaoId),
+    // V37 — o eixo CONTÁBIL (classes, posto 13) e depois o FÍSICO (posições, posto 23): a ordem dos locks, e os dois
+    // eixos voltando juntos na mesma transação (antes, só o contábil voltava).
+    aoAnularTotal: async (tx, liquidacaoId) => {
+      await aoAnularLiquidacaoTotal(tx, liquidacaoId);
+      await estornarEntradasFisicasDaLiquidacaoNaTx(tx, liquidacaoId);
+    },
     aoAnularParcial: (tx, liquidacaoId, liquido) =>
       aoAnularLiquidacaoParcial(tx, liquidacaoId, liquido),
   };
@@ -63,7 +68,18 @@ export function criarAoLiquidarMaterialPortPrisma(): AoLiquidarMaterialPort {
 
       // A LIQUIDAÇÃO É TRAVADA UMA VEZ (posto 7), antes de qualquer classe (posto 12) — a ordem dos locks.
       await travar(tx, "Liquidacao", [p.liquidacaoId]);
-      for (const e of p.entradas) {
+
+      // ⚠️ V37 — DUAS PASSADAS, NÃO LINHA A LINHA. A entrada contábil trava a CLASSE (posto 13) e a física a POSIÇÃO
+      // de estoque (posto 23); linha a linha, a classe da segunda linha vinha depois da posição da primeira, e a guarda
+      // de ordem recusava toda liquidação com duas linhas físicas (t9b do estoque físico). Primeiro todas as classes,
+      // depois todas as posições — cada passada na ordem da chave da trava, para duas liquidações concorrentes pegarem
+      // as mesmas travas na mesma sequência.
+      const indices = p.entradas.map((_, i) => i);
+      // A régua do `travar` (ordem de código, não de idioma); empate fica na ordem da tela.
+      const porTexto = (x: string, y: string): number => (x < y ? -1 : x > y ? 1 : 0);
+      const movimentoDaLinha = new Map<number, string>();
+      for (const i of [...indices].sort((a, b) => porTexto(p.entradas[a]!.classeDeMaterialId, p.entradas[b]!.classeDeMaterialId) || a - b)) {
+        const e = p.entradas[i]!;
         const { movimentoId } = await registrarEntradaAlmoxarifadoNaTx(
           tx,
           {
@@ -75,36 +91,39 @@ export function criarAoLiquidarMaterialPortPrisma(): AoLiquidarMaterialPort {
           },
           { liquidacaoJaTravada: true }
         );
+        movimentoDaLinha.set(i, movimentoId);
+      }
 
-        if (e.fisica === undefined) continue;
+      const chave = (i: number): string => `${p.entradas[i]!.fisica?.materialId ?? ""}:${p.entradas[i]!.fisica?.depositoId ?? ""}`;
+      for (const i of indices.filter((j) => p.entradas[j]!.fisica !== undefined).sort((a, b) => porTexto(chave(a), chave(b)) || a - b)) {
+        const e = p.entradas[i]!;
+        const fisica = e.fisica!;
+        const movimentoId = movimentoDaLinha.get(i)!;
 
-        // ⚠️ AMARRADA AO MOVIMENTO CONTÁBIL que acabou de nascer: é o `movimentoAlmoxarifadoId`
-        // que impede o eixo físico de inflar o estoque que o razão registrou. Sem ele, as duas
-        // leituras do mesmo estoque poderiam divergir sem que nada acusasse.
         await registrarEntradaFisicaNaTx(tx, {
-          materialId: e.fisica.materialId,
-          depositoId: e.fisica.depositoId,
-          quantidade: e.fisica.quantidade,
+          materialId: fisica.materialId,
+          depositoId: fisica.depositoId,
+          quantidade: fisica.quantidade,
           // ⚠️ O SCHEMA DA ENTRADA FÍSICA RECEBE `string | number` e converte por dentro —
           // ele é a fronteira onde o dinheiro da borda vira `Decimal`. Seis casas porque é
           // a precisão com que o serviço trabalha o unitário depois de dividi-lo pelo fator
           // da unidade; menos que isso perderia centavo em material comprado por milheiro.
-          valorUnitario: e.fisica.valorUnitario.toFixed(6),
+          valorUnitario: fisica.valorUnitario.toFixed(6),
           dataMovimento: p.dataMovimento,
           movimentoAlmoxarifadoId: movimentoId,
           motivo: `Entrada da liquidação, classe ${e.classeDeMaterialId}`,
           criadoPor: p.criadoPor,
-          ...(e.fisica.unidadeDeMedidaId !== undefined
-            ? { unidadeDeMedidaId: e.fisica.unidadeDeMedidaId }
+          ...(fisica.unidadeDeMedidaId !== undefined
+            ? { unidadeDeMedidaId: fisica.unidadeDeMedidaId }
             : {}),
-          ...(e.fisica.loteIdentificacao !== undefined
-            ? { loteIdentificacao: e.fisica.loteIdentificacao }
+          ...(fisica.loteIdentificacao !== undefined
+            ? { loteIdentificacao: fisica.loteIdentificacao }
             : {}),
-          ...(e.fisica.loteValidade !== undefined
-            ? { loteValidade: e.fisica.loteValidade }
+          ...(fisica.loteValidade !== undefined
+            ? { loteValidade: fisica.loteValidade }
             : {}),
-          ...(e.fisica.recebimentoDeItemId !== undefined
-            ? { recebimentoDeItemId: e.fisica.recebimentoDeItemId }
+          ...(fisica.recebimentoDeItemId !== undefined
+            ? { recebimentoDeItemId: fisica.recebimentoDeItemId }
             : {}),
         });
       }

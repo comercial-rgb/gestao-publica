@@ -114,6 +114,25 @@ function opcaoDaPessoa(x: { readonly id: string; readonly documento: string; rea
   return { valor: x.id, rotulo: `${formatarDocumento(x.documento)} — ${x.versoes[0]?.nome ?? "(sem nome)"}`, detalhe: x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física" };
 }
 
+/** Os materiais ATIVOS por código, CATMAT ou descrição (o desabilitado guarda o histórico, não entra em ato novo). */
+async function materiaisAtivos(p: PedidoDeOpcoes, recorte: Prisma.MaterialWhereInput): Promise<PaginaDeOpcoes> {
+  const where: Prisma.MaterialWhereInput =
+    p.valor !== undefined
+      ? { id: p.valor, ativo: true, ...recorte }
+      : p.q === ""
+        ? { ativo: true, ...recorte }
+        : { ativo: true, ...recorte, OR: [{ codigo: { startsWith: p.q.trim() } }, { catmat: { startsWith: p.q.trim() } }, { descricaoSucinta: contem(p.q) }] };
+  const linhas = await cliente().material.findMany({ where, orderBy: { codigo: "asc" }, skip: skip(p), take, select: { id: true, codigo: true, descricaoSucinta: true, catmat: true, controlaLote: true } });
+  const r = pagina(linhas, p);
+  return {
+    opcoes: r.linhas.map((m) => {
+      const detalhe = [m.catmat !== null ? `CATMAT ${m.catmat}` : "", m.controlaLote ? "controla lote e validade" : ""].filter((x) => x !== "").join(" · ");
+      return { valor: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta.slice(0, 80)}`, ...(detalhe !== "" ? { detalhe } : {}) };
+    }),
+    temMais: r.temMais,
+  };
+}
+
 /** O mesmo recorte de classe que `declararContaDaLiquidacao` confere (M01). */
 const PREFIXO_DO_EFEITO_NA_BUSCA: Readonly<Record<string, string>> = { VPD: "3.", IMOBILIZADO: "1.2.3.", INTANGIVEL: "1.2.4.", BAIXA_DE_PASSIVO: "2.", VPA: "4." };
 
@@ -214,19 +233,19 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
    */
   "materiais-para-compra": {
     leitura: "CONSULTAR_LICITACOES",
-    async buscar(_sessao, p) {
-      const where: Prisma.MaterialWhereInput =
-        p.valor !== undefined
-          ? { id: p.valor, ativo: true }
-          : p.q === ""
-            ? { ativo: true }
-            : { ativo: true, OR: [{ codigo: { startsWith: p.q.trim() } }, { catmat: { startsWith: p.q.trim() } }, { descricaoSucinta: contem(p.q) }] };
-      const linhas = await cliente().material.findMany({ where, orderBy: { codigo: "asc" }, skip: skip(p), take, select: { id: true, codigo: true, descricaoSucinta: true, catmat: true } });
-      const r = pagina(linhas, p);
-      return {
-        opcoes: r.linhas.map((m) => ({ valor: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta.slice(0, 80)}`, ...(m.catmat !== null ? { detalhe: `CATMAT ${m.catmat}` } : {}) })),
-        temMais: r.temMais,
-      };
+    buscar: (_sessao, p) => materiaisAtivos(p, {}),
+  },
+
+  /**
+   * V37 — O MATERIAL DA ENTRADA NO ALMOXARIFADO, na liquidação de empenho de material: os ativos, por código, CATMAT
+   * ou descrição, e SÓ OS DA CLASSE escolhida na mesma linha (o contexto é o campo `entradas.N.classeDeMaterialId`).
+   * Substitui o `select` com até 2.000 materiais de todas as classes. O domínio confere material e classe de novo.
+   */
+  "materiais-de-estoque": {
+    leitura: "CONSULTAR_DESPESA",
+    buscar(_sessao, p) {
+      const classe = Object.entries(p.contexto).find(([k]) => k.endsWith("classeDeMaterialId"))?.[1] ?? "";
+      return materiaisAtivos(p, classe === "" ? {} : { classeDeMaterialId: classe });
     },
   },
 

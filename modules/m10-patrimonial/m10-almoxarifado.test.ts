@@ -8,6 +8,7 @@ import { criarM05DepsComAlmoxarifado } from "./adapter-m05-almox.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import { anularLiquidacao, liquidar } from "../m05-despesa/servico-bloco2.js";
 import { empenhar } from "../m05-despesa/servico.js";
+import { reservarNumero } from "../m05-despesa/numerador.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { balancoPatrimonial } from "../m12-relatorios/balanco-patrimonial.js";
 import { cadastrarLinhaDemonstrativo } from "../m12-relatorios/cadastro-linhas.js";
@@ -205,7 +206,9 @@ async function liquidarMaterial(
   valor: string,
   n: string,
   fichaId: string = FICHA,
-  entradas?: readonly { readonly classeDeMaterialId: string; readonly valor: string }[] | null
+  entradas?: readonly { readonly classeDeMaterialId: string; readonly valor: string }[] | null,
+  /** V37: o número da liquidação como a tela manda (só dígitos); por padrão, o texto `NL-n`. */
+  numeroDaLiquidacao?: string
 ): Promise<string> {
   const deMaterial = fichaId === FICHA;
   const entradasDeMaterial =
@@ -222,7 +225,7 @@ async function liquidarMaterial(
   );
   const l = await liquidar(
     {
-      empenhoId: e.empenhoId, numero: `NL-${n}`, valor,
+      empenhoId: e.empenhoId, numero: numeroDaLiquidacao ?? `NL-${n}`, valor,
       data: new Date("2026-03-01T12:00:00Z"), responsavelAtesto: "Almoxarife",
       historico: "material recebido e atestado", criadoPor: POR,
       ...(entradasDeMaterial === undefined ? {} : { entradasDeMaterial: entradasDeMaterial.map((e) => ({ ...e })) }),
@@ -308,6 +311,34 @@ describe("M10 — almoxarifado", () => {
     const d = todas.filter((p) => p.tipo === "DEBITO").reduce((a, p) => a + Number(p.valor), 0);
     const c = todas.filter((p) => p.tipo === "CREDITO").reduce((a, p) => a + Number(p.valor), 0);
     expect(d).toBe(c);
+  });
+
+  // t1b
+  it("t1b: a liquidação de material com NÚMERO SÓ DE DÍGITOS (como a tela manda) grava a entrada — N=2", async () => {
+    // ⚠️ V37, medido no percurso das compras: o número numérico passa pelo numerador (que trava o exercício, o
+    // último posto da ordem de locks), e a entrada no almoxarifado trava DEPOIS a classe e o estoque, de posto
+    // menor. A guarda de ordem recusava a inversão e NENHUMA liquidação de material com número da tela gravava.
+    // Os testes acima usam "NL-n" (texto), que o numerador não confere — por isso passavam.
+    await liquidarMaterial("1000.00", "21", FICHA, undefined, "0000021");
+    await liquidarMaterial("2000.00", "22", FICHA, undefined, "0000022");
+    const liqs = await prisma.liquidacao.findMany({ where: { numero: { in: ["0000021", "0000022"] } }, select: { numero: true }, orderBy: { numero: "asc" } });
+    expect(liqs.map((l) => l.numero)).toEqual(["0000021", "0000022"]);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("3000.00");
+    expect(await estoqueNoRazao()).toBe(3000);
+  });
+
+  // t1c
+  it("t1c: o número RESERVADO para outro documento recusa a liquidação de material com o motivo — e nada fica", async () => {
+    // A conferência do número passou para o FIM da transação (t1b): a liquidação e a entrada já foram escritas quando
+    // ela recusa. A recusa tem de desfazer as duas — nem liquidação, nem entrada, nem estoque no razão.
+    const r = await reservarNumero(prisma, { fichaId: FICHA, identidade: "FG/2026-05/FOLHA-UNICA", criadoPor: POR });
+    await expect(liquidarMaterial("1000.00", "41", FICHA, undefined, r.numero)).rejects.toThrow(
+      `NUMERO-RESERVADO: o número ${r.numero} de 2026 está reservado pelo sistema para o documento FG/2026-05/FOLHA-UNICA`
+    );
+    expect(await prisma.liquidacao.count({ where: { numero: r.numero } })).toBe(0);
+    expect(await prisma.movimentoAlmoxarifado.count({ where: { tipo: "ENTRADA" } })).toBe(0);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("0.00");
+    expect(await estoqueNoRazao()).toBe(0);
   });
 
   // t2
@@ -561,6 +592,34 @@ describe("M10 — almoxarifado", () => {
     const conf = await conferirAlmoxarifadoContraRazao(prisma, 'c-estoque');
     expect(conf.pelosMovimentos.toFixed(2)).toBe('0.00');
     expect(conf.peloRazao.toFixed(2)).toBe('0.00');
+  });
+
+  // t8c — V37: a mesma cascata com os NÚMEROS SÓ DE DÍGITOS da tela (o numerador trava o exercício, último posto)
+  it("t8c: liquidar e anular material com números só de dígitos — a cascata estorna a entrada", async () => {
+    deps = criarM05DepsComAlmoxarifado(prisma);
+    const liq = await liquidarMaterial("5000.00", "31", FICHA, undefined, "0000031");
+    await anularLiquidacao(
+      { liquidacaoId: liq, numero: "0000032", data: new Date("2026-04-01T12:00:00Z"), historico: "material devolvido ao fornecedor", criadoPor: POR },
+      deps
+    );
+    expect(await estoqueNoRazao()).toBe(0);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("0.00");
+    expect(await prisma.movimentoAlmoxarifado.count({ where: { tipo: "ESTORNO_ENTRADA" } })).toBe(1);
+  });
+
+  // t8d — V37: a anulação total confere o número NO FIM, depois da cascata; a recusa desfaz a cascata junto
+  it("t8d: anular com o número RESERVADO para outro documento é recusado com o motivo — e a entrada continua viva", async () => {
+    deps = criarM05DepsComAlmoxarifado(prisma);
+    const liq = await liquidarMaterial("5000.00", "51", FICHA, undefined, "0000051");
+    const r = await reservarNumero(prisma, { fichaId: FICHA, identidade: "FG/2026-05/FOLHA-UNICA", criadoPor: POR });
+    await expect(
+      anularLiquidacao({ liquidacaoId: liq, numero: r.numero, data: new Date("2026-04-01T12:00:00Z"), historico: "material devolvido ao fornecedor", criadoPor: POR }, deps)
+    ).rejects.toThrow(`NUMERO-RESERVADO: o número ${r.numero} de 2026 está reservado pelo sistema para o documento FG/2026-05/FOLHA-UNICA`);
+    // A cascata já tinha estornado a entrada quando o número foi recusado: a transação inteira voltou.
+    expect(await prisma.movimentoAlmoxarifado.count({ where: { tipo: "ESTORNO_ENTRADA" } })).toBe(0);
+    expect(await prisma.liquidacao.count({ where: { estornoDeId: liq } })).toBe(0);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe("5000.00");
+    expect(await estoqueNoRazao()).toBe(5000);
   });
 
   // t8b — FAIL-CLOSED: o material já consumido não deixa a liquidação ser anulada

@@ -576,3 +576,18 @@ escolhidas, por `disponivelDaFichaNaData`, que é a mesma soma da guarda.
 reserva não tem data própria: a competência do movimento dela é a da gravação (`competenciaDerivada`), e a liberação
 pelo empenho entra na data do empenho. Entre as duas datas, o corte por competência daria um reservado negativo. A
 pendência some quando a reserva ganhar data.
+
+## V37 — o número da liquidação se confere por último
+
+A conferência do número reservado (`conferirNumeroDaLiquidacao`, V22) trava o `NumeradorDoExercicio`, o último posto da
+ordem de locks. Ela vinha antes do `create`, e a entrada no almoxarifado (M10) trava depois a liquidação, a classe e a
+posição de estoque, de posto menor. A guarda de inversão recusava **toda** liquidação de material com número só de
+dígitos, que é o que a tela manda. O mesmo valia para a anulação total com entrada (a cascata trava a classe). Os testes
+usavam números de texto ("NL-1"), que o numerador não confere, e por isso passavam. Achado no percurso das compras pela
+busca: cadastro de material, pesquisa de preços, ordem, empenho e a liquidação recusada.
+
+Agora os cinco caminhos que gravam liquidação com número seguem uma ordem só: gravam a linha e conferem o número no fim
+da transação. São eles `liquidar`, `anularLiquidacao`, `anularLiquidacaoParcial`, o estorno da anulação parcial e
+`liquidarRestosAPagar` (M08). Uma ordem só também impede que dois atos com o mesmo número se esperem em cruz. A recusa
+do número desfaz a transação inteira. Os testes são o t1b, o t1c, o t8c e o t8d do almoxarifado do M10. O empenho
+continua conferindo antes do `create`, porque nada trava depois dele.

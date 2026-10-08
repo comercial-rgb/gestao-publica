@@ -292,12 +292,6 @@ export async function liquidarRestosAPagar(
       partidas: comporPartidas(dados.valor, roteiro),
     });
 
-    // V22 — número reservado pelo numerador só é usado por quem o reservou (`m05-despesa/numerador.ts`).
-    {
-      const e = await tx.empenho.findUniqueOrThrow({ where: { id: dados.empenhoId }, select: { numero: true, ficha: { select: { exercicio: true } } } });
-      await exigirUsoDoNumero(tx, { exercicio: e.ficha.exercicio, numero: dados.numero, numeroDoEmpenho: e.numero });
-    }
-
     // Reutiliza o model Liquidacao — "é liquidação de RP" é DERIVADO
     // (criada depois do encerramento, num empenho com inscrição NP).
     const liq = await tx.liquidacao.create({
@@ -316,6 +310,13 @@ export async function liquidarRestosAPagar(
     // NENHUM MovimentoDotacao. RP não consome dotação.
     // V35 A3 — o controle 5.3/6.3 (a liquidar → em liquidação → liquidados a pagar), se a inscrição é controlada.
     await controlarExecucao(tx, { inscricaoId: inscricao.id, evento: "LIQUIDACAO", valor: dados.valor, data: dados.data, lancamentoDoFatoId: lancamentoId, criadoPor: dados.criadoPor });
+    // V22 — número reservado pelo numerador só é usado por quem o reservou (`m05-despesa/numerador.ts`).
+    // ⚠️ V37 — conferido POR ÚLTIMO, como em todo caminho que grava liquidação com número (M05): a linha primeiro, o
+    // NumeradorDoExercicio (último posto da ordem de locks) por último. A recusa desfaz a transação inteira.
+    {
+      const e = await tx.empenho.findUniqueOrThrow({ where: { id: dados.empenhoId }, select: { numero: true, ficha: { select: { exercicio: true } } } });
+      await exigirUsoDoNumero(tx, { exercicio: e.ficha.exercicio, numero: dados.numero, numeroDoEmpenho: e.numero });
+    }
     return { liquidacaoId: liq.id, lancamentoId };
   });
 }

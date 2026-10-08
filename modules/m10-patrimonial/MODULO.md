@@ -499,3 +499,17 @@ ausência vale tanto quanto marcar presença**. Nada foi construído para elas.
   defesa, sem teste próprio.
 - **`adquirirBem` e a entrada:** recusam a linha da parcial como liquidação.
 - **Teto de incorporação:** leva o estorno da parcial.
+
+## V37 — duas linhas físicas na liquidação, e a perna física na anulação
+
+- **Liquidação com duas linhas de entrada física.** O port processava linha a linha: classe (posto 13), posição (23) e
+  a classe da linha seguinte depois da posição. A guarda de ordem recusava toda liquidação com duas linhas físicas, que
+  a tela permite. Agora são duas passadas: todas as classes, depois todas as posições, cada uma na ordem da chave da
+  trava (t9b do estoque físico).
+- **Anulação total.** A cascata estornava só o movimento contábil da entrada. A perna física ficava viva, e o material
+  de uma compra desfeita continuava na posição. `estornarEntradasFisicasDaLiquidacaoNaTx` estorna as entradas físicas
+  da liquidação por fato novo, na mesma transação e na mesma data do estorno contábil. Se o material daquela posição
+  ou daquele lote já saiu, a anulação inteira é recusada, nomeando material, depósito e quantidades (t9c e t9d). A
+  conferência é por posição, porque a classe pode ter saldo de outras compras.
+- **Material por busca na tela da liquidação.** O catálogo `materiais-de-estoque` só oferece os materiais da classe
+  escolhida na linha. Ele substitui o `select` com até 2.000 materiais.

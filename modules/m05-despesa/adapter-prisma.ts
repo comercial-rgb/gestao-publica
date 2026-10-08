@@ -1684,8 +1684,7 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
-        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
-        await conferirNumeroDaLiquidacao(tx, original.empenhoId, p.numero, p.chaveDoNumero);
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`): conferido no fim.
         const anulacao = await tx.liquidacao.create({
           data: {
             id: p.anulacaoId,
@@ -1703,6 +1702,10 @@ export function criarDespesaRepositoryPrisma(
           },
           select: { id: true },
         });
+        // ⚠️ V37 — conferido DEPOIS de gravar, como em todo caminho que grava liquidação com número: a linha (empenho,
+        // número) primeiro, o NumeradorDoExercicio (último posto) por último. Ordem única entre os caminhos, para dois
+        // atos concorrentes com o mesmo número não se esperarem em cruz (um na linha, outro no numerador).
+        await conferirNumeroDaLiquidacao(tx, original.empenhoId, p.numero, p.chaveDoNumero);
         return anulacao.id;
       });
     },
@@ -1952,8 +1955,7 @@ export function criarDespesaRepositoryPrisma(
           }
 
           await criarLancamento(tx, lancamento);
-          // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
-          await conferirNumeroDaLiquidacao(tx, parcial.empenhoId, p.numero, undefined);
+          // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`): conferido no fim.
           const estorno = await tx.liquidacao.create({
             data: {
               id: p.estornoId,
@@ -1969,6 +1971,8 @@ export function criarDespesaRepositoryPrisma(
             },
             select: { id: true },
           });
+          // V37 — conferido depois de gravar, na ordem única dos caminhos que gravam liquidação com número.
+          await conferirNumeroDaLiquidacao(tx, parcial.empenhoId, p.numero, undefined);
           return estorno.id;
         }
 
@@ -2231,8 +2235,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
-        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
-        await conferirNumeroDaLiquidacao(tx, p.empenhoId, p.numero, undefined);
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`): conferido NO FIM
+        // da transação (ver o fim deste caso de uso), não aqui.
         const liq = await tx.liquidacao.create({
           data: {
             id: p.liquidacaoId,
@@ -2338,6 +2342,11 @@ export function criarDespesaRepositoryPrisma(
           });
         }
 
+        // ⚠️ V37 — O NÚMERO SE CONFERE POR ÚLTIMO. A conferência trava o NumeradorDoExercicio, o último posto da ordem
+        // de locks; a entrada no almoxarifado (acima) trava a liquidação, a classe e o estoque, de posto menor. Conferido
+        // antes, toda liquidação de material com número só de dígitos — o que a tela manda — era recusada pela guarda de
+        // inversão (medido no percurso das compras; t1b do M10). Na mesma transação, a recusa do número desfaz tudo.
+        await conferirNumeroDaLiquidacao(tx, p.empenhoId, p.numero, undefined);
         return liq.id;
       });
     },
@@ -2669,8 +2678,8 @@ export function criarDespesaRepositoryPrisma(
 
         await criarLancamento(tx, lancamento);
 
-        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`).
-        await conferirNumeroDaLiquidacao(tx, original.empenhoId, p.numero, undefined);
+        // V22 — número reservado pelo numerador só é usado por quem o reservou (`numerador.ts`): conferido NO FIM,
+        // depois da cascata do almoxarifado (ver o fim deste caso de uso).
         const anulacao = await tx.liquidacao.create({
           data: {
             id: p.anulacaoId,
@@ -2703,6 +2712,10 @@ export function criarDespesaRepositoryPrisma(
           await inverterControleDoFato(tx, { lancamentoOriginalId: original.lancamentoId, lancamentoDaAnulacaoId: lancamento.id, evento: "ANULACAO_LIQUIDACAO", data: p.data, criadoPor: p.criadoPor });
         }
 
+        // ⚠️ V37 — POR ÚLTIMO, como na liquidação: a cascata (acima) trava a classe, de posto menor que o
+        // NumeradorDoExercicio. Conferido antes, anular liquidação de material com número só de dígitos era recusado
+        // pela guarda de inversão (t8c do M10).
+        await conferirNumeroDaLiquidacao(tx, original.empenhoId, p.numero, undefined);
         return anulacao.id;
       });
     },

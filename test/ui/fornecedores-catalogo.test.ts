@@ -140,6 +140,19 @@ describe("o catálogo de fornecedores", () => {
     // O desabilitado também não se resolve pelo id (a volta de um formulário antigo não o escolhe).
     expect(await materiais("", "mat-3")).toEqual([]);
     expect(await materiais("", "mat-1")).toEqual(["mat-1"]);
+
+    // A ENTRADA NO ALMOXARIFADO da liquidação: só os da classe escolhida na linha (N=2 classes), com a leitura da despesa.
+    // A segunda classe aponta para a MESMA conta de estoque: o recorte é por classe, não por conta (nenhuma conta nova).
+    await prisma.classeDeMaterial.create({ data: { id: "cls-2", codigo: "3.02", descricao: "Material de limpeza", contaContabilId: "c-estoque", criadoPor: "seed-teste" } });
+    await prisma.material.create({ data: { ...base, id: "mat-4", codigo: "M004", descricaoSucinta: "Papel-toalha de cozinha", classeDeMaterialId: "cls-2" } });
+    const liquidante = await usuario("v37.liquidante", ["CONSULTAR_DESPESA"]);
+    const deEstoque = (q: string, classe: string) => buscarOpcoes(liquidante, "materiais-de-estoque", { q, pagina: 1, contexto: classe === "" ? {} : { "entradas.0.classeDeMaterialId": classe } }).then((r) => r.opcoes.map((o) => o.valor));
+    expect(await deEstoque("papel", "cls")).toEqual(["mat-1", "mat-2"]);
+    expect(await deEstoque("papel", "cls-2")).toEqual(["mat-4"]);
+    expect(await deEstoque("papel", "")).toEqual(["mat-1", "mat-2", "mat-4"]);
+    // O liquidante sem a leitura de licitações não lê o catálogo das compras — e vice-versa, com o motivo.
+    await expect(buscarOpcoes(liquidante, "materiais-para-compra", { q: "papel", pagina: 1, contexto: {} })).rejects.toThrow(/não está no seu acesso/);
+    await expect(buscarOpcoes(compras, "materiais-de-estoque", { q: "papel", pagina: 1, contexto: {} })).rejects.toThrow(/não está no seu acesso/);
   });
 
   it("t2: sem a leitura de licitações, a lista é recusada com o motivo", async () => {

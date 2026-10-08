@@ -1247,6 +1247,88 @@ export async function estornarMovimentoFisico(
   });
 }
 
+/**
+ * V37 — A PERNA FÍSICA NA ANULAÇÃO TOTAL DA LIQUIDAÇÃO. Chamada pelo port do M05 (`adapter-m05-almox.ts`) DEPOIS
+ * da cascata contábil (`aoAnularLiquidacaoTotal`), na MESMA transação: as entradas físicas que a liquidação trouxe
+ * são estornadas por fato novo (append-only), como o movimento contábil delas.
+ *
+ * ⚠️ ERA O FURO: a cascata estornava só o eixo CONTÁBIL. A perna física ficava viva — o material de uma compra
+ * desfeita continuava na posição do depósito, e os dois eixos deixavam de contar a mesma coisa (t9c do estoque
+ * físico). Achado da auditoria da V37.
+ *
+ * ⚠️ FAIL-CLOSED, como o contábil: se o material daquela posição (ou daquele lote) já saiu, desfazer a entrada
+ * deixaria a posição negativa — e a anulação INTEIRA é recusada, nomeando material, depósito e quantidades. A classe
+ * pode ter saldo de sobra (outras compras) e a posição não: por isso a conferência é por posição, não só por classe.
+ *
+ * ORDEM DOS LOCKS: a classe (posto 13) já foi travada pela cascata contábil; aqui só a POSIÇÃO (posto 23), na ordem
+ * da chave, para duas anulações concorrentes pegarem as mesmas travas na mesma sequência.
+ */
+export async function estornarEntradasFisicasDaLiquidacaoNaTx(tx: Tx, liquidacaoId: string): Promise<void> {
+  const originais = await tx.movimentoFisicoDeEstoque.findMany({
+    where: { tipo: "ENTRADA", movimentoAlmoxarifado: { liquidacaoId }, estornos: { none: {} } },
+    select: {
+      id: true,
+      materialId: true,
+      depositoId: true,
+      loteId: true,
+      quantidade: true,
+      valorUnitario: true,
+      valorTotal: true,
+      dataMovimento: true,
+      setorId: true,
+      operacaoId: true,
+      material: { select: { codigo: true } },
+      deposito: { select: { codigo: true } },
+      lote: { select: { identificacao: true } },
+    },
+  });
+  const chave = (o: { readonly materialId: string; readonly depositoId: string; readonly id: string }): string => `${chaveDaPosicao(o.materialId, o.depositoId)}:${o.id}`;
+  const emOrdem = [...originais].sort((a, b) => (chave(a) < chave(b) ? -1 : chave(a) > chave(b) ? 1 : 0));
+  for (const o of emOrdem) {
+    await travar(tx, "PosicaoFisicaDeEstoque", [chaveDaPosicao(o.materialId, o.depositoId)]);
+    const quantidade = toMoney(o.quantidade.toFixed(4));
+    const posicao = await posicaoDoMaterial(tx, o.materialId, o.depositoId);
+    if (quantidade.greaterThan(posicao.quantidade)) {
+      throw new Error(
+        `ANULAÇÃO DA LIQUIDAÇÃO DEIXARIA O ESTOQUE FÍSICO NEGATIVO (material ${o.material.codigo}, depósito ` +
+          `${o.deposito.codigo}): a entrada de ${quantidade.toFixed(4)} teria de ser desfeita, mas a posição tem ` +
+          `${posicao.quantidade.toFixed(4)} — o material já saiu. Estorne primeiro a saída. A anulação INTEIRA foi ` +
+          `rejeitada. Nada foi gravado.`
+      );
+    }
+    if (o.loteId !== null) {
+      const ms = await tx.movimentoFisicoDeEstoque.findMany({ where: { loteId: o.loteId }, select: { tipo: true, quantidade: true, valorTotal: true, dataMovimento: true } });
+      const doLote = posicaoDeEstoque(ms.map((m) => ({ tipo: m.tipo as TipoMovimentoFisicoEstoque, quantidade: toMoney(m.quantidade.toFixed(4)), valorTotal: toMoney(m.valorTotal.toFixed(2)), dataMovimento: m.dataMovimento })));
+      if (quantidade.greaterThan(doLote.quantidade)) {
+        throw new Error(
+          `ANULAÇÃO DA LIQUIDAÇÃO DEIXARIA O ESTOQUE FÍSICO NEGATIVO no lote ${o.lote?.identificacao ?? o.loteId} ` +
+            `(material ${o.material.codigo}): a entrada de ${quantidade.toFixed(4)} teria de ser desfeita, mas o lote tem ` +
+            `${doLote.quantidade.toFixed(4)}. Estorne primeiro a saída. A anulação INTEIRA foi rejeitada. Nada foi gravado.`
+        );
+      }
+    }
+    await tx.movimentoFisicoDeEstoque.create({
+      data: {
+        materialId: o.materialId,
+        depositoId: o.depositoId,
+        loteId: o.loteId,
+        tipo: "ESTORNO_ENTRADA",
+        quantidade: o.quantidade.toFixed(4),
+        valorUnitario: o.valorUnitario.toFixed(6),
+        valorTotal: o.valorTotal.toFixed(2),
+        // A MESMA data do estorno contábil da cascata (a da entrada): os dois eixos voltam no mesmo dia.
+        dataMovimento: o.dataMovimento,
+        setorId: o.setorId,
+        operacaoId: o.operacaoId,
+        estornoDeId: o.id,
+        motivo: "Anulação da liquidação que trouxe o material.",
+        criadoPor: "M05:anularLiquidacao",
+      },
+      select: { id: true },
+    });
+  }
+}
+
 export const zTransferirEntreDepositosInput = z.object({
   materialId: z.string().min(1),
   depositoOrigemId: z.string().min(1),

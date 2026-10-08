@@ -3437,6 +3437,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "composável interno (a entrada que nasce dentro da transação da liquidação)",
   registrarEntradaFisicaNaTx:
     "composável interno (o eixo FÍSICO da mesma entrada, na mesma transação)",
+  // V37 — a perna FÍSICA da cascata da anulação total (antes só o contábil voltava). Quem cobra o crachá é
+  // `anularLiquidacao`; o port do M10 chama este corpo dentro da mesma transação.
+  estornarEntradasFisicasDaLiquidacaoNaTx: "composável interno (cascata do M05, eixo físico)",
   ingressoNaTx: "composável interno",
   estornarIngressoNaTx: "composável interno",
   receberNaTx: "composável interno",
