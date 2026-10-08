@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `ee5e84ca` em `apresentacao/contabilidade` (a publicar; publicado antes: `b1d7e9c`) |
+| HEAD | `1c54bc22` em `apresentacao/contabilidade`, publicado como `d266ece` (main e `/release` = `d266ece`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Recebimento da ordem por busca na liquidação; limpeza do banco de teste de 13–31 s para 1,1 s (fim dos timeouts de hook); amostra 25 arquivos 251/251; percurso das compras 12/12. |
 | Próximo passo | LIQUIDACAO-EMPENHO-EM-LISTA (filtro no SQL do M05 e leitura do débito e dos subempenhos do empenho escolhido). |
@@ -55,6 +55,8 @@ A lista de ~490 tabelas da limpeza não limpava mais nada e saiu, com os guardas
 papelada); tabela nova não pede mais cadastro na limpeza. Fecha `TESTE-HOOK-PERTO-DO-LIMITE`.
 
 **Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.277/2.277; percurso das compras 12/12 (HEAD `ee5e84ca`).
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37d-20261008T161644Z.dump`; Actions 37807646429 verde; `/release` = `d266ece`; sonda de produção só leitura 4/4 (liquidação com o formulário, o catálogo novo responde 200, ordens e empenhos abrem) e apagada. Sem migration.
 
 **Pendências nomeadas:**
 - `LIQUIDACAO-EMPENHO-EM-LISTA`: continua. O saldo a liquidar é derivado (empenhado líquido − liquidado) e só a
