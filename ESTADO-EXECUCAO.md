@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `3de799a8` em `apresentacao/contabilidade`, publicado como `b1d7e9c` (main e `/release` = `b1d7e9c`) |
+| HEAD | `ee5e84ca` em `apresentacao/contabilidade` (a publicar; publicado antes: `b1d7e9c`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
-| Último resultado | Percurso das compras pela busca 8/8 (do cadastro do material à liquidação com entrada no almoxarifado); 16 arquivos de M05/M08/M10/M16/M33 e o catálogo, 208/208; liquidação de material pela tela, que era recusada desde a V22, corrigida. |
-| Próximo passo | LIQUIDACAO-RECEBIMENTO-DIGITADO e LIQUIDACAO-EMPENHO-EM-LISTA; depois ALMOXARIFADO-MATERIAL-EM-LISTA. |
+| Último resultado | Recebimento da ordem por busca na liquidação; limpeza do banco de teste de 13–31 s para 1,1 s (fim dos timeouts de hook); amostra 25 arquivos 251/251; percurso das compras 12/12. |
+| Próximo passo | LIQUIDACAO-EMPENHO-EM-LISTA (filtro no SQL do M05 e leitura do débito e dos subempenhos do empenho escolhido). |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,28 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Quarta rodada da V37 (08/10/2026): o recebimento na liquidação, e a limpeza do banco de teste
+
+Pedido: "Pode seguir". Regime: superfície no campo do recebimento; **instrumento** na limpeza do banco de teste.
+
+| Unidade | Commit | O que passou a funcionar | Provas |
+|---|---|---|---|
+| Recebimento da ordem por busca na liquidação | `ee5e84ca` | o campo que pedia o identificador interno do recebimento virou busca entre os itens recebidos da ordem DO EMPENHO escolhido, sem entrada física prévia e com quantidade a dar entrada; escolhido, a linha recebe classe, material, quantidade restante, unitário e valor (Decimal no servidor), tudo editável | `test/ui/recebimentos-catalogo.test.ts` 2/2 (N=2, três exclusões, negação com motivo); 5 mutações vermelhas; percurso: recebimento pela tela da ordem e liquidação nº 84 com a entrada presa a ele |
+| Limpeza do banco de teste | `dcd6537a` | **medido**: o `TRUNCATE ... CASCADE` do que um arquivo deixava levava 13,6 a 31 s (o CASCADE arrasta centenas de tabelas vazias, cada uma com arquivo novo no volume do Docker) — era a causa dos "Hook timed out in 10000ms" no primeiro teste de cada arquivo, que a V36 e a V37 atribuíram a inchaço. Agora DELETE nas tabelas com linha, achadas no catálogo, em passadas; o resto cai no TRUNCATE antigo. Primeira limpeza 1,1 s, seguintes 0,25 s | t3 de `limpeza-do-banco-completa` (nenhuma tabela com linha, sequência em 1); 3 mutações vermelhas, 1 equivalente (uma passada só: o TRUNCATE de reserva limpa certo, devagar); amostra de 25 arquivos de 8 módulos 251/251 sem timeout de hook. A primeira forma não tratava o SET NULL que bate num CHECK (`HistoricoVinculo`): a amostra pegou (17 arquivos), corrigido antes do commit |
+
+A lista de ~490 tabelas da limpeza não limpava mais nada e saiu, com os guardas t1/t2 que a conferiam (passariam a vigiar
+papelada); tabela nova não pede mais cadastro na limpeza. Fecha `TESTE-HOOK-PERTO-DO-LIMITE`.
+
+**Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.277/2.277; percurso das compras 12/12 (HEAD `ee5e84ca`).
+
+**Pendências nomeadas:**
+- `LIQUIDACAO-EMPENHO-EM-LISTA`: continua. O saldo a liquidar é derivado (empenhado líquido − liquidado) e só a
+  listagem do exercício o calcula; a busca honesta pede um filtro que desça ao SQL do M05 (número, credor) e a leitura
+  do débito e dos subempenhos só do empenho escolhido.
+- `RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR`: recebida a ordem inteira, o formulário sai da tela e a mensagem de
+  sucesso vai junto; fica o selo RECEBIDA e "1 recebimento(s)".
+- `ALMOXARIFADO-MATERIAL-EM-LISTA`, `CREDOR-ENCERRADO-NA-PAGINA`: como na terceira rodada.
 
 ### Terceira rodada da V37 (08/10/2026): da compra à liquidação pela tela, e dois defeitos de transação
 
