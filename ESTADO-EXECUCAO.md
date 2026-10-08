@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `c0fb150f` em `apresentacao/contabilidade` (a publicação desta segunda rodada está no fim da seção dela) |
+| HEAD | `5caf0533` em `apresentacao/contabilidade`, publicado como `129f708` (main e `/release` = `129f708`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Percurso das trilhas 9/9 (`scripts/percurso-v37-trilhas-conectadas.mts`), saldo na data 3/3, receita por natureza 6/6 e 8/8; bateria dos 107 arquivos que emitem empenho 998/999 (a falha era de fixture antiga, corrigida, 5/5). |
 | Próximo passo | Seguir as trilhas que o levantamento deixou abertas (abaixo); depois o resto sem decisão do catálogo da contabilidade. |
@@ -76,6 +76,8 @@ limite não foi aumentado. Pendência: TESTE-HOOK-PERTO-DO-LIMITE.
 o balanço patrimonial e as variações da base fictícia recusam emitir porque a conta 1.1.1.1.1.19.00 não está classificada
 como financeiro ou permanente (dado da base, a recusa está certa); adiantamento sem atalho de cadastro (o beneficiário é
 digitado, não há beco).
+
+Publicação da segunda rodada: backup `/var/backups/gestao-publica/esperanca-antes-v37b-20261008T052050Z.dump`; tipos aprovados; Actions 37731991722 verde; `/release` = `129f708`; sem migration; sonda de produção só de leitura 8/8 (exportar CSV em 6 relatórios, ordem de compra com fornecedor, ficha e processo por busca, deduções), apagada.
 
 ## V36 — catálogo da contabilidade e lacunas construídas (05/10/2026; vale sobre a V35 abaixo)
 
