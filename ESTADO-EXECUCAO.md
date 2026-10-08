@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `1c54bc22` em `apresentacao/contabilidade`, publicado como `d266ece` (main e `/release` = `d266ece`) |
+| HEAD | `95474767` em `apresentacao/contabilidade` (a publicar; publicado antes: `d266ece`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
-| Último resultado | Recebimento da ordem por busca na liquidação; limpeza do banco de teste de 13–31 s para 1,1 s (fim dos timeouts de hook); amostra 25 arquivos 251/251; percurso das compras 12/12. |
-| Próximo passo | LIQUIDACAO-EMPENHO-EM-LISTA (filtro no SQL do M05 e leitura do débito e dos subempenhos do empenho escolhido). |
+| Último resultado | Empenho da liquidação por busca (catálogo com escopo de unidade; débito e subempenhos só do escolhido); 5 percursos verdes; 27/27 nos testes ligados. |
+| Próximo passo | ALMOXARIFADO-MATERIAL-EM-LISTA; RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,28 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Quinta rodada da V37 (08/10/2026): o empenho da liquidação por busca
+
+Pedido: "pode seguir construindo". Regime: superfície no seletor; a busca do M05 com prova de cadeia (profundidade de
+leitura: o saldo a liquidar).
+
+| Unidade | Commit | O que passou a funcionar | Provas |
+|---|---|---|---|
+| Empenho da liquidação por busca | `95474767` | o `select` com todos os empenhos liquidáveis do recorte virou busca por número ou documento do credor, só com saldo a liquidar, no exercício da página; o recorte de unidade é do servidor (fora do escopo, nada; consolidado só para quem lê o ente). O aviso de débito do credor e os subempenhos são lidos só do empenho escolhido, autorizados na unidade dele; a página deixou de calcular os dois para todos | `test/ui/empenhos-liquidar-catalogo.test.ts` 2/2 (N=2 unidades, escopo nas duas direções, saldo zero e anulado fora, negação com motivo); 3 mutações vermelhas, 1 equivalente (o anulado total já tem saldo zero) |
+| A busca no M05 | `95474767` | `listarEmpenhos` com `busca` e `empenhoId` pela cadeia original → anulações (o saldo não sai cheio) | t8 de `m05-consultas-execucao` 8/8; 3 mutações vermelhas |
+
+**Percursos** que escolhiam o empenho da liquidação pelo `select` passaram a escolher pela busca (ou pelo link com
+`&empenho=`): v36 cheques 8/8, v36 em liquidação 5/5, v36 sem empenho prévio 3/3, v37 trilhas 9/9, compras pela busca
+11/11 (os cadastros não se repetem). `smoke-cadeia-despesa`, `smoke-cadeia-por-papel` e `smoke-eliminacoes-intra` foram
+ajustados e **não executados** nesta rodada (servem a outros bancos e ao portão). A mensagem do commit diz "compras
+13/13"; o número medido é 11/11.
+
+**Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.280/2.280; catálogos, consultas do M05, chave de
+comando, descritores e censo 27/27.
+
+**Pendências nomeadas:** fecha `LIQUIDACAO-EMPENHO-EM-LISTA`. Continuam `RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR`,
+`ALMOXARIFADO-MATERIAL-EM-LISTA`, `CREDOR-ENCERRADO-NA-PAGINA`.
 
 ### Quarta rodada da V37 (08/10/2026): o recebimento na liquidação, e a limpeza do banco de teste
 
