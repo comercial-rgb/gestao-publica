@@ -1,5 +1,45 @@
 # Estado da execução
 
+## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
+
+Pedido: `docs/lotes/V37-uso-de-ponta-a-ponta.md`. Regime: superfície (links, recortes, formulários pré-preenchidos) e
+profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenho).
+
+| Campo | Valor |
+|---|---|
+| HEAD | `31b56ab1` em `apresentacao/contabilidade` (publicação: ver o fim desta seção) |
+| Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
+| Último resultado | Percurso das trilhas 9/9 (`scripts/percurso-v37-trilhas-conectadas.mts`), saldo na data 3/3, receita por natureza 6/6 e 8/8; bateria dos 107 arquivos que emitem empenho 998/999 (a falha era de fixture antiga, corrigida, 5/5). |
+| Próximo passo | Seguir as trilhas que o levantamento deixou abertas (abaixo); depois o resto sem decisão do catálogo da contabilidade. |
+
+### O que passou a funcionar, e a rota
+
+| Unidade | Commit | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|---|
+| Demonstrativo da receita mês a mês por natureza (5.10.2.59, VALIDADA) | `befd926b` | por receita, mês a mês, com a opção de listar as fontes de cada receita e o resumo por fonte, CSV; a visão por fonte dos três exercícios passou a ser a soma desta | /relatorios/receita-mensal | m04-arrecadado-mes-a-mes 2/2, 4 mutações acusadas e 1 equivalente declarada; percurso 8/8 (registra duas guias pela tela para o N=2) |
+| Saldo da dotação na data de emissão do empenho (5.10.1.10, VALIDADA) | `4448c55a` | o empenho direto recusa o valor acima do disponível NA DATA (competência até o fim do dia civil), além do de agora; o formulário mostra os dois disponíveis ao escolher ficha e data | /despesa/empenhos | m05-saldo-na-data 2/2, 7 mutações acusadas; bateria de 107 arquivos 998/999; percurso 3/3 |
+| Trilhas da execução conectadas | `461b9f6f` | "Liquidar este empenho" no dossiê; "Pagar" e "Documento" na lista de liquidações; ordem autorizada abre o pagamento com a liquidação; "Empenhar com esta reserva" na ficha (o formulário chega com a reserva e a ficha); QDD abre a ficha; documento fiscal liquida o empenho dele; a conta bancária leva à movimentação (o formulário de novo movimento nasce nela) e à conciliação; documentos do pagamento e do movimento levam ao empenho, à liquidação, à conta e ao lançamento; a receita do demonstrativo e o valor de cada mês abrem as guias (recorte por natureza e mês na lista de arrecadações, dito na tela) | as telas citadas | m04-consultas-arrecadacao 4/4 (t2b, N=2 naturezas, mutação acusada); percurso das trilhas |
+| Trilha do planejamento conectada | `31b56ab1` | PPA → LDO, códigos reduzidos, transferências, audiências; LDO → PPA, proposta orçamentária, receita prevista, fichas; ficha → cronograma, empenhos, códigos reduzidos; a linha da receita prevista abre as guias dela | /planejamento/ppa/[id], /planejamento/ldo/[id], /planejamento/fichas/[id], /planejamento/receita-prevista | percurso das trilhas 9/9, por cliques |
+
+Levantamento das ligações (somente leitura, 257 rotas estáticas): 2 órfãs (`/fumaca`, de teste; `/consulta/certidao`,
+pública, sem link no repositório — a conferir se a certidão a emite); nenhum item do menu sem rota.
+
+**Defeito antigo corrigido:** a fixture do `m12-rreo-anexo4.test.ts` contava com a ordem de texto da fila do art. 141
+("NL-11" antes de "NL-9"); desde `f84ad1e7` a ordem é a natural e a liquidação paga em parte barrava a seguinte da mesma
+fonte. A regra estava certa; a fixture passou a liquidar a B antes.
+
+**Instrumento medido:** timeouts de hook em `m04-arrecadado-mes-a-mes` e `m04-consultas-arrecadacao` (10 s) depois da
+bateria grande, em arquivos não alterados e também com a 3011 parada: o t1 media 10,2 s; depois de VACUUM ANALYZE no
+banco de teste, 7,9 s. Causa: banco de teste inchado; o limite não foi aumentado. Pendência: o hook desse arquivo
+mora perto do limite.
+
+**Pendências nomeadas desta rodada:** SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA (a reserva não tem data própria);
+abertas pelo levantamento e não feitas: ordem de fornecimento → empenho; atalho "Cadastrar este credor" em ordem de
+compra, formar ordem e adiantamentos; dedução da receita sem link para a guia; RREO e RGF sem exportação e sem
+drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o vínculo PPA–LOA continua ausente).
+
+**Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
+
 ## V36 — catálogo da contabilidade e lacunas construídas (05/10/2026; vale sobre a V35 abaixo)
 
 Pedido: `docs/lotes/V36-catalogo-e-lacunas-da-contabilidade.md`. Regime: superfície (vínculos, filtros, telas) e
