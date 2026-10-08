@@ -1890,9 +1890,9 @@
       "frente": "ENT03",
       "candidato_reaproveitamento": "siafic-cg:M01,M04,M05,M06,M07,M08,M12,M14,M17, packages/ofx",
       "destino_proposto": "",
-      "rota_verificada": "/despesa/empenhos · scripts/demonstracao/percurso-execucao-da-despesa.ts.",
-      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): exigirSaldo (modules/m05-despesa/adapter-prisma.ts) recusa empenho acima do disponível dentro da transação (m05.test.ts); a tela mostra o disponível atual (percurso-execucao-da-despesa.ts passo 2). FALTA: saldo da dotação até a data de emissão, para empenho retroativo.",
-      "situacao": "PARCIAL"
+      "rota_verificada": "papel: administrador · contexto: next dev na 3011, banco gestao_publica_esperanca_ficticio, 2026-10-07 · passos: ficha de 2026 cujo disponível na véspera de uma anulação é menor que o de hoje → ficha e data escolhidas pela tela mostram os dois disponíveis iguais aos do M05 → empenho de um centavo acima do disponível na data recusado pela tela com o motivo, nada gravado → com a data de hoje os dois coincidem · obtido: 3/3 · artefato: scripts/percurso-v36-saldo-na-data-do-empenho.mts.",
+      "evidencia": "V36 (levantamento 2026-10-05, commit 9020303e): V36 — o empenho direto passa por duas guardas na transação, sob a trava da ficha: o disponível de agora (exigirSaldo, eixo corrente) e o disponível na data de emissão (exigirSaldoNaDataDoEmpenho, eixo de competência até o fim do dia civil; modules/m05-despesa/saldo-na-data.ts). O formulário do empenho mostra os dois disponíveis assim que a ficha e a data são escolhidas (disponivelNaDataAction, leitura da despesa no escopo da unidade da ficha). m05-saldo-na-data.test.ts t1 e t2 (N=2 anulações parciais em datas diferentes, empenhos gravados fora de ordem, hora de borda); 7 mutações acusadas (guarda desligada, corte no início do dia, corte em UTC, igualdade, eixo de registro, eixo corrente na guarda e na leitura). Pendência nomeada: SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA (a reserva não tem data própria; o empenho por reserva só passa pela guarda de agora).",
+      "situacao": "VALIDADO_LOCALMENTE"
     },
     {
       "id": "5.10.1.11",

@@ -561,3 +561,18 @@ Teste: `m05-subempenho.test.ts` (t1 N=2 no estimativo; t2 a regra do global; t3 
 estorno da liquidação; t5 as anulações do empenho repartido; t6 a corrida determinística na trava da ficha; t7 a
 autorização; t8 o estimativo liquidado direto; t9 o global repartido; t10 o estorno da anulação da liquidação; t11 a
 data civil na hora de borda; t12 empenho anulado). Mutações: 19, todas acusadas. Percurso: `scripts/percurso-v36-subempenho.mts`.
+
+## V36 — O saldo da dotação na data de emissão do empenho (07/10/2026)
+
+`saldo-na-data.ts`. O empenho direto passa por duas guardas, ambas dentro da transação e depois da trava da ficha:
+- `exigirSaldo`, que já existia: o disponível de agora, no eixo CORRENTE;
+- `exigirSaldoNaDataDoEmpenho`: o disponível no eixo de COMPETÊNCIA até o fim do dia civil da emissão.
+
+Um empenho com data anterior não consome crédito, anulação nem realocação de data posterior, ainda que hoje o
+disponível o cubra. O formulário (`/despesa/empenhos`) mostra os dois disponíveis assim que a ficha e a data estão
+escolhidas, por `disponivelDaFichaNaData`, que é a mesma soma da guarda.
+
+**Pendência nomeada: SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA.** O empenho por reserva fica fora da guarda da data. A
+reserva não tem data própria: a competência do movimento dela é a da gravação (`competenciaDerivada`), e a liberação
+pelo empenho entra na data do empenho. Entre as duas datas, o corte por competência daria um reservado negativo. A
+pendência some quando a reserva ganhar data.

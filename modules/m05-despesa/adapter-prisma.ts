@@ -64,6 +64,7 @@ import {
 } from "../m29-precatorios/servico.js";
 import { anoCivil, diaCivil } from "../../packages/datas/index.js";
 import { exigirUsoDoNumero } from "./numerador.js";
+import { exigirSaldoNaDataDoEmpenho } from "./saldo-na-data.js";
 import { conferirSubempenhoDaLiquidacao, quadroDoEmpenhoRepartido, reais as reaisDoAdapter } from "./subempenho-saldo.js";
 import type { Tx as TxDoRazao } from "../m01-core-contabil/razao.js";
 // M10 — a dívida. A amortização nasce DENTRO do pagamento e morre com ele.
@@ -1280,6 +1281,9 @@ export function criarDespesaRepositoryPrisma(
         } else {
           // Empenho direto: consome disponível.
           exigirSaldo(saldos.disponivel, p.valor, p.fichaId);
+          // V36 (TR 5.10.1.10) — e o disponível NA DATA DE EMISSÃO: o empenho retroativo não consome crédito de data
+          // posterior. O empenho por reserva fica fora (ver `saldo-na-data.ts`).
+          await exigirSaldoNaDataDoEmpenho(tx, { fichaId: p.fichaId, data: p.data, valor: p.valor });
         }
 
         // M02 (TR 4.43) — a LIMITAÇÃO DE EMPENHO pelo CMD. OPT-IN: no-op se o exercício não

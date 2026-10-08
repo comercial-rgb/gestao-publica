@@ -14,6 +14,7 @@ export { DIMENSOES_CONSULTAVEIS, type VinculoDoEmpenho } from "../../modules/m05
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05";
 import { empenhar } from "../../modules/m05-despesa/servico";
 import { duplicarEmpenho } from "../../modules/m05-despesa/duplicar-empenho";
+import { disponivelDaFichaNaData } from "../../modules/m05-despesa/saldo-na-data";
 import { roteiroEmpenho } from "../../modules/m01-core-contabil/roteiros";
 import {
   dossieDoEmpenho,
@@ -236,6 +237,22 @@ export async function listarFichasParaEmpenho(p: {
     classificacao: reduzidos.has(f.id) ? `${f.classificacao} · reduzido ${String(reduzidos.get(f.id))}` : f.classificacao,
     saldoDisponivel: f.saldoDisponivel.toFixed(2),
   }));
+}
+
+/**
+ * V36 (TR 5.10.1.10) — O DISPONÍVEL DA FICHA NA DATA DE EMISSÃO E O DE AGORA, para o formulário do empenho. A soma é a
+ * do M05 (`disponivelDaFichaNaData`, a mesma da guarda do empenho). Leitura da despesa no escopo da unidade da ficha.
+ * Nulo quando o dia não é uma data ou a ficha não existe.
+ */
+export async function lerDisponivelDaFichaNaData(fichaId: string, dia: string): Promise<{ readonly naData: string; readonly atual: string } | null> {
+  const sessao = await exigirSessao();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) return null;
+  const prisma = cliente();
+  const ficha = await prisma.fichaOrcamentaria.findUnique({ where: { id: fichaId }, select: { unidadeOrc: { select: { codigo: true } } } });
+  if (ficha === null) return null;
+  await autorizarLeituraDoRegistroPara(sessao, "CONSULTAR_DESPESA", ficha.unidadeOrc.codigo);
+  const s = await disponivelDaFichaNaData(prisma, fichaId, dia);
+  return { naData: s.naData.toFixed(2), atual: s.atual.toFixed(2) };
 }
 
 /**

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { duplicarEmpenhoDaTela, registrarEmpenho } from "../../../../lib/portas/empenho";
+import { duplicarEmpenhoDaTela, lerDisponivelDaFichaNaData, registrarEmpenho } from "../../../../lib/portas/empenho";
 import { desmascararValor } from "../../../../lib/format/mascaras";
 import { lerDebitosDosCredores } from "../../../../lib/portas/debitos-do-credor";
 import { meioDiaCivil } from "../../../../packages/datas/index";
@@ -144,6 +144,18 @@ export async function duplicarEmpenhoAction(_prev: EstadoDuplicacao, formData: F
  * quem soma é o M10 e quem autoriza é a porta (leitura da despesa). Se a consulta falhar, a tela DIZ que não consultou
  * ("indisponivel") — silêncio pareceria "sem débito".
  */
+/**
+ * V36 (TR 5.10.1.10) — o disponível da ficha na data de emissão e o de agora, para o formulário. Só traduz; quem soma é
+ * o M05 e quem autoriza é a porta. Falhou a consulta: a tela diz que não consultou.
+ */
+export async function disponivelNaDataAction(fichaId: string, dia: string): Promise<{ readonly naData: string; readonly atual: string } | "indisponivel" | null> {
+  try {
+    return await lerDisponivelDaFichaNaData(fichaId, dia);
+  } catch {
+    return "indisponivel";
+  }
+}
+
 export async function debitosDoCredorAction(documento: string): Promise<{ readonly inscricoes: number; readonly saldo: string } | "indisponivel" | null> {
   try {
     const r = await lerDebitosDosCredores([documento]);

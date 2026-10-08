@@ -214,14 +214,17 @@ async function cenario(): Promise<void> {
 
   const deps = criarM05Deps(prisma);
   const fonteDa: Record<string, string> = { A: "fnt-800", E: "fnt-500", B: "fnt-800", C: "fnt-801", Dd: "fnt-802", F: "fnt-500" };
-  const executa = async (ficha: string, valor: string, pago: string | null) => {
+  // A liquidação da B é de 31/03, antes da da A (01/04): a A é paga em parte (8.000 de 10.000) e, na mesma fonte 800,
+  // continuaria na cabeça da fila do art. 141 e barraria o pagamento da B. Na ordem natural do número (f84ad1e7), a NL-9
+  // vem antes da NL-11; a fixture contava com a ordem de texto antiga.
+  const executa = async (ficha: string, valor: string, pago: string | null, liquidadaEm = "2026-04-01") => {
     n += 1;
     const e = await empenhar(
       { fichaId: ficha, numero: `NE-${String(n)}`, tipo: "ORDINARIO", valor, data: D("2026-03-01"), credorCpfCnpj: "11144477735", historico: "fixture", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR },
       R_EMP,
       deps
     );
-    const l = await liquidar({ empenhoId: e.empenhoId, numero: `NL-${String(n)}`, valor, data: D("2026-04-01"), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQ, deps);
+    const l = await liquidar({ empenhoId: e.empenhoId, numero: `NL-${String(n)}`, valor, data: D(liquidadaEm), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQ, deps);
     if (pago !== null) {
       await pagar({ liquidacaoId: l.liquidacaoId, numero: `NP-${String(n)}`, valor: pago, data: D("2026-05-01"), contaBancaria: `CC-${fonteDa[ficha]!}`, fonteId: fonteDa[ficha]!, historico: "p", criadoPor: POR }, R_PAG, deps);
     }
@@ -231,7 +234,7 @@ async function cenario(): Promise<void> {
   }
   await executa("A", "10000.00", "8000.00");
   await executa("E", "2000.00", "2000.00");
-  await executa("B", "1500.00", "1500.00");
+  await executa("B", "1500.00", "1500.00", "2026-03-31");
   await executa("C", "4000.00", "4000.00");
   await executa("Dd", "900.00", "900.00");
   await executa("F", "3000.00", null);

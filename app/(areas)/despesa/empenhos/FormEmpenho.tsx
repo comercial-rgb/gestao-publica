@@ -13,7 +13,7 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { debitosDoCredorAction, empenharAction, type EstadoEmpenho } from "./actions";
+import { debitosDoCredorAction, disponivelNaDataAction, empenharAction, type EstadoEmpenho } from "./actions";
 import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
 
 /**
@@ -159,6 +159,24 @@ export function FormEmpenho({
     };
   }, [credor.doc]);
   const [valor, setValor] = useState<{ cru: string; versao: number }>({ cru: "", versao: 0 });
+  // V36 (TR 5.10.1.10) — o disponível da ficha na data de emissão (o empenho com data anterior não consome crédito de
+  // data posterior) e o de agora, consultados no servidor a cada ficha ou data nova. A guarda é a do servidor.
+  const [dataEmissao, setDataEmissao] = useState("");
+  const [naData, setNaData] = useState<{ readonly naData: string; readonly atual: string } | "indisponivel" | undefined>(undefined);
+  useEffect(() => {
+    if (fichaId === "" || !/^\d{4}-\d{2}-\d{2}$/.test(dataEmissao)) {
+      setNaData(undefined);
+      return;
+    }
+    let vivo = true;
+    setNaData(undefined);
+    void disponivelNaDataAction(fichaId, dataEmissao).then((r) => {
+      if (vivo) setNaData(r ?? "indisponivel");
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [fichaId, dataEmissao]);
   const [categoria, setCategoria] = useState<Categoria>("");
   const [tipo, setTipo] = useState<"ORDINARIO" | "GLOBAL" | "ESTIMATIVO">("ORDINARIO");
   const [historico, setHistorico] = useState("");
@@ -398,6 +416,22 @@ export function FormEmpenho({
               Disponível na ficha: <strong className="tabular text-[color:var(--color-ink)]">R$ {formatarMoeda(fichaEscolhida.saldoDisponivel).texto}</strong>
             </span>
           ) : null}
+          {fichaEscolhida !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(dataEmissao) ? (
+            <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]" data-disponivel-na-data={dataEmissao}>
+              {naData === undefined ? (
+                "Consultando o disponível na data do empenho…"
+              ) : naData === "indisponivel" ? (
+                "Não foi possível consultar o disponível na data do empenho; a emissão confere no servidor."
+              ) : (
+                <>
+                  Disponível em {dataEmissao.split("-").reverse().join("/")}:{" "}
+                  <strong className="tabular text-[color:var(--color-ink)]" data-valor-na-data>R$ {formatarMoeda(naData.naData).texto}</strong>
+                  {" "}· hoje: <strong className="tabular text-[color:var(--color-ink)]" data-valor-atual>R$ {formatarMoeda(naData.atual).texto}</strong>
+                  . O empenho tem de caber nos dois.
+                </>
+              )}
+            </span>
+          ) : null}
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -470,7 +504,7 @@ export function FormEmpenho({
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Data do empenho</span>
-          <input name="data" type="date" required className={CAMPO} />
+          <input name="data" type="date" required value={dataEmissao} onChange={(e) => setDataEmissao(e.target.value)} className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
