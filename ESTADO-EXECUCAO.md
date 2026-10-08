@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (teto da dedução, recortes do M05 com anulaç
 
 | Campo | Valor |
 |---|---|
-| HEAD | o commit do código reduzido, sobre `302b30ca` (multas) e `88c16fc6` (subempenho), em `apresentacao/contabilidade` (main e `/release` = `461c0ae`; os três ainda não publicados) |
+| HEAD | `5283262f` (publicado como `5637936`; main e `/release` = `5637936`) em `apresentacao/contabilidade` |
 | Catálogo | 619 de 2.037 verificadas (155 validadas, 204 parciais, 170 ausentes). As 285 de contabilidade (5.9 e 5.10): 95 validadas, 31 implementadas sem percurso, 121 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Código reduzido (seção "Terceira rodada"): m02b-codigo-reduzido 5/5, busca 2/2, 9 mutações acusadas, M02b + travas + censo 169/169, percurso 5/5. Multas de trânsito: m36-multas 9/9, 20 mutações acusadas, vizinhos (roteiros, adiantamentos, perdas, apropriação, frota, censo) 49/49, percurso 7/7 e 6/6. Subempenho: m05-subempenho 12/12, runtime 1/1, 19 mutações acusadas, vizinhos M05+censo 92/92, percurso 6/6. Antes: segunda rodada de 07/10 (seção "Segunda rodada das áreas que faltavam"): balancete por fonte 4/4, fontes da natureza e rateio 7/7, prévia 8/8, transferências do PPA 5/5 em percurso; regressão M05+M03+censo+travas+balanço 378/378; publicada em produção (backup `esperanca-antes-v36n-20261007T210629Z.dump`, 4 migrations, sonda nas 6 telas). |
-| Próximo passo | Publicar subempenho, multas e código reduzido (backup, 5 migrations, sonda). Depois, o que restar sem decisão no catálogo da contabilidade. Decisões do ente: conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 ou .99); 5.9.3.34; 5.10.2.4; estágio em liquidação. Restantes dependem de terceiro. |
+| Próximo passo | O que restar sem decisão no catálogo da contabilidade (36 ausentes e 121 parciais em 5.9 e 5.10; a maior parte depende de terceiro ou de decisão do ente). Decisões do ente: conta do roteiro do bloqueio da prévia (6.2.2.1.2.01 ou .99); 5.9.3.34; 5.10.2.4; estágio em liquidação. Restantes dependem de terceiro. |
 
 ### Segunda rodada das áreas que faltavam (07/10/2026, publicada como 461c0ae)
 
@@ -60,6 +60,8 @@ Migrations das multas: `20261108210000_v36_multas_de_transito` e `20261108210100
 Migrations do código reduzido: `20261108220000_v36_codigo_reduzido_da_despesa_ppa` e `20261108220100_v36_codigo_reduzido_unidade_executora` (a coluna da unidade renomeada para o nome da AcaoPpa, sem DROP). Trava: posto novo `PlanoPlurianual` (44, o último). Censo 566. Auditoria (5 achados): busca por número exata, o canário do `unidadeOrcId` do M02b passa a ver a tabela (e a coluna é de classificação), contagem separada do que o gerador resolve, leitura exigida na porta, ordem numérica. Não construído: reordenar antes da execução (5.9.3.22). Corrigido junto: a faixa de acentos com caracteres invisíveis em `multas.ts` virou `p{M}`.
 
 **Decisão do ente desta rodada:** as contas de controle das multas (REGISTRO e BAIXA). Até a declaração, em produção a multa é recusada com a mensagem que diz onde declarar. A base fictícia tem demais controles 7.9.9/8.9.9, declarados pelo percurso como escolha de demonstração.
+
+Publicação da terceira rodada: Actions 37707681763 verde; `/release` = `5637936`; migrations 200000, 210000, 210100, 220000 e 220100 aplicadas, com o papel `gestao_app` gravando nas tabelas novas; backup `/var/backups/gestao-publica/esperanca-antes-v36o-20261008T002053Z.dump`; sonda de produção (só leitura) com o administrador nas 6 telas: o empenho global com a seção de subempenhos, liquidações, a busca da dotação com o código reduzido, multas de trânsito, roteiros com as multas, códigos reduzidos — 6/6, sonda apagada. Em produção as multas são recusadas até a contabilidade declarar o roteiro das multas.
 
 Desenho declarado: o subempenho não lança no razão (o crédito empenhado já foi lançado no pai; lançá-lo de novo duplicaria a despesa empenhada) — nenhuma conta inventada. O percurso deixou na base fictícia subempenhos no empenho 2026NE9006490 (uma corrida caiu por queda de navegação durante a recompilação do servidor e foi repetida).
 
