@@ -8,6 +8,8 @@ import { saldoReconhecidoDe } from "../../modules/m04-receita/reconhecimento.js"
 import { saldoAIncorporarDaLiquidacao } from "../../modules/m10-patrimonial/patrimonio.js";
 import { saldoDaDividaAtivaEm } from "../../modules/m10-patrimonial/divida-ativa.js";
 import { formatarMoeda } from "../../packages/contracts/moeda";
+import { toMoney } from "../../packages/contracts/money.js";
+import { diaCivilBr } from "../../packages/datas/index.js";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
 import type { Identidade } from "./sessao";
@@ -246,6 +248,65 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     buscar(_sessao, p) {
       const classe = Object.entries(p.contexto).find(([k]) => k.endsWith("classeDeMaterialId"))?.[1] ?? "";
       return materiaisAtivos(p, classe === "" ? {} : { classeDeMaterialId: classe });
+    },
+  },
+
+  /**
+   * V37 — O RECEBIMENTO DA ORDEM DE COMPRA que a entrada da liquidação consome: os itens recebidos da ordem do EMPENHO
+   * escolhido no formulário (contexto `empenhoId`), sem entrada física pelo almoxarifado e com quantidade a dar
+   * entrada. Substitui o campo de texto que pedia o identificador interno. Os `dados` sugerem a linha (material,
+   * classe, quantidade restante, unitário e o valor, em Decimal); o domínio confere tudo de novo
+   * (`exigirRecebimentoConsumivel`: material, entrada física prévia, recebimento esgotado).
+   */
+  "recebimentos-para-liquidacao": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_sessao, p) {
+      const empenhoId = p.contexto["empenhoId"] ?? "";
+      if (empenhoId === "") return { opcoes: [], temMais: false };
+      const empenho = await cliente().empenho.findUnique({ where: { id: empenhoId }, select: { ordemDeCompraId: true } });
+      if (empenho?.ordemDeCompraId == null) return { opcoes: [], temMais: false };
+      const linhas = await cliente().recebimentoDeItem.findMany({
+        where: {
+          ...(p.valor !== undefined ? { id: p.valor } : {}),
+          movimentoFisicoId: null,
+          itemDeOrdem: {
+            ordemId: empenho.ordemDeCompraId,
+            ...(p.q === "" ? {} : { material: { OR: [{ codigo: { startsWith: p.q.trim() } }, { descricaoSucinta: contem(p.q) }] } }),
+          },
+        },
+        orderBy: [{ recebimento: { data: "asc" } }, { id: "asc" }],
+        skip: skip(p),
+        take,
+        select: {
+          id: true,
+          quantidade: true,
+          recebimento: { select: { data: true, notaFiscal: true } },
+          itemDeOrdem: { select: { valorUnitario: true, ordem: { select: { numero: true } }, material: { select: { id: true, codigo: true, descricaoSucinta: true, classeDeMaterialId: true } } } },
+          entradasPorLiquidacao: { where: { estornoDeId: null, estornos: { none: {} } }, select: { quantidade: true } },
+        },
+      });
+      const r = pagina(linhas, p);
+      const opcoes: OpcaoReferenciada[] = [];
+      for (const x of r.linhas) {
+        const consumido = x.entradasPorLiquidacao.reduce((a, e) => a.plus(e.quantidade.toFixed(4)), toMoney("0"));
+        const restante = toMoney(x.quantidade.toFixed(4)).minus(consumido);
+        if (!restante.greaterThan(0)) continue;
+        const m = x.itemDeOrdem.material;
+        const unitario = toMoney(x.itemDeOrdem.valorUnitario.toFixed(6));
+        opcoes.push({
+          valor: x.id,
+          rotulo: `${m.codigo} — ${m.descricaoSucinta.slice(0, 60)} · recebido em ${diaCivilBr(x.recebimento.data)} · restam ${restante.toFixed(4).replace(/.?0+$/, "")}`,
+          detalhe: `Ordem ${x.itemDeOrdem.ordem.numero}${x.recebimento.notaFiscal != null && x.recebimento.notaFiscal !== "" ? ` · nota fiscal ${x.recebimento.notaFiscal}` : ""}`,
+          dados: {
+            materialId: m.id,
+            classeDeMaterialId: m.classeDeMaterialId,
+            quantidade: restante.toFixed(4).replace(/.?0+$/, ""),
+            valorUnitario: unitario.toFixed(2),
+            valor: restante.times(unitario).toFixed(2),
+          },
+        });
+      }
+      return { opcoes, temMais: r.temMais };
     },
   },
 

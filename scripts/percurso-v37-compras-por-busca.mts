@@ -223,30 +223,61 @@ try {
             conferir(rd.tipo === "ok", `depósito ALM-01 cadastrado pela tela (${rd.texto.slice(0, 60)})`);
           } else console.log("   depósito ALM-01 já existe");
           const deposito = await prisma.deposito.findFirstOrThrow({ where: { codigo: "ALM-01" }, select: { id: true } });
+          // 6a. o recebimento da ordem, pela tela do detalhe: 10 un do item da resma, com a nota fiscal.
+          const item = await prisma.itemDeOrdemDeCompra.findFirstOrThrow({ where: { ordemId: ordem.id }, select: { id: true } });
+          await irPara(n, page, `/licitacoes/ordens-de-compra/${ordem.id}`);
+          const rr = await preencherEEnviar(page, "receber-ordem", [
+            { sel: '[name="data"]', valor: "2026-10-08", tipo: "data" },
+            { sel: '[name="notaFiscal"]', valor: "1234" },
+            { sel: '[name="responsavelRecebimento"]', valor: "Servidor do almoxarifado (fictício)" },
+            { sel: 'select[name="itens.0.itemDeOrdemId"]', valor: item.id, tipo: "select" },
+            { sel: '[name="itens.0.quantidade"]', valor: "10" },
+          ]);
+          const recebido = await prisma.recebimentoDeItem.findFirst({ where: { itemDeOrdemId: item.id }, select: { id: true } });
+          // Recebida a ordem inteira, o formulário sai da tela (nada mais pendente) e a mensagem vai junto: confere-se o banco e o selo.
+          const selo = await page.$eval("main", (m) => /RECEBIDA/.test(m.textContent ?? "")).catch(() => false);
+          conferir(recebido !== null && selo, `recebimento de 10 un registrado no detalhe da ordem, que passa a RECEBIDA (resposta da tela: ${rr.tipo})`);
+
+          // 6b. "Liquidar este empenho": o RECEBIMENTO pela busca preenche a linha (classe, material, quantidade, unitário,
+          // valor); só falta o depósito. Antes, o campo pedia o identificador interno do recebimento, digitado.
           await irPara(n, page, `/despesa/empenhos/${doEmpenho.id}`);
           await Promise.all([page.waitForNavigation({ waitUntil: "networkidle2" }), page.click('a[data-proximo-passo="liquidar"]')]);
           const L = 'form[data-acao="liquidar"]';
           await page.waitForSelector(`${L}[data-material="sim"]`, { timeout: 60000 }).catch(() => undefined);
-          const selectDeMaterial = await page.$(`${L} select[name="entradas.0.materialId"]`);
-          // Com a classe 3.01 escolhida na linha, a busca acha o material dela; o de outra classe não viria.
+          const campoDigitado = await page.$(`${L} input[name="entradas.0.recebimentoDeItemId"]:not([type="hidden"])`);
+          // O recebimento primeiro, à mão: escolhido, a linha se remonta e o material confere o valor sugerido no servidor —
+          // espera-se o material chegar ao campo antes de seguir (a pessoa leva mais que isso para olhar a linha).
+          const RAIZ_REC = `${L} [data-seletor]:has(input[type="hidden"][name="entradas.0.recebimentoDeItemId"])`;
+          await page.waitForSelector(`${RAIZ_REC} input[role="combobox"]`);
+          await page.type(`${RAIZ_REC} input[role="combobox"]`, "papel", { delay: 10 });
+          await page.waitForSelector(`${RAIZ_REC} [role="option"][data-valor="${recebido?.id ?? "-"}"]`, { timeout: 30000 });
+          await page.evaluate((sel) => document.querySelector(sel)?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true })), `${RAIZ_REC} [role="option"][data-valor="${recebido?.id ?? "-"}"]`);
+          await page.waitForFunction((sel, v) => (document.querySelector(sel) as HTMLInputElement | null)?.value === v, { timeout: 30000 }, `${L} input[type="hidden"][name="entradas.0.materialId"]`, mat1.id).catch(() => undefined);
+          const linha = {
+            classe: await page.$eval(`${L} select[name="entradas.0.classeDeMaterialId"]`, (e) => (e as HTMLSelectElement).value).catch(() => ""),
+            material: await page.$eval(`${L} input[type="hidden"][name="entradas.0.materialId"]`, (e) => (e as HTMLInputElement).value).catch(() => ""),
+            quantidade: await page.$eval(`${L} [name="entradas.0.quantidade"]`, (e) => (e as HTMLInputElement).value).catch(() => ""),
+            unitario: await page.$eval(`${L} [name="entradas.0.valorUnitario"]`, (e) => (e as HTMLInputElement).value).catch(() => ""),
+            valor: await page.$eval(`${L} input[type="hidden"][name="entradas.0.valor"]`, (e) => (e as HTMLInputElement).value).catch(() => ""),
+          };
+          conferir(
+            linha.classe === classe.id && linha.material === mat1.id && linha.quantidade === "10" && linha.unitario === "24.90" && linha.valor === "249.00",
+            `o recebimento escolhido pela busca preenche a linha: classe, material, ${linha.quantidade} un a ${linha.unitario}, valor ${linha.valor}`
+          );
           const rl = await preencherEEnviar(page, "liquidar", [
-            // O valor se digita no campo com máscara (o 'name' fica no escondido): o 1º é o da liquidação, o 2º o da linha.
+            // O valor se digita no campo com máscara (o 'name' fica no escondido): o 1º é o da liquidação.
             { sel: '[data-mascara="valor"]', valor: "249,00", indice: 0 },
             { sel: '[name="data"]', valor: "2026-10-08", tipo: "data" },
             { sel: '[name="atesto"]', valor: "Servidor do almoxarifado (fictício)" },
             { sel: '[name="historico"]', valor: `Recebimento da ordem ${numeroDaOrdem}` },
-            { sel: 'select[name="entradas.0.classeDeMaterialId"]', valor: classe.id, tipo: "select" },
-            { sel: '[data-mascara="valor"]', valor: "249,00", indice: 1 },
-            { sel: "entradas.0.materialId", valor: mat1.id, busca: "papel", tipo: "referencia" },
             { sel: 'select[name="entradas.0.depositoId"]', valor: deposito.id, tipo: "select" },
-            { sel: '[name="entradas.0.quantidade"]', valor: "10" },
-            { sel: '[name="entradas.0.valorUnitario"]', valor: "24.90" },
           ]);
+          // O que a linha levou (lido depois do envio seria o formulário limpo; o banco diz o que foi gravado).
           const liq = await prisma.liquidacao.findFirst({ where: { empenhoId: doEmpenho.id }, select: { numero: true, valor: true } });
-          const entrada = await prisma.movimentoFisicoDeEstoque.findFirst({ where: { materialId: mat1.id, depositoId: deposito.id }, orderBy: { dataMovimento: "desc" }, select: { quantidade: true, valorTotal: true } });
+          const entrada = await prisma.movimentoFisicoDeEstoque.findFirst({ where: { recebimentoDeItemId: recebido?.id ?? "-" }, select: { quantidade: true, valorUnitario: true, materialId: true, depositoId: true } });
           conferir(
-            selectDeMaterial === null && rl.tipo === "ok" && liq?.valor.toFixed(2) === "249.00" && entrada?.quantidade.toFixed(0) === "10",
-            `liquidação ${liq?.numero ?? "-"} de R$ ${liq?.valor.toFixed(2) ?? "-"} com entrada de 10 un de MAT-0001 no ALM-01, material escolhido pela busca (${rl.texto.slice(0, 70)})`
+            campoDigitado === null && rl.tipo === "ok" && liq?.valor.toFixed(2) === "249.00" && entrada?.quantidade.toFixed(0) === "10" && entrada.valorUnitario.toFixed(2) === "24.90" && entrada.materialId === mat1.id && entrada.depositoId === deposito.id,
+            `liquidação ${liq?.numero ?? "-"} de R$ ${liq?.valor.toFixed(2) ?? "-"} gravada com a entrada de 10 un a 24,90 no ALM-01 presa ao recebimento (${rl.texto.slice(0, 60)})`
           );
         }
       }

@@ -83,6 +83,9 @@ export function FormLiquidacao({
   const inicial = empenhoInicial !== undefined && empenhos.some((e) => e.id === empenhoInicial) ? empenhoInicial : "";
   const [escolhido, setEscolhido] = useState<string>(inicial);
   const [linhas, setLinhas] = useState<number>(1);
+  // V37 — a linha que um RECEBIMENTO escolhido sugere (material, classe, quantidade, unitário, valor). A `versao`
+  // remonta os campos da linha com a sugestão; tudo continua editável, e o domínio confere de novo.
+  const [sugestoes, setSugestoes] = useState<Readonly<Record<number, { readonly dados: Readonly<Record<string, string>>; readonly versao: number }>>>({});
   if (estado.sucesso !== undefined) ref.current?.reset();
 
   if (empenhos.length === 0) {
@@ -224,9 +227,23 @@ export function FormLiquidacao({
           </p>
           {Array.from({ length: linhas }, (_, i) => (
             <div key={i} data-linha={i} className="mb-3 grid gap-3 rounded border border-dashed border-[color:var(--color-border)] p-2 sm:grid-cols-2 lg:grid-cols-4">
+              {/* V37 — o recebimento da ordem do empenho, por busca (antes, o identificador interno digitado). */}
+              <CampoReferenciado
+                name={`entradas.${i}.recebimentoDeItemId`}
+                rotulo="Recebimento da ordem de compra (opcional; preenche a linha)"
+                catalogo="recebimentos-para-liquidacao"
+                contexto={["empenhoId"]}
+                placeholder="Material recebido na ordem deste empenho"
+                largura={4}
+                aoEscolher={(o) => {
+                  if (o === null || o.dados === undefined) return;
+                  const dados = o.dados;
+                  setSugestoes((atual) => ({ ...atual, [i]: { dados, versao: (atual[i]?.versao ?? 0) + 1 } }));
+                }}
+              />
               <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-2">
                 <span className={ROTULO}>Classe de material</span>
-                <select name={`entradas.${i}.classeDeMaterialId`} defaultValue="" className={CAMPO}>
+                <select key={`classe-${String(sugestoes[i]?.versao ?? 0)}`} name={`entradas.${i}.classeDeMaterialId`} defaultValue={sugestoes[i]?.dados["classeDeMaterialId"] ?? ""} className={CAMPO}>
                   <option value="">— escolha —</option>
                   {opcoesDeMaterial.classes.map((c) => (
                     <option key={c.id} value={c.id}>{c.rotulo} (conta {c.contaCodigo})</option>
@@ -235,14 +252,12 @@ export function FormLiquidacao({
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)]">
                 <span className={ROTULO}>Valor da classe (R$)</span>
-                <CampoValor name={`entradas.${i}.valor`} placeholder="6.000,00" className={CAMPO} />
-              </label>
-              <label className="text-xs text-[color:var(--color-ink-2)]">
-                <span className={ROTULO}>Recebimento da ordem de compra (opcional)</span>
-                <input name={`entradas.${i}.recebimentoDeItemId`} placeholder="recebimento já registrado" className={CAMPO} />
+                <CampoValor key={`valor-${String(sugestoes[i]?.versao ?? 0)}`} name={`entradas.${i}.valor`} defaultValue={sugestoes[i]?.dados["valor"] ?? ""} placeholder="6.000,00" className={CAMPO} />
               </label>
               {/* A busca oferece só os materiais da classe escolhida nesta linha; em branco, não há entrada física. */}
               <CampoReferenciado
+                key={`material-${String(sugestoes[i]?.versao ?? 0)}`}
+                {...(sugestoes[i]?.dados["materialId"] !== undefined ? { valorInicial: sugestoes[i].dados["materialId"] } : {})}
                 name={`entradas.${i}.materialId`}
                 rotulo="Material (opcional; em branco, sem entrada física)"
                 catalogo="materiais-de-estoque"
@@ -261,11 +276,11 @@ export function FormLiquidacao({
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)]">
                 <span className={ROTULO}>Quantidade</span>
-                <input name={`entradas.${i}.quantidade`} inputMode="decimal" placeholder="100" className={CAMPO} />
+                <input key={`qtd-${String(sugestoes[i]?.versao ?? 0)}`} name={`entradas.${i}.quantidade`} defaultValue={sugestoes[i]?.dados["quantidade"] ?? ""} inputMode="decimal" placeholder="100" className={CAMPO} />
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)]">
                 <span className={ROTULO}>Valor unitário (R$)</span>
-                <input name={`entradas.${i}.valorUnitario`} inputMode="decimal" placeholder="60.00" className={CAMPO} />
+                <input key={`unit-${String(sugestoes[i]?.versao ?? 0)}`} name={`entradas.${i}.valorUnitario`} defaultValue={sugestoes[i]?.dados["valorUnitario"] ?? ""} inputMode="decimal" placeholder="60.00" className={CAMPO} />
               </label>
               <label className="text-xs text-[color:var(--color-ink-2)]">
                 <span className={ROTULO}>Lote (se o material controla)</span>
