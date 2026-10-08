@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -75,7 +76,10 @@ export default async function ReceitaPrevistaPage({ searchParams }: { readonly s
               {linhas.map((l) => (
                 <tr key={l.id} className="border-b border-[color:var(--color-border)] align-top" data-natureza={l.natureza} data-tipo={l.tipo}>
                   <td className="py-1.5 pr-4 text-xs">
-                    <span className="font-mono">{l.natureza}</span> <span className="text-[color:var(--color-ink-3)]">{l.descricao}</span>
+                    {/* V37 — da previsão para o realizado: as guias desta receita no exercício. */}
+                    <Link className="hover:underline" href={`/receita/arrecadacoes?exercicio=${String(exercicio)}&natureza=${l.natureza}`} title="Ver as guias arrecadadas desta receita">
+                      <span className="font-mono">{l.natureza}</span> <span className="text-[color:var(--color-ink-3)]">{l.descricao}</span>
+                    </Link>
                   </td>
                   <td className="py-1.5 pr-4 text-xs">{l.fonte}</td>
                   <td className="py-1.5 pr-4 text-xs">{TIPO[l.tipo] ?? l.tipo}</td>

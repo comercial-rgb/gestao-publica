@@ -142,6 +142,30 @@ try {
     const corpo = await page.$eval("body", (b) => b.textContent ?? "");
     conferir(u7.includes(`natureza=${primeira.cod}`) && aviso.includes(primeira.cod) && corpo.includes(primeira.total), `receita mês a mês → as guias da receita ${primeira.cod}: recorte dito ("${aviso.slice(0, 60)}") e o total ${primeira.total} na lista`);
   }
+
+  // ── 8. planejamento: PPA → LDO → proposta orçamentária, pelos relacionados de cada tela ──
+  const plano = await prisma.planoPlurianual.findFirst({ orderBy: { anoInicio: "desc" }, select: { id: true } });
+  const ldo = await prisma.leiDiretrizesOrcamentarias.findFirst({ orderBy: { exercicio: "desc" }, select: { id: true } });
+  if (plano === null || ldo === null) {
+    console.log("NAO EXECUTADO passo 8: a base não tem PPA ou LDO");
+  } else {
+    await irPara(n, page, `/planejamento/ppa/${plano.id}?aba=relacionados`);
+    const u8a = await clicar(page, 'a[href="/planejamento/ldo"]');
+    await irPara(n, page, `/planejamento/ldo/${ldo.id}?aba=relacionados`);
+    const u8b = await clicar(page, 'a[href="/planejamento/proposta-orcamentaria"]');
+    conferir(u8a.startsWith("/planejamento/ldo") && u8b.startsWith("/planejamento/proposta-orcamentaria"), `PPA → LDO (${u8a}) e LDO → proposta orçamentária (${u8b}) pelos relacionados`);
+  }
+
+  // ── 9. receita prevista → as guias da receita ──
+  await irPara(n, page, `/planejamento/receita-prevista?exercicio=${String(EX)}`);
+  const prevista = await page.$eval('[data-lista="receita-prevista"] tbody tr a[href*="/receita/arrecadacoes"]', (a) => a.getAttribute("href") ?? "").catch(() => "");
+  if (prevista === "") {
+    console.log("NAO EXECUTADO passo 9: sem receita prevista no exercício");
+  } else {
+    const u9 = await clicar(page, `[data-lista="receita-prevista"] tbody tr a[href="${prevista}"]`);
+    const aviso = await page.$eval("[data-recorte-da-lista]", (e) => (e.textContent ?? "").replace(/\s+/g, " ").trim()).catch(() => "");
+    conferir(u9 === prevista && aviso.startsWith("Mostrando só as guias da receita"), `receita prevista → as guias da receita (${u9}; "${aviso.slice(0, 50)}")`);
+  }
 } finally {
   await nav.close();
   await prisma.$disconnect();

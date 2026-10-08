@@ -58,5 +58,8 @@ export const FICHAS: DefinicaoDeRecurso = definirRecurso({
   relacionados: [
     { rotulo: "Quadro de detalhamento da despesa", href: "/planejamento/qdd", explicacao: "A dotação inicial, os créditos e a dotação atualizada de todas as fichas." },
     { rotulo: "Créditos adicionais", href: "/planejamento/creditos-adicionais", explicacao: "Onde a ficha criada durante a execução recebe dotação, com lei, decreto e itens de suplementação e anulação." },
+    { rotulo: "Cronograma de desembolso e metas de arrecadação", href: "/planejamento/cmd-mba", explicacao: "A cota mensal da despesa e as metas bimestrais da receita do exercício." },
+    { rotulo: "Empenhos", href: "/despesa/empenhos", explicacao: "Emitir o empenho: a busca da dotação acha a ficha pelo número, pela classificação ou pelo código reduzido." },
+    { rotulo: "Códigos reduzidos do PPA", href: "/planejamento/ppa/codigos-reduzidos", explicacao: "O número curto da combinação de unidade, função, subfunção, programa e ação desta ficha no plano." },
   ],
 });

@@ -92,6 +92,10 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
   relacionados: [
     { rotulo: "Programas deste plano", href: "/planejamento/ppa/programas?plano={id}", explicacao: "Cada programa no plano, com os indicadores e as ações que o detalham." },
     { rotulo: "Estrutura temática do PPA", href: "/planejamento/ppa/estrutura", explicacao: "Eixos, áreas temáticas, públicos-alvo e macroações definidos pelo ente." },
+    { rotulo: "Códigos reduzidos da despesa", href: "/planejamento/ppa/codigos-reduzidos?plano={id}", explicacao: "O número curto de cada ação do plano, usado para achar a dotação no empenho." },
+    { rotulo: "Transferências financeiras previstas", href: "/planejamento/ppa/transferencias", explicacao: "O que o plano prevê transferir a cada entidade, por ano do quadriênio." },
+    { rotulo: "Diretrizes orçamentárias (LDO)", href: "/planejamento/ldo", explicacao: "O passo seguinte do planejamento: as prioridades e metas de cada exercício do plano." },
+    { rotulo: "Audiências públicas", href: "/planejamento/audiencias", explicacao: "As audiências da elaboração, com a ata e os documentos." },
   ],
 });
 
@@ -328,5 +332,9 @@ export const LEIS_DE_DIRETRIZES: DefinicaoDeRecurso = definirRecurso({
     { rotulo: "Margem de expansão (PDF)", href: "/planejamento/ldo/{id}/anexos/margem-expansao", explicacao: "LRF, art. 4º, § 2º, V: despesas obrigatórias de caráter continuado." },
     { rotulo: "Prioridades e metas (PDF)", href: "/planejamento/ldo/{id}/anexos/prioridades", explicacao: "As prioridades que entram no próximo orçamento." },
     { rotulo: "Obras e conservação do patrimônio (PDF)", href: "/planejamento/ldo/{id}/anexos/obras-e-conservacao", explicacao: "LRF, art. 45: as obras previstas, com a conservação e os novos projetos." },
+    { rotulo: "Plano plurianual", href: "/planejamento/ppa", explicacao: "Os programas e as ações de onde saem as prioridades desta LDO." },
+    { rotulo: "Proposta orçamentária", href: "/planejamento/proposta-orcamentaria", explicacao: "O passo seguinte: a proposta da LOA, com as fichas e a receita prevista." },
+    { rotulo: "Receita prevista", href: "/planejamento/receita-prevista", explicacao: "A previsão da receita do exercício, por natureza e fonte." },
+    { rotulo: "Fichas da despesa", href: "/planejamento/fichas", explicacao: "As dotações do exercício, de onde saem as reservas e os empenhos." },
   ],
 });
