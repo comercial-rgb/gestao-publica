@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Badge, type StatusBadge } from "../../../../../components/ui/Badge";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -44,7 +46,7 @@ export default async function RgfAnexo6Page({
     <PageHeader
       titulo="RGF — Anexo 6: Demonstrativo Simplificado da Gestão Fiscal"
       subtitulo={`Exercício ${exercicio} · ${quadrimestre}º quadrimestre — LRF art. 48`}
-      acoes={<SeletorQuadrimestre quadrimestre={quadrimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorQuadrimestre quadrimestre={quadrimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rgf-anexo6.csv" /><BotaoImprimir /></span>}
     />
   );
 

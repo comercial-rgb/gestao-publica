@@ -1,6 +1,8 @@
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -43,7 +45,7 @@ export default async function RgfAnexo2Page({
   const quadrimestre: Quad = (QUADRIMESTRES as readonly number[]).includes(q) ? (q as Quad) : 3;
 
   const cabecalho = (
-    <PageHeader
+    <PageHeader acoes={<span className="flex gap-2"><BotaoCsvDasTabelas nomeArquivo="rgf-anexo2.csv" /><BotaoImprimir /></span>}
       titulo="RGF — Anexo 2: Dívida Consolidada Líquida"
       subtitulo={`Exercício ${exercicio} · ${quadrimestre}º quadrimestre — LRF art. 55, I, "b"`}
     />

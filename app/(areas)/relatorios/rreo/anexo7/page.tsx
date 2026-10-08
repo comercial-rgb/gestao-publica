@@ -1,5 +1,7 @@
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { RELACOES_RREO } from "../../../../../lib/navegacao";
 import {
@@ -44,7 +46,7 @@ export default async function RreoAnexo7Page({
     <PageHeader
       titulo="RREO — Anexo 7 · Restos a Pagar por Poder e Órgão"
       subtitulo="Demonstrativo dos Restos a Pagar · LRF art. 53, V · MDF 15ª ed. (STN), Tabela 7"
-      acoes={<SeletorExercicioAnexo7 exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorExercicioAnexo7 exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo7.csv" /><BotaoImprimir /></span>}
     />
   );
 

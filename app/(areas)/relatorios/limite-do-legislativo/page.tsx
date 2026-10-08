@@ -2,6 +2,8 @@ import { Card } from "../../../../components/ui/Card";
 import { formatarMoeda } from "../../../../packages/contracts/moeda";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { lerLimiteDoLegislativo } from "../../../../lib/portas/limite-do-legislativo";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
@@ -24,12 +26,12 @@ const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "o
 export default async function LimiteDoLegislativoPage({ searchParams }: { readonly searchParams: Promise<Record<string, string | undefined>> }): Promise<React.ReactElement> {
   const sp = await searchParams;
   let exercicio = 0;
-  let titulo = <PageHeader titulo="Limite do Legislativo" subtitulo="Repasse à Câmara Municipal (CF art. 29-A)" />;
+  let titulo = <PageHeader acoes={<span className="flex gap-2"><BotaoCsvDasTabelas nomeArquivo="limite-do-legislativo.csv" /><BotaoImprimir /></span>} titulo="Limite do Legislativo" subtitulo="Repasse à Câmara Municipal (CF art. 29-A)" />;
   let a: Awaited<ReturnType<typeof lerLimiteDoLegislativo>> | null = null;
   let motivo: string | null = null;
   try {
     exercicio = exercicioAutorizado(sp);
-    titulo = <PageHeader titulo="Limite do Legislativo" subtitulo={`Repasse à Câmara Municipal (CF art. 29-A) — exercício ${String(exercicio)}`} />;
+    titulo = <PageHeader acoes={<span className="flex gap-2"><BotaoCsvDasTabelas nomeArquivo="limite-do-legislativo.csv" /><BotaoImprimir /></span>} titulo="Limite do Legislativo" subtitulo={`Repasse à Câmara Municipal (CF art. 29-A) — exercício ${String(exercicio)}`} />;
     await telaExigeLeituraDoEnte("CONSULTAR_RELATORIOS");
     a = await lerLimiteDoLegislativo(exercicio);
   } catch (erro) {

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
+import { CampoReferenciado } from "../../../../../components/ui/CampoReferenciado";
+import { CADASTRO_DE_CREDOR } from "../../../../../lib/atalho-de-cadastro";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_CAMPO as CAMPO,
@@ -32,13 +34,16 @@ export interface ItemPendenteDaIlha {
 export function FormFormarOrdem({
   solicitacaoId,
   itensPendentes,
-  fornecedores,
+  fornecedorPadrao,
+  podeCadastrarFornecedor = false,
   processos,
   fichas,
 }: {
   readonly solicitacaoId: string;
   readonly itensPendentes: readonly ItemPendenteDaIlha[];
-  readonly fornecedores: readonly OpcaoDaIlha[];
+  /** V37 — o fornecedor que volta do atalho de cadastro (id da pessoa). */
+  readonly fornecedorPadrao?: string | undefined;
+  readonly podeCadastrarFornecedor?: boolean;
   readonly processos: readonly OpcaoDaIlha[];
   readonly fichas: readonly OpcaoDaIlha[];
 }): React.ReactElement {
@@ -62,15 +67,16 @@ export function FormFormarOrdem({
             <option value="ESTIMATIVA">Estimativa</option>
           </select>
         </label>
-        <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Fornecedor</span>
-          <select name="fornecedorId" required defaultValue="" className={CAMPO}>
-            <option value="">— escolha —</option>
-            {fornecedores.map((o) => (
-              <option key={o.id} value={o.id}>{o.rotulo}</option>
-            ))}
-          </select>
-        </label>
+        <CampoReferenciado
+          name="fornecedorId"
+          rotulo="Fornecedor"
+          catalogo="fornecedores"
+          obrigatorio
+          placeholder="Digite o CPF, o CNPJ ou o nome"
+          largura={1}
+          {...(fornecedorPadrao !== undefined && fornecedorPadrao !== "" ? { valorInicial: fornecedorPadrao } : {})}
+          {...(podeCadastrarFornecedor ? { cadastro: { href: CADASTRO_DE_CREDOR, rotulo: "Cadastrar este fornecedor" } } : {})}
+        />
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Processo licitatório (opcional)</span>
           <select name="processoId" defaultValue="" className={CAMPO}>

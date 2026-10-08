@@ -1,7 +1,7 @@
 import type { DocumentoPdf } from "./documento";
 import { formatarMoeda } from "../format/moeda";
 import { dataBr } from "../recorte";
-import type { BorderoDeMovimentos } from "../../modules/m09-tesouraria/bordero-de-movimentos";
+import type { BorderoDeMovimentos } from "../portas/tesouraria";
 
 /**
  * V36 (TR 5.10.2.22) — O PDF DO BORDERÔ DOS MOVIMENTOS BANCÁRIOS: a conta (banco, agência e número), os movimentos

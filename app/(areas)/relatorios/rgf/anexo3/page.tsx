@@ -1,5 +1,7 @@
 import { Badge } from "../../../../../components/ui/Badge";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -43,7 +45,7 @@ export default async function RgfAnexo3Page({
     <PageHeader
       titulo="RGF — Anexo 3: Garantias e Contragarantias"
       subtitulo={`Exercício ${exercicio} · ${quadrimestre}º quadrimestre — LRF art. 55, I, "c"`}
-      acoes={<SeletorQuadrimestre quadrimestre={quadrimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorQuadrimestre quadrimestre={quadrimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rgf-anexo3.csv" /><BotaoImprimir /></span>}
     />
   );
 

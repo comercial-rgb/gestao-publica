@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useId } from "react";
 import { CampoValor } from "../../../../components/ui/Campos";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
@@ -32,9 +32,11 @@ function Retorno({ estado, acao }: { readonly estado: EstadoDaPrevia; readonly a
 
 /** As linhas de um lote: ficha (digitada, com sugestão), suplementação ou anulação, valor. */
 function LinhasDoLote({ fichas }: { readonly fichas: readonly FichaSugerida[] }): React.ReactElement {
+  // O lote aparece em dois formulários da mesma página (a prévia nova e o lote a mais): o id da lista é de cada um.
+  const idFichas = useId();
   return (
     <>
-      <datalist id="fichas-da-previa">
+      <datalist id={idFichas}>
         {fichas.map((f) => (
           <option key={f.numero} value={String(f.numero)}>{f.rotulo}</option>
         ))}
@@ -44,7 +46,7 @@ function LinhasDoLote({ fichas }: { readonly fichas: readonly FichaSugerida[] })
           <div key={i} className="grid gap-2 sm:grid-cols-[8rem_14rem_10rem]" data-linha-do-lote={i}>
             <label className="text-xs text-[color:var(--color-ink-2)]">
               <span className={ROTULO}>Ficha {i + 1}</span>
-              <input name={`ficha${String(i)}`} list="fichas-da-previa" inputMode="numeric" className={CAMPO} />
+              <input name={`ficha${String(i)}`} list={idFichas} inputMode="numeric" className={CAMPO} />
             </label>
             <label className="text-xs text-[color:var(--color-ink-2)]">
               <span className={ROTULO}>Movimento {i + 1}</span>

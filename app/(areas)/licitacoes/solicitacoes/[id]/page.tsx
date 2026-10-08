@@ -9,6 +9,7 @@ import { verSolicitacao, opcoesDaSolicitacao, opcoesDaOrdem } from "../../../../
 import { solicitacoesdecompraAction } from "../actions";
 import { Atendimento } from "./Atendimento";
 import { FormFormarOrdem } from "./FormFormarOrdem";
+import { pessoaIdPeloDocumento, podeUsarAtalhoDeCadastro } from "../../../../../lib/portas/pessoas";
 
 /**
  * O DETALHE DA SOLICITAÇÃO: itens e movimentos no histórico; autorizar e anular como ações; o
@@ -19,7 +20,9 @@ export const dynamic = "force-dynamic";
 export default async function Detalhe({ params, searchParams }: { readonly params: Promise<{ readonly id: string }>; readonly searchParams: Promise<ParametrosBrutos> }): Promise<React.ReactElement> {
   await exigirLeitura("CONSULTAR_LICITACOES");
   const { id } = await params;
-  const consulta = lerConsulta(SOLICITACOES_DE_COMPRA, await searchParams);
+  const sp = await searchParams;
+  const consulta = lerConsulta(SOLICITACOES_DE_COMPRA, sp);
+  const credor = typeof sp["credor"] === "string" ? sp["credor"] : "";
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verSolicitacao(id),
     opcoesDaSolicitacao(),
@@ -28,6 +31,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   if (detalhe === null) notFound();
   const podeFormar = permitidas.has("EMITIR_ORDEM_DE_COMPRA") && detalhe.situacao === "AUTORIZADA" && detalhe.itensPendentes.length > 0;
   const opcoesDaOrdemNova = podeFormar ? await opcoesDaOrdem() : null;
+  const [podeCadastrar, fornecedorPadrao] = podeFormar ? await Promise.all([podeUsarAtalhoDeCadastro(), credor === "" ? Promise.resolve(undefined) : pessoaIdPeloDocumento(credor)]) : [false, undefined];
   const paraIlha = (nome: string): readonly { readonly id: string; readonly rotulo: string }[] => (opcoesDaOrdemNova?.[nome] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }));
   return (
     <DetalheDeRecurso
@@ -43,7 +47,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
         <div className="space-y-4">
           <Atendimento itens={detalhe.atendimento} />
           {podeFormar ? (
-            <FormFormarOrdem solicitacaoId={id} itensPendentes={detalhe.itensPendentes} fornecedores={paraIlha("fornecedorId")} processos={paraIlha("processoId")} fichas={paraIlha("fichaId")} />
+            <FormFormarOrdem solicitacaoId={id} itensPendentes={detalhe.itensPendentes} fornecedorPadrao={fornecedorPadrao} podeCadastrarFornecedor={podeCadastrar} processos={paraIlha("processoId")} fichas={paraIlha("fichaId")} />
           ) : (
             <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
               {detalhe.situacao !== "AUTORIZADA"

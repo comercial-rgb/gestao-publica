@@ -100,7 +100,11 @@ export default async function DeducoesDaReceitaPage({ searchParams }: { readonly
                 {deducoes.map((d) => (
                   <tr key={d.id} data-deducao={d.id} className="border-t border-[color:var(--color-border)] align-top">
                     <td className="py-2 pr-3">{d.dia.split("-").reverse().join("/")}</td>
-                    <th scope="row" className="py-2 pr-3 font-normal">{d.natureza} — {d.naturezaDescricao}</th>
+                    <th scope="row" className="py-2 pr-3 font-normal">
+                      {d.natureza} — {d.naturezaDescricao}
+                      {/* V37 — a dedução é da receita, não de uma guia: o elo leva às guias da receita no mês dela. */}
+                      <a className="block text-xs underline" data-elo="guias-da-receita" href={`/receita/arrecadacoes?exercicio=${String(exercicio)}&natureza=${d.natureza}&mes=${d.dia.slice(0, 7)}`}>guias desta receita no mês</a>
+                    </th>
                     <td className="py-2 pr-3">{d.fonte}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{d.ehEstorno ? "−" : ""}{brl(d.valor)}</td>
                     <td className="py-2 pr-3">

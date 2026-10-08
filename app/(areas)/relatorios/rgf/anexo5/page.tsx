@@ -1,6 +1,8 @@
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import {
   TabelaDeDados,
@@ -47,7 +49,7 @@ export default async function RgfAnexo5Page({
     : 3;
 
   const cabecalho = (
-    <PageHeader
+    <PageHeader acoes={<span className="flex gap-2"><BotaoCsvDasTabelas nomeArquivo="rgf-anexo5.csv" /><BotaoImprimir /></span>}
       titulo="RGF — Anexo 5: Disponibilidade de Caixa e Restos a Pagar"
       subtitulo={`Exercício ${exercicio} · ${quadrimestre}º quadrimestre — LRF art. 55, III, "a"`}
     />

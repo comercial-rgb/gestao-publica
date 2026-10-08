@@ -269,6 +269,7 @@ export async function estornarMovimento(
 // ═══════════════════════════════════════════════════════════════════════════
 
 export type { ConciliacaoDoPeriodo };
+export type { BorderoDeMovimentos };
 
 export async function listarConciliacoes(
   contaBancariaId: string

@@ -1,6 +1,8 @@
 import { CardEstatistica } from "../../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -30,7 +32,7 @@ export default async function RreoAnexo11Page({
   const bimestre = ([1, 2, 3, 4, 5, 6] as const).includes(b as 1) ? (b as 1) : 1;
 
   const cabecalho = (
-    <PageHeader titulo="RREO — Anexo 11 · Alienação de Ativos" subtitulo="Receitas de alienação e aplicação dos recursos (LRF art. 44 e 53 §1º III)" acoes={<SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} />} />
+    <PageHeader titulo="RREO — Anexo 11 · Alienação de Ativos" subtitulo="Receitas de alienação e aplicação dos recursos (LRF art. 44 e 53 §1º III)" acoes={<span className="flex flex-wrap items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo11.csv" /><BotaoImprimir /></span>} />
   );
 
   let dados: Anexo11;

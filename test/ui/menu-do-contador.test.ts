@@ -58,9 +58,20 @@ describe("o menu do contador", () => {
     expect(abaDaRota("/inexistente", MENU_DO_CONTADOR)).toBeNull();
   });
 
+  // ⚠️ AS BORDAS SÃO DE LETRA UNICODE, não o `\b` do JavaScript: sem a flag `u`, o `\b` trata "â" como não-letra, e
+  // "Multas de trânsito" casava com `\bTR\b` (V37, medido: a guarda acusava um rótulo limpo).
+  const JARGAO = /(?<![\p{L}\p{N}_])(?:M\d{2}|V\d{1,2}|TR|molde|porta|guard)(?![\p{L}\p{N}_])|(?<![\p{L}\p{N}_])ENT\d|cláusula/iu;
+
   it("m6: o texto do menu não expõe código de módulo nem jargão de engenharia", () => {
     const rotulos = [...MENU_DO_CONTADOR, ABA_OUTRAS_AREAS].flatMap((a) => [a.rotulo, ...a.grupos.flatMap((g) => [g.rotulo, ...g.itens.map((i) => i.rotulo)])]);
-    const ruins = rotulos.filter((r) => /\bM\d{2}\b|\bV\d{1,2}\b|\bENT\d|\bTR\b|cláusula|\bmolde\b|\bporta\b|\bguard\b/i.test(r));
+    const ruins = rotulos.filter((r) => JARGAO.test(r));
     expect(ruins).toEqual([]);
+  });
+
+  it("m6b: o instrumento acusa o jargão e deixa passar a palavra acentuada", () => {
+    const acusa = ["Cobertura do TR 5.10", "Mapa da V36", "Painel do M05", "Lote ENT04", "Ver a cláusula", "Fronteira da porta", "o molde", "guard de período"];
+    const passa = ["Multas de trânsito", "Transferências", "Portal da transparência", "Importação", "Trâmite da LDO", "Mês a mês"];
+    expect(acusa.filter((r) => !JARGAO.test(r))).toEqual([]);
+    expect(passa.filter((r) => JARGAO.test(r))).toEqual([]);
   });
 });

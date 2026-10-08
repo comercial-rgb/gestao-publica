@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Badge, type StatusBadge } from "../../../../../components/ui/Badge";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -42,7 +44,7 @@ export default async function RreoAnexo14Page({
     <PageHeader
       titulo="RREO — Anexo 14: Demonstrativo Simplificado"
       subtitulo={`Exercício ${exercicio} · ${bimestre}º bimestre — LRF art. 48`}
-      acoes={<SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo14.csv" /><BotaoImprimir /></span>}
     />
   );
 

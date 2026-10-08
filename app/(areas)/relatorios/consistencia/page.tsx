@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Badge, type StatusBadge } from "../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
 import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
@@ -56,7 +58,7 @@ export default async function ConsistenciaPage({
     <PageHeader
       titulo="Relatório de Consistência"
       subtitulo={`Exercício ${exercicio} · ${preEnvio ? "Verificação antes do envio (MSC/Siconfi)" : ROTULO_ESCOPO[escopo]}`}
-      acoes={<SeletorConsistencia exercicio={exercicio} escopo={escBruto} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorConsistencia exercicio={exercicio} escopo={escBruto} /><BotaoCsvDasTabelas nomeArquivo="consistencia.csv" /><BotaoImprimir /></span>}
     />
   );
 

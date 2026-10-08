@@ -2,6 +2,8 @@ import { Badge } from "../../../../../components/ui/Badge";
 import { Card, CardEstatistica } from "../../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -44,7 +46,7 @@ export default async function RreoAnexo12Page({
     <PageHeader
       titulo="RREO — Anexo 12 · Saúde (ASPS)"
       subtitulo="Ações e Serviços Públicos de Saúde · LC 141/2012 art. 35 · limite 15% · MDF 15ª ed."
-      acoes={<SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo12.csv" /><BotaoImprimir /></span>}
     />
   );
 

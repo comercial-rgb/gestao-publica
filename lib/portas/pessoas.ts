@@ -1,6 +1,6 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { comEscritaAutenticada } from "./sessao";
-import { exigirLeituraDoEnte } from "./leitura";
+import { exigirLeituraDoEnte, exigirLeituraEmAlgumEscopo } from "./leitura";
 import { acoesPermitidas } from "./molde";
 import {
   listarPessoas,
@@ -191,4 +191,16 @@ export async function podeUsarAtalhoDeCadastro(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * V37 — o ID da pessoa pelo documento, para a volta do atalho de cadastro nas telas que gravam a pessoa por id
+ * (ordem de compra, formação de ordem). Leitura de licitações em algum escopo; documento malformado ou ausente: nada.
+ */
+export async function pessoaIdPeloDocumento(documento: string): Promise<string | undefined> {
+  await exigirLeituraEmAlgumEscopo("CONSULTAR_LICITACOES");
+  const digitos = documento.replace(/\D/g, "");
+  if (digitos.length !== 11 && digitos.length !== 14) return undefined;
+  const p = await cliente().pessoa.findUnique({ where: { documento: digitos }, select: { id: true } });
+  return p?.id;
 }

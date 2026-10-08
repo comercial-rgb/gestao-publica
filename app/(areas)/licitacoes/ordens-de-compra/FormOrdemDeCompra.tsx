@@ -3,6 +3,8 @@
 import { useActionState, useRef, useState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CampoValor } from "../../../../components/ui/Campos";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
+import { CADASTRO_DE_CREDOR } from "../../../../lib/atalho-de-cadastro";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_CAMPO as CAMPO,
@@ -22,7 +24,7 @@ export interface OpcaoDaIlha {
  * ⚠️ LINHAS `itens.N.*`: a ilha oferece uma linha a mais; a vazia é ignorada no servidor. Quem valida
  * (material obrigatório, quantidade > 0, item repetido, saldo) é o domínio, e a recusa sobe como veio.
  */
-export function FormOrdemDeCompra({ materiais, fornecedores, processos, fichas }: { readonly materiais: readonly OpcaoDaIlha[]; readonly fornecedores: readonly OpcaoDaIlha[]; readonly processos: readonly OpcaoDaIlha[]; readonly fichas: readonly OpcaoDaIlha[] }): React.ReactElement {
+export function FormOrdemDeCompra({ materiais, processos, fichas, fornecedorPadrao, podeCadastrarFornecedor = false }: { readonly materiais: readonly OpcaoDaIlha[]; readonly processos: readonly OpcaoDaIlha[]; readonly fichas: readonly OpcaoDaIlha[]; /** V37 — o fornecedor que volta do atalho de cadastro (id da pessoa). */ readonly fornecedorPadrao?: string | undefined; readonly podeCadastrarFornecedor?: boolean }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaOrdem, FormData>(emitirOrdemAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [linhas, setLinhas] = useState<number>(1);
@@ -44,15 +46,16 @@ export function FormOrdemDeCompra({ materiais, fornecedores, processos, fichas }
             <option value="ESTIMATIVA">Estimativa</option>
           </select>
         </label>
-        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Fornecedor</span>
-          <select name="fornecedorId" required defaultValue="" className={CAMPO}>
-            <option value="">— escolha —</option>
-            {fornecedores.map((o) => (
-              <option key={o.id} value={o.id}>{o.rotulo}</option>
-            ))}
-          </select>
-        </label>
+        <CampoReferenciado
+          name="fornecedorId"
+          rotulo="Fornecedor"
+          catalogo="fornecedores"
+          obrigatorio
+          placeholder="Digite o CPF, o CNPJ ou o nome"
+          largura={2}
+          {...(fornecedorPadrao !== undefined && fornecedorPadrao !== "" ? { valorInicial: fornecedorPadrao } : {})}
+          {...(podeCadastrarFornecedor ? { cadastro: { href: CADASTRO_DE_CREDOR, rotulo: "Cadastrar este fornecedor" } } : {})}
+        />
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
           <span className={ROTULO}>Processo licitatório (opcional)</span>
           <select name="processoId" defaultValue="" className={CAMPO}>

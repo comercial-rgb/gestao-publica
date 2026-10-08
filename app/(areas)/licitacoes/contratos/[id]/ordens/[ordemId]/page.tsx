@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { acoesPermitidas } from "../../../../../../../lib/portas/molde";
 import { Badge } from "../../../../../../../components/ui/Badge";
 import { Card } from "../../../../../../../components/ui/Card";
 import { ValorMonetario } from "../../../../../../../components/ui/ValorMonetario";
@@ -35,6 +36,8 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
   const o = ordemDaExecucao(e, ordemId);
   if (o === null) notFound();
   const p = e.papeis;
+  // V37 — o passo financeiro da trilha: empenhar pelo contrato desta ordem, para quem empenha.
+  const podeEmpenhar = (await acoesPermitidas(["EMPENHAR"])).has("EMPENHAR");
   const planilha = await medicaoPelaPlanilhaParaTela(e, o.id);
   const ativas = o.medicoes.filter((m) => m.estorno === null);
   const emitida = o.situacao === "EMITIDA" || o.situacao === "SUSPENSA";
@@ -64,6 +67,9 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
     <div className="space-y-4" data-ordem-de-servico-pagina={`${o.numero}/${o.ano}`}>
       <nav aria-label="Trilha" className="text-xs text-[color:var(--color-ink-2)]">
         <Link href="/licitacoes/contratos" className="underline underline-offset-2">Contratos</Link> / <Link href={`/licitacoes/contratos/${id}`} className="underline underline-offset-2">Contrato</Link> / Ordem de serviço
+        {podeEmpenhar && o.situacao !== "RASCUNHO" ? (
+          <Link href={`/despesa/empenhos?contratoId=${id}`} className="ml-3 font-semibold text-[color:var(--color-primary)] underline underline-offset-2" data-proximo-passo="empenhar">Empenhar por este contrato</Link>
+        ) : null}
       </nav>
       <header>
         <h1 className="text-xl font-semibold">Ordem de serviço nº {o.numero}/{o.ano} <Badge status={SITUACAO[o.situacao]?.tom ?? "neutro"}>{SITUACAO[o.situacao]?.texto ?? o.situacao}</Badge></h1>

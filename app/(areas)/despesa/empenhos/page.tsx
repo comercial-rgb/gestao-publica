@@ -140,6 +140,7 @@ export default async function EmpenhosPage({
         ordemPadrao={typeof sp["ordemId"] === "string" ? sp["ordemId"] : ""}
         solicitacaoPadrao={typeof sp["solicitacaoId"] === "string" ? sp["solicitacaoId"] : ""}
         reservaPadrao={typeof sp["reservaId"] === "string" ? sp["reservaId"] : ""}
+        contratoPadrao={typeof sp["contratoId"] === "string" ? sp["contratoId"] : ""}
       />
 
       {empenhos.length === 0 ? (

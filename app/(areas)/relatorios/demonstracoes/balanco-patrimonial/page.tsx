@@ -1,6 +1,8 @@
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import {
@@ -55,6 +57,7 @@ export default async function BalancoPatrimonialPage({
         <div className="flex flex-col items-end gap-1">
           <SeletorCorte corte={corteStr} />
           <LinkDoBalancete desde={`${corteStr.slice(0, 4)}-01-01`} ate={corteStr} />
+          <span className="flex gap-2"><BotaoCsvDasTabelas nomeArquivo="balanco-patrimonial.csv" /><BotaoImprimir /></span>
         </div>
       }
     />

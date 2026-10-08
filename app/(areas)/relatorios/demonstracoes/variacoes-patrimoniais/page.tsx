@@ -1,6 +1,8 @@
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import {
@@ -40,6 +42,7 @@ export default async function VariacoesPatrimoniaisPage({
         <div className="flex flex-col items-end gap-1">
           <SeletorPeriodo desde={desdeStr} ate={ateStr} />
           <LinkDoBalancete desde={desdeStr} ate={ateStr} />
+          <span className="flex gap-2"><BotaoCsvDasTabelas nomeArquivo="variacoes-patrimoniais.csv" /><BotaoImprimir /></span>
         </div>
       }
     />

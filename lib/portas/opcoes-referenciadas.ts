@@ -95,6 +95,40 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
    * A UO de uma FICHA NOVA — só as unidades onde a sessão tem CRIAR_FICHA. É o mesmo escopo que o
    * `autz.exigir(..., { ug })` do `criarFicha` confere; aqui ele só evita oferecer o que cairia.
    */
+  /**
+   * V37 — FORNECEDORES da ordem de compra e da formação de ordem: as pessoas do cadastro, por documento ou nome. O
+   * valor é o ID da pessoa (é o que a ordem grava). Substitui o `select` com as 500 primeiras pessoas por documento,
+   * que escondia a 501ª.
+   */
+  fornecedores: {
+    leitura: "CONSULTAR_LICITACOES",
+    async buscar(_sessao, p) {
+      const digitos = p.q.replace(/\D/g, "");
+      const where: Prisma.PessoaWhereInput =
+        p.valor !== undefined
+          ? { id: p.valor }
+          : p.q === ""
+            ? {}
+            : { OR: [...(digitos.length >= 2 ? [{ documento: { startsWith: digitos } }] : []), { versoes: { some: { nome: contem(p.q) } } }] };
+      const linhas = await cliente().pessoa.findMany({
+        where,
+        orderBy: { documento: "asc" },
+        skip: skip(p),
+        take,
+        select: { id: true, documento: true, tipo: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } },
+      });
+      const r = pagina(linhas, p);
+      return {
+        opcoes: r.linhas.map((x) => ({
+          valor: x.id,
+          rotulo: `${formatarDocumento(x.documento)} — ${x.versoes[0]?.nome ?? "(sem nome)"}`,
+          detalhe: x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física",
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
+
   "unidades-para-ficha": {
     leitura: "CONSULTAR_PLANEJAMENTO",
     async buscar(sessao, p) {

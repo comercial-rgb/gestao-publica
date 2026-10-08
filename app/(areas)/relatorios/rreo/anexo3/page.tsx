@@ -1,5 +1,7 @@
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -50,7 +52,7 @@ export default async function RreoAnexo3Page({
     <PageHeader
       titulo="RREO — Anexo 3 · Receita Corrente Líquida"
       subtitulo="Demonstrativo da RCL · LRF art. 53, I · MDF 15ª ed. (STN) · últimos 12 meses"
-      acoes={<SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo3.csv" /><BotaoImprimir /></span>}
     />
   );
 

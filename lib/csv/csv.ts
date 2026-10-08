@@ -60,3 +60,15 @@ export function paraCsv(colunas: readonly string[], linhas: readonly (readonly s
   const conteudo = linhas.length > 0 ? `${cabecalho}\r\n${corpo}` : cabecalho;
   return `${BOM}${conteudo}\r\n`;
 }
+
+/**
+ * V37 — VÁRIAS TABELAS NUM CSV SÓ, para os demonstrativos (RREO, RGF) que têm mais de um quadro na tela: cada quadro
+ * começa pelo título numa linha própria e termina numa linha em branco. As células passam pela mesma neutralização
+ * de fórmula e pelas mesmas aspas do `paraCsv`. Quem monta as linhas é a tela (o CSV é a tela).
+ */
+export function tabelasParaCsv(tabelas: readonly { readonly titulo: string; readonly linhas: readonly (readonly string[])[] }[]): string {
+  const blocos = tabelas
+    .filter((t) => t.linhas.length > 0)
+    .map((t) => [...(t.titulo !== "" ? [celula(t.titulo)] : []), ...t.linhas.map((l) => l.map(celula).join(";"))].join("\r\n"));
+  return `${BOM}${blocos.join("\r\n\r\n")}\r\n`;
+}

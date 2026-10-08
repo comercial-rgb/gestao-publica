@@ -92,6 +92,7 @@
     "test/ui/chave-de-comando.test.ts",
     "test/ui/descritores-consistentes.test.ts",
     "test/ficha-pela-tela.test.ts",
+    "test/ui/fornecedores-catalogo.test.ts",
     "test/ui/resumo-da-folha.test.ts",
     "test/ui/nota-de-estorno.test.ts",
     "test/ui/livros-com-termos.test.ts",

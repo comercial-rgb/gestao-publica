@@ -2,6 +2,8 @@ import { Badge, type StatusBadge } from "../../../../../components/ui/Badge";
 import { Card, CardEstatistica } from "../../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -38,7 +40,7 @@ export default async function RgfAnexo1Page({
   const quadrimestre = ([1, 2, 3] as const).includes(q as 1) ? (q as Quadrimestre) : 1;
 
   const cabecalho = (
-    <PageHeader titulo="RGF — Anexo 1 · Despesa com Pessoal" subtitulo="Demonstrativo da despesa com pessoal · LRF art. 55, I, 'a' · limite por Poder (art. 20)" acoes={<SeletorQuadrimestre quadrimestre={quadrimestre} exercicio={exercicio} />} />
+    <PageHeader titulo="RGF — Anexo 1 · Despesa com Pessoal" subtitulo="Demonstrativo da despesa com pessoal · LRF art. 55, I, 'a' · limite por Poder (art. 20)" acoes={<span className="flex flex-wrap items-center gap-2"><SeletorQuadrimestre quadrimestre={quadrimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rgf-anexo1.csv" /><BotaoImprimir /></span>} />
   );
 
   let dados: Anexo1Rgf;

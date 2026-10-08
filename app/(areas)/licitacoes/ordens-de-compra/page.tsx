@@ -7,6 +7,7 @@ import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { ORDENS_DE_COMPRA } from "../../../../lib/portas/recursos/compras";
 import { listarOrdens, materiaisAtivos, opcoesDaOrdem, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
 import { FormOrdemDeCompra } from "./FormOrdemDeCompra";
+import { pessoaIdPeloDocumento, podeUsarAtalhoDeCadastro } from "../../../../lib/portas/pessoas";
 
 /**
  * AS ORDENS DE COMPRA — lista do molde com total e saldo a receber derivados; a emissão (cabeçalho + itens) é a ilha FormOrdemDeCompra.
@@ -16,9 +17,12 @@ export const dynamic = "force-dynamic";
 
 export default async function Pagina({ searchParams }: { readonly searchParams: Promise<ParametrosBrutos> }): Promise<React.ReactElement> {
   await exigirLeitura("CONSULTAR_LICITACOES");
-  const consulta = lerConsulta(ORDENS_DE_COMPRA, await searchParams);
+  const sp = await searchParams;
+  const consulta = lerConsulta(ORDENS_DE_COMPRA, sp);
+  // V37 — a volta do atalho de cadastro traz `?credor=<documento>`: o campo já vem com o fornecedor.
+  const credor = typeof sp["credor"] === "string" ? sp["credor"] : "";
   try {
-    const [pagina, permitidas, opcoes, materiais] = await Promise.all([listarOrdens(consulta), acoesPermitidas(["EMITIR_ORDEM_DE_COMPRA"]), opcoesDaOrdem(), materiaisAtivos()]);
+    const [pagina, permitidas, opcoes, materiais, podeCadastrar, fornecedorPadrao] = await Promise.all([listarOrdens(consulta), acoesPermitidas(["EMITIR_ORDEM_DE_COMPRA"]), opcoesDaOrdem(), materiaisAtivos(), podeUsarAtalhoDeCadastro(), credor === "" ? Promise.resolve(undefined) : pessoaIdPeloDocumento(credor)]);
     const podeCriar = permitidas.has("EMITIR_ORDEM_DE_COMPRA");
     return (
       <ListaDeRecurso
@@ -32,7 +36,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, ORDENS_DE_COMPRA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormOrdemDeCompra materiais={materiais} fornecedores={(opcoes["fornecedorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} processos={(opcoes["processoId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} fichas={(opcoes["fichaId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} /> } : { motivoSemCriar: "Seu perfil não tem permissão para emitir ordens de compra. Solicite a permissão ao administrador do sistema." })}
+        {...(podeCriar ? { formulario: <FormOrdemDeCompra materiais={materiais} fornecedorPadrao={fornecedorPadrao} podeCadastrarFornecedor={podeCadastrar} processos={(opcoes["processoId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} fichas={(opcoes["fichaId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} /> } : { motivoSemCriar: "Seu perfil não tem permissão para emitir ordens de compra. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {

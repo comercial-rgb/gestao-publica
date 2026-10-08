@@ -3,6 +3,8 @@ import { Badge, type StatusBadge } from "../../../../components/ui/Badge";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
 import { TabelaDeDados, type ColunaTabela } from "../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
@@ -146,7 +148,7 @@ export default async function Page({
 
   const cabecalho = (
     <PageHeader
-      acoes={<SeletorDoPeriodo bimestre={bimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorDoPeriodo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="eliminacoes-intra.csv" /><BotaoImprimir /></span>}
       subtitulo={`Exercício ${exercicio} · acumulado até o ${bimestre}º bimestre · operações entre unidades do próprio ente excluídas da consolidação`}
       titulo="Eliminações intragovernamentais"
     />

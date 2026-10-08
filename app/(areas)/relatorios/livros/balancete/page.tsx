@@ -1,6 +1,8 @@
 import { Badge } from "../../../../../components/ui/Badge";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { TabelaDeDados, type ColunaTabela, type GrupoColuna } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
 import { gerarBalancete, PortaSemBancoError, type Balancete, type LinhaDoBalancete } from "../../../../../lib/portas/livros";
@@ -22,7 +24,7 @@ export default async function BalancetePage({
   const { desde, ate, desdeStr, ateStr } = lerPeriodo(sp);
 
   const cabecalho = (
-    <PageHeader titulo="Balancete de Verificação" subtitulo="Saldo anterior, movimento e saldo final por conta (art. 50 da LRF)" acoes={<SeletorPeriodo desde={desdeStr} ate={ateStr} />} />
+    <PageHeader titulo="Balancete de Verificação" subtitulo="Saldo anterior, movimento e saldo final por conta (art. 50 da LRF)" acoes={<span className="flex flex-wrap items-center gap-2"><SeletorPeriodo desde={desdeStr} ate={ateStr} /><BotaoCsvDasTabelas nomeArquivo="livros-balancete.csv" /><BotaoImprimir /></span>} />
   );
 
   let dados: Balancete;

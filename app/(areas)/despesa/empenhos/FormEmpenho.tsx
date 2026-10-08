@@ -13,7 +13,8 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { debitosDoCredorAction, disponivelNaDataAction, empenharAction, type EstadoEmpenho } from "./actions";
+import { empenharAction, type EstadoEmpenho } from "./actions";
+import { debitosDoCredorAction, disponivelNaDataAction } from "./leitura-actions";
 import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
 
 /**
@@ -118,6 +119,7 @@ export function FormEmpenho({
   ordemPadrao = "",
   solicitacaoPadrao = "",
   reservaPadrao = "",
+  contratoPadrao = "",
   numeroSugerido,
   credorPadrao,
   podeCadastrarCredor = false,
@@ -128,6 +130,8 @@ export function FormEmpenho({
   readonly solicitacaoPadrao?: string;
   /** V37 — a reserva vinda da ficha ("Empenhar com esta reserva"): sugere a ficha e o valor. */
   readonly reservaPadrao?: string;
+  /** V37 — o contrato vindo da ordem de serviço ("Empenhar por este contrato"): sugere credor, valor e categoria. */
+  readonly contratoPadrao?: string;
   /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
   readonly numeroSugerido?: string | undefined;
   /** V37 — o credor que volta escolhido do atalho de cadastro (`?credor=` da URL). */
@@ -311,6 +315,8 @@ export function FormEmpenho({
               catalogo="contratos-para-empenho"
               placeholder="Digite o número do contrato"
               largura={1}
+              valorInicial={contratoPadrao}
+              avisarInicial
               aoEscolher={(o) => aplicarOrigem("contrato", o)}
             />
           </>

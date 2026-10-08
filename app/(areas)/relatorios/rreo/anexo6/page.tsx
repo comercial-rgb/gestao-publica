@@ -2,6 +2,8 @@ import { Badge } from "../../../../../components/ui/Badge";
 import { Card, CardEstatistica } from "../../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
+import { BotaoImprimir } from "../../../../../components/ui/BotaoImprimir";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
 import { TabelaDeDados, type ColunaTabela } from "../../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../../components/ui/ValorMonetario";
@@ -42,7 +44,7 @@ export default async function RreoAnexo6Page({
     <PageHeader
       titulo="RREO — Anexo 6 · Resultado Primário e Nominal"
       subtitulo="Metodologias acima e abaixo da linha · LRF art. 53, III · regime de caixa"
-      acoes={<SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} />}
+      acoes={<span className="flex flex-wrap items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo6.csv" /><BotaoImprimir /></span>}
     />
   );
 
