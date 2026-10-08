@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import {
   CLASSE_BOTAO_PRIMARIO,
@@ -10,18 +11,12 @@ import {
 } from "../../../../components/ui/Formulario";
 import { criarPesquisaAction, type EstadoDaPesquisa } from "./actions";
 
-/** Uma opção como ESTA ilha a consome — declarada aqui porque uma ilha client não importa porta. */
-export interface OpcaoDaIlha {
-  readonly id: string;
-  readonly rotulo: string;
-}
-
 /**
  * FORM DE PESQUISA DE PREÇOS — ilha client (TR 5.17.46/5.17.48): itens com quantidade e até duas cotações por item, no MESMO ato; média, mínimo e máximo são derivados na leitura.
  * ⚠️ LINHAS `itens.N.*`: a ilha oferece uma linha a mais; a vazia é ignorada no servidor. Quem valida
  * (material obrigatório, quantidade > 0, item repetido, saldo) é o domínio, e a recusa sobe como veio.
  */
-export function FormPesquisaDePrecos({ materiais, fornecedores }: { readonly materiais: readonly OpcaoDaIlha[]; readonly fornecedores: readonly OpcaoDaIlha[] }): React.ReactElement {
+export function FormPesquisaDePrecos(): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaPesquisa, FormData>(criarPesquisaAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [linhas, setLinhas] = useState<number>(1);
@@ -48,30 +43,26 @@ export function FormPesquisaDePrecos({ materiais, fornecedores }: { readonly mat
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Itens</legend>
         {Array.from({ length: linhas }, (_, i) => (
           <div key={i} data-linha={i} className="mb-3 grid gap-3 rounded border border-dashed border-[color:var(--color-border)] p-2 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-3">
-              <span className={ROTULO}>Material</span>
-              <select name={`itens.${i}.materialId`} defaultValue="" className={CAMPO}>
-                <option value="">— escolha —</option>
-                {materiais.map((o) => (
-                  <option key={o.id} value={o.id}>{o.rotulo}</option>
-                ))}
-              </select>
-            </label>
+            <CampoReferenciado
+              name={`itens.${i}.materialId`}
+              rotulo="Material"
+              catalogo="materiais-para-compra"
+              placeholder="Código, CATMAT ou descrição"
+              largura={3}
+            />
             <label className="text-xs text-[color:var(--color-ink-2)]">
               <span className={ROTULO}>Quantidade</span>
               <input name={`itens.${i}.quantidade`} inputMode="decimal" placeholder="10" className={CAMPO} />
             </label>
             {[0, 1].map((j) => (
               <div key={j} data-cotacao={j} className="contents">
-                <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-2">
-                  <span className={ROTULO}>Cotação {j + 1} — fornecedor</span>
-                  <select name={`itens.${i}.cotacoes.${j}.fornecedorId`} defaultValue="" className={CAMPO}>
-                    <option value="">— sem cotação —</option>
-                    {fornecedores.map((o) => (
-                      <option key={o.id} value={o.id}>{o.rotulo}</option>
-                    ))}
-                  </select>
-                </label>
+                <CampoReferenciado
+                  name={`itens.${i}.cotacoes.${j}.fornecedorId`}
+                  rotulo={`Cotação ${String(j + 1)} — fornecedor (opcional)`}
+                  catalogo="pessoas-para-cotacao"
+                  placeholder="CPF, CNPJ ou nome"
+                  largura={2}
+                />
                 <label className="text-xs text-[color:var(--color-ink-2)]">
                   <span className={ROTULO}>Valor unitário</span>
                   <input name={`itens.${i}.cotacoes.${j}.valorUnitario`} inputMode="decimal" placeholder="12,50" className={CAMPO} />

@@ -63,27 +63,8 @@ function nomeDaPessoa(p: { readonly documento: string; readonly versoes: readonl
 const ROTULO_DO_TIPO_DE_ORDEM: Readonly<Record<string, string>> = { ORDINARIA: "Ordinária", GLOBAL: "Global", ESTIMATIVA: "Estimativa" };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// AS OPÇÕES DAS ILHAS — materiais, fornecedores, setores, processos, fichas
+// AS OPÇÕES DAS ILHAS — os setores (material, fornecedor, processo e ficha vêm pela busca: opcoes-referenciadas)
 // ═══════════════════════════════════════════════════════════════════════════
-
-export interface OpcaoDaIlha {
-  readonly id: string;
-  readonly rotulo: string;
-}
-
-export async function materiaisAtivos(): Promise<readonly OpcaoDaIlha[]> {
-  const xs = await cliente().material.findMany({ where: { ativo: true }, select: { id: true, codigo: true, descricaoSucinta: true }, orderBy: { codigo: "asc" }, take: 500 });
-  return xs.map((m) => ({ id: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta}` }));
-}
-
-export async function fornecedores(): Promise<readonly OpcaoDaIlha[]> {
-  const xs = await cliente().pessoa.findMany({
-    select: { id: true, documento: true, versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } },
-    orderBy: { documento: "asc" },
-    take: 500,
-  });
-  return xs.map((p) => ({ id: p.id, rotulo: nomeDaPessoa(p) }));
-}
 
 export async function opcoesDaSolicitacao(): Promise<OpcoesDoCadastro> {
   const setores = await cliente().setor.findMany({ where: { ativo: true }, select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" } });
@@ -94,24 +75,6 @@ export async function opcoesDaSolicitacao(): Promise<OpcoesDoCadastro> {
 
 export async function opcoesDaPesquisa(): Promise<OpcoesDoCadastro> {
   return {};
-}
-
-export async function opcoesDaOrdem(): Promise<OpcoesDoCadastro> {
-  const prisma = cliente();
-  const [pessoas, processos, fichas] = await Promise.all([
-    fornecedores(),
-    prisma.processoLicitatorio.findMany({ select: { id: true, numeroProcesso: true, objeto: true }, orderBy: { numeroProcesso: "desc" }, take: 300 }),
-    prisma.fichaOrcamentaria.findMany({
-      orderBy: [{ exercicio: "desc" }, { numero: "asc" }],
-      take: 500,
-      select: { id: true, exercicio: true, numero: true, saldoDisponivel: true, unidadeOrc: { select: { codigo: true } }, naturezaDespesa: { select: { codigoCompleto: true } }, fonte: { select: { codigo: true } } },
-    }),
-  ]);
-  return {
-    fornecedorId: pessoas.map((p) => ({ valor: p.id, rotulo: p.rotulo })),
-    processoId: processos.map((p) => ({ valor: p.id, rotulo: `${p.numeroProcesso} — ${p.objeto.slice(0, 60)}` })),
-    fichaId: fichas.map((f) => ({ valor: f.id, rotulo: `${f.exercicio} · ficha ${f.numero} · UO ${f.unidadeOrc.codigo} · ${f.naturezaDespesa.codigoCompleto} · fonte ${f.fonte.codigo} · saldo ${f.saldoDisponivel.toFixed(2)}` })),
-  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

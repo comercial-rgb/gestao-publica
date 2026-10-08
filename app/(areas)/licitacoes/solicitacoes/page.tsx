@@ -5,7 +5,7 @@ import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../
 import { somarSelecionadas } from "../../../../lib/molde/soma";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { SOLICITACOES_DE_COMPRA } from "../../../../lib/portas/recursos/compras";
-import { listarSolicitacoes, materiaisAtivos, opcoesDaSolicitacao, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
+import { listarSolicitacoes, opcoesDaSolicitacao, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
 import { FormSolicitacao } from "./FormSolicitacao";
 
 /**
@@ -18,7 +18,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
   await exigirLeitura("CONSULTAR_LICITACOES");
   const consulta = lerConsulta(SOLICITACOES_DE_COMPRA, await searchParams);
   try {
-    const [pagina, permitidas, opcoes, materiais] = await Promise.all([listarSolicitacoes(consulta), acoesPermitidas(["REGISTRAR_SOLICITACAO_DE_COMPRA"]), opcoesDaSolicitacao(), materiaisAtivos()]);
+    const [pagina, permitidas, opcoes] = await Promise.all([listarSolicitacoes(consulta), acoesPermitidas(["REGISTRAR_SOLICITACAO_DE_COMPRA"]), opcoesDaSolicitacao()]);
     const podeCriar = permitidas.has("REGISTRAR_SOLICITACAO_DE_COMPRA");
     return (
       <ListaDeRecurso
@@ -32,7 +32,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, SOLICITACOES_DE_COMPRA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormSolicitacao setores={(opcoes["setorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} materiais={materiais} /> } : { motivoSemCriar: "Seu perfil não tem permissão para registrar solicitações de compra. Solicite a permissão ao administrador do sistema." })}
+        {...(podeCriar ? { formulario: <FormSolicitacao setores={(opcoes["setorId"] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }))} /> } : { motivoSemCriar: "Seu perfil não tem permissão para registrar solicitações de compra. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {

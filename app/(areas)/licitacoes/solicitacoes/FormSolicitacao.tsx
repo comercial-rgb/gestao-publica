@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import {
   CLASSE_BOTAO_PRIMARIO,
@@ -21,7 +22,7 @@ export interface OpcaoDaIlha {
  * ⚠️ LINHAS `itens.N.*`: a ilha oferece uma linha a mais; a vazia é ignorada no servidor. Quem valida
  * (material obrigatório, quantidade > 0, item repetido, saldo) é o domínio, e a recusa sobe como veio.
  */
-export function FormSolicitacao({ setores, materiais }: { readonly setores: readonly OpcaoDaIlha[]; readonly materiais: readonly OpcaoDaIlha[] }): React.ReactElement {
+export function FormSolicitacao({ setores }: { readonly setores: readonly OpcaoDaIlha[] }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaSolicitacao, FormData>(criarSolicitacaoAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [linhas, setLinhas] = useState<number>(1);
@@ -61,15 +62,13 @@ export function FormSolicitacao({ setores, materiais }: { readonly setores: read
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">Itens</legend>
         {Array.from({ length: linhas }, (_, i) => (
           <div key={i} data-linha={i} className="mb-3 grid gap-3 rounded border border-dashed border-[color:var(--color-border)] p-2 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="text-xs text-[color:var(--color-ink-2)] lg:col-span-3">
-              <span className={ROTULO}>Material</span>
-              <select name={`itens.${i}.materialId`} defaultValue="" className={CAMPO}>
-                <option value="">— escolha —</option>
-                {materiais.map((o) => (
-                  <option key={o.id} value={o.id}>{o.rotulo}</option>
-                ))}
-              </select>
-            </label>
+            <CampoReferenciado
+              name={`itens.${i}.materialId`}
+              rotulo="Material"
+              catalogo="materiais-para-compra"
+              placeholder="Código, CATMAT ou descrição"
+              largura={3}
+            />
             <label className="text-xs text-[color:var(--color-ink-2)]">
               <span className={ROTULO}>Quantidade</span>
               <input name={`itens.${i}.quantidade`} inputMode="decimal" placeholder="10" className={CAMPO} />

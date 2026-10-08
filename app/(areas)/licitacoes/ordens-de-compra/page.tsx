@@ -5,7 +5,7 @@ import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../
 import { somarSelecionadas } from "../../../../lib/molde/soma";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { ORDENS_DE_COMPRA } from "../../../../lib/portas/recursos/compras";
-import { listarOrdens, materiaisAtivos, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
+import { listarOrdens, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
 import { FormOrdemDeCompra } from "./FormOrdemDeCompra";
 import { pessoaIdPeloDocumento, podeUsarAtalhoDeCadastro } from "../../../../lib/portas/pessoas";
 
@@ -22,7 +22,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
   // V37 — a volta do atalho de cadastro traz `?credor=<documento>`: o campo já vem com o fornecedor.
   const credor = typeof sp["credor"] === "string" ? sp["credor"] : "";
   try {
-    const [pagina, permitidas, materiais, podeCadastrar, fornecedorPadrao] = await Promise.all([listarOrdens(consulta), acoesPermitidas(["EMITIR_ORDEM_DE_COMPRA"]), materiaisAtivos(), podeUsarAtalhoDeCadastro(), credor === "" ? Promise.resolve(undefined) : pessoaIdPeloDocumento(credor)]);
+    const [pagina, permitidas, podeCadastrar, fornecedorPadrao] = await Promise.all([listarOrdens(consulta), acoesPermitidas(["EMITIR_ORDEM_DE_COMPRA"]), podeUsarAtalhoDeCadastro(), credor === "" ? Promise.resolve(undefined) : pessoaIdPeloDocumento(credor)]);
     const podeCriar = permitidas.has("EMITIR_ORDEM_DE_COMPRA");
     return (
       <ListaDeRecurso
@@ -36,7 +36,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, ORDENS_DE_COMPRA.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormOrdemDeCompra materiais={materiais} fornecedorPadrao={fornecedorPadrao} podeCadastrarFornecedor={podeCadastrar} /> } : { motivoSemCriar: "Seu perfil não tem permissão para emitir ordens de compra. Solicite a permissão ao administrador do sistema." })}
+        {...(podeCriar ? { formulario: <FormOrdemDeCompra fornecedorPadrao={fornecedorPadrao} podeCadastrarFornecedor={podeCadastrar} /> } : { motivoSemCriar: "Seu perfil não tem permissão para emitir ordens de compra. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {

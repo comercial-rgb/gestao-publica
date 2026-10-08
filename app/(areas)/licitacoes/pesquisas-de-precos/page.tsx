@@ -5,7 +5,7 @@ import { lerConsulta, TAMANHO_DE_PAGINA, type ParametrosBrutos } from "../../../
 import { somarSelecionadas } from "../../../../lib/molde/soma";
 import { acoesPermitidas, exigirLeitura } from "../../../../lib/portas/molde";
 import { PESQUISAS_DE_PRECOS } from "../../../../lib/portas/recursos/compras";
-import { listarPesquisas, fornecedores, materiaisAtivos, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
+import { listarPesquisas, PortaSemBancoError } from "../../../../lib/portas/recursos/compras-dados";
 import { FormPesquisaDePrecos } from "./FormPesquisaDePrecos";
 
 /**
@@ -18,7 +18,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
   await exigirLeitura("CONSULTAR_LICITACOES");
   const consulta = lerConsulta(PESQUISAS_DE_PRECOS, await searchParams);
   try {
-    const [pagina, permitidas, materiais, fornecedoresLidos] = await Promise.all([listarPesquisas(consulta), acoesPermitidas(["REGISTRAR_PESQUISA_DE_PRECOS"]), materiaisAtivos(), fornecedores()]);
+    const [pagina, permitidas] = await Promise.all([listarPesquisas(consulta), acoesPermitidas(["REGISTRAR_PESQUISA_DE_PRECOS"])]);
     const podeCriar = permitidas.has("REGISTRAR_PESQUISA_DE_PRECOS");
     return (
       <ListaDeRecurso
@@ -32,7 +32,7 @@ export default async function Pagina({ searchParams }: { readonly searchParams: 
         direcao={consulta.direcao}
         selecionados={consulta.selecionados}
         somaDaSelecao={somarSelecionadas(pagina.linhas, consulta.selecionados, PESQUISAS_DE_PRECOS.colunas.filter((c) => c.somavel === true).map((c) => c.nome))}
-        {...(podeCriar ? { formulario: <FormPesquisaDePrecos materiais={materiais} fornecedores={fornecedoresLidos} /> } : { motivoSemCriar: "Seu perfil não tem permissão para registrar pesquisas de preços. Solicite a permissão ao administrador do sistema." })}
+        {...(podeCriar ? { formulario: <FormPesquisaDePrecos /> } : { motivoSemCriar: "Seu perfil não tem permissão para registrar pesquisas de preços. Solicite a permissão ao administrador do sistema." })}
       />
     );
   } catch (e) {

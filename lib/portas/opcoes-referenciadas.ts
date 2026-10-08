@@ -86,6 +86,34 @@ function porCodigo(
 const onde = (w: { q: string; valor?: string }, campoTexto: string): Record<string, unknown> =>
   w.valor !== undefined ? { codigo: w.valor } : w.q === "" ? {} : { OR: [{ codigo: { startsWith: w.q } }, { [campoTexto]: contem(w.q) }] };
 
+/** As pessoas por documento (prefixo) ou nome, com o último movimento do papel de credor (para quem filtra por ele). */
+async function pessoasPorDocumentoOuNome(p: PedidoDeOpcoes, recorte: Prisma.PessoaWhereInput) {
+  const digitos = p.q.replace(/\D/g, "");
+  const filtro: Prisma.PessoaWhereInput =
+    p.valor !== undefined
+      ? { id: p.valor }
+      : p.q === ""
+        ? {}
+        : { OR: [...(digitos.length >= 2 ? [{ documento: { startsWith: digitos } }] : []), { versoes: { some: { nome: contem(p.q) } } }] };
+  return cliente().pessoa.findMany({
+    where: { ...filtro, ...recorte },
+    orderBy: { documento: "asc" },
+    skip: skip(p),
+    take,
+    select: {
+      id: true,
+      documento: true,
+      tipo: true,
+      versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } },
+      movimentos: { where: { papel: "CREDOR" }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 1, select: { movimento: true } },
+    },
+  });
+}
+
+function opcaoDaPessoa(x: { readonly id: string; readonly documento: string; readonly tipo: string; readonly versoes: readonly { readonly nome: string }[] }): OpcaoReferenciada {
+  return { valor: x.id, rotulo: `${formatarDocumento(x.documento)} — ${x.versoes[0]?.nome ?? "(sem nome)"}`, detalhe: x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física" };
+}
+
 /** O mesmo recorte de classe que `declararContaDaLiquidacao` confere (M01). */
 const PREFIXO_DO_EFEITO_NA_BUSCA: Readonly<Record<string, string>> = { VPD: "3.", IMOBILIZADO: "1.2.3.", INTANGIVEL: "1.2.4.", BAIXA_DE_PASSIVO: "2.", VPA: "4." };
 
@@ -96,36 +124,34 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
    * `autz.exigir(..., { ug })` do `criarFicha` confere; aqui ele só evita oferecer o que cairia.
    */
   /**
-   * V37 — FORNECEDORES da ordem de compra e da formação de ordem: as pessoas do cadastro, por documento ou nome. O
-   * valor é o ID da pessoa (é o que a ordem grava). Substitui o `select` com as 500 primeiras pessoas por documento,
-   * que escondia a 501ª.
+   * V37 — FORNECEDORES da ordem de compra e da formação de ordem: as pessoas com o papel de CREDOR vigente, por
+   * documento ou nome. O valor é o ID da pessoa (é o que a ordem grava). Substitui o `select` com as 500 primeiras
+   * pessoas por documento, que escondia a 501ª.
+   *
+   * ⚠️ SÓ CREDOR VIGENTE, PELA MESMA REGRA DO CATÁLOGO `credores` DO EMPENHO (o último movimento do papel é CONCEDIDO).
+   * A ordem é empenhada a seguir, e o empenho só aceita credor: uma ordem emitida para quem não é credor chegava ao
+   * empenho com o credor recusado ("não está entre as opções") — medido no percurso das compras pela busca. O atalho
+   * "Cadastrar este fornecedor" já cadastra a pessoa como credor. Quem nunca teve o papel sai na consulta; o credor
+   * ENCERRADO só sai no filtro (a consulta não diz "o último movimento"), e a página pode vir mais curta, com "há mais".
    */
   fornecedores: {
     leitura: "CONSULTAR_LICITACOES",
     async buscar(_sessao, p) {
-      const digitos = p.q.replace(/\D/g, "");
-      const where: Prisma.PessoaWhereInput =
-        p.valor !== undefined
-          ? { id: p.valor }
-          : p.q === ""
-            ? {}
-            : { OR: [...(digitos.length >= 2 ? [{ documento: { startsWith: digitos } }] : []), { versoes: { some: { nome: contem(p.q) } } }] };
-      const linhas = await cliente().pessoa.findMany({
-        where,
-        orderBy: { documento: "asc" },
-        skip: skip(p),
-        take,
-        select: { id: true, documento: true, tipo: true, versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } },
-      });
+      const linhas = await pessoasPorDocumentoOuNome(p, { movimentos: { some: { papel: "CREDOR" } } });
       const r = pagina(linhas, p);
-      return {
-        opcoes: r.linhas.map((x) => ({
-          valor: x.id,
-          rotulo: `${formatarDocumento(x.documento)} — ${x.versoes[0]?.nome ?? "(sem nome)"}`,
-          detalhe: x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física",
-        })),
-        temMais: r.temMais,
-      };
+      return { opcoes: r.linhas.filter((x) => x.movimentos[0]?.movimento === "CONCEDIDO").map(opcaoDaPessoa), temMais: r.temMais };
+    },
+  },
+
+  /**
+   * V37 — QUEM COTOU, na pesquisa de preços: qualquer pessoa do cadastro, por documento ou nome. Diferente da ordem,
+   * cotar preço não exige ser credor — a cotação de quem nunca vende ao ente também conta na média.
+   */
+  "pessoas-para-cotacao": {
+    leitura: "CONSULTAR_LICITACOES",
+    async buscar(_sessao, p) {
+      const r = pagina(await pessoasPorDocumentoOuNome(p, {}), p);
+      return { opcoes: r.linhas.map(opcaoDaPessoa), temMais: r.temMais };
     },
   },
 
@@ -178,6 +204,29 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       const linhas = await cliente().processoLicitatorio.findMany({ where, orderBy: { numeroProcesso: "desc" }, skip: skip(p), take, select: { id: true, numeroProcesso: true, objeto: true } });
       const r = pagina(linhas, p);
       return { opcoes: r.linhas.map((x) => ({ valor: x.id, rotulo: `${x.numeroProcesso} — ${x.objeto.slice(0, 80)}` })), temMais: r.temMais };
+    },
+  },
+
+  /**
+   * V37 — O MATERIAL dos itens da solicitação, da pesquisa de preços e da ordem de compra, por código, CATMAT ou
+   * descrição. Substitui o `select` com os 500 primeiros por código. Só os ATIVOS: o desabilitado guarda o histórico,
+   * não entra em compra nova. Oferecer não é autorizar: o domínio confere o material de novo.
+   */
+  "materiais-para-compra": {
+    leitura: "CONSULTAR_LICITACOES",
+    async buscar(_sessao, p) {
+      const where: Prisma.MaterialWhereInput =
+        p.valor !== undefined
+          ? { id: p.valor, ativo: true }
+          : p.q === ""
+            ? { ativo: true }
+            : { ativo: true, OR: [{ codigo: { startsWith: p.q.trim() } }, { catmat: { startsWith: p.q.trim() } }, { descricaoSucinta: contem(p.q) }] };
+      const linhas = await cliente().material.findMany({ where, orderBy: { codigo: "asc" }, skip: skip(p), take, select: { id: true, codigo: true, descricaoSucinta: true, catmat: true } });
+      const r = pagina(linhas, p);
+      return {
+        opcoes: r.linhas.map((m) => ({ valor: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta.slice(0, 80)}`, ...(m.catmat !== null ? { detalhe: `CATMAT ${m.catmat}` } : {}) })),
+        temMais: r.temMais,
+      };
     },
   },
 

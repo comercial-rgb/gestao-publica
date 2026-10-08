@@ -6,7 +6,7 @@ import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/con
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { ORDENS_DE_COMPRA } from "../../../../../lib/portas/recursos/compras";
-import { disponibilidadeDaOrdem, verOrdem, opcoesDaOrdem, solicitacoesParaVincular } from "../../../../../lib/portas/recursos/compras-dados";
+import { disponibilidadeDaOrdem, verOrdem, solicitacoesParaVincular } from "../../../../../lib/portas/recursos/compras-dados";
 import { documentosDaOrdemParaReceber } from "../../../../../lib/portas/recursos/documentos-fiscais-dados";
 import { ordensdecompraAction } from "../actions";
 import { FormRecebimento } from "./FormRecebimento";
@@ -24,9 +24,8 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   await exigirLeitura("CONSULTAR_LICITACOES");
   const { id } = await params;
   const consulta = lerConsulta(ORDENS_DE_COMPRA, await searchParams);
-  const [detalhe, opcoes, permitidas, documentos, solicitacoes] = await Promise.all([
+  const [detalhe, permitidas, documentos, solicitacoes] = await Promise.all([
     verOrdem(id),
-    opcoesDaOrdem(),
     acoesPermitidas([...ORDENS_DE_COMPRA.acoes.map((a) => a.acaoDoCenso), "REGISTRAR_RECEBIMENTO_DE_ORDEM", "EMPENHAR", "EMITIR_ORDEM_DE_COMPRA"]),
     documentosDaOrdemParaReceber(id),
     solicitacoesParaVincular(id),
@@ -95,7 +94,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
             </p>
           )}
           {/* ⚠️ Fica montado depois do estorno para a mensagem do resultado não sumir; um segundo estorno o domínio recusa nomeando. */}
-          <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={opcoes} registroId={id} action={ordensdecompraAction} modo="acoes" disponibilidade={disponibilidade} />
+          <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={{}} registroId={id} action={ordensdecompraAction} modo="acoes" disponibilidade={disponibilidade} />
         </div>
       }
     />
