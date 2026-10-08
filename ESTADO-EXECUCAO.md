@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `31b56ab1` em `apresentacao/contabilidade` (publicação: ver o fim desta seção) |
+| HEAD | `9adb5141` em `apresentacao/contabilidade`, publicado como `c61a102` (main e `/release` = `c61a102`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Percurso das trilhas 9/9 (`scripts/percurso-v37-trilhas-conectadas.mts`), saldo na data 3/3, receita por natureza 6/6 e 8/8; bateria dos 107 arquivos que emitem empenho 998/999 (a falha era de fixture antiga, corrigida, 5/5). |
 | Próximo passo | Seguir as trilhas que o levantamento deixou abertas (abaixo); depois o resto sem decisão do catálogo da contabilidade. |
@@ -39,6 +39,8 @@ compra, formar ordem e adiantamentos; dedução da receita sem link para a guia;
 drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o vínculo PPA–LOA continua ausente).
 
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
+
+Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
 
 ## V36 — catálogo da contabilidade e lacunas construídas (05/10/2026; vale sobre a V35 abaixo)
 
