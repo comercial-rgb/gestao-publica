@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `95474767` em `apresentacao/contabilidade` (a publicar; publicado antes: `d266ece`) |
+| HEAD | `2e30e8f1` em `apresentacao/contabilidade`, publicado como `e65bb16` (main e `/release` = `e65bb16`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Empenho da liquidação por busca (catálogo com escopo de unidade; débito e subempenhos só do escolhido); 5 percursos verdes; 27/27 nos testes ligados. |
 | Próximo passo | ALMOXARIFADO-MATERIAL-EM-LISTA; RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR. |
@@ -60,6 +60,8 @@ ajustados e **não executados** nesta rodada (servem a outros bancos e ao portã
 
 **Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.280/2.280; catálogos, consultas do M05, chave de
 comando, descritores e censo 27/27.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37e-20261008T170937Z.dump`; Actions 37814740100 verde; `/release` = `e65bb16`; sonda de produção só leitura 2/2 (liquidação com o empenho por busca e sem o `select`; o catálogo responde 200 com 4 empenhos liquidáveis da base fictícia de produção) e apagada. Sem migration.
 
 **Pendências nomeadas:** fecha `LIQUIDACAO-EMPENHO-EM-LISTA`. Continuam `RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR`,
 `ALMOXARIFADO-MATERIAL-EM-LISTA`, `CREDOR-ENCERRADO-NA-PAGINA`.
