@@ -1,9 +1,9 @@
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { nomesDosCredores } from "./empenho";
-import { toMoney } from "../../packages/contracts/index.js";
+import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
-import { arrecadadoPorFonteMesAMes } from "../../modules/m04-receita/arrecadado-mes-a-mes";
+import { arrecadadoPorFonteMesAMes, arrecadadoPorNaturezaFonteMesAMes } from "../../modules/m04-receita/arrecadado-mes-a-mes";
 import { arrecadadoPorNaturezaFonte } from "../../modules/m04-receita/consultas";
 import { pagamentosEfetuados, totaisDosPagamentos } from "../../modules/m05-despesa/pagamentos-efetuados";
 
@@ -45,6 +45,69 @@ export async function lerReceitaMesAMes(anoFinal: number): Promise<{ readonly an
     anos.map((ano) => [ano, porFonte.filter((l) => l.ano === ano).reduce((s, l) => toMoney(s.plus(l.total)), toMoney("0.00")).toFixed(2)])
   );
   return { anos, linhas, totaisPorAno };
+}
+
+export interface LinhaDaReceitaPorNatureza {
+  readonly naturezaCodigo: string;
+  readonly naturezaDescricao: string;
+  readonly meses: readonly string[];
+  readonly total: string;
+  /** As fontes da receita, cada uma mês a mês (a soma delas é a linha). */
+  readonly fontes: readonly LinhaDaReceitaMensal[];
+}
+
+/**
+ * O DEMONSTRATIVO DA RECEITA ARRECADADA MÊS A MÊS DE UM EXERCÍCIO (TR 5.10.2.59): por natureza, com as fontes de cada
+ * uma, e o resumo por fonte. Tudo de `arrecadadoPorNaturezaFonteMesAMes`; aqui só se agrupa e se dá nome à fonte.
+ */
+export async function lerReceitaPorNaturezaMesAMes(ano: number): Promise<{
+  readonly linhas: readonly LinhaDaReceitaPorNatureza[];
+  readonly resumoPorFonte: readonly LinhaDaReceitaMensal[];
+  readonly meses: readonly string[];
+  readonly total: string;
+}> {
+  await exigirLeituraDoEnte("CONSULTAR_RECEITA");
+  const prisma = cliente();
+  const [detalhe, fontes] = await Promise.all([
+    arrecadadoPorNaturezaFonteMesAMes(prisma, ano),
+    prisma.fonteRecurso.findMany({ select: { id: true, codigo: true, descricao: true } }),
+  ]);
+  const fonte = new Map(fontes.map((f) => [f.id, f]));
+  const zero = toMoney("0.00");
+  const somarMeses = (a: readonly Money[], b: readonly Money[]): Money[] => a.map((v, i) => toMoney(v.plus(b[i] ?? zero)));
+  const doze = (): Money[] => Array.from({ length: 12 }, () => zero);
+  const daFonte = (fonteId: string, meses: readonly Money[]): LinhaDaReceitaMensal => ({
+    fonteCodigo: fonte.get(fonteId)?.codigo ?? fonteId,
+    fonteDescricao: fonte.get(fonteId)?.descricao ?? "",
+    ano,
+    meses: meses.map((m) => m.toFixed(2)),
+    total: meses.reduce((s, m) => toMoney(s.plus(m)), zero).toFixed(2),
+  });
+
+  const porNatureza = new Map<string, { descricao: string; meses: Money[]; fontes: LinhaDaReceitaMensal[] }>();
+  const porFonte = new Map<string, Money[]>();
+  let geral = doze();
+  for (const l of detalhe) {
+    const n = porNatureza.get(l.naturezaCodigo) ?? { descricao: l.naturezaDescricao, meses: doze(), fontes: [] };
+    n.meses = somarMeses(n.meses, l.meses);
+    n.fontes.push(daFonte(l.fonteId, l.meses));
+    porNatureza.set(l.naturezaCodigo, n);
+    porFonte.set(l.fonteId, somarMeses(porFonte.get(l.fonteId) ?? doze(), l.meses));
+    geral = somarMeses(geral, l.meses);
+  }
+  const porCodigo = (a: LinhaDaReceitaMensal, b: LinhaDaReceitaMensal): number => a.fonteCodigo.localeCompare(b.fonteCodigo, "pt-BR", { numeric: true });
+  return {
+    linhas: [...porNatureza].map(([codigo, n]) => ({
+      naturezaCodigo: codigo,
+      naturezaDescricao: n.descricao,
+      meses: n.meses.map((m) => m.toFixed(2)),
+      total: n.meses.reduce((s, m) => toMoney(s.plus(m)), zero).toFixed(2),
+      fontes: [...n.fontes].sort(porCodigo),
+    })),
+    resumoPorFonte: [...porFonte].map(([fonteId, meses]) => daFonte(fonteId, meses)).sort(porCodigo),
+    meses: geral.map((m) => m.toFixed(2)),
+    total: geral.reduce((s, m) => toMoney(s.plus(m)), zero).toFixed(2),
+  };
 }
 
 export interface MovimentoDoDia {

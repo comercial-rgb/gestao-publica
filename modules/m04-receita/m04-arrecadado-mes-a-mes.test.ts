@@ -4,7 +4,7 @@ import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import { DIA_DE_BORDA } from "../../test/instantes.js";
 import { criarM04Deps } from "./adapter-prisma.js";
-import { arrecadadoPorFonteMesAMes } from "./arrecadado-mes-a-mes.js";
+import { arrecadadoPorFonteMesAMes, arrecadadoPorNaturezaFonteMesAMes } from "./arrecadado-mes-a-mes.js";
 import { roteiroArrecadacao } from "./dominio.js";
 import { anularArrecadacao, registrarArrecadacao } from "./servico.js";
 
@@ -56,9 +56,9 @@ async function semear(): Promise<void> {
   }
 }
 
-async function arrecada(exercicio: number, fonte: string, valor: string, numero: string, data: Date): Promise<string> {
+async function arrecada(exercicio: number, fonte: string, valor: string, numero: string, data: Date, naturezaReceita = "11121101"): Promise<string> {
   const r = await registrarArrecadacao(
-    { exercicio, naturezaReceita: "11121101", fonte, co: "0001", exercicioFonte: 1, valor, dataArrecadacao: data, numeroReceita: numero, criadoPor: POR },
+    { exercicio, naturezaReceita, fonte, co: "0001", exercicioFonte: 1, valor, dataArrecadacao: data, numeroReceita: numero, criadoPor: POR },
     ROTEIRO,
     criarM04Deps(prisma)
   );
@@ -102,5 +102,37 @@ describe("M04 V36 — a receita mês a mês por fonte", () => {
 
     // Os exercícios saem em ordem, qualquer que seja a ordem pedida.
     expect(r.map((x) => x.ano)).toEqual([2025, 2026, 2026]);
+  });
+
+  it("t2: por natureza e fonte num exercício (N=2 em naturezas e fontes), e a visão por fonte é a soma dela", async () => {
+    await prisma.naturezaReceita.create({ data: { id: "nr-iss", codigo: "11145111", descricao: "ISS - Principal" } });
+    await prisma.receitaPrevista.create({
+      data: { exercicio: 2026, naturezaReceitaId: "nr-iss", fonteId: "fnt-500", exercicioFonte: 1, tipoReceita: "ORCAMENTARIA", valorPrevisto: "5000.00" },
+    });
+    await arrecada(2026, "500", "450.00", "2026RC000004", DIA_DE_BORDA(2026, 2, 28), "11145111");
+
+    const r = await arrecadadoPorNaturezaFonteMesAMes(prisma, 2026);
+    expect(r.map((l) => `${l.naturezaCodigo}/${l.fonteId}`)).toEqual(["11121101/fnt-500", "11121101/fnt-540", "11145111/fnt-500"]);
+    const linha = (nat: string, fonte: string): string[] | undefined =>
+      r.find((l) => l.naturezaCodigo === nat && l.fonteId === fonte)?.meses.map((m) => m.toFixed(2));
+    const zeros = (): string[] => Array.from({ length: 12 }, () => "0.00");
+    const iptu500 = zeros();
+    iptu500[1] = "700.00";
+    iptu500[3] = "-700.00";
+    expect(linha("11121101", "fnt-500")).toEqual(iptu500);
+    const iss500 = zeros();
+    iss500[1] = "450.00";
+    expect(linha("11145111", "fnt-500")).toEqual(iss500);
+    expect(r.find((l) => l.naturezaCodigo === "11145111")?.naturezaDescricao).toBe("ISS - Principal");
+    expect(r.find((l) => l.naturezaCodigo === "11121101" && l.fonteId === "fnt-540")?.total.toFixed(2)).toBe("500.00");
+    // Nada de 2025 no exercício pedido.
+    expect(r.every((l) => l.ano === 2026)).toBe(true);
+
+    // A visão por fonte soma as naturezas: a 500 de 2026 é IPTU (700 − 700) mais ISS (450) — fevereiro 1.150,00.
+    const porFonte = await arrecadadoPorFonteMesAMes(prisma, [2026]);
+    const f500 = porFonte.find((x) => x.fonteId === "fnt-500");
+    expect(f500?.meses[1]?.toFixed(2)).toBe("1150.00");
+    expect(f500?.meses[3]?.toFixed(2)).toBe("-700.00");
+    expect(f500?.total.toFixed(2)).toBe("450.00");
   });
 });

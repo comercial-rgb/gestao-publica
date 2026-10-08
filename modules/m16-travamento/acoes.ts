@@ -3692,6 +3692,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarIngressosAvulsos: "leitura (V36 — os ingressos extraorçamentários avulsos, com o estorno; não muta)",
   proximoNumeroLivre: "leitura (o número sugerido ao formulário do empenho, da liquidação e da anulação; quem reserva continua sendo reservarNumero, na transação; não muta)",
   arrecadadoPorFonteMesAMes: "leitura (V36 — a receita arrecadada mês a mês por fonte, composta de arrecadadoPorNaturezaFonte; não muta)",
+  arrecadadoPorNaturezaFonteMesAMes: "leitura (V36 — a receita arrecadada mês a mês por natureza e fonte de um exercício, composta de arrecadadoPorNaturezaFonte; não muta)",
   dispendiosEfetuados: "leitura (V36 — os dispêndios extraorçamentários do período, com o estorno descontado, para o relatório de pagamentos; não muta)",
   contasContabeisDeDisponibilidade: "leitura (V36 — as contas analíticas do grupo 1.1.1 que o cadastro da conta bancária oferece; não muta)",
   listarAnexosDoPagamentoOuMovimento: "leitura (V36 — os anexos de um pagamento ou de um movimento bancário; a leitura do dono é cobrada na porta; não muta)",
