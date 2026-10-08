@@ -13,7 +13,7 @@ import { liquidar } from "../../modules/m05-despesa/servico-bloco2";
 // ⚠️ `CONTA_ESTOQUE` e `contrapartidaDaLiquidacao` SAÍRAM DAQUI junto com a recusa: quem
 // decide se a liquidação é de material é o adapter, dentro da transação, pela mesma régua.
 // Deixá-los importados manteria nesta porta a aparência de uma decisão que ela não toma mais.
-import { CONTA_FORNECEDORES_A_PAGAR, elementoDebitaEstoque, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros";
+import { CONTA_FORNECEDORES_A_PAGAR, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros";
 import { exigirContaDaLiquidacao } from "../../modules/m01-core-contabil/conta-da-liquidacao";
 
 /**
@@ -236,10 +236,6 @@ export async function opcoesDasEntradasDeMaterial(): Promise<OpcoesDasEntradasDe
   };
 }
 
-/** V4 (§6): o elemento da natureza liquida em ESTOQUE? — a mesma régua do adapter, para a tela avisar antes. */
-export function empenhoEhDeMaterial(naturezaCodigo: string): boolean {
-  return elementoDebitaEstoque(naturezaCodigo.slice(-2));
-}
 
 /** V22 — a nota fiscal de uma liquidação, como a tela a mostra (valor em string, datas civis). */
 export interface NotaDaLiquidacao {

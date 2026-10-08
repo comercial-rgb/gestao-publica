@@ -1,6 +1,7 @@
 // `.env` para o smoke achar SEED_ADMIN_SENHA sem a senha passar pelo histórico do shell.
 import "dotenv/config";
 import puppeteer, { type Browser, type ElementHandle, type Page } from "puppeteer";
+import { escolherPelaBusca } from "./percursos-navegador.js";
 
 /**
  * SMOKE DA CADEIA DA DESPESA, PELO NAVEGADOR — o cenário de aceite do ENT01 (§2.4).
@@ -565,9 +566,9 @@ async function main(): Promise<void> {
 
     // ── 4. LIQUIDAR ────────────────────────────────────────────────────────
     await irPara(page, `/despesa/liquidacoes?exercicio=${EXERCICIO}`);
-    const empenhoNaLiquidacao = await opcaoQueContem(page, 'select[name="empenhoId"]', NE);
-    await preencherEEnviar(page, 'select[name="empenhoId"]', [
-      { sel: 'select[name="empenhoId"]', valor: empenhoNaLiquidacao, tipo: "select" },
+    // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis).
+    await escolherPelaBusca(page, 'form[data-acao="liquidar"]', "empenhoId", NE);
+    await preencherEEnviar(page, 'form[data-acao="liquidar"]', [
       { sel: 'input[name="numero"]', valor: NL },
       { sel: SELETOR_VISIVEL["valor"]!, valor: LIQUIDACAO },
       { sel: 'input[name="data"]', valor: "2026-05-01", tipo: "data" },

@@ -183,6 +183,16 @@ async function escolherReferencia(page: Page, form: string, campo: CampoDoPercur
 }
 
 /**
+ * V37 — escolhe num `CampoReferenciado` FORA do `preencherEEnviar` (para os scripts com auxiliar próprio, ou quando o
+ * resto do formulário depende da escolha): digita a busca, clica na opção (a de `valor`, ou a primeira) e devolve o
+ * valor que chegou ao campo escondido.
+ */
+export async function escolherPelaBusca(page: Page, form: string, nome: string, busca: string, valor = ""): Promise<string> {
+  await escolherReferencia(page, form, { sel: nome, valor, busca, tipo: "referencia" });
+  return page.$eval(`${form} [data-seletor] input[type="hidden"][name="${nome}"]`, (el) => (el as HTMLInputElement).value);
+}
+
+/**
  * ⚠️ `nomeDoResultado` (V11 V9.2) — ACRÉSCIMO OPCIONAL, nenhum chamador existente muda.
  *
  * O contrato declarado do V6.2 é `data-resultado-da-acao="<nome>"`, e até aqui este helper só

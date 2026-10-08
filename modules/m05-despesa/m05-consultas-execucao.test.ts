@@ -391,4 +391,27 @@ describe("M05 — as leituras da execução (TR 5.17)", () => {
     expect((await listarEmpenhos(prisma, { ...RECORTE, tipoDoEmpenho: "ESTIMATIVO", credorCpfCnpj: "00000000000000" })).length).toBe(0);
     expect((await listarEmpenhos(prisma, { ...RECORTE, tipoDoEmpenho: "ESTIMATIVO", credorCpfCnpj: CREDOR })).length).toBe(2);
   });
+
+  /**
+   * t8 — A BUSCA DO SELETOR DA LIQUIDAÇÃO (V37) e a escolha por id, pela cadeia. Conta à mão: NE-11 1.000 com anulação
+   * parcial de 400 → 600 a liquidar; NE-12 500; NE-2 700. "NE-1" acha NE-11 (600,00, não 1.000,00: a parcial vem pelo
+   * original) e NE-12, não NE-2; o id do NE-11 traz só ele, com os 600; os dígitos do credor acham os três.
+   */
+  it("t8: a busca por número ou credor, e o empenho por id, alcançam as anulações pelo original (N=2)", async () => {
+    const ne11 = await empenhaDe("1000.00", "11");
+    await empenhaDe("500.00", "12");
+    await empenhaDe("700.00", "2");
+    await anularEmpenhoParcial(
+      { originalId: ne11, numero: "NEA-11", valor: "400.00", data: new Date("2026-02-10T12:00:00Z"), motivo: "redução do fornecimento acordada com o fornecedor", criadoPor: POR },
+      deps
+    );
+    const porNumero = await listarEmpenhos(prisma, { ...RECORTE, busca: "NE-1" });
+    expect(porNumero.map((e) => [e.numero, e.saldoALiquidar.toFixed(2)]).sort()).toEqual([["NE-11", "600.00"], ["NE-12", "500.00"]]);
+    const porId = await listarEmpenhos(prisma, { ...RECORTE, empenhoId: ne11 });
+    expect(porId.map((e) => [e.numero, e.saldoALiquidar.toFixed(2)])).toEqual([["NE-11", "600.00"]]);
+    expect((await listarEmpenhos(prisma, { ...RECORTE, busca: CREDOR.slice(0, 6) })).length).toBe(3);
+    expect(await listarEmpenhos(prisma, { ...RECORTE, busca: "XYZ" })).toEqual([]);
+    // Busca e id juntos valem os dois (nenhum sobrescreve o outro).
+    expect(await listarEmpenhos(prisma, { ...RECORTE, busca: "NE-2", empenhoId: ne11 })).toEqual([]);
+  });
 });

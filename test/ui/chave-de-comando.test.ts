@@ -63,6 +63,9 @@ const ACOES_SEM_COMANDO: Record<string, string> = {
   "app/(areas)/despesa/empenhos/leitura-actions.ts":
     "debitosDoCredorAction e disponivelNaDataAction (V36/V37): só LEEM — o débito do credor em dívida ativa e o disponível da " +
     "ficha na data, sob a leitura da despesa; o empenho grava por empenharAction, que passa pelo envelope.",
+  "app/(areas)/despesa/liquidacoes/leitura-actions.ts":
+    "extrasDoEmpenhoAction (V37): só LÊ — o débito do credor e os subempenhos do empenho escolhido, sob a leitura da " +
+    "despesa na unidade dele; a liquidação grava por liquidarAction, que passa pelo envelope.",
   "app/(areas)/despesa/pagamentos/previa-actions.ts":
     "previaRetencoesAction (V24): só LÊ — calcula a prévia das retenções sem gravar nada, sob a leitura da " +
     "despesa; o pagamento recalcula no servidor e passa pelo envelope em pagarAction.",

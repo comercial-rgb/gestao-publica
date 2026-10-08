@@ -10,6 +10,8 @@ import { saldoDaDividaAtivaEm } from "../../modules/m10-patrimonial/divida-ativa
 import { formatarMoeda } from "../../packages/contracts/moeda";
 import { toMoney } from "../../packages/contracts/money.js";
 import { diaCivilBr } from "../../packages/datas/index.js";
+import { listarEmpenhos } from "../../modules/m05-despesa/consultas.js";
+import { elementoDebitaEstoque } from "../../modules/m01-core-contabil/roteiros.js";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
 import type { Identidade } from "./sessao";
@@ -307,6 +309,45 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
         });
       }
       return { opcoes, temMais: r.temMais };
+    },
+  },
+
+  /**
+   * V37 — O EMPENHO DA LIQUIDAÇÃO, por número ou documento do credor, entre os que têm SALDO A LIQUIDAR (e não foram
+   * anulados) no recorte da página (contexto `exercicio` e `ug`). Substitui o `select` com todos os liquidáveis.
+   * A régua do saldo é a do M05 (`listarEmpenhos`: empenhado líquido − liquidado), com a busca descendo ao SQL.
+   *
+   * ⚠️ O RECORTE DE UNIDADE É DO SERVIDOR: unidade fora do escopo de leitura da despesa não devolve nada; sem unidade
+   * (o consolidado), só quem lê o ente inteiro. Oferecer não é autorizar — o liquidar confere tudo de novo.
+   */
+  "empenhos-para-liquidar": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(sessao, p) {
+      const exercicio = Number(p.contexto["exercicio"] ?? "");
+      if (!Number.isInteger(exercicio) || exercicio < 2000) return { opcoes: [], temMais: false };
+      const ug = (p.contexto["ug"] ?? "").trim();
+      const escopo = await escopoDaAcaoDeLeitura(cliente(), sessao.identificador, "CONSULTAR_DESPESA");
+      if (!escopo.ativo) return { opcoes: [], temMais: false };
+      if (ug === "" ? !escopo.global : !escopo.unidades.some((u) => u.codigo === ug)) return { opcoes: [], temMais: false };
+      const linhas = await listarEmpenhos(cliente(), {
+        exercicio,
+        ...(ug !== "" ? { unidadeCodigo: ug } : {}),
+        ...(p.valor !== undefined ? { empenhoId: p.valor } : p.q !== "" ? { busca: p.q } : {}),
+      });
+      const liquidaveis = linhas.filter((e) => !e.anulado && e.saldoALiquidar.greaterThan(0) && (p.valor === undefined || e.id === p.valor));
+      const r = { linhas: liquidaveis.slice(skip(p), skip(p) + TAMANHO_DA_PAGINA_DE_OPCOES), temMais: liquidaveis.length > skip(p) + TAMANHO_DA_PAGINA_DE_OPCOES };
+      return {
+        opcoes: r.linhas.map((e) => {
+          const material = elementoDebitaEstoque(e.naturezaCodigo.slice(-2));
+          return {
+            valor: e.id,
+            rotulo: `${e.numero} · credor ${formatarDocumento(e.credorCpfCnpj)} · a liquidar R$ ${formatarMoeda(e.saldoALiquidar.toFixed(2)).texto}`,
+            detalhe: `ficha ${String(e.fichaNumero)} · natureza ${e.naturezaCodigo}${material ? " · material de consumo" : ""} · ${e.historico.slice(0, 60)}`,
+            dados: { numero: e.numero, credorCpfCnpj: e.credorCpfCnpj, saldoALiquidar: e.saldoALiquidar.toFixed(2), naturezaCodigo: e.naturezaCodigo, ehMaterial: material ? "sim" : "nao" },
+          };
+        }),
+        temMais: r.temMais,
+      };
     },
   },
 

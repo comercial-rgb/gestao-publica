@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
+import type { OpcaoDoSeletor } from "../../../../components/ui/CampoReferenciado";
 import { CampoValor } from "../../../../components/ui/Campos";
 import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 import {
@@ -10,10 +11,10 @@ import {
   CLASSE_ROTULO as ROTULO,
 } from "../../../../components/ui/Formulario";
 import { liquidarAction, type EstadoLiquidacao } from "./actions";
+import { extrasDoEmpenhoAction } from "./leitura-actions";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
-import { formatarDocumento } from "../../../../packages/documento/index";
 
 /**
  * As opções das entradas de material, JÁ LIDAS pelo Server Component — a ilha client não importa
@@ -24,8 +25,8 @@ export interface OpcoesDasEntradasDeMaterial {
   readonly depositos: readonly { readonly id: string; readonly rotulo: string }[];
 }
 
-/** O empenho liquidável, já filtrado pelo Server Component (saldo a liquidar > 0). */
-export interface EmpenhoLiquidavel {
+/** O empenho escolhido na busca (catálogo `empenhos-para-liquidar`), com o que a tela precisa dele. */
+interface EmpenhoLiquidavel {
   readonly id: string;
   readonly numero: string;
   readonly credorCpfCnpj: string;
@@ -52,26 +53,23 @@ export interface EmpenhoLiquidavel {
  * misto (material e serviço) são duas liquidações, uma por empenho.
  */
 export function FormLiquidacao({
-  empenhos,
+  exercicio,
+  unidadeCodigo,
   opcoesDeMaterial,
   documentos = [],
   empenhoInicial,
   numeroSugerido,
-  debitos = {},
-  subempenhos = {},
   subempenhoInicial,
 }: {
-  readonly empenhos: readonly EmpenhoLiquidavel[];
+  /** V37 — o recorte da página: a busca do empenho só oferece os deste exercício (e desta unidade, se houver). */
+  readonly exercicio: number;
+  readonly unidadeCodigo?: string | undefined;
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   readonly documentos?: readonly { readonly id: string; readonly rotulo: string }[];
   /** V33 — o empenho que veio escolhido de outra tela (diárias, a pagar). Sem saldo a liquidar, é ignorado. */
   readonly empenhoInicial?: string | undefined;
   /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
   readonly numeroSugerido?: string | undefined;
-  /** V36 (TR 5.10.1.38) — os débitos inscritos em dívida ativa dos credores da lista, por documento. */
-  readonly debitos?: Readonly<Record<string, { readonly inscricoes: number; readonly saldo: string }>>;
-  /** V36 (TR 5.10.1.7) — os empenhos repartidos em subempenhos: o livre e os subempenhos com saldo. */
-  readonly subempenhos?: Readonly<Record<string, { readonly livre: string; readonly subempenhos: readonly { readonly id: string; readonly rotulo: string; readonly saldo: string }[] }>>;
   /** V36 — o subempenho que veio escolhido da tela do empenho. */
   readonly subempenhoInicial?: string | undefined;
 }): React.ReactElement {
@@ -80,28 +78,33 @@ export function FormLiquidacao({
     {}
   );
   const ref = useRef<HTMLFormElement>(null);
-  const inicial = empenhoInicial !== undefined && empenhos.some((e) => e.id === empenhoInicial) ? empenhoInicial : "";
-  const [escolhido, setEscolhido] = useState<string>(inicial);
+  // V37 — o empenho vem da BUSCA; o aviso de débito do credor e os subempenhos, de uma leitura só dele, na escolha
+  // (antes a página calculava os dois para todos os liquidáveis, para um `select` com todos eles).
+  const [alvo, setAlvo] = useState<EmpenhoLiquidavel | undefined>(undefined);
+  const [extras, setExtras] = useState<Awaited<ReturnType<typeof extrasDoEmpenhoAction>> | undefined>(undefined);
+  const consulta = useRef(0);
+  function escolherEmpenho(o: OpcaoDoSeletor | null): void {
+    const minha = ++consulta.current;
+    setExtras(undefined);
+    if (o === null || o.dados === undefined) {
+      setAlvo(undefined);
+      return;
+    }
+    const d = o.dados;
+    setAlvo({ id: o.valor, numero: d["numero"] ?? "", credorCpfCnpj: d["credorCpfCnpj"] ?? "", saldoALiquidar: d["saldoALiquidar"] ?? "0.00", ehMaterial: d["ehMaterial"] === "sim", naturezaCodigo: d["naturezaCodigo"] ?? "" });
+    void extrasDoEmpenhoAction(o.valor).then((r) => {
+      if (minha === consulta.current) setExtras(r);
+    });
+  }
   const [linhas, setLinhas] = useState<number>(1);
   // V37 — a linha que um RECEBIMENTO escolhido sugere (material, classe, quantidade, unitário, valor). A `versao`
   // remonta os campos da linha com a sugestão; tudo continua editável, e o domínio confere de novo.
   const [sugestoes, setSugestoes] = useState<Readonly<Record<number, { readonly dados: Readonly<Record<string, string>>; readonly versao: number }>>>({});
   if (estado.sucesso !== undefined) ref.current?.reset();
 
-  if (empenhos.length === 0) {
-    return (
-      <div className="rounded-[var(--radius-lg)] border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-2)] p-4 text-xs text-[color:var(--color-ink-2)]">
-        <strong className="text-[color:var(--color-ink)]">
-          Nenhum empenho com saldo a liquidar
-        </strong>{" "}
-        na unidade e no exercício selecionados. A liquidação é registrada a partir de um empenho.
-      </div>
-    );
-  }
-
-  const alvo = empenhos.find((e) => e.id === escolhido);
   const deMaterial = alvo?.ehMaterial === true;
-  const repartido = alvo === undefined ? undefined : subempenhos[alvo.id];
+  const repartido = extras !== undefined && extras !== null && extras !== "indisponivel" ? (extras.repartido ?? undefined) : undefined;
+  const debito = alvo === undefined || extras === undefined || extras === null ? undefined : extras === "indisponivel" ? ("indisponivel" as const) : (extras.debito ?? undefined);
 
   return (
     <form
@@ -117,27 +120,23 @@ export function FormLiquidacao({
       </h2>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Empenho (com saldo a liquidar)</span>
-          <select
+        {/* O recorte da página entra na busca: só os empenhos deste exercício (e desta unidade). */}
+        <input type="hidden" name="exercicio" value={String(exercicio)} />
+        <input type="hidden" name="ug" value={unidadeCodigo ?? ""} />
+        <div className="sm:col-span-2">
+          <CampoReferenciado
             name="empenhoId"
-            required
-            defaultValue={inicial}
-            className={CAMPO}
-            onChange={(e) => setEscolhido(e.target.value)}
-          >
-            <option value="" disabled>
-              Escolha o empenho…
-            </option>
-            {empenhos.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.numero} · credor {formatarDocumento(e.credorCpfCnpj)} · a liquidar R$ {formatarMoeda(e.saldoALiquidar).texto}
-                {e.ehMaterial ? " · material de consumo" : ""}
-              </option>
-            ))}
-          </select>
-          <AvisoDeDebitoDoCredor debito={alvo === undefined ? undefined : debitos[alvo.credorCpfCnpj]} />
-        </label>
+            rotulo="Empenho (com saldo a liquidar)"
+            catalogo="empenhos-para-liquidar"
+            contexto={["exercicio", "ug"]}
+            obrigatorio
+            placeholder="Número do empenho ou CPF/CNPJ do credor"
+            largura={4}
+            {...(empenhoInicial !== undefined && empenhoInicial !== "" ? { valorInicial: empenhoInicial, avisarInicial: true } : {})}
+            aoEscolher={escolherEmpenho}
+          />
+          <AvisoDeDebitoDoCredor debito={debito} />
+        </div>
 
         {repartido !== undefined ? (
           <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-1">

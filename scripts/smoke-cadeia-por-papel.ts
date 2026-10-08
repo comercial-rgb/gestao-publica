@@ -1,5 +1,6 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
+import { escolherPelaBusca } from "./percursos-navegador.js";
 
 /**
  * SMOKE DA CADEIA POR PAPEL (V6 P1.3) — navegador real, QUATRO usuários, nenhum admin nos passos.
@@ -472,14 +473,13 @@ async function main(): Promise<void> {
     ]);
     conferir("3.2 CONTABILIDADE empenha o credor da ordem", rEmp.tipo === "ok" || (await texto(page)).includes(NE.toLowerCase()), rEmp.texto.slice(0, 200));
     await irPara(page, `/despesa/liquidacoes?exercicio=${EXERCICIO}`);
-    const empLiq = await opcaoQueCasa(page, 'form[data-acao="liquidar"] select[name="empenhoId"]', NE);
-    if (empLiq === null) throw new Error("o empenho não está no seletor da liquidação");
-    await page.select('form[data-acao="liquidar"] select[name="empenhoId"]', empLiq.valor);
+    // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis).
+    const empLiq = await escolherPelaBusca(page, 'form[data-acao="liquidar"]', "empenhoId", NE);
+    if (empLiq === "") throw new Error("o empenho não está na busca da liquidação");
     await new Promise((r) => setTimeout(r, 500));
     const docLiq = await opcaoQueCasa(page, 'form[data-acao="liquidar"] select[name="documentoFiscalId"]', `DF-P-${SUF}`);
     conferir("3.3 a liquidação oferece o documento fiscal CONFERIDO do mesmo credor", docLiq !== null, "documento não ofertado");
     const rLiq = await preencherEEnviar(page, "liquidar", [
-      { sel: 'select[name="empenhoId"]', valor: empLiq.valor, tipo: "select" },
       { sel: 'input[name="numero"]', valor: NL },
       { sel: '[data-mascara="valor"]', valor: "426,00" },
       { sel: 'input[name="data"]', valor: "2026-05-16", tipo: "data" },

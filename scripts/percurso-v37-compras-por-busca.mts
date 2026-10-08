@@ -245,6 +245,11 @@ try {
           const L = 'form[data-acao="liquidar"]';
           await page.waitForSelector(`${L}[data-material="sim"]`, { timeout: 60000 }).catch(() => undefined);
           const campoDigitado = await page.$(`${L} input[name="entradas.0.recebimentoDeItemId"]:not([type="hidden"])`);
+          // O empenho chega escolhido pela busca (o link traz '?empenho='), sem o select com todos os liquidáveis.
+          await page.waitForFunction((sel, v) => (document.querySelector(sel) as HTMLInputElement | null)?.value === v, { timeout: 30000 }, `${L} input[type="hidden"][name="empenhoId"]`, doEmpenho.id).catch(() => undefined);
+          const empenhoNoCampo = await page.$eval(`${L} input[type="hidden"][name="empenhoId"]`, (e) => (e as HTMLInputElement).value).catch(() => "");
+          const selectDeEmpenho = await page.$(`${L} select[name="empenhoId"]`);
+          conferir(empenhoNoCampo === doEmpenho.id && selectDeEmpenho === null, "a liquidação chega com o empenho escolhido pela busca, sem a lista de todos os liquidáveis");
           // O recebimento primeiro, à mão: escolhido, a linha se remonta e o material confere o valor sugerido no servidor —
           // espera-se o material chegar ao campo antes de seguir (a pessoa leva mais que isso para olhar a linha).
           const RAIZ_REC = `${L} [data-seletor]:has(input[type="hidden"][name="entradas.0.recebimentoDeItemId"])`;

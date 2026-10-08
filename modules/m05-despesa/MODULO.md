@@ -591,3 +591,10 @@ da transação. São eles `liquidar`, `anularLiquidacao`, `anularLiquidacaoParci
 `liquidarRestosAPagar` (M08). Uma ordem só também impede que dois atos com o mesmo número se esperem em cruz. A recusa
 do número desfaz a transação inteira. Os testes são o t1b, o t1c, o t8c e o t8d do almoxarifado do M10. O empenho
 continua conferindo antes do `create`, porque nada trava depois dele.
+
+## V37 — a busca e o id no recorte da lista de empenhos
+
+`listarEmpenhos` aceita `busca` e `empenhoId`, para o seletor do empenho na liquidação. A busca é o número que começa
+com o texto, ou o documento do credor que começa com os dígitos dele. Os dois filtros descem ao SQL pela cadeia
+(`daCadeia`): original, anulação total ou parcial e estorno da parcial. É o mesmo desenho do filtro de credor. Sem as
+anulações no conjunto, o saldo a liquidar sairia cheio (t8 de `m05-consultas-execucao`, com três mutações vermelhas).

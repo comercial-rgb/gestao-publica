@@ -94,7 +94,9 @@ try {
   } else {
     await irPara(n, page, `/despesa/empenhos/${aLiquidar.id}`);
     const u3 = await clicar(page, 'a[data-proximo-passo="liquidar"]');
-    const empenhoNoForm = await valorDe(page, 'form[data-acao="liquidar"] select[name="empenhoId"]');
+    // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis).
+    await page.waitForFunction((v) => (document.querySelector('form[data-acao="liquidar"] input[type="hidden"][name="empenhoId"]') as HTMLInputElement | null)?.value === v, { timeout: 30000 }, aLiquidar.id).catch(() => undefined);
+    const empenhoNoForm = await valorDe(page, 'form[data-acao="liquidar"] input[type="hidden"][name="empenhoId"]');
     conferir(u3.includes(`empenho=${aLiquidar.id}`) && empenhoNoForm === aLiquidar.id, `empenho ${aLiquidar.numero} → "Liquidar este empenho": o formulário chega com o empenho (${u3})`);
   }
 

@@ -94,6 +94,7 @@
     "test/ficha-pela-tela.test.ts",
     "test/ui/fornecedores-catalogo.test.ts",
     "test/ui/recebimentos-catalogo.test.ts",
+    "test/ui/empenhos-liquidar-catalogo.test.ts",
     "test/ui/resumo-da-folha.test.ts",
     "test/ui/nota-de-estorno.test.ts",
     "test/ui/livros-com-termos.test.ts",

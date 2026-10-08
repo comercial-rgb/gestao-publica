@@ -74,11 +74,12 @@ try {
     return prisma.empenho.findFirst({ where: { historico }, select: { id: true, numero: true } });
   };
   const liquidar = async (empenhoId: string, semEmpenhoPrevio: boolean): Promise<{ id: string; numero: string; despesaSemEmpenhoPrevio: boolean } | null> => {
-    await irPara(n, page, "/despesa/liquidacoes?exercicio=2026");
+    // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis). Chega escolhido pelo link (`&empenho=`).
+    await irPara(n, page, `/despesa/liquidacoes?exercicio=2026&empenho=${empenhoId}`);
+    await page.waitForFunction((v) => (document.querySelector('form[data-acao="liquidar"] input[type="hidden"][name="empenhoId"]') as HTMLInputElement | null)?.value === v, { timeout: 30000 }, empenhoId);
     await texto(page, 'form[data-acao="liquidar"]', "historico", `Liquidação ${marca} (percurso)`);
     if (semEmpenhoPrevio) await page.$eval('form[data-acao="liquidar"] input[name="despesaSemEmpenhoPrevio"]', (c) => (c as HTMLInputElement).click());
     await preencherEEnviar(page, "liquidar", [
-      { sel: 'select[name="empenhoId"]', valor: empenhoId, tipo: "select" },
       { sel: '[data-mascara="valor"]', valor: "120,00" },
       { sel: 'input[name="data"]', valor: hoje, tipo: "data" },
       { sel: 'input[name="atesto"]', valor: "Servidor fictício do atesto" },

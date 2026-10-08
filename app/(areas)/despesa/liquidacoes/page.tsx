@@ -1,8 +1,6 @@
 import { acoesPermitidas } from "../../../../lib/portas/molde";
 import Link from "next/link";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
-import { subempenhosParaLiquidar } from "../../../../lib/portas/subempenhos";
-import { lerDebitosDosCredores } from "../../../../lib/portas/debitos-do-credor";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import {
@@ -11,7 +9,6 @@ import {
 } from "../../../../components/ui/TabelaDeDados";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import {
-  empenhoEhDeMaterial,
   listarLiquidacoesDaExecucao,
   opcoesDasEntradasDeMaterial,
   notasDasLiquidacoes,
@@ -20,7 +17,7 @@ import {
   type NotaDaLiquidacao,
   type OpcoesDasEntradasDeMaterial,
 } from "../../../../lib/portas/liquidacao";
-import { listarEmpenhosDaExecucao, nomesDosCredores, proximoNumeroDeDocumento } from "../../../../lib/portas/empenho";
+import { nomesDosCredores, proximoNumeroDeDocumento } from "../../../../lib/portas/empenho";
 import { EXTENSOES_ACEITAS, lerAnexosDasLiquidacoes, TAMANHO_MAXIMO_BYTES, type AnexoNaLista } from "../../../../lib/portas/documentos";
 import { BotaoExcel } from "../../../../components/ui/BotaoExcel";
 import { BotaoImprimir } from "../../../../components/ui/BotaoImprimir";
@@ -39,7 +36,7 @@ import { BotaoCsv } from "../../../../components/ui/BotaoCsv";
 import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { FormLiquidacao, type EmpenhoLiquidavel } from "./FormLiquidacao";
+import { FormLiquidacao } from "./FormLiquidacao";
 import { documentosConferidosParaLiquidar } from "../../../../lib/portas/recursos/documentos-fiscais-dados";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
@@ -65,23 +62,18 @@ export default async function LiquidacoesPage({
   // antes afirmaria "consolidado (ente)" na tela de quem acabou de ser recusado.
   let recorte: RecorteDaPagina;
   let liquidacoes: readonly LiquidacaoDaTela[];
-  let liquidaveis: readonly EmpenhoLiquidavel[];
   let opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
   let documentos: readonly { readonly id: string; readonly rotulo: string }[];
   let extras: Extras;
   let numeroSugerido = "";
-  let debitos: Awaited<ReturnType<typeof lerDebitosDosCredores>> = {};
-  let subempenhos: Awaited<ReturnType<typeof subempenhosParaLiquidar>> = {};
   try {
     recorte = await recorteDePagina(sp, "CONSULTAR_DESPESA");
     // V37 — o próximo número livre do exercício, já no campo (só lê; o numerador continua conferindo na gravação).
     numeroSugerido = await proximoNumeroDeDocumento(recorte.exercicio);
-    const [lista, empenhos, opcoes, docs] = await Promise.all([
+    // V37 — o empenho da liquidação vem da BUSCA (catálogo `empenhos-para-liquidar`), não de uma lista com todos os
+    // liquidáveis do recorte; o débito do credor e os subempenhos são lidos só do empenho escolhido.
+    const [lista, opcoes, docs] = await Promise.all([
       listarLiquidacoesDaExecucao({
-        exercicio: recorte.exercicio,
-        unidadeCodigo: recorte.unidadeCodigo,
-      }),
-      listarEmpenhosDaExecucao({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
       }),
@@ -100,23 +92,6 @@ export default async function LiquidacoesPage({
     extras = { nomes, notas, anexos, podePagar: permitidas.has("PAGAR"), exercicio: recorte.exercicio };
     opcoesDeMaterial = opcoes;
     documentos = docs;
-    // Só o que ainda tem o que liquidar — e o anulado sai fora: não há saldo num fato
-    // que deixou de valer.
-    liquidaveis = empenhos
-      .filter((e) => !e.anulado && e.saldoALiquidar !== "0.00")
-      .map((e) => ({
-        id: e.id,
-        numero: e.numero,
-        credorCpfCnpj: e.credorCpfCnpj,
-        saldoALiquidar: e.saldoALiquidar,
-        // V4 (§6): material de consumo (elemento que debita estoque) liquida COM as entradas no almoxarifado.
-        ehMaterial: empenhoEhDeMaterial(e.naturezaCodigo),
-        naturezaCodigo: e.naturezaCodigo,
-      }));
-    // V36 (TR 5.10.1.38) — o aviso de débito do credor, para os credores da lista de liquidáveis.
-    debitos = await lerDebitosDosCredores(liquidaveis.map((e) => e.credorCpfCnpj));
-    // V36 (TR 5.10.1.7) — os empenhos repartidos em subempenhos, para a escolha do subempenho na liquidação.
-    subempenhos = await subempenhosParaLiquidar(liquidaveis);
   } catch (erro) {
     // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO: o genérico faria o servidor procurar
     // defeito no sistema quando o que falta é escopo — e a mensagem do erro já diz quem
@@ -155,7 +130,7 @@ export default async function LiquidacoesPage({
         de <strong>material de consumo</strong> registra também as entradas no almoxarifado.
       </div>
 
-      <FormLiquidacao empenhos={liquidaveis} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} debitos={debitos} subempenhos={subempenhos} subempenhoInicial={typeof sp["subempenho"] === "string" ? sp["subempenho"] : undefined} />
+      <FormLiquidacao exercicio={recorte.exercicio} unidadeCodigo={recorte.unidadeCodigo} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} subempenhoInicial={typeof sp["subempenho"] === "string" ? sp["subempenho"] : undefined} />
 
       <nav aria-label="Recorte das liquidações" className="flex gap-3 text-xs" data-recorte-sem-empenho>
         {sp["semEmpenhoPrevio"] === "1" ? (

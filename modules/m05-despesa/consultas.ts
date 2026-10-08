@@ -658,6 +658,30 @@ export interface RecorteDeEmpenhos extends RecorteDaExecucao {
    * como `doCredor` faz com o credor: sem a linha da anulação no conjunto, o empenho pareceria inteiro.
    */
   readonly tipoDoEmpenho?: "ORDINARIO" | "GLOBAL" | "ESTIMATIVO" | undefined;
+  /**
+   * V37 — a BUSCA do seletor da liquidação: número do empenho que começa com o texto, ou documento do credor que começa
+   * com os dígitos dele (dois ou mais). Alcança o original pela cadeia (`daCadeia`), como o credor: sem as anulações no
+   * conjunto, o saldo sairia cheio.
+   */
+  readonly busca?: string | undefined;
+  /** V37 — UM empenho (a escolha já feita, resolvida de novo), pela cadeia também. */
+  readonly empenhoId?: string | undefined;
+}
+
+/**
+ * V37 — O MESMO `where` aplicado ao empenho OU aos pais dele, nos três níveis da cadeia (o mesmo desenho de `doCredor`):
+ * a anulação total e a parcial apontam para o original; o estorno da parcial aponta para a parcial.
+ */
+function daCadeia(w: Prisma.EmpenhoWhereInput | undefined): Prisma.EmpenhoWhereInput {
+  if (w === undefined) return {};
+  return { OR: [w, { estornoDe: w }, { anulacaoParcialDe: w }, { estornoDe: { anulacaoParcialDe: w } }] };
+}
+
+function daBusca(busca: string | undefined): Prisma.EmpenhoWhereInput | undefined {
+  const q = (busca ?? "").trim();
+  if (q === "") return undefined;
+  const digitos = q.replace(/\D/g, "");
+  return { OR: [{ numero: { startsWith: q, mode: "insensitive" } }, ...(digitos.length >= 2 ? [{ credorCpfCnpj: { startsWith: digitos } }] : [])] };
 }
 
 /** O `where` do tipo: pelo próprio empenho ou pelo original da anulação (os três níveis da cadeia). */
@@ -781,7 +805,7 @@ export async function listarEmpenhos(
       ...(p.fichaId !== undefined ? { fichaId: p.fichaId } : {}),
       ...(p.vinculo !== undefined ? { [p.vinculo.dimensao]: p.vinculo.id } : {}),
       // O credor e o tipo usam OR; combinados, cada um vai num AND próprio para não se sobrescreverem.
-      AND: [doCredor(p.credorCpfCnpj), doTipo(p.tipoDoEmpenho)],
+      AND: [doCredor(p.credorCpfCnpj), doTipo(p.tipoDoEmpenho), daCadeia(daBusca(p.busca)), daCadeia(p.empenhoId === undefined ? undefined : { id: p.empenhoId })],
     },
     orderBy: [{ data: "desc" }, { numero: "desc" }],
     select: {

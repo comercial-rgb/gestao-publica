@@ -1,6 +1,7 @@
 import "dotenv/config";
 import {
   entrar,
+  escolherPelaBusca,
   irPara,
   lancarNavegadorDoPercurso,
   preencherEEnviar,
@@ -258,19 +259,12 @@ async function main(): Promise<void> {
 
       // ── a liquidação PARCIAL: 60.000 dos 100.000 ──
       await irPara(n, page, `/despesa/liquidacoes?exercicio=${String(ANO)}`);
-      const opcaoEmpenho = await page.evaluate((num) => {
-        const s = document.querySelector('select[name="empenhoId"]');
-        const o =
-          s === null
-            ? undefined
-            : Array.from(s.querySelectorAll("option")).find((x) => (x.textContent ?? "").includes(num));
-        return o === undefined ? null : o.value;
-      }, `NEI1-${SUF}`);
+      // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis).
+      const opcaoEmpenho = await escolherPelaBusca(page, 'form[data-acao="liquidar"]', "empenhoId", `NEI1-${SUF}`).catch(() => null);
       if (opcaoEmpenho === null) {
         naoExecutado("4.3 liquidar o empenho intra", "o empenho intra não aparece na lista da liquidação");
       } else {
         const r = await preencherEEnviar(page, "liquidar", [
-          { sel: 'select[name="empenhoId"]', valor: opcaoEmpenho, tipo: "select" },
           { sel: 'input[name="numero"]', valor: `NLI1-${SUF}` },
           { sel: '[data-mascara="valor"]', valor: "60.000,00" },
           { sel: 'input[name="data"]', valor: hoje(), tipo: "data" },
@@ -347,19 +341,12 @@ async function main(): Promise<void> {
 
     // ══ 8. A LIQUIDAÇÃO DO RESTO FECHA O PAR ══
     await irPara(n, page, `/despesa/liquidacoes?exercicio=${String(ANO)}`);
-    const opcaoRestante = await page.evaluate((num) => {
-      const s = document.querySelector('select[name="empenhoId"]');
-      const o =
-        s === null
-          ? undefined
-          : Array.from(s.querySelectorAll("option")).find((x) => (x.textContent ?? "").includes(num));
-      return o === undefined ? null : o.value;
-    }, `NEI1-${SUF}`);
+    // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis).
+    const opcaoRestante = await escolherPelaBusca(page, 'form[data-acao="liquidar"]', "empenhoId", `NEI1-${SUF}`).catch(() => null);
     if (opcaoRestante === null) {
       naoExecutado("8 fechar o par", "o empenho intra não está mais na lista da liquidação");
     } else {
       const r = await preencherEEnviar(page, "liquidar", [
-        { sel: 'select[name="empenhoId"]', valor: opcaoRestante, tipo: "select" },
         { sel: 'input[name="numero"]', valor: `NLI2-${SUF}` },
         { sel: '[data-mascara="valor"]', valor: "40.000,00" },
         { sel: 'input[name="data"]', valor: hoje(), tipo: "data" },

@@ -85,7 +85,8 @@ try {
   await irPara(n, page, "/despesa/liquidacoes?exercicio=2026");
   await texto(page, 'form[data-acao="liquidar"]', "historico", `Liquidação do serviço ${marca}`);
   await preencherEEnviar(page, "liquidar", [
-    { sel: 'select[name="empenhoId"]', valor: empenho.id, tipo: "select" },
+    // V37 — o empenho da liquidação é escolhido pela BUSCA (não há mais o select com todos os liquidáveis).
+    { sel: "empenhoId", valor: empenho.id, busca: empenho.numero, tipo: "referencia" },
     { sel: '[data-mascara="valor"]', valor: "1.000,00" },
     { sel: 'input[name="data"]', valor: hoje, tipo: "data" },
     { sel: 'input[name="atesto"]', valor: "Servidor fictício do atesto" },
