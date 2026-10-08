@@ -70,7 +70,9 @@ O aviso de vazio (`EstadoVazio`) ganhou `role="status"` e `data-estado-vazio`.
 10 s estouram no primeiro teste do arquivo (fornecedores-catalogo, contexto-ug); depois de VACUUM ANALYZE, 2/2 e 4/4. O
 limite não foi aumentado. Pendência: TESTE-HOOK-PERTO-DO-LIMITE.
 
-**Pendências nomeadas:** a ficha da ordem de compra ainda é um select com até 500 fichas (o mesmo defeito do fornecedor);
+**Feito em seguida:** a ficha e o processo da ordem de compra e da formação de ordem também viraram busca (catálogos `fichas-para-ordem` e `processos-para-ordem`; t3 com N=2, 2 mutações acusadas; percurso 25/25), e as duas telas deixaram de carregar 500 pessoas, 500 fichas e 300 processos a cada abertura.
+
+**Pendências nomeadas:** os formulários de edição do molde no detalhe da ordem de compra (`/licitacoes/ordens-de-compra/[id]`) ainda recebem as listas de `opcoesDaOrdem` (500 pessoas, 500 fichas, 300 processos);
 o balanço patrimonial e as variações da base fictícia recusam emitir porque a conta 1.1.1.1.1.19.00 não está classificada
 como financeiro ou permanente (dado da base, a recusa está certa); adiantamento sem atalho de cadastro (o beneficiário é
 digitado, não há beco).

@@ -98,6 +98,16 @@ try {
     await page.waitForSelector(`${raiz} [role="option"][data-valor="${pessoa.id}"]`, { timeout: 30000 }).catch(() => undefined);
     const achou = (await page.$(`${raiz} [role="option"][data-valor="${pessoa.id}"]`)) !== null;
     conferir(selectAntigo === null && achou, `ordem de compra: o fornecedor "${nome.slice(0, 30)}" (o último por documento) aparece pela busca, sem a lista de 500`);
+    // A ficha e o processo, pela busca também: a última ficha de 2026 pelo número.
+    const ficha = await prisma.fichaOrcamentaria.findFirst({ where: { exercicio: 2026 }, orderBy: { numero: "desc" }, select: { id: true, numero: true } });
+    const selects = await page.$$eval('form[data-acao="criar-ordem"] select[name="fichaId"], form[data-acao="criar-ordem"] select[name="processoId"]', (xs) => xs.length);
+    if (ficha !== null) {
+      const raizFicha = 'form[data-acao="criar-ordem"] [data-seletor]:has(input[type="hidden"][name="fichaId"])';
+      await page.type(`${raizFicha} input[role="combobox"]`, String(ficha.numero), { delay: 10 });
+      await page.waitForSelector(`${raizFicha} [role="option"][data-valor="${ficha.id}"]`, { timeout: 30000 }).catch(() => undefined);
+      const achouFicha = (await page.$(`${raizFicha} [role="option"][data-valor="${ficha.id}"]`)) !== null;
+      conferir(selects === 0 && achouFicha, `ordem de compra: a ficha ${String(ficha.numero)} (a última de 2026) aparece pela busca do número; nenhum select de ficha ou processo na tela`);
+    }
   }
 
   // ── 3. dedução → guias da receita no mês ──

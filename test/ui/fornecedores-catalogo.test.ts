@@ -53,6 +53,42 @@ describe("o catálogo de fornecedores", () => {
     expect([primeira.opcoes.length, primeira.temMais]).toEqual([20, true]);
   });
 
+  it("t3: a ficha e o processo da ordem de compra pela busca (N=2): número, natureza, objeto; o valor é o id", async () => {
+    const compras = await usuario("v37.compras-fichas", ["CONSULTAR_LICITACOES"]);
+    await prisma.orgao.create({ data: { id: "org-01", codigo: "01", nome: "Prefeitura" } });
+    await prisma.unidadeOrcamentaria.create({ data: { id: "uo-01", codigo: "02001", descricao: "Educação", orgaoId: "org-01" } });
+    await prisma.funcao.create({ data: { id: "fun-12", codigo: "12", nome: "Educação" } });
+    await prisma.subfuncao.create({ data: { id: "sub-361", codigo: "361", nome: "Ensino fundamental" } });
+    await prisma.programa.create({ data: { id: "prg", codigo: "0010", descricao: "P" } });
+    await prisma.acao.create({ data: { id: "aca", codigo: "2010", descricao: "A", tipo: "ATIVIDADE" } });
+    await prisma.naturezaDespesa.createMany({
+      data: [
+        { id: "nd-30", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "30", codigoCompleto: "339030", descricao: "Material de consumo" },
+        { id: "nd-39", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", codigoCompleto: "339039", descricao: "Serviços de terceiros" },
+      ],
+    });
+    await prisma.fonteRecurso.create({ data: { id: "fnt-500", codigo: "500", descricao: "Livre", codigoTce: "500" } });
+    const base = { exercicio: 2026, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg", acaoId: "aca", fonteId: "fnt-500", exercicioFonte: 1, valorDotado: "0.00" };
+    await prisma.fichaOrcamentaria.createMany({ data: [{ ...base, id: "fic-a", numero: 41, naturezaDespesaId: "nd-30" }, { ...base, id: "fic-b", numero: 42, naturezaDespesaId: "nd-39" }] });
+    const fichas = (q: string) => buscarOpcoes(compras, "fichas-para-ordem", { q, pagina: 1, contexto: {} }).then((r) => r.opcoes.map((o) => o.valor));
+    expect(await fichas("42")).toEqual(["fic-b"]);
+    expect(await fichas("339030")).toEqual(["fic-a"]);
+    // O prefixo comum às duas naturezas traz as duas (N=2), em ordem de número.
+    expect(await fichas("33903")).toEqual(["fic-a", "fic-b"]);
+    expect(await fichas("serviços")).toEqual(["fic-b"]);
+    expect((await buscarOpcoes(compras, "fichas-para-ordem", { q: "", pagina: 1, valor: "fic-a", contexto: {} })).opcoes[0]?.rotulo).toBe("2026 · ficha 41 · UO 02001 · 339030 · fonte 500");
+
+    await prisma.processoLicitatorio.createMany({
+      data: [
+        { id: "proc-1", numeroProcesso: "PL-001/2026", modalidade: "PREGAO_ELETRONICO", objeto: "Merenda escolar", valorLicitado: "1000.00", criadoPor: "seed-teste" },
+        { id: "proc-2", numeroProcesso: "PL-002/2026", modalidade: "PREGAO_ELETRONICO", objeto: "Transporte escolar", valorLicitado: "2000.00", criadoPor: "seed-teste" },
+      ],
+    });
+    const processos = (q: string) => buscarOpcoes(compras, "processos-para-ordem", { q, pagina: 1, contexto: {} }).then((r) => r.opcoes.map((o) => o.valor));
+    expect(await processos("transporte")).toEqual(["proc-2"]);
+    expect(await processos("PL-001")).toEqual(["proc-1"]);
+  });
+
   it("t2: sem a leitura de licitações, a lista é recusada com o motivo", async () => {
     const semLeitura = await usuario("v37.sem-licitacoes", ["CONSULTAR_DESPESA"]);
     await expect(buscarOpcoes(semLeitura, "fornecedores", { q: "papelaria", pagina: 1, contexto: {} })).rejects.toThrow(LeituraDoCatalogoNegadaError);

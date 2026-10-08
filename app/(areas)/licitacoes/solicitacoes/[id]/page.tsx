@@ -5,7 +5,7 @@ import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/con
 import type { AbaDoMolde } from "../../../../../lib/molde/tipos";
 import { acoesPermitidas, exigirLeitura } from "../../../../../lib/portas/molde";
 import { SOLICITACOES_DE_COMPRA } from "../../../../../lib/portas/recursos/compras";
-import { verSolicitacao, opcoesDaSolicitacao, opcoesDaOrdem } from "../../../../../lib/portas/recursos/compras-dados";
+import { verSolicitacao, opcoesDaSolicitacao } from "../../../../../lib/portas/recursos/compras-dados";
 import { solicitacoesdecompraAction } from "../actions";
 import { Atendimento } from "./Atendimento";
 import { FormFormarOrdem } from "./FormFormarOrdem";
@@ -30,9 +30,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   ]);
   if (detalhe === null) notFound();
   const podeFormar = permitidas.has("EMITIR_ORDEM_DE_COMPRA") && detalhe.situacao === "AUTORIZADA" && detalhe.itensPendentes.length > 0;
-  const opcoesDaOrdemNova = podeFormar ? await opcoesDaOrdem() : null;
   const [podeCadastrar, fornecedorPadrao] = podeFormar ? await Promise.all([podeUsarAtalhoDeCadastro(), credor === "" ? Promise.resolve(undefined) : pessoaIdPeloDocumento(credor)]) : [false, undefined];
-  const paraIlha = (nome: string): readonly { readonly id: string; readonly rotulo: string }[] => (opcoesDaOrdemNova?.[nome] ?? []).map((o) => ({ id: o.valor, rotulo: o.rotulo }));
   return (
     <DetalheDeRecurso
       definicao={SOLICITACOES_DE_COMPRA}
@@ -47,7 +45,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
         <div className="space-y-4">
           <Atendimento itens={detalhe.atendimento} />
           {podeFormar ? (
-            <FormFormarOrdem solicitacaoId={id} itensPendentes={detalhe.itensPendentes} fornecedorPadrao={fornecedorPadrao} podeCadastrarFornecedor={podeCadastrar} processos={paraIlha("processoId")} fichas={paraIlha("fichaId")} />
+            <FormFormarOrdem solicitacaoId={id} itensPendentes={detalhe.itensPendentes} fornecedorPadrao={fornecedorPadrao} podeCadastrarFornecedor={podeCadastrar} />
           ) : (
             <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
               {detalhe.situacao !== "AUTORIZADA"

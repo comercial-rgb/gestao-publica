@@ -24,7 +24,7 @@ export interface OpcaoDaIlha {
  * ⚠️ LINHAS `itens.N.*`: a ilha oferece uma linha a mais; a vazia é ignorada no servidor. Quem valida
  * (material obrigatório, quantidade > 0, item repetido, saldo) é o domínio, e a recusa sobe como veio.
  */
-export function FormOrdemDeCompra({ materiais, processos, fichas, fornecedorPadrao, podeCadastrarFornecedor = false }: { readonly materiais: readonly OpcaoDaIlha[]; readonly processos: readonly OpcaoDaIlha[]; readonly fichas: readonly OpcaoDaIlha[]; /** V37 — o fornecedor que volta do atalho de cadastro (id da pessoa). */ readonly fornecedorPadrao?: string | undefined; readonly podeCadastrarFornecedor?: boolean }): React.ReactElement {
+export function FormOrdemDeCompra({ materiais, fornecedorPadrao, podeCadastrarFornecedor = false }: { readonly materiais: readonly OpcaoDaIlha[]; /** V37 — o fornecedor que volta do atalho de cadastro (id da pessoa). */ readonly fornecedorPadrao?: string | undefined; readonly podeCadastrarFornecedor?: boolean }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaOrdem, FormData>(emitirOrdemAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [linhas, setLinhas] = useState<number>(1);
@@ -56,24 +56,20 @@ export function FormOrdemDeCompra({ materiais, processos, fichas, fornecedorPadr
           {...(fornecedorPadrao !== undefined && fornecedorPadrao !== "" ? { valorInicial: fornecedorPadrao } : {})}
           {...(podeCadastrarFornecedor ? { cadastro: { href: CADASTRO_DE_CREDOR, rotulo: "Cadastrar este fornecedor" } } : {})}
         />
-        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Processo licitatório (opcional)</span>
-          <select name="processoId" defaultValue="" className={CAMPO}>
-            <option value="">— sem processo (dispensa) —</option>
-            {processos.map((o) => (
-              <option key={o.id} value={o.id}>{o.rotulo}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
-          <span className={ROTULO}>Recurso orçamentário (opcional)</span>
-          <select name="fichaId" defaultValue="" className={CAMPO}>
-            <option value="">— sem ficha —</option>
-            {fichas.map((o) => (
-              <option key={o.id} value={o.id}>{o.rotulo}</option>
-            ))}
-          </select>
-        </label>
+        <CampoReferenciado
+          name="processoId"
+          rotulo="Processo licitatório (opcional; sem processo é dispensa)"
+          catalogo="processos-para-ordem"
+          placeholder="Número do processo ou objeto"
+          largura={2}
+        />
+        <CampoReferenciado
+          name="fichaId"
+          rotulo="Recurso orçamentário (opcional)"
+          catalogo="fichas-para-ordem"
+          placeholder="Número da ficha, natureza, unidade ou fonte"
+          largura={3}
+        />
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Emissão</span>
           <input name="dataEmissao" type="date" required className={CAMPO} />

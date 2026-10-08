@@ -36,16 +36,12 @@ export function FormFormarOrdem({
   itensPendentes,
   fornecedorPadrao,
   podeCadastrarFornecedor = false,
-  processos,
-  fichas,
 }: {
   readonly solicitacaoId: string;
   readonly itensPendentes: readonly ItemPendenteDaIlha[];
   /** V37 — o fornecedor que volta do atalho de cadastro (id da pessoa). */
   readonly fornecedorPadrao?: string | undefined;
   readonly podeCadastrarFornecedor?: boolean;
-  readonly processos: readonly OpcaoDaIlha[];
-  readonly fichas: readonly OpcaoDaIlha[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaSolicitacao, FormData>(formarOrdemAction, {});
   return (
@@ -77,24 +73,20 @@ export function FormFormarOrdem({
           {...(fornecedorPadrao !== undefined && fornecedorPadrao !== "" ? { valorInicial: fornecedorPadrao } : {})}
           {...(podeCadastrarFornecedor ? { cadastro: { href: CADASTRO_DE_CREDOR, rotulo: "Cadastrar este fornecedor" } } : {})}
         />
-        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2">
-          <span className={ROTULO}>Processo licitatório (opcional)</span>
-          <select name="processoId" defaultValue="" className={CAMPO}>
-            <option value="">— sem processo (dispensa) —</option>
-            {processos.map((o) => (
-              <option key={o.id} value={o.id}>{o.rotulo}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-[color:var(--color-ink-2)]">
-          <span className={ROTULO}>Recurso orçamentário (opcional)</span>
-          <select name="fichaId" defaultValue="" className={CAMPO}>
-            <option value="">— sem ficha —</option>
-            {fichas.map((o) => (
-              <option key={o.id} value={o.id}>{o.rotulo}</option>
-            ))}
-          </select>
-        </label>
+        <CampoReferenciado
+          name="processoId"
+          rotulo="Processo licitatório (opcional; sem processo é dispensa)"
+          catalogo="processos-para-ordem"
+          placeholder="Número do processo ou objeto"
+          largura={2}
+        />
+        <CampoReferenciado
+          name="fichaId"
+          rotulo="Recurso orçamentário (opcional)"
+          catalogo="fichas-para-ordem"
+          placeholder="Número da ficha, natureza, unidade ou fonte"
+          largura={2}
+        />
         <label className="text-xs text-[color:var(--color-ink-2)]">
           <span className={ROTULO}>Emissão</span>
           <input name="dataEmissao" type="date" required className={CAMPO} />

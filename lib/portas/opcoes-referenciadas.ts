@@ -129,6 +129,58 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     },
   },
 
+  /**
+   * V37 — A FICHA (recurso orçamentário) da ordem de compra e da formação de ordem, por número, natureza, unidade ou
+   * fonte. Substitui o `select` com as 500 primeiras fichas. Oferecer não é autorizar: o domínio confere a ficha.
+   */
+  "fichas-para-ordem": {
+    leitura: "CONSULTAR_LICITACOES",
+    async buscar(_sessao, p) {
+      const digitos = p.q.replace(/\D/g, "");
+      const numero = /^\d{1,9}$/.test(p.q.trim()) ? Number(p.q.trim()) : undefined;
+      const where: Prisma.FichaOrcamentariaWhereInput =
+        p.valor !== undefined
+          ? { id: p.valor }
+          : p.q === ""
+            ? {}
+            : {
+                OR: [
+                  ...(numero !== undefined ? [{ numero }] : []),
+                  ...(digitos.length >= 2 ? [{ naturezaDespesa: { codigoCompleto: { startsWith: digitos } } }, { unidadeOrc: { codigo: { startsWith: digitos } } }, { fonte: { codigo: { startsWith: digitos } } }] : []),
+                  { naturezaDespesa: { descricao: contem(p.q) } },
+                ],
+              };
+      const linhas = await cliente().fichaOrcamentaria.findMany({
+        where,
+        orderBy: [{ exercicio: "desc" }, { numero: "asc" }],
+        skip: skip(p),
+        take,
+        select: { id: true, exercicio: true, numero: true, saldoDisponivel: true, unidadeOrc: { select: { codigo: true } }, naturezaDespesa: { select: { codigoCompleto: true, descricao: true } }, fonte: { select: { codigo: true } } },
+      });
+      const r = pagina(linhas, p);
+      return {
+        opcoes: r.linhas.map((f) => ({
+          valor: f.id,
+          rotulo: `${String(f.exercicio)} · ficha ${String(f.numero)} · UO ${f.unidadeOrc.codigo} · ${f.naturezaDespesa.codigoCompleto} · fonte ${f.fonte.codigo}`,
+          detalhe: `${f.naturezaDespesa.descricao} · disponível R$ ${formatarMoeda(f.saldoDisponivel.toFixed(2)).texto}`,
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
+
+  /** V37 — O PROCESSO LICITATÓRIO da ordem de compra, por número ou objeto (substitui o `select` com 300). */
+  "processos-para-ordem": {
+    leitura: "CONSULTAR_LICITACOES",
+    async buscar(_sessao, p) {
+      const where: Prisma.ProcessoLicitatorioWhereInput =
+        p.valor !== undefined ? { id: p.valor } : p.q === "" ? {} : { OR: [{ numeroProcesso: contem(p.q) }, { objeto: contem(p.q) }] };
+      const linhas = await cliente().processoLicitatorio.findMany({ where, orderBy: { numeroProcesso: "desc" }, skip: skip(p), take, select: { id: true, numeroProcesso: true, objeto: true } });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((x) => ({ valor: x.id, rotulo: `${x.numeroProcesso} — ${x.objeto.slice(0, 80)}` })), temMais: r.temMais };
+    },
+  },
+
   "unidades-para-ficha": {
     leitura: "CONSULTAR_PLANEJAMENTO",
     async buscar(sessao, p) {
