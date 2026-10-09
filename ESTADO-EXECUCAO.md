@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `20f461d` (main e `/release` = `20f461d`) |
+| HEAD | publicado como `5e1800c` (main e `/release` = `5e1800c`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | RREO-RGF-SEM-DRILL-DOWN nos demais anexos (o Anexo 1 abre receita e despesa); replicação PPA → LDO → LOA (5.9.1.25); decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
@@ -70,6 +70,8 @@ que passam pela proposta). Testes dirigidos: 22 arquivos, 212 testes (o único v
 marcação e feita com ela; Anexo 1 até os documentos, empenhada 34.061,46 e liquidada 16.585,00; PPA na LOA com 4 ações e
 1.053 fichas sem ação, como o leitor). Na base fictícia o percurso cadastrou o roteiro do ajuste por sobra com contas
 escolhidas pela busca, e o trocou.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37k-20261009T154203Z.dump` (4.693 objetos); Actions 37954124502 verde; `/release` = `5e1800c`. Conferido no banco de produção (só leitura): a migration `20261109020000_v37_roteiro_almoxarifado_versionado` aplicada, o enum com `ALMOXARIFADO`, e o DELETE de `UsuarioDoSetor` concedido a `gestao_app`. Sonda só leitura: Anexo 1 com 20 links da despesa e a lista dos empenhos fechando com o valor clicado (16.801,00); o campo de troca na tela dos roteiros; as ações do PPA na LOA abrem, mas a produção não tem ficha que execute ação do plano (0 linhas na seção das ações; as 1.055 fichas aparecem como sem ação). Sonda apagada.
 
 ### Décima rodada da V37 (09/10/2026): lotar usuário no setor
 
