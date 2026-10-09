@@ -320,5 +320,9 @@ cadastra (molde), com a unidade gestora pela busca `unidades-para-setor`, só en
 **V37 — desativar e reativar o setor** (`alterarSituacaoDoSetor`, mesma permissão CRIAR_SETOR, na unidade do setor):
 atualiza só a coluna `ativo`, a única que o papel de runtime pode atualizar em `Setor`. A requisição de material e a
 solicitação de compra recusam setor desativado no domínio, com o motivo; a tela já não o oferecia. Detalhe do setor em
-`/protocolo/setores/[id]`. Teste `m21-setor-situacao` (N=2 setores e unidades), 4 mutações vermelhas. Lotar usuário
-continua sem tela.
+`/protocolo/setores/[id]`. Teste `m21-setor-situacao` (N=2 setores e unidades), 4 mutações vermelhas.
+
+**V37 — lotar usuário no setor**, pelo detalhe do setor (`lotarUsuarioNoSetor`, permissão LOTAR_USUARIO_NO_SETOR na
+unidade do setor). O usuário vem da busca `usuarios-para-lotacao`: só contas ativas, e vazia para quem não lota em
+unidade nenhuma (quem não lota não conhece a lista de contas). O detalhe lista os lotados. Desfazer a lotação não existe:
+o papel de runtime não tem DELETE em `UsuarioDoSetor`, e abrir o grant é decisão do censo do papel.

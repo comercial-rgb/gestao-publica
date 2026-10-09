@@ -10,7 +10,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 | HEAD | publicado como `2526e60` (main e `/release` = `2526e60`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); lotar usuário no setor; vínculo PPA–LOA. |
+| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); desfazer lotação (exige DELETE no censo do papel); vínculo PPA–LOA. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,17 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Décima rodada da V37 (09/10/2026): lotar usuário no setor
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Lotação no setor (M21; fecha `SETOR-SEM-LOTACAO`) | "Lotar usuário no setor" no detalhe do setor, pela permissão de lotar na unidade do setor (`lotarUsuarioNoSetor`, que já existia sem tela). O usuário vem da busca `usuarios-para-lotacao`: só ativos, e só para quem lota em alguma unidade. O detalhe lista os lotados. Lotar de novo o mesmo usuário não duplica | /protocolo/setores/[id] | `setores-cadastro` 4/4 (t4 novo, N=2 lotados), 3 mutações vermelhas (escopo da busca, filtro de ativo, lista do detalhe); tipos backend e app sem erro (backend com heap de 14 GB, o de 5,3 GB estourou); percurso `percurso-v37-lotar-no-setor` 3/3 na 3011, base fictícia |
+
+Continua: desfazer uma lotação não tem tela nem caso de uso — o papel do banco não tem DELETE em `UsuarioDoSetor`, e
+abrir esse grant é decisão de censo, não ajuste de tela. Detalhamento da despesa do Anexo 1: a soma do anexo é líquida
+sobre o conjunto (original, estorno, anulação parcial) dentro da janela; a lista tem de reproduzir essa soma linha a
+linha antes de existir, e não foi construída nesta rodada.
 
 ### Nona rodada da V37 (09/10/2026): desativar e reativar o setor
 

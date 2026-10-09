@@ -5,7 +5,8 @@ import { limparBanco } from "../limpar-banco.js";
 import type { AcaoDoSistema } from "../../modules/m16-travamento/acoes.js";
 import type { Identidade } from "../../modules/m16-travamento/autenticacao.js";
 import { buscarOpcoes } from "../../lib/portas/opcoes-referenciadas.js";
-import { listarSetoresDoMolde } from "../../lib/portas/recursos/setores-dados.js";
+import { listarSetoresDoMolde, verSetor } from "../../lib/portas/recursos/setores-dados.js";
+import { lotarUsuarioNoSetor } from "../../modules/m21-protocolo/cadastros.js";
 import { lerConsulta } from "../../lib/molde/consulta.js";
 import { SETORES } from "../../lib/portas/recursos/setores.js";
 import { RECURSOS_DO_MOLDE } from "../../lib/portas/recursos/definicoes.js";
@@ -83,5 +84,30 @@ describe("o cadastro de setores", () => {
     const saude = await listarSetoresDoMolde(lerConsulta(SETORES, { q: "saúde" }));
     expect(saude.linhas.map((l) => l["codigo"])).toEqual(["SEC-SAU"]);
     expect(RECURSOS_DO_MOLDE.some((r) => r.rota === "/protocolo/setores" && r.permissoes.criar === "CRIAR_SETOR")).toBe(true);
+  });
+
+  it("t4: a busca de quem lotar mostra só usuários ativos, e só a quem lota; a lotação aparece no detalhe (N=2)", async () => {
+    await prisma.setor.create({ data: { id: "set-edu", codigo: "SEC-EDU", nome: "Secretaria de Educação", unidadeOrcId: "uo-01", criadoPor: POR } });
+    const lota = await usuario("v37.lota", ["CONSULTAR_PROTOCOLO", "LOTAR_USUARIO_NO_SETOR"]);
+    await usuario("v37.ana", []);
+    await usuario("v37.bia", []);
+    await prisma.usuario.create({ data: { identificador: "v37.inativa", nome: "v37.inativa", ativo: false, criadoPor: POR } });
+    const quem = (s: Identidade, q = "", valor?: string): Promise<string[]> =>
+      buscarOpcoes(s, "usuarios-para-lotacao", { q, pagina: 1, ...(valor !== undefined ? { valor } : {}), contexto: {} }).then((r) => r.opcoes.map((o) => o.valor).filter((v) => v.startsWith("v37.")));
+
+    // A base de teste mantém os usuários semeados; a busca e o recorte olham só os deste teste.
+    expect(await quem(lota, "v37.")).toEqual(["v37.ana", "v37.bia", "v37.lota"]);
+    expect(await quem(lota, "bia")).toEqual(["v37.bia"]);
+    expect(await quem(lota, "", "v37.inativa")).toEqual([]);
+    // Quem só consulta o protocolo não conhece a lista de contas.
+    const leitor = await usuario("v37.leitor", ["CONSULTAR_PROTOCOLO"]);
+    expect(await quem(leitor, "v37.")).toEqual([]);
+
+    await lotarUsuarioNoSetor(prisma, { usuarioIdent: "v37.bia", setorId: "set-edu", criadoPor: lota.identificador });
+    await lotarUsuarioNoSetor(prisma, { usuarioIdent: "v37.ana", setorId: "set-edu", criadoPor: lota.identificador });
+    const lotados = (await verSetor("set-edu"))?.dados.find((d) => d.rotulo === "Usuários lotados")?.valor;
+    expect(lotados).toBe("v37.ana, v37.bia");
+    await expect(lotarUsuarioNoSetor(prisma, { usuarioIdent: "v37.inativa", setorId: "set-edu", criadoPor: lota.identificador })).rejects.toThrow(/USUÁRIO INATIVO/);
+    expect(SETORES.acoes.find((a) => a.nome === "lotar")?.acaoDoCenso).toBe("LOTAR_USUARIO_NO_SETOR");
   });
 });

@@ -38,6 +38,12 @@ export const SETORES: DefinicaoDeRecurso = definirRecurso({
     { nome: "reativar", rotulo: "Reativar o setor", acaoDoCenso: "CRIAR_SETOR", irreversivel: false,
       aviso: "O setor volta a aparecer nas requisições e solicitações novas.",
       campos: [] },
+    { nome: "lotar", rotulo: "Lotar usuário no setor", acaoDoCenso: "LOTAR_USUARIO_NO_SETOR", irreversivel: false,
+      aviso: "O usuário passa a receber os processos e as comunicações deste setor. Só usuários ativos podem ser lotados; setor desativado não recebe lotação nova.",
+      campos: [
+        { nome: "usuarioIdent", rotulo: "Usuário", tipo: "referencia", catalogo: "usuarios-para-lotacao", obrigatorio: true, largura: 3,
+          placeholder: "Nome ou identificador do usuário" },
+      ] },
   ],
   permissoes: { criar: "CRIAR_SETOR" },
   abas: ["dados", "relacionados"],

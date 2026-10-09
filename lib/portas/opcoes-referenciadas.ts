@@ -457,6 +457,31 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     },
   },
   /**
+   * V37 — QUEM PODE SER LOTADO NUM SETOR: só usuários ativos (o `lotarUsuarioNoSetor` recusa o inativo e o
+   * inexistente), e só para a sessão que lota em alguma unidade — quem não lota não conhece a lista de contas. O valor
+   * é o identificador (é o que a lotação grava). O caso de uso confere a unidade do setor de novo, na transação.
+   */
+  "usuarios-para-lotacao": {
+    leitura: "CONSULTAR_PROTOCOLO",
+    async buscar(sessao, p) {
+      const escopo = await escopoDaAcaoDeLeitura(cliente(), sessao.identificador, "LOTAR_USUARIO_NO_SETOR");
+      if (!escopo.ativo || escopo.unidades.length === 0) return { opcoes: [], temMais: false };
+      const linhas = await cliente().usuario.findMany({
+        where: {
+          AND: [
+            { ativo: true },
+            p.valor !== undefined ? { identificador: p.valor } : p.q === "" ? {} : { OR: [{ identificador: contem(p.q.trim()) }, { nome: contem(p.q.trim()) }] },
+          ],
+        },
+        orderBy: { identificador: "asc" },
+        skip: skip(p), take,
+        select: { identificador: true, nome: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((u) => ({ valor: u.identificador, rotulo: u.nome === u.identificador ? u.nome : `${u.nome} (${u.identificador})` })), temMais: r.temMais };
+    },
+  },
+  /**
    * V37 — AS CONTAS DE UM ROTEIRO DO ALMOXARIFADO: analíticas das classes patrimoniais (1 a 4), por código ou nome. O
    * valor é o ID da conta (é o que o roteiro grava). O caso de uso confere de novo: existência, analítica e o par pelo
    * motor contábil. Nenhuma conta é sugerida: a escolha é do ente.

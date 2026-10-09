@@ -1,4 +1,4 @@
-import { alterarSituacaoDoSetor, criarSetor } from "../../../modules/m21-protocolo/cadastros.js";
+import { alterarSituacaoDoSetor, criarSetor, lotarUsuarioNoSetor } from "../../../modules/m21-protocolo/cadastros.js";
 import { diaCivilBr } from "../../../packages/datas/index.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
@@ -60,7 +60,7 @@ export async function verSetor(id: string): Promise<DetalheLido | null> {
     select: {
       codigo: true, nome: true, ativo: true, criadoEm: true, criadoPor: true,
       unidadeOrc: { select: { codigo: true, descricao: true } },
-      _count: { select: { lotados: true } },
+      lotados: { orderBy: { usuarioIdent: "asc" }, select: { usuarioIdent: true } },
     },
   });
   if (s === null) return null;
@@ -79,7 +79,8 @@ export async function verSetor(id: string): Promise<DetalheLido | null> {
       { rotulo: "Situação", valor: s.ativo ? "Ativo" : "Desativado", nota: "Desativado, não aparece nas requisições e solicitações novas." },
       { rotulo: "Requisições de material", valor: String(requisicoes), tipo: "inteiro" },
       { rotulo: "Solicitações de compra", valor: String(solicitacoes), tipo: "inteiro" },
-      { rotulo: "Usuários lotados", valor: String(s._count.lotados), tipo: "inteiro" },
+      { rotulo: "Usuários lotados", valor: s.lotados.length === 0 ? "Nenhum" : s.lotados.map((l) => l.usuarioIdent).join(", "),
+        nota: "Quem está lotado recebe os processos e as comunicações do setor." },
       { rotulo: "Cadastrado em", valor: diaCivilBr(s.criadoEm), tipo: "data" },
       { rotulo: "Cadastrado por", valor: s.criadoPor },
     ],
@@ -87,7 +88,11 @@ export async function verSetor(id: string): Promise<DetalheLido | null> {
   };
 }
 
-export async function acaoDoSetor(acao: string, setorId: string): Promise<void> {
+export async function acaoDoSetor(acao: string, setorId: string, c: Campos = {}): Promise<void> {
+  if (acao === "lotar") {
+    await comEscritaAutenticada("LOTAR_USUARIO_NO_SETOR", (criadoPor) => lotarUsuarioNoSetor(cliente(), { usuarioIdent: c["usuarioIdent"] ?? "", setorId, criadoPor }));
+    return;
+  }
   if (acao !== "desativar" && acao !== "reativar") throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
   await comEscritaAutenticada("CRIAR_SETOR", (criadoPor) => alterarSituacaoDoSetor(cliente(), { setorId, ativo: acao === "reativar", criadoPor }));
 }
