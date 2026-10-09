@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `5e1800c` (main e `/release` = `5e1800c`) |
+| HEAD | publicado como `c13effb` (main e `/release` = `c13effb`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | RREO-RGF-SEM-DRILL-DOWN nos demais anexos (o Anexo 1 abre receita e despesa); replicação PPA → LDO → LOA (5.9.1.25); decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
@@ -49,7 +49,9 @@ medida em produção: o texto `sr-only` das caixas de seleção da tabela é `ab
 posicionava pelo documento, escapava da rolagem do `main` e esticava a janela (921 px de documento numa janela de 900;
 1.001 a 1.280 px de largura). Correção no casco (`app/(areas)/layout.tsx`): o `main` é `relative`. Percurso
 `percurso-v37-casco-sem-vazamento` 12/12 na 3011 (seis telas de tabela longa, duas larguras); sem a correção acusa as
-fichas nas duas larguras.
+fichas nas duas larguras. Publicado: backup `esperanca-antes-v37l-20261009T163051Z.dump`, Actions 37959780610 verde,
+`/release` = `c13effb`; em produção, a janela não rola nas fichas, no QDD, nas ações do PPA na LOA e nos empenhos, em
+1.900 e 1.280 px (8/8, sonda só leitura, apagada).
 
 ### Décima primeira rodada da V37 (09/10/2026): o que ficou aberto
 
