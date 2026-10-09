@@ -60,7 +60,15 @@ banco tinha 51.000,00, porque o reajuste de 2% da fonte alcança a linha nova in
 corrigida) e 2029 → 2030 com 11/11. **Pendência nomeada `PROPOSTA-UM-FORMULARIO-POR-LINHA`:** a página da proposta
 monta um formulário de ajuste por linha (cerca de 1.136 na base fictícia, desenho da V29); no servidor de
 desenvolvimento ela leva de 26 a 137 s, medido com o servidor recém-reiniciado e com a leitura do domínio em menos de
-1 s (detalhar 313 ms, conferência 90 ms). O tempo em produção é medido na publicação. Pendentes nomeadas: prévia da
+1 s (detalhar 313 ms, conferência 90 ms). Em produção, a página só existe quando houver uma proposta (hoje não há nenhuma); a LOA, que leva 34 s no
+servidor de desenvolvimento, abriu em 2,3 s no build de produção.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v38b-20261009T210029Z.dump` (4.678 objetos);
+tipos aprovados (digesto b0474cb48f7b); Actions 37991318654 verde; `/release` = `ea24979`. Migration
+`20261109030000_v38_linhas_novas_da_proposta` aplicada em produção, com as duas restrições
+`ck_linha_de_despesa_da_proposta_origem_ou_nova` e `ck_linha_de_receita_da_proposta_origem_ou_nova`. Sonda só leitura
+como administrador: a LOA tem "Preparar o próximo exercício" (2,3 s), a lista de propostas tem o formulário de elaborar
+(1,2 s), rodapé na versão ea24979. Sonda apagada. Pendentes nomeadas: prévia da
 importação (AUD-103) e realocação entre linhas com total preservado (AUD-113).
 
 ## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
@@ -70,7 +78,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `2f9538b` (main e `/release` = `2f9538b`) |
+| HEAD | publicado como `ea24979` (main e `/release` = `ea24979`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | V38: prévia da importação da proposta (AUD-103) e realocação com total preservado (AUD-113). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
