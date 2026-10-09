@@ -65,6 +65,8 @@ não derivada; a lista mostra a data; uma data sem disponível é recusada com o
 
 **Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37g-20261009T012629Z.dump`; tipos aprovados (digesto 03b7e214e60c); Actions 37870131919 verde; `/release` = `003dd60`; migration `20261109010000_v37_data_da_reserva` aplicada em produção (coluna conferida no catálogo do banco, só leitura); sonda só leitura 2/2 (a reserva da ficha pede a data, com o dia de hoje como padrão) e apagada.
 
+**RREO e RGF — exportação:** levantados os 19 anexos: 18 já tinham CSV das tabelas e impressão; o Anexo 1 do RREO só tinha o PDF e ganhou o CSV (`rreo/anexo1`, typecheck). O **detalhamento até o registro** continua pendente (`RREO-RGF-SEM-DRILL-DOWN`): a linha do Anexo 1 é de categoria, origem ou espécie, e a lista de guias só recorta por natureza completa (8 dígitos) e por um mês — falta recorte por prefixo e por intervalo de meses.
+
 ### Sexta rodada da V37 (08/10/2026): setores, roteiro do almoxarifado, material e lote por busca
 
 Pedido: "pode seguir e nesta sessão fechar a maior quantidade de pendências que conseguir". Regime: superfície nos

@@ -1,3 +1,4 @@
+import { BotaoCsvDasTabelas } from "../../../../../components/ui/BotaoCsvDasTabelas";
 import { EstadoVazio } from "../../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../../components/ui/PageHeader";
 import { RelatoriosRelacionados } from "../../../../../components/ui/RelatoriosRelacionados";
@@ -30,7 +31,7 @@ export default async function RreoAnexo1Page({
   const bimestre = ([1, 2, 3, 4, 5, 6] as const).includes(b as 1) ? (b as 1) : 1;
 
   const cabecalho = (
-    <PageHeader titulo="RREO — Anexo 1 · Balanço Orçamentário" subtitulo="Execução da receita e da despesa orçamentária (LRF art. 52)" acoes={<div className="flex items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><a href={`/transparencia/demonstrativos/pdf?slug=rreo-anexo1&exercicio=${exercicio}&bimestre=${bimestre}`} target="_blank" rel="noopener" data-chrome className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-xs font-medium text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] inline-flex items-center">Baixar PDF</a></div>} />
+    <PageHeader titulo="RREO — Anexo 1 · Balanço Orçamentário" subtitulo="Execução da receita e da despesa orçamentária (LRF art. 52)" acoes={<div className="flex items-center gap-2"><SeletorBimestreRreo bimestre={bimestre} exercicio={exercicio} /><BotaoCsvDasTabelas nomeArquivo="rreo-anexo1.csv" /><a href={`/transparencia/demonstrativos/pdf?slug=rreo-anexo1&exercicio=${exercicio}&bimestre=${bimestre}`} target="_blank" rel="noopener" data-chrome className="h-8 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-xs font-medium text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] inline-flex items-center">Baixar PDF</a></div>} />
   );
 
   let dados: Anexo1;
