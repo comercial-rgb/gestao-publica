@@ -71,6 +71,42 @@ como administrador: a LOA tem "Preparar o próximo exercício" (2,3 s), a lista 
 (1,2 s), rodapé na versão ea24979. Sonda apagada. Pendentes nomeadas: prévia da
 importação (AUD-103) e realocação entre linhas com total preservado (AUD-113).
 
+### 3ª leva (09/10/2026): a prévia da importação e a realocação
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Prévia da importação (AUD-103) | "Ver o que vai ser importado" antes de criar a proposta. A prévia mostra quantas linhas vêm de quantas a origem tem; os totais da lei, da partida e com reajuste (a receita líquida das deduções); o que fica de fora; os projetos sem reajuste; as linhas sem valor; as deduções sem o tipo; a recusa que o ato daria; e o que nunca vem. Nada é gravado. Na proposta criada, o bloco "o que veio e o que não veio" | /planejamento/proposta-orcamentaria e /[id] | `m02-proposta-orcamentaria` V38 PRÉVIA DA IMPORTAÇÃO (a prévia é igual ao ato em contagens e totais; N=2 deduções, uma com tipo) e o resumo puro N=2 |
+| Realocação com o total preservado (AUD-113) | "Realocar entre linhas" tira de uma linha e põe noutra do mesmo lado num ato só. O motivo e o nome da outra linha ficam no histórico das duas. Recusa: valor acima do da origem, mesma linha, linha alheia ou do outro lado, e dedução com receita. As linhas são escolhidas pela busca (catálogo `linhas-da-proposta`, leitura do planejamento do ente) | /planejamento/proposta-orcamentaria/[id] | `m02-proposta-orcamentaria` V38 REALOCA, fichas N=2 e receitas com dedução; aritmética pura |
+
+Além disso, a matriz `docs/lotes/V38-matriz-por-id.md` tinha sido publicada com dez linhas da 2ª leva grudadas antes do
+título, e a tabela ainda mostrava as versões antigas. As linhas voltaram ao lugar: são 124, uma por ID.
+
+**Censo e tela.** Censo: `realocarNaProposta` = CADASTRAR_LOA, contagem 573. As leituras `previaDaImportacaoDaProposta` e
+`linhasDaPropostaParaEscolha` ficaram fora do censo. A prévia e o ato de importar usam a mesma leitura
+(`levantarImportacao`). O formulário de importar passou a ter campos controlados, pela mesma razão do reajuste: o React
+limpa os campos não controlados depois da ação da prévia.
+
+**Migration e tipos.** Sem migration. Tipos: backend, app e scripts sem erro.
+
+**Testes dirigidos.** `m02-proposta-orcamentaria`, `m02-conferencia-da-proposta`, `m16-censo`, `papel-runtime`,
+`ficha-pela-tela` e `liquidacao-documento-e-conta` passaram: 75 de 75.
+
+**Mutações.** Seis mutações do domínio deram vermelho. A sexta, "conta deduções com tipo", sobreviveu à primeira corrida,
+porque a fixture tinha uma dedução só, e ela não tinha tipo. A fixture ganhou a segunda dedução, com tipo, e a mutação
+passou a vermelho.
+
+**Percurso.** `percurso-v38-proposta-ate-o-empenho` passou em 15 de 15 (2030 → 2031, base fictícia, 3011):
+- a prévia mostrou 1.058 fichas e 73 receitas sem gravar;
+- a proposta criada teve as mesmas contagens;
+- a página disse o que veio;
+- a receita e a ficha novas foram incluídas;
+- a prévia e o reajuste de 2% atingiram 581 linhas;
+- a realocação de 1.000,00 entre as fichas 10809 e 10810 manteve a despesa em 249.789.021,63;
+- o orçamento de 2031 foi gerado com 1.059 fichas;
+- a soma da fonte 500 é a de 2030 com 2%, porque a realocação ficou dentro da fonte;
+- 2030 ficou intacto;
+- houve empenho na ficha nova.
+
 ## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
 
 Pedido: `docs/lotes/V37-uso-de-ponta-a-ponta.md`. Regime: superfície (links, recortes, formulários pré-preenchidos) e
@@ -81,7 +117,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 | HEAD | publicado como `ea24979` (main e `/release` = `ea24979`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | V38: prévia da importação da proposta (AUD-103) e realocação com total preservado (AUD-113). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
+| Próximo passo | V38 4ª leva: conta do razão pela busca (AUD-067), lista de ordens de serviço no menu dentro do alcance da fiscalização (AUD-122), atalhos da proposta fora da edição e âncora por ficha (AUD-093), rascunho do empenho preservado no atalho de cadastro (AUD-015). Dependem do ente: linha manual do extrato como prova bancária (AUD-047b) e o que copiar da LDO anterior (AUD-104). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
 
 ### O que passou a funcionar, e a rota
 

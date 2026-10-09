@@ -12,6 +12,7 @@ import { toMoney } from "../../packages/contracts/money.js";
 import { diaCivilBr } from "../../packages/datas/index.js";
 import { listarEmpenhos } from "../../modules/m05-despesa/consultas.js";
 import { elementoDebitaEstoque } from "../../modules/m01-core-contabil/roteiros.js";
+import { linhasDaPropostaParaEscolha } from "../../modules/m02-planejamento/proposta-orcamentaria.js";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
 import { paginarFiltrando } from "./paginar-filtrando";
@@ -873,6 +874,36 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
         opcoes.push({ valor: u.identificador, rotulo: `${u.nome} (${u.identificador})`, detalhe: `${pessoa.nome} — ${formatarDocumento(pessoa.documento)}` });
       }
       return { opcoes, temMais: r.temMais };
+    },
+  },
+  /**
+   * V38 (AUD-113) — AS LINHAS DE UM LADO DA PROPOSTA, para a realocação escolher a origem e o destino. A proposta e o
+   * lado vêm dos campos do formulário (`ctx.propostaOrcamentariaId`, `ctx.lado`). A proposta reúne todas as unidades:
+   * a leitura é a do ENTE, a mesma da página da proposta — leitura de uma unidade só não conhece a lista.
+   */
+  "linhas-da-proposta": {
+    leitura: "CONSULTAR_PLANEJAMENTO",
+    async buscar(sessao, p) {
+      if (!(await podeLerPara(sessao, "CONSULTAR_PLANEJAMENTO", "ente"))) {
+        throw new LeituraDoCatalogoNegadaError("As linhas da proposta pedem a consulta do planejamento do ente inteiro.");
+      }
+      const propostaId = p.contexto["propostaOrcamentariaId"] ?? "";
+      const lado = p.contexto["lado"];
+      if (propostaId === "" || (lado !== "RECEITA" && lado !== "DESPESA")) return { opcoes: [], temMais: false };
+      const todas = await linhasDaPropostaParaEscolha(cliente(), propostaId, lado);
+      const q = p.q.toLowerCase();
+      const digitos = q.replace(/\D/g, "");
+      const filtradas =
+        p.valor !== undefined
+          ? todas.filter((l) => l.id === p.valor)
+          : q === ""
+            ? todas
+            : todas.filter((l) => l.busca.toLowerCase().includes(q) || (digitos !== "" && l.busca.replace(/\D/g, " ").split(" ").some((pedaco) => pedaco.startsWith(digitos))));
+      const r = pagina(filtradas.slice(skip(p)), p);
+      return {
+        opcoes: r.linhas.map((l) => ({ valor: l.id, rotulo: `${l.rotulo} · R$ ${formatarMoeda(l.vigente).texto}`, detalhe: l.detalhe, dados: { vigente: l.vigente } })),
+        temMais: r.temMais,
+      };
     },
   },
   "codigos-de-acompanhamento": porCodigo("CONSULTAR_PLANEJAMENTO", async (w, s, t) =>

@@ -5,8 +5,14 @@ import { abrirExercicio } from "../../modules/m08-restos-a-pagar/exercicio";
 import {
   incluirFichaNaProposta,
   incluirReceitaNaProposta,
+  previaDaImportacaoDaProposta,
   previaDoReajusteDaProposta,
   reajustarLinhasDaProposta,
+  realocarNaProposta,
+  type PreviaDaImportacao,
+  type PreviaDaImportacaoInput,
+  type RealocarNaPropostaInput,
+  type ResultadoDaRealocacao,
   type IncluirFichaNaPropostaInput,
   type IncluirReceitaNaPropostaInput,
   type PreviaDoReajusteInput,
@@ -148,3 +154,13 @@ export async function reajustarLinhas(input: Omit<ReajustarLinhasDaPropostaInput
   return comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => reajustarLinhasDaProposta(cliente(), { ...input, criadoPor }));
 }
 export type { RecorteDoReajuste, ResultadoDoReajuste };
+
+// ── V38 — a prévia da importação (AUD-103) e a realocação com o total preservado (AUD-113).
+export async function previaDaImportacao(input: PreviaDaImportacaoInput): Promise<PreviaDaImportacao> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return previaDaImportacaoDaProposta(cliente(), input);
+}
+export async function realocar(input: Omit<RealocarNaPropostaInput, "criadoPor">): Promise<ResultadoDaRealocacao> {
+  return comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => realocarNaProposta(cliente(), { ...input, criadoPor }));
+}
+export type { PreviaDaImportacao, ResultadoDaRealocacao };

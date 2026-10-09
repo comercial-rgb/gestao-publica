@@ -18,7 +18,7 @@ import {
 } from "../../../../../lib/portas/proposta-orcamentaria";
 import { dataBr } from "../../../../../lib/recorte";
 import { toMoney } from "../../../../../packages/contracts/index";
-import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta, FormIncluirFicha, FormIncluirReceita, FormReajusteEmLote } from "../Forms";
+import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta, FormIncluirFicha, FormIncluirReceita, FormReajusteEmLote, FormRealocar } from "../Forms";
 import { ConferenciaDaPropostaSecao } from "./Conferencia";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
@@ -168,6 +168,42 @@ function Total({
   );
 }
 
+/**
+ * V38 (AUD-103) — O QUE VEIO E O QUE NÃO VEIO da origem, depois de criada a proposta: as contagens contra o exercício
+ * de origem de hoje e o que nunca vem (a execução, os saldos, a aprovação).
+ */
+function OQueVeio({ p }: { readonly p: PropostaDetalhada }): React.ReactElement {
+  const fichasImportadas = p.despesas.filter((l) => !l.nova).length;
+  const receitasImportadas = p.receitas.filter((l) => !l.nova).length;
+  const fichasNovas = p.despesas.length - fichasImportadas;
+  const receitasNovas = p.receitas.length - receitasImportadas;
+  const fichasDeFora = Math.max(0, p.naOrigem.fichas - fichasImportadas);
+  const receitasDeFora = Math.max(0, p.naOrigem.receitas - receitasImportadas);
+  return (
+    <details className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3 text-xs text-[color:var(--color-ink-2)]" data-secao="o-que-veio">
+      <summary className="cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]">O que veio de {String(p.exercicioDeOrigem)} e o que não veio</summary>
+      <ul className="mt-2 list-disc space-y-0.5 pl-4">
+        <li data-veio-fichas={String(fichasImportadas)}>
+          Fichas: {String(fichasImportadas)} de {String(p.naOrigem.fichas)} vieram de {String(p.exercicioDeOrigem)}
+          {fichasDeFora > 0
+            ? `; ${String(fichasDeFora)} ficaram de fora (${p.aproveitaFichas ? (p.incluiFichasAbertasPorCredito ? "criadas na origem depois da importação" : "abertas por crédito especial ou extraordinário, de recurso de exercício anterior, ou criadas depois da importação") : "a proposta não aproveitou as fichas"})`
+            : ""}
+          {fichasNovas > 0 ? `; ${String(fichasNovas)} incluída(s) na proposta` : ""}.
+        </li>
+        <li data-veio-receitas={String(receitasImportadas)}>
+          Receitas previstas: {String(receitasImportadas)} de {String(p.naOrigem.receitas)} vieram de {String(p.exercicioDeOrigem)}
+          {receitasDeFora > 0 ? `; ${String(receitasDeFora)} ficaram de fora (${p.aproveitaReceitas ? "criadas na origem depois da importação" : "a proposta não aproveitou as receitas"})` : ""}
+          {receitasNovas > 0 ? `; ${String(receitasNovas)} incluída(s) na proposta` : ""}.
+        </li>
+        <li>
+          Não vêm da origem: empenhos, liquidações e pagamentos (o empenhado serve só como valor de partida), saldos bancários, a aprovação e o número da
+          lei. A dotação inicial de cada ficha é lançada em 1º de janeiro quando o orçamento é gerado.
+        </li>
+      </ul>
+    </details>
+  );
+}
+
 export default async function PropostaPage({ params }: { readonly params: Promise<{ readonly id: string }> }): Promise<React.ReactElement> {
   // Dado do ENTE: a proposta reúne as fichas de todas as unidades.
   await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
@@ -235,6 +271,8 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         valor zero não é criada.
       </div>
 
+      <OQueVeio p={p} />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <Total
           titulo="Receita prevista (líquida)"
@@ -266,13 +304,14 @@ export default async function PropostaPage({ params }: { readonly params: Promis
           reajustar em lote. Só enquanto a proposta não virou orçamento. */}
       {editavel ? (
         <section className="space-y-3" aria-label="Incluir linhas e reajustar em lote" data-secao="incluir-e-reajustar">
-          <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Incluir o que a lei de origem não tinha, e reajustar em lote</h2>
+          <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Incluir o que a lei de origem não tinha, reajustar em lote e realocar</h2>
           <p className="text-xs text-[color:var(--color-ink-2)]">
             <a href="#receitas" className="text-[color:var(--color-primary)] underline">Receitas ({String(p.receitas.length)})</a>
             {" · "}
             <a href="#fichas" className="text-[color:var(--color-primary)] underline">Fichas ({String(p.despesas.length)})</a>
           </p>
           <FormReajusteEmLote propostaOrcamentariaId={p.id} />
+          <FormRealocar propostaOrcamentariaId={p.id} />
           <FormIncluirReceita propostaOrcamentariaId={p.id} />
           <FormIncluirFicha propostaOrcamentariaId={p.id} />
         </section>

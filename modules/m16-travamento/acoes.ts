@@ -1255,6 +1255,7 @@ export type NomeDeServico =
   | "incluirFichaNaProposta"
   | "incluirReceitaNaProposta"
   | "reajustarLinhasDaProposta"
+  | "realocarNaProposta"
   | "cadastrarVeiculo"
   | "publicarVersaoDoVeiculo"
   | "cadastrarMaquina"
@@ -2113,6 +2114,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   incluirFichaNaProposta: "CADASTRAR_LOA",
   incluirReceitaNaProposta: "CADASTRAR_LOA",
   reajustarLinhasDaProposta: "CADASTRAR_LOA",
+  // V38 (AUD-113) — tirar de uma linha e pôr noutra, com o total preservado: o mesmo poder de quem ajusta a linha.
+  realocarNaProposta: "CADASTRAR_LOA",
   // ── M36/M37 — V27: frota e farmácia pública ──
   cadastrarVeiculo: "CADASTRAR_FROTA",
   publicarVersaoDoVeiculo: "CADASTRAR_FROTA",
@@ -3522,6 +3525,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lerDadosDaLoa: "leitura (dotação inicial das fichas e previsão inicial da receita do exercício — não muta)",
   vinculoPpaLoa: "leitura (V37 — as fichas da LOA que executam cada ação do PPA, derivadas dos classificadores — não muta)",
   previaDoReajusteDaProposta: "leitura (V38 — quantas linhas o reajuste em lote da proposta alcança e o total antes e depois — não muta)",
+  previaDaImportacaoDaProposta: "leitura (V38 — o que a importação de um exercício traria para a proposta, antes de criá-la — não muta)",
+  linhasDaPropostaParaEscolha: "leitura (V38 — as linhas de um lado da proposta para o seletor da realocação — não muta)",
   loaDoExercicio: "leitura (a LOA e os anexos da Lei 4.320 montados sobre os dados já registrados — demonstrativo, não muta)",
   //
   autenticar: "autenticação (precede a autorização — autorizá-la seria circular)",

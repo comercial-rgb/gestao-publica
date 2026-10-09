@@ -111,28 +111,36 @@ const zExercicio = z.coerce
 
 const zSimNao = z.preprocess((v) => v === true || v === "true" || v === "on" || v === "1", z.boolean());
 
-export const zElaborarPropostaOrcamentaria = z
-  .object({
-    exercicio: zExercicio,
-    exercicioDeOrigem: zExercicio,
+/** As escolhas da importação — as mesmas para a prévia (V38) e para o ato. */
+const zEscolhasDaImportacao = z.object({
+  exercicio: zExercicio,
+  exercicioDeOrigem: zExercicio,
+  aproveitaReceitas: zSimNao,
+  aproveitaFichas: zSimNao,
+  baseDaReceita: z.enum(["PREVISAO_INICIAL", "PREVISAO_ATUALIZADA", "SEM_VALOR"], { message: "Escolha o valor de partida da receita." }),
+  percentualDaReceita: zPercentualDaProposta,
+  baseDaDespesa: z.enum(["DOTACAO_INICIAL", "DOTACAO_AUTORIZADA", "EMPENHADO", "SEM_VALOR"], { message: "Escolha o valor de partida da despesa." }),
+  percentualDaDespesa: zPercentualDaProposta,
+  reajustaProjetos: zSimNao,
+  incluiFichasAbertasPorCredito: zSimNao,
+});
+const MSG_DESTINO_POSTERIOR = "O exercício da proposta tem de ser posterior ao exercício de onde os valores são importados.";
+const MSG_O_QUE_APROVEITAR = "Escolha o que aproveitar: as receitas, as fichas ou as duas.";
+
+export const zElaborarPropostaOrcamentaria = zEscolhasDaImportacao
+  .extend({
     descricao: z.string().trim().min(3, "Dê um nome à proposta (ex.: Proposta inicial 2027).").max(200),
-    aproveitaReceitas: zSimNao,
-    aproveitaFichas: zSimNao,
-    baseDaReceita: z.enum(["PREVISAO_INICIAL", "PREVISAO_ATUALIZADA", "SEM_VALOR"], { message: "Escolha o valor de partida da receita." }),
-    percentualDaReceita: zPercentualDaProposta,
-    baseDaDespesa: z.enum(["DOTACAO_INICIAL", "DOTACAO_AUTORIZADA", "EMPENHADO", "SEM_VALOR"], { message: "Escolha o valor de partida da despesa." }),
-    percentualDaDespesa: zPercentualDaProposta,
-    reajustaProjetos: zSimNao,
-    incluiFichasAbertasPorCredito: zSimNao,
     criadoPor: z.string().trim().min(1),
   })
-  .refine((d) => d.exercicio > d.exercicioDeOrigem, {
-    message: "O exercício da proposta tem de ser posterior ao exercício de onde os valores são importados.",
-  })
-  .refine((d) => d.aproveitaReceitas || d.aproveitaFichas, {
-    message: "Escolha o que aproveitar: as receitas, as fichas ou as duas.",
-  });
+  .refine((d) => d.exercicio > d.exercicioDeOrigem, { message: MSG_DESTINO_POSTERIOR })
+  .refine((d) => d.aproveitaReceitas || d.aproveitaFichas, { message: MSG_O_QUE_APROVEITAR });
 export type ElaborarPropostaOrcamentariaInput = z.input<typeof zElaborarPropostaOrcamentaria>;
+
+export const zPreviaDaImportacao = zEscolhasDaImportacao
+  .refine((d) => d.exercicio > d.exercicioDeOrigem, { message: MSG_DESTINO_POSTERIOR })
+  .refine((d) => d.aproveitaReceitas || d.aproveitaFichas, { message: MSG_O_QUE_APROVEITAR });
+export type PreviaDaImportacaoInput = z.input<typeof zPreviaDaImportacao>;
+type EscolhasDaImportacao = z.output<typeof zEscolhasDaImportacao>;
 
 export interface BaseDaFicha {
   readonly fichaId: string;
@@ -222,7 +230,7 @@ export async function basesDasReceitas(
   tx: Tx,
   exercicio: number,
   base: BaseDaReceitaDaProposta
-): Promise<readonly { readonly receitaId: string; readonly valorNaLei: Money; readonly valor: Money }[]> {
+): Promise<readonly { readonly receitaId: string; readonly valorNaLei: Money; readonly valor: Money; readonly tipoReceita: "ORCAMENTARIA" | "INTRA_ORCAMENTARIA" | "DEDUCAO" }[]> {
   const receitas = await tx.receitaPrevista.findMany({
     where: { exercicio },
     select: {
@@ -236,7 +244,7 @@ export async function basesDasReceitas(
   });
   const naLei = (r: (typeof receitas)[number]): Money => toMoney(r.valorPrevisto.toFixed(2));
   if (base === "PREVISAO_INICIAL" || base === "SEM_VALOR") {
-    return receitas.map((r) => ({ receitaId: r.id, valorNaLei: naLei(r), valor: base === "SEM_VALOR" ? toMoney("0") : naLei(r) }));
+    return receitas.map((r) => ({ receitaId: r.id, tipoReceita: r.tipoReceita, valorNaLei: naLei(r), valor: base === "SEM_VALOR" ? toMoney("0") : naLei(r) }));
   }
   // A reprevisão (LRF art. 12) é chaveada por código de natureza, código de fonte e tipo — o mesmo
   // grão da previsão. Uma reprevisão sem previsão correspondente não tem linha onde entrar e fica
@@ -253,9 +261,122 @@ export async function basesDasReceitas(
   }
   return receitas.map((r) => ({
     receitaId: r.id,
+    tipoReceita: r.tipoReceita,
     valorNaLei: naLei(r),
     valor: toMoney(naLei(r).plus(soma.get(chave(r.naturezaReceita.codigo, r.fonte.codigo, r.tipoReceita)) ?? toMoney("0"))),
   }));
+}
+
+type ReceitaImportada = Awaited<ReturnType<typeof basesDasReceitas>>[number] & { readonly projetado: Money };
+type FichaImportada = BaseDaFicha & { readonly projetado: Money; readonly levaReajuste: boolean };
+
+/**
+ * O QUE A IMPORTAÇÃO TRAZ, com o valor projetado de cada linha — a MESMA leitura para a prévia e para o ato: o que a
+ * prévia mostra é o que a importação grava.
+ */
+async function levantarImportacao(
+  tx: Tx,
+  d: EscolhasDaImportacao
+): Promise<{ readonly receitas: readonly ReceitaImportada[]; readonly despesa: { readonly fichas: readonly FichaImportada[]; readonly abertasPorCreditoDeixadas: number } }> {
+  const receitas = d.aproveitaReceitas ? await basesDasReceitas(tx, d.exercicioDeOrigem, d.baseDaReceita) : [];
+  const despesa = d.aproveitaFichas
+    ? await basesDasFichas(tx, d.exercicioDeOrigem, d.baseDaDespesa, d.incluiFichasAbertasPorCredito)
+    : { fichas: [], abertasPorCreditoDeixadas: 0 };
+  const zero = toPercentual("0");
+  return {
+    receitas: receitas.map((r) => ({ ...r, projetado: projetar(r.valor, d.percentualDaReceita) })),
+    despesa: {
+      abertasPorCreditoDeixadas: despesa.abertasPorCreditoDeixadas,
+      fichas: despesa.fichas.map((f) => {
+        // Projeto e operação especial não levam o reajuste quando o operador assim escolhe: são
+        // valores de obra ou de compromisso, não de custeio corrente.
+        const levaReajuste = d.reajustaProjetos || f.tipoDaAcao === "ATIVIDADE";
+        return { ...f, levaReajuste, projetado: projetar(f.valor, levaReajuste ? d.percentualDaDespesa : zero) };
+      }),
+    },
+  };
+}
+
+function nadaAAproveitar(d: EscolhasDaImportacao): string {
+  const oQue = d.aproveitaReceitas && d.aproveitaFichas ? "receita prevista nem fichas" : d.aproveitaReceitas ? "receita prevista" : "fichas";
+  return `O exercício ${d.exercicioDeOrigem} não tem ${oQue} a aproveitar.`;
+}
+
+/** Os totais de um lado da prévia: quantas linhas, a lei de origem, a partida e o valor com reajuste. */
+export interface LadoDaPrevia {
+  readonly linhas: number;
+  readonly lei: string;
+  readonly partida: string;
+  readonly comReajuste: string;
+  /** Linhas que chegam com valor zero: só entram no orçamento se alguém informar o valor. */
+  readonly semValor: number;
+}
+
+/**
+ * V38 (AUD-103) — A PRÉVIA DA IMPORTAÇÃO: o que será copiado, o que será reajustado, o que fica de fora e o que vai
+ * pedir complemento, ANTES de criar a proposta. Nada grava.
+ */
+export interface PreviaDaImportacao {
+  readonly exercicio: number;
+  readonly exercicioDeOrigem: number;
+  /** Recusa antecipada: o mesmo motivo que o ato daria (destino já gerado; nada a aproveitar). */
+  readonly recusa: string | null;
+  readonly receitas: LadoDaPrevia & {
+    readonly naOrigem: number;
+    /** Deduções da origem sem o tipo da dedução: no exercício novo nascem sem lançamento até o tipo ser informado. */
+    readonly deducoesSemTipo: number;
+  };
+  readonly fichas: LadoDaPrevia & {
+    readonly naOrigem: number;
+    /** Abertas por crédito especial ou extraordinário, ou de recurso de exercício anterior, deixadas de fora. */
+    readonly deixadasDeFora: number;
+    /** Projetos e operações especiais que entram SEM o reajuste (escolha do operador). */
+    readonly semReajuste: number;
+  };
+}
+
+/**
+ * O resumo de um lado, puro. Exportado para teste. ⚠️ A RECEITA É LÍQUIDA, como na página da proposta: a dedução entra
+ * com o sinal de `SINAL_PREVISAO` (subtrai).
+ */
+export function resumirLadoDaImportacao(
+  linhas: readonly { readonly valorNaLei: Money; readonly valor: Money; readonly projetado: Money; readonly tipoReceita?: string }[]
+): LadoDaPrevia {
+  const sinal = (l: (typeof linhas)[number]): 1 | -1 => (l.tipoReceita === undefined ? 1 : SINAL_PREVISAO[l.tipoReceita as keyof typeof SINAL_PREVISAO]);
+  const soma = (k: "valorNaLei" | "valor" | "projetado"): string =>
+    linhas.reduce((acc, l) => toMoney(sinal(l) === 1 ? acc.plus(l[k]) : acc.minus(l[k])), toMoney("0")).toFixed(2);
+  return { linhas: linhas.length, lei: soma("valorNaLei"), partida: soma("valor"), comReajuste: soma("projetado"), semValor: linhas.filter((l) => l.projetado.isZero()).length };
+}
+
+export async function previaDaImportacaoDaProposta(prisma: Tx, input: PreviaDaImportacaoInput): Promise<PreviaDaImportacao> {
+  const d = lerOuRecusar(zPreviaDaImportacao, input);
+  const [{ receitas, despesa }, efetivada, receitasNaOrigem, fichasNaOrigem, deducoesSemTipo] = await Promise.all([
+    levantarImportacao(prisma, d),
+    prisma.efetivacaoDaProposta.findUnique({ where: { exercicio: d.exercicio }, select: { id: true } }),
+    prisma.receitaPrevista.count({ where: { exercicio: d.exercicioDeOrigem } }),
+    prisma.fichaOrcamentaria.count({ where: { exercicio: d.exercicioDeOrigem } }),
+    d.aproveitaReceitas
+      ? prisma.receitaPrevista.count({ where: { exercicio: d.exercicioDeOrigem, tipoReceita: "DEDUCAO", detalhe: { is: null } } })
+      : Promise.resolve(0),
+  ]);
+  const recusa =
+    efetivada !== null
+      ? `O orçamento de ${d.exercicio} já foi gerado por uma proposta efetivada. Alterações agora são crédito adicional ou realocação.`
+      : receitas.length === 0 && despesa.fichas.length === 0
+        ? nadaAAproveitar(d)
+        : null;
+  return {
+    exercicio: d.exercicio,
+    exercicioDeOrigem: d.exercicioDeOrigem,
+    recusa,
+    receitas: { ...resumirLadoDaImportacao(receitas), naOrigem: receitasNaOrigem, deducoesSemTipo },
+    fichas: {
+      ...resumirLadoDaImportacao(despesa.fichas),
+      naOrigem: fichasNaOrigem,
+      deixadasDeFora: despesa.abertasPorCreditoDeixadas,
+      semReajuste: d.percentualDaDespesa.isZero() ? 0 : despesa.fichas.filter((f) => !f.levaReajuste).length,
+    },
+  };
 }
 
 /**
@@ -291,15 +412,9 @@ export async function elaborarPropostaOrcamentaria(
         );
       }
 
-      const receitas = d.aproveitaReceitas ? await basesDasReceitas(tx, d.exercicioDeOrigem, d.baseDaReceita) : [];
-      const despesa = d.aproveitaFichas
-        ? await basesDasFichas(tx, d.exercicioDeOrigem, d.baseDaDespesa, d.incluiFichasAbertasPorCredito)
-        : { fichas: [], abertasPorCreditoDeixadas: 0 };
+      const { receitas, despesa } = await levantarImportacao(tx, d);
       if (receitas.length === 0 && despesa.fichas.length === 0) {
-        const oQue = d.aproveitaReceitas && d.aproveitaFichas ? "receita prevista nem fichas" : d.aproveitaReceitas ? "receita prevista" : "fichas";
-        throw new PropostaOrcamentariaInvalidaError(
-          `O exercício ${d.exercicioDeOrigem} não tem ${oQue} a aproveitar. Nada foi gravado.`
-        );
+        throw new PropostaOrcamentariaInvalidaError(`${nadaAAproveitar(d)} Nada foi gravado.`);
       }
 
       const proposta = await tx.propostaOrcamentaria.create({
@@ -325,22 +440,16 @@ export async function elaborarPropostaOrcamentaria(
           receitaDeOrigemId: r.receitaId,
           valorNaLeiDeOrigem: r.valorNaLei.toFixed(2),
           valorBase: r.valor.toFixed(2),
-          valorProjetado: projetar(r.valor, d.percentualDaReceita).toFixed(2),
+          valorProjetado: r.projetado.toFixed(2),
         })),
       });
-      const zero = toPercentual("0");
       await tx.linhaDeDespesaDaProposta.createMany({
         data: despesa.fichas.map((f) => ({
           propostaOrcamentariaId: proposta.id,
           fichaDeOrigemId: f.fichaId,
           valorNaLeiDeOrigem: f.valorNaLei.toFixed(2),
           valorBase: f.valor.toFixed(2),
-          // Projeto e operação especial não levam o reajuste quando o operador assim escolhe: são
-          // valores de obra ou de compromisso, não de custeio corrente.
-          valorProjetado: projetar(
-            f.valor,
-            !d.reajustaProjetos && f.tipoDaAcao !== "ATIVIDADE" ? zero : d.percentualDaDespesa
-          ).toFixed(2),
+          valorProjetado: f.projetado.toFixed(2),
         })),
       });
       return {
@@ -823,6 +932,8 @@ export interface PropostaDetalhada {
     /** A lei orçamentária do destino: o projeto e, se houver, a aprovação. */
     readonly lei: { readonly id: string; readonly numeroDoProjeto: string; readonly numeroDaLei: string | null } | null;
   };
+  /** V38 (AUD-103) — quantas fichas e receitas previstas o exercício de origem tem hoje: o "o que veio e o que não veio". */
+  readonly naOrigem: { readonly fichas: number; readonly receitas: number };
 }
 
 type LinhaComValores = { readonly valorNaLeiDeOrigem: string; readonly valorBase: string; readonly valorProjetado: string; readonly valorVigente: string };
@@ -977,7 +1088,7 @@ export async function detalharPropostaOrcamentaria(prisma: Tx, id: string): Prom
     .sort((a, b) => Number(a.nova) - Number(b.nova) || a.numero - b.numero || (a.criadoEm?.getTime() ?? 0) - (b.criadoEm?.getTime() ?? 0))
     .map(({ criadoEm: _c, ...resto }) => resto);
 
-  const [exercicio, fichas, receitasNoDestino, efetivacaoDoDestino, deducoesSemTipo, lei] = await Promise.all([
+  const [exercicio, fichas, receitasNoDestino, efetivacaoDoDestino, deducoesSemTipo, lei, fichasNaOrigem, receitasNaOrigem] = await Promise.all([
     prisma.exercicio.findUnique({ where: { ano: p.exercicio }, select: { encerramento: { select: { id: true } } } }),
     prisma.fichaOrcamentaria.count({ where: { exercicio: p.exercicio } }),
     prisma.receitaPrevista.count({ where: { exercicio: p.exercicio } }),
@@ -987,6 +1098,8 @@ export async function detalharPropostaOrcamentaria(prisma: Tx, id: string): Prom
       where: { exercicio: p.exercicio },
       select: { id: true, numeroDoProjeto: true, aprovacao: { select: { numeroDaLei: true } } },
     }),
+    prisma.fichaOrcamentaria.count({ where: { exercicio: p.exercicioDeOrigem } }),
+    prisma.receitaPrevista.count({ where: { exercicio: p.exercicioDeOrigem } }),
   ]);
 
   const sinal = (l: LinhaComValores): 1 | -1 => SINAL_PREVISAO[(l as LinhaDeReceitaNaProposta).tipoReceita as keyof typeof SINAL_PREVISAO];
@@ -1021,6 +1134,7 @@ export async function detalharPropostaOrcamentaria(prisma: Tx, id: string): Prom
       deducoesSemTipo,
       lei: lei === null ? null : { id: lei.id, numeroDoProjeto: lei.numeroDoProjeto, numeroDaLei: lei.aprovacao?.numeroDaLei ?? null },
     },
+    naOrigem: { fichas: fichasNaOrigem, receitas: receitasNaOrigem },
   };
 }
 
@@ -1301,6 +1415,8 @@ interface LinhaParaReajuste {
   readonly natureza: string;
   readonly tipoDaAcao: string;
   readonly tipoReceita: string;
+  /** Como a linha se nomeia no histórico (V38, realocação): "ficha 12", "ficha nova 3.3.90.30 fonte 500", "receita 1112... fonte 500". */
+  readonly rotulo?: string;
 }
 
 /** As linhas de um lado com o valor vigente e o que o recorte lê (códigos), da origem ou da própria linha. */
@@ -1316,27 +1432,33 @@ async function linhasDoLado(tx: Tx, propostaOrcamentariaId: string, lado: "RECEI
         receitaDeOrigem: { select: { tipoReceita: true, naturezaReceita: { select: { codigo: true } }, fonte: { select: { codigo: true } } } },
       },
     });
-    return ls.map((l) => ({
-      id: l.id, vigente: vig(l.valorProjetado, l.ajustes),
-      fonte: (l.receitaDeOrigem?.fonte ?? l.fonte)?.codigo ?? "", unidade: "",
-      natureza: (l.receitaDeOrigem?.naturezaReceita ?? l.naturezaReceita)?.codigo ?? "",
-      tipoDaAcao: "", tipoReceita: l.receitaDeOrigem?.tipoReceita ?? l.tipoReceita ?? "",
-    }));
+    return ls.map((l) => {
+      const fonte = (l.receitaDeOrigem?.fonte ?? l.fonte)?.codigo ?? "";
+      const natureza = (l.receitaDeOrigem?.naturezaReceita ?? l.naturezaReceita)?.codigo ?? "";
+      return {
+        id: l.id, vigente: vig(l.valorProjetado, l.ajustes), fonte, unidade: "", natureza,
+        tipoDaAcao: "", tipoReceita: l.receitaDeOrigem?.tipoReceita ?? l.tipoReceita ?? "",
+        rotulo: `receita ${natureza} fonte ${fonte}${l.receitaDeOrigem === null ? " (nova)" : ""}`,
+      };
+    });
   }
   const ls = await tx.linhaDeDespesaDaProposta.findMany({
     where: { propostaOrcamentariaId },
     select: {
       id: true, valorProjetado: true, ajustes: { select: { id: true, valor: true, criadoEm: true } },
       unidadeOrc: { select: { codigo: true } }, acao: { select: { tipo: true } }, naturezaDespesa: { select: { codigoCompleto: true } }, fonte: { select: { codigo: true } },
-      fichaDeOrigem: { select: { unidadeOrc: { select: { codigo: true } }, acao: { select: { tipo: true } }, naturezaDespesa: { select: { codigoCompleto: true } }, fonte: { select: { codigo: true } } } },
+      fichaDeOrigem: { select: { numero: true, unidadeOrc: { select: { codigo: true } }, acao: { select: { tipo: true } }, naturezaDespesa: { select: { codigoCompleto: true } }, fonte: { select: { codigo: true } } } },
     },
   });
-  return ls.map((l) => ({
-    id: l.id, vigente: vig(l.valorProjetado, l.ajustes),
-    fonte: (l.fichaDeOrigem?.fonte ?? l.fonte)?.codigo ?? "", unidade: (l.fichaDeOrigem?.unidadeOrc ?? l.unidadeOrc)?.codigo ?? "",
-    natureza: (l.fichaDeOrigem?.naturezaDespesa ?? l.naturezaDespesa)?.codigoCompleto ?? "",
-    tipoDaAcao: (l.fichaDeOrigem?.acao ?? l.acao)?.tipo ?? "", tipoReceita: "",
-  }));
+  return ls.map((l) => {
+    const fonte = (l.fichaDeOrigem?.fonte ?? l.fonte)?.codigo ?? "";
+    const natureza = (l.fichaDeOrigem?.naturezaDespesa ?? l.naturezaDespesa)?.codigoCompleto ?? "";
+    return {
+      id: l.id, vigente: vig(l.valorProjetado, l.ajustes), fonte, unidade: (l.fichaDeOrigem?.unidadeOrc ?? l.unidadeOrc)?.codigo ?? "", natureza,
+      tipoDaAcao: (l.fichaDeOrigem?.acao ?? l.acao)?.tipo ?? "", tipoReceita: "",
+      rotulo: l.fichaDeOrigem === null ? `ficha nova ${natureza} fonte ${fonte}` : `ficha ${String(l.fichaDeOrigem.numero)}`,
+    };
+  });
 }
 
 /** O recorte, puro: vazio é "todas as linhas"; cada critério informado restringe (E). Exportado para teste. */
@@ -1388,4 +1510,127 @@ export async function reajustarLinhasDaProposta(prisma: PrismaClient, input: Rea
     }
     return { linhas: alvo.length, totalAntes: somar(alvo).toFixed(2), totalDepois: somar(novos.map((n) => ({ vigente: n.valor }))).toFixed(2) };
   });
+}
+
+// ── V38 (AUD-113) — REALOCAR entre linhas da proposta, com o total preservado.
+//
+// Depois do reajuste, a contadora quer "conferir e alocar entre itens o que precisar". O ajuste linha a linha muda o
+// total; a realocação tira um valor de uma linha e põe na outra, num ato só, com o mesmo motivo nas duas e o nome da
+// outra linha no histórico de cada uma. Nada se distribui sozinho: a pessoa escolhe a origem, o destino e o valor.
+
+export const zRealocarNaProposta = z
+  .object({
+    propostaOrcamentariaId: z.string().trim().min(1),
+    lado: z.enum(["RECEITA", "DESPESA"]),
+    deLinhaId: z.string().trim().min(1, "Escolha a linha de onde o valor sai."),
+    paraLinhaId: z.string().trim().min(1, "Escolha a linha que recebe o valor."),
+    valor: z
+      .string()
+      .trim()
+      .refine((v) => /^\d+(\.\d{1,2})?$/.test(v), "Informe o valor em reais, sem sinal, com até duas casas (ex.: 10.000,00).")
+      .transform((v) => toMoney(v))
+      .refine((v) => v.greaterThan(0), "O valor a realocar tem de ser maior que zero."),
+    motivo: z.string().trim().min(5, "Informe o motivo da realocação.").max(400),
+    criadoPor: z.string().trim().min(1),
+  })
+  .refine((d) => d.deLinhaId !== d.paraLinhaId, { message: "A linha de origem e a de destino são a mesma: escolha duas linhas diferentes." });
+export type RealocarNaPropostaInput = z.input<typeof zRealocarNaProposta>;
+
+export interface ResultadoDaRealocacao {
+  readonly de: { readonly rotulo: string; readonly antes: string; readonly depois: string };
+  readonly para: { readonly rotulo: string; readonly antes: string; readonly depois: string };
+  /** O total do lado antes e depois: iguais por construção, e conferidos antes de gravar. */
+  readonly totalAntes: string;
+  readonly totalDepois: string;
+}
+
+/**
+ * A ARITMÉTICA DA REALOCAÇÃO, pura: a origem perde o valor, o destino ganha o mesmo valor, a soma não muda. Recusa
+ * deixar a origem negativa (nomeando o saldo dela). Exportada para teste.
+ */
+export function realocarValores(de: Money, para: Money, valor: Money): { readonly de: Money; readonly para: Money } {
+  if (valor.greaterThan(de)) {
+    throw new PropostaOrcamentariaInvalidaError(
+      `O valor a realocar (${valor.toFixed(2)}) passa do valor da linha de origem na proposta (${de.toFixed(2)}). Nada foi gravado.`
+    );
+  }
+  return { de: toMoney(de.minus(valor)), para: toMoney(para.plus(valor)) };
+}
+
+const sinalDaLinha = (lado: "RECEITA" | "DESPESA", l: LinhaParaReajuste): 1 | -1 =>
+  lado === "RECEITA" ? SINAL_PREVISAO[l.tipoReceita as keyof typeof SINAL_PREVISAO] : 1;
+
+function totalDoLado(lado: "RECEITA" | "DESPESA", linhas: readonly LinhaParaReajuste[], valor: (l: LinhaParaReajuste) => Money): Money {
+  return linhas.reduce((acc, l) => toMoney(sinalDaLinha(lado, l) === 1 ? acc.plus(valor(l)) : acc.minus(valor(l))), toMoney("0"));
+}
+
+/**
+ * REALOCA um valor de uma linha para outra do MESMO lado: dois ajustes (append-only), na mesma transação, com a
+ * proposta travada. Na receita, as duas linhas têm de ter o mesmo sinal (dedução com dedução; receita com receita):
+ * tirar de uma dedução para pôr numa receita mudaria a receita líquida, e isso não é realocar.
+ */
+export async function realocarNaProposta(prisma: PrismaClient, input: RealocarNaPropostaInput): Promise<ResultadoDaRealocacao> {
+  const d = lerOuRecusar(zRealocarNaProposta, input);
+  return prisma.$transaction(async (tx: Tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.realocarNaProposta, "ENTE");
+    await propostaAberta(tx, d.propostaOrcamentariaId);
+    const linhas = await linhasDoLado(tx, d.propostaOrcamentariaId, d.lado);
+    const de = linhas.find((l) => l.id === d.deLinhaId);
+    const para = linhas.find((l) => l.id === d.paraLinhaId);
+    if (de === undefined || para === undefined) {
+      throw new PropostaOrcamentariaInvalidaError(
+        `A linha ${de === undefined ? "de origem" : "de destino"} não pertence a esta proposta ${d.lado === "RECEITA" ? "nas receitas" : "nas fichas"}. Nada foi gravado.`
+      );
+    }
+    if (sinalDaLinha(d.lado, de) !== sinalDaLinha(d.lado, para)) {
+      throw new PropostaOrcamentariaInvalidaError(
+        "Uma das linhas é dedução da receita e a outra não: realocar entre elas mudaria a receita líquida. Use a alteração de valor de cada linha. Nada foi gravado."
+      );
+    }
+    const novos = realocarValores(de.vigente, para.vigente, d.valor);
+    const rotuloDe = de.rotulo ?? "a linha de origem";
+    const rotuloPara = para.rotulo ?? "a linha de destino";
+    const depois = (l: LinhaParaReajuste): Money => (l.id === de.id ? novos.de : l.id === para.id ? novos.para : l.vigente);
+    const totalAntes = totalDoLado(d.lado, linhas, (l) => l.vigente);
+    const totalDepois = totalDoLado(d.lado, linhas, depois);
+    // Defesa: a aritmética garante; se um dia não garantir, nada se grava.
+    if (!totalAntes.equals(totalDepois)) {
+      throw new PropostaOrcamentariaInvalidaError("A realocação mudaria o total da proposta. Nada foi gravado.");
+    }
+    const valorBr = d.valor.toFixed(2);
+    const dados = [
+      { linhaId: de.id, valor: novos.de.toFixed(2), motivo: `${d.motivo} (realocação: ${valorBr} para ${rotuloPara})`, criadoPor: d.criadoPor },
+      { linhaId: para.id, valor: novos.para.toFixed(2), motivo: `${d.motivo} (realocação: ${valorBr} vindos de ${rotuloDe})`, criadoPor: d.criadoPor },
+    ];
+    if (d.lado === "RECEITA") await tx.ajusteDeReceitaDaProposta.createMany({ data: dados });
+    else await tx.ajusteDeDespesaDaProposta.createMany({ data: dados });
+    return {
+      de: { rotulo: rotuloDe, antes: de.vigente.toFixed(2), depois: novos.de.toFixed(2) },
+      para: { rotulo: rotuloPara, antes: para.vigente.toFixed(2), depois: novos.para.toFixed(2) },
+      totalAntes: totalAntes.toFixed(2),
+      totalDepois: totalDepois.toFixed(2),
+    };
+  });
+}
+
+/** Uma linha da proposta como o seletor da realocação a oferece: o rótulo, o valor na proposta e a classificação. */
+export interface LinhaParaEscolha {
+  readonly id: string;
+  readonly rotulo: string;
+  readonly vigente: string;
+  readonly detalhe: string;
+  readonly busca: string;
+}
+
+/** As linhas de um lado, para escolher na realocação. A busca casa ficha, natureza, fonte e unidade. Nada grava. */
+export async function linhasDaPropostaParaEscolha(prisma: Tx, propostaOrcamentariaId: string, lado: "RECEITA" | "DESPESA"): Promise<readonly LinhaParaEscolha[]> {
+  return (await linhasDoLado(prisma, propostaOrcamentariaId, lado))
+    .map((l) => ({
+      id: l.id,
+      rotulo: l.rotulo ?? l.id,
+      vigente: l.vigente.toFixed(2),
+      detalhe: `natureza ${l.natureza} · fonte ${l.fonte}${l.unidade === "" ? "" : ` · unidade ${l.unidade}`}`,
+      busca: [l.rotulo ?? "", l.natureza, l.fonte, l.unidade].join(" "),
+    }))
+    .sort((x, y) => x.rotulo.localeCompare(y.rotulo, "pt-BR", { numeric: true }));
 }

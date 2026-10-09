@@ -15,9 +15,13 @@ import {
   incluirFichaNaProposta,
   incluirReceitaNaProposta,
   linhasNoRecorte,
+  previaDaImportacaoDaProposta,
   previaDoReajusteDaProposta,
   projetar,
   reajustarLinhasDaProposta,
+  realocarNaProposta,
+  realocarValores,
+  resumirLadoDaImportacao,
   valorVigente,
 } from "./proposta-orcamentaria.js";
 import { compararExercicios } from "./comparacao-de-exercicios.js";
@@ -591,6 +595,157 @@ describe("V29 — proposta orçamentária no banco", () => {
     const p = await detalharPropostaOrcamentaria(prisma, r.id);
     expect(p!.totalDaReceita).toEqual({ lei: "2800000.00", base: "0.00", projetado: "0.00", vigente: "0.00" });
     expect(p!.totalDaDespesa).toEqual({ lei: "1400000.00", base: "0.00", projetado: "0.00", vigente: "0.00" });
+  });
+
+  // ═══ V38 3ª leva — a PRÉVIA DA IMPORTAÇÃO (AUD-103) e a REALOCAÇÃO com o total preservado (AUD-113) ═══
+
+  it("V38 — PRÉVIA DA IMPORTAÇÃO: diz o que vem, o que fica de fora, o que vai sem reajuste e o que pede complemento; não grava; e o ato grava o que ela mostrou", async () => {
+    await prisma.acao.create({ data: { id: "aca-1001", codigo: "1001", descricao: "Construção de escola", tipo: "PROJETO" } });
+    const deps = criarM02Deps(prisma);
+    await criarFicha({ exercicio: 2026, numero: 9, classificacao: { ...CLASSIFICACAO_VALIDA, acao: "1001" }, exercicioFonte: 1, valorDotado: "200000.00", criadoPor: ADMIN }, deps);
+    await criarFicha({ exercicio: 2026, numero: 12, classificacao: { ...CLASSIFICACAO_VALIDA, unidadeOrc: "01002" }, exercicioFonte: 2, valorDotado: "50000.00", criadoPor: ADMIN }, deps);
+    // N=2 deduções: uma SEM o tipo da dedução (no exercício novo, vai pedir complemento) e uma COM o tipo (não conta).
+    await prisma.receitaPrevista.create({ data: { exercicio: 2026, naturezaReceitaId: "nr-b", fonteId: "fnt-500", exercicioFonte: 1, tipoReceita: "DEDUCAO", valorPrevisto: "100000.00" } });
+    const comTipo = await prisma.receitaPrevista.create({ data: { exercicio: 2026, naturezaReceitaId: "nr-a", fonteId: "fnt-540", exercicioFonte: 1, tipoReceita: "DEDUCAO", valorPrevisto: "60000.00" }, select: { id: true } });
+    await prisma.detalheDaReceitaPrevista.create({ data: { receitaPrevistaId: comTipo.id, tipoDeducaoSagres: "5", documento: "LOA (fixture)", criadoPor: ADMIN } });
+    const escolhas = {
+      exercicio: 2027,
+      exercicioDeOrigem: 2026,
+      aproveitaReceitas: true,
+      aproveitaFichas: true,
+      baseDaReceita: "PREVISAO_INICIAL" as const,
+      percentualDaReceita: "10",
+      baseDaDespesa: "DOTACAO_INICIAL" as const,
+      percentualDaDespesa: "10",
+      reajustaProjetos: false,
+      incluiFichasAbertasPorCredito: false,
+    };
+    const previa = await previaDaImportacaoDaProposta(prisma, escolhas);
+    // Valores conferidos à mão: fichas 1 (1.000.000, +10 %), 7 (400.000, +10 %), 9 (projeto 200.000, sem reajuste); a 12
+    // (recurso de exercício anterior) fica de fora. Receitas líquidas: 2.000.000 + 800.000 − 100.000 − 60.000, +10 %.
+    expect(previa).toEqual({
+      exercicio: 2027,
+      exercicioDeOrigem: 2026,
+      recusa: null,
+      receitas: { linhas: 4, naOrigem: 4, lei: "2640000.00", partida: "2640000.00", comReajuste: "2904000.00", semValor: 0, deducoesSemTipo: 1 },
+      fichas: { linhas: 3, naOrigem: 4, lei: "1600000.00", partida: "1600000.00", comReajuste: "1740000.00", semValor: 0, deixadasDeFora: 1, semReajuste: 1 },
+    });
+    // A prévia não grava.
+    expect(await prisma.propostaOrcamentaria.count()).toBe(0);
+
+    // O ato grava o que a prévia mostrou: as mesmas contagens e os mesmos totais.
+    const r = await elaborarPropostaOrcamentaria(prisma, { ...escolhas, descricao: "Conferida pela prévia", criadoPor: ADMIN });
+    const p = (await detalharPropostaOrcamentaria(prisma, r.id))!;
+    expect([p.receitas.length, p.despesas.length, r.fichasAbertasPorCreditoDeixadas]).toEqual([previa.receitas.linhas, previa.fichas.linhas, previa.fichas.deixadasDeFora]);
+    expect([p.totalDaReceita.lei, p.totalDaReceita.projetado]).toEqual([previa.receitas.lei, previa.receitas.comReajuste]);
+    expect([p.totalDaDespesa.lei, p.totalDaDespesa.projetado]).toEqual([previa.fichas.lei, previa.fichas.comReajuste]);
+    // E o "o que veio e o que não veio" da página lê a origem de hoje.
+    expect(p.naOrigem).toEqual({ fichas: 4, receitas: 4 });
+
+    // Só a estrutura: tudo chega sem valor, e a prévia diz quantas linhas pedem valor.
+    const estrutura = await previaDaImportacaoDaProposta(prisma, { ...escolhas, baseDaReceita: "SEM_VALOR", baseDaDespesa: "SEM_VALOR" });
+    expect([estrutura.receitas.semValor, estrutura.fichas.semValor, estrutura.fichas.comReajuste]).toEqual([4, 3, "0.00"]);
+
+    // Recusa antecipada com o motivo do ato: nada a aproveitar em 2025.
+    const vazia = await previaDaImportacaoDaProposta(prisma, { ...escolhas, exercicio: 2026, exercicioDeOrigem: 2025, aproveitaFichas: false });
+    expect(vazia.recusa).toBe("O exercício 2025 não tem receita prevista a aproveitar.");
+    // Escolha inválida: o motivo, e nada gravado.
+    await expect(previaDaImportacaoDaProposta(prisma, { ...escolhas, exercicio: 2026 })).rejects.toThrow(/tem de ser posterior/);
+    expect(await prisma.propostaOrcamentaria.count()).toBe(1);
+  }, 60_000);
+
+  it("V38 — o resumo da prévia é puro (N=2): soma lei, partida e reajuste; a dedução subtrai; conta a linha sem valor", () => {
+    const m = (v: string) => toMoney(v);
+    expect(
+      resumirLadoDaImportacao([
+        { valorNaLei: m("100.00"), valor: m("90.00"), projetado: m("99.00") },
+        { valorNaLei: m("50.00"), valor: m("0.00"), projetado: m("0.00") },
+      ])
+    ).toEqual({ linhas: 2, lei: "150.00", partida: "90.00", comReajuste: "99.00", semValor: 1 });
+    expect(
+      resumirLadoDaImportacao([
+        { valorNaLei: m("100.00"), valor: m("100.00"), projetado: m("110.00"), tipoReceita: "ORCAMENTARIA" },
+        { valorNaLei: m("20.00"), valor: m("20.00"), projetado: m("22.00"), tipoReceita: "DEDUCAO" },
+      ])
+    ).toEqual({ linhas: 2, lei: "80.00", partida: "80.00", comReajuste: "88.00", semValor: 0 });
+  });
+
+  it("V38 — REALOCA entre fichas (N=2) com o total preservado e o histórico nas duas; recusa passar do valor da origem, a mesma linha e linha de outra proposta, com o motivo", async () => {
+    const id = await elaborarPadrao();
+    const p0 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    const ficha1 = p0.despesas.find((d) => d.numero === 1)!;
+    const ficha7 = p0.despesas.find((d) => d.numero === 7)!;
+    // Base EMPENHADO com 5 %: a ficha 1 parte de 300.000 e vai a 315.000; a 7 parte de zero.
+    expect([ficha1.valorVigente, ficha7.valorVigente, p0.totalDaDespesa.vigente]).toEqual(["315000.00", "0.00", "315000.00"]);
+
+    const r = await realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", deLinhaId: ficha1.id, paraLinhaId: ficha7.id, valor: "15000.00", motivo: "Saúde precisa de partida", criadoPor: ADMIN });
+    expect(r).toEqual({
+      de: { rotulo: "ficha 1", antes: "315000.00", depois: "300000.00" },
+      para: { rotulo: "ficha 7", antes: "0.00", depois: "15000.00" },
+      totalAntes: "315000.00",
+      totalDepois: "315000.00",
+    });
+    const p1 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    expect(p1.despesas.find((d) => d.numero === 1)!.valorVigente).toBe("300000.00");
+    expect(p1.despesas.find((d) => d.numero === 7)!.valorVigente).toBe("15000.00");
+    expect(p1.totalDaDespesa.vigente).toBe(p0.totalDaDespesa.vigente);
+    expect(p1.despesas.find((d) => d.numero === 1)!.ajustes[0]!.motivo).toBe("Saúde precisa de partida (realocação: 15000.00 para ficha 7)");
+    expect(p1.despesas.find((d) => d.numero === 7)!.ajustes[0]!.motivo).toBe("Saúde precisa de partida (realocação: 15000.00 vindos de ficha 1)");
+
+    // Tirar exatamente tudo vale (a origem fica com zero); um centavo a mais, não.
+    await realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", deLinhaId: ficha7.id, paraLinhaId: ficha1.id, valor: "15000.00", motivo: "Devolve tudo", criadoPor: ADMIN });
+    await expect(
+      realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", deLinhaId: ficha7.id, paraLinhaId: ficha1.id, valor: "0.01", motivo: "Um centavo", criadoPor: ADMIN })
+    ).rejects.toThrow("O valor a realocar (0.01) passa do valor da linha de origem na proposta (0.00). Nada foi gravado.");
+    expect(await prisma.ajusteDeDespesaDaProposta.count()).toBe(4);
+
+    await expect(
+      realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", deLinhaId: ficha1.id, paraLinhaId: ficha1.id, valor: "1.00", motivo: "Mesma linha", criadoPor: ADMIN })
+    ).rejects.toThrow(/são a mesma: escolha duas linhas diferentes/);
+    const outra = await elaborarPadrao();
+    const daOutra = (await detalharPropostaOrcamentaria(prisma, outra))!.despesas[0]!;
+    await expect(
+      realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", deLinhaId: ficha1.id, paraLinhaId: daOutra.id, valor: "1.00", motivo: "Outra proposta", criadoPor: ADMIN })
+    ).rejects.toThrow("A linha de destino não pertence a esta proposta nas fichas. Nada foi gravado.");
+    // Linha de receita no lado das fichas também não pertence.
+    await expect(
+      realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", deLinhaId: p0.receitas[0]!.id, paraLinhaId: ficha1.id, valor: "1.00", motivo: "Lado trocado", criadoPor: ADMIN })
+    ).rejects.toThrow("A linha de origem não pertence a esta proposta nas fichas. Nada foi gravado.");
+    expect(await prisma.ajusteDeDespesaDaProposta.count()).toBe(4);
+  }, 60_000);
+
+  it("V38 — REALOCA entre receitas mantendo a receita líquida; recusa entre dedução e receita (mudaria a líquida); sem CADASTRAR_LOA, recusa pela ação", async () => {
+    await prisma.receitaPrevista.create({ data: { exercicio: 2026, naturezaReceitaId: "nr-b", fonteId: "fnt-500", exercicioFonte: 1, tipoReceita: "DEDUCAO", valorPrevisto: "100000.00" } });
+    const id = await elaborarPadrao();
+    const p0 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    const iptu = p0.receitas.find((x) => x.naturezaCodigo === "11125001")!;
+    const fundeb = p0.receitas.find((x) => x.naturezaCodigo === "17515001" && x.tipoReceita === "ORCAMENTARIA")!;
+    const deducao = p0.receitas.find((x) => x.tipoReceita === "DEDUCAO")!;
+
+    const r = await realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", deLinhaId: iptu.id, paraLinhaId: fundeb.id, valor: "10000.00", motivo: "Reestimativa entre fontes", criadoPor: ADMIN });
+    expect(r.totalDepois).toBe(r.totalAntes);
+    expect(r.totalAntes).toBe(p0.totalDaReceita.vigente);
+    expect((await detalharPropostaOrcamentaria(prisma, id))!.totalDaReceita.vigente).toBe(p0.totalDaReceita.vigente);
+
+    await expect(
+      realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", deLinhaId: iptu.id, paraLinhaId: deducao.id, valor: "1000.00", motivo: "Para a dedução", criadoPor: ADMIN })
+    ).rejects.toThrow(/é dedução da receita e a outra não: realocar entre elas mudaria a receita líquida/);
+    expect(await prisma.ajusteDeReceitaDaProposta.count()).toBe(2);
+
+    const quem = await usuarioCom("so-ficha@teste.local", [{ acao: "CRIAR_FICHA" }]);
+    await expect(
+      realocarNaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", deLinhaId: iptu.id, paraLinhaId: fundeb.id, valor: "1.00", motivo: "sem poder", criadoPor: quem })
+    ).rejects.toThrow(/nenhum dos perfis dele concede CADASTRAR_LOA/);
+    expect(await prisma.ajusteDeReceitaDaProposta.count()).toBe(2);
+  }, 60_000);
+
+  it("V38 — a realocação é pura: a soma não muda, e a origem não fica negativa", () => {
+    const m = (v: string) => toMoney(v);
+    const r = realocarValores(m("100.00"), m("50.00"), m("30.00"));
+    expect([r.de.toFixed(2), r.para.toFixed(2)]).toEqual(["70.00", "80.00"]);
+    const tudo = realocarValores(m("100.00"), m("0.00"), m("100.00"));
+    expect([tudo.de.toFixed(2), tudo.para.toFixed(2)]).toEqual(["0.00", "100.00"]);
+    expect(() => realocarValores(m("100.00"), m("0.00"), m("100.01"))).toThrow(/passa do valor da linha de origem na proposta \(100.00\)/);
   });
 
   it("RECUSA importar sem escolher o que aproveitar — e não grava", async () => {

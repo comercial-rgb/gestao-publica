@@ -18,9 +18,12 @@ import {
   type EstadoDaProposta,
   incluirFichaAction,
   incluirReceitaAction,
+  previaImportacaoAction,
   previaReajusteAction,
   reajustarAction,
+  realocarAction,
 } from "./actions";
+import { formatarMoeda } from "../../../../lib/format/moeda";
 
 const BOTAO_SECUNDARIO =
   "inline-flex h-9 items-center rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 text-sm font-semibold text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)] disabled:opacity-40";
@@ -51,7 +54,7 @@ function Resultado({ estado, acao }: { readonly estado: EstadoDaProposta; readon
   return null;
 }
 
-/** IMPORTAR um exercício numa proposta nova. */
+/** IMPORTAR um exercício numa proposta nova, com a prévia do que vem (V38, AUD-103) antes de criar. */
 export function FormElaborarProposta({
   exercicios,
   sugestaoDeDestino,
@@ -60,23 +63,38 @@ export function FormElaborarProposta({
   readonly sugestaoDeDestino: number;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(elaborarPropostaAction, {});
-  const origemPadrao = exercicios[0];
+  const [previa, previaAction, calculando] = useActionState<EstadoDaProposta, FormData>(previaImportacaoAction, {});
+  // ⚠️ CAMPOS CONTROLADOS, como no reajuste em lote: ao terminar a ação da prévia, o React limpa os campos não
+  // controlados; a importação que vem depois leria o formulário vazio.
+  const [v, setV] = useState({
+    exercicio: String(sugestaoDeDestino),
+    exercicioDeOrigem: exercicios[0] === undefined ? "" : String(exercicios[0]),
+    descricao: `Proposta ${String(sugestaoDeDestino)}`,
+    baseDaReceita: "PREVISAO_ATUALIZADA",
+    percentualDaReceita: "0",
+    baseDaDespesa: "DOTACAO_INICIAL",
+    percentualDaDespesa: "0",
+  });
+  const [marcas, setMarcas] = useState({ aproveitaReceitas: true, aproveitaFichas: true, reajustaProjetos: true, incluiFichasAbertasPorCredito: false });
+  const mudar = (c: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setV((s) => ({ ...s, [c]: e.target.value }));
+  const marcar = (c: keyof typeof marcas) => (e: React.ChangeEvent<HTMLInputElement>) => setMarcas((s) => ({ ...s, [c]: e.target.checked }));
   return (
     <form action={action} className={PAINEL} data-acao="elaborar-proposta" aria-label="Importar um exercício numa proposta nova">
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Nova proposta a partir de um exercício</h2>
       <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
         Importa as receitas previstas e as fichas do exercício escolhido, aplica o percentual sobre a base e abre a proposta
-        para alteração. Nada é lançado na contabilidade até a proposta ser efetivada.
+        para alteração. Nada é lançado na contabilidade até a proposta ser efetivada. Use &quot;Ver o que vai ser importado&quot;
+        para conferir antes de criar.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="text-xs">
           <span className={ROTULO}>Orçamento do exercício</span>
-          <input className={CAMPO} name="exercicio" type="number" min={2000} max={2100} required defaultValue={sugestaoDeDestino} />
+          <input className={CAMPO} name="exercicio" type="number" min={2000} max={2100} required value={v.exercicio} onChange={mudar("exercicio")} />
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Importar de</span>
-          <select className={CAMPO} name="exercicioDeOrigem" required defaultValue={origemPadrao ?? ""}>
+          <select className={CAMPO} name="exercicioDeOrigem" required value={v.exercicioDeOrigem} onChange={mudar("exercicioDeOrigem")}>
             {exercicios.length === 0 ? <option value="">Nenhum exercício cadastrado</option> : null}
             {exercicios.map((a) => (
               <option key={a} value={a}>
@@ -87,22 +105,22 @@ export function FormElaborarProposta({
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Nome da proposta</span>
-          <input className={CAMPO} name="descricao" required minLength={3} defaultValue={`Proposta ${String(sugestaoDeDestino)}`} />
+          <input className={CAMPO} name="descricao" required minLength={3} value={v.descricao} onChange={mudar("descricao")} />
         </label>
         <fieldset className="text-xs sm:col-span-3">
           <legend className={ROTULO}>O que aproveitar</legend>
           <div className="flex flex-wrap gap-4">
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" name="aproveitaReceitas" defaultChecked /> Receitas previstas
+              <input type="checkbox" name="aproveitaReceitas" checked={marcas.aproveitaReceitas} onChange={marcar("aproveitaReceitas")} /> Receitas previstas
             </label>
             <label className="inline-flex items-center gap-2">
-              <input type="checkbox" name="aproveitaFichas" defaultChecked /> Fichas de despesa
+              <input type="checkbox" name="aproveitaFichas" checked={marcas.aproveitaFichas} onChange={marcar("aproveitaFichas")} /> Fichas de despesa
             </label>
           </div>
         </fieldset>
         <label className="text-xs">
           <span className={ROTULO}>Receita: valor de partida</span>
-          <select className={CAMPO} name="baseDaReceita" required defaultValue="PREVISAO_ATUALIZADA">
+          <select className={CAMPO} name="baseDaReceita" required value={v.baseDaReceita} onChange={mudar("baseDaReceita")}>
             <option value="PREVISAO_ATUALIZADA">Previsão atualizada (com as reestimativas)</option>
             <option value="PREVISAO_INICIAL">Previsão inicial da lei</option>
             <option value="SEM_VALOR">Só a estrutura, sem valores</option>
@@ -110,12 +128,12 @@ export function FormElaborarProposta({
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Receita: reajuste (%)</span>
-          <input className={CAMPO} name="percentualDaReceita" inputMode="decimal" defaultValue="0" />
+          <input className={CAMPO} name="percentualDaReceita" inputMode="decimal" value={v.percentualDaReceita} onChange={mudar("percentualDaReceita")} />
         </label>
         <span className="hidden sm:block" />
         <label className="text-xs">
           <span className={ROTULO}>Despesa: valor de partida</span>
-          <select className={CAMPO} name="baseDaDespesa" required defaultValue="DOTACAO_INICIAL">
+          <select className={CAMPO} name="baseDaDespesa" required value={v.baseDaDespesa} onChange={mudar("baseDaDespesa")}>
             <option value="DOTACAO_INICIAL">Dotação inicial da lei</option>
             <option value="DOTACAO_AUTORIZADA">Dotação autorizada (com créditos e realocações)</option>
             <option value="EMPENHADO">Empenhado até hoje</option>
@@ -124,25 +142,94 @@ export function FormElaborarProposta({
         </label>
         <label className="text-xs">
           <span className={ROTULO}>Despesa: reajuste (%)</span>
-          <input className={CAMPO} name="percentualDaDespesa" inputMode="decimal" defaultValue="0" />
+          <input className={CAMPO} name="percentualDaDespesa" inputMode="decimal" value={v.percentualDaDespesa} onChange={mudar("percentualDaDespesa")} />
         </label>
         <fieldset className="space-y-1 text-xs sm:col-span-3">
           <legend className={ROTULO}>Fichas</legend>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="reajustaProjetos" defaultChecked /> Aplicar o reajuste também a projetos e operações especiais
+            <input type="checkbox" name="reajustaProjetos" checked={marcas.reajustaProjetos} onChange={marcar("reajustaProjetos")} /> Aplicar o reajuste também a projetos e operações especiais
           </label>
           <label className="flex items-center gap-2">
-            <input type="checkbox" name="incluiFichasAbertasPorCredito" /> Incluir fichas abertas no exercício por crédito especial ou extraordinário, e as de recurso de exercício anterior
+            <input type="checkbox" name="incluiFichasAbertasPorCredito" checked={marcas.incluiFichasAbertasPorCredito} onChange={marcar("incluiFichasAbertasPorCredito")} /> Incluir fichas abertas no exercício por crédito especial ou extraordinário, e as de recurso de exercício anterior
           </label>
         </fieldset>
       </div>
       <div className="mt-3 space-y-2">
+        {previa.previaDaImportacao !== undefined ? <PreviaDaImportacaoQuadro p={previa.previaDaImportacao} /> : null}
+        {previa.erro !== undefined ? <Resultado estado={previa} acao="previa-da-importacao" /> : null}
         <Resultado estado={estado} acao="elaborar-proposta" />
-        <button className={BOTAO} disabled={pendente || exercicios.length === 0} type="submit">
-          {pendente ? "Importando…" : "Importar e criar a proposta"}
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <button className={BOTAO_SECUNDARIO} disabled={pendente || calculando || exercicios.length === 0} type="submit" formAction={previaAction} data-botao="previa-da-importacao">
+            {calculando ? "Calculando…" : "Ver o que vai ser importado"}
+          </button>
+          <button className={BOTAO} disabled={pendente || calculando || exercicios.length === 0} type="submit" data-botao="importar">
+            {pendente ? "Importando…" : "Importar e criar a proposta"}
+          </button>
+        </div>
       </div>
     </form>
+  );
+}
+
+const reais = (v: string): string => formatarMoeda(v).texto;
+
+/**
+ * O QUADRO DA PRÉVIA (AUD-103): o que vem copiado, o que leva reajuste, o que fica de fora e o que vai pedir
+ * complemento. O que não vem da origem é dito sempre: é a pergunta de quem esperava receber pronto.
+ */
+function PreviaDaImportacaoQuadro({ p }: { readonly p: NonNullable<EstadoDaProposta["previaDaImportacao"]> }): React.ReactElement {
+  const r = p.receitas;
+  const f = p.fichas;
+  return (
+    <div
+      data-previa-da-importacao={`${String(r.linhas)}/${String(f.linhas)}`}
+      className="space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]"
+    >
+      <p className="text-sm font-semibold text-[color:var(--color-ink)]">
+        Prévia: o que vem de {String(p.exercicioDeOrigem)} para a proposta de {String(p.exercicio)}. Nada foi gravado.
+      </p>
+      {p.recusa !== null ? (
+        <p role="alert" data-recusa-da-importacao className="rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-[color:var(--color-status-erro-fg)]">
+          A importação seria recusada: {p.recusa}
+        </p>
+      ) : null}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <p className="font-semibold text-[color:var(--color-ink)]">Receitas</p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            <li data-previa-receitas={String(r.linhas)}>
+              {String(r.linhas)} de {String(r.naOrigem)} receita(s) prevista(s) copiada(s); líquido das deduções: lei de origem {reais(r.lei)}, partida {reais(r.partida)}, com
+              reajuste {reais(r.comReajuste)}.
+            </li>
+            {r.semValor > 0 ? <li>{String(r.semValor)} linha(s) chegam com valor zero: só entram no orçamento se alguém informar o valor.</li> : null}
+            {r.deducoesSemTipo > 0 ? (
+              <li>{String(r.deducoesSemTipo)} dedução(ões) sem o tipo da dedução na origem: no exercício novo, informe o tipo em Receita prevista.</li>
+            ) : null}
+          </ul>
+        </div>
+        <div>
+          <p className="font-semibold text-[color:var(--color-ink)]">Fichas</p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            <li data-previa-fichas={String(f.linhas)}>
+              {String(f.linhas)} de {String(f.naOrigem)} ficha(s) copiada(s); lei de origem {reais(f.lei)}, partida {reais(f.partida)}, com reajuste{" "}
+              {reais(f.comReajuste)}.
+            </li>
+            {f.deixadasDeFora > 0 ? (
+              <li data-previa-deixadas={String(f.deixadasDeFora)}>
+                {String(f.deixadasDeFora)} ficha(s) ficam de fora: abertas no exercício por crédito especial ou extraordinário, ou de recurso de exercício
+                anterior.
+              </li>
+            ) : null}
+            {f.semReajuste > 0 ? <li>{String(f.semReajuste)} projeto(s) ou operação(ões) especial(is) entram sem o reajuste, como escolhido.</li> : null}
+            {f.semValor > 0 ? <li>{String(f.semValor)} ficha(s) chegam com valor zero: só viram ficha se alguém informar o valor.</li> : null}
+          </ul>
+        </div>
+      </div>
+      <p>
+        <strong className="text-[color:var(--color-ink)]">Não vem da origem:</strong> empenhos, liquidações e pagamentos (o empenhado serve só como valor de
+        partida), saldos bancários, a aprovação e o número da lei. Fichas e receitas novas se incluem na proposta depois de criada.
+      </p>
+    </div>
   );
 }
 
@@ -398,6 +485,63 @@ export function FormReajusteEmLote({ propostaOrcamentariaId }: { readonly propos
               {pendente ? "Aplicando…" : "Aplicar o reajuste"}
             </button>
           </div>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * V38 (AUD-113) — REALOCAR entre linhas: tira um valor de uma linha e põe noutra do mesmo lado, num ato só. O total da
+ * proposta não muda; as duas linhas guardam o motivo e o nome da outra no histórico.
+ */
+export function FormRealocar({ propostaOrcamentariaId }: { readonly propostaOrcamentariaId: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(realocarAction, {});
+  const [lado, setLado] = useState("DESPESA");
+  return (
+    <details className={PAINEL_RECOLHIDO} data-forma="realocar">
+      <summary className={SUMARIO}>Realocar entre linhas (tirar de uma e pôr noutra, sem mudar o total)</summary>
+      <form action={action} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-acao="realocar" aria-label="Realocar valor entre linhas da proposta">
+        <ChaveDeComando />
+        <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
+        <label className="block text-xs">
+          <span className={ROTULO}>Entre</span>
+          <select className={CAMPO} name="lado" value={lado} onChange={(e) => setLado(e.target.value)} required>
+            <option value="DESPESA">Fichas</option>
+            <option value="RECEITA">Receitas</option>
+          </select>
+        </label>
+        <CampoReferenciado
+          name="deLinhaId"
+          rotulo="Tirar de"
+          catalogo="linhas-da-proposta"
+          contexto={["propostaOrcamentariaId", "lado"]}
+          obrigatorio
+          largura={2}
+          placeholder="Ficha, natureza ou fonte"
+        />
+        <label className="block text-xs">
+          <span className={ROTULO}>Valor (R$)</span>
+          <input className={CAMPO} name="valor" inputMode="decimal" required placeholder="10.000,00" />
+        </label>
+        <CampoReferenciado
+          name="paraLinhaId"
+          rotulo="Pôr em"
+          catalogo="linhas-da-proposta"
+          contexto={["propostaOrcamentariaId", "lado"]}
+          obrigatorio
+          largura={2}
+          placeholder="Ficha, natureza ou fonte"
+        />
+        <label className="block text-xs sm:col-span-2">
+          <span className={ROTULO}>Motivo</span>
+          <input className={CAMPO} name="motivo" required minLength={5} placeholder="Remanejamento para o transporte escolar" />
+        </label>
+        <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+          <Resultado estado={estado} acao="realocar" />
+          <button className={BOTAO_SECUNDARIO} disabled={pendente} type="submit">
+            {pendente ? "Realocando…" : "Realocar"}
+          </button>
         </div>
       </form>
     </details>

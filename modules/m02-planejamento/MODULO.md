@@ -385,3 +385,30 @@ Censo: `incluirFichaNaProposta`, `incluirReceitaNaProposta`, `reajustarLinhasDaP
 CHECK, reajusta com prévia e recorte, efetiva numerando 8 e 9 depois da 7), 5 mutações vermelhas. Percurso
 `scripts/percurso-v38-proposta-ate-o-empenho.mts`: elaborar, incluir receita, incluir ficha, prévia e reajuste de 2%,
 abrir o exercício, efetivar e empenhar na ficha nova do exercício seguinte.
+
+## V38 3ª leva — a prévia da importação e a realocação com o total preservado
+
+**Prévia da importação (AUD-103).** `previaDaImportacaoDaProposta` (leitura) recebe as mesmas escolhas da importação
+(sem nome nem autor) e devolve, por lado, quantas linhas vêm de quantas a origem tem, os totais da lei de origem, da
+partida e com o reajuste, as linhas que chegam com valor zero, as fichas deixadas de fora (abertas por crédito especial
+ou extraordinário, ou de recurso de exercício anterior), os projetos que entram sem reajuste e as deduções da origem
+sem o tipo da dedução (no exercício novo, nascem sem lançamento até o tipo ser informado). A recusa que o ato daria
+(destino já gerado; nada a aproveitar) vem como texto. A prévia e o ato usam a MESMA leitura (`levantarImportacao`): o
+que a prévia mostra é o que a importação grava, e o teste confere contagens e totais dos dois. A receita da prévia é
+líquida, como a página: a dedução subtrai (`resumirLadoDaImportacao`, pura e exportada).
+
+Depois de criada, a página diz "o que veio e o que não veio": quantas fichas e receitas vieram de quantas a origem tem
+hoje (`PropostaDetalhada.naOrigem`), quantas foram incluídas, e o que nunca vem da origem (empenhos, liquidações,
+pagamentos, saldos bancários, a aprovação e o número da lei).
+
+**Realocação (AUD-113).** `realocarNaProposta` (CADASTRAR_LOA) tira um valor de uma linha e põe noutra do MESMO lado:
+dois ajustes na mesma transação, com a proposta travada, o motivo nas duas e o nome da outra linha no histórico de cada
+uma ("… (realocação: 15000.00 para ficha 7)" / "… vindos de ficha 1"). Recusa: valor acima do valor da linha de origem
+(nomeando os dois), a mesma linha, linha de outra proposta ou do outro lado, e, na receita, dedução com receita (mudaria
+a receita líquida). O total do lado é conferido antes de gravar. `realocarValores` é pura e exportada. A tela escolhe as
+linhas pela busca (catálogo `linhas-da-proposta`, com a proposta e o lado do próprio formulário; exige a leitura do
+planejamento do ENTE, a mesma da página).
+
+Censo: `realocarNaProposta` = CADASTRAR_LOA (573); `previaDaImportacaoDaProposta` e `linhasDaPropostaParaEscolha` fora
+do censo (leitura). O formulário de importar passou a ter campos controlados (a prévia é outra ação no mesmo
+formulário; a razão é a mesma do reajuste).

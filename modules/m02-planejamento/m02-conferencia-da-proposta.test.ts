@@ -69,6 +69,7 @@ function proposta(over: {
     totalDaDespesa: totais(desp.toFixed(2)),
     efetivacao: null,
     destino: { existe: true, encerrado: false, fichas: 0, receitas: 0, efetivadoPorOutra: false, deducoesSemTipo: over.deducoesSemTipo ?? 0, lei: null },
+    naOrigem: { fichas: 0, receitas: 0 },
   };
 }
 

@@ -1,14 +1,16 @@
 import "dotenv/config";
 import { criarPrismaClient } from "../modules/m01-core-contabil/adapter-prisma.js";
-import { projetar } from "../modules/m02-planejamento/proposta-orcamentaria.js";
+import { detalharPropostaOrcamentaria, projetar } from "../modules/m02-planejamento/proposta-orcamentaria.js";
 import { toMoney, toPercentual } from "../packages/contracts/index.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, type Navegador } from "./percursos-navegador.js";
 
 /**
  * V38 — A JORNADA QUE A CONTADORA PEDIU, DE PONTA A PONTA, na base fictícia:
- *   1. elaborar a proposta de 2027 a partir de 2026 (importa receitas e fichas);
+ *   1. ver a PRÉVIA do que a importação traz (nada gravado) e elaborar a proposta de 2027 a partir de 2026; a proposta
+ *      tem as contagens que a prévia mostrou, e a página diz o que veio e o que não veio;
  *   2. incluir uma RECEITA nova e uma FICHA nova pelos formulários (o que a lei de 2026 não tinha);
- *   3. reajustar em lote as fichas de uma fonte: calcular a prévia e aplicar;
+ *   3. reajustar em lote as fichas de uma fonte: calcular a prévia e aplicar; depois REALOCAR 1.000,00 entre duas fichas
+ *      da fonte (o total da proposta não muda);
  *   4. abrir 2027 e gerar o orçamento; conferir as fichas de 2027 (a nova com o número seguinte) e que 2026 NÃO mudou;
  *   5. emitir um empenho de 2027 na ficha nova.
  * Escreve na base fictícia (o orçamento de 2027 fica lá). Se 2027 já tiver orçamento gerado, não executa.
@@ -84,20 +86,32 @@ try {
     // ── 1. elaborar ──
     await irPara(n, page, "/planejamento/proposta-orcamentaria");
     const descricao = `Proposta ${String(DESTINO)} — percurso V38 ${MARCA}`;
-    const r1 = await preencherEEnviar(page, "elaborar-proposta", [
+    // O primeiro botão do formulário é o da PRÉVIA (AUD-103): ela só lê, e o quadro aparece com as contagens.
+    await preencherEEnviar(page, "elaborar-proposta", [
       { sel: 'input[name="exercicio"]', valor: String(DESTINO) },
       { sel: 'select[name="exercicioDeOrigem"]', valor: String(ORIGEM), tipo: "select" },
       { sel: 'input[name="descricao"]', valor: descricao },
       { sel: 'select[name="baseDaReceita"]', valor: "PREVISAO_INICIAL", tipo: "select" },
       { sel: 'select[name="baseDaDespesa"]', valor: "DOTACAO_INICIAL", tipo: "select" },
     ]);
-    const proposta = await prisma.propostaOrcamentaria.findFirst({ where: { descricao }, select: { id: true, _count: { select: { linhasDeReceita: true, linhasDeDespesa: true } } } });
-    conferir(r1.tipo === "ok" && proposta !== null && proposta._count.linhasDeDespesa > 0, `proposta de ${String(DESTINO)} elaborada de ${String(ORIGEM)}: ${String(proposta?._count.linhasDeReceita ?? 0)} receitas e ${String(proposta?._count.linhasDeDespesa ?? 0)} fichas importadas (${r1.texto.slice(0, 50)})`);
+    const lerPrevia = async (atributo: string): Promise<number> => Number(await page.$eval(`[${atributo}]`, (e, a) => e.getAttribute(a as string) ?? "-1", atributo).catch(() => "-1"));
+    const previaFichas = await lerPrevia("data-previa-fichas");
+    const previaReceitas = await lerPrevia("data-previa-receitas");
+    const criadaNaPrevia = await prisma.propostaOrcamentaria.count({ where: { descricao } });
+    conferir(previaFichas > 0 && criadaNaPrevia === 0, `prévia da importação de ${String(ORIGEM)}: ${String(previaFichas)} ficha(s) e ${String(previaReceitas)} receita(s) a copiar, nada gravado`);
+    await page.click('form[data-acao="elaborar-proposta"] button[data-botao="importar"]');
+    const proposta = await esperarNoBanco(() => prisma.propostaOrcamentaria.findFirst({ where: { descricao }, select: { id: true, _count: { select: { linhasDeReceita: true, linhasDeDespesa: true } } } }), 120);
+    conferir(
+      proposta !== null && proposta._count.linhasDeDespesa === previaFichas && proposta._count.linhasDeReceita === previaReceitas,
+      `proposta de ${String(DESTINO)} elaborada de ${String(ORIGEM)}: ${String(proposta?._count.linhasDeReceita ?? 0)} receitas e ${String(proposta?._count.linhasDeDespesa ?? 0)} fichas importadas, as contagens da prévia`
+    );
     if (proposta === null) throw new Error("sem proposta, o percurso não segue");
     const ROTA = `/planejamento/proposta-orcamentaria/${proposta.id}`;
 
     // ── 2. incluir receita e ficha novas ──
     await irPara(n, page, ROTA);
+    const veioFichas = Number(await page.$eval("[data-veio-fichas]", (e) => e.getAttribute("data-veio-fichas") ?? "-1").catch(() => "-1"));
+    conferir(veioFichas === proposta._count.linhasDeDespesa, `a página diz o que veio: ${String(veioFichas)} ficha(s) de ${String(ORIGEM)}, e o que não vem da origem`);
     const r2 = await preencherEEnviar(page, "incluir-receita", [
       { sel: "naturezaReceita", valor: naturezaR.codigo, busca: naturezaR.codigo, tipo: "referencia" },
       { sel: "fonte", valor: fonteR.codigo, busca: fonteR.codigo, tipo: "referencia" },
@@ -138,6 +152,34 @@ try {
     const aplicado = await esperarNoBanco(async () => { const c = await prisma.ajusteDeDespesaDaProposta.count({ where: { linha: { propostaOrcamentariaId: proposta.id } } }); return c > 0 ? c : null; }, 60);
     conferir(aplicado === linhasDaPrevia, `reajuste aplicado: ${String(aplicado)} ajuste(s), o mesmo número da prévia`);
 
+    // ── 3b. realocar 1.000,00 entre duas fichas da fonte (AUD-113): o total da proposta não muda ──
+    const duas = await prisma.linhaDeDespesaDaProposta.findMany({
+      where: { propostaOrcamentariaId: proposta.id, fichaDeOrigem: { fonteId: base.fonteId, valorDotado: { gte: 10000 } } },
+      orderBy: { fichaDeOrigem: { numero: "asc" } },
+      take: 2,
+      select: { id: true, fichaDeOrigem: { select: { numero: true } } },
+    });
+    if (duas.length < 2) throw new Error(`a fonte ${base.fonte.codigo} não tem duas fichas com dotação para a realocação`);
+    const [de, para] = [duas[0]!, duas[1]!];
+    const antesDaRealocacao = (await detalharPropostaOrcamentaria(prisma, proposta.id))!;
+    const vig = (d: typeof antesDaRealocacao, id: string): string => d.despesas.find((l) => l.id === id)?.valorVigente ?? "?";
+    await irPara(n, page, ROTA);
+    const rr = await preencherEEnviar(page, "realocar", [
+      { sel: 'select[name="lado"]', valor: "DESPESA", tipo: "select" },
+      { sel: "deLinhaId", valor: de.id, busca: `ficha ${String(de.fichaDeOrigem!.numero)}`, tipo: "referencia" },
+      { sel: 'input[name="valor"]', valor: "1.000,00" },
+      { sel: "paraLinhaId", valor: para.id, busca: `ficha ${String(para.fichaDeOrigem!.numero)}`, tipo: "referencia" },
+      { sel: 'input[name="motivo"]', valor: `Remanejamento (percurso ${MARCA})` },
+    ]);
+    const depoisDaRealocacao = (await detalharPropostaOrcamentaria(prisma, proposta.id))!;
+    conferir(
+      rr.tipo === "ok" &&
+        toMoney(vig(antesDaRealocacao, de.id)).minus(vig(depoisDaRealocacao, de.id)).toFixed(2) === "1000.00" &&
+        toMoney(vig(depoisDaRealocacao, para.id)).minus(vig(antesDaRealocacao, para.id)).toFixed(2) === "1000.00" &&
+        depoisDaRealocacao.totalDaDespesa.vigente === antesDaRealocacao.totalDaDespesa.vigente,
+      `realocados 1.000,00 da ficha ${String(de.fichaDeOrigem!.numero)} para a ${String(para.fichaDeOrigem!.numero)} pela tela; despesa da proposta mantida em ${depoisDaRealocacao.totalDaDespesa.vigente} (${rr.texto.slice(0, 60)})`
+    );
+
     // ── 4. abrir 2027 e gerar o orçamento ──
     await irPara(n, page, ROTA);
     if ((await prisma.exercicio.findUnique({ where: { ano: DESTINO } })) === null) {
@@ -156,7 +198,7 @@ try {
       const de2026DaFonte = await prisma.fichaOrcamentaria.findMany({ where: { exercicio: ORIGEM, fonteId: base.fonteId, valorDotado: { gt: 0 } }, select: { numero: true, valorDotado: true } });
       const esperado = de2026DaFonte.reduce((s, f) => toMoney(s.plus(projetar(toMoney(f.valorDotado.toFixed(2)), toPercentual("2")))), toMoney("0"));
       const obtido = fichas2027.filter((f) => f.fonteId === base.fonteId && f.numero <= maiorNumero).reduce((s, f) => toMoney(s.plus(toMoney(f.valorDotado.toFixed(2)))), toMoney("0"));
-      conferir(esperado.toFixed(2) === obtido.toFixed(2), `as fichas de ${String(DESTINO)} da fonte ${base.fonte.codigo} somam o de ${String(ORIGEM)} com 2% (${obtido.toFixed(2)})`);
+      conferir(esperado.toFixed(2) === obtido.toFixed(2), `as fichas de ${String(DESTINO)} da fonte ${base.fonte.codigo} somam o de ${String(ORIGEM)} com 2% (${obtido.toFixed(2)}): a realocação ficou dentro da fonte e não mudou a soma`);
       const receita2027 = await prisma.receitaPrevista.findFirst({ where: { exercicio: DESTINO, naturezaReceitaId: naturezaR.id, fonteId: fonteR.id }, select: { valorPrevisto: true } });
       conferir(receita2027?.valorPrevisto.toFixed(2) === "70000.00", `a receita nova ${naturezaR.codigo} está prevista em ${String(DESTINO)} com 70.000,00`);
       const depois = await de2026();

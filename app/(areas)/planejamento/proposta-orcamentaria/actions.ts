@@ -11,8 +11,11 @@ import {
   elaborarProposta,
   incluirFicha,
   incluirReceita,
+  previaDaImportacao,
   previaDoReajuste,
   reajustarLinhas,
+  realocar,
+  type PreviaDaImportacao,
   type RecorteDoReajuste,
   type ResultadoDoReajuste,
 } from "../../../../lib/portas/proposta-orcamentaria";
@@ -30,29 +33,47 @@ export interface EstadoDaProposta {
   readonly propostaOrcamentariaId?: string;
   /** V38 — a prévia do reajuste em lote, quando a pessoa pede antes de aplicar. */
   readonly previa?: ResultadoDoReajuste;
+  /** V38 (AUD-103) — a prévia do que a importação traria, antes de criar a proposta. */
+  readonly previaDaImportacao?: PreviaDaImportacao;
 }
 
 const ROTA = "/planejamento/proposta-orcamentaria";
 
 const campo = (f: FormData, nome: string): string => String(f.get(nome) ?? "").trim();
 
+/** As escolhas da importação, iguais para a prévia e para o ato. */
+function escolhasDaImportacao(formData: FormData) {
+  return {
+    exercicio: campo(formData, "exercicio"),
+    exercicioDeOrigem: campo(formData, "exercicioDeOrigem"),
+    baseDaReceita: campo(formData, "baseDaReceita") as "PREVISAO_INICIAL",
+    percentualDaReceita: campo(formData, "percentualDaReceita") || "0",
+    baseDaDespesa: campo(formData, "baseDaDespesa") as "DOTACAO_INICIAL",
+    percentualDaDespesa: campo(formData, "percentualDaDespesa") || "0",
+    // Caixa de seleção desmarcada não vai no formulário: ausência é "não".
+    aproveitaReceitas: formData.get("aproveitaReceitas") === "on",
+    aproveitaFichas: formData.get("aproveitaFichas") === "on",
+    reajustaProjetos: formData.get("reajustaProjetos") === "on",
+    incluiFichasAbertasPorCredito: formData.get("incluiFichasAbertasPorCredito") === "on",
+  };
+}
+
+/**
+ * V38 (AUD-103) — A PRÉVIA DA IMPORTAÇÃO só lê, e por isso não passa pela chave de comando (a mesma razão da prévia do
+ * reajuste: com a chave, o "Importar" que vem depois seria tomado por repetição).
+ */
+export async function previaImportacaoAction(_prev: EstadoDaProposta, formData: FormData): Promise<EstadoDaProposta> {
+  try {
+    return { previaDaImportacao: await previaDaImportacao(escolhasDaImportacao(formData)) };
+  } catch (e) {
+    return { erro: mensagemDoErro(e, "Não foi possível calcular a prévia da importação.") };
+  }
+}
+
 export async function elaborarPropostaAction(_prev: EstadoDaProposta, formData: FormData): Promise<EstadoDaProposta> {
   return comComandoDoFormulario(formData, async () => {
     try {
-      const r = await elaborarProposta({
-        exercicio: campo(formData, "exercicio"),
-        exercicioDeOrigem: campo(formData, "exercicioDeOrigem"),
-        descricao: campo(formData, "descricao"),
-        baseDaReceita: campo(formData, "baseDaReceita") as "PREVISAO_INICIAL",
-        percentualDaReceita: campo(formData, "percentualDaReceita") || "0",
-        baseDaDespesa: campo(formData, "baseDaDespesa") as "DOTACAO_INICIAL",
-        percentualDaDespesa: campo(formData, "percentualDaDespesa") || "0",
-        // Caixa de seleção desmarcada não vai no formulário: ausência é "não".
-        aproveitaReceitas: formData.get("aproveitaReceitas") === "on",
-        aproveitaFichas: formData.get("aproveitaFichas") === "on",
-        reajustaProjetos: formData.get("reajustaProjetos") === "on",
-        incluiFichasAbertasPorCredito: formData.get("incluiFichasAbertasPorCredito") === "on",
-      });
+      const r = await elaborarProposta({ ...escolhasDaImportacao(formData), descricao: campo(formData, "descricao") });
       revalidatePath(ROTA);
       return {
         sucesso:
@@ -215,6 +236,28 @@ export async function reajustarAction(_prev: EstadoDaProposta, formData: FormDat
       return { sucesso: `Reajuste aplicado em ${String(r.linhas)} linha(s): de ${formatarMoeda(r.totalAntes).texto} para ${formatarMoeda(r.totalDepois).texto}.` };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível reajustar.") };
+    }
+  });
+}
+
+/** V38 (AUD-113) — REALOCAR: tira um valor de uma linha e põe noutra do mesmo lado; o total da proposta não muda. */
+export async function realocarAction(_prev: EstadoDaProposta, formData: FormData): Promise<EstadoDaProposta> {
+  return comComandoDoFormulario(formData, async () => {
+    const propostaOrcamentariaId = campo(formData, "propostaOrcamentariaId");
+    const lado = campo(formData, "lado");
+    if (lado !== "RECEITA" && lado !== "DESPESA") return { erro: "Escolha receitas ou fichas. Nada foi gravado." };
+    const valor = valorDigitadoEmDecimal(campo(formData, "valor"));
+    if (valor === "") return { erro: "Informe o valor a realocar em reais (ex.: 10.000,00). Nada foi gravado." };
+    try {
+      const r = await realocar({ propostaOrcamentariaId, lado, deLinhaId: campo(formData, "deLinhaId"), paraLinhaId: campo(formData, "paraLinhaId"), valor, motivo: campo(formData, "motivo") });
+      revalidatePath(`${ROTA}/${propostaOrcamentariaId}`);
+      return {
+        sucesso:
+          `Realocado ${formatarMoeda(valor).texto}: ${r.de.rotulo} de ${formatarMoeda(r.de.antes).texto} para ${formatarMoeda(r.de.depois).texto}; ` +
+          `${r.para.rotulo} de ${formatarMoeda(r.para.antes).texto} para ${formatarMoeda(r.para.depois).texto}. Total mantido em ${formatarMoeda(r.totalDepois).texto}.`,
+      };
+    } catch (e) {
+      return { erro: mensagemDoErro(e, "Não foi possível realocar.") };
     }
   });
 }
