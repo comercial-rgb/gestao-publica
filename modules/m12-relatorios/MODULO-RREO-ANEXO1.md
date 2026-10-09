@@ -86,3 +86,13 @@ inscrever um valor diferente do que o M05 deixou sem liquidar, R4 grita.
 - **Detalhamento:** os valores (b) e (c) de cada linha da receita abrem a lista de guias com as receitas de código
   iniciado pelo da linha e o período do bimestre ou do exercício até ele; a soma da lista é o valor do Anexo (t9).
   O Anexo 1 ganhou o CSV das tabelas, como os outros 18.
+
+## V37 — a despesa até os documentos
+
+"Empenhadas até" e "Liquidadas até" de cada linha (categoria ou grupo) abrem `/relatorios/rreo/anexo1/despesa`: os
+empenhos ou as liquidações da linha no recorte, cada um com o que soma na célula. `documentosDaDespesaDoAnexo1` usa a
+mesma ficha e a mesma régua de janela (`noRecorte`, que o `agregarEstornaveis` também passou a usar), e o líquido por
+documento segue a doutrina do `somaLiquidaEstornaveis`: a anulação total zera, a parcial reduz, e só a que está no
+recorte conta. O t10 confere a igualdade em todas as linhas e nas quatro colunas (no bimestre e até, empenhada e
+liquidada), contra o `anexo1`, com anulações dentro e fora da janela; 3 mutações vermelhas. Os demais anexos do RREO e
+do RGF continuam sem detalhamento até o documento.

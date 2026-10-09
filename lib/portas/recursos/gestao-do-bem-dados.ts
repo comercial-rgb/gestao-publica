@@ -1,4 +1,5 @@
 import { diaCivilBr } from "../../../packages/datas/index.js";
+import { campoMarcado } from "../../molde/marcado";
 import {
   cadastrarLocalizacaoFisica,
   cadastrarMotivoDeBaixa,
@@ -224,7 +225,7 @@ export async function criarLocalizacao(c: Campos): Promise<void> {
       ...(opcional(c, "setorId") !== undefined ? { setorId: t(c, "setorId") } : {}),
       // ⚠️ O checkbox do molde chega como "on"/ausente. `=== "on"` (e não "truthy") para que
       // um campo vazio, que é o caso comum, não vire divulgação por acidente.
-      publicavelNaTransparencia: t(c, "publicavelNaTransparencia") === "on",
+      publicavelNaTransparencia: campoMarcado(t(c, "publicavelNaTransparencia")),
       criadoPor,
     })
   );

@@ -210,6 +210,7 @@ export const PLANEJAMENTO: readonly RelatorioNav[] = [
   { href: "/planejamento/receita-prevista", numero: "Receita prevista", rotulo: "Receita prevista", descricao: "As linhas da previsão da receita da LOA, com o tipo de cada dedução e o documento de origem." },
   { href: "/planejamento/fichas", numero: "Fichas", rotulo: "Fichas orçamentárias", descricao: "Fichas orçamentárias da LOA pela classificação completa da despesa." },
   { href: "/planejamento/loa", numero: "LOA", rotulo: "Lei Orçamentária Anual", descricao: "Receita prevista, despesa fixada, equilíbrio e anexos da Lei 4.320/64 do exercício." },
+  { href: "/planejamento/loa/vinculo-ppa", numero: "PPA e LOA", rotulo: "Ações do PPA na LOA", descricao: "As fichas da LOA que executam cada ação do Plano Plurianual, e as fichas sem ação correspondente no plano." },
   { href: "/planejamento/leis-orcamentarias", numero: "Leis", rotulo: "Projeto e Lei da LOA", descricao: "O projeto enviado ao Legislativo, a lei que o aprovou e os documentos anexos, por exercício." },
   // V29: o orçamento do exercício seguinte, importado de um exercício executado e alterado antes de virar fichas.
   { href: "/planejamento/proposta-orcamentaria", numero: "Proposta", rotulo: "Proposta Orçamentária", descricao: "O orçamento do exercício seguinte a partir das receitas e fichas de um exercício executado, com reajuste e alterações, até gerar as fichas." },
@@ -662,6 +663,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "LOA", itens: [
         { href: "/planejamento/loa", rotulo: "Lei Orçamentária Anual" },
+        { href: "/planejamento/loa/vinculo-ppa", rotulo: "Ações do PPA na LOA" },
         { href: "/planejamento/receita-prevista", rotulo: "Receitas previstas" },
         { href: "/planejamento/fichas", rotulo: "Fichas e dotações" },
         { href: "/planejamento/unidades-orcamentarias", rotulo: "Unidades orçamentárias" },

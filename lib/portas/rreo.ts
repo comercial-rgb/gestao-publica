@@ -8,7 +8,7 @@ import { anexo8, type Anexo8 } from "../../modules/m12-relatorios/rreo-anexo8";
 import { anexo11, type Anexo11 } from "../../modules/m12-relatorios/rreo-anexo11";
 import { anexo13, type Anexo13 } from "../../modules/m12-relatorios/rreo-anexo13";
 import { rgfAnexo1, type Anexo1Rgf, type Quadrimestre } from "../../modules/m12-relatorios/rgf-anexo1";
-import { anexo1, type Anexo1 } from "../../modules/m12-relatorios/rreo-anexo1";
+import { anexo1, documentosDaDespesaDoAnexo1, type Anexo1, type DocumentoDaDespesaRreo, type RecorteDaDespesa } from "../../modules/m12-relatorios/rreo-anexo1";
 import { anexo2, type Anexo2 } from "../../modules/m12-relatorios/rreo-anexo2";
 import { rgfAnexo5, COLUNAS_ANEXO5, type Anexo5 } from "../../modules/m12-relatorios/rgf-anexo5";
 import { diferimentoFundeb, SOBRE_R_DIF, type DiferimentoFundeb } from "../../modules/m12-relatorios/mde-diferimento";
@@ -155,6 +155,19 @@ export async function gerarRreoAnexo1(p: {
 }): Promise<Anexo1> {
   return anexo1(cliente(), { exercicio: p.exercicio, bimestre: p.bimestre });
 }
+
+/** V37 — os documentos de uma célula da despesa do Anexo 1; a soma da lista é o valor da célula. */
+export async function lerDocumentosDaDespesaDoAnexo1(p: {
+  readonly exercicio: number;
+  readonly bimestre: Bimestre;
+  readonly categoria: string;
+  readonly grupo: string | null;
+  readonly estagio: "empenhada" | "liquidada";
+  readonly recorte: RecorteDaDespesa;
+}): Promise<{ readonly documentos: readonly DocumentoDaDespesaRreo[]; readonly total: string }> {
+  return documentosDaDespesaDoAnexo1(cliente(), p);
+}
+export type { DocumentoDaDespesaRreo, RecorteDaDespesa };
 
 /** A LEITURA do RREO Anexo 2 (Despesa por Função/Subfunção) para a tela. */
 export async function gerarRreoAnexo2(p: {

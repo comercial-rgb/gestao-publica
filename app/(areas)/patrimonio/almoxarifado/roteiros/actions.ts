@@ -6,6 +6,7 @@ import { ROTEIROS_DO_ALMOXARIFADO } from "../../../../../lib/portas/recursos/rot
 import { criarRoteiroDoAlmoxarifado } from "../../../../../lib/portas/recursos/roteiros-dados";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
+import { campoMarcado } from "../../../../../lib/molde/marcado";
 
 /**
  * V37 — A Server Action do roteiro do almoxarifado. Só cria: o despacho é fail-closed, e as recusas do domínio
@@ -27,7 +28,7 @@ export async function acaoDeRoteirosDoAlmoxarifadoAction(_prev: EstadoDoMolde, f
     revalidatePath(ROTEIROS_DO_ALMOXARIFADO.rota);
     return {
       sucesso:
-        campos["substituir"] === "on" || campos["substituir"] === "1"
+        campoMarcado(campos["substituir"])
           ? "Contas do roteiro trocadas. Os próximos movimentos já lançam pelas novas contas."
           : "Roteiro contábil cadastrado. O movimento já pode ser registrado no almoxarifado.",
     };

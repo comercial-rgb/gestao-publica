@@ -170,6 +170,15 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrita por `itens: { create: ... }` em registrarRecebimentoDefinitivo (modules/m11-licitacoes/ordem-de-servico.ts, " +
     "V7 M2 U2); LIDA pelas relações `recebidos` do item medido (o elegível ao definitivo) e `itens` do recebimento (o valor " +
     "do termo). A linha não existe fora do recebimento que a declarou",
+  // ── V37 — duas da V36 que o censo acusava como órfãs: são aninhadas, e faltava declarar ──
+  ItemDaComposicaoDeFontes:
+    "escrito por `itens: { create: ... }` em definirFontesDaNatureza (modules/m04-receita/fontes-da-natureza.ts); LIDO " +
+    "pela relação `itens` da composição em composicoesVigentes. O item (fonte e percentual) não existe fora da " +
+    "composição que o declarou: uma composição nova é uma versão inteira, não um item avulso",
+  ContaDoControleDosRestos:
+    "escrita por `contas: { create: ... }` em declararContasDoControleDosRestos " +
+    "(modules/m08-restos-a-pagar/controle-dos-restos.ts); LIDA pela relação `contas` da declaração mais recente em " +
+    "contasVigentes. A conta de cada papel não existe fora da declaração versionada que a fixou",
 };
 
 /**

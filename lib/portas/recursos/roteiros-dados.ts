@@ -16,6 +16,7 @@ import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
 import { OPCOES_DE_CHAVE, ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO, rotuloDoTipoPatrimonial } from "./roteiros.js";
+import { campoMarcado } from "../../molde/marcado";
 
 /**
  * ═══ OS DADOS DO ROTEIRO CONTÁBIL DO PATRIMÔNIO — M10, TR 5.10.1.71 ═══
@@ -461,7 +462,7 @@ export async function criarRoteiroDoAlmoxarifado(c: Campos): Promise<void> {
       contaDebitoId: t(c, "contaDebitoId"),
       contaCreditoId: t(c, "contaCreditoId"),
       // V37 — a troca das contas de um roteiro existente só com a marcação explícita.
-      substituir: t(c, "substituir") === "on" || t(c, "substituir") === "1",
+      substituir: campoMarcado(t(c, "substituir")),
       criadoPor,
     })
   );

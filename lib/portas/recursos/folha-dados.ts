@@ -1,4 +1,5 @@
 import { formatarMoeda } from "../../format/moeda";
+import { campoMarcado } from "../../molde/marcado";
 import { comoLinha, liquidoDeUmFato } from "../../../modules/m05-despesa/consultas.js";
 import { somaLiquidaEstornaveis } from "../../../packages/estornaveis/index.js";
 import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
@@ -64,7 +65,7 @@ export { PortaSemBancoError };
 type Campos = Readonly<Record<string, string>>;
 const t = (c: Campos, k: string): string => (c[k] ?? "").trim();
 const opcional = (c: Campos, k: string): string | undefined => (t(c, k) === "" ? undefined : t(c, k));
-const marcado = (c: Campos, k: string): boolean => ["on", "true", "1", "sim"].includes(t(c, k).toLowerCase());
+const marcado = (c: Campos, k: string): boolean => campoMarcado(t(c, k));
 function paginacao(c: ConsultaDoMolde): { readonly skip: number; readonly take: number } {
   return { skip: (c.pagina - 1) * TAMANHO_DE_PAGINA, take: TAMANHO_DE_PAGINA };
 }

@@ -534,3 +534,12 @@ ausência vale tanto quanto marcar presença**. Nada foi construído para elas.
   requisição (`lotes-da-requisicao`, pelo item escolhido) e o da contagem (`lotes-do-inventario`, pelo material e
   pelo depósito do inventário) nasciam VAZIOS — a página não sabia o material —, e material controlado por lote não
   tinha como ser atendido pela tela.
+
+## V37 — o roteiro do almoxarifado com versões
+
+A família `ALMOXARIFADO` entrou em `VersaoDeRoteiro` (migration aditiva `20261109020000`, só ADD VALUE no enum). A
+parametrização grava versão publicada; trocar as contas exige a marcação "Trocar as contas de um roteiro já cadastrado"
+e vira versão nova, com autor, momento e motivo. O lançamento (`exigirRoteiro`) lê a versão publicada mais recente e,
+sem versão, a linha antiga de `RoteiroAlmoxarifado`; o já lançado não muda. A proposta separada da publicação
+(`proporVersaoDeRoteiro`) continua só para o patrimonial e o resultado da alienação. Teste `m10-roteiros` t-alm4
+(N=2 trocas a partir da linha antiga), 3 mutações vermelhas.

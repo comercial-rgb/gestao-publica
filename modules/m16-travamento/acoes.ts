@@ -3332,6 +3332,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   relatorioProcessosLicitatorios: "leitura",
   balancoOrcamentario: "leitura",
   anexo1: "leitura (RREO Anexo 1 — Balanço Orçamentário, LRF art. 52)",
+  documentosDaDespesaDoAnexo1: "leitura (V37 — os empenhos ou liquidações de uma célula da despesa do RREO Anexo 1; a soma é a célula — não muta)",
   anexo2: "leitura (RREO Anexo 2 — Despesa por Função/Subfunção, LRF art. 52 II)",
   anexo3: "leitura (RREO Anexo 3 — Receita Corrente Líquida, LRF art. 53 I)",
   anexo7: "leitura (RREO Anexo 7 — Restos a Pagar por Poder e Órgão, LRF art. 53 V)",
@@ -3512,6 +3513,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   situacaoDosEmpenhos: "leitura (a situação de cada empenho do exercício para os restos a pagar — composável do encerramento e do BF parcial)",
   listarAnexosDasLiquidacoes: "leitura (os comprovantes das liquidações autorizadas pela porta — não muta)",
   lerDadosDaLoa: "leitura (dotação inicial das fichas e previsão inicial da receita do exercício — não muta)",
+  vinculoPpaLoa: "leitura (V37 — as fichas da LOA que executam cada ação do PPA, derivadas dos classificadores — não muta)",
   loaDoExercicio: "leitura (a LOA e os anexos da Lei 4.320 montados sobre os dados já registrados — demonstrativo, não muta)",
   //
   autenticar: "autenticação (precede a autorização — autorizá-la seria circular)",

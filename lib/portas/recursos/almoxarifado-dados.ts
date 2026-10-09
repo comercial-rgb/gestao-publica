@@ -28,6 +28,7 @@ import {
   type TipoMovimentoFisicoEstoque,
 } from "../../../modules/m10-patrimonial/estoque-fisico-dominio.js";
 import { cadastrarClasseDeMaterial } from "../../../modules/m10-patrimonial/almoxarifado.js";
+import { campoMarcado } from "../../molde/marcado";
 import {
   relacionarElementoAoMaterial,
   relacionarMarcaAoMaterial,
@@ -851,10 +852,7 @@ const opcional = (c: Campos, k: string): string | undefined => {
   const v = t(c, k);
   return v === "" ? undefined : v;
 };
-const marcado = (c: Campos, k: string): boolean => {
-  const v = t(c, k);
-  return v === "on" || v === "true" || v === "1";
-};
+const marcado = (c: Campos, k: string): boolean => campoMarcado(t(c, k));
 
 export async function criarMaterial(c: Campos): Promise<void> {
   await comEscritaAutenticada("CADASTRAR_MATERIAL", (criadoPor) =>

@@ -1,5 +1,6 @@
 import { serializar } from "../../packages/contracts/index.js";
 import { loaDoExercicio } from "../../modules/m02b-plurianual/consultas-loa.js";
+import { vinculoPpaLoa, type VinculoPpaLoa } from "../../modules/m02b-plurianual/vinculo-ppa-loa.js";
 import {
   ConferenciaDaLoaError,
   type AnexoIndisponivel,
@@ -62,6 +63,13 @@ export async function lerLoa(p: { readonly exercicio: number }): Promise<LoaDaTe
   await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   return loaParaTela(await loaDoExercicio(cliente(), { exercicio: p.exercicio }));
 }
+
+/** V37 — o vínculo PPA → LOA do exercício: as fichas que executam cada ação do plano, e as fichas sem ação. */
+export async function lerVinculoPpaLoa(p: { readonly exercicio: number }): Promise<VinculoPpaLoa> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return vinculoPpaLoa(cliente(), { exercicio: p.exercicio });
+}
+export type { VinculoPpaLoa };
 
 /** V35 C9 — a mesma conversão para a tela interna e para o portal da transparência: uma LOA, uma forma. */
 export function loaParaTela(l: Awaited<ReturnType<typeof loaDoExercicio>>): LoaDaTela {

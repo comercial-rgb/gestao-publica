@@ -10,7 +10,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 | HEAD | publicado como `20f461d` (main e `/release` = `20f461d`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); desfazer lotação (exige DELETE no censo do papel); vínculo PPA–LOA. |
+| Próximo passo | RREO-RGF-SEM-DRILL-DOWN nos demais anexos (o Anexo 1 abre receita e despesa); replicação PPA → LDO → LOA (5.9.1.25); decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,35 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Décima primeira rodada da V37 (09/10/2026): o que ficou aberto
+
+Pedido: "O que ficou aberto continue para corrigir todos este e ao final empurrar tudo para producao".
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Desfazer a lotação (M21) | "Desfazer lotação" no detalhe do setor, com a busca dos lotados daquele setor; DELETE de `UsuarioDoSetor` declarado no censo do papel de runtime | /protocolo/setores/[id] | `m21-setor-situacao` t3 e t4 (t4 como o papel da aplicação; tirar o grant do censo deixa vermelho), `setores-cadastro` t5; 4 mutações vermelhas |
+| Roteiro do almoxarifado com versões (M10; fecha `ROTEIRO-ALMOXARIFADO-SEM-VERSAO`) | trocar as contas com a marcação; versão nova com motivo; o lançamento lê a vigente; o já lançado não muda | /patrimonio/almoxarifado/roteiros | migration `20261109020000` (ADD VALUE no enum, aditiva) em teste, local, fictícia; `m10-roteiros` 16/16 com t-alm4; `almoxarifado-catalogos` t3; 4 mutações vermelhas |
+| Despesa do Anexo 1 até os documentos (M12; fecha a metade da despesa do Anexo 1 em `RREO-RGF-SEM-DRILL-DOWN`) | empenhadas e liquidadas até o bimestre abrem os empenhos ou as liquidações, e o total é a célula | /relatorios/rreo/anexo1/despesa | `m12-rreo-anexo1` t10 (todas as linhas, quatro colunas, 20 células), 3 mutações vermelhas |
+| Vínculo PPA → LOA (M02b; fecha `VINCULO-PPA-LOA`) | as fichas que executam cada ação do plano, derivado dos classificadores; as fichas sem ação com o motivo | /planejamento/loa/vinculo-ppa | `m02b-vinculo-ppa-loa` 2/2, 4 mutações vermelhas |
+
+**Defeito antigo achado pelo percurso e corrigido:** o campo de marcação do molde envia "sim", e quatro portas só
+aceitavam "on"/"true"/"1" — "Controla lote e validade" do material, "Consumo imediato" da ordem de compra, "Invalidez
+permanente" do dependente e "divulgar a localização na transparência" do bem gravavam sempre "não" pela tela. Leitor
+único `lib/molde/marcado.ts`; `test/ui/campo-marcado-do-molde.test.ts` confere o valor enviado pelo formulário e que
+nenhuma porta compara um campo de marcação por conta própria (em todos os descritores); 3 mutações vermelhas.
+
+**Guarda que estava vermelha antes desta rodada:** `test/modelo-sem-caso-de-uso` acusava `ItemDaComposicaoDeFontes` e
+`ContaDoControleDosRestos` (V36) como órfãos; conferido no HEAD sem as mudanças (vermelho também). São gravados por
+criação aninhada e lidos pela relação; declarados com escritor e leitor nomeados.
+
+Censo de serviços 568 -> 569 (`desfazerLotacaoNoSetor`); leitores `documentosDaDespesaDoAnexo1` e `vinculoPpaLoa`
+classificados. Tipos: backend, app e scripts sem erro (o seed de roteiros de demonstração restringe a família às duas
+que passam pela proposta). Testes dirigidos: 22 arquivos, 212 testes (o único vermelho era a guarda acima). Percurso
+`percurso-v37-pendencias-finais` 7/7 na 3011, base fictícia (lotação desfeita e refeita; troca do roteiro recusada sem a
+marcação e feita com ela; Anexo 1 até os documentos, empenhada 34.061,46 e liquidada 16.585,00; PPA na LOA com 4 ações e
+1.053 fichas sem ação, como o leitor). Na base fictícia o percurso cadastrou o roteiro do ajuste por sobra com contas
+escolhidas pela busca, e o trocou.
 
 ### Décima rodada da V37 (09/10/2026): lotar usuário no setor
 

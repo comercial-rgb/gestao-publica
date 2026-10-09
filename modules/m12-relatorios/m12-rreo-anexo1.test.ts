@@ -10,13 +10,14 @@ import { roteiroArrecadacao } from "../m04-receita/dominio.js";
 import { anularArrecadacao, registrarArrecadacao } from "../m04-receita/servico.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../m05-despesa/dominio.js";
-import { empenhar } from "../m05-despesa/servico.js";
+import { anularEmpenho, empenhar } from "../m05-despesa/servico.js";
+import { anularEmpenhoParcial, anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { encerrarExercicioComRestos } from "../m08-restos-a-pagar/encerramento.js";
 import { criarM03Deps } from "../m03-creditos/adapter-prisma.js";
 import { criarDecreto, criarLei, executarCredito } from "../m03-creditos/servico.js";
-import { anexo1, type LinhaReceitaRreo } from "./rreo-anexo1.js";
+import { anexo1, documentosDaDespesaDoAnexo1, type LinhaReceitaRreo } from "./rreo-anexo1.js";
 import { listarArrecadacoes } from "../m04-receita/consultas.js";
 import { fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 
@@ -342,6 +343,69 @@ describe("M12 — RREO Anexo 1 (LRF art. 52)", () => {
     }
     // O prefixo recorta: nenhuma receita começa por 7 entre as guias de IPTU.
     expect(await guias("7", "2026-01-01", "2026-04-30")).toBe("0.00");
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // t10 — V37: A DESPESA ATÉ OS DOCUMENTOS. Para CADA linha da despesa (categoria e grupo) e cada coluna (empenhada e
+  // liquidada, no bimestre e até o bimestre), a soma da lista de documentos é o valor do Anexo. N=2 grupos na categoria
+  // 3 e um na 4; anulação parcial e total dentro da janela, parcial fora dela, liquidação anulada em parte.
+  // ═══════════════════════════════════════════════════════════════════════════
+  it("t10: a soma dos documentos de cada célula da despesa é o valor do Anexo (todas as linhas, quatro colunas)", async () => {
+    await prisma.naturezaDespesa.createMany({ data: [
+      { id: "nd-pes", codCategoria: "3", codNatureza: "1", codModalidade: "90", codElemento: "11", codigoCompleto: "319011", descricao: "Pessoal — vencimentos" },
+      { id: "nd-inv", codCategoria: "4", codNatureza: "4", codModalidade: "90", codElemento: "52", codigoCompleto: "449052", descricao: "Investimentos — equipamentos" },
+    ] });
+    for (const [id, numero, nd] of [["ficha-2", 2, "nd-pes"], ["ficha-3", 3, "nd-inv"]] as const) {
+      await criarFichaDeTeste(prisma, { id, exercicio: EXERC, numero, orgaoId: "org-01", unidadeOrcId: "uo-01", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg", acaoId: "aca", naturezaDespesaId: nd, fonteId: FONTE, valorDotado: "100000.00" });
+    }
+    const empenharNa = async (fichaId: string, numero: string, valor: string, data: string, tipo: "ORDINARIO" | "GLOBAL" = "ORDINARIO") =>
+      (await empenhar({ fichaId, numero, tipo, valor, data: new Date(data), credorCpfCnpj: "12345678000195", historico: "e", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR }, R_EMPENHO, deps)).empenhoId;
+    const MOTIVO = "redução do objeto contratado por acordo entre as partes";
+
+    const ne1 = await empenharNa("ficha-1", "NE-1", "10000.00", "2026-01-15T15:00:00Z");
+    await anularEmpenhoParcial({ originalId: ne1, numero: "NE-1-A", valor: "2000.00", data: new Date("2026-05-10T15:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    const ne2 = await empenharNa("ficha-1", "NE-2", "5000.00", "2026-05-20T15:00:00Z");
+    await anularEmpenho({ empenhoId: ne2, numero: "NE-2-A", data: new Date("2026-06-05T15:00:00Z"), historico: "anulação total por desistência do fornecedor", criadoPor: POR }, deps);
+    // Global: liquida em parcelas (o ordinário liquida uma vez só).
+    const ne3 = await empenharNa("ficha-2", "NE-3", "7000.00", "2026-03-01T15:00:00Z", "GLOBAL");
+    const ne4 = await empenharNa("ficha-3", "NE-4", "3000.00", "2026-06-10T15:00:00Z");
+    await anularEmpenhoParcial({ originalId: ne4, numero: "NE-4-A", valor: "500.00", data: new Date("2026-07-02T15:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+    await liquidar1(ne1, "NL-1", "4000.00", "2026-02-01T15:00:00Z");
+    await liquidar({ empenhoId: ne3, numero: "NL-2", valor: "3000.00", data: new Date("2026-05-15T15:00:00Z"), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQUIDACAO, deps);
+    const nl3 = (await liquidar({ empenhoId: ne3, numero: "NL-3", valor: "1000.00", data: new Date("2026-06-01T15:00:00Z"), responsavelAtesto: "F", historico: "l", criadoPor: POR }, R_LIQUIDACAO, deps)).liquidacaoId;
+    await anularLiquidacaoParcial({ originalId: nl3, numero: "NL-3-A", valor: "400.00", data: new Date("2026-06-20T15:00:00Z"), motivo: MOTIVO, criadoPor: POR }, deps);
+
+    const b3 = await anexo1(prisma, { exercicio: EXERC, bimestre: 3 });
+    let categoria = "";
+    let conferidas = 0;
+    for (const l of b3.despesas) {
+      if (l.nivel === "categoria") categoria = l.codigo;
+      const grupo = l.nivel === "grupo" ? l.codigo : null;
+      const celulas = [
+        ["empenhada", "bimestre", l.empenhadasNoBim], ["empenhada", "ate", l.empenhadasAte],
+        ["liquidada", "bimestre", l.liquidadasNoBim], ["liquidada", "ate", l.liquidadasAte],
+      ] as const;
+      for (const [estagio, recorte, valor] of celulas) {
+        const r = await documentosDaDespesaDoAnexo1(prisma, { exercicio: EXERC, bimestre: 3, categoria, grupo, estagio, recorte });
+        expect([categoria, grupo, estagio, recorte, r.total]).toEqual([categoria, grupo, estagio, recorte, valor]);
+        conferidas += 1;
+      }
+    }
+    // Duas categorias e três grupos, quatro colunas cada.
+    expect(conferidas).toBe(5 * 4);
+
+    // O conteúdo de uma célula: 3.3 empenhada até o 3º bimestre — a parcial dentro da janela reduz, a total zera.
+    const odc = await documentosDaDespesaDoAnexo1(prisma, { exercicio: EXERC, bimestre: 3, categoria: "3", grupo: "3", estagio: "empenhada", recorte: "ate" });
+    expect(odc.documentos.map((d) => [d.numero, d.valor, d.anulado, d.liquido, d.naturezaCodigo])).toEqual([
+      ["NE-1", "10000.00", "2000.00", "8000.00", "339039"],
+      ["NE-2", "5000.00", "5000.00", "0.00", "339039"],
+    ]);
+    // A parcial de julho fica fora do 3º bimestre: o NE-4 soma inteiro.
+    const inv = await documentosDaDespesaDoAnexo1(prisma, { exercicio: EXERC, bimestre: 3, categoria: "4", grupo: "4", estagio: "empenhada", recorte: "bimestre" });
+    expect(inv.documentos.map((d) => [d.numero, d.liquido])).toEqual([["NE-4", "3000.00"]]);
+    // As liquidações levam o empenho delas.
+    const liq = await documentosDaDespesaDoAnexo1(prisma, { exercicio: EXERC, bimestre: 3, categoria: "3", grupo: "1", estagio: "liquidada", recorte: "bimestre" });
+    expect(liq.documentos.map((d) => [d.numero, d.numeroDoEmpenho, d.liquido])).toEqual([["NL-2", "NE-3", "3000.00"], ["NL-3", "NE-3", "600.00"]]);
   });
 
   it("t8: rreo-anexo1.ts é LEITURA PURA — zero escrita, zero soma bruta", () => {

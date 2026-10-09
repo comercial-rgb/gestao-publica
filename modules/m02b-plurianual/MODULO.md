@@ -194,9 +194,13 @@ do grupo. Os anexos da LDO saem em PDF pela rota autenticada do detalhe.
 - **Exportação SIGA** → depende de as specs 48/49/76-82 serem transcritas primeiro.
 - **LOA operacional** (ficha, dotação, receita prevista) → M02.
 - **Limites constitucionais** (educação, saúde, pessoal) → M12/relatórios.
-- **Vínculo PPA → LOA** (a ficha que executa a ação do plano) → ainda não existe; exigiria
-  decidir se a amarração é por `Acao` ou por `AcaoPpa`. Decisão consciente, não
-  esquecimento. Pendência `VINCULO-PPA-LOA`.
+- ~~**Vínculo PPA → LOA**~~ **derivado na V37** (`vinculo-ppa-loa.ts`): a ficha executa a ação do plano
+  quando o exercício está no plano, o programa e a ação coincidem (a `AcaoPpa` já reusa a `Acao` e o `ProgramaPpa`
+  reusa o `Programa`) e, se a ação do plano declara unidade executora, função ou subfunção, elas coincidem também. Sem
+  tabela de vínculo, que poderia divergir dos classificadores. Tela `/planejamento/loa/vinculo-ppa`: por ação, a meta
+  financeira vigente do plano (com os atos), a dotação do exercício e a dos anos do plano, e as fichas; à parte, as
+  fichas sem ação, com o motivo. Não declara "compatível": a meta vale para o plano inteiro e a regra é do ente. Dois
+  planos cobrindo o mesmo ano são recusados nomeando-os. A replicação PPA → LDO → LOA (TR 5.9.1.25) continua ausente.
 - ~~**Emenda parlamentar**~~ **na LOA, modelada na V36** (`emendas.ts`, TR 5.9.3.13-15). O rito
   ficou assim, sem estado mutável: a emenda e os itens (com sinal) são inserts; a SANÇÃO é outro
   registro (total, rejeição ou parcial com os itens escolhidos); a situação é derivada dela. A

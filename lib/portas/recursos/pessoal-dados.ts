@@ -1,4 +1,5 @@
 import { diaCivil, diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil, meioDiaCivil } from "../../../packages/datas/index.js";
+import { campoMarcado } from "../../molde/marcado";
 import { toMoney } from "../../../packages/contracts/index.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
@@ -769,7 +770,7 @@ export async function acaoDoServidor(acao: string, servidorId: string, c: Campos
       await comEscritaAutenticada("GERIR_DEPENDENTE", (criadoPor) =>
         cadastrarDependente(prisma, {
           servidorId, nome: t(c, "nome"), ...(opcional(c, "cpf") !== undefined ? { cpf: t(c, "cpf") } : {}), dataNascimento: dia(c, "dataNascimento"),
-          grauParentesco: t(c, "grauParentesco") as "FILHO", invalidezPermanente: t(c, "invalidezPermanente") === "on" || t(c, "invalidezPermanente") === "true" || t(c, "invalidezPermanente") === "1",
+          grauParentesco: t(c, "grauParentesco") as "FILHO", invalidezPermanente: campoMarcado(t(c, "invalidezPermanente")),
           finalidade: t(c, "finalidade") as "IMPOSTO_RENDA", dataInicio: dia(c, "dataInicio"), criadoPor,
         })
       );

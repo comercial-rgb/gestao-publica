@@ -494,10 +494,8 @@ function agregarEstornaveis<T extends { id: string; valor: { toFixed(n: number):
     if (g === undefined) continue;
     const k = `${g.cat}|${g.grupo}`;
     const d = dataDe(l);
-    if (d <= fim) {
-      (porGrupoAte.get(k) ?? porGrupoAte.set(k, []).get(k)!).push(l);
-      if (d >= inicio) (porGrupoBim.get(k) ?? porGrupoBim.set(k, []).get(k)!).push(l);
-    }
+    if (noRecorte(d, inicio, fim, "ate")) (porGrupoAte.get(k) ?? porGrupoAte.set(k, []).get(k)!).push(l);
+    if (noRecorte(d, inicio, fim, "bimestre")) (porGrupoBim.get(k) ?? porGrupoBim.set(k, []).get(k)!).push(l);
   }
   const aplicar = (mapa: Map<string, T[]>, campo: "empenhadasNoBim" | "liquidadasNoBim" | "empenhadasAte" | "liquidadasAte") => {
     for (const [k, arr] of mapa) {
@@ -587,4 +585,104 @@ async function lerSaldosExerciciosAnteriores(leitor: Tx, exercicio: number): Pro
     select: { valor: true },
   });
   return itens.reduce((acc, i) => soma(acc, toMoney(i.valor.toFixed(2))), zero());
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V37 — O DETALHAMENTO DA DESPESA ATÉ OS DOCUMENTOS
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** O recorte de uma coluna: (b) a janela do bimestre, ou (c) do começo do exercício até o fim dele. */
+export type RecorteDaDespesa = "bimestre" | "ate";
+
+/**
+ * A régua ÚNICA da janela da despesa: é ela que o `agregarEstornaveis` usa para (b) e (c), e é ela que a lista dos
+ * documentos usa. As linhas lidas já são do exercício (pela ficha); o corte inferior de (c) é esse.
+ */
+function noRecorte(d: Date, inicio: Date, fim: Date, recorte: RecorteDaDespesa): boolean {
+  return d <= fim && (recorte === "ate" || d >= inicio);
+}
+
+export interface DocumentoDaDespesaRreo {
+  /** O empenho (para a coluna de empenhadas) ou a liquidação (para a de liquidadas). */
+  readonly id: string;
+  readonly empenhoId: string;
+  readonly numero: string;
+  /** O número do empenho, na linha da liquidação; igual a `numero` na do empenho. */
+  readonly numeroDoEmpenho: string;
+  readonly data: Date;
+  readonly credorCpfCnpj: string;
+  readonly naturezaCodigo: string;
+  readonly valor: string;
+  /** As anulações (parciais ou total) do documento DENTRO do recorte. */
+  readonly anulado: string;
+  /** valor − anulado: o que o documento soma na célula do Anexo. */
+  readonly liquido: string;
+}
+
+/**
+ * OS DOCUMENTOS DE UMA CÉLULA DA DESPESA do Anexo 1: os empenhos (ou as liquidações) da categoria — e do grupo, quando
+ * dado — no recorte, cada um com o que soma na célula. A soma da lista é o valor da célula: o mesmo conjunto (mesma
+ * ficha, mesma régua de janela) e a mesma doutrina do líquido (a anulação total zera o documento, a parcial o reduz, e
+ * a anulação só conta se estiver no recorte, como na soma do Anexo). `m12-rreo-anexo1.test.ts` (t10) confere a
+ * igualdade em todas as linhas contra o `anexo1`.
+ */
+export async function documentosDaDespesaDoAnexo1(
+  leitor: Tx,
+  p: {
+    readonly exercicio: number;
+    readonly bimestre: Bimestre;
+    readonly categoria: string;
+    readonly grupo: string | null;
+    readonly estagio: "empenhada" | "liquidada";
+    readonly recorte: RecorteDaDespesa;
+  }
+): Promise<{ readonly documentos: readonly DocumentoDaDespesaRreo[]; readonly total: string }> {
+  const { inicio, fim } = janelaDoBimestre(p.exercicio, p.bimestre);
+  const fichas = await leitor.fichaOrcamentaria.findMany({
+    where: { exercicio: p.exercicio, naturezaDespesa: { codCategoria: p.categoria, ...(p.grupo === null ? {} : { codNatureza: p.grupo }) } },
+    select: { id: true, naturezaDespesa: { select: { codigoCompleto: true } } },
+  });
+  const naturezaDaFicha = new Map(fichas.map((f) => [f.id, f.naturezaDespesa.codigoCompleto]));
+  const fichaIds = [...naturezaDaFicha.keys()];
+
+  interface Linha {
+    readonly id: string; readonly empenhoId: string; readonly numero: string; readonly numeroDoEmpenho: string; readonly data: Date;
+    readonly valor: Money; readonly estornoDeId: string | null; readonly anulacaoParcialDeId: string | null; readonly credorCpfCnpj: string; readonly fichaId: string;
+  }
+  const linhas: Linha[] =
+    p.estagio === "empenhada"
+      ? (await leitor.empenho.findMany({
+          where: { fichaId: { in: fichaIds } },
+          select: { id: true, numero: true, data: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true, credorCpfCnpj: true, fichaId: true },
+        })).map((e) => ({ ...e, empenhoId: e.id, numeroDoEmpenho: e.numero, valor: toMoney(e.valor.toFixed(2)) }))
+      : (await leitor.liquidacao.findMany({
+          where: { empenho: { fichaId: { in: fichaIds } } },
+          select: { id: true, numero: true, data: true, valor: true, estornoDeId: true, anulacaoParcialDeId: true, empenho: { select: { id: true, numero: true, credorCpfCnpj: true, fichaId: true } } },
+        })).map((l) => ({
+          id: l.id, numero: l.numero, data: l.data, valor: toMoney(l.valor.toFixed(2)), estornoDeId: l.estornoDeId, anulacaoParcialDeId: l.anulacaoParcialDeId,
+          empenhoId: l.empenho.id, numeroDoEmpenho: l.empenho.numero, credorCpfCnpj: l.empenho.credorCpfCnpj, fichaId: l.empenho.fichaId,
+        }));
+  const noConjunto = linhas.filter((l) => noRecorte(l.data, inicio, fim, p.recorte));
+
+  // O líquido por documento: as anulações VIVAS do conjunto, pelo documento que elas desfazem.
+  const estornados = new Set(noConjunto.filter((l) => l.estornoDeId !== null).map((l) => l.estornoDeId!));
+  const viva = (l: Linha): boolean => l.estornoDeId === null && !estornados.has(l.id);
+  const reducoes = new Map<string, Money>();
+  for (const l of noConjunto) {
+    if (l.anulacaoParcialDeId === null || !viva(l)) continue;
+    reducoes.set(l.anulacaoParcialDeId, soma(reducoes.get(l.anulacaoParcialDeId) ?? zero(), l.valor));
+  }
+  const documentos = noConjunto
+    .filter((l) => l.estornoDeId === null && l.anulacaoParcialDeId === null)
+    .map((l) => {
+      const anulado = estornados.has(l.id) ? l.valor : (reducoes.get(l.id) ?? zero());
+      return {
+        id: l.id, empenhoId: l.empenhoId, numero: l.numero, numeroDoEmpenho: l.numeroDoEmpenho, data: l.data, credorCpfCnpj: l.credorCpfCnpj,
+        naturezaCodigo: naturezaDaFicha.get(l.fichaId) ?? "",
+        valor: l.valor.toFixed(2), anulado: anulado.toFixed(2), liquido: toMoney(l.valor.minus(anulado)).toFixed(2),
+      };
+    })
+    .sort((a, b) => a.data.getTime() - b.data.getTime() || a.numero.localeCompare(b.numero, "pt-BR", { numeric: true }));
+  const total = documentos.reduce((acc, d) => soma(acc, toMoney(d.liquido)), zero());
+  return { documentos, total: total.toFixed(2) };
 }

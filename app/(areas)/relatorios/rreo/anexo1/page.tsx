@@ -61,9 +61,9 @@ export default async function RreoAnexo1Page({
       </section>
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Despesas</h2>
-        <TabelaDeDados<LinhaDespesaRreo>
-          colunas={COLUNAS_DESPESA}
-          linhas={[...dados.despesas, dados.subtotalDespesas]}
+        <TabelaDeDados<LinhaDespesaComCategoria>
+          colunas={colunasDespesa(exercicio, bimestre)}
+          linhas={comCategoria([...dados.despesas, dados.subtotalDespesas])}
           keyDe={(l, i) => `${l.nivel}-${l.codigo}-${i}`}
           ehTotal={(l) => l.codigo === ""}
           recuoDe={(l) => (l.nivel === "grupo" ? 1 : 0)}
@@ -105,10 +105,31 @@ const COLUNAS_RECEITA_FIM: readonly ColunaTabela<LinhaReceitaRreo>[] = [
   { chave: "pc", cabecalho: "%", alinhamento: "direita", largura: "5rem", celula: (l) => pct(l.percentAteBim) },
   { chave: "s", cabecalho: "Saldo", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.saldo} /> },
 ];
-const COLUNAS_DESPESA: readonly ColunaTabela<LinhaDespesaRreo>[] = [
-  { chave: "rotulo", cabecalho: "Especificação", alinhamento: "esquerda", celula: (l) => l.rotulo },
-  { chave: "da", cabecalho: "Dotação Atualizada", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.dotacaoAtualizada} /> },
-  { chave: "ea", cabecalho: "Empenhadas até", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.empenhadasAte} /> },
-  { chave: "la", cabecalho: "Liquidadas até", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.liquidadasAte} /> },
-  { chave: "sd", cabecalho: "Saldo Dotação", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.saldoDotacao} /> },
-];
+/** A linha da despesa com a categoria a que pertence: o grupo, sozinho, não diz de qual categoria é. */
+type LinhaDespesaComCategoria = LinhaDespesaRreo & { readonly categoria: string };
+function comCategoria(linhas: readonly LinhaDespesaRreo[]): readonly LinhaDespesaComCategoria[] {
+  let categoria = "";
+  return linhas.map((l) => {
+    if (l.nivel === "categoria") categoria = l.codigo;
+    return { ...l, categoria: l.codigo === "" ? "" : categoria };
+  });
+}
+
+/**
+ * V37 — o DETALHAMENTO DA DESPESA ATÉ OS DOCUMENTOS: "empenhadas até" e "liquidadas até" de cada linha (categoria ou
+ * grupo) abrem a lista dos empenhos ou das liquidações que compõem o valor; o total da lista é o da célula. A linha de
+ * total não abre nada.
+ */
+function colunasDespesa(exercicio: number, bimestre: number): readonly ColunaTabela<LinhaDespesaComCategoria>[] {
+  const documentos = (l: LinhaDespesaComCategoria, estagio: "empenhada" | "liquidada"): string =>
+    `/relatorios/rreo/anexo1/despesa?exercicio=${String(exercicio)}&bimestre=${String(bimestre)}&categoria=${l.categoria}${l.nivel === "grupo" ? `&grupo=${l.codigo}` : ""}&estagio=${estagio}&recorte=ate`;
+  const valor = (l: LinhaDespesaComCategoria, v: string, estagio: "empenhada" | "liquidada"): React.ReactNode =>
+    l.codigo === "" || l.categoria === "" ? <ValorMonetario valor={v} /> : <a href={documentos(l, estagio)} data-elo={`documentos-${estagio}`} className="underline decoration-dotted underline-offset-2"><ValorMonetario valor={v} /></a>;
+  return [
+    { chave: "rotulo", cabecalho: "Especificação", alinhamento: "esquerda", celula: (l) => l.rotulo },
+    { chave: "da", cabecalho: "Dotação Atualizada", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.dotacaoAtualizada} /> },
+    { chave: "ea", cabecalho: "Empenhadas até", alinhamento: "direita", largura: "8rem", celula: (l) => valor(l, l.empenhadasAte, "empenhada") },
+    { chave: "la", cabecalho: "Liquidadas até", alinhamento: "direita", largura: "8rem", celula: (l) => valor(l, l.liquidadasAte, "liquidada") },
+    { chave: "sd", cabecalho: "Saldo Dotação", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.saldoDotacao} /> },
+  ];
+}

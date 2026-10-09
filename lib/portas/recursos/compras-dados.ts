@@ -28,6 +28,7 @@ import {
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
+import { campoMarcado } from "../../molde/marcado";
 
 /**
  * ═══ OS DADOS DAS COMPRAS — M11, V4 §8 (Fila A) ═══
@@ -237,7 +238,7 @@ export async function formarOrdemDaSolicitacao(c: Campos, linhas: readonly Linha
       ...(t(c, "dataVencimento") !== "" ? { dataVencimento: dia(c, "dataVencimento") } : {}),
       finalidade: t(c, "finalidade"),
       ...(t(c, "fichaId") !== "" ? { fichaId: t(c, "fichaId") } : {}),
-      consumoImediato: t(c, "consumoImediato") === "on" || t(c, "consumoImediato") === "1",
+      consumoImediato: campoMarcado(t(c, "consumoImediato")),
       itens: linhas.map((l) => ({ materialId: l.materialId, quantidade: decimalDaTela(l.quantidade), valorUnitario: decimalDaTela(l.valorUnitario) })),
       origem: linhas.map((l, i) => ({ itemIndex: i, itemDeSolicitacaoId: l.itemDeSolicitacaoId, quantidade: decimalDaTela(l.quantidade) })),
       criadoPor,
@@ -669,7 +670,7 @@ export async function criarOrdem(c: Campos, itens: readonly ItemDaOrdemLido[]): 
       ...(t(c, "dataVencimento") !== "" ? { dataVencimento: dia(c, "dataVencimento") } : {}),
       finalidade: t(c, "finalidade"),
       ...(t(c, "fichaId") !== "" ? { fichaId: t(c, "fichaId") } : {}),
-      consumoImediato: t(c, "consumoImediato") === "on" || t(c, "consumoImediato") === "true" || t(c, "consumoImediato") === "1",
+      consumoImediato: campoMarcado(t(c, "consumoImediato")),
       ...(t(c, "desconto") !== "" ? { desconto: decimalDaTela(t(c, "desconto")) } : {}),
       itens: itens.map((i) => ({ materialId: i.materialId, quantidade: decimalDaTela(i.quantidade), valorUnitario: decimalDaTela(i.valorUnitario) })),
       criadoPor,

@@ -324,5 +324,10 @@ solicitação de compra recusam setor desativado no domínio, com o motivo; a te
 
 **V37 — lotar usuário no setor**, pelo detalhe do setor (`lotarUsuarioNoSetor`, permissão LOTAR_USUARIO_NO_SETOR na
 unidade do setor). O usuário vem da busca `usuarios-para-lotacao`: só contas ativas, e vazia para quem não lota em
-unidade nenhuma (quem não lota não conhece a lista de contas). O detalhe lista os lotados. Desfazer a lotação não existe:
-o papel de runtime não tem DELETE em `UsuarioDoSetor`, e abrir o grant é decisão do censo do papel.
+unidade nenhuma (quem não lota não conhece a lista de contas). O detalhe lista os lotados.
+
+**V37 — desfazer a lotação** (`desfazerLotacaoNoSetor`, mesma permissão de lotar, na unidade do setor): DELETE do
+vínculo, como a revogação de perfil do M16 — a linha é a lotação, e a ausência dela é o desfazimento. O DELETE em
+`UsuarioDoSetor` entrou no censo do papel de runtime (`prisma/papel-runtime.ts`); o `m21-setor-situacao` t4 roda
+como o papel da aplicação e acusa a falta do grant. A busca `lotados-do-setor` oferece só os lotados daquele setor, e
+só a quem lota na unidade dele. Desfazer o que não existe é recusado com o motivo.

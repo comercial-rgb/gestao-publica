@@ -34,7 +34,8 @@ import {
 const ROTULO = "CONFIGURAÇÃO DE DEMONSTRAÇÃO — não é homologação contábil";
 
 interface Par {
-  readonly familia: FamiliaDeRoteiro;
+  /** V37 — o almoxarifado entrou na família, mas não passa pela proposta (é parametrizado direto, por versão). */
+  readonly familia: Exclude<FamiliaDeRoteiro, "ALMOXARIFADO">;
   readonly chave: string;
   readonly debito: string;
   readonly credito: string;

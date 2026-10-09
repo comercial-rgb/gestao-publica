@@ -5,6 +5,7 @@ import { aprovarVersaoDaRubrica, criarVersaoDaRubrica, revogarVersaoDaRubrica } 
 import { comEscritaAutenticada } from "./sessao";
 import { acoesPermitidas } from "./molde";
 import { cliente } from "./cliente";
+import { campoMarcado } from "../molde/marcado";
 
 /**
  * ═══ A PORTA DAS VERSÕES DA RUBRICA (V11 V1.1) ═══
@@ -128,9 +129,9 @@ export async function criarVersaoNaTela(c: Campos): Promise<string> {
       competenciaFim: fim === "" ? null : fim,
       formula: formula === "" ? null : formula,
       percentual: percentual === "" ? null : new Decimal(percentual),
-      incideContribuicao: t(c, "incideContribuicao") === "sim",
-      incideIrrf: t(c, "incideIrrf") === "sim",
-      proporcionalAosDias: t(c, "proporcionalAosDias") === "sim",
+      incideContribuicao: campoMarcado(t(c, "incideContribuicao")),
+      incideIrrf: campoMarcado(t(c, "incideIrrf")),
+      proporcionalAosDias: campoMarcado(t(c, "proporcionalAosDias")),
       casasDecimais: Number(t(c, "casasDecimais") === "" ? "2" : t(c, "casasDecimais")),
       regime: t(c, "regime") as "TODOS" | "RGPS" | "RPPS" | "ISENTO",
       fundamentacaoLegal: t(c, "fundamentacaoLegal"),
