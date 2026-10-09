@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `2526e60` (main e `/release` = `2526e60`) |
+| HEAD | publicado como `20f461d` (main e `/release` = `20f461d`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); desfazer lotação (exige DELETE no censo do papel); vínculo PPA–LOA. |
@@ -52,6 +52,8 @@ Continua: desfazer uma lotação não tem tela nem caso de uso — o papel do ba
 abrir esse grant é decisão de censo, não ajuste de tela. Detalhamento da despesa do Anexo 1: a soma do anexo é líquida
 sobre o conjunto (original, estorno, anulação parcial) dentro da janela; a lista tem de reproduzir essa soma linha a
 linha antes de existir, e não foi construída nesta rodada.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37j-20261009T144137Z.dump` (4.693 objetos); Actions 37946191056 verde; `/release` = `20f461d`; sonda só leitura: a lista de setores abre e a busca de quem lotar responde 200 ao administrador (7 contas). Produção continua sem setor cadastrado, então a lotação não foi exercida lá. Sonda apagada. Sem migration.
 
 ### Nona rodada da V37 (09/10/2026): desativar e reativar o setor
 
