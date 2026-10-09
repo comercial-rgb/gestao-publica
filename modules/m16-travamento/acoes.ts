@@ -1252,6 +1252,9 @@ export type NomeDeServico =
   | "elaborarPropostaOrcamentaria"
   | "ajustarLinhaDaProposta"
   | "efetivarPropostaOrcamentaria"
+  | "incluirFichaNaProposta"
+  | "incluirReceitaNaProposta"
+  | "reajustarLinhasDaProposta"
   | "cadastrarVeiculo"
   | "publicarVersaoDoVeiculo"
   | "cadastrarMaquina"
@@ -2106,6 +2109,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   elaborarPropostaOrcamentaria: "CADASTRAR_LOA",
   ajustarLinhaDaProposta: "CADASTRAR_LOA",
   efetivarPropostaOrcamentaria: "CRIAR_FICHA",
+  // V38 — a linha nova e o reajuste em lote mudam a PROPOSTA (não o orçamento): o mesmo poder de quem a elabora.
+  incluirFichaNaProposta: "CADASTRAR_LOA",
+  incluirReceitaNaProposta: "CADASTRAR_LOA",
+  reajustarLinhasDaProposta: "CADASTRAR_LOA",
   // ── M36/M37 — V27: frota e farmácia pública ──
   cadastrarVeiculo: "CADASTRAR_FROTA",
   publicarVersaoDoVeiculo: "CADASTRAR_FROTA",
@@ -3514,6 +3521,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   listarAnexosDasLiquidacoes: "leitura (os comprovantes das liquidações autorizadas pela porta — não muta)",
   lerDadosDaLoa: "leitura (dotação inicial das fichas e previsão inicial da receita do exercício — não muta)",
   vinculoPpaLoa: "leitura (V37 — as fichas da LOA que executam cada ação do PPA, derivadas dos classificadores — não muta)",
+  previaDoReajusteDaProposta: "leitura (V38 — quantas linhas o reajuste em lote da proposta alcança e o total antes e depois — não muta)",
   loaDoExercicio: "leitura (a LOA e os anexos da Lei 4.320 montados sobre os dados já registrados — demonstrativo, não muta)",
   //
   autenticar: "autenticação (precede a autorização — autorizá-la seria circular)",

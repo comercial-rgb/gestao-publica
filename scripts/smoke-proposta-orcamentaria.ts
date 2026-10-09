@@ -127,6 +127,8 @@ async function main(): Promise<void> {
       select: { id: true, fichaDeOrigem: { select: { numero: true } } },
     });
     if (linha === null) throw new Error("a proposta não tem fichas");
+    // V38 — a linha pode ser nova (sem ficha de origem); este smoke altera uma importada.
+    if (linha.fichaDeOrigem === null) throw new Error("a linha escolhida é nova, sem ficha de origem");
     const aj = await preencherEEnviar(page, `form[data-acao="ajustar-linha"][aria-label="Alterar o valor de a ficha ${String(linha.fichaDeOrigem.numero)}"]`, [
       { sel: 'input[name="valor"]', valor: "1.234.567,89" },
       { sel: 'input[name="motivo"]', valor: "Ampliação do atendimento aprovada" },

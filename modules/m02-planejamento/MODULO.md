@@ -355,3 +355,33 @@ rótulos do menu com o verbo ("Preparar o próximo exercício (proposta)", "Rees
 reprevisão usa o exercício do contexto (era 2026 fixo sem `?exercicio=`) e recusa gravação sem exercício. Pendentes
 nomeadas para a 2ª leva da V38: linha nova de receita e de despesa na proposta (AUD-096/109/110), reajuste em lote com
 recorte e prévia (AUD-111/112), prévia da importação (AUD-103), percurso até o empenho do exercício seguinte (AUD-108).
+
+## V38 2ª leva — linhas novas e reajuste em lote na proposta
+
+**Linha nova.** `LinhaDeDespesaDaProposta.fichaDeOrigemId` e `LinhaDeReceitaDaProposta.receitaDeOrigemId` passaram a ser
+opcionais: a linha nova carrega a própria classificação (unidade, funcional, natureza, fonte, CO e exercício da fonte na
+despesa; natureza, fonte, exercício da fonte e tipo na receita), o motivo e o autor. O CHECK do banco
+(`prisma/sql/ck_linha_da_proposta_origem_ou_nova.sql`, também na migration `20261109030000`) exige a origem OU a
+classificação completa — nunca nenhuma das duas, nunca as duas. Toda relação nova é `onDelete: Restrict` (a
+migration não tem DROP). `incluirFichaNaProposta` recebe códigos (como a tela escolhe pela busca), resolve os
+componentes do exercício de destino, nomeia o que não existe, recusa valor não positivo e recusa a classificação que a
+proposta já tem — vinda da importação ("a ficha N importada") ou incluída nela. `incluirReceitaNaProposta` recusa
+DEDUCAO (a dedução é dada pela natureza que a prevê) e a repetição de natureza, fonte e tipo. Na efetivação, a linha
+nova vira ficha com o próximo número depois do maior número importado (a numeração da origem fica intacta), e a
+receita prevista nasce com a classificação própria.
+
+**Reajuste em lote.** `previaDoReajusteDaProposta` (leitura) e `reajustarLinhasDaProposta` (escrita, um ajuste por
+linha com o motivo "… (reajuste em lote de X%)") aplicam um percentual sobre o valor vigente das linhas de um recorte:
+lado, fonte, unidade, prefixo da natureza, tipo da ação ou tipo da receita. `linhasNoRecorte` é pura e exportada. A
+prévia mostra o que o ato grava (a mesma leitura, dentro da transação). Recorte vazio recusa nomeando.
+
+Tela: `/planejamento/proposta-orcamentaria/[id]`, seção "incluir e reajustar" (enquanto a proposta é editável). A
+prévia é um botão de `formAction` próprio, sem chave de comando (só lê); o reajuste usa a chave. Os campos do
+formulário do reajuste são controlados: o React 19 limpa os campos não controlados depois de uma ação do formulário, e o
+"Aplicar" ficava inválido depois da prévia.
+
+Censo: `incluirFichaNaProposta`, `incluirReceitaNaProposta`, `reajustarLinhasDaProposta` = CADASTRAR_LOA;
+`previaDoReajusteDaProposta` fora do censo (leitura). Testes: `m02-proposta-orcamentaria.test.ts` (inclui com a prova do
+CHECK, reajusta com prévia e recorte, efetiva numerando 8 e 9 depois da 7), 5 mutações vermelhas. Percurso
+`scripts/percurso-v38-proposta-ate-o-empenho.mts`: elaborar, incluir receita, incluir ficha, prévia e reajuste de 2%,
+abrir o exercício, efetivar e empenhar na ficha nova do exercício seguinte.

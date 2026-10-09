@@ -70,8 +70,21 @@ model LinhaDeReceitaDaProposta {
   propostaOrcamentariaId String
   proposta               PropostaOrcamentaria @relation(fields: [propostaOrcamentariaId], references: [id])
   /// A previsão de origem: natureza, fonte, exercício da fonte e tipo vêm dela.
-  receitaDeOrigemId      String
-  receitaDeOrigem        ReceitaPrevista      @relation(fields: [receitaDeOrigemId], references: [id])
+  /// V38 — nula na LINHA NOVA (receita que a lei de origem não tinha). Ou origem, ou a classificação própria
+  /// abaixo: o CHECK `ck_linha_de_receita_da_proposta_origem_ou_nova` (prisma/sql) barra o INSERT direto sem nenhuma
+  /// das duas ou com as duas.
+  receitaDeOrigemId      String?
+  receitaDeOrigem        ReceitaPrevista?     @relation(fields: [receitaDeOrigemId], references: [id], onDelete: Restrict)
+  naturezaReceitaId String?
+  naturezaReceita   NaturezaReceita? @relation("LinhaNovaDeReceitaNatureza", fields: [naturezaReceitaId], references: [id], onDelete: Restrict)
+  fonteId           String?
+  fonte             FonteRecurso?    @relation("LinhaNovaDeReceitaFonte", fields: [fonteId], references: [id], onDelete: Restrict)
+  exercicioFonte    Int?
+  tipoReceita       TipoReceita?
+  /// Por que a linha nova existe (a importada não tem motivo: veio da lei de origem).
+  motivo    String?
+  criadoPor String?
+  criadoEm  DateTime?
   /// A previsão da lei de origem, para a comparação entre os exercícios.
   valorNaLeiDeOrigem     Decimal              @db.Decimal(18, 2)
   /// O valor da base no exercício de origem, congelado na importação.
@@ -103,8 +116,33 @@ model LinhaDeDespesaDaProposta {
   propostaOrcamentariaId String
   proposta               PropostaOrcamentaria @relation(fields: [propostaOrcamentariaId], references: [id])
   /// A ficha de origem: a classificação inteira e o número vêm dela.
-  fichaDeOrigemId        String
-  fichaDeOrigem          FichaOrcamentaria    @relation(fields: [fichaDeOrigemId], references: [id])
+  /// V38 — nula na LINHA NOVA (ficha que a lei de origem não tinha). Ou origem, ou a classificação própria abaixo:
+  /// o CHECK `ck_linha_de_despesa_da_proposta_origem_ou_nova` (prisma/sql) barra o INSERT direto sem nenhuma das
+  /// duas ou com as duas. A efetivação dá o número da ficha nova depois dos números importados.
+  fichaDeOrigemId        String?
+  fichaDeOrigem          FichaOrcamentaria?   @relation(fields: [fichaDeOrigemId], references: [id], onDelete: Restrict)
+  orgaoId           String?
+  orgao             Orgao?                @relation("LinhaNovaDaPropostaOrgao", fields: [orgaoId], references: [id], onDelete: Restrict)
+  unidadeOrcId      String?
+  unidadeOrc        UnidadeOrcamentaria?  @relation("LinhaNovaDaPropostaUnidade", fields: [unidadeOrcId], references: [id], onDelete: Restrict)
+  funcaoId          String?
+  funcao            Funcao?               @relation("LinhaNovaDaPropostaFuncao", fields: [funcaoId], references: [id], onDelete: Restrict)
+  subfuncaoId       String?
+  subfuncao         Subfuncao?            @relation("LinhaNovaDaPropostaSubfuncao", fields: [subfuncaoId], references: [id], onDelete: Restrict)
+  programaId        String?
+  programa          Programa?             @relation("LinhaNovaDaPropostaPrograma", fields: [programaId], references: [id], onDelete: Restrict)
+  acaoId            String?
+  acao              Acao?                 @relation("LinhaNovaDaPropostaAcao", fields: [acaoId], references: [id], onDelete: Restrict)
+  naturezaDespesaId String?
+  naturezaDespesa   NaturezaDespesa?      @relation("LinhaNovaDaPropostaNatureza", fields: [naturezaDespesaId], references: [id], onDelete: Restrict)
+  fonteId           String?
+  fonte             FonteRecurso?         @relation("LinhaNovaDaPropostaFonte", fields: [fonteId], references: [id], onDelete: Restrict)
+  coId              String?
+  co                CodigoAcompanhamento? @relation("LinhaNovaDaPropostaCo", fields: [coId], references: [id], onDelete: Restrict)
+  exercicioFonte    Int?
+  motivo    String?
+  criadoPor String?
+  criadoEm  DateTime?
   /// A dotação inicial da lei de origem, para a comparação entre os exercícios.
   valorNaLeiDeOrigem     Decimal              @db.Decimal(18, 2)
   valorBase              Decimal              @db.Decimal(18, 2)

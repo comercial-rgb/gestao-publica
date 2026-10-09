@@ -33,6 +33,36 @@ de edição pendente ao sair, aceito pelo percurso).
 
 **Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v38a-20261009T183504Z.dump` (4.693 objetos); Actions 37974478058 verde; `/release` = `2f9538b`. Tabelas oficiais da retenção carregadas em produção no servidor, como o usuário do serviço (`carregar-tabelas-da-retencao.ts`: IR 9/9, INSS 30/30, bases 10/10, ISS 200/200; o sha256 de cada arquivo oficial conferido antes). Sonda só leitura em produção: a busca do credor devolve 6 pessoas (5 "sem o papel"); a liquidação tem o documento por busca e o aviso da retenção; a LOA tem "Preparar o próximo exercício"; o menu tem a aba Tributos; o movimento diário abre com movimento; o lançamento manual tem a conta por busca; rodapé na versão 2f9538b. Sonda apagada. Sem migration.
 
+### 2ª leva (09/10/2026): a proposta faz "só as alterações"
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Ficha nova na proposta (AUD-095/096/110) | a proposta incluía só linhas importadas; agora "Incluir ficha" com a classificação pela busca, valor e motivo. A efetivação cria a ficha com o número seguinte ao maior importado | /planejamento/proposta-orcamentaria/[id] | `m02-proposta-orcamentaria` V38 INCLUI e EFETIVA (CHECK do banco provado) |
+| Receita nova na proposta (AUD-109) | "Incluir receita" com natureza e fonte pela busca, tipo, valor e motivo; dedução e repetição recusadas nomeando | idem | idem |
+| Reajuste em lote com recorte e prévia (AUD-111/112) | percentual sobre o valor vigente das linhas de um recorte (lado, fonte, unidade, prefixo da natureza, tipo da ação ou da receita); a prévia não grava; o ato grava um ajuste por linha com o motivo | idem | `m02-proposta-orcamentaria` V38 REAJUSTA; `linhasNoRecorte` pura |
+| Par origem/destino e percurso até o empenho (AUD-107/108) | percurso elabora, inclui, reajusta, abre o exercício, gera o orçamento e empenha na ficha nova; origem escolhida por `PERCURSO_ORIGEM` | idem | `percurso-v38-proposta-ate-o-empenho` 11/11 (2029 → 2030, base fictícia) |
+
+Schema: migration `20261109030000_v38_linhas_novas_da_proposta` (aditiva; a origem da linha deixa de ser obrigatória
+por `ALTER COLUMN ... DROP NOT NULL`, sem DROP de tabela, coluna ou restrição; relações novas `onDelete: Restrict`) e
+`prisma/sql/ck_linha_da_proposta_origem_ou_nova.sql` (origem ou classificação completa, nunca as duas nem nenhuma).
+Aplicada na base local, na de teste e na fictícia. Censo: três ações novas em CADASTRAR_LOA; a prévia fora do censo
+(leitura); contagem 572.
+
+Defeito achado no caminho: o "Aplicar o reajuste" não enviava depois da prévia. O React 19 limpa os campos não
+controlados ao terminar uma ação do formulário; o percentual ficava vazio e o formulário inválido. Os campos do
+reajuste passaram a controlados. Medido no navegador com `form.checkValidity()` antes e depois.
+
+Tipos: backend, app e scripts sem erro. Testes: `m02-proposta-orcamentaria`, `m02-conferencia-da-proposta`,
+`m16-censo`, `papel-runtime` (56/56); 5 mutações do domínio vermelhas e revertidas. Uma corrida do percurso
+interrompida continuou viva em segundo plano e disputou a base com a seguinte (respostas de 24 s, registro misturado):
+as duas foram encerradas. Corridas únicas: 2028 → 2029 com 10/11 (a expectativa da ficha nova dizia 50.000,00; o
+banco tinha 51.000,00, porque o reajuste de 2% da fonte alcança a linha nova incluída antes dele; a expectativa foi
+corrigida) e 2029 → 2030 com 11/11. **Pendência nomeada `PROPOSTA-UM-FORMULARIO-POR-LINHA`:** a página da proposta
+monta um formulário de ajuste por linha (cerca de 1.136 na base fictícia, desenho da V29); no servidor de
+desenvolvimento ela leva de 26 a 137 s, medido com o servidor recém-reiniciado e com a leitura do domínio em menos de
+1 s (detalhar 313 ms, conferência 90 ms). O tempo em produção é medido na publicação. Pendentes nomeadas: prévia da
+importação (AUD-103) e realocação entre linhas com total preservado (AUD-113).
+
 ## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
 
 Pedido: `docs/lotes/V37-uso-de-ponta-a-ponta.md`. Regime: superfície (links, recortes, formulários pré-preenchidos) e
@@ -43,7 +73,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 | HEAD | publicado como `2f9538b` (main e `/release` = `2f9538b`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | V38 2ª leva: linha nova de receita e de ficha na proposta, reajuste em lote com recorte e prévia, percurso até o empenho do exercício seguinte (AUD-096/109/110/111/112/108). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
+| Próximo passo | V38: prévia da importação da proposta (AUD-103) e realocação com total preservado (AUD-113). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
 
 ### O que passou a funcionar, e a rota
 

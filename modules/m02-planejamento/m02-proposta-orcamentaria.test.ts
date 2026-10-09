@@ -12,7 +12,12 @@ import {
   detalharPropostaOrcamentaria,
   efetivarPropostaOrcamentaria,
   elaborarPropostaOrcamentaria,
+  incluirFichaNaProposta,
+  incluirReceitaNaProposta,
+  linhasNoRecorte,
+  previaDoReajusteDaProposta,
   projetar,
+  reajustarLinhasDaProposta,
   valorVigente,
 } from "./proposta-orcamentaria.js";
 import { compararExercicios } from "./comparacao-de-exercicios.js";
@@ -243,6 +248,117 @@ describe("V29 — proposta orçamentária no banco", () => {
       ["500000.00", "Nova unidade de saúde"],
     ]);
     expect(p!.totalDaDespesa.vigente).toBe("765000.00");
+  });
+
+  // ═══ V38 — LINHAS NOVAS E REAJUSTE EM LOTE (o que a contadora pediu: "puxar do anterior e só fazer as alterações") ═══
+
+  it("V38 — INCLUI ficha e receita novas (N=2 cada): entram nos totais, depois das importadas; a repetida, o componente inexistente, o valor zero e a dedução são recusados com o motivo", async () => {
+    const id = await elaborarPadrao();
+    const antes = (await detalharPropostaOrcamentaria(prisma, id))!;
+    await incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, unidadeOrc: "01002", fonte: "500" }, valor: "50000.00", motivo: "Posto de saúde novo no distrito", criadoPor: ADMIN });
+    await incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, fonte: "540" }, valor: "20000.00", motivo: "Transporte escolar com recurso vinculado", criadoPor: ADMIN });
+    await expect(incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, unidadeOrc: "01002", fonte: "500" }, valor: "1.00", motivo: "Repetida de propósito", criadoPor: ADMIN })).rejects.toThrow(/já tem uma linha com esta classificação \(incluída nela\)/);
+    // A classificação da ficha 1 importada também é recusada: a pessoa altera o valor dela.
+    await expect(incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA }, valor: "1.00", motivo: "Repetida da importada", criadoPor: ADMIN })).rejects.toThrow(/a ficha 1 importada/);
+    await expect(incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, unidadeOrc: "09999" }, valor: "1.00", motivo: "Unidade que não existe", criadoPor: ADMIN })).rejects.toThrow(/inexistente.*unidade "09999"/);
+    await expect(incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, fonte: "540", unidadeOrc: "01002" }, valor: "0.00", motivo: "Valor zero de propósito", criadoPor: ADMIN })).rejects.toThrow(/maior que zero/);
+
+    await incluirReceitaNaProposta(prisma, { propostaOrcamentariaId: id, naturezaReceita: "17515001", fonte: "500", tipoReceita: "ORCAMENTARIA", valor: "70000.00", motivo: "Transferência nova da União", criadoPor: ADMIN });
+    await incluirReceitaNaProposta(prisma, { propostaOrcamentariaId: id, naturezaReceita: "1.1.1.2.5.0.01", fonte: "540", tipoReceita: "ORCAMENTARIA", valor: "30000.00", motivo: "IPTU vinculado", criadoPor: ADMIN });
+    await expect(incluirReceitaNaProposta(prisma, { propostaOrcamentariaId: id, naturezaReceita: "11125001", fonte: "500", tipoReceita: "ORCAMENTARIA", valor: "1.00", motivo: "Repetida da importada", criadoPor: ADMIN })).rejects.toThrow(/já tem uma linha com esta natureza, fonte e tipo/);
+    await expect(incluirReceitaNaProposta(prisma, { propostaOrcamentariaId: id, naturezaReceita: "17515001", fonte: "500", tipoReceita: "DEDUCAO", valor: "1.00", motivo: "Dedução de propósito", criadoPor: ADMIN })).rejects.toThrow(/dedução da receita não entra como linha nova/);
+
+    const p = (await detalharPropostaOrcamentaria(prisma, id))!;
+    expect(p.despesas.map((d) => [d.nova, d.numero, d.unidadeCodigo, d.fonteCodigo, d.valorVigente, d.motivo])).toEqual([
+      [false, 1, "01001", "500", antes.despesas[0]!.valorVigente, null],
+      [false, 7, "01002", "540", antes.despesas[1]!.valorVigente, null],
+      [true, 0, "01002", "500", "50000.00", "Posto de saúde novo no distrito"],
+      [true, 0, "01001", "540", "20000.00", "Transporte escolar com recurso vinculado"],
+    ]);
+    expect(p.receitas.filter((r) => r.nova).map((r) => [r.naturezaCodigo, r.fonteCodigo, r.valorVigente])).toEqual([["11125001", "540", "30000.00"], ["17515001", "500", "70000.00"]]);
+    expect(p.totalDaDespesa.vigente).toBe(toMoney(antes.totalDaDespesa.vigente).plus("70000.00").toFixed(2));
+    expect(p.totalDaReceita.vigente).toBe(toMoney(antes.totalDaReceita.vigente).plus("100000.00").toFixed(2));
+    // A linha nova se altera como as outras.
+    const nova = p.despesas.find((d) => d.nova && d.fonteCodigo === "540")!;
+    await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: nova.id, valor: "25000.00", motivo: "Mais uma rota", criadoPor: ADMIN });
+    expect((await detalharPropostaOrcamentaria(prisma, id))!.despesas.find((d) => d.id === nova.id)!.valorVigente).toBe("25000.00");
+    // O banco barra o INSERT direto sem origem e sem classificação (e com as duas): o CHECK, não só o serviço.
+    await expect(prisma.linhaDeDespesaDaProposta.create({ data: { propostaOrcamentariaId: id, valorNaLeiDeOrigem: "0.00", valorBase: "0.00", valorProjetado: "1.00" } })).rejects.toThrow(/ck_linha_de_despesa_da_proposta_origem_ou_nova/);
+    await expect(prisma.linhaDeReceitaDaProposta.create({ data: { propostaOrcamentariaId: id, valorNaLeiDeOrigem: "0.00", valorBase: "0.00", valorProjetado: "1.00" } })).rejects.toThrow(/ck_linha_de_receita_da_proposta_origem_ou_nova/);
+  });
+
+  it("V38 — REAJUSTA em lote com recorte e prévia (N=2 lados): só as linhas do recorte mudam, e o ato grava o que a prévia mostrou", async () => {
+    const id = await elaborarPadrao();
+    const p0 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    const ficha7 = p0.despesas.find((d) => d.numero === 7)!;
+    const ficha1 = p0.despesas.find((d) => d.numero === 1)!;
+    // Só a fonte 540 (a ficha 7, que está zerada na base EMPENHADO): primeiro um valor, depois o reajuste.
+    await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: ficha7.id, valor: "400000.00", motivo: "Partida da Saúde", criadoPor: ADMIN });
+    const previa = await previaDoReajusteDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "10", recorte: { fonte: "540" } });
+    expect(previa).toEqual({ linhas: 1, totalAntes: "400000.00", totalDepois: "440000.00" });
+    const r = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "10", recorte: { fonte: "540" }, motivo: "Piso da saúde", criadoPor: ADMIN });
+    expect(r).toEqual(previa);
+    const p1 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    expect(p1.despesas.find((d) => d.numero === 7)!.valorVigente).toBe("440000.00");
+    expect(p1.despesas.find((d) => d.numero === 7)!.ajustes[0]!.motivo).toBe("Piso da saúde (reajuste em lote de 10%)");
+    expect(p1.despesas.find((d) => d.numero === 1)!.valorVigente).toBe(ficha1.valorVigente);
+
+    // A receita, por prefixo da natureza (só o IPTU, 1112...), com percentual negativo.
+    const iptu = p0.receitas.find((x) => x.naturezaCodigo === "11125001")!;
+    const pr = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", percentual: "-5", recorte: { naturezaPrefixo: "1112" }, motivo: "Queda da arrecadação", criadoPor: ADMIN });
+    expect(pr.linhas).toBe(1);
+    expect(pr.totalDepois).toBe(projetar(toMoney(iptu.valorVigente), toPercentual("-5")).toFixed(2));
+    const p2 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    expect(p2.receitas.find((x) => x.naturezaCodigo === "17515001")!.valorVigente).toBe(p0.receitas.find((x) => x.naturezaCodigo === "17515001")!.valorVigente);
+
+    // Recorte sem linha: recusa, nada gravado.
+    await expect(reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "3", recorte: { fonte: "999" }, motivo: "Fonte que não existe", criadoPor: ADMIN })).rejects.toThrow(/Nenhuma linha da proposta está no recorte/);
+    expect(await prisma.ajusteDeDespesaDaProposta.count()).toBe(2);
+
+    // O recorte é puro e cada critério restringe (E).
+    const linhas = [
+      { fonte: "500", unidade: "01001", natureza: "339039", tipoDaAcao: "ATIVIDADE", tipoReceita: "" },
+      { fonte: "540", unidade: "01002", natureza: "449052", tipoDaAcao: "PROJETO", tipoReceita: "" },
+    ];
+    expect(linhasNoRecorte(linhas, {}).length).toBe(2);
+    expect(linhasNoRecorte(linhas, { naturezaPrefixo: "4", tipoDaAcao: "PROJETO" }).map((l) => l.fonte)).toEqual(["540"]);
+    expect(linhasNoRecorte(linhas, { naturezaPrefixo: "4", unidadeOrc: "01001" })).toEqual([]);
+  });
+
+  it("V38 — EFETIVA com linhas novas: a ficha nova recebe o número seguinte ao maior importado, a receita nova entra; 2026 fica intacto (somas e movimentos)", async () => {
+    const id = await elaborarPadrao();
+    const p0 = (await detalharPropostaOrcamentaria(prisma, id))!;
+    await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: p0.despesas.find((d) => d.numero === 7)!.id, valor: "450000.00", motivo: "Partida da Saúde", criadoPor: ADMIN });
+    await incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, unidadeOrc: "01002", fonte: "500" }, valor: "50000.00", motivo: "Posto de saúde novo", criadoPor: ADMIN });
+    await incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, fonte: "540" }, valor: "20000.00", motivo: "Transporte escolar", criadoPor: ADMIN });
+    await incluirReceitaNaProposta(prisma, { propostaOrcamentariaId: id, naturezaReceita: "17515001", fonte: "500", tipoReceita: "ORCAMENTARIA", valor: "70000.00", motivo: "Transferência nova", criadoPor: ADMIN });
+
+    const de2026 = async () => ({
+      fichas: await prisma.fichaOrcamentaria.aggregate({ where: { exercicio: 2026 }, _count: { _all: true }, _sum: { valorDotado: true } }),
+      receitas: await prisma.receitaPrevista.aggregate({ where: { exercicio: 2026 }, _count: { _all: true }, _sum: { valorPrevisto: true } }),
+      movimentos: await prisma.movimentoDotacao.aggregate({ where: { ficha: { exercicio: 2026 } }, _count: { _all: true }, _sum: { valor: true } }),
+    });
+    const antes = await de2026();
+    await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
+    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN });
+    expect([r.fichasCriadas, r.receitasCriadas]).toEqual([4, 3]);
+    const fichas = await prisma.fichaOrcamentaria.findMany({ where: { exercicio: 2027 }, orderBy: { numero: "asc" }, select: { numero: true, valorDotado: true, unidadeOrc: { select: { codigo: true } }, fonte: { select: { codigo: true } } } });
+    expect(fichas.map((f) => [f.numero, f.unidadeOrc.codigo, f.fonte.codigo, f.valorDotado.toFixed(2)])).toEqual([
+      [1, "01001", "500", p0.despesas.find((d) => d.numero === 1)!.valorVigente],
+      [7, "01002", "540", "450000.00"],
+      [8, "01002", "500", "50000.00"],
+      [9, "01001", "540", "20000.00"],
+    ]);
+    const receitas = await prisma.receitaPrevista.findMany({ where: { exercicio: 2027 }, select: { valorPrevisto: true, naturezaReceita: { select: { codigo: true } }, fonte: { select: { codigo: true } } } });
+    expect(receitas.map((x) => [x.naturezaReceita.codigo, x.fonte.codigo, x.valorPrevisto.toFixed(2)]).sort()).toEqual([
+      ["11125001", "500", p0.receitas.find((x) => x.naturezaCodigo === "11125001")!.valorVigente],
+      ["17515001", "500", "70000.00"],
+      ["17515001", "540", p0.receitas.find((x) => x.naturezaCodigo === "17515001")!.valorVigente],
+    ]);
+    // A origem não muda: mesmas contagens e somas em 2026, inclusive os movimentos de dotação.
+    expect(await de2026()).toEqual(antes);
+    // Depois de gerado, a proposta não aceita linha nova.
+    await expect(incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, fonte: "540", unidadeOrc: "01002" }, valor: "1.00", motivo: "Tarde demais", criadoPor: ADMIN })).rejects.toThrow(/já foi efetivada/);
   });
 
   it("EFETIVA: cria as duas fichas e as receitas de 2027 com o valor vigente; linha zerada não entra", async () => {

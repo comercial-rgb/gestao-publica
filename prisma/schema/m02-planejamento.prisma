@@ -54,6 +54,8 @@ model Orgao {
   /// V36 — as solicitações de audiência pública que este órgão analisa e as obras que ele executa na LDO. VIRTUAIS.
   solicitacoesDeAudiencia SolicitacaoDaAudiencia[] @relation("SolicitacoesDeAudiencia")
   obrasPrevistasNaLdo     ObraPrevistaLdo[]        @relation("ObrasPrevistasDoOrgao")
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaOrgao")
 }
 
 model UnidadeOrcamentaria {
@@ -123,6 +125,8 @@ model UnidadeOrcamentaria {
   inventariosDeBens   InventarioDeBens[]       @relation("InventarioDeBens")
   /// V6 P2 — as lotações do M32 que apontam para esta unidade (FK opcional da lotação).
   lotacoes Lotacao[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaUnidade")
 }
 
 /// Portaria STN 42/1999.
@@ -136,6 +140,8 @@ model Funcao {
   fichas FichaOrcamentaria[]
   /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
   acoesPpa AcaoPpa[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaFuncao")
 }
 
 /// Portaria STN 42/1999.
@@ -149,6 +155,8 @@ model Subfuncao {
   fichas FichaOrcamentaria[]
   /// back-relation M02b (PPA) — campo VIRTUAL, não gera coluna.
   acoesPpa AcaoPpa[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaSubfuncao")
 }
 
 model Programa {
@@ -170,6 +178,8 @@ model Programa {
   /// programa tem UM objetivo, e duplicá-lo por plano criaria duas respostas para a mesma
   /// pergunta. O que varia por plano é a ESTRATÉGIA e o valor previsto — e esses vivem lá.
   planosPpa ProgramaPpa[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaPrograma")
 }
 
 model Acao {
@@ -197,6 +207,8 @@ model Acao {
   /// back-relations M02b (PPA e LDO) — campos VIRTUAIS, não geram coluna.
   acoesPpa       AcaoPpa[]
   prioridadesLdo PrioridadeLdo[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaAcao")
 }
 
 /// Natureza da despesa = 4 COMPONENTES (STN / Portaria 163), não uma FK única.
@@ -234,6 +246,8 @@ model NaturezaDespesa {
   @@unique([codCategoria, codNatureza, codModalidade, codElemento], name: "uq_natureza_componentes")
   /// back-relation ENT05 (M11 compras) — VIRTUAL.
   materiais MaterialElementoDespesa[] @relation("ElementoDoMaterial")
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaNatureza")
 }
 
 /// Aparece no EMPENHO (M05) — modelado já para não migrar depois.
@@ -304,6 +318,9 @@ model FonteRecurso {
   metasMba           MetaMba[]
   liberacoes         LiberacaoProgramacao[]
   movimentosExtraorcamentarios MovimentoExtraorcamentario[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaFonte")
+  linhasNovasDeReceitaDaProposta LinhaDeReceitaDaProposta[] @relation("LinhaNovaDeReceitaFonte")
 }
 
 /// CO — Código de Acompanhamento da Execução (SAGRES-PB).
@@ -318,6 +335,8 @@ model CodigoAcompanhamento {
   fichas FichaOrcamentaria[]
   // back-relation M04 — campo VIRTUAL, não gera coluna.
   receitasArrecadadas ReceitaArrecadada[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeProposta LinhaDeDespesaDaProposta[] @relation("LinhaNovaDaPropostaCo")
 }
 
 // ----------------------------------------------------------------------------
@@ -427,6 +446,8 @@ model NaturezaReceita {
   receitasAnteriores ReceitaAnteriorPpa[]
   // back-relation M04 — campo VIRTUAL, não gera coluna.
   receitasArrecadadas ReceitaArrecadada[]
+  /// V38 — as linhas novas da proposta orçamentária que usam este componente. VIRTUAL.
+  linhasNovasDeReceitaDaProposta LinhaDeReceitaDaProposta[] @relation("LinhaNovaDeReceitaNatureza")
 }
 
 /// DE-PARA tipo conceitual (MCASP) <-> código literal do SAGRES.

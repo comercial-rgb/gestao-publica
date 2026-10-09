@@ -25,7 +25,7 @@ function proposta(over: {
     valorBase: r.valor,
     valorProjetado: r.valor,
     valorVigente: r.valor,
-    ajustes: [],
+    ajustes: [], nova: false, motivo: null,
   }));
   const despesas = (over.despesas ?? []).map((d, i) => ({
     id: `d${i}`,
@@ -42,7 +42,7 @@ function proposta(over: {
     valorBase: d.valor,
     valorProjetado: d.valor,
     valorVigente: d.valor,
-    ajustes: [],
+    ajustes: [], nova: false, motivo: null,
   }));
   const liquida = receitas.reduce((a, r) => (r.tipoReceita === "DEDUCAO" ? a.minus(r.valorVigente) : a.plus(r.valorVigente)), toMoney("0"));
   const desp = despesas.reduce((a, d) => a.plus(d.valorVigente), toMoney("0"));

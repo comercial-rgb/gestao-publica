@@ -3,6 +3,18 @@ import { comEscritaAutenticada } from "./sessao";
 import { exigirLeituraDoEnte } from "./leitura";
 import { abrirExercicio } from "../../modules/m08-restos-a-pagar/exercicio";
 import {
+  incluirFichaNaProposta,
+  incluirReceitaNaProposta,
+  previaDoReajusteDaProposta,
+  reajustarLinhasDaProposta,
+  type IncluirFichaNaPropostaInput,
+  type IncluirReceitaNaPropostaInput,
+  type PreviaDoReajusteInput,
+  type ReajustarLinhasDaPropostaInput,
+  type RecorteDoReajuste,
+  type ResultadoDoReajuste,
+} from "../../modules/m02-planejamento/proposta-orcamentaria";
+import {
   ajustarLinhaDaProposta,
   detalharPropostaOrcamentaria,
   efetivarPropostaOrcamentaria,
@@ -120,3 +132,19 @@ export async function abrirExercicioPelaTela(ano: number): Promise<void> {
     }
   });
 }
+
+// ── V38 — as linhas novas e o reajuste em lote (o que a contadora pediu para "só fazer as alterações").
+export async function incluirFicha(input: Omit<IncluirFichaNaPropostaInput, "criadoPor">): Promise<{ readonly id: string }> {
+  return comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => incluirFichaNaProposta(cliente(), { ...input, criadoPor }));
+}
+export async function incluirReceita(input: Omit<IncluirReceitaNaPropostaInput, "criadoPor">): Promise<{ readonly id: string }> {
+  return comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => incluirReceitaNaProposta(cliente(), { ...input, criadoPor }));
+}
+export async function previaDoReajuste(input: PreviaDoReajusteInput): Promise<ResultadoDoReajuste> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return previaDoReajusteDaProposta(cliente(), input);
+}
+export async function reajustarLinhas(input: Omit<ReajustarLinhasDaPropostaInput, "criadoPor">): Promise<ResultadoDoReajuste> {
+  return comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => reajustarLinhasDaProposta(cliente(), { ...input, criadoPor }));
+}
+export type { RecorteDoReajuste, ResultadoDoReajuste };

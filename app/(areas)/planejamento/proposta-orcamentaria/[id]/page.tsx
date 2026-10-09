@@ -18,7 +18,7 @@ import {
 } from "../../../../../lib/portas/proposta-orcamentaria";
 import { dataBr } from "../../../../../lib/recorte";
 import { toMoney } from "../../../../../packages/contracts/index";
-import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta } from "../Forms";
+import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta, FormIncluirFicha, FormIncluirReceita, FormReajusteEmLote } from "../Forms";
 import { ConferenciaDaPropostaSecao } from "./Conferencia";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
@@ -69,6 +69,7 @@ function colunasDaReceita(propostaOrcamentariaId: string, editavel: boolean, ori
       celula: (l) => (
         <div>
           <strong>{l.naturezaCodigo}</strong> {l.naturezaDescricao}
+          {l.nova ? <p className="text-xs text-[color:var(--color-ink-3)]"><Badge status="neutro">nova</Badge> {l.motivo}</p> : null}
         </div>
       ),
     },
@@ -100,7 +101,7 @@ function colunasDaReceita(propostaOrcamentariaId: string, editavel: boolean, ori
 
 function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, origem: number): readonly ColunaTabela<LinhaD>[] {
   return [
-    { chave: "ficha", cabecalho: "Ficha", alinhamento: "esquerda", largura: "4rem", celula: (l) => <strong>{l.numero}</strong> },
+    { chave: "ficha", cabecalho: "Ficha", alinhamento: "esquerda", largura: "4rem", celula: (l) => (l.nova ? <Badge status="neutro">nova</Badge> : <strong>{l.numero}</strong>) },
     {
       chave: "unidade",
       cabecalho: "Unidade orçamentária",
@@ -111,6 +112,7 @@ function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, ori
           <p className="text-xs text-[color:var(--color-ink-3)]">
             Programa {l.programaCodigo} · ação {l.acaoCodigo} · {l.naturezaCodigo} {l.naturezaDescricao}
           </p>
+          {l.nova ? <p className="text-xs text-[color:var(--color-ink-3)]">Incluída na proposta: {l.motivo}. O número vem ao gerar o orçamento.</p> : null}
         </div>
       ),
     },
@@ -131,7 +133,7 @@ function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, ori
           <Variacao lei={l.valorNaLeiDeOrigem} vigente={l.valorVigente} />
           <UltimaAlteracao ajustes={l.ajustes} />
           {editavel ? (
-            <FormAjusteDaLinha propostaOrcamentariaId={propostaOrcamentariaId} lado="DESPESA" linhaId={l.id} rotulo={`a ficha ${String(l.numero)}`} valorAtual={l.valorVigente} />
+            <FormAjusteDaLinha propostaOrcamentariaId={propostaOrcamentariaId} lado="DESPESA" linhaId={l.id} rotulo={l.nova ? `a ficha nova (${l.naturezaCodigo}, fonte ${l.fonteCodigo})` : `a ficha ${String(l.numero)}`} valorAtual={l.valorVigente} />
           ) : null}
         </div>
       ),
@@ -260,6 +262,22 @@ export default async function PropostaPage({ params }: { readonly params: Promis
 
       <ConferenciaDaPropostaSecao c={lido.conferencia} />
 
+      {/* V38 — o que a contadora pediu: "puxar do anterior e só fazer as alterações" — incluir o que não existia e
+          reajustar em lote. Só enquanto a proposta não virou orçamento. */}
+      {editavel ? (
+        <section className="space-y-3" aria-label="Incluir linhas e reajustar em lote" data-secao="incluir-e-reajustar">
+          <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Incluir o que a lei de origem não tinha, e reajustar em lote</h2>
+          <p className="text-xs text-[color:var(--color-ink-2)]">
+            <a href="#receitas" className="text-[color:var(--color-primary)] underline">Receitas ({String(p.receitas.length)})</a>
+            {" · "}
+            <a href="#fichas" className="text-[color:var(--color-primary)] underline">Fichas ({String(p.despesas.length)})</a>
+          </p>
+          <FormReajusteEmLote propostaOrcamentariaId={p.id} />
+          <FormIncluirReceita propostaOrcamentariaId={p.id} />
+          <FormIncluirFicha propostaOrcamentariaId={p.id} />
+        </section>
+      ) : null}
+
       <section className="space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3" aria-label="Gerar o orçamento">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Gerar o orçamento de {String(p.exercicio)}</h2>
         {efetivada ? (
@@ -332,7 +350,7 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         ) : null}
       </section>
 
-      <section className="space-y-2" aria-label="Receitas da proposta">
+      <section id="receitas" className="space-y-2" aria-label="Receitas da proposta">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Receitas ({String(p.receitas.length)})</h2>
         {p.receitas.length === 0 ? (
           <EstadoVazio titulo="Nenhuma receita importada" descricao={`O exercício ${String(p.exercicioDeOrigem)} não tinha receita prevista.`} />
@@ -341,7 +359,7 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         )}
       </section>
 
-      <section className="space-y-2" aria-label="Fichas da proposta">
+      <section id="fichas" className="space-y-2" aria-label="Fichas da proposta">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Fichas ({String(p.despesas.length)})</h2>
         {p.despesas.length === 0 ? (
           <EstadoVazio titulo="Nenhuma ficha importada" descricao={`O exercício ${String(p.exercicioDeOrigem)} não tinha fichas.`} />

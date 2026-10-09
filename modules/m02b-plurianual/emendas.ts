@@ -104,7 +104,7 @@ async function linhasComVigente(tx: Tx, ids: readonly string[]): Promise<Map<str
       {
         id: l.id,
         propostaOrcamentariaId: l.propostaOrcamentariaId,
-        rotulo: `ficha ${String(l.fichaDeOrigem.numero)}`,
+        rotulo: l.fichaDeOrigem === null ? "ficha nova da proposta" : `ficha ${String(l.fichaDeOrigem.numero)}`,
         vigente: valorVigente(
           toMoney(l.valorProjetado.toFixed(2)),
           l.ajustes.map((a) => ({ id: a.id, valor: toMoney(a.valor.toFixed(2)), criadoEm: a.criadoEm }))

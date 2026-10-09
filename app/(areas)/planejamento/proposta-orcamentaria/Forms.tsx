@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 import {
   CLASSE_BOTAO_PRIMARIO as BOTAO,
   CLASSE_CAMPO as CAMPO,
@@ -15,6 +16,10 @@ import {
   efetivarPropostaAction,
   elaborarPropostaAction,
   type EstadoDaProposta,
+  incluirFichaAction,
+  incluirReceitaAction,
+  previaReajusteAction,
+  reajustarAction,
 } from "./actions";
 
 const BOTAO_SECUNDARIO =
@@ -237,5 +242,164 @@ export function FormEfetivarProposta({
         </button>
       )}
     </form>
+  );
+}
+
+// ═══ V38 — INCLUIR O QUE A LEI DE ORIGEM NÃO TINHA, E REAJUSTAR EM LOTE ═══
+
+const PAINEL_RECOLHIDO = "rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3";
+const SUMARIO = "cursor-pointer text-sm font-semibold text-[color:var(--color-ink)]";
+
+/** INCLUIR uma ficha nova: a classificação completa pela busca, o valor e o motivo. O número vem na efetivação. */
+export function FormIncluirFicha({ propostaOrcamentariaId }: { readonly propostaOrcamentariaId: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(incluirFichaAction, {});
+  return (
+    <details className={PAINEL_RECOLHIDO} data-forma="incluir-ficha">
+      <summary className={SUMARIO}>Incluir uma ficha nova (despesa que a lei de origem não tinha)</summary>
+      <form action={action} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-acao="incluir-ficha" aria-label="Incluir uma ficha nova na proposta">
+        <ChaveDeComando />
+        <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
+        <CampoReferenciado name="unidadeOrc" rotulo="Unidade orçamentária" catalogo="unidades-para-ficha" obrigatorio largura={2} placeholder="Código ou nome" ajuda="Unidades em que você pode criar ficha; o órgão é o da unidade." />
+        <CampoReferenciado name="funcao" rotulo="Função" catalogo="funcoes" obrigatorio largura={1} />
+        <CampoReferenciado name="subfuncao" rotulo="Subfunção" catalogo="subfuncoes" obrigatorio largura={1} />
+        <CampoReferenciado name="programa" rotulo="Programa" catalogo="programas" obrigatorio largura={2} />
+        <CampoReferenciado name="acao" rotulo="Ação (projeto ou atividade)" catalogo="acoes" obrigatorio largura={2} />
+        <CampoReferenciado name="naturezaDespesa" rotulo="Natureza da despesa" catalogo="naturezas-de-despesa" obrigatorio largura={2} ajuda="Categoria, grupo, modalidade e elemento (6 dígitos)." />
+        <CampoReferenciado name="fonte" rotulo="Fonte de recurso" catalogo="fontes" obrigatorio largura={1} />
+        <CampoReferenciado name="co" rotulo="Código de acompanhamento (opcional)" catalogo="codigos-de-acompanhamento" largura={1} />
+        <label className="block text-xs">
+          <span className={ROTULO}>Valor (R$)</span>
+          <input className={CAMPO} name="valor" inputMode="decimal" required placeholder="50.000,00" />
+        </label>
+        <label className="block text-xs sm:col-span-2 lg:col-span-3">
+          <span className={ROTULO}>Motivo da inclusão</span>
+          <input className={CAMPO} name="motivo" required minLength={5} placeholder="Posto de saúde novo no distrito" />
+        </label>
+        <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+          <Resultado estado={estado} acao="incluir-ficha" />
+          <button className={BOTAO_SECUNDARIO} disabled={pendente} type="submit">
+            {pendente ? "Incluindo…" : "Incluir a ficha na proposta"}
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+/** INCLUIR uma receita nova: natureza e fonte pela busca, o tipo, o valor e o motivo. Dedução não entra aqui. */
+export function FormIncluirReceita({ propostaOrcamentariaId }: { readonly propostaOrcamentariaId: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(incluirReceitaAction, {});
+  return (
+    <details className={PAINEL_RECOLHIDO} data-forma="incluir-receita">
+      <summary className={SUMARIO}>Incluir uma receita nova (que a lei de origem não previa)</summary>
+      <form action={action} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-acao="incluir-receita" aria-label="Incluir uma receita nova na proposta">
+        <ChaveDeComando />
+        <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
+        <CampoReferenciado name="naturezaReceita" rotulo="Natureza da receita" catalogo="naturezas-de-receita" obrigatorio largura={2} placeholder="Código ou descrição" />
+        <CampoReferenciado name="fonte" rotulo="Fonte de recurso" catalogo="fontes" obrigatorio largura={1} />
+        <label className="block text-xs">
+          <span className={ROTULO}>Tipo</span>
+          <select className={CAMPO} name="tipoReceita" defaultValue="ORCAMENTARIA" required>
+            <option value="ORCAMENTARIA">Orçamentária</option>
+            <option value="INTRA_ORCAMENTARIA">Intraorçamentária</option>
+          </select>
+          <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]">A dedução (FUNDEB e outras) se informa na receita prevista do exercício, depois de gerado o orçamento.</span>
+        </label>
+        <label className="block text-xs">
+          <span className={ROTULO}>Valor (R$)</span>
+          <input className={CAMPO} name="valor" inputMode="decimal" required placeholder="70.000,00" />
+        </label>
+        <label className="block text-xs sm:col-span-2 lg:col-span-3">
+          <span className={ROTULO}>Motivo da inclusão</span>
+          <input className={CAMPO} name="motivo" required minLength={5} placeholder="Transferência nova da União" />
+        </label>
+        <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+          <Resultado estado={estado} acao="incluir-receita" />
+          <button className={BOTAO_SECUNDARIO} disabled={pendente} type="submit">
+            {pendente ? "Incluindo…" : "Incluir a receita na proposta"}
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+/**
+ * REAJUSTAR EM LOTE: um percentual sobre o valor da proposta das linhas de um recorte (fonte, unidade, começo da
+ * natureza, tipo da ação ou da receita). "Calcular a prévia" só lê; "Aplicar" grava um ajuste por linha, com o motivo.
+ */
+export function FormReajusteEmLote({ propostaOrcamentariaId }: { readonly propostaOrcamentariaId: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(reajustarAction, {});
+  // A prévia é outra ação (só leitura, sem chave de comando): o botão dela aponta para ela, no mesmo formulário.
+  const [previa, previaAction, calculando] = useActionState<EstadoDaProposta, FormData>(previaReajusteAction, {});
+  // ⚠️ CAMPOS CONTROLADOS, DE PROPÓSITO (medido no percurso V38): ao terminar a ação da prévia, o React limpa os campos
+  // não controlados do formulário; o percentual ficava vazio e o clique em "Aplicar" era barrado pela validação do
+  // navegador sem mensagem. Com o valor em estado, a prévia e a aplicação leem o mesmo que a pessoa digitou.
+  const [v, setV] = useState({ lado: "DESPESA", percentual: "", naturezaPrefixo: "", tipoDaAcao: "", tipoReceita: "", motivo: "" });
+  const mudar = (campo: keyof typeof v) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setV((s) => ({ ...s, [campo]: e.target.value }));
+  return (
+    <details className={PAINEL_RECOLHIDO} data-forma="reajuste-em-lote">
+      <summary className={SUMARIO}>Reajustar em lote (um percentual sobre as linhas de um recorte)</summary>
+      <form action={action} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-acao="reajuste-em-lote" aria-label="Reajustar linhas da proposta em lote">
+        <ChaveDeComando />
+        <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
+        <label className="block text-xs">
+          <span className={ROTULO}>O que reajustar</span>
+          <select className={CAMPO} name="lado" value={v.lado} onChange={mudar("lado")} required>
+            <option value="DESPESA">Despesas (fichas)</option>
+            <option value="RECEITA">Receitas</option>
+          </select>
+        </label>
+        <label className="block text-xs">
+          <span className={ROTULO}>Percentual (%)</span>
+          <input className={CAMPO} name="percentual" inputMode="decimal" required placeholder="5 ou -2,5" value={v.percentual} onChange={mudar("percentual")} />
+        </label>
+        <CampoReferenciado name="fonte" rotulo="Só a fonte (opcional)" catalogo="fontes" largura={1} />
+        <CampoReferenciado name="unidadeOrc" rotulo="Só a unidade (opcional, despesas)" catalogo="unidades-para-ficha" largura={1} />
+        <label className="block text-xs">
+          <span className={ROTULO}>Começo da natureza (opcional)</span>
+          <input className={CAMPO} name="naturezaPrefixo" placeholder="3390 ou 1112" value={v.naturezaPrefixo} onChange={mudar("naturezaPrefixo")} />
+        </label>
+        <label className="block text-xs">
+          <span className={ROTULO}>Tipo da ação (opcional, despesas)</span>
+          <select className={CAMPO} name="tipoDaAcao" value={v.tipoDaAcao} onChange={mudar("tipoDaAcao")}>
+            <option value="">Todas</option>
+            <option value="ATIVIDADE">Atividades</option>
+            <option value="PROJETO">Projetos</option>
+            <option value="OPERACAO_ESPECIAL">Operações especiais</option>
+          </select>
+        </label>
+        <label className="block text-xs">
+          <span className={ROTULO}>Tipo da receita (opcional, receitas)</span>
+          <select className={CAMPO} name="tipoReceita" value={v.tipoReceita} onChange={mudar("tipoReceita")}>
+            <option value="">Todas</option>
+            <option value="ORCAMENTARIA">Orçamentária</option>
+            <option value="INTRA_ORCAMENTARIA">Intraorçamentária</option>
+            <option value="DEDUCAO">Dedução</option>
+          </select>
+        </label>
+        <label className="block text-xs sm:col-span-2 lg:col-span-1">
+          <span className={ROTULO}>Motivo (para aplicar)</span>
+          <input className={CAMPO} name="motivo" minLength={5} placeholder="Reajuste do piso" value={v.motivo} onChange={mudar("motivo")} />
+        </label>
+        <div className="space-y-2 sm:col-span-2 lg:col-span-4">
+          {previa.previa !== undefined ? (
+            <p data-previa-do-reajuste={String(previa.previa.linhas)} className="text-xs text-[color:var(--color-ink-2)]">
+              Prévia: {String(previa.previa.linhas)} linha(s) no recorte; total de {previa.previa.totalAntes.replace(".", ",")} para {previa.previa.totalDepois.replace(".", ",")}.
+            </p>
+          ) : null}
+          {previa.erro !== undefined ? <Resultado estado={previa} acao="previa-do-reajuste" /> : null}
+          <Resultado estado={estado} acao="reajuste-em-lote" />
+          <div className="flex flex-wrap gap-3">
+            <button className={BOTAO_SECUNDARIO} disabled={pendente || calculando} type="submit" formAction={previaAction} data-botao="previa">
+              {calculando ? "Calculando…" : "Calcular a prévia"}
+            </button>
+            <button className={BOTAO} disabled={pendente || calculando} type="submit" data-botao="aplicar">
+              {pendente ? "Aplicando…" : "Aplicar o reajuste"}
+            </button>
+          </div>
+        </div>
+      </form>
+    </details>
   );
 }

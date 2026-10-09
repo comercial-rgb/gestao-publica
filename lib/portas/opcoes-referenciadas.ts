@@ -585,6 +585,9 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       return { opcoes: r.linhas.map((n) => ({ valor: n.codigoCompleto, rotulo: `${n.codigoCompleto} — ${n.descricao}` })), temMais: r.temMais };
     },
   },
+  /** V38 — a natureza da receita nova na proposta, por código ou descrição; o valor é o código. */
+  "naturezas-de-receita": porCodigo("CONSULTAR_PLANEJAMENTO", async (w, s, t) =>
+    (await cliente().naturezaReceita.findMany({ where: onde(w, "descricao"), orderBy: { codigo: "asc" }, skip: s, take: t, select: { codigo: true, descricao: true } })).map((x) => ({ codigo: x.codigo, texto: x.descricao }))),
   fontes: porCodigo("CONSULTAR_PLANEJAMENTO", async (w, s, t) =>
     (await cliente().fonteRecurso.findMany({ where: onde(w, "descricao"), orderBy: { codigo: "asc" }, skip: s, take: t, select: { codigo: true, descricao: true } })).map((x) => ({ codigo: x.codigo, texto: x.descricao }))),
   /**
