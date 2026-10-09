@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `eacaa38e` em `apresentacao/contabilidade` (a publicar) |
+| HEAD | `86ebb060` em `apresentacao/contabilidade`, publicado como `7034731` (main e `/release` = `7034731`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Setores e roteiro do almoxarifado com tela; material e lote do almoxarifado por busca; recebimento confirma ao completar; credor encerrado não encurta a página. Percursos almoxarifado 13/13 e compras 11/11; bateria dirigida 151/151. |
 | Próximo passo | SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA (data própria da reserva, migration aditiva); ROTEIRO-ALMOXARIFADO-SEM-VERSAO. |
@@ -64,6 +64,8 @@ busca e fechado). `smoke-ent06` ajustado para a busca e **não executado**.
 
 **Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.290/2.290; bateria dirigida de 19 arquivos 150/151 e,
 depois de atualizar a contagem do censo (567 serviços, nenhuma ação nova), 151/151.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37f-20261009T003824Z.dump`; tipos aprovados (digesto ebb95975411b); Actions 37866185730 verde; `/release` = `7034731`; sonda de produção só leitura 6/6 (setores com a unidade por busca; roteiros do almoxarifado com os três movimentos, sem roteiro em produção; requisição sem `select` de material; catálogos de material, unidade do setor e contas respondendo 200 — 0 material, 17 unidades) e apagada. Sem migration.
 
 **Pendências fechadas:** `RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR`, `ALMOXARIFADO-MATERIAL-EM-LISTA`,
 `CREDOR-ENCERRADO-NA-PAGINA`; do levantamento: ordem de fornecimento → empenho. Conferidas e já atendidas antes:
