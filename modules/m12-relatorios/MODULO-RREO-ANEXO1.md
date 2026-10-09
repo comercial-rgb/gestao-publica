@@ -73,3 +73,16 @@ inscrever um valor diferente do que o M05 deixou sem liquidar, R4 grita.
   Anexo 2:** o RREO Anexo 2 (`rreo-anexo2.ts`) fecha essa lacuna — a intra-despesa é `codModalidade
   == "91"`, e aparece na tabela (II) dele. Decisão cruzada: a intra-**receita** é do Anexo 1
   (categorias 7/8); a intra-**despesa** é do Anexo 2 (modalidade 91). Ver `MODULO-RREO-ANEXO2.md`.
+
+## V37 — o acumulado é do exercício, e o valor abre as guias
+
+- **Defeito corrigido:** o "até o bimestre" (c) somava a receita desde sempre, sem início da janela. Com guias de um
+  exercício anterior, o RREO do ano seguinte as levava (t9: 48.500 em vez de 41.500). O mesmo acontecia no Anexo 6
+  (resultado primário), no 8 (o recebido do FUNDEB), no 11 (alienação de ativos), na base de impostos da saúde e da
+  educação (Anexos 12 e 8) e no dado aberto da receita. A janela de `arrecadadoPorNaturezaFonte` passou a ser
+  OBRIGATÓRIA: o compilador exige de cada leitor o início, e todos os de acumulado partem do 1º de janeiro. Prova de
+  valor com dois exercícios: t9 deste anexo e t2b do Anexo 12 (base de impostos); os Anexos 6, 8 e 11 e o dado aberto
+  ficam provados pela exigência do tipo, sem fixture de dois exercícios.
+- **Detalhamento:** os valores (b) e (c) de cada linha da receita abrem a lista de guias com as receitas de código
+  iniciado pelo da linha e o período do bimestre ou do exercício até ele; a soma da lista é o valor do Anexo (t9).
+  O Anexo 1 ganhou o CSV das tabelas, como os outros 18.

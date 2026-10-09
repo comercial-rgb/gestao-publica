@@ -1,3 +1,4 @@
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
@@ -138,7 +139,8 @@ async function montarReceitas(
   }
 
   const realizadaPorChave = new Map<string, Money>();
-  for (const a of await arrecadadoPorNaturezaFonte(leitor, { ate: fim })) {
+  // V37 — a receita de alienação realizada é do exercício (antes, sem início, levava os anos anteriores).
+  for (const a of await arrecadadoPorNaturezaFonte(leitor, { desde: janelaCivilDoAno(exercicio).inicio, ate: fim })) {
     const chave = dePara.get(a.naturezaCodigo);
     if (chave === undefined) continue;
     realizadaPorChave.set(chave, soma(realizadaPorChave.get(chave) ?? zero(), a.arrecadado));

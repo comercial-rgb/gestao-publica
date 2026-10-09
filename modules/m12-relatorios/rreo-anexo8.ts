@@ -1,3 +1,4 @@
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
@@ -323,7 +324,8 @@ async function montarFundeb(
   for (const d of await leitor.deParaFundebReceita.findMany({ select: { naturezaCodigo: true, papel: true } })) {
     dePara.set(d.naturezaCodigo, d.papel);
   }
-  const arrec = await arrecadadoPorNaturezaFonte(leitor, { ate: fim });
+  // V37 — o recebido do FUNDEB é do exercício (antes, sem início, levava os anos anteriores).
+  const arrec = await arrecadadoPorNaturezaFonte(leitor, { desde: janelaCivilDoAno(exercicio).inicio, ate: fim });
   const porPapel = new Map<string, Money>();
   for (const a of arrec) {
     const papel = dePara.get(a.naturezaCodigo);

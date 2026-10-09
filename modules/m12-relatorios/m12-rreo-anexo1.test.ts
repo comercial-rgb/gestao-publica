@@ -17,6 +17,8 @@ import { encerrarExercicioComRestos } from "../m08-restos-a-pagar/encerramento.j
 import { criarM03Deps } from "../m03-creditos/adapter-prisma.js";
 import { criarDecreto, criarLei, executarCredito } from "../m03-creditos/servico.js";
 import { anexo1, type LinhaReceitaRreo } from "./rreo-anexo1.js";
+import { listarArrecadacoes } from "../m04-receita/consultas.js";
+import { fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 
 /**
  * RREO — ANEXO 1: BALANÇO ORÇAMENTÁRIO. LRF art. 52 · MDF/STN.
@@ -312,6 +314,36 @@ describe("M12 — RREO Anexo 1 (LRF art. 52)", () => {
   // ═══════════════════════════════════════════════════════════════════════════
   // t8 — LEITURA PURA (grep).
   // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // t9 — V37: O DETALHAMENTO ATÉ AS GUIAS. O valor (b) e (c) de cada linha abre a lista de guias das receitas de código
+  // iniciado pelo da linha; a soma da lista TEM de ser o valor do Anexo. E o acumulado (c) é do EXERCÍCIO: uma guia do
+  // exercício anterior não entra (N=2 exercícios, N=2 bimestres).
+  // ═══════════════════════════════════════════════════════════════════════════
+  it("t9: a soma das guias da linha (prefixo, período) é o valor do Anexo; o acumulado não leva o exercício anterior", async () => {
+    await preverReceita(NAT_IPTU, "120000.00");
+    // Uma guia de dezembro do exercício anterior, e três de 2026 em dois bimestres.
+    await registrarArrecadacao(
+      { exercicio: EXERC - 1, naturezaReceita: NAT_IPTU, fonte: "500", valor: "7000.00", dataArrecadacao: new Date("2025-12-20T15:00:00Z"), numeroReceita: "G-2025", criadoPor: POR },
+      R_ARREC, m04
+    );
+    await arrecadar(NAT_IPTU, "18000.00", "2026-01-20T15:00:00Z", "G-1");
+    await arrecadar(NAT_IPTU, "1500.00", "2026-02-27T15:00:00Z", "G-2");
+    await arrecadar(NAT_IPTU, "22000.00", "2026-03-10T15:00:00Z", "G-3");
+
+    const b2 = await anexo1(prisma, { exercicio: EXERC, bimestre: 2 });
+    const guias = async (prefixo: string, de: string, ate: string) =>
+      (await listarArrecadacoes(prisma, { exercicio: EXERC, naturezaCodigo: prefixo, inicio: inicioDoDiaCivil(de), fim: fimDoDiaCivil(ate) })).total.toFixed(2);
+    for (const codigo of ["1", "11", "111"]) {
+      const linha = acharReceita(b2.receitas, codigo);
+      expect([codigo, linha.ateBimestre]).toEqual([codigo, "41500.00"]);
+      expect([codigo, await guias(codigo, "2026-01-01", "2026-04-30")]).toEqual([codigo, linha.ateBimestre]);
+      expect([codigo, linha.noBimestre]).toEqual([codigo, "22000.00"]);
+      expect([codigo, await guias(codigo, "2026-03-01", "2026-04-30")]).toEqual([codigo, linha.noBimestre]);
+    }
+    // O prefixo recorta: nenhuma receita começa por 7 entre as guias de IPTU.
+    expect(await guias("7", "2026-01-01", "2026-04-30")).toBe("0.00");
+  });
+
   it("t8: rreo-anexo1.ts é LEITURA PURA — zero escrita, zero soma bruta", () => {
     const arquivo = fileURLToPath(new URL("./rreo-anexo1.ts", import.meta.url));
     const efetivo = readFileSync(arquivo, "utf8").split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join("\n");

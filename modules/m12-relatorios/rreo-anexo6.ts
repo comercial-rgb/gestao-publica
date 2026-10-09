@@ -415,7 +415,7 @@ export async function anexo6(
   leitor: Tx,
   p: { readonly exercicio: number; readonly bimestre: Bimestre }
 ): Promise<Anexo6> {
-  const { fim } = janelaDoBimestre(p.exercicio, p.bimestre);
+  const { fim, inicioExercicio } = janelaDoBimestre(p.exercicio, p.bimestre);
   const pendencias: string[] = [];
 
   // ── SEM-SEGREGACAO-RPPS: o cabeçalho pede "Correntes (exceto fontes RPPS)" ──
@@ -433,9 +433,9 @@ export async function anexo6(
   const [previsoes, reprevisoes, arrecadado] = await Promise.all([
     previsaoPorNaturezaFonte(leitor, { exercicio: p.exercicio }),
     reprevisaoAcumuladaPorNatureza(leitor, { exercicio: p.exercicio }),
-    // ⚠️ ACUMULADO até o fim do bimestre — o Anexo 6 não tem coluna "no bimestre". `desde` fica
-    // de fora de propósito: a coluna é "REALIZADAS ATÉ O BIMESTRE".
-    arrecadadoPorNaturezaFonte(leitor, { ate: fim }),
+    // ⚠️ ACUMULADO até o fim do bimestre — o Anexo 6 não tem coluna "no bimestre". "Até o bimestre" é do EXERCÍCIO:
+    // parte do 1º de janeiro (V37; antes, sem início, levava as guias dos anos anteriores).
+    arrecadadoPorNaturezaFonte(leitor, { desde: inicioExercicio, ate: fim }),
   ]);
 
   const previsaoPorNatureza = new Map<string, Money>();

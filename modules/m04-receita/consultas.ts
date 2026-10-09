@@ -135,18 +135,19 @@ export async function arrecadadoPorNaturezaFonte(
   prisma: Tx,
   p: {
     readonly ate: Date;
-    /** Início da janela, INCLUSIVO. Omitido = desde sempre (o acumulado, como sempre foi). É
-     *  o que separa "No Bimestre (b)" de "Até o Bimestre (c)" no RREO Anexo 1 — uma
-     *  aritmética, um recorte novo (o padrão do `somasPorConta`). */
-    readonly desde?: Date;
+    /**
+     * Início da janela, INCLUSIVO, e OBRIGATÓRIO (V37). Era opcional ("omitido = desde sempre"), e cinco leitores
+     * o omitiam onde o acumulado é do EXERCÍCIO: o "até o bimestre" do RREO (Anexos 1, 6, 8 e 11), a base de impostos
+     * da saúde e da educação, e o dado aberto da receita levavam as guias dos exercícios anteriores — medido no t9 do
+     * Anexo 1 (48.500 em vez de 41.500, com uma guia de dezembro do ano anterior). Obrigatório, cada leitor diz de
+     * onde parte a soma, e o compilador cobra.
+     */
+    readonly desde: Date;
   }
 ): Promise<readonly ArrecadadoDetalhado[]> {
   const receitas = await prisma.receitaArrecadada.findMany({
     where: {
-      dataArrecadacao: {
-        lte: p.ate,
-        ...(p.desde !== undefined ? { gte: p.desde } : {}),
-      },
+      dataArrecadacao: { gte: p.desde, lte: p.ate },
     },
     select: {
       // V16/C30 — a guia repartida entra por PARCELA: o grão do dataset aberto é natureza ×
@@ -305,14 +306,19 @@ export async function listarArrecadacoes(
     readonly exercicio: number;
     readonly inicio?: Date | undefined;
     readonly fim?: Date | undefined;
-    /** V37 — o recorte por natureza (código), para o drill-down dos demonstrativos da receita. */
+    /**
+     * V37 — o recorte por natureza, para o drill-down dos demonstrativos da receita. Código completo (8 dígitos):
+     * aquela receita. Mais curto: as receitas que começam por ele (a categoria, a origem ou a espécie do RREO).
+     */
     readonly naturezaCodigo?: string | undefined;
   }
 ): Promise<ArrecadacoesDoPeriodo> {
   const receitas = await prisma.receitaArrecadada.findMany({
     where: {
       exercicio: p.exercicio,
-      ...(p.naturezaCodigo !== undefined ? { naturezaReceita: { codigo: p.naturezaCodigo } } : {}),
+      ...(p.naturezaCodigo !== undefined
+        ? { naturezaReceita: { codigo: p.naturezaCodigo.length >= 8 ? p.naturezaCodigo : { startsWith: p.naturezaCodigo } } }
+        : {}),
       ...(p.inicio !== undefined || p.fim !== undefined
         ? {
             dataArrecadacao: {

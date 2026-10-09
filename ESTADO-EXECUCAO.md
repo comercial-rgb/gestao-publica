@@ -9,8 +9,8 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 |---|---|
 | HEAD | `b41f4a57` em `apresentacao/contabilidade`, publicado como `003dd60` (main e `/release` = `003dd60`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
-| Último resultado | Reserva com data do fato (fecha SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA); antes, setores, roteiro do almoxarifado, material e lote por busca, recebimento que confirma, credor encerrado que não encurta a página. |
-| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO e RGF sem exportação e sem drill-down; vínculo PPA–LOA. |
+| Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
+| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); vínculo PPA–LOA. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,19 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Oitava rodada da V37 (09/10/2026): o acumulado da receita é do exercício; o RREO abre as guias
+
+Regime: **profundidade** (demonstrativo fiscal, soma da receita) e superfície no detalhamento.
+
+| Unidade | Commit | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|---|
+| Acumulado da receita do exercício | (este) | **Defeito real:** "até o bimestre" do RREO Anexo 1 somava a receita desde sempre; uma guia de dezembro do ano anterior entrava no ano seguinte (48.500 em vez de 41.500). O mesmo nos Anexos 6, 8 (FUNDEB) e 11, na base de impostos da saúde e da educação e no dado aberto da receita. A janela da soma passou a ser obrigatória no tipo; todos os acumulados partem do 1º de janeiro | RREO Anexos 1, 6, 8, 11, 12; dado aberto | t9 do Anexo 1 e t2b do Anexo 12 (dois exercícios); 3 mutações vermelhas; RREO, RGF, transparência e receita 145/145 + 9/9 |
+| RREO Anexo 1 até as guias, e CSV | (este) | os valores (b) e (c) abrem a lista de guias com as receitas de código iniciado pelo da linha, no período; a lista aceita prefixo de natureza e intervalo de meses (`de`, `ate`) e diz o recorte; o Anexo 1 ganhou o CSV (os outros 18 já tinham) | /relatorios/rreo/anexo1, /receita/arrecadacoes | t9 (a soma das guias é o valor do Anexo, três níveis, dois períodos); percurso `percurso-v37-rreo-ate-as-guias` 3/3 |
+
+**Pendência estreitada:** `RREO-RGF-SEM-DRILL-DOWN` fica para a despesa do Anexo 1 e para os demais anexos (a receita
+do Anexo 1 abre as guias). Os Anexos 6, 8 e 11 e o dado aberto estão corrigidos pelo tipo, sem fixture de dois
+exercícios.
 
 ### Sétima rodada da V37 (09/10/2026): a reserva com data do fato
 

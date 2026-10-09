@@ -1,3 +1,4 @@
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // ═══ NADA AQUI SOMA. Cada número vem do DONO, com a função nomeada. ═══
 import { previsaoPorNaturezaFonte } from "../m02-planejamento/consultas.js";
@@ -384,7 +385,8 @@ export async function datasetReceita(
   // ═══ Os dois lados vêm dos DONOS. Zero aritmética aqui. ═══
   const [previsoes, arrecadacoes, fontes] = await Promise.all([
     previsaoPorNaturezaFonte(leitor, { exercicio: p.exercicio }),
-    arrecadadoPorNaturezaFonte(leitor, { ate: p.ate }),
+    // V37 — o arrecadado ao lado do previsto é do mesmo exercício (antes, sem início, somava os anos anteriores).
+    arrecadadoPorNaturezaFonte(leitor, { desde: janelaCivilDoAno(p.exercicio).inicio, ate: p.ate }),
     leitor.fonteRecurso.findMany({
       select: { id: true, codigo: true, descricao: true },
     }),

@@ -51,7 +51,7 @@ export default async function RreoAnexo1Page({
       <section>
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-[color:var(--color-ink-2)]">Receitas</h2>
         <TabelaDeDados<LinhaReceitaRreo>
-          colunas={COLUNAS_RECEITA}
+          colunas={colunasReceita(exercicio, bimestre)}
           linhas={[...dados.receitas, dados.subtotalReceitas]}
           keyDe={(l, i) => `${l.nivel}-${l.codigo}-${i}`}
           ehTotal={(l) => l.codigo === ""}
@@ -83,11 +83,25 @@ function lerInteiro(v: string | string[] | undefined, padrao: number): number {
 }
 const pct = (v: string) => `${v.replace(".", ",")}%`;
 
-const COLUNAS_RECEITA: readonly ColunaTabela<LinhaReceitaRreo>[] = [
-  { chave: "rotulo", cabecalho: "Especificação", alinhamento: "esquerda", celula: (l) => l.rotulo },
-  { chave: "pa", cabecalho: "Previsão Atualizada", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.previsaoAtualizada} /> },
-  { chave: "b", cabecalho: "No Bimestre", alinhamento: "direita", largura: "7rem", celula: (l) => <ValorMonetario valor={l.noBimestre} /> },
-  { chave: "c", cabecalho: "Até o Bimestre", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.ateBimestre} /> },
+/**
+ * V37 — o DETALHAMENTO ATÉ AS GUIAS: o valor arrecadado de cada linha (categoria, origem ou espécie) abre a lista de
+ * guias das receitas de código iniciado pelo da linha, no bimestre (b) ou do começo do exercício até o fim dele (c).
+ * A soma da lista é a do Anexo (mesmo sinal, por data de arrecadação). A linha de total não abre nada.
+ */
+function colunasReceita(exercicio: number, bimestre: number): readonly ColunaTabela<LinhaReceitaRreo>[] {
+  const mes = (m: number): string => `${String(exercicio)}-${String(m).padStart(2, "0")}`;
+  const guias = (codigo: string, de: number): string => `/receita/arrecadacoes?exercicio=${String(exercicio)}&natureza=${codigo}&de=${mes(de)}&ate=${mes(bimestre * 2)}`;
+  const valor = (l: LinhaReceitaRreo, v: string, de: number, elo: string): React.ReactNode =>
+    l.codigo === "" ? <ValorMonetario valor={v} /> : <a href={guias(l.codigo, de)} data-elo={elo} className="underline decoration-dotted underline-offset-2"><ValorMonetario valor={v} /></a>;
+  return [
+    { chave: "rotulo", cabecalho: "Especificação", alinhamento: "esquerda", celula: (l) => l.rotulo },
+    { chave: "pa", cabecalho: "Previsão Atualizada", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.previsaoAtualizada} /> },
+    { chave: "b", cabecalho: "No Bimestre", alinhamento: "direita", largura: "7rem", celula: (l) => valor(l, l.noBimestre, bimestre * 2 - 1, "guias-do-bimestre") },
+    { chave: "c", cabecalho: "Até o Bimestre", alinhamento: "direita", largura: "8rem", celula: (l) => valor(l, l.ateBimestre, 1, "guias-ate-o-bimestre") },
+    ...COLUNAS_RECEITA_FIM,
+  ];
+}
+const COLUNAS_RECEITA_FIM: readonly ColunaTabela<LinhaReceitaRreo>[] = [
   { chave: "pc", cabecalho: "%", alinhamento: "direita", largura: "5rem", celula: (l) => pct(l.percentAteBim) },
   { chave: "s", cabecalho: "Saldo", alinhamento: "direita", largura: "8rem", celula: (l) => <ValorMonetario valor={l.saldo} /> },
 ];

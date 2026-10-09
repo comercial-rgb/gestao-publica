@@ -1,3 +1,4 @@
+import { janelaCivilDoAno } from "../../packages/datas/index.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { arrecadadoPorNaturezaFonte } from "../m04-receita/consultas.js";
@@ -154,7 +155,7 @@ export async function baseDeImpostos(
   p: {
     readonly exercicio: number;
     readonly ate: Date;
-    /** Início da janela (data do fato), inclusivo. Omitido = desde sempre. */
+    /** Início da janela (data do fato), inclusivo. Omitido = o 1º de janeiro do exercício (V37; antes, desde sempre). */
     readonly desde?: Date;
     /** Incluir o IBS na base? Default FALSE (regra de transição 2026, art. 125 §3º ADCT). */
     readonly incluirIBS?: boolean;
@@ -168,7 +169,7 @@ export async function baseDeImpostos(
   // ── arrecadação líquida por natureza (M04), na janela ──
   const arrec = await arrecadadoPorNaturezaFonte(leitor, {
     ate: p.ate,
-    ...(p.desde !== undefined ? { desde: p.desde } : {}),
+    desde: p.desde ?? janelaCivilDoAno(p.exercicio).inicio,
   });
 
   const porChave = new Map<string, AccTipos>();

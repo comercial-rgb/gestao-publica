@@ -231,7 +231,8 @@ async function montarReceitas(
 
   // ARRECADADO: (b) no bimestre e (c) até o bimestre — do M04, cortando por data do fato.
   const arrecBim = await arrecadadoPorNaturezaFonte(leitor, { desde: inicio, ate: fim });
-  const arrecAte = await arrecadadoPorNaturezaFonte(leitor, { ate: fim });
+  // V37 — o acumulado (c) é do EXERCÍCIO: parte do 1º de janeiro (antes, desde sempre, e levava o ano anterior).
+  const arrecAte = await arrecadadoPorNaturezaFonte(leitor, { desde: janelaCivilDoAno(exercicio).inicio, ate: fim });
 
   // Agrega por ESPÉCIE (3 primeiros dígitos), separando intra (categoria 7/8).
   const porEspecie = new Map<string, AgregadoReceita>();

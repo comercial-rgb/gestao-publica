@@ -89,9 +89,17 @@ export default async function ArrecadacoesPage({
   );
 
   // V37 — o recorte que os demonstrativos da receita mandam (?natureza= e ?mes=AAAA-MM): a lista e o total seguem.
-  const naturezaPedida = typeof sp["natureza"] === "string" && /^\d{8}$/.test(sp["natureza"]) ? sp["natureza"] : undefined;
-  const mesPedido = typeof sp["mes"] === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp["mes"]) ? sp["mes"] : undefined;
-  const janela = mesPedido !== undefined ? janelaCivilDoMes(mesPedido) : undefined;
+  // V37 — também o começo do código (a categoria, a origem ou a espécie do RREO) e um intervalo de meses (?de=, ?ate=).
+  const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
+  const lerMes = (k: string): string | undefined => {
+    const v = sp[k];
+    return typeof v === "string" && MES.test(v) ? v : undefined;
+  };
+  const naturezaPedida = typeof sp["natureza"] === "string" && /^\d{1,8}$/.test(sp["natureza"]) ? sp["natureza"] : undefined;
+  const mesDe = lerMes("mes") ?? lerMes("de");
+  const mesAte = lerMes("mes") ?? lerMes("ate") ?? mesDe;
+  const mesPedido = mesDe !== undefined && mesAte !== undefined && mesDe <= mesAte ? mesDe : undefined;
+  const janela = mesPedido !== undefined && mesAte !== undefined ? { inicio: janelaCivilDoMes(mesPedido).inicio, fim: janelaCivilDoMes(mesAte).fim } : undefined;
   const recorteDaLista = {
     ...(naturezaPedida !== undefined ? { naturezaCodigo: naturezaPedida } : {}),
     ...(janela !== undefined ? { inicio: janela.inicio, fim: janela.fim } : {}),
@@ -134,8 +142,8 @@ export default async function ArrecadacoesPage({
       {naturezaPedida !== undefined || mesPedido !== undefined ? (
         <p className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 py-2 text-sm" data-recorte-da-lista>
           <span>
-            Mostrando só as guias {naturezaPedida !== undefined ? <>da receita <strong>{naturezaPedida}</strong></> : null}
-            {mesPedido !== undefined ? <> de <strong>{mesPedido.split("-").reverse().join("/")}</strong></> : null}.
+            Mostrando só as guias {naturezaPedida !== undefined ? (naturezaPedida.length === 8 ? <>da receita <strong>{naturezaPedida}</strong></> : <>das receitas de código iniciado por <strong>{naturezaPedida}</strong></>) : null}
+            {mesPedido !== undefined && mesAte !== undefined ? (mesPedido === mesAte ? <> de <strong>{mesPedido.split("-").reverse().join("/")}</strong></> : <> de <strong>{mesPedido.split("-").reverse().join("/")}</strong> a <strong>{mesAte.split("-").reverse().join("/")}</strong></>) : null}.
           </span>
           <a className="text-[color:var(--color-primary)] underline" href={`/receita/arrecadacoes?exercicio=${String(exercicio)}`}>Ver todas</a>
         </p>

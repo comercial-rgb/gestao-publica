@@ -249,12 +249,25 @@ describe("M12 — RREO Anexo 12 (ASPS, LC 141/2012)", () => {
     expect(iptu.total).toBe("140000.00"); // 120+10+5+5
 
     // Σ direto do M04 das 4 naturezas do IPTU (o particionador não inventou nem perdeu).
-    const arrec = await arrecadadoPorNaturezaFonte(prisma, { ate: new Date("2026-12-31T23:59:59Z") });
+    const arrec = await arrecadadoPorNaturezaFonte(prisma, { desde: new Date("2026-01-01T03:00:00Z"), ate: new Date("2026-12-31T23:59:59Z") });
     const somaIptu = arrec
       .filter((a) => a.naturezaCodigo.startsWith("111211"))
       .reduce((acc, a) => acc + Number(a.arrecadado.toFixed(2)), 0);
     expect(somaIptu).toBe(140000);
     expect(Number(iptu.total)).toBe(somaIptu);
+  });
+
+  it("t2b: V37 — a base é do EXERCÍCIO: uma guia de IPTU de dezembro do ano anterior não entra (N=2 exercícios)", async () => {
+    await montarOuro();
+    await registrarArrecadacao(
+      { exercicio: 2025, naturezaReceita: N_IPTU_P, fonte: FONTE_PROPRIA, valor: "9000.00", dataArrecadacao: new Date("2025-12-20T15:00:00Z"), numeroReceita: "G-IPTU-2025", criadoPor: POR },
+      R_ARREC, m04
+    );
+    const base = await baseDeImpostos(prisma, { exercicio: 2026, ate: new Date("2026-12-31T23:59:59Z") });
+    expect(base.impostos.find((l) => l.chave === "IPTU")?.total).toBe("140000.00");
+    // A de 2025 continua na base de 2025.
+    const base2025 = await baseDeImpostos(prisma, { exercicio: 2025, ate: new Date("2025-12-31T23:59:59Z") });
+    expect(base2025.impostos.find((l) => l.chave === "IPTU")?.total).toBe("9000.00");
   });
 
   // ═══════════════════════════════════════════════════════════════════════════

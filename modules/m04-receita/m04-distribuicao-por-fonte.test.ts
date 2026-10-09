@@ -298,7 +298,7 @@ describe("M04 V16/C30 — a arrecadacao repartida entre fontes", () => {
     await registrar({ numero: "2026RC000001", valor: "100000.00", parcelas: REPARTIDA });
     expect(await porFonte()).toEqual({ "500": "60000.00", "540": "40000.00" });
 
-    const detalhado = await arrecadadoPorNaturezaFonte(prisma, { ate: new Date("2026-12-31T23:59:59Z") });
+    const detalhado = await arrecadadoPorNaturezaFonte(prisma, { desde: new Date("2026-01-01T03:00:00Z"), ate: new Date("2026-12-31T23:59:59Z") });
     expect(detalhado).toHaveLength(2);
     expect(detalhado.every((l) => l.naturezaCodigo === NATUREZA)).toBe(true);
   });
