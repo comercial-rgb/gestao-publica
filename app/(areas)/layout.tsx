@@ -5,6 +5,7 @@ import { Header } from "../../components/ui/Header";
 import { PanoDoMenu, ShellProvider } from "../../components/ui/Shell";
 import { Sidebar } from "../../components/ui/Sidebar";
 import { VigiaDeEdicao } from "../../components/ui/VigiaDeEdicao";
+import { VigiaDaVersao } from "../../components/ui/VigiaDaVersao";
 import { CabecalhoDeImpressao } from "../../components/ui/CabecalhoDeImpressao";
 import { ContextoNaNavegacao } from "../../components/ui/ContextoNaNavegacao";
 import { carregarContextoDoUsuario } from "../../lib/portas/contexto";
@@ -66,6 +67,7 @@ export default async function AreasLayout({
     >
       <ShellProvider>
         <VigiaDeEdicao />
+        <VigiaDaVersao versao={tela.versao} />
         <Suspense fallback={null}>
           <ContextoNaNavegacao />
         </Suspense>

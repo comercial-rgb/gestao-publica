@@ -610,3 +610,13 @@ anulações no conjunto, o saldo a liquidar sairia cheio (t8 de `m05-consultas-e
 - As telas que reservam (a ficha e o processo licitatório) pedem a data; a lista da ficha mostra a data do fato.
 - Testes: `m05-saldo-na-data` t3 e t4 (N=2 reservas e N=2 datas, hora de borda); 4 mutações vermelhas. As fixturas
   antigas que reservavam sem data e empenhavam no passado passaram a informar a data da reserva.
+
+## V38 — o documento fiscal da liquidação pela busca, e onde fica a retenção
+
+O `select` "Documento fiscal conferido" trazia os últimos 300 documentos conferidos de QUALQUER emitente, e o domínio
+recusa o documento de emitente diferente do credor: a tela oferecia o que seria recusado. Catálogo
+`documentos-fiscais-para-liquidar` (contexto `empenhoId`): só os do credor do empenho escolhido, conferidos, não
+cancelados nem substituídos, por número ou chave, com atalho para registrar em Licitações › Documentos fiscais
+recebidos. A liquidação (formulário e detalhe) diz que as retenções são informadas no pagamento, com link. O empenho
+mostra a classificação inteira da dotação escolhida (unidade, funcional, natureza, fonte). Testes
+`test/ui/liquidacao-documento-e-conta.test.ts` (2 mutações vermelhas); percurso `percurso-v38-audios-da-contadora`.

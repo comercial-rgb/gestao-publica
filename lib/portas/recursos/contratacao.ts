@@ -77,7 +77,9 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
       nome: "reservar", rotulo: "Reservar dotação para este processo", acaoDoCenso: "RESERVAR_DOTACAO",
       aviso: "A reserva bloqueia o valor na ficha e fica vinculada ao processo; somente empenho de contrato deste processo pode utilizá-la.",
       campos: [
-        { nome: "fichaId", rotulo: "Ficha (dotação)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        // V38 — pela busca: o select trazia só as 500 primeiras fichas, e 554 das 1.054 da base ficavam fora do alcance.
+        { nome: "fichaId", rotulo: "Ficha (dotação)", tipo: "referencia", catalogo: "fichas-para-ordem", obrigatorio: true, largura: 2,
+          placeholder: "Número da ficha, natureza, unidade ou fonte" },
         { nome: "valor", rotulo: "Valor reservado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "historico", rotulo: "Histórico", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "reserva para o pregão 2026/001" },
         { nome: "data", rotulo: "Data da reserva", tipo: "data", obrigatorio: true, largura: 1,

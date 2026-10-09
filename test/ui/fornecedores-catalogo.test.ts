@@ -80,6 +80,27 @@ describe("o catálogo de fornecedores", () => {
     expect([primeira.opcoes.length, primeira.temMais]).toEqual([20, true]);
   });
 
+  it("t1d: o credor do empenho é qualquer pessoa cadastrada e ativa, dizendo quando falta o papel; o encerrado e o desativado não (N=2 de cada)", async () => {
+    // V38 — a contadora pegou um CPF da tela "Pessoas e Credores" e a busca do empenho não o achava: só quem tinha o papel.
+    const despesa = await usuario("v38.despesa", ["CONSULTAR_DESPESA"]);
+    await prisma.pessoa.createMany({ data: [
+      { id: "pes-sem-1", documento: "08000000001", tipo: "FISICA", criadoPor: "seed-teste" }, { id: "pes-sem-2", documento: "08000000002", tipo: "JURIDICA", criadoPor: "seed-teste" },
+      { id: "pes-enc-1", documento: "08000000003", tipo: "FISICA", criadoPor: "seed-teste" }, { id: "pes-enc-2", documento: "08000000004", tipo: "FISICA", criadoPor: "seed-teste" },
+      { id: "pes-des-1", documento: "08000000005", tipo: "FISICA", criadoPor: "seed-teste" }, { id: "pes-des-2", documento: "08000000006", tipo: "FISICA", criadoPor: "seed-teste" },
+    ] });
+    await prisma.versaoDePessoa.createMany({ data: ["pes-sem-1", "pes-sem-2", "pes-enc-1", "pes-enc-2"].map((pessoaId) => ({ pessoaId, nome: `Pessoa ${pessoaId}`, criadoPor: "seed-teste" })) });
+    await prisma.versaoDePessoa.createMany({ data: ["pes-des-1", "pes-des-2"].map((pessoaId) => ({ pessoaId, nome: `Pessoa ${pessoaId}`, ativa: false, criadoPor: "seed-teste" })) });
+    for (const pessoaId of ["pes-enc-1", "pes-enc-2"]) {
+      await prisma.movimentoDePapelDaPessoa.create({ data: { pessoaId, papel: "CREDOR", movimento: "CONCEDIDO", data: new Date("2026-01-02T15:00:00Z"), criadoPor: "seed-teste" } });
+      await prisma.movimentoDePapelDaPessoa.create({ data: { pessoaId, papel: "CREDOR", movimento: "ENCERRADO", data: new Date("2026-02-02T15:00:00Z"), criadoPor: "seed-teste" } });
+    }
+    const achados = await buscarOpcoes(despesa, "credores", { q: "0800000000", pagina: 1, contexto: {} });
+    expect(achados.opcoes.map((o) => [o.valor, /cadastro sem o papel de credor/.test(o.detalhe ?? "")])).toEqual([["08000000001", true], ["08000000002", true]]);
+    // Quem tem o papel não leva o aviso; o documento com pontuação acha o mesmo.
+    const comPapel = await buscarOpcoes(despesa, "credores", { q: "100.000.000-24", pagina: 1, contexto: {} });
+    expect(comPapel.opcoes.map((o) => [o.valor, o.detalhe?.includes("sem o papel")])).toEqual([[doc(24), false]]);
+  });
+
   it("t1c: trinta credores ENCERRADOS antes dos vigentes na ordem não encurtam a página, nos dois catálogos (N=2 páginas)", async () => {
     const ns = Array.from({ length: 30 }, (_, n) => n);
     // Documentos que vêm antes de todos os vigentes na ordem por documento.

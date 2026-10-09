@@ -324,3 +324,14 @@ arrecadações.
   servidor (já era assim antes da V26).
 - `LOA-ESPERANCA-IRPF-11130101`: a LOA 2026 de Esperança prevê o IR em 11130101; a execução vai a 11130311/11130341.
   O orçamento publicado não é alterado nem rateado; a regularização do enquadramento é do ente.
+
+## V38 — a pessoa física no cálculo da retenção
+
+O bloco "Natureza do bem ou serviço (IN RFB 1.234)" aparecia para qualquer credor, e a IN 1.234 só alcança pessoas
+jurídicas; para pessoa física o cálculo devolve "sem cálculo" (`calculo-da-retencao.ts`). A tela do pagamento agora,
+para credor com CPF, esconde o bloco com a explicação e abre o "Valor informado" (que também abre sozinho quando a prévia
+traz "Sem cálculo"). Decisão pendente: o IR informado de pessoa física é gravado como `IRRF_FORNECEDOR_PJ`
+(`retencao-calculada.ts`); o contador diz qual classificação cabe. As tabelas oficiais (IR, INSS, ISS) estavam vazias
+na base fictícia e em produção: carregadas por `scripts/carregar-tabelas-da-retencao.ts` (idempotente, sha256
+conferido contra `docs/oficial/MANIFEST-RETENCAO.json`). A classificação da retenção própria do município
+(`/financeiro/retencoes-proprias`) continua sendo decisão do ente: sem ela, IR e ISS calculados são recusados.

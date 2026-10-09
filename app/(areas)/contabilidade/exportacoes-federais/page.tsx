@@ -135,7 +135,7 @@ export default async function Pagina({
   return (
     <div className="space-y-8">
       <PageHeader
-        titulo="Arquivos para a STN e a Receita"
+        titulo="Matriz de Saldos Contábeis (MSC) e MANAD"
         subtitulo="Geração da Matriz de Saldos Contábeis e do arquivo digital da Receita Federal a partir dos lançamentos contábeis, para download e conferência."
       />
 

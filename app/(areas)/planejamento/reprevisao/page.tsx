@@ -6,12 +6,12 @@ import { gerarReprevisoes, PortaSemBancoError, type ReprevisaoRegistrada } from 
 import { FormReprevisao } from "./FormReprevisao";
 import { diaCivilBr } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { exercicioAutorizado } from "../../../../lib/recorte";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
  * REPREVISÃO DE RECEITA — histórico append-only (LRF art. 12). Server Component, força-dinâmica.
- * ⚠️ Só LEITURA: o registro de uma reprevisão é ato autorizado, e depende da sessão (6.3). Até lá,
- * a lista é o histórico; o formulário de registro entra com o login.
+ * A lista é o histórico; o registro de uma reprevisão é ato autorizado pela sessão (o formulário abaixo).
  */
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,9 @@ export default async function ReprevisaoPage({
 }): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const sp = await searchParams;
-  const bruto = Array.isArray(sp["exercicio"]) ? sp["exercicio"][0] : sp["exercicio"];
-  const exercicio = bruto !== undefined && !Number.isNaN(Number.parseInt(bruto, 10)) ? Number.parseInt(bruto, 10) : 2026;
+  // V38 — o exercício é o do contexto da sessão (antes, 2026 fixo quando a URL não o trazia).
+  const exercicio = ((): number | null => { try { return exercicioAutorizado(sp); } catch { return null; } })();
+  if (exercicio === null) return <div><PageHeader titulo="Reprevisão de Receita" subtitulo="Reestimativas da receita (LRF art. 12)." /><EstadoVazio titulo="O exercício pedido não é um ano" descricao="Escolha o exercício no cabeçalho." /></div>;
 
   const cabecalho = <PageHeader titulo="Reprevisão de Receita" subtitulo={`Reestimativas da receita do exercício ${exercicio} (LRF art. 12).`} />;
 

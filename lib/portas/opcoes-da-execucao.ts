@@ -70,21 +70,25 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
             : { OR: [...(digitos.length >= 2 ? [{ documento: { startsWith: digitos } }] : []), { versoes: { some: { nome: contem(p.q) } } }] };
       // V37 — o ENCERRADO sai no filtro (a consulta não diz "o último movimento"); a página se colhe em lotes, para não
       // vir curta nem esconder um credor vigente atrás de encerrados (`paginarFiltrando`).
+      // V38 — QUALQUER PESSOA CADASTRADA E ATIVA se oferece, com ou sem o papel de credor: a tela "Pessoas e Credores"
+      // lista todas, e a contadora pegou um CPF de lá que a busca não achava (em produção, 6 pessoas, 1 com o papel).
+      // O empenho não exige o papel (o credor sem cadastro é aceito pelo documento); a busca não pode ser mais estrita
+      // que o ato. Quem não tem o papel aparece dizendo isso; quem teve o papel ENCERRADO não aparece: é decisão.
       const r = await paginarFiltrando(
         (skip, take) =>
           cliente().pessoa.findMany({
-            where: { ...filtro, movimentos: { some: { papel: "CREDOR" } } },
+            where: filtro,
             orderBy: { documento: "asc" },
             skip,
             take,
             select: {
               documento: true,
               tipo: true,
-              versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true, municipio: true, uf: true } },
+              versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true, municipio: true, uf: true, ativa: true } },
               movimentos: { where: { papel: "CREDOR" }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 1, select: { movimento: true } },
             },
           }),
-        (x) => x.movimentos[0]?.movimento === "CONCEDIDO",
+        (x) => x.versoes[0]?.ativa !== false && x.movimentos[0]?.movimento !== "ENCERRADO",
         p.pagina,
         TAMANHO
       );
@@ -95,7 +99,7 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
           return {
             valor: x.documento,
             rotulo: `${formatarDocumento(x.documento)} — ${v?.nome ?? "(sem nome)"}`,
-            detalhe: `${x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física"}${lugar}`,
+            detalhe: `${x.tipo === "JURIDICA" ? "pessoa jurídica" : "pessoa física"}${lugar}${x.movimentos[0]?.movimento === "CONCEDIDO" ? "" : " · cadastro sem o papel de credor"}`,
             dados: { credorNome: v?.nome ?? "" },
           };
         }),

@@ -427,6 +427,14 @@ export function FormEmpenho({
               Disponível na ficha: <strong className="tabular text-[color:var(--color-ink)]">R$ {formatarMoeda(fichaEscolhida.saldoDisponivel).texto}</strong>
             </span>
           ) : null}
+          {/* V38 — a classificação herdada da dotação, inteira: a contadora sentiu falta dela depois de escolher a ficha. */}
+          {fichaEscolhida !== undefined ? (
+            <span className="mt-1 block text-[11px] text-[color:var(--color-ink-2)]" data-dotacao-escolhida>
+              {fichaEscolhida.unidade !== undefined ? `Unidade ${fichaEscolhida.unidade} · ` : ""}
+              {fichaEscolhida.classificacao !== undefined ? `${fichaEscolhida.classificacao} · ` : ""}
+              natureza {fichaEscolhida.naturezaCodigo} {fichaEscolhida.naturezaDescricao} · fonte {fichaEscolhida.fonteCodigo}
+            </span>
+          ) : null}
           {fichaEscolhida !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(dataEmissao) ? (
             <span className="mt-1 block text-[11px] text-[color:var(--color-ink-3)]" data-disponivel-na-data={dataEmissao}>
               {naData === undefined ? (

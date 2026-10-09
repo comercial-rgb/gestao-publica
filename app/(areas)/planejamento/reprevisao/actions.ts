@@ -21,8 +21,9 @@ export async function reprevisarAction(_prev: EstadoReprevisao, formData: FormDa
     const tipoReceita = (TIPOS as readonly string[]).includes(tipoBruto) ? (tipoBruto as (typeof TIPOS)[number]) : "ORCAMENTARIA";
     const valorAjuste = String(formData.get("ajuste") ?? "").trim();
     const motivo = String(formData.get("motivo") ?? "").trim();
-    const exBruto = Number.parseInt(String(formData.get("exercicio") ?? "2026"), 10);
-    const exercicio = Number.isNaN(exBruto) ? 2026 : exBruto;
+    const exBruto = Number.parseInt(String(formData.get("exercicio") ?? ""), 10);
+    if (Number.isNaN(exBruto)) return { erro: "Exercício não informado. Nada foi gravado." };
+    const exercicio = exBruto;
 
     try {
       await registrarReprevisao({ exercicio, naturezaReceita, fonte, tipoReceita, valorAjuste, motivo, data: new Date() });

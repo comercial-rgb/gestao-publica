@@ -505,6 +505,45 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     },
   },
   /**
+   * V38 — O DOCUMENTO FISCAL DA LIQUIDAÇÃO: os documentos recebidos do CREDOR DO EMPENHO escolhido (contexto
+   * `empenhoId`), já conferidos e não cancelados nem substituídos, por número ou chave. Antes era um `select` com os
+   * últimos 300 documentos de qualquer emitente, e a contadora não viu onde ficavam o número e a chave da nota.
+   */
+  "documentos-fiscais-para-liquidar": {
+    leitura: "CONSULTAR_DESPESA",
+    async buscar(_s, p) {
+      const empenhoId = p.contexto["empenhoId"] ?? "";
+      if (empenhoId === "") return { opcoes: [], temMais: false };
+      const emp = await cliente().empenho.findUnique({ where: { id: empenhoId }, select: { credorCpfCnpj: true } });
+      if (emp === null) return { opcoes: [], temMais: false };
+      const q = p.q.trim();
+      const linhas = await cliente().documentoFiscalRecebido.findMany({
+        where: {
+          AND: [
+            { emitente: { documento: emp.credorCpfCnpj.replace(/\D/g, "") } },
+            { movimentos: { some: { tipo: "CONFERENCIA" } } },
+            { movimentos: { none: { tipo: { in: ["CANCELAMENTO", "SUBSTITUICAO"] } } } },
+            p.valor !== undefined ? { id: p.valor } : q === "" ? {} : { OR: [{ numero: { startsWith: q } }, { chaveAcesso: { contains: q } }] },
+          ],
+        },
+        orderBy: { dataEmissao: "desc" },
+        skip: skip(p), take,
+        select: { id: true, modelo: true, numero: true, serie: true, dataEmissao: true, valorTotal: true, chaveAcesso: true, emitente: { select: { versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true } } } } },
+      });
+      const r = pagina(linhas, p);
+      const MODELO: Readonly<Record<string, string>> = { NFE: "NF-e", NFCE: "NFC-e", NF_AVULSA: "Nota avulsa", CTE: "CT-e", RPS: "RPS", RECIBO: "Recibo", OUTRO: "Documento" };
+      const reais = (v: { toFixed(n: number): string }): string => { const [i, d] = v.toFixed(2).split("."); return `R$ ${(i ?? "0").replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${d ?? "00"}`; };
+      return {
+        opcoes: r.linhas.map((d) => ({
+          valor: d.id,
+          rotulo: `${MODELO[d.modelo] ?? d.modelo} ${d.numero}${d.serie === "" ? "" : `/${d.serie}`} — ${d.emitente.versoes[0]?.nome ?? ""}`,
+          detalhe: `${reais(d.valorTotal)} · emitida em ${diaCivilBr(d.dataEmissao)}${d.chaveAcesso === null ? "" : ` · chave …${d.chaveAcesso.slice(-8)}`}`,
+        })),
+        temMais: r.temMais,
+      };
+    },
+  },
+  /**
    * V37 — AS CONTAS DE UM ROTEIRO DO ALMOXARIFADO: analíticas das classes patrimoniais (1 a 4), por código ou nome. O
    * valor é o ID da conta (é o que o roteiro grava). O caso de uso confere de novo: existência, analítica e o par pelo
    * motor contábil. Nenhuma conta é sugerida: a escolha é do ente.

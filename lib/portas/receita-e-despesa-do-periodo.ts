@@ -2,7 +2,7 @@ import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { nomesDosCredores } from "./empenho";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
-import { fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
+import { diaCivil, fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
 import { arrecadadoPorFonteMesAMes, arrecadadoPorNaturezaFonteMesAMes } from "../../modules/m04-receita/arrecadado-mes-a-mes";
 import { arrecadadoPorNaturezaFonte } from "../../modules/m04-receita/consultas";
 import { pagamentosEfetuados, totaisDosPagamentos } from "../../modules/m05-despesa/pagamentos-efetuados";
@@ -130,6 +130,20 @@ export interface MovimentoDoDia {
 }
 
 /** O dia civil (AAAA-MM-DD). Valor malformado é recusado pelo chamador, nunca trocado por outro dia. */
+/** V38 — o último dia civil com pagamento ou arrecadação, para a tela não abrir vazia em "hoje". */
+export async function ultimoDiaComMovimento(): Promise<string | null> {
+  await exigirLeituraDoEnte("CONSULTAR_RECEITA");
+  await exigirLeituraDoEnte("CONSULTAR_DESPESA");
+  const prisma = cliente();
+  const [pg, ar] = await Promise.all([
+    prisma.pagamento.findFirst({ orderBy: { data: "desc" }, select: { data: true } }),
+    prisma.receitaArrecadada.findFirst({ orderBy: { dataArrecadacao: "desc" }, select: { dataArrecadacao: true } }),
+  ]);
+  const datas = [pg?.data, ar?.dataArrecadacao].filter((d): d is Date => d instanceof Date);
+  if (datas.length === 0) return null;
+  return diaCivil(new Date(Math.max(...datas.map((d) => d.getTime()))));
+}
+
 export async function lerMovimentoDoDia(dia: string): Promise<MovimentoDoDia> {
   await exigirLeituraDoEnte("CONSULTAR_RECEITA");
   await exigirLeituraDoEnte("CONSULTAR_DESPESA");

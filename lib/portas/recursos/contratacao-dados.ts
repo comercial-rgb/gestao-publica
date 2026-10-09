@@ -211,19 +211,10 @@ export async function verProcesso(id: string): Promise<DetalheLido | null> {
   };
 }
 
-/** As opções do processo: as fichas do exercício (para reservar) e — CONTEXTUAL — as reservas vivas DESTE processo. */
+/** As opções do processo — CONTEXTUAL — as reservas vivas DESTE processo. (V38: a ficha da reserva vem da busca.) */
 export async function opcoesDoProcesso(processoId?: string): Promise<OpcoesDoCadastro> {
-  const prisma = cliente();
-  const [fichas, reservas] = await Promise.all([
-    prisma.fichaOrcamentaria.findMany({
-      orderBy: [{ exercicio: "desc" }, { numero: "asc" }],
-      take: 500,
-      select: { id: true, exercicio: true, numero: true, saldoDisponivel: true, unidadeOrc: { select: { codigo: true } }, naturezaDespesa: { select: { codigoCompleto: true } }, fonte: { select: { codigo: true } } },
-    }),
-    processoId === undefined ? Promise.resolve([] as readonly ReservaLida[]) : reservasDoProcesso(processoId),
-  ]);
+  const reservas = processoId === undefined ? ([] as readonly ReservaLida[]) : await reservasDoProcesso(processoId);
   return {
-    fichaId: fichas.map((f) => ({ valor: f.id, rotulo: `${f.exercicio} · ficha ${f.numero} · UO ${f.unidadeOrc.codigo} · ${f.naturezaDespesa.codigoCompleto} · fonte ${f.fonte.codigo} · saldo ${f.saldoDisponivel.toFixed(2)}` })),
     reservaId: reservas.filter((r) => !r.liberada).map((r) => ({ valor: r.id, rotulo: `Ficha ${r.fichaNumero} · ${r.valor.toFixed(2)} (saldo ${r.valor.minus(r.consumido).toFixed(2)}) · ${r.historico}` })),
   };
 }

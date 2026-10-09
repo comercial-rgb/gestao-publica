@@ -56,7 +56,6 @@ export function FormLiquidacao({
   exercicio,
   unidadeCodigo,
   opcoesDeMaterial,
-  documentos = [],
   empenhoInicial,
   numeroSugerido,
   subempenhoInicial,
@@ -65,7 +64,6 @@ export function FormLiquidacao({
   readonly exercicio: number;
   readonly unidadeCodigo?: string | undefined;
   readonly opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
-  readonly documentos?: readonly { readonly id: string; readonly rotulo: string }[];
   /** V33 — o empenho que veio escolhido de outra tela (diárias, a pagar). Sem saldo a liquidar, é ignorado. */
   readonly empenhoInicial?: string | undefined;
   /** V37 — o próximo número livre do exercício (inclusive os reservados pelo sistema), já no campo. */
@@ -186,17 +184,25 @@ export function FormLiquidacao({
           </span>
         </label>
 
-        <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
-          <span className={ROTULO}>Documento fiscal conferido (opcional)</span>
-          <select name="documentoFiscalId" defaultValue="" className={CAMPO}>
-            <option value="">— sem documento fiscal —</option>
-            {documentos.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="sm:col-span-2 lg:col-span-3">
+          {/* V38 — o documento fiscal pela busca, só os do credor do empenho escolhido, já conferidos. O número, a série,
+              a chave e o valor da nota são copiados para a liquidação na gravação. Sem documento (despesa sem nota), fica
+              em branco. */}
+          <CampoReferenciado
+            name="documentoFiscalId"
+            rotulo="Documento fiscal (nota, recibo, CT-e), se houver"
+            catalogo="documentos-fiscais-para-liquidar"
+            contexto={["empenhoId"]}
+            placeholder="Número da nota ou chave de acesso"
+            largura={4}
+            ajuda="Aparecem os documentos do credor deste empenho que já foram registrados e conferidos em Licitações, Documentos fiscais recebidos. Escolha o empenho antes."
+            cadastro={{ href: "/licitacoes/documentos-fiscais", rotulo: "Registrar um documento fiscal" }}
+          />
+          {/* V38 — a contadora procurou a retenção aqui: ela é informada ao pagar (IR, INSS, ISS e consignações). */}
+          <p data-onde-fica-a-retencao className="mt-2 text-[11px] text-[color:var(--color-ink-3)]">
+            As retenções na fonte (IR, INSS, ISS e consignações) são informadas ao pagar esta liquidação, na tela de pagamentos, calculadas pelas tabelas oficiais ou pelo valor informado.
+          </p>
+        </div>
 
         <label className="text-xs text-[color:var(--color-ink-2)] sm:col-span-2 lg:col-span-3">
           <span className={ROTULO}>Histórico</span>

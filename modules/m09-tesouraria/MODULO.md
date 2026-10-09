@@ -294,3 +294,12 @@ lança no razão ou mexe em saldo.
   unicidade do banco devolve a mesma mensagem de negócio.
 - **Consulta** `chequesEmitidos`: por data de emissão, situação no fim do período. A porta só pede os de pagamento a quem
   lê a despesa no ente (credor e empenho são dado da despesa).
+
+## V38 — o que a tela da conciliação diz quando não há extrato
+
+A tela vazia dizia "a conciliação exige um extrato importado" e mandava para a Central de Integrações, onde o cartão do
+BB manda de volta. Agora diz: com arquivo OFX, importe; sem arquivo, a conciliação por período (abre a conta e o período,
+declara pendências, encerra); a consulta direta ao Banco do Brasil depende de credencial e está desligada. O aviso
+"dados de demonstração" só aparece para o extrato vindo da API de demonstração (`origem === "API_BB"`): um OFX
+importado é o extrato real. Pendente: entrada manual de linhas do extrato (sem campo de saldo avulso, que criaria
+segunda aritmética).

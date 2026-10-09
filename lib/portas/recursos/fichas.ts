@@ -62,5 +62,6 @@ export const FICHAS: DefinicaoDeRecurso = definirRecurso({
     { rotulo: "Empenhos", href: "/despesa/empenhos", explicacao: "Emitir o empenho: a busca da dotação acha a ficha pelo número, pela classificação ou pelo código reduzido." },
     { rotulo: "Códigos reduzidos do PPA", href: "/planejamento/ppa/codigos-reduzidos", explicacao: "O número curto da combinação de unidade, função, subfunção, programa e ação desta ficha no plano." },
     { rotulo: "Ações do PPA na LOA", href: "/planejamento/loa/vinculo-ppa", explicacao: "A ação do plano que cada ficha executa, e as fichas sem ação correspondente no plano." },
+    { rotulo: "Preparar o próximo exercício", href: "/planejamento/proposta-orcamentaria", explicacao: "As fichas do exercício seguinte nascem da proposta, importadas destas e ajustadas antes de gerar o orçamento." },
   ],
 });

@@ -65,7 +65,8 @@ export default async function DiarioPage({
 type LinhaDiario = LancamentoDoDiario & { totalDebito: string; dataFmt: string };
 const COLUNAS: readonly ColunaTabela<LinhaDiario>[] = [
   { chave: "data", cabecalho: "Data", alinhamento: "esquerda", largura: "6rem", celula: (l) => l.dataFmt },
-  { chave: "nc", cabecalho: "Nº", alinhamento: "esquerda", largura: "8rem", celula: (l) => l.numeroControle },
+  // V38 — o número abre o lançamento (partidas e documento de origem).
+  { chave: "nc", cabecalho: "Nº", alinhamento: "esquerda", largura: "8rem", celula: (l) => <a href={`/contabilidade/lancamentos/${l.id}`} className="text-[color:var(--color-primary)] hover:underline">{l.numeroControle}</a> },
   { chave: "hist", cabecalho: "Histórico", alinhamento: "esquerda", celula: (l) => l.historico },
   { chave: "origem", cabecalho: "Origem", alinhamento: "esquerda", largura: "10rem", celula: (l) => l.origemTipo },
   { chave: "valor", cabecalho: "Valor", alinhamento: "direita", largura: "9rem", celula: (l) => <ValorMonetario valor={l.totalDebito} /> },

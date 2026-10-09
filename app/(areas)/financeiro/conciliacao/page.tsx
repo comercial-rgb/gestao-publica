@@ -133,10 +133,10 @@ export default async function ConciliacaoBancariaPage({
         {importar}
         <EstadoVazio
           titulo={`Nenhum extrato bancário importado no exercício ${exercicio}`}
-          descricao={podeImportar ? "A conciliação exige um extrato importado. Importe o arquivo OFX acima, ou use a API do Banco do Brasil na Central de Integrações." : "A conciliação exige um extrato importado. A importação é feita por quem tem a permissão de importar extratos."}
+          descricao={podeImportar ? "Esta tela confronta o extrato do banco, em arquivo OFX, com os registros do sistema: importe o arquivo acima. Sem o arquivo, use a conciliação por período: abra o período da conta, declare as pendências (cheques não compensados, depósitos em trânsito) e encerre. A consulta direta ao Banco do Brasil depende de credencial e está desligada neste ambiente." : "Esta tela confronta o extrato do banco, em arquivo OFX, com os registros do sistema; a importação é feita por quem tem a permissão de importar extratos. Sem o arquivo, use a conciliação por período."}
           acao={
-            <Link href="/integracoes" className="text-sm font-semibold text-[color:var(--color-primary)] underline">
-              Ir para a Central de Integrações
+            <Link href="/financeiro/conciliacao/periodo" className="text-sm font-semibold text-[color:var(--color-primary)] underline">
+              Conciliar por período, sem arquivo
             </Link>
           }
         />
@@ -167,7 +167,9 @@ export default async function ConciliacaoBancariaPage({
       {cabecalho}
       {importar}
 
-      {/* ══ HONESTIDADE, NO TOPO — não é nota de rodapé (DIRETIVA §4/§7) ══ */}
+      {/* ══ HONESTIDADE, NO TOPO — não é nota de rodapé (DIRETIVA §4/§7) ══
+          V38 — só para o extrato vindo da API de demonstração: um OFX importado é o extrato real do banco. */}
+      {extrato.origem !== "API_BB" ? null : (
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
         <strong className="text-[color:var(--color-ink)]">Origem dos dados: demonstração.</strong>{" "}
         As linhas do extrato abaixo são <strong>dados de demonstração</strong> no formato da API de
@@ -176,6 +178,7 @@ export default async function ConciliacaoBancariaPage({
         movimentação. {modo.live} Agência e conta são exibidas{" "}
         <strong>mascaradas</strong>.
       </div>
+      )}
 
       {/* ══ A CONTA, A ORIGEM E O MODO ══ */}
       <Card>

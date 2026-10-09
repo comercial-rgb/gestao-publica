@@ -5,7 +5,8 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
-import { lerMovimentoDoDia, type MovimentoDoDia } from "../../../../lib/portas/receita-e-despesa-do-periodo";
+import { lerMovimentoDoDia,
+  ultimoDiaComMovimento, type MovimentoDoDia } from "../../../../lib/portas/receita-e-despesa-do-periodo";
 import { diaCivil } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 
@@ -27,12 +28,14 @@ export default async function MovimentoDiarioPage({
   const sp = await searchParams;
   const bruto = sp["dia"];
   const pedido = (Array.isArray(bruto) ? (bruto[0] ?? "") : (bruto ?? "")).trim();
-  const dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido) ? pedido : diaCivil(new Date());
+  let dia = /^\d{4}-\d{2}-\d{2}$/.test(pedido) ? pedido : "";
   let m: MovimentoDoDia;
   try {
     // A receita e a despesa do dia são do ENTE: as duas leituras, declaradas aqui (a porta as cobra de novo).
     await telaExigeLeituraDoEnte("CONSULTAR_RECEITA");
     await telaExigeLeituraDoEnte("CONSULTAR_DESPESA");
+    // V38 — sem dia pedido, o último com movimento (antes era hoje, e a tela abria vazia).
+    if (dia === "") dia = (await ultimoDiaComMovimento()) ?? diaCivil(new Date());
     m = await lerMovimentoDoDia(dia);
   } catch (erro) {
     return (

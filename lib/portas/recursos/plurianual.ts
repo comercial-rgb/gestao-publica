@@ -95,6 +95,7 @@ export const PLANOS_PLURIANUAIS: DefinicaoDeRecurso = definirRecurso({
     { rotulo: "Códigos reduzidos da despesa", href: "/planejamento/ppa/codigos-reduzidos?plano={id}", explicacao: "O número curto de cada ação do plano, usado para achar a dotação no empenho." },
     { rotulo: "Transferências financeiras previstas", href: "/planejamento/ppa/transferencias", explicacao: "O que o plano prevê transferir a cada entidade, por ano do quadriênio." },
     { rotulo: "Diretrizes orçamentárias (LDO)", href: "/planejamento/ldo", explicacao: "O passo seguinte do planejamento: as prioridades e metas de cada exercício do plano." },
+    { rotulo: "Preparar o próximo exercício", href: "/planejamento/proposta-orcamentaria", explicacao: "A proposta da LOA do exercício seguinte, importada do exercício em execução." },
     { rotulo: "Ações do plano na LOA", href: "/planejamento/loa/vinculo-ppa", explicacao: "As fichas da lei orçamentária que executam cada ação do plano, com a dotação do exercício e a dos anos do plano." },
     { rotulo: "Audiências públicas", href: "/planejamento/audiencias", explicacao: "As audiências da elaboração, com a ata e os documentos." },
   ],

@@ -27,3 +27,11 @@ seletores referenciados `pessoas` e `contas-com-pessoa-fisica`. Testes: `m21-car
 Pendências: `REPRESENTACAO-POR-ESCOPO` (a representação vale para todos os serviços da carta; poderes
 por tipo de ato não existem), `REPRESENTACAO-ANEXO-DO-FUNDAMENTO` (o fundamento é texto; o documento
 digitalizado não é anexado).
+
+## V38 — a busca do credor no empenho oferece qualquer pessoa cadastrada
+
+A contadora copiou um CPF da tela "Pessoas e Credores" e a busca do empenho não o achava: o catálogo `credores`
+(`lib/portas/opcoes-da-execucao.ts`) só oferecia pessoa com o papel CREDOR concedido, e a tela lista todas (em
+produção, 6 pessoas e 1 com o papel). O empenho não exige o papel (aceita credor sem cadastro pelo documento), então a
+busca não pode ser mais estrita que o ato: oferece qualquer pessoa ativa, dizendo "cadastro sem o papel de credor" quando
+falta; papel ENCERRADO e cadastro desativado continuam fora. Teste `fornecedores-catalogo` t1d (3 mutações vermelhas).

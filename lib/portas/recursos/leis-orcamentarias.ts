@@ -79,5 +79,10 @@ export const LEIS_ORCAMENTARIAS: DefinicaoDeRecurso = definirRecurso({
       href: "/planejamento/loa",
       explicacao: "A receita prevista e a despesa fixada por órgão, unidade e função, a partir das fichas do orçamento.",
     },
+    {
+      rotulo: "Preparar o próximo exercício",
+      href: "/planejamento/proposta-orcamentaria",
+      explicacao: "A proposta do exercício seguinte a partir deste: importa receitas e fichas, aceita reajuste e ajustes, e gera o orçamento.",
+    },
   ],
 });

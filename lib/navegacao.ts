@@ -276,7 +276,7 @@ export const CONTABILIDADE: readonly RelatorioNav[] = [
   { href: "/contabilidade/lancamentos", numero: "Lançamentos", rotulo: "Lançamentos Contábeis", descricao: "Lançamentos em partidas dobradas, com número de controle, histórico e documento de origem." },
   // V11 V3.1 — o número que autoriza crédito adicional por superávit existia só dentro da recusa
   // do guard; aqui ele pode ser perguntado ANTES de o decreto ser escrito.
-  { href: "/contabilidade/exportacoes-federais", numero: "Arquivos federais", rotulo: "Arquivos para a STN e a Receita", descricao: "Matriz de Saldos Contábeis (SICONFI) e MANAD gerados a partir dos lançamentos, para download e conferência." },
+  { href: "/contabilidade/exportacoes-federais", numero: "Arquivos federais", rotulo: "Matriz de Saldos Contábeis (MSC) e MANAD", descricao: "Matriz de Saldos Contábeis (SICONFI) e MANAD gerados a partir dos lançamentos, para download e conferência." },
   { href: "/contabilidade/exportacoes-federais/responsaveis", numero: "Responsáveis técnicos", rotulo: "Responsáveis técnicos", descricao: "Contabilista e empresa responsáveis pela escrituração informados nos arquivos da Receita Federal." },
   { href: "/contabilidade/exportacoes-federais/classificacao", numero: "Classificação MANAD", rotulo: "Classificação para o arquivo da Receita", descricao: "Tipo das unidades, vínculo das ações ao RPPS, hierarquia das naturezas e forma de escrituração exigidos pelo MANAD." },
   { href: "/contabilidade/superavit", numero: "Superávit", rotulo: "Superávit financeiro por fonte", descricao: "Superávit financeiro apurado, utilizado e disponível, por fonte de recurso." },
@@ -422,7 +422,7 @@ export const RELATORIOS_LIVROS: readonly RelatorioNav[] = [
 export const RELATORIOS_DEMONSTRACOES: readonly RelatorioNav[] = [
   { href: "/relatorios/demonstracoes/balanco-orcamentario", numero: "Anexo 12", rotulo: "Balanço Orçamentário", descricao: "Receita prevista e realizada, despesa fixada e executada (Lei 4.320, art. 102)." },
   { href: "/relatorios/demonstracoes/balanco-financeiro", numero: "Anexo 13", rotulo: "Balanço Financeiro", descricao: "Ingressos, dispêndios e saldos de caixa do exercício (Lei 4.320, art. 103)." },
-  { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro financeiro e permanente (Lei 4.320, art. 105)." },
+  { href: "/relatorios/demonstracoes/balanco-patrimonial", numero: "Anexo 14 da Lei 4.320", rotulo: "Balanço Patrimonial", descricao: "Ativo, passivo e patrimônio líquido, com o quadro financeiro e permanente (Lei 4.320, art. 105)." },
   { href: "/relatorios/demonstracoes/variacoes-patrimoniais", numero: "Anexo 15", rotulo: "Variações Patrimoniais", descricao: "Variações patrimoniais aumentativas e diminutivas e o resultado do exercício." },
   { href: "/relatorios/demonstracoes/divida-fundada", numero: "Anexo 16", rotulo: "Dívida Fundada", descricao: "Dívida fundada interna e externa: saldo anterior, contratação, atualização, amortização e saldo seguinte (Lei 4.320, art. 98)." },
   { href: "/relatorios/demonstracoes/divida-flutuante", numero: "Anexo 17", rotulo: "Dívida Flutuante", descricao: "Restos a pagar, serviços da dívida, depósitos e débitos de tesouraria (Lei 4.320, art. 92)." },
@@ -671,7 +671,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/planejamento/leis-orcamentarias", rotulo: "Projeto de lei e aprovação" },
       ] },
       { rotulo: "Próximo exercício", itens: [
-        { href: "/planejamento/proposta-orcamentaria", rotulo: "Importar e preparar a proposta" },
+        { href: "/planejamento/proposta-orcamentaria", rotulo: "Preparar o próximo exercício (proposta)" },
         { href: "/planejamento/emendas", rotulo: "Emendas ao projeto" },
         { href: "/planejamento/emendas-do-plano", rotulo: "Emendas ao PPA e à LDO" },
         { href: "/planejamento/comparacao-de-exercicios", rotulo: "Comparação de exercícios" },
@@ -730,13 +730,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/receita/naturezas", rotulo: "Naturezas de receita" },
         { href: "/receita/naturezas/fontes", rotulo: "Fontes por natureza da receita" },
         { href: "/planejamento/receita-prevista", rotulo: "Previsão da receita" },
-        { href: "/planejamento/reprevisao", rotulo: "Reprevisão" },
-      ] },
-      { rotulo: "Lançamento e reconhecimento", itens: [
-        { href: "/receita/lancamentos", rotulo: "Lançamento de tributos" },
-        { href: "/receita/imoveis", rotulo: "Cadastro imobiliário" },
-        { href: "/receita/parametros-tributarios", rotulo: "Parâmetros dos tributos" },
-        { href: "/receita/certidoes", rotulo: "Certidões" },
+        { href: "/planejamento/reprevisao", rotulo: "Reestimativa da receita (reprevisão)" },
       ] },
       { rotulo: "Arrecadação", itens: [
         { href: "/receita/arrecadacoes", rotulo: "Arrecadação, anulação e estorno" },
@@ -746,7 +740,23 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Acompanhamento", itens: [
         { href: "/receita/por-entidade", rotulo: "Arrecadação por entidade" },
+      ] },
+    ],
+  },
+  {
+    // V38 — a contadora estranhou o cadastro imobiliário e as certidões no meio da arrecadação: são gestão tributária,
+    // com reflexo contábil (a inscrição em dívida ativa nasce do reconhecimento da receita). Mesmas rotas e permissões.
+    id: "tributos",
+    rotulo: "Tributos",
+    grupos: [
+      { rotulo: "Cadastro e lançamento", itens: [
+        { href: "/receita/imoveis", rotulo: "Cadastro imobiliário" },
+        { href: "/receita/parametros-tributarios", rotulo: "Parâmetros dos tributos" },
+        { href: "/receita/lancamentos", rotulo: "Lançamento de tributos" },
+      ] },
+      { rotulo: "Cobrança e certidões", itens: [
         { href: "/divida/ativa", rotulo: "Dívida ativa" },
+        { href: "/receita/certidoes", rotulo: "Certidões de débitos" },
       ] },
     ],
   },
@@ -894,7 +904,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
         { href: "/contabilidade/roteiros-patrimoniais", rotulo: "Roteiros de precatórios, convênios e adiantamentos" },
       ] },
       { rotulo: "Lançamentos e livros", itens: [
-        { href: "/contabilidade/lancamentos", rotulo: "Lançamentos e documentos de origem" },
+        { href: "/contabilidade/lancamentos", rotulo: "Lançamentos, documentos de origem e lançamento manual" },
         ...deLista(RELATORIOS_LIVROS.filter((l) => l.href.startsWith("/relatorios/livros/"))),
       ] },
       { rotulo: "Demonstrações contábeis", itens: deLista(RELATORIOS_DEMONSTRACOES) },
@@ -921,15 +931,15 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
     id: "prestacao",
     rotulo: "Prestação de Contas",
     grupos: [
-      { rotulo: "RREO", itens: deLista(RELATORIOS_RREO) },
-      { rotulo: "RGF", itens: deLista(RELATORIOS_RGF) },
+      { rotulo: "RREO (Siconfi)", itens: deLista(RELATORIOS_RREO) },
+      { rotulo: "RGF (Siconfi)", itens: deLista(RELATORIOS_RGF) },
       { rotulo: "Tribunal de Contas", itens: [
         { href: "/integracoes/sagres", rotulo: "SAGRES — remessa e validação" },
         { href: "/integracoes/tce", rotulo: "Plano do Tribunal e situação do envio" },
         { href: "/folha/agrupamento-no-tribunal", rotulo: "Folha no Tribunal" },
       ] },
       { rotulo: "Arquivos e integrações", itens: [
-        { href: "/contabilidade/exportacoes-federais", rotulo: "Arquivos para a STN e a Receita" },
+        { href: "/contabilidade/exportacoes-federais", rotulo: "Matriz de Saldos Contábeis (MSC) e MANAD" },
         { href: "/integracoes", rotulo: "Central de integrações" },
         { href: "/integracoes/captura", rotulo: "Captura de documentos" },
       ] },

@@ -99,6 +99,14 @@ export function ResumoDaLiquidacao({
         )}
       </div>
 
+      {/* V38 — a contadora procurou aqui onde informar a retenção: ela é informada ao pagar. */}
+      <p data-onde-fica-a-retencao className="text-xs text-[color:var(--color-ink-2)]">
+        As retenções na fonte (IR, INSS, ISS e consignações) são informadas no pagamento desta liquidação.{" "}
+        <a href={`/despesa/pagamentos?liquidacao=${l.id}`} className="font-medium text-[color:var(--color-primary)] hover:underline">
+          Pagar esta liquidação, com as retenções
+        </a>
+      </p>
+
       <div>
         <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--color-ink-3)]">Valores (R$)</h3>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3 sm:grid-cols-4">

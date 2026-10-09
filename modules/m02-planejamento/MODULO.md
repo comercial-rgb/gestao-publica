@@ -347,3 +347,11 @@ formulário na `/planejamento/receita-prevista`, só com as naturezas de composi
   `criarReceitaPrevistaRepositoryPrisma`) grava a previsão e o lançamento de 1º de janeiro sem conferir o exercício
   aberto. Hoje ele só é alcançado pela carga da LOA e por scripts; acrescentar a guarda mexe nesses chamadores e é
   unidade própria (achado da auditoria do rateio, 07/10/2026).
+
+## V38 — a proposta do próximo exercício alcançável de onde a contadora procurou
+
+Botão "Preparar o próximo exercício" na LOA (com e sem dados), relacionados no PPA, nas leis orçamentárias e nas fichas;
+rótulos do menu com o verbo ("Preparar o próximo exercício (proposta)", "Reestimativa da receita (reprevisão)"). A
+reprevisão usa o exercício do contexto (era 2026 fixo sem `?exercicio=`) e recusa gravação sem exercício. Pendentes
+nomeadas para a 2ª leva da V38: linha nova de receita e de despesa na proposta (AUD-096/109/110), reajuste em lote com
+recorte e prévia (AUD-111/112), prévia da importação (AUD-103), percurso até o empenho do exercício seguinte (AUD-108).

@@ -355,7 +355,7 @@ export function FormPagamento({
             Calcular as retenções pelas tabelas oficiais (o fornecedor vem do empenho, e o perfil fiscal dele, do cadastro de pessoas)
           </span>
         </label>
-        {calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} /> : null}
+        {calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} documento={alvo?.credorCpfCnpj} /> : null}
       </fieldset>
 
       {/* As duas formas não se somam: com o cálculo ligado, as linhas manuais saem do formulário. */}
@@ -526,11 +526,17 @@ export interface OpcoesDaRetencaoParaTela {
 function RetencaoCalculada({
   opcoes,
   formulario,
+  documento,
 }: {
   readonly opcoes: OpcoesDaRetencaoParaTela;
   readonly formulario: React.RefObject<HTMLFormElement | null>;
+  /** V38 — o CPF/CNPJ do credor da liquidação escolhida: a pessoa física não entra na tabela do IR das pessoas jurídicas. */
+  readonly documento?: string | undefined;
 }): React.ReactElement {
   const [previa, setPrevia] = useState<EstadoDaPrevia>({});
+  const pessoaFisica = (documento ?? "").replace(/\D/g, "").length === 11;
+  // V38 — a contadora não achou onde informar o IR de uma pessoa física: o "valor informado" ficava fechado.
+  const semCalculo = (previa.linhas ?? []).some((l) => l.situacao === "Sem cálculo");
   const [calculando, iniciar] = useTransition();
   const [enquadramento, setEnquadramento] = useState<string>("VALOR_BRUTO");
   const idDaLista = useId();
@@ -565,17 +571,25 @@ function RetencaoCalculada({
 
       <fieldset className={caixa}>
         <legend className={titulo}>Imposto de renda</legend>
-        <label className={campo}>
-          <span className={ROTULO}>Natureza do bem ou serviço (IN RFB 1.234/2012, Anexo I)</span>
-          <select name="rcNaturezaIR" defaultValue="" className={CAMPO}>
-            <option value="">Escolha a natureza…</option>
-            {opcoes.naturezasIR.map((n) => (
-              <option key={n.codigo} value={n.codigo}>
-                {n.rotulo}
-              </option>
-            ))}
-          </select>
-        </label>
+        {pessoaFisica ? (
+          <p data-ir-pessoa-fisica className="text-[color:var(--color-ink-2)]">
+            O credor é pessoa física: a tabela por natureza do bem ou serviço vale só para pessoas jurídicas, e o sistema
+            não calcula o imposto de renda da pessoa física. Calcule a prévia e informe o valor retido em &quot;Valor
+            informado&quot;, abaixo, com o motivo.
+          </p>
+        ) : (
+          <label className={campo}>
+            <span className={ROTULO}>Natureza do bem ou serviço (IN RFB 1.234/2012, Anexo I)</span>
+            <select name="rcNaturezaIR" defaultValue="" className={CAMPO}>
+              <option value="">Escolha a natureza…</option>
+              {opcoes.naturezasIR.map((n) => (
+                <option key={n.codigo} value={n.codigo}>
+                  {n.rotulo}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </fieldset>
 
       <fieldset className={caixa}>
@@ -673,7 +687,7 @@ function RetencaoCalculada({
         </div>
       </fieldset>
 
-      <details className={`${caixa} text-xs`}>
+      <details className={`${caixa} text-xs`} open={semCalculo || pessoaFisica} data-valor-informado>
         <summary className="cursor-pointer font-semibold text-[color:var(--color-ink)]">Valor informado, quando o cálculo não cobre o caso</summary>
         <p className="mt-2 text-[color:var(--color-ink-2)]">
           Só vale para o tributo que a prévia mostrar como &quot;Sem cálculo&quot;. Informe o valor (zero, se não houver retenção) e o motivo.

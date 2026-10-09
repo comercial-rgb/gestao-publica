@@ -19,7 +19,7 @@ export const ROTEIRO: readonly (readonly [string, string])[] = [
   ["Balanço patrimonial", "/relatorios/demonstracoes/balanco-patrimonial"],
   ["Variações patrimoniais", "/relatorios/demonstracoes/variacoes-patrimoniais"],
   ["Fluxos de caixa (DFC)", "/relatorios/demonstracoes/fluxos-de-caixa"],
-  ["Arquivos para a STN e a Receita", "/contabilidade/exportacoes-federais"],
+  ["Matriz de Saldos Contábeis (MSC) e MANAD", "/contabilidade/exportacoes-federais"],
   ["Responsáveis técnicos", "/contabilidade/exportacoes-federais/responsaveis"],
   ["Classificação para o arquivo da Receita", "/contabilidade/exportacoes-federais/classificacao"],
   ["RREO anexo 1", "/relatorios/rreo/anexo1"],

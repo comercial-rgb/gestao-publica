@@ -1,5 +1,36 @@
 # Estado da execução
 
+## V38 — os áudios da contadora (09/10/2026; vale sobre a V37 abaixo)
+
+Pedido: `docs/lotes/V38-audios-da-contadora.md` (124 itens de nove áudios de uma contadora avaliando o sistema).
+Matriz por ID, com classificação, achado, alteração, teste e instalação: `docs/lotes/V38-matriz-por-id.md`. Os áudios
+não foram ouvidos nesta máquina (sem transcritor); as dúvidas de transcrição ficaram como dúvidas. Levantamento por
+três agentes de leitura (execução; planejamento; tesouraria, contabilidade e prestações), um escritor na árvore.
+
+### 1ª leva (09/10/2026): o que travou a contadora
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Versão nova avisada (AUD-010) | o log de produção do dia do teste tem "Failed to find Server Action" (formulário aberto durante uma publicação): a tela consulta `/release` a cada 90 s e avisa para recarregar quando a versão muda; tela de erro das áreas em português, com "Recarregar" | todas as áreas | `test/versao-em-uso.test.ts` (puro); tipos |
+| Credor por qualquer pessoa cadastrada (AUD-011/013/014) | a busca do empenho oferecia só quem tinha o papel de credor (produção: 1 de 6 pessoas); agora qualquer pessoa ativa, dizendo quando falta o papel | /despesa/empenhos | `fornecedores-catalogo` t1d, 3 mutações vermelhas; percurso v38 passo 1 |
+| Documento fiscal da liquidação pela busca (AUD-028/029/030) | só os do credor do empenho, conferidos e vivos; atalho para registrar; número, série, chave e valor na busca e no detalhe | /despesa/liquidacoes | `liquidacao-documento-e-conta` t1, 2 mutações vermelhas; percurso v38 passo 2 |
+| Onde fica a retenção (AUD-026/027) | a liquidação (formulário e detalhe) diz que a retenção é informada ao pagar, com link | /despesa/liquidacoes | percurso v38 passo 2 |
+| Pessoa física no cálculo da retenção (AUD-036/037) | o bloco do IR da IN 1.234 (só PJ) some para CPF; o "valor informado" abre sozinho com "Sem cálculo" ou PF | /despesa/pagamentos | percurso v38 passo 7 |
+| Tabelas oficiais da retenção (AUD-033/040) | estavam vazias na base fictícia e em produção; carregadas (IR 9, INSS 30, bases 10, ISS 200) | — | `carregar-tabelas-da-retencao.ts` |
+| Conta do lançamento manual pela busca (AUD-065) | a conta era digitada com sete níveis; agora busca por código ou nome, só analíticas (catálogo `contas-analiticas`) | /contabilidade/lancamentos | `liquidacao-documento-e-conta` t2, 1 mutação vermelha; percurso v38 passo 3 |
+| Reserva do processo pela busca (AUD-115) | o select mostrava 500 de 1.054 fichas | /licitacoes/processos/[id] | `descritores-consistentes`, `molde`; percurso v38 passo 6 |
+| Movimento diário no último dia com movimento (AUD-052) | abria em hoje, vazio | /relatorios/movimento-diario | percurso v38 passo 5 |
+| Diário leva ao lançamento (AUD-066) | o número abre o lançamento | /relatorios/livros/diario | percurso v38 passo 5 |
+| Conciliação sem arquivo (AUD-047/048/049) | a tela vazia aponta a conciliação por período; o aviso "demonstração" só para o extrato da API de demonstração; a API do BB dita como desligada por falta de credencial | /financeiro/conciliacao | tipos |
+| Encontrabilidade do planejamento (AUD-086/088/092/093/099/105) | "Preparar o próximo exercício" na LOA, PPA, leis e fichas; reprevisão no exercício do contexto; rótulos com o verbo | /planejamento/loa | `menu-do-contador`, `navegacao-aponta-para-rota-viva`, `busca-global`, `menu-contra-o-servidor`; percurso v38 passo 4 |
+| Menu (AUD-058/060/062/063/072/080/081/084) | aba Tributos (imóveis, parâmetros, lançamento, dívida ativa, certidões); "lançamento manual" no rótulo; "Anexo 14 da Lei 4.320"; "RREO/RGF (Siconfi)"; "Matriz de Saldos Contábeis (MSC) e MANAD" | menu | idem |
+| Dotação escolhida no empenho (AUD-022) | unidade, funcional, natureza e fonte aparecem ao escolher a ficha | /despesa/empenhos | tipos |
+
+Tipos: backend, app e scripts sem erro. Testes dirigidos: 22 arquivos das áreas tocadas verdes (menus, catálogos, molde,
+descritores). Percurso `percurso-v38-audios-da-contadora` 11/11 na 3011, base fictícia (o servidor de desenvolvimento
+compila cada tela na primeira abertura: o percurso aquece e espera a opção da busca; digitar num formulário abre o aviso
+de edição pendente ao sair, aceito pelo percurso).
+
 ## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
 
 Pedido: `docs/lotes/V37-uso-de-ponta-a-ponta.md`. Regime: superfície (links, recortes, formulários pré-preenchidos) e
@@ -7,10 +38,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `c13effb` (main e `/release` = `c13effb`) |
+| HEAD | V38 1ª leva, a publicar (anterior: `c13effb`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | RREO-RGF-SEM-DRILL-DOWN nos demais anexos (o Anexo 1 abre receita e despesa); replicação PPA → LDO → LOA (5.9.1.25); decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
+| Próximo passo | V38 2ª leva: linha nova de receita e de ficha na proposta, reajuste em lote com recorte e prévia, percurso até o empenho do exercício seguinte (AUD-096/109/110/111/112/108). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
 
 ### O que passou a funcionar, e a rota
 

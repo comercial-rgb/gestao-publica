@@ -72,8 +72,15 @@ export default async function LoaPage({
   }
 
   const semDados = loa.resumo.fichas === 0 && loa.resumo.naturezasDeReceita === 0;
-  const acoes = semDados ? undefined : (
+  // V38 — a contadora procurou dentro da LOA como criar o exercício seguinte a partir deste: o caminho é a proposta.
+  const proximo = (
+    <a href="/planejamento/proposta-orcamentaria" data-proximo-exercicio className="inline-flex h-8 items-center rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface)] px-3 text-xs font-medium text-[color:var(--color-ink)] hover:bg-[color:var(--color-surface-2)]">
+      Preparar o próximo exercício
+    </a>
+  );
+  const acoes = semDados ? proximo : (
     <>
+      {proximo}
       <BotaoPdf href={`/planejamento/loa/pdf?exercicio=${exercicio}`} />
       <BotaoImprimir />
     </>
@@ -91,7 +98,7 @@ export default async function LoaPage({
       {semDados ? (
         <EstadoVazio
           titulo="Nenhuma previsão cadastrada para o exercício"
-          descricao={`Não há fichas orçamentárias nem receita prevista em ${exercicio}. A despesa é fixada em Planejamento › Fichas orçamentárias, e a receita é prevista por natureza e fonte de recurso.`}
+          descricao={`Não há fichas orçamentárias nem receita prevista em ${exercicio}. Para montar este exercício a partir do anterior, use "Preparar o próximo exercício": a proposta importa as receitas e as fichas, aceita os ajustes e gera o orçamento. A despesa também pode ser fixada ficha a ficha em Planejamento › Fichas orçamentárias.`}
         />
       ) : (
         <>

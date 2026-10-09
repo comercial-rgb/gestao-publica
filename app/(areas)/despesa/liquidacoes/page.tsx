@@ -37,7 +37,6 @@ import { BotaoPdf } from "../../../../components/ui/BotaoPdf";
 import { paraCsv } from "../../../../lib/csv/csv";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { FormLiquidacao } from "./FormLiquidacao";
-import { documentosConferidosParaLiquidar } from "../../../../lib/portas/recursos/documentos-fiscais-dados";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 /**
@@ -63,7 +62,6 @@ export default async function LiquidacoesPage({
   let recorte: RecorteDaPagina;
   let liquidacoes: readonly LiquidacaoDaTela[];
   let opcoesDeMaterial: OpcoesDasEntradasDeMaterial;
-  let documentos: readonly { readonly id: string; readonly rotulo: string }[];
   let extras: Extras;
   let numeroSugerido = "";
   try {
@@ -72,13 +70,12 @@ export default async function LiquidacoesPage({
     numeroSugerido = await proximoNumeroDeDocumento(recorte.exercicio);
     // V37 — o empenho da liquidação vem da BUSCA (catálogo `empenhos-para-liquidar`), não de uma lista com todos os
     // liquidáveis do recorte; o débito do credor e os subempenhos são lidos só do empenho escolhido.
-    const [lista, opcoes, docs] = await Promise.all([
+    const [lista, opcoes] = await Promise.all([
       listarLiquidacoesDaExecucao({
         exercicio: recorte.exercicio,
         unidadeCodigo: recorte.unidadeCodigo,
       }),
       opcoesDasEntradasDeMaterial(),
-      documentosConferidosParaLiquidar(),
     ]);
     // V36 — o recorte das despesas realizadas sem empenho prévio.
     liquidacoes = sp["semEmpenhoPrevio"] === "1" ? lista.filter((l) => l.despesaSemEmpenhoPrevio) : lista;
@@ -91,7 +88,6 @@ export default async function LiquidacoesPage({
     const permitidas = await acoesPermitidas(["PAGAR"]);
     extras = { nomes, notas, anexos, podePagar: permitidas.has("PAGAR"), exercicio: recorte.exercicio };
     opcoesDeMaterial = opcoes;
-    documentos = docs;
   } catch (erro) {
     // ⚠️ A RECUSA DE ACESSO TEM TÍTULO PRÓPRIO: o genérico faria o servidor procurar
     // defeito no sistema quando o que falta é escopo — e a mensagem do erro já diz quem
@@ -130,7 +126,7 @@ export default async function LiquidacoesPage({
         de <strong>material de consumo</strong> registra também as entradas no almoxarifado.
       </div>
 
-      <FormLiquidacao exercicio={recorte.exercicio} unidadeCodigo={recorte.unidadeCodigo} opcoesDeMaterial={opcoesDeMaterial} documentos={documentos} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} subempenhoInicial={typeof sp["subempenho"] === "string" ? sp["subempenho"] : undefined} />
+      <FormLiquidacao exercicio={recorte.exercicio} unidadeCodigo={recorte.unidadeCodigo} opcoesDeMaterial={opcoesDeMaterial} empenhoInicial={typeof sp["empenho"] === "string" ? sp["empenho"] : undefined} numeroSugerido={numeroSugerido} subempenhoInicial={typeof sp["subempenho"] === "string" ? sp["subempenho"] : undefined} />
 
       <nav aria-label="Recorte das liquidações" className="flex gap-3 text-xs" data-recorte-sem-empenho>
         {sp["semEmpenhoPrevio"] === "1" ? (
