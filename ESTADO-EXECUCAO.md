@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `b41f4a57` em `apresentacao/contabilidade`, publicado como `003dd60` (main e `/release` = `003dd60`) |
+| HEAD | publicado como `e7a3026` (main e `/release` = `e7a3026`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); vínculo PPA–LOA. |
@@ -50,6 +50,8 @@ Regime: **profundidade** (demonstrativo fiscal, soma da receita) e superfície n
 |---|---|---|---|---|
 | Acumulado da receita do exercício | `2bd0a411` | **Defeito real:** "até o bimestre" do RREO Anexo 1 somava a receita desde sempre; uma guia de dezembro do ano anterior entrava no ano seguinte (48.500 em vez de 41.500). O mesmo nos Anexos 6, 8 (FUNDEB) e 11, na base de impostos da saúde e da educação e no dado aberto da receita. A janela da soma passou a ser obrigatória no tipo; todos os acumulados partem do 1º de janeiro | RREO Anexos 1, 6, 8, 11, 12; dado aberto | t9 do Anexo 1 e t2b do Anexo 12 (dois exercícios); 3 mutações vermelhas; RREO, RGF, transparência e receita 145/145 + 9/9 |
 | RREO Anexo 1 até as guias, e CSV | `2bd0a411` (CSV em `79587bc9`) | os valores (b) e (c) abrem a lista de guias com as receitas de código iniciado pelo da linha, no período; a lista aceita prefixo de natureza e intervalo de meses (`de`, `ate`) e diz o recorte; o Anexo 1 ganhou o CSV (os outros 18 já tinham) | /relatorios/rreo/anexo1, /receita/arrecadacoes | t9 (a soma das guias é o valor do Anexo, três níveis, dois períodos); percurso `percurso-v37-rreo-ate-as-guias` 3/3 |
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37h-20261009T020709Z.dump`; Actions 37873255199 verde; `/release` = `e7a3026`; sonda só leitura (o percurso apontado para produção) 2 de 2 executados: CSV no Anexo 1 e o "até o bimestre" da receita 171 abrindo as guias com o total 2.787.852,25; o "no bimestre" não executou (nenhuma linha com valor no 5º bimestre em produção). Sonda apagada. Sem migration.
 
 **Pendência estreitada:** `RREO-RGF-SEM-DRILL-DOWN` fica para a despesa do Anexo 1 e para os demais anexos (a receita
 do Anexo 1 abre as guias). Os Anexos 6, 8 e 11 e o dado aberto estão corrigidos pelo tipo, sem fixture de dois
