@@ -6,6 +6,8 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { comporPartidas, TIPOS_BASE } from "./dominio.js";
 import type { TipoMovimentoPatrimonial } from "./dominio.js";
 import type { AcaoDoSistema } from "../m16-travamento/acoes.js";
+import { TEM_ROTEIRO_ALMOXARIFADO } from "./almoxarifado.js";
+import type { TipoMovimentoAlmoxarifado } from "./almoxarifado.js";
 
 const zCodigoDeConta = z.string().min(1);
 
@@ -585,3 +587,73 @@ export async function parametrizarRoteiroResultadoAlienacao(
     return { roteiroId: versao.id, substituiu: vigente !== null };
   });
 }
+
+export const zParametrizarRoteiroAlmoxarifadoInput = z.object({
+  tipo: z.string().min(1),
+  contaDebitoId: zCodigoDeConta,
+  contaCreditoId: zCodigoDeConta,
+  criadoPor: z.string().min(1),
+});
+export type ParametrizarRoteiroAlmoxarifadoInput = z.input<typeof zParametrizarRoteiroAlmoxarifadoInput>;
+
+/**
+ * V37 — PARAMETRIZA O ROTEIRO DE UM MOVIMENTO DO ALMOXARIFADO (saída por consumo, ajuste de sobra, ajuste de falta).
+ *
+ * ⚠️ O QUE ISTO DESTRAVA. `RoteiroAlmoxarifado` não tinha caso de uso nem tela que o escrevesse, e o lançamento da
+ * saída é fail-closed ("Não há RoteiroAlmoxarifado cadastrado..."): nenhuma requisição se atendia pela tela, em base
+ * nenhuma. As contas são escolha do ente; nada aqui as sugere.
+ *
+ * ⚠️ SÓ OS TIPOS COM LANÇAMENTO PRÓPRIO (`TEM_ROTEIRO_ALMOXARIFADO`) E QUE NÃO SÃO ESTORNO. A ENTRADA é lançada pelo
+ * M05 na liquidação; o estorno inverte as pernas do original. Parametrizar qualquer um deles seria uma segunda fonte.
+ *
+ * ⚠️ SEM SUBSTITUIÇÃO: o tipo que já tem roteiro é recusado nomeando o par vigente. A troca das contas fica para a
+ * versão do roteiro (pendência ROTEIRO-ALMOXARIFADO-SEM-VERSAO), como já é no patrimônio.
+ */
+export async function parametrizarRoteiroAlmoxarifado(
+  prisma: PrismaClient,
+  input: ParametrizarRoteiroAlmoxarifadoInput
+): Promise<{ readonly roteiroId: string }> {
+  const d = zParametrizarRoteiroAlmoxarifadoInput.parse(input);
+  if (!TIPOS_DO_ROTEIRO_ALMOXARIFADO.includes(d.tipo as TipoMovimentoAlmoxarifado)) {
+    throw new Error(
+      `O movimento ${d.tipo} não tem roteiro próprio no almoxarifado. A entrada é lançada pela liquidação, e o ` +
+        `estorno inverte as contas do movimento original. O roteiro NÃO foi gravado.`
+    );
+  }
+  const tipo = d.tipo as TipoMovimentoAlmoxarifado;
+  return prisma.$transaction(async (tx) => {
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.parametrizarRoteiroAlmoxarifado, "ENTE");
+    // Vigora na hora (não há proposta): cobra também o crachá de publicar, como a parametrização direta do patrimônio.
+    await autorizarNo(tx, d.criadoPor, A_ACAO_DE_PUBLICAR, "ENTE");
+
+    const [debito, credito] = await Promise.all([
+      conferirConta(tx, d.contaDebitoId, "débito"),
+      conferirConta(tx, d.contaCreditoId, "crédito"),
+    ]);
+    conferirContraOMotor(debito, credito);
+
+    const vigente = await tx.roteiroAlmoxarifado.findUnique({
+      where: { tipo },
+      select: { contaDebito: { select: { codigo: true, nome: true } }, contaCredito: { select: { codigo: true, nome: true } } },
+    });
+    if (vigente !== null) {
+      throw new Error(
+        `Este movimento JÁ TEM roteiro: débito em ${vigente.contaDebito.codigo} — ${vigente.contaDebito.nome}, ` +
+          `crédito em ${vigente.contaCredito.codigo} — ${vigente.contaCredito.nome}. Nada foi gravado.`
+      );
+    }
+    const r = await tx.roteiroAlmoxarifado.create({
+      data: { tipo, contaDebitoId: debito.id, contaCreditoId: credito.id, criadoPor: d.criadoPor },
+      select: { id: true },
+    });
+    return { roteiroId: r.id };
+  });
+}
+
+/**
+ * Os movimentos do almoxarifado que têm roteiro próprio e não são estorno — o rol da tela. DERIVADO do mapa que o
+ * lançamento usa (`TEM_ROTEIRO_ALMOXARIFADO`): um tipo novo no enum entra aqui sem ninguém lembrar.
+ */
+export const TIPOS_DO_ROTEIRO_ALMOXARIFADO: readonly TipoMovimentoAlmoxarifado[] = (Object.keys(TEM_ROTEIRO_ALMOXARIFADO) as TipoMovimentoAlmoxarifado[]).filter(
+  (t) => TEM_ROTEIRO_ALMOXARIFADO[t] && !t.startsWith("ESTORNO_")
+);

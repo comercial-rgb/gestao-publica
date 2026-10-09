@@ -1,9 +1,11 @@
 import { diaCivilBr } from "../../../packages/datas/index.js";
 import {
+  parametrizarRoteiroAlmoxarifado,
   parametrizarRoteiroPatrimonial,
   parametrizarRoteiroResultadoAlienacao,
   proporVersaoDeRoteiro,
   publicarVersaoDeRoteiro,
+  TIPOS_DO_ROTEIRO_ALMOXARIFADO,
   versoesDoRoteiro,
   type FamiliaDeRoteiro,
   type VersaoDeRoteiroLida,
@@ -13,7 +15,7 @@ import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
 import type { DetalheLido, OpcoesDoCadastro, PaginaDoMolde } from "./dados";
-import { OPCOES_DE_CHAVE, rotuloDoTipoPatrimonial } from "./roteiros.js";
+import { OPCOES_DE_CHAVE, ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO, rotuloDoTipoPatrimonial } from "./roteiros.js";
 
 /**
  * ═══ OS DADOS DO ROTEIRO CONTÁBIL DO PATRIMÔNIO — M10, TR 5.10.1.71 ═══
@@ -417,4 +419,39 @@ export async function opcoesDosRoteiros(): Promise<OpcoesDoCadastro> {
     contaDebitoId: opcoes,
     contaCreditoId: opcoes,
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V37 — O ROTEIRO DO ALMOXARIFADO: a lista dos movimentos que precisam de roteiro, e a parametrização
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function listarRoteirosDoAlmoxarifadoDoMolde(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
+  const gravados = await cliente().roteiroAlmoxarifado.findMany({
+    select: { tipo: true, contaDebito: { select: { codigo: true, nome: true } }, contaCredito: { select: { codigo: true, nome: true } } },
+  });
+  const porTipo = new Map(gravados.map((r) => [r.tipo as string, r]));
+  const q = (c.filtros["q"] ?? "").trim().toLowerCase();
+  const linhas = TIPOS_DO_ROTEIRO_ALMOXARIFADO.map((tipo) => {
+    const r = porTipo.get(tipo);
+    return {
+      id: tipo,
+      evento: ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO[tipo] ?? tipo,
+      debito: r === undefined ? "—" : `${r.contaDebito.codigo} — ${r.contaDebito.nome}`,
+      credito: r === undefined ? "—" : `${r.contaCredito.codigo} — ${r.contaCredito.nome}`,
+      situacao: r === undefined ? "Sem roteiro" : "Parametrizado",
+      situacaoTom: r === undefined ? "alerta" : "ok",
+    };
+  }).filter((l) => q === "" || `${l.evento} ${l.debito} ${l.credito}`.toLowerCase().includes(q));
+  return { total: linhas.length, linhas };
+}
+
+export async function criarRoteiroDoAlmoxarifado(c: Campos): Promise<void> {
+  await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_PATRIMONIAL", (criadoPor) =>
+    parametrizarRoteiroAlmoxarifado(cliente(), {
+      tipo: t(c, "tipo"),
+      contaDebitoId: t(c, "contaDebitoId"),
+      contaCreditoId: t(c, "contaCreditoId"),
+      criadoPor,
+    })
+  );
 }

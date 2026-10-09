@@ -309,3 +309,10 @@ número de respostas ao lado).
 | `servico.ts` | os 14 casos de uso, com todos os guards dentro da transação |
 | `m21-dominio.test.ts` | 16 testes sem banco — a aritmética da situação |
 | `m21-protocolo.test.ts` | 17 testes contra banco — a cadeia, os bloqueios, a concorrência |
+
+## V37 — o cadastro de setores ganhou tela
+
+`criarSetor` existia e nenhuma tela o chamava. O setor é obrigatório na requisição de material e na solicitação de
+compra, então, numa base sem seed de setores, nenhuma das duas se registrava pela tela. `/protocolo/setores` lista e
+cadastra (molde), com a unidade gestora pela busca `unidades-para-setor`, só entre as unidades onde a sessão tem
+`CRIAR_SETOR` — o mesmo escopo que o caso de uso confere. Desativar setor e lotar usuário continuam sem tela.

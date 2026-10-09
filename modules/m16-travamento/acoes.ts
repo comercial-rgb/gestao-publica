@@ -1436,6 +1436,7 @@ export type NomeDeServico =
   // ENT11 — o eixo financeiro do patrimônio.
   | "parametrizarRoteiroPatrimonial"
   | "parametrizarRoteiroResultadoAlienacao"
+  | "parametrizarRoteiroAlmoxarifado"
   // M35 — o contrato comercial e a habilitação de módulos (V10 T1).
   | "registrarContratoComercial"
   | "encerrarContratoComercial"
@@ -1636,6 +1637,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   proporVersaoDeRoteiro: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
   publicarVersaoDeRoteiro: "PUBLICAR_ROTEIRO_PATRIMONIAL",
   parametrizarRoteiroResultadoAlienacao: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
+  parametrizarRoteiroAlmoxarifado: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL",
   cadastrarLocalizacaoFisica: "CADASTRAR_LOCALIZACAO_FISICA",
   cadastrarComissaoPatrimonial: "CADASTRAR_COMISSAO_PATRIMONIAL",
   cadastrarMotivoDeBaixa: "CADASTRAR_MOTIVO_DE_BAIXA",

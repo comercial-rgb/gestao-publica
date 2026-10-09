@@ -25,15 +25,40 @@ export function FormRecebimento({
   ordemId,
   itensDaOrdem,
   documentos = [],
+  fechado,
 }: {
   readonly ordemId: string;
   readonly itensDaOrdem: readonly (OpcaoDaIlha & { readonly pendente: string })[];
   readonly documentos?: readonly OpcaoDaIlha[];
+  /**
+   * Nada a receber (ordem completa, estornada ou bloqueada): a ilha CONTINUA MONTADA e mostra o motivo no lugar dos
+   * campos. Assim o recebimento que completa a ordem não leva junto a própria mensagem de sucesso.
+   */
+  readonly fechado?: { readonly apresentacao: string; readonly motivo: string } | undefined;
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaOrdem, FormData>(receberOrdemAction, {});
   const ref = useRef<HTMLFormElement>(null);
   const [linhas, setLinhas] = useState<number>(1);
   if (estado.sucesso !== undefined) ref.current?.reset();
+  // `seq` conta os desfechos para o `data-resultado-seq`: sem o formulário, o percurso lê o resultado pelo marcador.
+  const [seq, setSeq] = useState(0);
+  const [ultimo, setUltimo] = useState<EstadoDaOrdem>(estado);
+  if (estado !== ultimo) {
+    setUltimo(estado);
+    setSeq((n) => n + 1);
+  }
+  if (fechado !== undefined) {
+    return (
+      <div className="space-y-2">
+        {estado.sucesso !== undefined ? (
+          <p role="status" data-resultado-da-acao="receber-ordem" data-resultado-seq={String(seq)} className="rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>
+        ) : null}
+        <p data-acao="receber" data-acao-estado={fechado.apresentacao} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
+          {fechado.motivo}
+        </p>
+      </div>
+    );
+  }
   return (
     <form ref={ref} action={action} data-acao="receber-ordem" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
@@ -89,7 +114,7 @@ export function FormRecebimento({
         <p role="alert" className="mt-3 whitespace-pre-line rounded-[var(--radius-md)] bg-[color:var(--color-status-erro-bg)] px-3 py-2 text-sm text-[color:var(--color-status-erro-fg)]">{estado.erro}</p>
       ) : null}
       {estado.sucesso !== undefined ? (
-        <p className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>
+        <p role="status" className="mt-3 rounded-[var(--radius-md)] bg-[color:var(--color-status-ok-bg)] px-3 py-2 text-sm text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>
       ) : null}
       <button type="submit" disabled={pendente} className={`mt-4 ${CLASSE_BOTAO_PRIMARIO}`}>
         {pendente ? "Gravando…" : "Registrar recebimento"}

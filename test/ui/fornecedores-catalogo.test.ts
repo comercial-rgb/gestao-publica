@@ -74,11 +74,34 @@ describe("o catálogo de fornecedores", () => {
     expect(await valores("fornecedores", "", "pes-sem")).toEqual([]);
     expect(await valores("pessoas-para-cotacao", "papelaria")).toEqual(["pes-24", "pes-enc", "pes-sem"]);
     // O recorte vai na CONSULTA, não só no filtro depois dela: quem nunca foi credor vem primeiro por documento e,
-    // filtrado depois da página, a primeira página da lista sem texto viria com 19 em vez de 20. (O credor ENCERRADO
-    // só sai no filtro — a consulta não diz "o último movimento" —, como no catálogo de credores do empenho: por isso
-    // ele fica no fim da ordem aqui, e uma página pode vir mais curta, com "há mais".)
+    // filtrado depois da página, a primeira página da lista sem texto viria com 19 em vez de 20. (O ENCERRADO só sai no
+    // filtro; a página se colhe em lotes — o t1c prova.)
     const primeira = await buscarOpcoes(compras, "fornecedores", { q: "", pagina: 1, contexto: {} });
     expect([primeira.opcoes.length, primeira.temMais]).toEqual([20, true]);
+  });
+
+  it("t1c: trinta credores ENCERRADOS antes dos vigentes na ordem não encurtam a página, nos dois catálogos (N=2 páginas)", async () => {
+    const ns = Array.from({ length: 30 }, (_, n) => n);
+    // Documentos que vêm antes de todos os vigentes na ordem por documento.
+    const docEnc = (n: number): string => `0${String(n).padStart(10, "0")}`;
+    await prisma.pessoa.createMany({ data: ns.map((n) => ({ id: `enc-${String(n)}`, documento: docEnc(n), tipo: "FISICA", criadoPor: "seed-teste" })) });
+    await prisma.versaoDePessoa.createMany({ data: ns.map((n) => ({ pessoaId: `enc-${String(n)}`, nome: `Encerrado ${String(n)}`, criadoPor: "seed-teste" })) });
+    await prisma.movimentoDePapelDaPessoa.createMany({
+      data: ns.flatMap((n) => [
+        { pessoaId: `enc-${String(n)}`, papel: "CREDOR" as const, movimento: "CONCEDIDO" as const, data: new Date("2026-01-02T15:00:00Z"), criadoPor: "seed-teste" },
+        { pessoaId: `enc-${String(n)}`, papel: "CREDOR" as const, movimento: "ENCERRADO" as const, data: new Date("2026-03-02T15:00:00Z"), criadoPor: "seed-teste" },
+      ]),
+    });
+    const leitor = await usuario("v37.compras-e-despesa", ["CONSULTAR_LICITACOES", "CONSULTAR_DESPESA"]);
+    for (const catalogo of ["fornecedores", "credores"]) {
+      const p1 = await buscarOpcoes(leitor, catalogo, { q: "", pagina: 1, contexto: {} });
+      const p2 = await buscarOpcoes(leitor, catalogo, { q: "", pagina: 2, contexto: {} });
+      expect([catalogo, p1.opcoes.length, p1.temMais, p2.opcoes.length, p2.temMais]).toEqual([catalogo, 20, true, 5, false]);
+      // Nenhum encerrado, e as duas páginas juntas são os 25 vigentes, sem repetição.
+      const todos = [...p1.opcoes, ...p2.opcoes].map((o) => o.rotulo);
+      expect(todos.some((r) => r.includes("Encerrado"))).toBe(false);
+      expect(new Set(todos).size).toBe(25);
+    }
   });
 
   it("t3: a ficha e o processo da ordem de compra pela busca (N=2): número, natureza, objeto; o valor é o id", async () => {

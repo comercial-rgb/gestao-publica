@@ -14,6 +14,7 @@ import { listarEmpenhos } from "../../modules/m05-despesa/consultas.js";
 import { elementoDebitaEstoque } from "../../modules/m01-core-contabil/roteiros.js";
 import { CATALOGOS_DA_EXECUCAO } from "./opcoes-da-execucao";
 import { podeLerPara } from "./leitura";
+import { paginarFiltrando } from "./paginar-filtrando";
 import type { Identidade } from "./sessao";
 
 /**
@@ -91,7 +92,7 @@ const onde = (w: { q: string; valor?: string }, campoTexto: string): Record<stri
   w.valor !== undefined ? { codigo: w.valor } : w.q === "" ? {} : { OR: [{ codigo: { startsWith: w.q } }, { [campoTexto]: contem(w.q) }] };
 
 /** As pessoas por documento (prefixo) ou nome, com o último movimento do papel de credor (para quem filtra por ele). */
-async function pessoasPorDocumentoOuNome(p: PedidoDeOpcoes, recorte: Prisma.PessoaWhereInput) {
+async function pessoasPorDocumentoOuNome(p: PedidoDeOpcoes, recorte: Prisma.PessoaWhereInput, janela: { readonly skip: number; readonly take: number } = { skip: skip(p), take }) {
   const digitos = p.q.replace(/\D/g, "");
   const filtro: Prisma.PessoaWhereInput =
     p.valor !== undefined
@@ -102,8 +103,8 @@ async function pessoasPorDocumentoOuNome(p: PedidoDeOpcoes, recorte: Prisma.Pess
   return cliente().pessoa.findMany({
     where: { ...filtro, ...recorte },
     orderBy: { documento: "asc" },
-    skip: skip(p),
-    take,
+    skip: janela.skip,
+    take: janela.take,
     select: {
       id: true,
       documento: true,
@@ -137,6 +138,18 @@ async function materiaisAtivos(p: PedidoDeOpcoes, recorte: Prisma.MaterialWhereI
   };
 }
 
+/** Os lotes de um material num depósito, por identificação; o que vence primeiro, primeiro. */
+async function lotesDoMaterialNoDeposito(p: PedidoDeOpcoes, materialId: string, depositoId: string): Promise<PaginaDeOpcoes> {
+  const where: Prisma.LoteDeMaterialWhereInput = {
+    materialId,
+    depositoId,
+    ...(p.valor !== undefined ? { id: p.valor } : p.q.trim() !== "" ? { identificacao: contem(p.q.trim()) } : {}),
+  };
+  const linhas = await cliente().loteDeMaterial.findMany({ where, orderBy: [{ validade: { sort: "asc", nulls: "last" } }, { identificacao: "asc" }], skip: skip(p), take, select: { id: true, identificacao: true, validade: true } });
+  const r = pagina(linhas, p);
+  return { opcoes: r.linhas.map((l) => ({ valor: l.id, rotulo: l.validade === null ? l.identificacao : `${l.identificacao} — vence ${diaCivilBr(l.validade)}` })), temMais: r.temMais };
+}
+
 /** O mesmo recorte de classe que `declararContaDaLiquidacao` confere (M01). */
 const PREFIXO_DO_EFEITO_NA_BUSCA: Readonly<Record<string, string>> = { VPD: "3.", IMOBILIZADO: "1.2.3.", INTANGIVEL: "1.2.4.", BAIXA_DE_PASSIVO: "2.", VPA: "4." };
 
@@ -155,14 +168,20 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
    * A ordem é empenhada a seguir, e o empenho só aceita credor: uma ordem emitida para quem não é credor chegava ao
    * empenho com o credor recusado ("não está entre as opções") — medido no percurso das compras pela busca. O atalho
    * "Cadastrar este fornecedor" já cadastra a pessoa como credor. Quem nunca teve o papel sai na consulta; o credor
-   * ENCERRADO só sai no filtro (a consulta não diz "o último movimento"), e a página pode vir mais curta, com "há mais".
+   * ENCERRADO só sai no filtro (a consulta não diz "o último movimento"); a página se colhe em lotes (`paginarFiltrando`).
    */
   fornecedores: {
     leitura: "CONSULTAR_LICITACOES",
     async buscar(_sessao, p) {
-      const linhas = await pessoasPorDocumentoOuNome(p, { movimentos: { some: { papel: "CREDOR" } } });
-      const r = pagina(linhas, p);
-      return { opcoes: r.linhas.filter((x) => x.movimentos[0]?.movimento === "CONCEDIDO").map(opcaoDaPessoa), temMais: r.temMais };
+      // O credor ENCERRADO sai no filtro (a consulta não diz "o último movimento"); a página se colhe em lotes para
+      // não vir curta nem esconder um vigente atrás de encerrados.
+      const r = await paginarFiltrando(
+        (s, t) => pessoasPorDocumentoOuNome(p, { movimentos: { some: { papel: "CREDOR" } } }, { skip: s, take: t }),
+        (x) => x.movimentos[0]?.movimento === "CONCEDIDO",
+        p.pagina,
+        TAMANHO_DA_PAGINA_DE_OPCOES
+      );
+      return { opcoes: r.linhas.map(opcaoDaPessoa), temMais: r.temMais };
     },
   },
 
@@ -250,6 +269,47 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     buscar(_sessao, p) {
       const classe = Object.entries(p.contexto).find(([k]) => k.endsWith("classeDeMaterialId"))?.[1] ?? "";
       return materiaisAtivos(p, classe === "" ? {} : { classeDeMaterialId: classe });
+    },
+  },
+
+  /**
+   * V37 — O MATERIAL NO ALMOXARIFADO (bloqueio do depósito, requisição, contagem do inventário): os ativos, por código,
+   * CATMAT ou descrição, com a leitura do patrimônio. Substitui o `select` com os 1.000 primeiros por código.
+   */
+  "materiais-do-almoxarifado": {
+    leitura: "CONSULTAR_PATRIMONIO",
+    buscar: (_sessao, p) => materiaisAtivos(p, {}),
+  },
+
+  /**
+   * V37 — O LOTE DA SAÍDA no atendimento da requisição: os lotes do material do ITEM escolhido (contexto
+   * `itemDeRequisicaoId`), no depósito da requisição. Antes o `select` nascia vazio (a página não sabia o item), e
+   * material controlado por lote não tinha como ser atendido pela tela. O domínio confere lote, material e saldo.
+   */
+  "lotes-da-requisicao": {
+    leitura: "CONSULTAR_PATRIMONIO",
+    async buscar(_sessao, p) {
+      const itemId = p.contexto["itemDeRequisicaoId"] ?? "";
+      if (itemId === "") return { opcoes: [], temMais: false };
+      const item = await cliente().itemDeRequisicaoDeMaterial.findUnique({ where: { id: itemId }, select: { materialId: true, requisicao: { select: { depositoId: true } } } });
+      if (item === null) return { opcoes: [], temMais: false };
+      return lotesDoMaterialNoDeposito(p, item.materialId, item.requisicao.depositoId);
+    },
+  },
+
+  /**
+   * V37 — O LOTE CONTADO no inventário: os lotes do material escolhido no mesmo formulário (contexto `materialId`), no
+   * depósito do inventário (contexto `__id`, o próprio registro). Antes o `select` nascia sempre vazio.
+   */
+  "lotes-do-inventario": {
+    leitura: "CONSULTAR_PATRIMONIO",
+    async buscar(_sessao, p) {
+      const materialId = p.contexto["materialId"] ?? "";
+      const inventarioId = p.contexto["__id"] ?? "";
+      if (materialId === "" || inventarioId === "") return { opcoes: [], temMais: false };
+      const inv = await cliente().inventarioDeEstoque.findUnique({ where: { id: inventarioId }, select: { depositoId: true } });
+      if (inv === null) return { opcoes: [], temMais: false };
+      return lotesDoMaterialNoDeposito(p, materialId, inv.depositoId);
     },
   },
 
@@ -368,6 +428,57 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
       });
       const r = pagina(linhas, p);
       return { opcoes: r.linhas.map((u) => ({ valor: u.codigo, rotulo: `${u.codigo} — ${u.descricao}`, detalhe: `órgão ${u.orgao.codigo} — ${u.orgao.nome}` })), temMais: r.temMais };
+    },
+  },
+  /**
+   * V37 — A UNIDADE GESTORA DE UM SETOR NOVO: só as unidades onde a sessão tem CRIAR_SETOR, o mesmo escopo que o
+   * `autorizarNo(..., { ug })` do `criarSetor` confere. O valor é o ID da unidade (é o que o setor grava).
+   */
+  "unidades-para-setor": {
+    leitura: "CONSULTAR_PROTOCOLO",
+    async buscar(sessao, p) {
+      const escopo = await escopoDaAcaoDeLeitura(cliente(), sessao.identificador, "CRIAR_SETOR");
+      if (!escopo.ativo || escopo.unidades.length === 0) return { opcoes: [], temMais: false };
+      const ids = escopo.unidades.map((u) => u.id);
+      const linhas = await cliente().unidadeOrcamentaria.findMany({
+        // ⚠️ AND, não espalhamento: `{ id: { in }, ...{ id: valor } }` trocaria o escopo pelo valor pedido.
+        where: {
+          AND: [
+            { id: { in: ids } },
+            p.valor !== undefined ? { id: p.valor } : p.q === "" ? {} : { OR: [{ codigo: { startsWith: p.q.trim() } }, { descricao: contem(p.q.trim()) }] },
+          ],
+        },
+        orderBy: { codigo: "asc" },
+        skip: skip(p), take,
+        select: { id: true, codigo: true, descricao: true, orgao: { select: { codigo: true, nome: true } } },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((u) => ({ valor: u.id, rotulo: `${u.codigo} — ${u.descricao}`, detalhe: `órgão ${u.orgao.codigo} — ${u.orgao.nome}` })), temMais: r.temMais };
+    },
+  },
+  /**
+   * V37 — AS CONTAS DE UM ROTEIRO DO ALMOXARIFADO: analíticas das classes patrimoniais (1 a 4), por código ou nome. O
+   * valor é o ID da conta (é o que o roteiro grava). O caso de uso confere de novo: existência, analítica e o par pelo
+   * motor contábil. Nenhuma conta é sugerida: a escolha é do ente.
+   */
+  "contas-patrimoniais": {
+    leitura: "CONSULTAR_PATRIMONIO",
+    async buscar(_s, p) {
+      const q = p.q.trim();
+      const linhas = await cliente().contaPcasp.findMany({
+        where: {
+          AND: [
+            { analitica: true },
+            { OR: ["1", "2", "3", "4"].map((c) => ({ codigo: { startsWith: `${c}.` } })) },
+            p.valor !== undefined ? { id: p.valor } : q === "" ? {} : { OR: [{ codigo: { startsWith: q } }, { nome: contem(q) }] },
+          ],
+        },
+        orderBy: { codigo: "asc" },
+        skip: skip(p), take,
+        select: { id: true, codigo: true, nome: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` })), temMais: r.temMais };
     },
   },
   funcoes: porCodigo("CONSULTAR_PLANEJAMENTO", async (w, s, t) =>

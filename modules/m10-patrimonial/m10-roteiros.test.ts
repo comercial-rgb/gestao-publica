@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import {
+  parametrizarRoteiroAlmoxarifado,
   parametrizarRoteiroPatrimonial,
   parametrizarRoteiroResultadoAlienacao,
+  TIPOS_DO_ROTEIRO_ALMOXARIFADO,
   versaoVigente,
 } from "./roteiros.js";
+import { cadastrarClasseDeMaterial, registrarAjusteAlmoxarifado } from "./almoxarifado.js";
 
 /**
  * M10 — A PARAMETRIZAÇÃO DO ROTEIRO CONTÁBIL DO PATRIMÔNIO, CONTRA BANCO (ENT11).
@@ -280,5 +283,62 @@ describe("t10 e t11 · N=2 — um roteiro por evento, e os eventos não se conta
       })
     ).rejects.toThrow(/é SINTÉTICA e não recebe lançamento/);
     expect(await prisma.roteiroResultadoAlienacao.count()).toBe(0);
+  });
+});
+
+describe("V37 · o roteiro do almoxarifado se parametriza pela tela (antes, nenhum escritor)", () => {
+  const estoque = async (): Promise<void> => {
+    await prisma.contaPcasp.create({ data: { id: "c-estoque", codigo: "1.1.5.6.1.01.00", nome: "Material de consumo", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "P" } });
+  };
+
+  it("t-alm1: o rol é o dos movimentos com lançamento próprio, sem estorno nem entrada", () => {
+    expect([...TIPOS_DO_ROTEIRO_ALMOXARIFADO].sort()).toEqual(["AJUSTE_ENTRADA", "AJUSTE_SAIDA", "SAIDA_CONSUMO"]);
+  });
+
+  it("t-alm2: grava dois tipos com pares próprios (N=2), e o ajuste passa a lançar pelas contas escolhidas", async () => {
+    await estoque();
+    // Antes do roteiro, o ajuste de sobra é recusado nomeando o movimento e a tela onde se cadastra.
+    const { classeDeMaterialId } = await cadastrarClasseDeMaterial(prisma, { codigo: "30.01", descricao: "Expediente", contaContabilId: "c-estoque", criadoPor: POR });
+    const sobra = { classeDeMaterialId, sentido: "SOBRA" as const, valor: "120.00", dataMovimento: new Date("2026-06-01T15:00:00Z"), motivo: "inventário", criadoPor: POR };
+    await expect(registrarAjusteAlmoxarifado(prisma, sobra)).rejects.toThrow(/roteiro contábil cadastrado para o ajuste de inventário por sobra[\s\S]*Roteiros contábeis do almoxarifado/);
+
+    await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpa", criadoPor: POR });
+    await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "SAIDA_CONSUMO", contaDebitoId: "c-vpd", contaCreditoId: "c-estoque", criadoPor: POR });
+    // A ordem do enum no banco é a da declaração; ordena-se aqui pelo nome.
+    const gravados = (await prisma.roteiroAlmoxarifado.findMany({ select: { tipo: true, contaDebitoId: true, contaCreditoId: true, criadoPor: true } })).sort((x, y) => x.tipo.localeCompare(y.tipo));
+    expect(gravados).toEqual([
+      { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpa", criadoPor: POR },
+      { tipo: "SAIDA_CONSUMO", contaDebitoId: "c-vpd", contaCreditoId: "c-estoque", criadoPor: POR },
+    ]);
+
+    // O EFEITO: com o roteiro, a mesma sobra lança D estoque / C VPA pelas contas escolhidas. A falta, sem roteiro
+    // próprio (N=2 tipos), continua recusada com o motivo.
+    const { lancamentoId } = await registrarAjusteAlmoxarifado(prisma, sobra);
+    const partidas = await prisma.partidaContabil.findMany({ where: { lancamentoId }, select: { contaId: true, tipo: true } });
+    expect(partidas.map((x) => `${x.tipo}:${x.contaId}`).sort()).toEqual(["CREDITO:c-vpa", "DEBITO:c-estoque"]);
+    await expect(registrarAjusteAlmoxarifado(prisma, { ...sobra, sentido: "FALTA", valor: "1.00" })).rejects.toThrow(/roteiro contábil cadastrado para o ajuste de inventário por falta/);
+  });
+
+  it("t-alm3: as recusas dizem o motivo — tipo sem roteiro próprio, tipo já parametrizado, mesma conta, sintética, sem permissão", async () => {
+    await estoque();
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "ESTORNO_SAIDA_CONSUMO", contaDebitoId: "c-estoque", contaCreditoId: "c-vpd", criadoPor: POR })).rejects.toThrow(/não tem roteiro próprio/);
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpa", criadoPor: POR })).rejects.toThrow(/entrada é lançada pela liquidação/);
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-estoque", contaCreditoId: "c-estoque", criadoPor: POR })).rejects.toThrow(/MESMA conta/);
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-sintetica", criadoPor: POR })).rejects.toThrow(/SINTÉTICA/);
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-estoque", criadoPor: SEM_PERMISSAO })).rejects.toThrow(/PARAMETRIZAR_ROTEIRO_PATRIMONIAL|permiss/i);
+    // Cada um dos dois crachás é exigido: só parametrizar não basta (o roteiro vigora na hora), só publicar também não.
+    for (const [ident, acao] of [["so-parametriza@cg.pb.gov.br", "PARAMETRIZAR_ROTEIRO_PATRIMONIAL"], ["so-publica@cg.pb.gov.br", "PUBLICAR_ROTEIRO_PATRIMONIAL"]] as const) {
+      const u = await prisma.usuario.create({ data: { identificador: ident, nome: ident, criadoPor: POR }, select: { id: true } });
+      const p = await prisma.perfil.create({ data: { nome: `perfil-${ident}`, descricao: "teste", criadoPor: POR }, select: { id: true } });
+      await prisma.permissaoDePerfil.create({ data: { perfilId: p.id, acao, unidadeOrcId: null, criadoPor: POR } });
+      await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: p.id, criadoPor: POR } });
+      const falta = acao === "PARAMETRIZAR_ROTEIRO_PATRIMONIAL" ? "PUBLICAR_ROTEIRO_PATRIMONIAL" : "PARAMETRIZAR_ROTEIRO_PATRIMONIAL";
+      await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-estoque", criadoPor: ident })).rejects.toThrow(new RegExp(falta));
+    }
+    expect(await prisma.roteiroAlmoxarifado.count()).toBe(0);
+
+    await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-estoque", criadoPor: POR });
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-ativo", criadoPor: POR })).rejects.toThrow(/JÁ TEM roteiro: débito em 3\.3\.3\.1\.1\.01\.00/);
+    expect(await prisma.roteiroAlmoxarifado.count()).toBe(1);
   });
 });

@@ -86,12 +86,15 @@ export default async function Detalhe({ params, searchParams }: { readonly param
             <p className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
               Seu perfil não tem permissão para registrar recebimentos. Solicite a permissão ao administrador do sistema.
             </p>
-          ) : receber.apresentacao === "disponivel" && detalhe.itensParaReceber.length > 0 ? (
-            <FormRecebimento ordemId={id} itensDaOrdem={detalhe.itensParaReceber} documentos={documentos} />
           ) : (
-            <p data-acao="receber" data-acao-estado={receber.apresentacao} className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] px-3 py-2 text-xs text-[color:var(--color-ink-2)]">
-              {receber.motivo ?? "Nada pendente de recebimento nesta ordem."}
-            </p>
+            // ⚠️ A ilha fica montada também sem nada a receber (mostra o motivo): o recebimento que completa a ordem
+            // revalida a página, e desmontá-la levaria junto a mensagem de sucesso.
+            <FormRecebimento
+              ordemId={id}
+              itensDaOrdem={detalhe.itensParaReceber}
+              documentos={documentos}
+              fechado={receber.apresentacao === "disponivel" && detalhe.itensParaReceber.length > 0 ? undefined : { apresentacao: receber.apresentacao, motivo: receber.motivo ?? "Nada pendente de recebimento nesta ordem." }}
+            />
           )}
           {/* ⚠️ Fica montado depois do estorno para a mensagem do resultado não sumir; um segundo estorno o domínio recusa nomeando. */}
           <FormsDoRecurso definicao={ORDENS_DE_COMPRA} permitidas={[...permitidas]} opcoes={{}} registroId={id} action={ordensdecompraAction} modo="acoes" disponibilidade={disponibilidade} />

@@ -234,9 +234,9 @@ try {
             { sel: '[name="itens.0.quantidade"]', valor: "10" },
           ]);
           const recebido = await prisma.recebimentoDeItem.findFirst({ where: { itemDeOrdemId: item.id }, select: { id: true } });
-          // Recebida a ordem inteira, o formulário sai da tela (nada mais pendente) e a mensagem vai junto: confere-se o banco e o selo.
+          // Recebida a ordem inteira, os campos saem da tela (nada mais pendente), mas a mensagem do recebimento fica.
           const selo = await page.$eval("main", (m) => /RECEBIDA/.test(m.textContent ?? "")).catch(() => false);
-          conferir(recebido !== null && selo, `recebimento de 10 un registrado no detalhe da ordem, que passa a RECEBIDA (resposta da tela: ${rr.tipo})`);
+          conferir(recebido !== null && selo && rr.tipo === "ok" && /Recebimento registrado/.test(rr.texto), `recebimento de 10 un registrado no detalhe da ordem, que passa a RECEBIDA, com a confirmação na tela (${rr.tipo}: ${rr.texto.slice(0, 80)})`);
 
           // 6b. "Liquidar este empenho": o RECEBIMENTO pela busca preenche a linha (classe, material, quantidade, unitário,
           // valor); só falta o depósito. Antes, o campo pedia o identificador interno do recebimento, digitado.

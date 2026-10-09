@@ -1,6 +1,7 @@
 import "dotenv/config";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 import { diaCivil, somarDiasCivis } from "../packages/datas/index.js";
+import { escolherPelaBusca } from "./percursos-navegador.js";
 
 /**
  * ═══ O PERCURSO DO ALMOXARIFADO FÍSICO, PELO NAVEGADOR — TR 5.18 (M10) ═══
@@ -462,14 +463,14 @@ async function main(): Promise<void> {
     await irPara(page, "/patrimonio/almoxarifado/requisicoes");
     const depOp = await opcaoQueCasa(page, 'form[data-acao="criar-requisicoes-de-material"] select[name="depositoId"]', codDep);
     const setorOp = await primeiraOpcao(page, 'form[data-acao="criar-requisicoes-de-material"] select[name="setorId"]');
-    const matOp = await opcaoQueCasa(page, 'form[data-acao="criar-requisicoes-de-material"] select[name="materialId"]', codMat);
+    // V37 — o material da requisição é escolhido pela BUSCA (não há mais o `select` com os 1.000 primeiros).
+    await escolherPelaBusca(page, 'form[data-acao="criar-requisicoes-de-material"]', "materialId", codMat);
     const rReq = await preencherEEnviar(page, "criar-requisicoes-de-material", [
       { sel: 'input[name="numero"]', valor: numReq },
       { sel: 'select[name="depositoId"]', valor: depOp, tipo: "select" },
       { sel: 'select[name="setorId"]', valor: setorOp, tipo: "select" },
       { sel: 'input[name="dataRequisicao"]', valor: dia(), tipo: "data" },
       { sel: 'input[name="solicitante"]', valor: "Servidora do percurso" },
-      { sel: 'select[name="materialId"]', valor: matOp, tipo: "select" },
       { sel: 'input[name="quantidade"]', valor: "10" },
     ]);
     conferir("requisição: o servidor aceitou", rReq.tipo === "ok", rReq.texto);
@@ -546,9 +547,8 @@ async function main(): Promise<void> {
     await irPara(page, "/patrimonio/almoxarifado/inventarios");
     const detInv = await detalheDe(page, "/patrimonio/almoxarifado/inventarios", codDep);
     await irPara(page, detInv);
-    const matInvOp = await opcaoQueCasa(page, 'form[data-acao="contar"] select[name="materialId"]', codMat);
+    await escolherPelaBusca(page, 'form[data-acao="contar"]', "materialId", codMat);
     const rCont = await preencherEEnviar(page, "contar", [
-      { sel: 'select[name="materialId"]', valor: matInvOp, tipo: "select" },
       { sel: 'input[name="quantidadeContada"]', valor: "7" },
     ]);
     conferir("inventário: o servidor aceitou a contagem", rCont.tipo === "ok", rCont.texto);

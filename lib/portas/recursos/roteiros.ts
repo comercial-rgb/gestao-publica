@@ -274,7 +274,49 @@ export const ROTEIROS_DE_RESULTADO: DefinicaoDeRecurso = definirRecurso({
   abas: ["dados"],
 });
 
+/** V37 — o nome de cada movimento do almoxarifado que tem roteiro, em português de quem usa. */
+export const ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO: Readonly<Record<string, string>> = {
+  SAIDA_CONSUMO: "Saída por consumo (atendimento de requisição)",
+  AJUSTE_ENTRADA: "Ajuste de inventário — sobra",
+  AJUSTE_SAIDA: "Ajuste de inventário — falta",
+};
+
+/**
+ * V37 — O ROTEIRO CONTÁBIL DO ALMOXARIFADO. A tabela não tinha escritor, e o lançamento da saída é fail-closed: nenhuma
+ * requisição se atendia pela tela. A lista mostra os movimentos que precisam de roteiro, parametrizados ou não (o que
+ * falta é o que precisa ser visto), como a do patrimônio. As contas vêm da busca, só analíticas patrimoniais.
+ */
+export const ROTEIROS_DO_ALMOXARIFADO: DefinicaoDeRecurso = definirRecurso({
+  nome: "roteiros-do-almoxarifado",
+  rotulo: "Roteiros contábeis do almoxarifado",
+  rotuloSingular: "Roteiro do almoxarifado",
+  rota: "/patrimonio/almoxarifado/roteiros",
+  descricao:
+    "Contas do PCASP de débito e de crédito da saída de material por consumo e dos ajustes de inventário. Sem roteiro, " +
+    "o movimento não é registrado. A entrada é lançada pela liquidação, e o estorno inverte as contas do movimento original.",
+  campos: [
+    { nome: "tipo", rotulo: "Movimento", tipo: "selecao", obrigatorio: true, largura: 2,
+      opcoes: Object.entries(ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO).map(([valor, rotulo]) => ({ valor, rotulo })) },
+    { nome: "contaDebitoId", rotulo: "Conta de débito", tipo: "referencia", catalogo: "contas-patrimoniais", obrigatorio: true, largura: 3,
+      placeholder: "Código ou nome da conta", ajuda: "Apenas contas analíticas das classes 1 a 4 (patrimoniais)." },
+    { nome: "contaCreditoId", rotulo: "Conta de crédito", tipo: "referencia", catalogo: "contas-patrimoniais", obrigatorio: true, largura: 3,
+      placeholder: "Código ou nome da conta", ajuda: "Conta de contrapartida, diferente da conta de débito." },
+  ],
+  colunas: [
+    { nome: "evento", cabecalho: "Movimento", tipo: "texto" },
+    { nome: "debito", cabecalho: "Débito", tipo: "texto" },
+    { nome: "credito", cabecalho: "Crédito", tipo: "texto" },
+    { nome: "situacao", cabecalho: "Situação", tipo: "situacao" },
+  ],
+  filtros: [{ nome: "q", rotulo: "Movimento ou conta", tipo: "texto", largura: 2 }],
+  acoes: [],
+  permissoes: { criar: "PARAMETRIZAR_ROTEIRO_PATRIMONIAL" },
+  classesDeConta: [...CLASSES_PATRIMONIAIS],
+  abas: ["dados"],
+});
+
 export const RECURSOS_DOS_ROTEIROS: readonly DefinicaoDeRecurso[] = [
   ROTEIROS_PATRIMONIAIS,
   ROTEIROS_DE_RESULTADO,
+  ROTEIROS_DO_ALMOXARIFADO,
 ];

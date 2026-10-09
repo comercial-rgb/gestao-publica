@@ -373,6 +373,7 @@ export const PROTOCOLO: readonly RelatorioNav[] = [
   { href: "/protocolo/acesso-a-informacao/pedidos", numero: "Pedidos de acesso", rotulo: "Pedidos de acesso à informação", descricao: "Tramitação, prazos, prorrogação, resposta e recurso de cada pedido de informação." },
   { href: "/protocolo/avaliacoes", numero: "Avaliações", rotulo: "Avaliação dos serviços", descricao: "Avaliação dos serviços pelos cidadãos e moderação das avaliações." },
   { href: "/protocolo/guiches", numero: "Guichês", rotulo: "Atendimento presencial", descricao: "Unidades de atendimento presencial, guichês e agenda de horários." },
+  { href: "/protocolo/setores", numero: "Setores", rotulo: "Setores", descricao: "Setores do ente: requisitantes do almoxarifado e das compras, destino dos processos e centros de custo." },
   { href: "/protocolo/servicos", numero: "Carta", rotulo: "Carta de serviços", descricao: "Carta de serviços: formulários, prazos e etapas de cada serviço." },
   { href: "/consulta", numero: "Consulta", rotulo: "Acompanhar processo", descricao: "Consulta pública do andamento de um processo pelo número e código verificador." },
 ];
@@ -544,6 +545,7 @@ export const ALMOXARIFADO: readonly RelatorioNav[] = [
   { href: "/patrimonio/almoxarifado/classes", numero: "Classes", rotulo: "Classes de Material", descricao: "Classes de material e as contas contábeis de estoque correspondentes." },
   { href: "/patrimonio/almoxarifado/grupos", numero: "Grupos", rotulo: "Grupos de Material", descricao: "Grupos e subgrupos do catálogo de materiais." },
   { href: "/patrimonio/almoxarifado/unidades", numero: "Unidades", rotulo: "Unidades de Medida", descricao: "Unidades de medida do estoque." },
+  { href: "/patrimonio/almoxarifado/roteiros", numero: "Roteiros", rotulo: "Roteiros contábeis do almoxarifado", descricao: "Contas de débito e de crédito da saída por consumo e dos ajustes de inventário." },
   { href: "/patrimonio/almoxarifado/materiais", numero: "Materiais", rotulo: "Materiais", descricao: "Catálogo de materiais, com classe contábil, CATMAT e estoque mínimo e máximo." },
   { href: "/patrimonio/almoxarifado/depositos", numero: "Depósitos", rotulo: "Depósitos", descricao: "Depósitos, unidade gestora responsável e bloqueios de movimentação." },
   { href: "/patrimonio/almoxarifado/estoque", numero: "Posição", rotulo: "Posição de Estoque", descricao: "Posição de estoque em qualquer data, com preço médio e lotes a vencer." },

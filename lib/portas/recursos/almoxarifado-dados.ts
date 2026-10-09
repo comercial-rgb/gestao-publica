@@ -725,17 +725,17 @@ export async function opcoesDoAlmoxarifado(
   p: {
     readonly depositoId?: string;
     readonly requisicaoId?: string;
-    readonly materialId?: string;
   } = {}
 ): Promise<OpcoesDoCadastro> {
   const prisma = cliente();
-  const [grupos, classes, unidades, depositos, materiais, setores, ugs, pessoas, marcas, naturezas, anexos] =
+  // V37 — o MATERIAL e o LOTE não vêm mais daqui: são busca (`materiais-do-almoxarifado`, `lotes-da-requisicao`,
+  // `lotes-do-inventario`). O `select` de lote nascia vazio (a página não sabia o material).
+  const [grupos, classes, unidades, depositos, setores, ugs, pessoas, marcas, naturezas, anexos] =
     await Promise.all([
       prisma.grupoDeMaterial.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" }, take: 500 }),
       prisma.classeDeMaterial.findMany({ where: { ativa: true }, select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" }, take: 500 }),
       prisma.unidadeDeMedida.findMany({ select: { id: true, sigla: true, descricao: true }, orderBy: { sigla: "asc" }, take: 200 }),
       prisma.deposito.findMany({ where: { ativo: true }, select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" }, take: 300 }),
-      prisma.material.findMany({ where: { ativo: true }, select: { id: true, codigo: true, descricaoSucinta: true }, orderBy: { codigo: "asc" }, take: 1000 }),
       prisma.setor.findMany({ where: { ativo: true }, select: { id: true, codigo: true, nome: true }, orderBy: { codigo: "asc" }, take: 300 }),
       prisma.unidadeOrcamentaria.findMany({ select: { id: true, codigo: true, descricao: true }, orderBy: { codigo: "asc" }, take: 300 }),
       prisma.pessoa.findMany({
@@ -747,7 +747,7 @@ export async function opcoesDoAlmoxarifado(
       prisma.anexo.findMany({ select: { id: true, nomeOriginal: true }, orderBy: { criadoEm: "desc" }, take: 200 }),
     ]);
 
-  const [bloqueios, itensDeRequisicao, lotes] = await Promise.all([
+  const [bloqueios, itensDeRequisicao] = await Promise.all([
     p.depositoId === undefined
       ? Promise.resolve([])
       : prisma.bloqueioDeEstoque.findMany({
@@ -768,13 +768,6 @@ export async function opcoesDoAlmoxarifado(
             atendimentos: { select: { tipo: true, quantidade: true } },
           },
         }),
-    p.materialId === undefined || p.depositoId === undefined
-      ? Promise.resolve([])
-      : prisma.loteDeMaterial.findMany({
-          where: { materialId: p.materialId, depositoId: p.depositoId },
-          select: { id: true, identificacao: true, validade: true },
-          orderBy: { identificacao: "asc" },
-        }),
   ]);
 
   return {
@@ -794,7 +787,6 @@ export async function opcoesDoAlmoxarifado(
     unidadeDeMedidaId: unidades.map((u) => ({ valor: u.id, rotulo: `${u.sigla} — ${u.descricao}` })),
     depositoId: depositos.map((d) => ({ valor: d.id, rotulo: `${d.codigo} — ${d.nome}` })),
     deposito: depositos.map((d) => ({ valor: d.id, rotulo: `${d.codigo} — ${d.nome}` })),
-    materialId: materiais.map((m) => ({ valor: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta}` })),
     setorId: setores.map((s) => ({ valor: s.id, rotulo: `${s.codigo} — ${s.nome}` })),
     unidadeOrcId: ugs.map((u) => ({ valor: u.id, rotulo: `${u.codigo} — ${u.descricao}` })),
     responsavelId: pessoas.map((x) => ({
@@ -824,10 +816,6 @@ export async function opcoesDoAlmoxarifado(
       // servidor recusa por exceder o solicitado.
       .filter((x) => x.falta.greaterThan(0))
       .map(({ valor, rotulo }) => ({ valor, rotulo })),
-    loteId: lotes.map((l) => ({
-      valor: l.id,
-      rotulo: `${l.identificacao}${l.validade === null ? "" : ` — vence ${diaCivilBr(l.validade)}`}`,
-    })),
   };
 }
 

@@ -8,6 +8,7 @@ import { empenhadoLiquidoDaCampanha } from "../../modules/m05-despesa/campanha-p
 import { diaCivil, diaCivilBr } from "../../packages/datas/index";
 import type { AcaoDeLeitura } from "../../modules/m16-travamento/acoes.js";
 import { cliente } from "./cliente";
+import { paginarFiltrando } from "./paginar-filtrando";
 import type { Identidade } from "./sessao";
 
 /**
@@ -67,22 +68,28 @@ export const CATALOGOS_DA_EXECUCAO: Readonly<Record<string, Catalogo>> = {
           : p.q === ""
             ? {}
             : { OR: [...(digitos.length >= 2 ? [{ documento: { startsWith: digitos } }] : []), { versoes: { some: { nome: contem(p.q) } } }] };
-      const linhas = await cliente().pessoa.findMany({
-        where: { ...filtro, movimentos: { some: { papel: "CREDOR" } } },
-        orderBy: { documento: "asc" },
-        skip: (p.pagina - 1) * TAMANHO,
-        take: TAMANHO + 1,
-        select: {
-          documento: true,
-          tipo: true,
-          versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true, municipio: true, uf: true } },
-          movimentos: { where: { papel: "CREDOR" }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 1, select: { movimento: true } },
-        },
-      });
-      const r = paginar(linhas);
-      const vigentes = r.linhas.filter((x) => x.movimentos[0]?.movimento === "CONCEDIDO");
+      // V37 — o ENCERRADO sai no filtro (a consulta não diz "o último movimento"); a página se colhe em lotes, para não
+      // vir curta nem esconder um credor vigente atrás de encerrados (`paginarFiltrando`).
+      const r = await paginarFiltrando(
+        (skip, take) =>
+          cliente().pessoa.findMany({
+            where: { ...filtro, movimentos: { some: { papel: "CREDOR" } } },
+            orderBy: { documento: "asc" },
+            skip,
+            take,
+            select: {
+              documento: true,
+              tipo: true,
+              versoes: { orderBy: { criadoEm: "desc" }, take: 1, select: { nome: true, municipio: true, uf: true } },
+              movimentos: { where: { papel: "CREDOR" }, orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 1, select: { movimento: true } },
+            },
+          }),
+        (x) => x.movimentos[0]?.movimento === "CONCEDIDO",
+        p.pagina,
+        TAMANHO
+      );
       return {
-        opcoes: vigentes.map((x) => {
+        opcoes: r.linhas.map((x) => {
           const v = x.versoes[0];
           const lugar = v?.municipio != null && v.municipio !== "" ? ` · ${v.municipio}${v.uf != null && v.uf !== "" ? `/${v.uf}` : ""}` : "";
           return {

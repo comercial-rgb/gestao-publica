@@ -67,6 +67,8 @@
     "test/ficha-pela-tela.test.ts",
     "test/ui/fornecedores-catalogo.test.ts",
     "test/ui/recebimentos-catalogo.test.ts",
+    "test/ui/almoxarifado-catalogos.test.ts",
+    "test/ui/setores-cadastro.test.ts",
     "test/ui/empenhos-liquidar-catalogo.test.ts",
     "test/ui/resumo-da-folha.test.ts",
     "test/ui/nota-de-estorno.test.ts",

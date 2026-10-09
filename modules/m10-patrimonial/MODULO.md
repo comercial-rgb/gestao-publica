@@ -513,3 +513,24 @@ ausência vale tanto quanto marcar presença**. Nada foi construído para elas.
   conferência é por posição, porque a classe pode ter saldo de outras compras.
 - **Material por busca na tela da liquidação.** O catálogo `materiais-de-estoque` só oferece os materiais da classe
   escolhida na linha. Ele substitui o `select` com até 2.000 materiais.
+
+## V37 — o roteiro do almoxarifado ganhou escritor, e o material do almoxarifado virou busca
+
+- **`RoteiroAlmoxarifado` não tinha caso de uso nem tela.** O lançamento da saída por consumo e dos ajustes é
+  fail-closed ("Não há RoteiroAlmoxarifado cadastrado..."), então nenhuma requisição se atendia pela tela, em base
+  nenhuma; só os testes gravavam a tabela, por `createMany`. `parametrizarRoteiroAlmoxarifado` (em `roteiros.ts`)
+  grava o par de um dos movimentos com lançamento próprio que não são estorno (`TIPOS_DO_ROTEIRO_ALMOXARIFADO`,
+  derivado de `TEM_ROTEIRO_ALMOXARIFADO`), conferindo as contas pelo mesmo `conferirConta` e pelo motor do M01
+  (`conferirContraOMotor`). Exige os dois crachás da parametrização direta do patrimônio (parametrizar e publicar),
+  porque vigora na hora. Tela: `/patrimonio/almoxarifado/roteiros`, com as contas por busca (`contas-patrimoniais`,
+  analíticas das classes 1 a 4). Nenhuma conta é sugerida.
+- **Sem substituição.** O tipo que já tem roteiro é recusado nomeando o par vigente. Trocar as contas pede versão,
+  como a do patrimônio: pendência `ROTEIRO-ALMOXARIFADO-SEM-VERSAO`.
+- **Observação, não alterada:** o par é um por movimento, não por classe de material. A conta de estoque da classe
+  (`ClasseDeMaterial.contaContabilId`) e a do roteiro podem divergir; `conferirAlmoxarifadoContraRazao` acusa, o
+  cadastro não impede.
+- **Material e lote por busca no almoxarifado.** Bloqueio do depósito, requisição e contagem do inventário escolhem o
+  material pelo catálogo `materiais-do-almoxarifado` (antes, `select` com os 1.000 primeiros). O lote da saída da
+  requisição (`lotes-da-requisicao`, pelo item escolhido) e o da contagem (`lotes-do-inventario`, pelo material e
+  pelo depósito do inventário) nasciam VAZIOS — a página não sabia o material —, e material controlado por lote não
+  tinha como ser atendido pela tela.

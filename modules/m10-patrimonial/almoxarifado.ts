@@ -221,6 +221,13 @@ async function exigirClasse(
   return c;
 }
 
+/** O nome do movimento na recusa (o tipo cru é jargão para quem lê a tela). */
+const NOME_DO_MOVIMENTO: Partial<Record<TipoMovimentoAlmoxarifado, string>> = {
+  SAIDA_CONSUMO: "a saída por consumo",
+  AJUSTE_ENTRADA: "o ajuste de inventário por sobra",
+  AJUSTE_SAIDA: "o ajuste de inventário por falta",
+};
+
 /** O roteiro do tipo — TABELA. Ausente = LANÇA, sem gravar nada. */
 async function exigirRoteiro(
   tx: Tx,
@@ -232,9 +239,9 @@ async function exigirRoteiro(
   });
   if (r === null) {
     throw new Error(
-      `Não há RoteiroAlmoxarifado cadastrado para ${tipo}. As contas do PCASP vêm por ` +
-        `PARÂMETRO — nenhuma conta é inventada no código. Cadastre o roteiro antes de ` +
-        `movimentar o almoxarifado.`
+      `Não há roteiro contábil cadastrado para ${NOME_DO_MOVIMENTO[tipo] ?? tipo}. As contas do lançamento são ` +
+        `definidas pelo ente, e nenhuma é presumida. Cadastre-o em Patrimônio, Almoxarifado, "Roteiros contábeis do ` +
+        `almoxarifado". Nada foi gravado.`
     );
   }
   return r;

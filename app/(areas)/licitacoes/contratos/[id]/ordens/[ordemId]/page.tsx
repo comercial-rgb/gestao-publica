@@ -82,7 +82,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
         <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
           <div><dt className="text-xs text-[color:var(--color-ink-2)]">Período</dt><dd>{o.inicioAutorizado === null ? `previsto de ${o.inicioPrevisto}` : `autorizado a partir de ${o.inicioAutorizado}`} a {o.fimPrevisto}</dd></div>
           <div><dt className="text-xs text-[color:var(--color-ink-2)]">Gestor e fiscal</dt><dd>{o.gestor}; {o.fiscal}</dd></div>
-          <div><dt className="text-xs text-[color:var(--color-ink-2)]">Empenho indicado</dt><dd>{o.empenho === null ? "nenhum" : o.empenho.numero}</dd></div>
+          <div><dt className="text-xs text-[color:var(--color-ink-2)]">Empenho indicado</dt><dd>{o.empenho === null ? "nenhum" : <Link href={`/despesa/empenhos/${o.empenho.id}`} data-elo="empenho" className="text-[color:var(--color-primary)] underline underline-offset-2">{o.empenho.numero}</Link>}</dd></div>
           <div><dt className="text-xs text-[color:var(--color-ink-2)]">Condições de recebimento</dt><dd className="[overflow-wrap:anywhere]">{o.condicoesDeRecebimento}</dd></div>
           {o.emitidaEm !== null && o.sha256 !== null ? <div><dt className="text-xs text-[color:var(--color-ink-2)]">Espelho</dt><dd>emitida em {o.emitidaEm} · <a href={DOC(id, "ordem", o.id)} data-documento="ordem" className="text-[color:var(--color-primary)] underline underline-offset-2">baixar a ordem (PDF)</a></dd></div> : null}
         </dl>
