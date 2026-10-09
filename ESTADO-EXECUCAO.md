@@ -7,7 +7,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `582f8997` em `apresentacao/contabilidade` (a publicar, com migration) |
+| HEAD | `b41f4a57` em `apresentacao/contabilidade`, publicado como `003dd60` (main e `/release` = `003dd60`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Reserva com data do fato (fecha SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA); antes, setores, roteiro do almoxarifado, material e lote por busca, recebimento que confirma, credor encerrado que não encurta a página. |
 | Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO e RGF sem exportação e sem drill-down; vínculo PPA–LOA. |
@@ -62,6 +62,8 @@ não derivada; a lista mostra a data; uma data sem disponível é recusada com o
 `smoke-contratacao` ajustado (data da reserva) e não executado.
 
 **Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.290/2.290.
+
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v37g-20261009T012629Z.dump`; tipos aprovados (digesto 03b7e214e60c); Actions 37870131919 verde; `/release` = `003dd60`; migration `20261109010000_v37_data_da_reserva` aplicada em produção (coluna conferida no catálogo do banco, só leitura); sonda só leitura 2/2 (a reserva da ficha pede a data, com o dia de hoje como padrão) e apagada.
 
 ### Sexta rodada da V37 (08/10/2026): setores, roteiro do almoxarifado, material e lote por busca
 
