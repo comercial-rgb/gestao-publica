@@ -31,6 +31,8 @@ descritores). Percurso `percurso-v38-audios-da-contadora` 11/11 na 3011, base fi
 compila cada tela na primeira abertura: o percurso aquece e espera a opção da busca; digitar num formulário abre o aviso
 de edição pendente ao sair, aceito pelo percurso).
 
+**Publicação:** backup `/var/backups/gestao-publica/esperanca-antes-v38a-20261009T183504Z.dump` (4.693 objetos); Actions 37974478058 verde; `/release` = `2f9538b`. Tabelas oficiais da retenção carregadas em produção no servidor, como o usuário do serviço (`carregar-tabelas-da-retencao.ts`: IR 9/9, INSS 30/30, bases 10/10, ISS 200/200; o sha256 de cada arquivo oficial conferido antes). Sonda só leitura em produção: a busca do credor devolve 6 pessoas (5 "sem o papel"); a liquidação tem o documento por busca e o aviso da retenção; a LOA tem "Preparar o próximo exercício"; o menu tem a aba Tributos; o movimento diário abre com movimento; o lançamento manual tem a conta por busca; rodapé na versão 2f9538b. Sonda apagada. Sem migration.
+
 ## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
 
 Pedido: `docs/lotes/V37-uso-de-ponta-a-ponta.md`. Regime: superfície (links, recortes, formulários pré-preenchidos) e
@@ -38,7 +40,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | V38 1ª leva, a publicar (anterior: `c13effb`) |
+| HEAD | publicado como `2f9538b` (main e `/release` = `2f9538b`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | V38 2ª leva: linha nova de receita e de ficha na proposta, reajuste em lote com recorte e prévia, percurso até o empenho do exercício seguinte (AUD-096/109/110/111/112/108). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
