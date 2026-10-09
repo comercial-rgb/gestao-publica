@@ -80,7 +80,10 @@ export default async function AreasLayout({
           />
           <div className="flex min-w-0 flex-1 flex-col">
             <Header destinosDaBusca={destinosDaBusca} identidade={tela} />
-            <main className="flex-1 overflow-y-auto p-4 md:p-8">
+            {/* V37 — `relative`: o elemento `absolute` sem ancestral posicionado (o texto `sr-only` das caixas de seleção da
+                tabela) se posicionava pelo DOCUMENTO, escapava da rolagem do `main` e esticava a janela: o casco subia e sobrava
+                uma faixa branca abaixo do rodapé. Com o `main` posicionado, ele rola e é recortado aqui dentro. */}
+            <main className="relative flex-1 overflow-y-auto p-4 md:p-8">
               <CabecalhoDeImpressao ente={enteDoPapel} rotuloDoAmbiente={tela.rotuloDoAmbiente} />
               {children}
             </main>

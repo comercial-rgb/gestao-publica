@@ -42,6 +42,15 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
 
+### Rodapé quebrado (09/10/2026)
+
+Relato do usuário com captura de /planejamento/fichas: faixa branca abaixo do rodapé e duas barras de rolagem. Causa
+medida em produção: o texto `sr-only` das caixas de seleção da tabela é `absolute` sem ancestral posicionado, se
+posicionava pelo documento, escapava da rolagem do `main` e esticava a janela (921 px de documento numa janela de 900;
+1.001 a 1.280 px de largura). Correção no casco (`app/(areas)/layout.tsx`): o `main` é `relative`. Percurso
+`percurso-v37-casco-sem-vazamento` 12/12 na 3011 (seis telas de tabela longa, duas larguras); sem a correção acusa as
+fichas nas duas larguras.
+
 ### Décima primeira rodada da V37 (09/10/2026): o que ficou aberto
 
 Pedido: "O que ficou aberto continue para corrigir todos este e ao final empurrar tudo para producao".
