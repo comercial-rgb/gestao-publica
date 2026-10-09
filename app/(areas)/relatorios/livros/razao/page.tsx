@@ -36,7 +36,7 @@ export default async function RazaoPage({
   );
 
   if (conta === undefined || conta === "") {
-    return <div>{cabecalho}<EstadoVazio titulo="Informe uma conta" descricao="Digite o código de uma conta (ex.: 6.2.2.1.1.00.00) e aplique para ver o razão dela." /></div>;
+    return <div>{cabecalho}<EstadoVazio titulo="Informe uma conta" descricao="Busque a conta pelo código ou pelo nome, escolha na lista e aplique para ver o razão dela." /></div>;
   }
 
   let dados: RazaoAnalitico;

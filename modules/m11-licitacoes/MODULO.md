@@ -575,3 +575,14 @@ O `ContratoPPP` (schema em `m12-ppp.prisma`, nascido para o RREO Anexo 13) ganho
 administrativa), situação append-only e parcelas por exercício informadas — o sistema não as calcula. Tudo sob
 CADASTRAR_CONTRATO no ente. O empenho pode apontar a parceria (`Empenho.contratoPppId`, dimensão copiada pelas
 anulações), e o detalhe da parceria soma o empenhado líquido. A parceria é dono de `Anexo` no M22.
+
+## V38 4ª leva — as ordens de serviço numa lista (AUD-122)
+
+`ordens-de-servico-da-sessao.ts`: `contratosNoAlcanceDasOrdens` (os contratos da fiscalização da sessão; todos para o
+administrador da fiscalização e para quem tem uma das `ACOES_DA_PROJECAO_FINANCEIRA`, que é o que abre a visão
+financeira de qualquer contrato) e `listarOrdensDeServicoDaSessao` (as 300 mais recentes, com contrato, finalidade,
+previsão, situação, emissão e empenho). A lista não abre acesso novo: alcança o mesmo que a tela do contrato. A situação
+da ordem passou a ser uma régua só, `situacaoDaOrdem` (pura), usada pela execução do contrato e pela lista. Tela
+`/licitacoes/ordens-de-servico`, no submenu de Licitações e no menu do contador ("Execução e fiscalização"). Testes:
+`test/ordens-de-servico-da-sessao.test.ts` (N=2 contratos com fiscais distintos; financeiro vê os dois; sem acesso e
+inativo, nada; a situação pura), 3 mutações vermelhas. Leituras fora do censo.

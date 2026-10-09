@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { CampoReferenciado } from "../../../../components/ui/CampoReferenciado";
 
 /**
  * SELETOR de PERÍODO (e conta, opcional) dos livros — ilha client. O dado mora na URL; ao aplicar,
@@ -39,10 +40,18 @@ export function SeletorPeriodo({ desde, ate, conta, comConta }: { readonly desde
         <input type="date" aria-label="Data final" className={CLASSE} value={a} onChange={(e) => setA(e.target.value)} />
       </label>
       {comConta === true ? (
-        <label className="flex flex-col gap-0.5 text-xs text-[color:var(--color-ink-2)]">
-          <span className="uppercase tracking-wide">Conta</span>
-          <input type="text" aria-label="Código da conta" placeholder="6.2.2.1.1.00.00" className={`${CLASSE} w-44`} value={c} onChange={(e) => setC(e.target.value)} />
-        </label>
+        // V38 (AUD-067) — a conta pela busca (código ou nome), como no lançamento manual. A conta já na URL é conferida
+        // pelo mesmo catálogo antes de virar escolha.
+        <div className="w-80 text-xs" data-conta-do-razao>
+          <CampoReferenciado
+            name="conta"
+            rotulo="Conta"
+            catalogo="contas-do-razao"
+            placeholder="Código ou nome da conta"
+            {...(conta !== undefined && conta !== "" ? { valorInicial: conta } : {})}
+            aoEscolher={(o) => setC(o?.valor ?? "")}
+          />
+        </div>
       ) : null}
       <button type="button" onClick={aplicar} className="h-8 rounded-[var(--radius-pilula)] bg-[color:var(--color-acao)] px-3 text-sm font-medium text-[color:var(--color-acao-tinta)] hover:bg-[color:var(--color-acao-hover)]">Aplicar</button>
     </div>

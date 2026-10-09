@@ -107,6 +107,43 @@ passou a vermelho.
 - 2030 ficou intacto;
 - houve empenho na ficha nova.
 
+**Publicação.**
+- Backup: `/var/backups/gestao-publica/esperanca-antes-v38c-20261009T230607Z.dump` (4.704 objetos).
+- Tipos aprovados, digesto 1bb71aae86f4.
+- Push `1bfae79`. A API do GitHub estava no limite de consultas, então a publicação foi acompanhada pelo `/release`, que mostrou `1bfae79` cerca de 3 min depois.
+- Sem migration.
+- Sonda só de leitura como administrador:
+  - a lista de propostas abriu em 1,5 s, com o botão da prévia;
+  - a prévia de 2026 para 2027 mostrou 65 de 65 receitas e 1.055 de 1.055 fichas, com 1 ficha sem valor;
+  - nenhuma proposta foi criada (0 antes e depois);
+  - o rodapé mostra 1bfae79.
+- A sonda foi apagada.
+
+### 4ª leva (09/10/2026): encontrar e não perder o que se digitou
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Conta do razão pela busca (AUD-067) | a conta era digitada; agora é escolhida por código ou nome entre as analíticas, que são as que têm movimento, com a leitura da própria tela do razão (catálogo `contas-do-razao`, CONSULTAR_RELATORIOS); a conta que chega por link é conferida pelo mesmo catálogo | /relatorios/livros/razao | `m12-livros`; percurso 4ª leva passo 1 |
+| Ordens de serviço numa lista (AUD-122) | "Ordens de serviço" em Licitações e no menu do contador; alcança os mesmos contratos da tela do contrato (designação vigente, administrador da fiscalização ou visão financeira) e leva à ordem; a situação passou a ser uma régua só (`situacaoDaOrdem`) | /licitacoes/ordens-de-servico | `ordens-de-servico-da-sessao` (N=2 contratos, financeiro vê os dois, sem acesso e inativo nada), 3 mutações vermelhas; percurso passo 2 |
+| Atalhos da proposta (AUD-093) | os atalhos (todas as propostas, receitas, fichas, fichas da origem) ficam no topo, também na proposta efetivada; âncora `#ficha-<número>` | /planejamento/proposta-orcamentaria/[id] | percurso passo 3 |
+| Rascunho do empenho no atalho de cadastro (AUD-015) | o clique em "Cadastrar este credor" guarda na aba os campos do empenho (não o credor); a volta com o credor os repõe uma vez e apaga; a origem reposta não sobrescreve os campos; rascunho velho (2 h), malformado ou com campo não declarado é descartado inteiro | /despesa/empenhos | `rascunho-do-formulario` (puro), 2 mutações vermelhas; percurso passo 4 |
+
+**Decisões do ente.** Duas ficam nomeadas como decisão do ente, e não se constroem antes dela:
+- **AUD-047(b):** aceitar linha digitada do extrato como prova bancária, e qual documento a sustenta.
+- **AUD-104:** quais blocos da LDO anterior copiar e como deslocar os anos das metas. O rito da lei (envio, protocolo, sanção) nunca se copia.
+
+**Defeitos achados no caminho.**
+- *Histórico apagado na volta do cadastro.* A reposição do rascunho rodava antes do autopreenchimento do histórico. Os dois escrevem na montagem, e o autopreenchimento apagava o histórico reposto. A reposição passou para depois dele e ficou idempotente, porque o React de desenvolvimento roda os efeitos da montagem duas vezes e a segunda leitura da aba viria vazia.
+- *Checagem do razão no percurso.* O `textContent` da página inclui os scripts com os dados da primeira renderização, que ainda trazem o texto anterior à navegação. A checagem passou a usar `innerText`.
+- *Busca do razão intermitente.* A falha se repetiu em duas corridas. A causa medida é a primeira consulta da página no servidor de desenvolvimento: mais de 20 s numa corrida, 228 ms aquecida. O percurso aquece a busca, como os outros percursos desta máquina; o tempo limite da escolha não foi aumentado.
+- *Origem reposta que deixou de ser oferecida (achado do auditor de invariantes).* Se a origem reposta deixasse de ser oferecida, a escolha manual seguinte daquele tipo não preenchia os campos. Agora só a volta do mesmo valor reposto é poupada. O servidor já validava tudo; o efeito era só de tela.
+
+**Censo e tipos.** Sem migration. Duas leituras novas ficaram fora do censo: `contratosNoAlcanceDasOrdens` e `listarOrdensDeServicoDaSessao`. Tipos: backend, app e scripts sem erro.
+
+**Testes dirigidos.** 12 arquivos, 93 de 93: ordens, rascunho, acesso da fiscalização, ordem de serviço e recebimentos, busca global, menu contra o servidor, menu do contador, navegação para rota viva, catálogos, censo, livros e proposta.
+
+**Percurso.** `percurso-v38-quarta-leva` passou em 5 de 5 (3011, base fictícia). A base fictícia não tem ordem de serviço, então o percurso viu a lista vazia com a frase. A lista com ordens está provada no teste com dois contratos.
+
 ## V37 — uso de ponta a ponta: trilhas conectadas (07/10/2026; vale sobre a V36 abaixo)
 
 Pedido: `docs/lotes/V37-uso-de-ponta-a-ponta.md`. Regime: superfície (links, recortes, formulários pré-preenchidos) e
@@ -114,10 +151,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `ea24979` (main e `/release` = `ea24979`) |
+| HEAD | publicado como `1bfae79` (main e `/release` = `1bfae79`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | V38 4ª leva: conta do razão pela busca (AUD-067), lista de ordens de serviço no menu dentro do alcance da fiscalização (AUD-122), atalhos da proposta fora da edição e âncora por ficha (AUD-093), rascunho do empenho preservado no atalho de cadastro (AUD-015). Dependem do ente: linha manual do extrato como prova bancária (AUD-047b) e o que copiar da LDO anterior (AUD-104). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
+| Próximo passo | V38: o que resta na matriz depende do ente ou de leiaute externo — linha manual do extrato como prova bancária (AUD-047b), o que copiar da LDO anterior (AUD-104), Reinf (AUD-024/025), momento da retenção (AUD-031), contas de controle dos contratos (AUD-118 a 121), realizáveis (AUD-056), SIOPE/SIOPS (AUD-082/083), MCASP (AUD-078), vencedor da licitação (AUD-116), referência externa do empenho (AUD-124); e as dúvidas de transcrição (AUD-001/017/032/035/098) pedem reouvir o áudio. Pendência técnica: `PROPOSTA-UM-FORMULARIO-POR-LINHA`. Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
 
 ### O que passou a funcionar, e a rota
 

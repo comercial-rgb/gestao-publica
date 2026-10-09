@@ -183,6 +183,7 @@ export const EXECUCAO_DESPESA: readonly RelatorioNav[] = [
 export const LICITACOES: readonly RelatorioNav[] = [
   { href: "/licitacoes/processos", numero: "Processos", rotulo: "Processos licitatórios", descricao: "Processos licitatórios: modalidade, objeto, homologação e reserva de dotação." },
   { href: "/licitacoes/fiscalizacao", numero: "Fiscalização", rotulo: "Fiscalização de contratos", descricao: "Contratos sob sua gestão ou fiscalização e o registro das ocorrências." },
+  { href: "/licitacoes/ordens-de-servico", numero: "OS", rotulo: "Ordens de serviço", descricao: "As ordens de serviço dos contratos que você acompanha: situação, emissão, empenho e o caminho até a medição e a liquidação." },
   { href: "/licitacoes/contratos", numero: "Contratos", rotulo: "Contratos e aditivos", descricao: "Contratos, aditivos, vigência, saldo e empenhos vinculados." },
   { href: "/licitacoes/solicitacoes", numero: "Solicitações", rotulo: "Solicitações de compra", descricao: "Solicitações de compra, com itens, autorização e anulação." },
   { href: "/licitacoes/pesquisas-de-precos", numero: "Preços", rotulo: "Pesquisas de preços", descricao: "Pesquisa de preços por item e fornecedor, com média, mínimo e máximo." },
@@ -826,6 +827,7 @@ export const MENU_DO_CONTADOR: readonly AbaDoMenu[] = [
       ] },
       { rotulo: "Execução e fiscalização", itens: [
         { href: "/licitacoes/fiscalizacao", rotulo: "Fiscalização" },
+        { href: "/licitacoes/ordens-de-servico", rotulo: "Ordens de serviço" },
         { href: "/licitacoes/obras", rotulo: "Obras e medições" },
         { href: "/licitacoes/ppp", rotulo: "Parcerias público-privadas" },
         { href: "/licitacoes/documentos-fiscais", rotulo: "Recebimento de notas" },

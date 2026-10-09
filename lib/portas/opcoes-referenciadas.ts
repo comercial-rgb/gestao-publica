@@ -625,6 +625,24 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     },
   },
   /**
+   * V38 (AUD-067) — A CONTA DO LIVRO RAZÃO pela busca, como no lançamento manual: só analíticas (é nelas que há
+   * movimento), por código ou nome. A leitura é a da tela do razão (CONSULTAR_RELATORIOS): o catálogo irmão
+   * `contas-analiticas` pede a da contabilidade, e recusaria a busca a quem só consulta relatórios.
+   */
+  "contas-do-razao": {
+    leitura: "CONSULTAR_RELATORIOS",
+    async buscar(_s, p) {
+      const linhas = await cliente().contaPcasp.findMany({
+        where: { analitica: true, ...(p.valor !== undefined ? { codigo: p.valor } : p.q === "" ? {} : { OR: [{ codigo: { startsWith: p.q } }, { nome: contem(p.q) }] }) },
+        orderBy: { codigo: "asc" },
+        skip: skip(p), take,
+        select: { codigo: true, nome: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((c) => ({ valor: c.codigo, rotulo: `${c.codigo} — ${c.nome}` })), temMais: r.temMais };
+    },
+  },
+  /**
    * V28 — as LIQUIDAÇÕES DE CAPITAL que ainda têm valor a incorporar ao patrimônio. Só as vivas
    * (nem anuladas nem anulação), de natureza do grupo 4 ou 5, com saldo positivo — o mesmo saldo que
    * o teto de `adquirirBem` confere dentro da trava.

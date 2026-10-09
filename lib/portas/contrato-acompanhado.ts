@@ -15,6 +15,7 @@ import {
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
 import { configurarRegimeDeMedicao } from "../../modules/m11-licitacoes/regime-de-medicao.js";
 import { alcanceNoContrato, contratosNoAlcanceDaFiscalizacao, definirAdministradorDaFiscalizacao, revogarAdministradorDaFiscalizacao, type AlcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
+import { listarOrdensDeServicoDaSessao, type OrdemNaLista } from "../../modules/m11-licitacoes/ordens-de-servico-da-sessao.js";
 import { tiposParaPreencher } from "./agenda-da-fiscalizacao";
 import { cliente, PortaSemBancoError } from "./cliente";
 import { acoesPermitidas } from "./molde";
@@ -304,3 +305,12 @@ export async function revogarAdministradorNaTela(c: Readonly<Record<string, stri
   await comEscritaAutenticada("DEFINIR_ADMINISTRADOR_DA_FISCALIZACAO", (criadoPor) => revogarAdministradorDaFiscalizacao(cliente(), { administradorId: t(c, "administradorId"), dataEfeito: t(c, "dataEfeito"), motivo: t(c, "motivo"), criadoPor }));
   return "Definição revogada. A partir do efeito, o alcance à fiscalização dos contratos cessa; o que foi feito antes continua registrado.";
 }
+
+/**
+ * V38 (AUD-122) — AS ORDENS DE SERVIÇO DA SESSÃO, de todos os contratos que ela alcança (designação vigente,
+ * administrador da fiscalização ou visão financeira). O recorte é do domínio; a tela não filtra nada.
+ */
+export async function ordensDeServicoDaSessao(sessao: Identidade): Promise<{ readonly ordens: readonly OrdemNaLista[]; readonly limitada: boolean; readonly todos: boolean }> {
+  return listarOrdensDeServicoDaSessao(cliente(), sessao.identificador);
+}
+export type { OrdemNaLista };

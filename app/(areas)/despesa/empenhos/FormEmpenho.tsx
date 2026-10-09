@@ -6,6 +6,7 @@ import { CADASTRO_DE_CREDOR, linkDeCadastro } from "../../../../lib/atalho-de-ca
 import { CampoReferenciado, type OpcaoDoSeletor } from "../../../../components/ui/CampoReferenciado";
 import { fichasQueCasam } from "./busca-da-ficha";
 import { CampoCpfCnpj, CampoValor } from "../../../../components/ui/Campos";
+import { guardarNaAba, lerRascunho, serializarRascunho, tirarDaAba } from "../../../../lib/rascunho-do-formulario";
 import {
   CLASSE_BOTAO_PRIMARIO,
   CLASSE_CAMPO as CAMPO,
@@ -101,6 +102,15 @@ export function sugestoesDeHistorico(o: Origens, credorNome: string): readonly s
 }
 
 /**
+ * V38 (AUD-015) — O RASCUNHO QUE ATRAVESSA O ATALHO DE CADASTRO DO CREDOR: os campos que a pessoa já tinha preenchido.
+ * O credor NÃO entra: ele volta escolhido do cadastro (`?credor=`).
+ */
+const CHAVE_DO_RASCUNHO = "rascunho-do-empenho";
+const ORIGENS_DO_RASCUNHO = { solicitacaoDeEmpenhoId: "solicitacao", ordemDeCompraId: "ordem", contratoId: "contrato", reservaId: "reserva" } as const;
+const VINCULOS_DO_RASCUNHO = ["convenioId", "obraId", "dividaId", "campanhaPublicitariaId", "contratoPppId", "precatorioId"] as const;
+const CAMPOS_DO_RASCUNHO: readonly string[] = ["fichaId", "numero", "valor", "data", "tipo", "categoria", "historico", ...Object.keys(ORIGENS_DO_RASCUNHO), ...VINCULOS_DO_RASCUNHO];
+
+/**
  * FORM DE EMPENHO — ilha client, Server Action autenticada.
  *
  * ⚠️ A CATEGORIA DA ORDEM CRONOLÓGICA NASCE VAZIA, de propósito. O `zEmpenharInput`
@@ -191,6 +201,33 @@ export function FormEmpenho({
   const [origens, setOrigens] = useState<Origens>(SEM_ORIGEM);
   const [rodada, setRodada] = useState(0);
 
+  // V38 (AUD-015) — o rascunho reposto na volta do atalho de cadastro. As origens repostas voltam pela conferência
+  // do catálogo (`avisarInicial`); enquanto cada uma não volta, ela NÃO sobrescreve os campos repostos — a pessoa já
+  // os tinha conferido (e o credor é o que ela acabou de cadastrar).
+  const [rascunho, setRascunho] = useState<Readonly<Record<string, string>> | null>(null);
+  // A origem reposta e o VALOR reposto: só a volta desse mesmo valor é poupada; outra escolha preenche como sempre.
+  const origensRepostas = useRef<Map<keyof Origens, string>>(new Map());
+  const rascunhoLido = useRef<Readonly<Record<string, string>> | null | undefined>(undefined);
+  useEffect(() => {
+    const numero = rascunho?.["numero"];
+    const campo = ref.current?.elements.namedItem("numero");
+    if (numero !== undefined && campo instanceof HTMLInputElement) campo.value = numero;
+  }, [rascunho]);
+  const inicial = (campo: string, padrao: string): string => rascunho?.[campo] ?? padrao;
+
+  /** Guarda o rascunho ao sair pelo atalho de cadastro (o clique no link, antes de a página trocar). */
+  function guardarRascunhoSeForAtalho(e: React.MouseEvent<HTMLFormElement>): void {
+    const alvo = e.target instanceof Element ? e.target.closest("[data-atalho-de-cadastro]") : null;
+    if (alvo === null || ref.current === null) return;
+    const dados = new FormData(ref.current);
+    const campos: Record<string, string> = {};
+    for (const nome of CAMPOS_DO_RASCUNHO) {
+      const v = dados.get(nome);
+      if (typeof v === "string" && v !== "") campos[nome] = v;
+    }
+    guardarNaAba(CHAVE_DO_RASCUNHO, serializarRascunho(campos, new Date()));
+  }
+
   // Sucesso: limpa o formulário inteiro (inclusive os seletores, pela `key` da rodada).
   useEffect(() => {
     if (estado.sucesso === undefined) return;
@@ -204,6 +241,7 @@ export function FormEmpenho({
     setHistorico("");
     historicoAutomatico.current = "";
     setOrigens(SEM_ORIGEM);
+    setRascunho(null);
     setRodada((r) => r + 1);
   }, [estado]);
 
@@ -218,10 +256,43 @@ export function FormEmpenho({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recalcula só quando a origem muda
   }, [origens, credor.nome]);
+  // ⚠️ DEPOIS do autopreenchimento do histórico, de propósito: os dois rodam na montagem, e o último a escrever vence
+  // (medido no percurso V38: com a reposição antes, o histórico reposto virava a sugestão vazia).
+  useEffect(() => {
+    // Lido UMA vez (a aba o entrega e apaga); o efeito em si é idempotente — o React de desenvolvimento o roda duas
+    // vezes na montagem, e a segunda leitura da aba viria vazia.
+    if (rascunhoLido.current === undefined) {
+      rascunhoLido.current = credorPadrao === undefined || credorPadrao === "" ? null : lerRascunho(tirarDaAba(CHAVE_DO_RASCUNHO), CAMPOS_DO_RASCUNHO, new Date());
+    }
+    const r = rascunhoLido.current;
+    if (r === null) return;
+    origensRepostas.current = new Map(
+      (Object.entries(ORIGENS_DO_RASCUNHO) as [string, keyof Origens][]).filter(([campo]) => (r[campo] ?? "") !== "").map(([campo, origem]) => [origem, r[campo] ?? ""])
+    );
+    if (r["fichaId"] !== undefined && fichas.some((f) => f.id === r["fichaId"])) setFichaId(r["fichaId"]);
+    if (r["valor"] !== undefined) setValor((x) => ({ cru: r["valor"] ?? "", versao: x.versao + 1 }));
+    if (r["data"] !== undefined) setDataEmissao(r["data"]);
+    const t = r["tipo"];
+    if (t === "ORDINARIO" || t === "GLOBAL" || t === "ESTIMATIVO") setTipo(t);
+    if (ehCategoria(r["categoria"])) setCategoria(r["categoria"]);
+    if (r["historico"] !== undefined) {
+      historicoAutomatico.current = "";
+      setHistorico(r["historico"]);
+    }
+    setRascunho(r);
+    // Os seletores remontam com o valor reposto (a `key` da rodada), e o número volta ao campo.
+    setRodada((x) => x + 1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na montagem: o rascunho volta uma vez
+  }, []);
 
   function aplicarOrigem(tipo: keyof Origens, o: OpcaoDoSeletor | null): void {
     setOrigens((atual) => ({ ...atual, [tipo]: o }));
     if (o === null) return;
+    // A volta da conferência do valor reposto não sobrescreve os campos repostos; uma escolha diferente (inclusive
+    // quando o valor reposto deixou de ser oferecido) preenche normalmente.
+    const reposto = origensRepostas.current.get(tipo);
+    origensRepostas.current.delete(tipo);
+    if (reposto !== undefined && reposto === o.valor) return;
     const d = o.dados ?? {};
     const ficha = d["fichaId"];
     if (ficha !== undefined && ficha !== "" && fichas.some((f) => f.id === ficha)) setFichaId(ficha);
@@ -253,7 +324,7 @@ export function FormEmpenho({
   const solicitacaoEscolhida: Readonly<Record<string, string>> | null = origens.solicitacao === null ? null : (origens.solicitacao.dados ?? {});
 
   return (
-    <form ref={ref} action={action} data-acao="empenhar" className={CLASSE_PAINEL_FORMULARIO}>
+    <form ref={ref} action={action} data-acao="empenhar" className={CLASSE_PAINEL_FORMULARIO} onClickCapture={guardarRascunhoSeForAtalho}>
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Emitir empenho</h2>
       <p className="mb-4 text-xs text-[color:var(--color-ink-3)]">
@@ -271,7 +342,7 @@ export function FormEmpenho({
           placeholder="Digite o número da solicitação ou parte do histórico"
           ajuda="O empenho emitido de uma solicitação mantém a ficha, o credor, o tipo e os vínculos autorizados; o valor pode ser igual ou menor."
           largura={3}
-          valorInicial={solicitacaoPadrao}
+          valorInicial={inicial("solicitacaoDeEmpenhoId", solicitacaoPadrao)}
           avisarInicial
           aoEscolher={(o) => aplicarOrigem("solicitacao", o)}
         />
@@ -304,7 +375,7 @@ export function FormEmpenho({
               catalogo="ordens-para-empenho"
               placeholder="Digite o número da ordem"
               largura={1}
-              valorInicial={ordemPadrao}
+              valorInicial={inicial("ordemDeCompraId", ordemPadrao)}
               avisarInicial
               aoEscolher={(o) => aplicarOrigem("ordem", o)}
             />
@@ -315,7 +386,7 @@ export function FormEmpenho({
               catalogo="contratos-para-empenho"
               placeholder="Digite o número do contrato"
               largura={1}
-              valorInicial={contratoPadrao}
+              valorInicial={inicial("contratoId", contratoPadrao)}
               avisarInicial
               aoEscolher={(o) => aplicarOrigem("contrato", o)}
             />
@@ -328,7 +399,7 @@ export function FormEmpenho({
           catalogo="reservas-para-empenho"
           placeholder="Ficha, processo ou texto"
           largura={1}
-          valorInicial={reservaPadrao}
+          valorInicial={inicial("reservaId", reservaPadrao)}
           avisarInicial
           aoEscolher={(o) => aplicarOrigem("reserva", o)}
         />
@@ -340,6 +411,7 @@ export function FormEmpenho({
           <CampoReferenciado
             key={`convenio-${rodada}`}
             name="convenioId"
+            valorInicial={inicial("convenioId", "")}
             rotulo="Convênio"
             catalogo="convenios-para-empenho"
             placeholder="Número do termo, objeto ou concedente"
@@ -349,6 +421,7 @@ export function FormEmpenho({
           <CampoReferenciado
             key={`obra-${rodada}`}
             name="obraId"
+            valorInicial={inicial("obraId", "")}
             rotulo="Obra"
             catalogo="obras-para-empenho"
             placeholder="Identificador ou descrição da obra"
@@ -358,6 +431,7 @@ export function FormEmpenho({
           <CampoReferenciado
             key={`divida-${rodada}`}
             name="dividaId"
+            valorInicial={inicial("dividaId", "")}
             rotulo="Dívida fundada"
             catalogo="dividas-para-empenho"
             placeholder="Identificador, credor ou objeto"
@@ -367,6 +441,7 @@ export function FormEmpenho({
           <CampoReferenciado
             key={`campanha-${rodada}`}
             name="campanhaPublicitariaId"
+            valorInicial={inicial("campanhaPublicitariaId", "")}
             rotulo="Campanha publicitária"
             catalogo="campanhas-para-empenho"
             placeholder="Identificador ou título da campanha"
@@ -376,6 +451,7 @@ export function FormEmpenho({
           <CampoReferenciado
             key={`ppp-${rodada}`}
             name="contratoPppId"
+            valorInicial={inicial("contratoPppId", "")}
             rotulo="Parceria público-privada"
             catalogo="ppps-para-empenho"
             placeholder="Número do contrato ou empresa parceira"
@@ -385,6 +461,7 @@ export function FormEmpenho({
           <CampoReferenciado
             key={`precatorio-${rodada}`}
             name="precatorioId"
+            valorInicial={inicial("precatorioId", "")}
             rotulo="Precatório"
             catalogo="precatorios-para-empenho"
             placeholder="Número do processo ou beneficiário"

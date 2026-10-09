@@ -25,6 +25,16 @@ const q = (d: Decimal.Value): string => new Decimal(d).toFixed(4);
 
 export type SituacaoDaOrdem = "RASCUNHO" | "DESCARTADA" | "EMITIDA" | "SUSPENSA";
 
+/**
+ * A SITUAÇÃO DA ORDEM, derivada (nada a guarda): descartada; rascunho sem emissão; suspensa pelo último movimento;
+ * emitida. Uma régua só, usada pela execução do contrato e pela lista de ordens (V38, AUD-122). Os movimentos chegam
+ * em ordem de data.
+ */
+export function situacaoDaOrdem(o: { readonly descarte: unknown; readonly emissao: unknown; readonly movimentos: readonly { readonly tipo: string }[] }): SituacaoDaOrdem {
+  const ultimo = o.movimentos[o.movimentos.length - 1];
+  return o.descarte !== null ? "DESCARTADA" : o.emissao === null ? "RASCUNHO" : ultimo?.tipo === "SUSPENSAO" ? "SUSPENSA" : "EMITIDA";
+}
+
 export interface ItemDaOrdemNaTela {
   readonly id: string;
   readonly item: number;
@@ -251,8 +261,7 @@ export async function execucaoDoContrato(prisma: Tx, contratoId: string, visao: 
         },
       };
     });
-    const ultimo = o.movimentos[o.movimentos.length - 1];
-    const situacao: SituacaoDaOrdem = o.descarte !== null ? "DESCARTADA" : o.emissao === null ? "RASCUNHO" : ultimo?.tipo === "SUSPENSAO" ? "SUSPENSA" : "EMITIDA";
+    const situacao = situacaoDaOrdem(o);
     const emitida = o.emissao !== null;
     const previsto = sumMoney(o.itens.map((i) => toMoney(new Decimal(i.quantidade.toFixed(4)).times(i.valorUnitario.toFixed(4)))));
     const autorizado = !emitida ? toMoney(0) : sumMoney(itens.map((i) => toMoney(new Decimal(i.autorizado).times(i.valorUnitario))));

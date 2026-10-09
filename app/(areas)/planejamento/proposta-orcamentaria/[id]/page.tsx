@@ -101,7 +101,7 @@ function colunasDaReceita(propostaOrcamentariaId: string, editavel: boolean, ori
 
 function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, origem: number): readonly ColunaTabela<LinhaD>[] {
   return [
-    { chave: "ficha", cabecalho: "Ficha", alinhamento: "esquerda", largura: "4rem", celula: (l) => (l.nova ? <Badge status="neutro">nova</Badge> : <strong>{l.numero}</strong>) },
+    { chave: "ficha", cabecalho: "Ficha", alinhamento: "esquerda", largura: "4rem", celula: (l) => (l.nova ? <Badge status="neutro">nova</Badge> : <strong id={`ficha-${String(l.numero)}`} className="scroll-mt-4">{l.numero}</strong>) },
     {
       chave: "unidade",
       cabecalho: "Unidade orçamentária",
@@ -257,11 +257,21 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         titulo={p.descricao}
         subtitulo={`Orçamento de ${String(p.exercicio)}, importado de ${String(p.exercicioDeOrigem)} · criada em ${dataBr(p.criadoEm)} por ${p.criadoPor}`}
       />
-      <p className="text-xs">
+      {/* V38 (AUD-093) — os atalhos ficam no topo, também na proposta já efetivada; cada ficha importada tem a própria
+          âncora (#ficha-<número>), para voltar a ela pelo endereço. */}
+      <nav className="text-xs" aria-label="Atalhos da proposta">
         <Link className="text-[color:var(--color-primary)] underline" href="/planejamento/proposta-orcamentaria">
           Todas as propostas
         </Link>
-      </p>
+        {" · "}
+        <a href="#receitas" className="text-[color:var(--color-primary)] underline">Receitas ({String(p.receitas.length)})</a>
+        {" · "}
+        <a href="#fichas" className="text-[color:var(--color-primary)] underline">Fichas ({String(p.despesas.length)})</a>
+        {" · "}
+        <Link className="text-[color:var(--color-primary)] underline" href={`/planejamento/fichas?exercicio=${String(p.exercicioDeOrigem)}`}>
+          Fichas de {String(p.exercicioDeOrigem)}
+        </Link>
+      </nav>
 
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
         Receita: partida na <strong>{ROTULO_BASE_RECEITA[p.baseDaReceita]}</strong> de {String(p.exercicioDeOrigem)}, reajuste de{" "}
@@ -305,11 +315,6 @@ export default async function PropostaPage({ params }: { readonly params: Promis
       {editavel ? (
         <section className="space-y-3" aria-label="Incluir linhas e reajustar em lote" data-secao="incluir-e-reajustar">
           <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Incluir o que a lei de origem não tinha, reajustar em lote e realocar</h2>
-          <p className="text-xs text-[color:var(--color-ink-2)]">
-            <a href="#receitas" className="text-[color:var(--color-primary)] underline">Receitas ({String(p.receitas.length)})</a>
-            {" · "}
-            <a href="#fichas" className="text-[color:var(--color-primary)] underline">Fichas ({String(p.despesas.length)})</a>
-          </p>
           <FormReajusteEmLote propostaOrcamentariaId={p.id} />
           <FormRealocar propostaOrcamentariaId={p.id} />
           <FormIncluirReceita propostaOrcamentariaId={p.id} />

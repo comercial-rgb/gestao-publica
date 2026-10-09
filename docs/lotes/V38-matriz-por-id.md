@@ -7,7 +7,7 @@ transcrição" seguem como a análise as marcou, sem suposição.
 
 Estados: **funciona** (existe e funciona), **falha** (existe e falha), **escondido** (existe mas não é encontrável),
 **falta**, **decisão** (depende de dado ou decisão do ente), **não verificado**. Instalação: **1ª leva** = corrigido e
-publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** = as levas seguintes; **já** = já estava em produção; **não** = não instalado.
+publicado nesta rodada (commit da 1ª leva da V38); **2ª leva**, **3ª leva** e **4ª leva** = as levas seguintes; **já** = já estava em produção; **não** = não instalado.
 
 | ID | Classe | Achado | Alteração ou justificativa | Teste / percurso | Instalação |
 |---|---|---|---|---|---|
@@ -25,7 +25,7 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** 
 | AUD-012 | melhoria | Busca por CPF, CNPJ ou nome no próprio campo já existe (combobox) | Nada | `fornecedores-catalogo` t1d | já |
 | AUD-013 | verificação | A busca tira a pontuação do documento; a falha relatada era o papel (AUD-011) | Nada | `fornecedores-catalogo` t1d (CPF mascarado) | já |
 | AUD-014 | verificação | A lista e a busca leem a mesma tabela; a divergência era o filtro de papel | Resolvido por AUD-011 | idem | 1ª leva |
-| AUD-015 | melhoria | O atalho de cadastro leva o documento e volta com o credor; o resto do rascunho se perde | Pendente: guardar o rascunho do empenho antes do atalho | — | não |
+| AUD-015 | melhoria | O atalho de cadastro leva o documento e volta com o credor; o resto do rascunho se perde | 4ª leva: o clique em "Cadastrar este credor" guarda na aba os campos do empenho (ficha, número, valor, data, tipo, categoria, histórico, origem e vínculos; não o credor) e a volta com o credor os repõe uma vez; a origem reposta não sobrescreve os campos; rascunho com mais de 2 h, malformado ou com campo não declarado é descartado inteiro | `test/rascunho-do-formulario.test.ts` (puro, 2 mutações vermelhas); percurso v38 4ª leva passo 4 | 4ª leva |
 | AUD-016 | verificação | Ordinário, global e estimativo existem; a ordem de compra impõe o tipo | Nada | `m05-tipo-do-empenho.test.ts` | já |
 | AUD-017 | dúvida de transcrição | O campo é "Categoria (art. 141)": obrigatória sem contrato, herdada do contrato | Pendente: trocar o rótulo por termo de negócio; reouvir | — | não |
 | AUD-018 | verificação | Vínculo com ordem de compra existe | Nada | `m11-empenho-ordem.test.ts` | já |
@@ -57,7 +57,7 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** 
 | AUD-044 | verificação | Não há exclusão: Empenho, Liquidação e Pagamento estão fora do censo de UPDATE/DELETE do papel do banco | Nada | `test/papel-runtime.test.ts` | já |
 | AUD-045 | verificação | Contas bancárias: `/financeiro/contas-bancarias` (4 na base) | Nada | `percurso-v36-conta-bancaria.mts` | já |
 | AUD-046 | verificação | Movimentação bancária: `/financeiro/movimentacao` | Nada | `m09-movimentacao.test.ts` | já |
-| AUD-047 | melhoria | A tela de conciliação dizia "exige extrato importado"; a conciliação por período abre sem extrato e declara pendências, mas não tem entrada manual de linhas do extrato | Texto da tela vazia aponta a conciliação por período, com link; a entrada manual de linhas do extrato fica pendente | `m09-conciliacao-periodo.test.ts` | 1ª leva (texto) |
+| AUD-047 | melhoria | A tela de conciliação dizia "exige extrato importado"; a conciliação por período abre sem extrato e declara pendências, mas não tem entrada manual de linhas do extrato | Texto da tela vazia aponta a conciliação por período, com link; a entrada manual de linhas do extrato espera decisão do ente: aceitar linha digitada como prova bancária e qual documento a sustenta (a linha do extrato é o fato que o banco informa) | `m09-conciliacao-periodo.test.ts` | 1ª leva (texto) |
 | AUD-048 | verificação | Importar OFX e vincular linha a registro funciona; sem sugestão automática; o aviso "dados de demonstração" aparecia até para OFX real | O aviso só aparece para o extrato da API de demonstração | `percurso-v36-importar-extrato.mts` | 1ª leva |
 | AUD-049 | verificação | API do BB: só leitura de extrato, sem credencial e sem chamador de tela | Texto da conciliação diz que a consulta direta depende de credencial e está desligada | `m17-modos` | 1ª leva (texto) |
 | AUD-050 | melhoria | A base fictícia não tem conciliação concluída (1 aberta, 0 vínculos) | Pendente: concluir uma na base de demonstração | — | não |
@@ -77,7 +77,7 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** 
 | AUD-064 | verificação | Reclassificar é lançamento novo (e estorno por lançamento novo); nunca edição | Nada | `lancamento-manual.ts:66-70` | já |
 | AUD-065 | melhoria | A conta era digitada inteira, com os sete níveis | A conta vem da busca por código ou nome (só analíticas), no próprio lançamento | `liquidacao-documento-e-conta` t2 (1 mutação vermelha); percurso v38 passo 3 | 1ª leva |
 | AUD-066 | defeito | O Diário tinha 1.423 lançamentos em 2026 e não levava ao lançamento | O número abre o lançamento | percurso v38 passo 5 | 1ª leva |
-| AUD-067 | verificação | Razão existe e funciona, por conta digitada | Pendente: a mesma busca de conta | `m12-livros.test.ts` | já |
+| AUD-067 | verificação | Razão existe e funciona, por conta digitada | 4ª leva: a conta pela busca (código ou nome, só analíticas, onde há movimento), com a leitura da própria tela do razão (catálogo `contas-do-razao`) | `m12-livros.test.ts`; percurso v38 4ª leva passo 1 | 4ª leva |
 | AUD-068 | verificação | Balancete de verificação: `/relatorios/livros/balancete` | Nada | `m12-livros.test.ts` t3, t4 | já |
 | AUD-069 | verificação | Balancete por fonte: `/relatorios/livros/balancete-por-fonte` | Nada | `m12-balancete-por-fonte.test.ts` | já |
 | AUD-070 | verificação | Balanço Orçamentário (Lei 4.320) e RREO Anexo 1 são duas telas | Nada | `m12-balanco-orcamentario` | já |
@@ -103,7 +103,7 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** 
 | AUD-090 | verificação | Reajuste da despesa, com opção de poupar projetos | Nada | idem `:422` | já |
 | AUD-091 | verificação | Proposta e orçamento em execução são separados: proposta efetivada recusa ajuste e aponta crédito adicional | Nada | idem `:295-308` | já |
 | AUD-092 | defeito | A reprevisão abria em 2026 fixo quando a URL não trazia o exercício; menu só na aba Receitas | Exercício do contexto da sessão; rótulo "Reestimativa da receita (reprevisão)"; exercício ausente na gravação é recusado | tipos; `navegacao-aponta-para-rota-viva` | 1ª leva |
-| AUD-093 | melhoria | Fichas em Planejamento › "Fichas e dotações"; a proposta lista as fichas sem âncora | Relacionado "Preparar o próximo exercício" nas fichas; âncoras na proposta ficam pendentes | — | 1ª leva (parcial) |
+| AUD-093 | melhoria | Fichas em Planejamento › "Fichas e dotações"; a proposta lista as fichas sem âncora | 1ª leva: relacionado nas fichas. 4ª leva: atalhos no topo da proposta (todas as propostas, receitas, fichas, fichas da origem), também na proposta efetivada; âncora por ficha (`#ficha-<número>`) | percurso v38 4ª leva passo 3 | 4ª leva |
 | AUD-094 | verificação | "Fontes por natureza da receita": `/receita/naturezas/fontes`, configuração com tabela de leitura | Nada | `m04-fontes-da-natureza.test.ts` | já |
 | AUD-095 | decisão | Dotação não prevista: antes de gerar, pela proposta; depois, ficha mais crédito especial | Antes de gerar: ficha nova na proposta (2ª leva, AUD-096). Depois de gerar continua o crédito especial | `m02-proposta-orcamentaria.test.ts` (V38 INCLUI) | 2ª leva |
 | AUD-096 | falta | A proposta só ajusta linhas importadas: não cria ficha nova | 2ª leva: "Incluir ficha" na proposta (classificação pela busca, valor, motivo); a efetivação cria a ficha com o próximo número; CHECK origem-ou-nova no banco | `m02-proposta-orcamentaria.test.ts` (V38 INCLUI, EFETIVA); percurso `percurso-v38-proposta-ate-o-empenho` | 2ª leva |
@@ -114,7 +114,7 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** 
 | AUD-101 | decisão | Gerar o orçamento não exige lei sancionada com número | Pendente: decidir se exige | — | não |
 | AUD-102 | verificação | A proposta só lê a origem; a prova no teste conta fichas e receitas de 2026 | Pendente: teste comparando somas e razão de 2026 antes e depois | idem `:281-283` | já |
 | AUD-103 | falta | Não há prévia do que a importação vai copiar nem bloco "o que veio e o que não veio" | 3ª leva: "Ver o que vai ser importado" antes de criar (o que vem de quanto a origem tem, totais da lei, da partida e com reajuste, o que fica de fora, o que vai sem reajuste, o que chega sem valor, deduções sem tipo, a recusa que o ato daria, o que nunca vem); na proposta criada, o bloco "o que veio e o que não veio" | `m02-proposta-orcamentaria.test.ts` (V38 PRÉVIA DA IMPORTAÇÃO: prévia igual ao ato; resumo puro N=2); percurso | 3ª leva |
-| AUD-104 | falta | LDO: criar existe; importar/copiar a anterior não | Pendente (`IMPORTACAO-DE-PECA-ANTERIOR`) | — | não |
+| AUD-104 | falta | LDO: criar existe; importar/copiar a anterior não | Pendente (`IMPORTACAO-DE-PECA-ANTERIOR`), com decisão do ente: quais blocos da LDO anterior copiar (prioridades, riscos, renúncias, metas) e como deslocar os anos das metas; o rito (envio, protocolo, sanção) nunca se copia | — | não |
 | AUD-105 | escondido | Criar a LOA do exercício é a proposta; não era alcançável da LOA | Idem AUD-099 | idem | 1ª leva |
 | AUD-106 | decisão | PPA: criar existe; importar não; o PPA é quadrienal | Pendente: decidir se "importar" é copiar o PPA anterior como base do novo quadriênio | — | não |
 | AUD-107 | verificação | Par origem/destino é livre (destino posterior à origem); testado só 2026 para 2027 | 2ª leva: o percurso aceita `PERCURSO_ORIGEM` e rodou 2027 → 2028 e 2028 → 2029 na base fictícia | percurso `percurso-v38-proposta-ate-o-empenho` | 2ª leva |
@@ -132,6 +132,6 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** e **3ª leva** 
 | AUD-119 | decisão | Idem | Idem | — | não |
 | AUD-120 | decisão | Idem | Idem | — | não |
 | AUD-121 | decisão | Idem; o estorno inverte o que o original fizer | Idem | — | não |
-| AUD-122 | escondido | Ordem de serviço existe no contrato (emitir, medir, receber, liquidar parcelas); sem rota própria no menu | Pendente: item de menu listando por contrato | `contrato-runtime-ordem-de-servico.test.ts` | já (parcial) |
+| AUD-122 | escondido | Ordem de serviço existe no contrato (emitir, medir, receber, liquidar parcelas); sem rota própria no menu | 4ª leva: "Ordens de serviço" em Licitações e no menu do contador; a lista alcança os mesmos contratos da tela do contrato (designação vigente, administrador da fiscalização ou visão financeira) e leva à ordem; a situação é uma régua só com a execução do contrato | `test/ordens-de-servico-da-sessao.test.ts` (N=2 contratos, 3 mutações vermelhas); percurso v38 4ª leva passo 2 | 4ª leva |
 | AUD-123 | verificação | Ordem de fornecimento ligada à liquidação (`recebimentos-para-liquidacao`) | Nada | `recebimentos-catalogo.test.ts` | já |
 | AUD-124 | decisão | O vínculo do empenho é por cadastro (processo, contrato); referência externa em texto livre não existe de propósito | Pendente: decidir se aceita referência declarada | — | não |

@@ -620,3 +620,13 @@ cancelados nem substituídos, por número ou chave, com atalho para registrar em
 recebidos. A liquidação (formulário e detalhe) diz que as retenções são informadas no pagamento, com link. O empenho
 mostra a classificação inteira da dotação escolhida (unidade, funcional, natureza, fonte). Testes
 `test/ui/liquidacao-documento-e-conta.test.ts` (2 mutações vermelhas); percurso `percurso-v38-audios-da-contadora`.
+
+## V38 4ª leva — o rascunho do empenho atravessa o atalho de cadastro (AUD-015)
+
+O clique em "Cadastrar este credor" guarda na aba (`sessionStorage`, `lib/rascunho-do-formulario.ts`) os campos
+declarados do empenho: ficha, número, valor, data, tipo, categoria, histórico, origem (solicitação, ordem, contrato,
+reserva) e vínculos. O credor não entra: ele volta escolhido do cadastro (`?credor=`). Na volta, o rascunho é reposto
+uma vez e apagado; a origem reposta volta pela conferência do catálogo e, nessa primeira volta, não sobrescreve os
+campos repostos. Rascunho com mais de 2 h, de outra versão, malformado ou com campo não declarado é descartado
+inteiro. É sugestão: o envio passa por toda a validação do servidor. Teste puro `test/rascunho-do-formulario.test.ts`
+(2 mutações vermelhas).

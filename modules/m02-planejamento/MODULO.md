@@ -412,3 +412,8 @@ planejamento do ENTE, a mesma da página).
 Censo: `realocarNaProposta` = CADASTRAR_LOA (573); `previaDaImportacaoDaProposta` e `linhasDaPropostaParaEscolha` fora
 do censo (leitura). O formulário de importar passou a ter campos controlados (a prévia é outra ação no mesmo
 formulário; a razão é a mesma do reajuste).
+
+## V38 4ª leva — os atalhos da proposta (AUD-093)
+
+Os atalhos (todas as propostas, receitas, fichas e as fichas do exercício de origem) ficam no topo da página da
+proposta, também depois de efetivada; cada ficha importada tem a âncora `#ficha-<número>`.

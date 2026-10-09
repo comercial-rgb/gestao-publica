@@ -1018,3 +1018,11 @@ e dividendos ficam assim até haver conta que os identifique sem adivinhar. O re
 entra em Resultados Acumulados como no Balanço Patrimonial. Amarração por coluna: inicial + mutações = final lido do
 saldo, senão recusa. Teste `m12-dmpl.test.ts` (contas à mão; N=2 encerrado/não encerrado; as regras uma a uma), quatro
 mutações provadas.
+
+## V38 4ª leva — a conta do razão pela busca (AUD-067)
+
+O Livro Razão recebia a conta digitada. O seletor de período dos livros, com `comConta`, usa o seletor referenciado
+com o catálogo `contas-do-razao`: contas analíticas (o razão soma pela conta exata; a sintética não tem movimento),
+busca por código ou nome, e a leitura da própria tela (CONSULTAR_RELATORIOS). A conta que chega pela URL (links do
+balancete, das demonstrações e do lançamento) é conferida pelo mesmo catálogo antes de virar escolha; o domínio
+(`razaoAnalitico`) não mudou.
