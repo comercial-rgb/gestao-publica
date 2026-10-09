@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `2e30e8f1` em `apresentacao/contabilidade`, publicado como `e65bb16` (main e `/release` = `e65bb16`) |
+| HEAD | `eacaa38e` em `apresentacao/contabilidade` (a publicar) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
-| Último resultado | Empenho da liquidação por busca (catálogo com escopo de unidade; débito e subempenhos só do escolhido); 5 percursos verdes; 27/27 nos testes ligados. |
-| Próximo passo | ALMOXARIFADO-MATERIAL-EM-LISTA; RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR. |
+| Último resultado | Setores e roteiro do almoxarifado com tela; material e lote do almoxarifado por busca; recebimento confirma ao completar; credor encerrado não encurta a página. Percursos almoxarifado 13/13 e compras 11/11; bateria dirigida 151/151. |
+| Próximo passo | SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA (data própria da reserva, migration aditiva); ROTEIRO-ALMOXARIFADO-SEM-VERSAO. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,40 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Sexta rodada da V37 (08/10/2026): setores, roteiro do almoxarifado, material e lote por busca
+
+Pedido: "pode seguir e nesta sessão fechar a maior quantidade de pendências que conseguir". Regime: superfície nos
+campos de busca e telas de cadastro; **profundidade** no roteiro contábil do almoxarifado (caso de uso novo, conta
+conferida pelo motor, dois crachás) e no instrumento de paginação.
+
+| Unidade | Commit | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|---|
+| Recebimento confirma ao completar a ordem | `eacaa38e` | a ilha do recebimento fica montada sem nada a receber (mostra o motivo), e a mensagem de sucesso do recebimento que completa a ordem não some | /licitacoes/ordens-de-compra/[id] | percurso das compras 11/11 (a confirmação lida na tela) |
+| Material e lote do almoxarifado por busca | `eacaa38e` | bloqueio do depósito, requisição e contagem do inventário escolhem o material pela busca (antes, os 1.000 primeiros); o lote da saída da requisição e o da contagem viraram busca — os `select` nasciam vazios e material com lote não se atendia pela tela | /patrimonio/almoxarifado/depositos/[id], /requisicoes, /requisicoes/[id], /inventarios/[id] | `almoxarifado-catalogos` t1/t2 (N=2 lotes e depósitos, negação com motivo); 4 mutações vermelhas, 1 equivalente (guarda de contexto vazio) |
+| Cadastro de setores (M21) | `eacaa38e` | `criarSetor` existia sem tela; o setor é obrigatório na requisição e na solicitação de compra. Lista e cadastro pelo molde, unidade pela busca no escopo de CRIAR_SETOR | /protocolo/setores | `setores-cadastro` 3/3; 4 mutações vermelhas. **Defeito pego pelo typecheck antes de rodar:** o valor pedido sobrescrevia o filtro de escopo (`{ id: { in }, ...{ id } }`), corrigido com AND e provado por mutação |
+| Roteiro contábil do almoxarifado (M10) | `eacaa38e` | `RoteiroAlmoxarifado` não tinha escritor: a saída por consumo e os ajustes eram recusados em qualquer base. `parametrizarRoteiroAlmoxarifado` grava o par dos três movimentos com lançamento próprio (derivados de `TEM_ROTEIRO_ALMOXARIFADO`), conferido pelo motor, com os dois crachás da parametrização direta; sem substituição. A recusa sem roteiro deixou de mostrar o nome da tabela e diz onde cadastrar | /patrimonio/almoxarifado/roteiros | `m10-roteiros` t-alm1..3 (efeito no razão, N=2 tipos, cinco recusas com motivo, cada crachá); 6 mutações vermelhas; `almoxarifado-catalogos` t3 (contas 1 a 4 pelo id), 3 mutações vermelhas |
+| Credor encerrado não encurta a página | `eacaa38e` | `paginarFiltrando` colhe a página em lotes nos catálogos `credores` e `fornecedores` | busca de credor/fornecedor | `paginar-filtrando` 3/3 (puro, fronteiras de lote) e t1c de `fornecedores-catalogo` (30 encerrados antes de 25 vigentes, duas páginas, dois catálogos); 5 mutações acusadas (uma por travar o teste em laço sem fim) |
+| Ordem de serviço → empenho | `eacaa38e` | o "Empenho indicado" abre o dossiê do empenho | /licitacoes/contratos/[id]/ordens/[ordemId] | typecheck; sem percurso |
+
+**Percurso novo:** `scripts/percurso-v37-almoxarifado-por-busca.mts` 13/13 (setor pela tela; requisição com o setor e o
+material pela busca; o lote como busca; **sem roteiro de saída na base fictícia, o atendimento é recusado dizendo onde
+cadastrar, e nada se grava** — o percurso não escolhe contas; bloqueio e encerramento; inventário aberto, contado pela
+busca e fechado). `smoke-ent06` ajustado para a busca e **não executado**.
+
+**Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.290/2.290; bateria dirigida de 19 arquivos 150/151 e,
+depois de atualizar a contagem do censo (567 serviços, nenhuma ação nova), 151/151.
+
+**Pendências fechadas:** `RECEBIMENTO-SEM-CONFIRMACAO-AO-COMPLETAR`, `ALMOXARIFADO-MATERIAL-EM-LISTA`,
+`CREDOR-ENCERRADO-NA-PAGINA`; do levantamento: ordem de fornecimento → empenho. Conferidas e já atendidas antes:
+dedução da receita → guias (o link existe), atalho de cadastro de credor na ordem e na formação de ordem (existe; o
+adiantamento não escolhe credor, o beneficiário vem do empenho).
+
+**Pendências novas:** `ROTEIRO-ALMOXARIFADO-SEM-VERSAO` (trocar as contas pede versão, como no patrimônio);
+`SETOR-SEM-DESATIVACAO` (desativar setor e lotar usuário seguem sem tela). **Decisão do ente:** as contas do roteiro do
+almoxarifado (saída por consumo, sobra e falta de inventário) — até lá, nenhuma saída de material se registra.
+Observação: o roteiro é um par por movimento, não por classe; a conta de estoque da classe e a do roteiro podem
+divergir (a conferência contra o razão acusa).
 
 ### Quinta rodada da V37 (08/10/2026): o empenho da liquidação por busca
 
