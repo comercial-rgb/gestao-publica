@@ -7,10 +7,10 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | `86ebb060` em `apresentacao/contabilidade`, publicado como `7034731` (main e `/release` = `7034731`) |
+| HEAD | `582f8997` em `apresentacao/contabilidade` (a publicar, com migration) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
-| Último resultado | Setores e roteiro do almoxarifado com tela; material e lote do almoxarifado por busca; recebimento confirma ao completar; credor encerrado não encurta a página. Percursos almoxarifado 13/13 e compras 11/11; bateria dirigida 151/151. |
-| Próximo passo | SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA (data própria da reserva, migration aditiva); ROTEIRO-ALMOXARIFADO-SEM-VERSAO. |
+| Último resultado | Reserva com data do fato (fecha SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA); antes, setores, roteiro do almoxarifado, material e lote por busca, recebimento que confirma, credor encerrado que não encurta a página. |
+| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO e RGF sem exportação e sem drill-down; vínculo PPA–LOA. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,27 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Sétima rodada da V37 (09/10/2026): a reserva com data do fato
+
+Pedido: o mesmo da sexta rodada. Regime: **profundidade** (saldo da dotação, competência, migration).
+
+| Unidade | Commit | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|---|
+| Reserva com data do fato (fecha `SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA`) | `582f8997` | `ReservaDotacao.data` (migration aditiva `20261109010000_v37_data_da_reserva`, nula para as antigas). A reserva datada grava o movimento com essa competência e cabe no disponível daquela data (`exigirSaldoNaData`, a régua do empenho). O empenho por reserva com data anterior à da reserva é recusado nomeando as duas datas; na data da reserva ou depois, só move o reservado para o empenhado. A ficha e o processo licitatório pedem a data; a lista da ficha mostra a data do fato | /planejamento/fichas/[id], /licitacoes/processos/[id] | `m05-saldo-na-data` t3/t4 (N=2 reservas e N=2 datas, hora de borda, negação com motivo e nada gravado); 4 mutações vermelhas (inclusive a comparação por instante em vez de dia civil); reservas e censo 90/90 |
+
+**Medido antes de decidir:** a primeira versão recusava pelo dia da GRAVAÇÃO da reserva e derrubou três testes antigos
+(reserva gravada hoje, empenho com data passada) — é o mesmo caso de quem lança dados retroativos na implantação. Por
+isso a reserva ganhou data própria, em vez de a regra usar a gravação. As fixturas passaram a datar a reserva.
+
+**Migration** aplicada no banco de teste, no local e na base fictícia local (`prisma migrate deploy`); em produção, pelo
+`atualizar-no-servidor.sh` da publicação.
+
+**Percursos:** `percurso-v37-reserva-com-data` 3/3 (reserva gravada com 15/09/2026 e o movimento com essa competência,
+não derivada; a lista mostra a data; uma data sem disponível é recusada com o motivo e nada se grava); trilhas 9/9.
+`smoke-contratacao` ajustado (data da reserva) e não executado.
+
+**Comandos:** typecheck dos quatro projetos 0 erro; cobertura 2.290/2.290.
 
 ### Sexta rodada da V37 (08/10/2026): setores, roteiro do almoxarifado, material e lote por busca
 
