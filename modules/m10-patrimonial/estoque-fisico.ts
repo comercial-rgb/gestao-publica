@@ -1489,6 +1489,9 @@ export async function registrarRequisicaoDeMaterial(
       { setor: d.setorId }
     );
     await exigirDeposito(tx, d.depositoId);
+    // V37 — o setor desativado não faz requisição nova (a tela já não o oferece; quem recusa é aqui).
+    const setor = await tx.setor.findUnique({ where: { id: d.setorId }, select: { codigo: true, ativo: true } });
+    if (setor !== null && !setor.ativo) throw new Error(`O setor ${setor.codigo} está desativado e não faz requisição nova. Nada foi gravado.`);
 
     const criada = await tx.requisicaoDeMaterial.create({
       data: {

@@ -1,9 +1,10 @@
-import { criarSetor } from "../../../modules/m21-protocolo/cadastros.js";
+import { alterarSituacaoDoSetor, criarSetor } from "../../../modules/m21-protocolo/cadastros.js";
+import { diaCivilBr } from "../../../packages/datas/index.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente } from "../cliente";
-import type { PaginaDoMolde } from "./dados";
+import type { DetalheLido, PaginaDoMolde } from "./dados";
 
 /**
  * V37 — A PORTA DO CADASTRO DE SETORES: a listagem do molde e a escrita pelo caso de uso do M21. Nenhuma regra
@@ -50,4 +51,43 @@ export async function cadastrarSetorDoMolde(c: Campos): Promise<void> {
       criadoPor,
     })
   );
+}
+
+/** V37 — o detalhe do setor: unidade, situação e o uso (requisições, solicitações e lotados). */
+export async function verSetor(id: string): Promise<DetalheLido | null> {
+  const s = await cliente().setor.findUnique({
+    where: { id },
+    select: {
+      codigo: true, nome: true, ativo: true, criadoEm: true, criadoPor: true,
+      unidadeOrc: { select: { codigo: true, descricao: true } },
+      _count: { select: { lotados: true } },
+    },
+  });
+  if (s === null) return null;
+  const [requisicoes, solicitacoes] = await Promise.all([
+    cliente().requisicaoDeMaterial.count({ where: { setorId: id } }),
+    cliente().solicitacaoDeCompra.count({ where: { setorId: id } }),
+  ]);
+  return {
+    titulo: `${s.codigo} — ${s.nome}`,
+    subtitulo: `Unidade gestora ${s.unidadeOrc.codigo} — ${s.unidadeOrc.descricao}`,
+    selos: [{ texto: s.ativo ? "Ativo" : "Desativado", tom: s.ativo ? "ok" : "neutro" }],
+    dados: [
+      { rotulo: "Código", valor: s.codigo },
+      { rotulo: "Nome", valor: s.nome },
+      { rotulo: "Unidade gestora", valor: `${s.unidadeOrc.codigo} — ${s.unidadeOrc.descricao}` },
+      { rotulo: "Situação", valor: s.ativo ? "Ativo" : "Desativado", nota: "Desativado, não aparece nas requisições e solicitações novas." },
+      { rotulo: "Requisições de material", valor: String(requisicoes), tipo: "inteiro" },
+      { rotulo: "Solicitações de compra", valor: String(solicitacoes), tipo: "inteiro" },
+      { rotulo: "Usuários lotados", valor: String(s._count.lotados), tipo: "inteiro" },
+      { rotulo: "Cadastrado em", valor: diaCivilBr(s.criadoEm), tipo: "data" },
+      { rotulo: "Cadastrado por", valor: s.criadoPor },
+    ],
+    historico: [],
+  };
+}
+
+export async function acaoDoSetor(acao: string, setorId: string): Promise<void> {
+  if (acao !== "desativar" && acao !== "reativar") throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);
+  await comEscritaAutenticada("CRIAR_SETOR", (criadoPor) => alterarSituacaoDoSetor(cliente(), { setorId, ativo: acao === "reativar", criadoPor }));
 }

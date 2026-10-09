@@ -1340,6 +1340,7 @@ export type NomeDeServico =
   | "tornarMovimentoSemEfeito"
   // ── M21 — cadastros do protocolo (ENT02) ──
   | "criarSetor"
+  | "alterarSituacaoDoSetor"
   | "lotarUsuarioNoSetor"
   | "criarAssunto"
   | "publicarConfiguracaoDoAcesso"
@@ -2218,6 +2219,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
 
   // ── M21 — cadastros do protocolo (ENT02) ──
   criarSetor: "CRIAR_SETOR",
+  alterarSituacaoDoSetor: "CRIAR_SETOR",
   lotarUsuarioNoSetor: "LOTAR_USUARIO_NO_SETOR",
   criarAssunto: "CRIAR_ASSUNTO",
   publicarConfiguracaoDoAcesso: "PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO",

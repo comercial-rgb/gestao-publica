@@ -316,3 +316,9 @@ número de respostas ao lado).
 compra, então, numa base sem seed de setores, nenhuma das duas se registrava pela tela. `/protocolo/setores` lista e
 cadastra (molde), com a unidade gestora pela busca `unidades-para-setor`, só entre as unidades onde a sessão tem
 `CRIAR_SETOR` — o mesmo escopo que o caso de uso confere. Desativar setor e lotar usuário continuam sem tela.
+
+**V37 — desativar e reativar o setor** (`alterarSituacaoDoSetor`, mesma permissão CRIAR_SETOR, na unidade do setor):
+atualiza só a coluna `ativo`, a única que o papel de runtime pode atualizar em `Setor`. A requisição de material e a
+solicitação de compra recusam setor desativado no domínio, com o motivo; a tela já não o oferecia. Detalhe do setor em
+`/protocolo/setores/[id]`. Teste `m21-setor-situacao` (N=2 setores e unidades), 4 mutações vermelhas. Lotar usuário
+continua sem tela.

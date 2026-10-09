@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import type { EstadoDoMolde } from "../../../../components/molde/FormularioDeRecurso";
 import { SETORES } from "../../../../lib/portas/recursos/setores";
-import { cadastrarSetorDoMolde } from "../../../../lib/portas/recursos/setores-dados";
+import { acaoDoSetor, cadastrarSetorDoMolde } from "../../../../lib/portas/recursos/setores-dados";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 
 /**
- * V37 — A Server Action do cadastro de setores. Só cria: o despacho é fail-closed, e um `__acao` desconhecido é
- * recusado em vez de cair num caminho que diria "salvo". A mensagem do domínio sobe como veio.
+ * V37 — A Server Action do cadastro de setores: criar, desativar e reativar. O despacho é fail-closed: um `__acao`
+ * desconhecido é recusado em vez de cair num caminho que diria "salvo". A mensagem do domínio sobe como veio.
  */
 export async function acaoDeSetoresAction(_prev: EstadoDoMolde, formData: FormData): Promise<EstadoDoMolde> {
   return comComandoDoFormulario(formData, async () => {
@@ -17,13 +17,17 @@ export async function acaoDeSetoresAction(_prev: EstadoDoMolde, formData: FormDa
     for (const [k, v] of formData.entries()) {
       if (typeof v === "string") campos[k] = v;
     }
-    if ((campos["__acao"] ?? "") !== "criar") return { erro: "Ação inexistente neste cadastro. Nada foi gravado." };
+    const acao = campos["__acao"] ?? "";
+    const id = campos["__id"] ?? "";
     try {
-      await cadastrarSetorDoMolde(campos);
+      if (acao === "criar") await cadastrarSetorDoMolde(campos);
+      else if (id === "") return { erro: "Setor não identificado. Nada foi gravado." };
+      else await acaoDoSetor(acao, id);
     } catch (e) {
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
     revalidatePath(SETORES.rota);
-    return { sucesso: "Setor cadastrado." };
+    if (id !== "") revalidatePath(`${SETORES.rota}/${id}`);
+    return { sucesso: acao === "criar" ? "Setor cadastrado." : acao === "desativar" ? "Setor desativado." : "Setor reativado." };
   });
 }

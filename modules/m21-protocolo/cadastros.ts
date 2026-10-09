@@ -68,6 +68,37 @@ export async function criarSetor(
   });
 }
 
+export const zAlterarSituacaoDoSetor = z.object({
+  setorId: z.string().min(1),
+  ativo: z.boolean(),
+  criadoPor: z.string().min(1),
+});
+export type AlterarSituacaoDoSetorInput = z.input<typeof zAlterarSituacaoDoSetor>;
+
+/**
+ * V37 — DESATIVA OU REATIVA UM SETOR. Cadastro, não fato: é a atualização da coluna `ativo`, a única que o papel de
+ * runtime pode atualizar em `Setor` (`prisma/papel-runtime.ts`). O setor desativado sai das listas de ato novo (a
+ * requisição de material, a solicitação de compra); o que já foi registrado em nome dele fica como está.
+ *
+ * Mesma permissão do cadastro (CRIAR_SETOR, na unidade do setor): quem cria o setor é quem o encerra, e um crachá a mais
+ * teria de ser concedido à mão em toda instalação. Pedir a situação que o setor já tem é recusado, nomeando.
+ */
+export async function alterarSituacaoDoSetor(
+  prisma: PrismaClient,
+  input: AlterarSituacaoDoSetorInput
+): Promise<void> {
+  const d = zAlterarSituacaoDoSetor.parse(input);
+  await prisma.$transaction(async (tx) => {
+    const setor = await tx.setor.findUnique({ where: { id: d.setorId }, select: { codigo: true, ativo: true, unidadeOrcId: true } });
+    if (setor === null) throw new Error("Setor não encontrado. Nada foi gravado.");
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.alterarSituacaoDoSetor, { ug: setor.unidadeOrcId });
+    if (setor.ativo === d.ativo) {
+      throw new Error(`O setor ${setor.codigo} já está ${d.ativo ? "ativo" : "desativado"}. Nada foi gravado.`);
+    }
+    await tx.setor.update({ where: { id: d.setorId }, data: { ativo: d.ativo } });
+  });
+}
+
 export const zLotarUsuario = z.object({
   usuarioIdent: z.string().trim().min(1),
   setorId: z.string().min(1),

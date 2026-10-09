@@ -57,6 +57,15 @@ try {
   const setor = await prisma.setor.findUniqueOrThrow({ where: { codigo: "SEC-ADM" }, select: { id: true } });
   await irPara(n, page, "/protocolo/setores?q=SEC-ADM");
   conferir(await page.$eval("main", (m) => /SEC-ADM/.test(m.textContent ?? "") && /Secretaria de Administração/.test(m.textContent ?? "")), "a lista de setores mostra o setor, filtrada por código");
+  // O setor desativado some da requisição nova; reativado, volta (pelo detalhe do setor).
+  await irPara(n, page, `/protocolo/setores/${setor.id}`);
+  const rd = await preencherEEnviar(page, "desativar", []);
+  await irPara(n, page, `${ALMOX}/requisicoes`);
+  const someDaLista = await page.$$eval('form[data-acao="criar-requisicoes-de-material"] select[name="setorId"] option', (os, id) => !os.some((o) => (o as HTMLOptionElement).value === id), setor.id);
+  await irPara(n, page, `/protocolo/setores/${setor.id}`);
+  const rr = await preencherEEnviar(page, "reativar", []);
+  const ativo = (await prisma.setor.findUniqueOrThrow({ where: { id: setor.id }, select: { ativo: true } })).ativo;
+  conferir(rd.tipo === "ok" && someDaLista && rr.tipo === "ok" && ativo, `setor desativado pela tela some da requisição nova, e reativado volta (${rd.texto.slice(0, 30)} / ${rr.texto.slice(0, 30)})`);
 
   // ── 2. a requisição, com o material pela busca ──
   const numero = `REQ-${MARCA}`;

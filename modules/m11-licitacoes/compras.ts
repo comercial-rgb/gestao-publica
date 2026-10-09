@@ -310,6 +310,9 @@ export async function registrarSolicitacaoDeCompra(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarSolicitacaoDeCompra, {
       setor: d.setorId,
     });
+    // V37 — o setor desativado não faz solicitação nova (a tela já não o oferece; quem recusa é aqui).
+    const setor = await tx.setor.findUnique({ where: { id: d.setorId }, select: { codigo: true, ativo: true } });
+    if (setor !== null && !setor.ativo) throw new Error(`O setor ${setor.codigo} está desativado e não faz solicitação de compra nova. Nada foi gravado.`);
     const s = await tx.solicitacaoDeCompra.create({
       data: {
         numero: d.numero, setorId: d.setorId, data: d.data,

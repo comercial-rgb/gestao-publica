@@ -10,7 +10,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 | HEAD | publicado como `e7a3026` (main e `/release` = `e7a3026`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
-| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); vínculo PPA–LOA. |
+| Próximo passo | ROTEIRO-ALMOXARIFADO-SEM-VERSAO; RREO-RGF-SEM-DRILL-DOWN (despesa do Anexo 1 e demais anexos); lotar usuário no setor; vínculo PPA–LOA. |
 
 ### O que passou a funcionar, e a rota
 
@@ -41,6 +41,14 @@ drill-down até o registro; ação do PPA e LDO sem ligação com a ficha (o ví
 **Não rodaram:** portão, test:tudo, test:fuso (por instrução do usuário).
 
 Publicação da V37: backup `/var/backups/gestao-publica/esperanca-antes-v37-20261008T030221Z.dump`; conferência de tipos aprovada (185 s); Actions 37721095064 verde; `/release` = `c61a102`; nenhuma migration nesta rodada; sonda de produção só de leitura com o administrador, 8/8 (demonstrativo da receita por natureza, formulário do empenho, liquidações, contas bancárias com os atalhos em 2 de 2 contas, QDD, receita prevista, arrecadações com o recorte por natureza), sonda apagada.
+
+### Nona rodada da V37 (09/10/2026): desativar e reativar o setor
+
+| Unidade | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| Situação do setor (M21; fecha a metade `SETOR-SEM-DESATIVACAO`) | desativar e reativar pelo detalhe do setor, com a permissão de criar setor na unidade dele; só a coluna `ativo` muda (a única que o papel do banco atualiza em `Setor`). Requisição de material e solicitação de compra recusam setor desativado no domínio, com o motivo | /protocolo/setores/[id] | `m21-setor-situacao` 2/2 (N=2 setores, negação com motivo nas duas recusas, na mesma situação e na unidade fora da permissão); 4 mutações vermelhas; censo 568 serviços, nenhuma ação nova; vizinhos 86/86; typecheck 0 erro, cobertura 2.292/2.292; percurso do almoxarifado 14/14 (desativado some da requisição nova, reativado volta) |
+
+Continua: lotar usuário no setor sem tela.
 
 ### Oitava rodada da V37 (09/10/2026): o acumulado da receita é do exercício; o RREO abre as guias
 
