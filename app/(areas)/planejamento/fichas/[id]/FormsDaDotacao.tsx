@@ -35,7 +35,7 @@ function Resultado({ estado, acao }: { readonly estado: EstadoDaDotacao; readonl
   return null;
 }
 
-export function FormReservar({ fichaId, disponivel }: { readonly fichaId: string; readonly disponivel: string }): React.ReactElement {
+export function FormReservar({ fichaId, disponivel, hoje }: { readonly fichaId: string; readonly disponivel: string; /** V37 — o dia civil de hoje, do servidor: o padrão da data da reserva. */ readonly hoje: string }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaDotacao, FormData>(reservarAction, {});
   return (
     <form action={action} className={`${PAINEL} space-y-3`} data-acao="reservar-dotacao" aria-label="Reservar dotação desta ficha">
@@ -47,6 +47,13 @@ export function FormReservar({ fichaId, disponivel }: { readonly fichaId: string
           <input className={CAMPO} name="valor" inputMode="decimal" required aria-describedby={`disp-${fichaId}`} />
           <span id={`disp-${fichaId}`} className="mt-1 block text-xs text-[color:var(--color-ink-3)]">
             Disponível agora: R$ {formatarMoeda(String(disponivel)).texto}. O saldo é conferido de novo ao gravar.
+          </span>
+        </label>
+        <label className="block text-sm">
+          <span className={ROTULO}>Data da reserva</span>
+          <input className={CAMPO} name="data" type="date" required defaultValue={hoje} aria-describedby={`data-${fichaId}`} />
+          <span id={`data-${fichaId}`} className="mt-1 block text-xs text-[color:var(--color-ink-3)]">
+            A reserva tem de caber no disponível desta data, e o empenho por ela não pode ser anterior.
           </span>
         </label>
         <label className="block text-sm md:col-span-2">

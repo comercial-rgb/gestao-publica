@@ -96,6 +96,7 @@ export async function reservarDotacao(
     ...(dados.processoId !== undefined
       ? { processoId: dados.processoId }
       : {}),
+    ...(dados.data !== undefined ? { data: dados.data } : {}),
     criadoPor: dados.criadoPor,
   });
 }

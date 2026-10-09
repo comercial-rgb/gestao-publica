@@ -598,3 +598,15 @@ continua conferindo antes do `create`, porque nada trava depois dele.
 com o texto, ou o documento do credor que começa com os dígitos dele. Os dois filtros descem ao SQL pela cadeia
 (`daCadeia`): original, anulação total ou parcial e estorno da parcial. É o mesmo desenho do filtro de credor. Sem as
 anulações no conjunto, o saldo a liquidar sairia cheio (t8 de `m05-consultas-execucao`, com três mutações vermelhas).
+
+## V37 — a reserva ganhou data do fato (fecha SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA)
+
+- `ReservaDotacao.data` (migration aditiva `20261109010000_v37_data_da_reserva`, nula para as antigas). A reserva
+  informada com data grava o movimento com a competência dela (`competenciaDerivada = false`), e cabe no disponível
+  daquela data, pela mesma guarda do empenho (`exigirSaldoNaData`). Sem data, tudo como antes.
+- O empenho por reserva com data anterior à da reserva é recusado, nomeando as duas datas: naquela data o valor não
+  estava reservado, e a liberação datada antes da reserva deixaria o reservado negativo no intervalo. Na data da
+  reserva ou depois, o empenho só move o reservado para o empenhado, e o disponível de cada dia não muda.
+- As telas que reservam (a ficha e o processo licitatório) pedem a data; a lista da ficha mostra a data do fato.
+- Testes: `m05-saldo-na-data` t3 e t4 (N=2 reservas e N=2 datas, hora de borda); 4 mutações vermelhas. As fixturas
+  antigas que reservavam sem data e empenhavam no passado passaram a informar a data da reserva.

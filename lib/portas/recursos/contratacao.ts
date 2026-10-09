@@ -80,6 +80,8 @@ export const PROCESSOS_LICITATORIOS: DefinicaoDeRecurso = definirRecurso({
         { nome: "fichaId", rotulo: "Ficha (dotação)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
         { nome: "valor", rotulo: "Valor reservado (R$)", tipo: "dinheiro", obrigatorio: true, largura: 1 },
         { nome: "historico", rotulo: "Histórico", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "reserva para o pregão 2026/001" },
+        { nome: "data", rotulo: "Data da reserva", tipo: "data", obrigatorio: true, largura: 1,
+          ajuda: "A reserva tem de caber no disponível desta data, e o empenho por ela não pode ser anterior." },
       ],
     },
     {

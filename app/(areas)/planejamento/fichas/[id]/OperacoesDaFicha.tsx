@@ -7,6 +7,7 @@ import type { EmpenhoDaTela } from "../../../../../lib/portas/empenho";
 import { dataBr } from "../../../../../lib/recorte";
 import { toMoney } from "../../../../../packages/contracts/index";
 import { FormLiberarReserva, FormReservar } from "./FormsDaDotacao";
+import { diaCivil } from "../../../../../packages/datas/index";
 
 /**
  * AS OPERAÇÕES DA DOTAÇÃO (V31) — da ficha para as reservas (e o processo de cada uma) e para os empenhos,
@@ -30,7 +31,7 @@ export function OperacoesDaFichaSecao({
   readonly podeEmpenhar?: boolean;
 }): React.ReactElement {
   const colunasReserva: readonly ColunaTabela<ReservaDaFicha>[] = [
-    { chave: "data", cabecalho: "Data", celula: (r) => dataBr(r.criadoEm) },
+    { chave: "data", cabecalho: "Data", celula: (r) => dataBr(r.data) },
     {
       chave: "finalidade",
       cabecalho: "Finalidade",
@@ -109,7 +110,7 @@ export function OperacoesDaFichaSecao({
         ) : (
           <TabelaDeDados colunas={colunasReserva} linhas={o.reservas} keyDe={(r) => r.id} legenda="valores em R$" />
         )}
-        {podeReservar ? <FormReservar fichaId={o.fichaId} disponivel={disponivel} /> : null}
+        {podeReservar ? <FormReservar fichaId={o.fichaId} disponivel={disponivel} hoje={diaCivil(new Date())} /> : null}
       </div>
       <div className="space-y-2">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Empenhos {o.empenhos === null ? "" : `(${o.empenhos.length})`}</h2>

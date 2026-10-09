@@ -311,6 +311,11 @@ export const zReservarDotacaoInput = z.object({
    * comentário caro. Foi DROPADA (ver a migration do DROP).
    */
   processoId: z.string().min(1).optional(),
+  /**
+   * V37 — a DATA DO FATO da reserva. É a competência do movimento da dotação (o corte por data a segue), e a reserva
+   * tem de caber no disponível daquela data, como o empenho. Sem ela, a competência é a da gravação.
+   */
+  data: z.coerce.date().optional(),
   criadoPor: z.string().min(1),
 });
 

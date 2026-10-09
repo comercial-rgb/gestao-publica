@@ -113,6 +113,11 @@ model ReservaDotacao {
 
   historico   String
 
+  /// V37 — a DATA DO FATO da reserva (dia civil, ao meio-dia civil). É a competência do movimento dela, e o empenho
+  /// por reserva não pode ter data anterior. NULLABLE: as reservas anteriores não a têm, e a competência delas
+  /// continua a da gravação (`competenciaDerivada`).
+  data DateTime?
+
   estornoDeId String?
   estornoDe   ReservaDotacao?  @relation("EstornoReserva", fields: [estornoDeId], references: [id])
   estornos    ReservaDotacao[] @relation("EstornoReserva")

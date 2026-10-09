@@ -8,7 +8,7 @@ import { criarM05DepsComContratos } from "../m11-licitacoes/adapter-m05.js";
 import { anularEmpenhoParcial } from "./anulacao-parcial.js";
 import { roteiroEmpenho } from "./dominio.js";
 import { disponivelDaFichaNaData } from "./saldo-na-data.js";
-import { empenhar } from "./servico.js";
+import { empenhar, reservarDotacao } from "./servico.js";
 
 /**
  * V36 (TR 5.10.1.10) — O SALDO DA DOTAÇÃO NA DATA DE EMISSÃO DO EMPENHO, além do de agora.
@@ -111,5 +111,50 @@ describe("M05 — o saldo da dotação na data de emissão do empenho", () => {
     expect(await naData("2026-03-10")).toBe("600.00/0.00");
     expect(await naData("2026-03-09")).toBe("1000.00/0.00");
     expect(await recusa(() => empenha("NE-3", "0.01", dia(3, 15)))).toMatch(/disponível 0\.00, solicitado 0\.01/);
+  });
+});
+
+describe("V37 — a reserva com data própria, e o empenho por ela", () => {
+  const reserva = (historico: string, valor: string, data: Date) => reservarDotacao({ fichaId: FICHA, valor, historico, data, criadoPor: POR }, deps());
+  const porReserva = (numero: string, reservaId: string, valor: string, data: Date) =>
+    empenhar({ fichaId: FICHA, numero, tipo: "ORDINARIO", valor, data, credorCpfCnpj: "11144477735", historico: "fixture", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", reservaId, criadoPor: POR }, R_EMPENHO, deps());
+
+  it("t3: o empenho por reserva não pode ter data anterior à da reserva; na data dela, passa (N=2 reservas)", async () => {
+    const a = await reserva("reserva A", "600.00", dia(3, 10));
+    const b = await reserva("reserva B", "400.00", dia(3, 20));
+    // A competência do movimento é a data do fato (não a da gravação).
+    expect(await naData("2026-03-09")).toBe("1000.00/0.00");
+    expect(await naData("2026-03-10")).toBe("400.00/0.00");
+    expect(await naData("2026-03-20")).toBe("0.00/0.00");
+
+    const antes = await prisma.empenho.count();
+    expect(await recusa(() => porReserva("NE-RA", a, "100.00", dia(3, 9)))).toMatch(
+      /O empenho por reserva não pode ter data anterior à da reserva: empenho em 09\/03\/2026, reserva em 10\/03\/2026\..*Nada foi gravado\./
+    );
+    expect(await recusa(() => porReserva("NE-RB", b, "100.00", dia(3, 19)))).toMatch(/empenho em 19\/03\/2026, reserva em 20\/03\/2026/);
+    expect(await prisma.empenho.count()).toBe(antes);
+    expect(await prisma.movimentoDotacao.count({ where: { fichaId: FICHA, tipo: "RESERVA_LIBERADA" } })).toBe(0);
+
+    // Na data de cada reserva (hora de borda, 22:00 civis — um corte em UTC passaria a outro dia), os dois passam.
+    await porReserva("NE-RA", a, "600.00", dia(3, 10));
+    await porReserva("NE-RB", b, "400.00", dia(3, 20));
+    expect(await prisma.movimentoDotacao.count({ where: { fichaId: FICHA, tipo: "RESERVA_LIBERADA" } })).toBe(2);
+    // O reservado passa ao empenhado na mesma data: o disponível de cada dia não muda, e nenhum dia fica negativo.
+    expect(await naData("2026-03-09")).toBe("1000.00/0.00");
+    expect(await naData("2026-03-10")).toBe("400.00/0.00");
+    expect(await naData("2026-03-20")).toBe("0.00/0.00");
+  });
+
+  it("t4: a reserva com data cabe no disponível DAQUELA data, como o empenho (N=2 datas)", async () => {
+    const e = await empenha("NE-A", "1000.00", dia(3, 1));
+    await anularEmpenhoParcial({ originalId: e.empenhoId, numero: "NE-A-AP", valor: "300.00", data: dia(5, 10), motivo: "Saldo não utilizado do empenho", criadoPor: POR }, deps());
+    // Hoje há 300 livres; em 15/04 não havia nada.
+    const antes = await prisma.reservaDotacao.count();
+    expect(await recusa(() => reserva("retroativa", "1.00", dia(4, 15)))).toMatch(
+      /Saldo insuficiente na ficha 7 na data da reserva \(15\/04\/2026\): disponível naquela data R\$ 0,00, solicitado R\$ 1,00\..*Nada foi gravado\./
+    );
+    expect(await prisma.reservaDotacao.count()).toBe(antes);
+    await reserva("na data da anulação", "300.00", dia(5, 10));
+    expect(await naData("2026-05-10")).toBe("0.00/0.00");
   });
 });

@@ -1,4 +1,5 @@
 import { toMoney } from "../../packages/contracts/index";
+import { meioDiaCivil } from "../../packages/datas/index";
 import { criarM05DepsComContratos } from "../../modules/m11-licitacoes/adapter-m05";
 import { liberarReserva, reservarDotacao } from "../../modules/m05-despesa/servico";
 import { cliente, PortaSemBancoError } from "./cliente";
@@ -33,6 +34,8 @@ export interface ReservaDaFicha {
   readonly liberada: boolean;
   readonly historico: string;
   readonly criadoEm: Date;
+  /** V37 — a data do fato da reserva; as anteriores à coluna ficam com a da gravação. */
+  readonly data: Date;
   readonly criadoPor: string;
   readonly processo: { readonly id: string; readonly numero: string } | null;
   /** V36 — a reserva é o bloqueio de uma prévia de alteração orçamentária: só a prévia a desfaz. */
@@ -66,6 +69,7 @@ export async function lerOperacoesDaFicha(fichaId: string): Promise<OperacoesDaF
       valor: true,
       historico: true,
       criadoEm: true,
+      data: true,
       criadoPor: true,
       processo: { select: { id: true, numeroProcesso: true } },
       estornos: { select: { id: true } },
@@ -85,6 +89,7 @@ export async function lerOperacoesDaFicha(fichaId: string): Promise<OperacoesDaF
       liberada,
       historico: r.historico,
       criadoEm: r.criadoEm,
+      data: r.data ?? r.criadoEm,
       criadoPor: r.criadoPor,
       processo: r.processo === null ? null : { id: r.processo.id, numero: r.processo.numeroProcesso },
       previa: r.itemDaPrevia === null ? null : { id: r.itemDaPrevia.previa.id, rotulo: `prévia nº ${String(r.itemDaPrevia.previa.numero)}/${String(r.itemDaPrevia.previa.exercicio)}` },
@@ -103,9 +108,10 @@ export async function lerOperacoesDaFicha(fichaId: string): Promise<OperacoesDaF
 }
 
 /** Reserva avulsa — o mesmo `reservarDotacao` do processo, sem processo. */
-export async function reservarNaFicha(input: { readonly fichaId: string; readonly valor: string; readonly historico: string }): Promise<string> {
+export async function reservarNaFicha(input: { readonly fichaId: string; readonly valor: string; readonly historico: string; readonly data: string }): Promise<string> {
+  // V37 — a data do fato, ancorada no meio-dia civil do ente; vazia, o domínio recusa pelo formato.
   return comEscritaAutenticada("RESERVAR_DOTACAO", (criadoPor) =>
-    reservarDotacao({ fichaId: input.fichaId, valor: input.valor, historico: input.historico, criadoPor }, criarM05DepsComContratos(cliente()))
+    reservarDotacao({ fichaId: input.fichaId, valor: input.valor, historico: input.historico, data: meioDiaCivil(input.data), criadoPor }, criarM05DepsComContratos(cliente()))
   );
 }
 

@@ -356,7 +356,7 @@ describe("M11 bloco 2 — contrato × empenho", () => {
 
     const reservaId = await reservarDotacao(
       {
-        fichaId: FICHA, valor: "50000.00", historico: "reserva do pregão A",
+        fichaId: FICHA, valor: "50000.00", historico: "reserva do pregão A", data: new Date("2026-01-15T15:00:00Z"),
         processoId: processoA, criadoPor: POR,
       },
       deps

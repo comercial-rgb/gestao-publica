@@ -52,6 +52,8 @@ export interface ReservarParams {
   readonly historico: string;
   /** M11 — o processo licitatório a que a reserva se vincula (TR 4.41). */
   readonly processoId?: string | undefined;
+  /** V37 — a data do fato da reserva (competência do movimento); ausente, a da gravação. */
+  readonly data?: Date | undefined;
   readonly criadoPor: string;
 }
 

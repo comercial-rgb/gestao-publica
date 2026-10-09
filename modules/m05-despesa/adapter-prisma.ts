@@ -62,9 +62,9 @@ import {
   baixarPrecatorioNoPagamento,
   exigirOrdemDoArt100,
 } from "../m29-precatorios/servico.js";
-import { anoCivil, diaCivil } from "../../packages/datas/index.js";
+import { anoCivil, diaCivil, diaCivilBr } from "../../packages/datas/index.js";
 import { exigirUsoDoNumero } from "./numerador.js";
-import { exigirSaldoNaDataDoEmpenho } from "./saldo-na-data.js";
+import { exigirSaldoNaData, exigirSaldoNaDataDoEmpenho } from "./saldo-na-data.js";
 import { conferirSubempenhoDaLiquidacao, quadroDoEmpenhoRepartido, reais as reaisDoAdapter } from "./subempenho-saldo.js";
 import type { Tx as TxDoRazao } from "../m01-core-contabil/razao.js";
 // M10 — a dívida. A amortização nasce DENTRO do pagamento e morre com ele.
@@ -1085,6 +1085,9 @@ export async function reservarNaTransacao(tx: Tx, p: ReservarParams, opcoes: { r
   // recusaria uma reserva legítima; cortado por registro, o mesmo.
   const saldos = calcularSaldos(await totaisPorTipo(tx, p.fichaId, { eixo: "CORRENTE" }));
   exigirSaldo(saldos.disponivel, p.valor, p.fichaId);
+  // V37 — com data do fato, a reserva também cabe no disponível DAQUELA data (a mesma régua do empenho): uma reserva
+  // retroativa não consome crédito aberto depois dela.
+  if (p.data !== undefined) await exigirSaldoNaData(tx, { fichaId: p.fichaId, data: p.data, valor: p.valor, ato: "da reserva" });
 
   const reserva = await tx.reservaDotacao.create({
     data: {
@@ -1093,6 +1096,7 @@ export async function reservarNaTransacao(tx: Tx, p: ReservarParams, opcoes: { r
       valor: p.valor.toFixed(2),
       historico: p.historico,
       processoId: p.processoId ?? null,
+      data: p.data ?? null,
       criadoPor: p.criadoPor,
     },
     select: { id: true },
@@ -1108,9 +1112,9 @@ export async function reservarNaTransacao(tx: Tx, p: ReservarParams, opcoes: { r
     origemTipo: tipoDoMovimento,
     origemId: reserva.id,
     criadoPor: p.criadoPor,
-    // ⚠️ A ReservaDotacao NÃO TEM coluna de data (só `criadoEm`) — a data do FATO
-    // aqui É a da criação. Declarado: quando a reserva ganhar data própria, ela
-    // entra aqui e o corte da MSC passa a segui-la.
+    // V37 — a reserva ganhou data própria: com ela, a competência do movimento é a data do fato e o corte por data
+    // (MSC, saldo na data) a segue. Sem ela (reservas antigas, bloqueio da prévia), a da gravação.
+    ...(p.data !== undefined ? { data: p.data } : {}),
   });
 
   // INVARIANTE 3: cache recalculado do SUM.
@@ -1276,6 +1280,22 @@ export function criarDespesaRepositoryPrisma(
             throw new Error(
               `Empenho (${p.valor.toFixed(2)}) excede a reserva ` +
                 `${p.reservaId} (${valorReserva.toFixed(2)}).`
+            );
+          }
+          // V37 — O SALDO NA DATA, PARA O EMPENHO POR RESERVA (fecha SALDO-NA-DATA-DO-EMPENHO-POR-RESERVA). O empenho por
+          // reserva não consome disponível novo: move o valor do reservado para o empenhado. Isso só vale a partir do dia
+          // em que a reserva existe (a competência do movimento dela). Datado ANTES, o empenho consumiria um valor que
+          // naquela data não estava reservado, e a liberação, datada antes da reserva, deixaria o reservado negativo no
+          // intervalo. Recusa nomeando as duas datas; com data igual ou posterior, a própria reserva garante o saldo.
+          const movimentoDaReserva = await tx.movimentoDotacao.findFirst({
+            where: { origemId: reserva.id, tipo: "RESERVA", estornoDeId: null },
+            select: { competencia: true },
+          });
+          if (movimentoDaReserva !== null && diaCivil(p.data) < diaCivil(movimentoDaReserva.competencia)) {
+            throw new Error(
+              `O empenho por reserva não pode ter data anterior à da reserva: empenho em ${diaCivilBr(p.data)}, reserva em ` +
+                `${diaCivilBr(movimentoDaReserva.competencia)}. Naquela data o valor não estava reservado. Emita com data ` +
+                `igual ou posterior à da reserva, ou empenhe direto, sem a reserva. Nada foi gravado.`
             );
           }
         } else {

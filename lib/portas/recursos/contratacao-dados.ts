@@ -249,7 +249,7 @@ export async function acaoDoProcesso(acao: string, processoId: string, c: Campos
       return;
     case "reservar":
       await comEscritaAutenticada("RESERVAR_DOTACAO", (criadoPor) =>
-        reservarDotacao({ fichaId: t(c, "fichaId"), valor: t(c, "valor"), historico: t(c, "historico"), processoId, criadoPor }, criarM05DepsComContratos(cliente()))
+        reservarDotacao({ fichaId: t(c, "fichaId"), valor: t(c, "valor"), historico: t(c, "historico"), processoId, data: dia(c, "data"), criadoPor }, criarM05DepsComContratos(cliente()))
       );
       return;
     case "liberar-reserva": {

@@ -248,7 +248,7 @@ describe("M05 — reserva, empenho e saldo", () => {
 
   it("empenho VINDO DE RESERVA: libera a retenção; disponível não conta duas vezes", async () => {
     const reservaId = await reservarDotacao(
-      { fichaId: FICHA_ID, valor: "3000.00", historico: "reserva", criadoPor: CRIADO_POR },
+      { fichaId: FICHA_ID, valor: "3000.00", historico: "reserva", data: new Date("2026-04-01T15:00:00Z"), criadoPor: CRIADO_POR },
       deps
     );
     expect((await saldosCorrentesDaFicha(FICHA_ID, deps)).disponivel.toFixed(2)).toBe("7000.00");
@@ -270,7 +270,7 @@ describe("M05 — reserva, empenho e saldo", () => {
 
   it("REJEITA empenhar a MESMA reserva duas vezes", async () => {
     const reservaId = await reservarDotacao(
-      { fichaId: FICHA_ID, valor: "3000.00", historico: "reserva", criadoPor: CRIADO_POR },
+      { fichaId: FICHA_ID, valor: "3000.00", historico: "reserva", data: new Date("2026-04-01T15:00:00Z"), criadoPor: CRIADO_POR },
       deps
     );
     await empenhar({ ...empenhoBase("2026NE0001", "1000.00"), reservaId }, ROTEIRO, deps);

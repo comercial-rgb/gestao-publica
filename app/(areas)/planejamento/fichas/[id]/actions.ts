@@ -23,8 +23,9 @@ export async function reservarAction(_prev: EstadoDaDotacao, formData: FormData)
     const fichaId = campo(formData, "fichaId");
     const valor = valorDigitadoEmDecimal(campo(formData, "valor"));
     if (valor === "") return { erro: "Informe o valor em reais (ex.: 15.000,00). Nada foi gravado." };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(campo(formData, "data"))) return { erro: "Informe a data da reserva. Nada foi gravado." };
     try {
-      await reservarNaFicha({ fichaId, valor, historico: campo(formData, "historico") });
+      await reservarNaFicha({ fichaId, valor, historico: campo(formData, "historico"), data: campo(formData, "data") });
       revalidatePath(`/planejamento/fichas/${fichaId}`);
       return { sucesso: `Reserva de ${formatarMoeda(valor).texto} registrada. O saldo disponível da ficha foi reduzido.` };
     } catch (e) {

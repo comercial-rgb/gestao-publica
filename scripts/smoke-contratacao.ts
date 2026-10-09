@@ -278,6 +278,8 @@ async function main(): Promise<void> {
       ...(ficha === null ? [] : [{ sel: 'select[name="fichaId"]', valor: ficha.valor, tipo: "select" as const }]),
       { sel: 'input[data-mascara="valor"]', valor: "1000,00" },
       { sel: 'input[name="historico"]', valor: `Reserva do percurso ${SUF}` },
+      // V37 — a reserva tem data do fato; a do empenho por ela não pode ser anterior.
+      { sel: 'input[name="data"]', valor: "2026-02-15", tipo: "data" },
     ]);
     conferir("processo: a dotação foi reservada e vinculada ao processo", rRes.tipo === "ok", rRes.texto);
     await irPara(page, hrefProc);

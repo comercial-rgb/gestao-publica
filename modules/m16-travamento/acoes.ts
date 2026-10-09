@@ -3456,6 +3456,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   exigirFonteDaFicha: "guard",
   exigirCotaCmd: "guard (a limitação de empenho pelo CMD — TR 4.43)",
   exigirSaldoNaDataDoEmpenho: "guard (V36 — o disponível da dotação na data de emissão do empenho direto — TR 5.10.1.10)",
+  exigirSaldoNaData: "guard (V37 — a mesma régua do disponível na data, para a reserva com data do fato; o empenho a usa pela irmã)",
   disponivelDaFichaNaData: "leitura (V36 — o disponível da ficha na data pedida e o de agora, para o formulário do empenho; não muta)",
   exigirTipoAtivo: "guard",
   exigirExercicioAberto: "guard",
