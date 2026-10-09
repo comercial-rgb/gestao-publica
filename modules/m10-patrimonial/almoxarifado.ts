@@ -228,11 +228,23 @@ const NOME_DO_MOVIMENTO: Partial<Record<TipoMovimentoAlmoxarifado, string>> = {
   AJUSTE_SAIDA: "o ajuste de inventário por falta",
 };
 
-/** O roteiro do tipo — TABELA. Ausente = LANÇA, sem gravar nada. */
+/**
+ * O roteiro do tipo — TABELA. Ausente = LANÇA, sem gravar nada.
+ *
+ * V37 — a VERSÃO PUBLICADA mais recente (família ALMOXARIFADO) vale sobre a linha gravada antes das versões; é a mesma
+ * régua de `versaoVigente` (roteiros.ts), escrita aqui porque `roteiros.ts` importa este arquivo e o inverso faria
+ * ciclo. Trocar as contas não remexe lançamento já feito: vale para os movimentos seguintes.
+ */
 async function exigirRoteiro(
   tx: Tx,
   tipo: TipoMovimentoAlmoxarifado
 ): Promise<{ readonly contaDebitoId: string; readonly contaCreditoId: string }> {
+  const versao = await tx.versaoDeRoteiro.findFirst({
+    where: { familia: "ALMOXARIFADO", chave: tipo, situacao: "PUBLICADA" },
+    orderBy: [{ publicadaEm: "desc" }, { numero: "desc" }],
+    select: { contaDebitoId: true, contaCreditoId: true },
+  });
+  if (versao !== null) return versao;
   const r = await tx.roteiroAlmoxarifado.findUnique({
     where: { tipo },
     select: { contaDebitoId: true, contaCreditoId: true },

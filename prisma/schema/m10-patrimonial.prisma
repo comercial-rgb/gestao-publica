@@ -350,6 +350,8 @@ enum FamiliaDeRoteiro {
   PATRIMONIAL
   /// `RoteiroResultadoAlienacao`: a chave é GANHO_ALIENACAO ou PERDA_ALIENACAO.
   RESULTADO_ALIENACAO
+  /// V37 — `RoteiroAlmoxarifado`: a chave é SAIDA_CONSUMO, AJUSTE_ENTRADA ou AJUSTE_SAIDA.
+  ALMOXARIFADO
 }
 
 enum SituacaoDeVersaoDeRoteiro {

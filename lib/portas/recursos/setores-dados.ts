@@ -1,4 +1,4 @@
-import { alterarSituacaoDoSetor, criarSetor, lotarUsuarioNoSetor } from "../../../modules/m21-protocolo/cadastros.js";
+import { alterarSituacaoDoSetor, criarSetor, desfazerLotacaoNoSetor, lotarUsuarioNoSetor } from "../../../modules/m21-protocolo/cadastros.js";
 import { diaCivilBr } from "../../../packages/datas/index.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { TAMANHO_DE_PAGINA } from "../../molde/consulta.js";
@@ -91,6 +91,10 @@ export async function verSetor(id: string): Promise<DetalheLido | null> {
 export async function acaoDoSetor(acao: string, setorId: string, c: Campos = {}): Promise<void> {
   if (acao === "lotar") {
     await comEscritaAutenticada("LOTAR_USUARIO_NO_SETOR", (criadoPor) => lotarUsuarioNoSetor(cliente(), { usuarioIdent: c["usuarioIdent"] ?? "", setorId, criadoPor }));
+    return;
+  }
+  if (acao === "desfazer-lotacao") {
+    await comEscritaAutenticada("LOTAR_USUARIO_NO_SETOR", (criadoPor) => desfazerLotacaoNoSetor(cliente(), { usuarioIdent: c["usuarioIdent"] ?? "", setorId, criadoPor }));
     return;
   }
   if (acao !== "desativar" && acao !== "reativar") throw new Error(`Ação "${acao}" não existe neste cadastro. Nada foi gravado.`);

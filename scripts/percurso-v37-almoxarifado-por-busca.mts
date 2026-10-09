@@ -97,7 +97,8 @@ try {
     const saidas = await prisma.movimentoFisicoDeEstoque.findMany({ where: { itemDeRequisicaoId: req.itens[0].id }, select: { quantidade: true } });
     // ⚠️ AS CONTAS DO ROTEIRO SÃO ESCOLHA DO ENTE, e o percurso não as escolhe. Sem o roteiro da saída, o passo afirma
     // a recusa COM O MOTIVO (e nada gravado) e a tela de roteiros mostrando o que falta; com ele, a saída gravada.
-    const roteiro = await prisma.roteiroAlmoxarifado.findUnique({ where: { tipo: "SAIDA_CONSUMO" }, select: { id: true } });
+    const roteiro = (await prisma.versaoDeRoteiro.findFirst({ where: { familia: "ALMOXARIFADO", chave: "SAIDA_CONSUMO", situacao: "PUBLICADA" }, select: { id: true } }))
+      ?? (await prisma.roteiroAlmoxarifado.findUnique({ where: { tipo: "SAIDA_CONSUMO" }, select: { id: true } }));
     if (roteiro === null) {
       conferir(ra.tipo === "erro" && /roteiro contábil cadastrado para a saída por consumo/.test(ra.texto) && /Roteiros contábeis do almoxarifado/.test(ra.texto) && saidas.length === 0, `sem roteiro da saída, o atendimento é recusado dizendo onde cadastrá-lo, e nada se grava (${ra.texto.slice(0, 90)})`);
       await irPara(n, page, `${ALMOX}/roteiros`);

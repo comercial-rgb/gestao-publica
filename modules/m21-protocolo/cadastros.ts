@@ -171,6 +171,38 @@ export async function lotarUsuarioNoSetor(
   });
 }
 
+export const zDesfazerLotacao = z.object({
+  usuarioIdent: z.string().trim().min(1),
+  setorId: z.string().min(1),
+  criadoPor: z.string().min(1),
+});
+export type DesfazerLotacaoInput = z.input<typeof zDesfazerLotacao>;
+
+/**
+ * V37 — DESFAZ a lotação de um usuário num setor (DELETE do vínculo, declarado no censo do papel de runtime).
+ *
+ * Mesma doutrina do `revogarPerfil` do M16: a lotação não tem coluna de encerramento, a linha É a lotação e a ausência
+ * dela é o desfazimento. O que o usuário fez em nome do setor fica nos movimentos (append-only), com o `criadoPor`
+ * deles. Desfazer o que não existe é erro nomeado: um "desfeito" silencioso faria crer que se tirou um alcance que o
+ * usuário nunca teve. A autorização é a mesma de lotar, na unidade do setor; setor desativado também se desfaz.
+ */
+export async function desfazerLotacaoNoSetor(prisma: PrismaClient, input: DesfazerLotacaoInput): Promise<void> {
+  const d = zDesfazerLotacao.parse(input);
+  await prisma.$transaction(async (tx) => {
+    const setor = await tx.setor.findUnique({ where: { id: d.setorId }, select: { codigo: true, unidadeOrcId: true } });
+    if (setor === null) throw new Error("Setor não encontrado. Nada foi gravado.");
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.desfazerLotacaoNoSetor, { ug: setor.unidadeOrcId });
+    const lotacao = await tx.usuarioDoSetor.findUnique({
+      where: { usuarioIdent_setorId: { usuarioIdent: d.usuarioIdent, setorId: d.setorId } },
+      select: { id: true },
+    });
+    if (lotacao === null) {
+      throw new Error(`O usuário "${d.usuarioIdent}" não está lotado no setor ${setor.codigo}; não há lotação a desfazer. Nada foi gravado.`);
+    }
+    await tx.usuarioDoSetor.delete({ where: { id: lotacao.id } });
+  });
+}
+
 const zEtapa = z.object({
   ordem: z.number().int().min(1).max(99),
   setorId: z.string().min(1),

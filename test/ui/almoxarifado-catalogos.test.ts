@@ -129,5 +129,14 @@ describe("os catálogos do almoxarifado", () => {
     expect(lista.linhas.find((l) => l["id"] === "SAIDA_CONSUMO")?.["debito"]).toBe("3.3.1.1.1.01.00 — Consumo de material");
     const falta = await listarRoteirosDoAlmoxarifadoDoMolde(lerConsulta(ROTEIROS_DO_ALMOXARIFADO, { q: "falta" }));
     expect(falta.linhas.map((l) => l["id"])).toEqual(["AJUSTE_SAIDA"]);
+
+    // V37 — trocadas as contas (N=2 versões), a lista mostra a versão vigente sobre a linha antiga, e quantas há.
+    // A linha antiga debita c-vpd; a versão 1 também; a 2 (a vigente) debita c-estoque — a lista tem de mostrar a 2.
+    for (const [numero, debito, publicadaEm] of [[1, "c-vpd", "2026-06-01T12:00:00Z"], [2, "c-estoque", "2026-06-02T12:00:00Z"]] as const) {
+      await prisma.versaoDeRoteiro.create({ data: { familia: "ALMOXARIFADO", chave: "SAIDA_CONSUMO", numero, contaDebitoId: debito, contaCreditoId: debito === "c-vpd" ? "c-estoque" : "c-vpd", motivo: "teste", situacao: "PUBLICADA", publicadaEm: new Date(publicadaEm), publicadaPor: POR, criadoPor: POR } });
+    }
+    const trocado = (await listarRoteirosDoAlmoxarifadoDoMolde(lerConsulta(ROTEIROS_DO_ALMOXARIFADO, {}))).linhas.find((l) => l["id"] === "SAIDA_CONSUMO");
+    expect([trocado?.["debito"], trocado?.["situacao"]]).toEqual(["1.1.5.6.1.01.00 — Material de Consumo", "Parametrizado (2 versões)"]);
+    expect(ROTEIROS_DO_ALMOXARIFADO.campos.find((c) => c.nome === "substituir")?.tipo).toBe("booleano");
   });
 });

@@ -9,7 +9,8 @@ import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 
 /**
  * V37 — A Server Action do roteiro do almoxarifado. Só cria: o despacho é fail-closed, e as recusas do domínio
- * (movimento sem roteiro próprio, roteiro já existente, conta sintética, mesma conta, motor) sobem como vieram.
+ * (movimento sem roteiro próprio, roteiro já existente sem a marcação de troca, conta sintética, mesma conta, motor)
+ * sobem como vieram. A troca das contas é o mesmo formulário com "Trocar as contas de um roteiro já cadastrado".
  */
 export async function acaoDeRoteirosDoAlmoxarifadoAction(_prev: EstadoDoMolde, formData: FormData): Promise<EstadoDoMolde> {
   return comComandoDoFormulario(formData, async () => {
@@ -24,6 +25,11 @@ export async function acaoDeRoteirosDoAlmoxarifadoAction(_prev: EstadoDoMolde, f
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Falha ao gravar. Nada foi gravado." };
     }
     revalidatePath(ROTEIROS_DO_ALMOXARIFADO.rota);
-    return { sucesso: "Roteiro contábil cadastrado. O movimento já pode ser registrado no almoxarifado." };
+    return {
+      sucesso:
+        campos["substituir"] === "on" || campos["substituir"] === "1"
+          ? "Contas do roteiro trocadas. Os próximos movimentos já lançam pelas novas contas."
+          : "Roteiro contábil cadastrado. O movimento já pode ser registrado no almoxarifado.",
+    };
   });
 }

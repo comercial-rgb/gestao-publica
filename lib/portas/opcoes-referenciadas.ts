@@ -482,6 +482,29 @@ export const CATALOGOS: Readonly<Record<string, CatalogoDeOpcoes>> = {
     },
   },
   /**
+   * V37 — QUEM ESTÁ LOTADO NO SETOR (contexto `__id`, o próprio setor): a lotação a desfazer. Só para a sessão que lota
+   * na unidade do setor — o mesmo escopo que o `desfazerLotacaoNoSetor` confere de novo, na transação.
+   */
+  "lotados-do-setor": {
+    leitura: "CONSULTAR_PROTOCOLO",
+    async buscar(sessao, p) {
+      const setorId = p.contexto["__id"] ?? "";
+      if (setorId === "") return { opcoes: [], temMais: false };
+      const setor = await cliente().setor.findUnique({ where: { id: setorId }, select: { unidadeOrcId: true } });
+      if (setor === null) return { opcoes: [], temMais: false };
+      const escopo = await escopoDaAcaoDeLeitura(cliente(), sessao.identificador, "LOTAR_USUARIO_NO_SETOR");
+      if (!escopo.ativo || !escopo.unidades.some((u) => u.id === setor.unidadeOrcId)) return { opcoes: [], temMais: false };
+      const linhas = await cliente().usuarioDoSetor.findMany({
+        where: { AND: [{ setorId }, p.valor !== undefined ? { usuarioIdent: p.valor } : p.q === "" ? {} : { usuarioIdent: contem(p.q.trim()) }] },
+        orderBy: { usuarioIdent: "asc" },
+        skip: skip(p), take,
+        select: { usuarioIdent: true, criadoEm: true },
+      });
+      const r = pagina(linhas, p);
+      return { opcoes: r.linhas.map((l) => ({ valor: l.usuarioIdent, rotulo: l.usuarioIdent, detalhe: `lotado em ${diaCivilBr(l.criadoEm)}` })), temMais: r.temMais };
+    },
+  },
+  /**
    * V37 — AS CONTAS DE UM ROTEIRO DO ALMOXARIFADO: analíticas das classes patrimoniais (1 a 4), por código ou nome. O
    * valor é o ID da conta (é o que o roteiro grava). O caso de uso confere de novo: existência, analítica e o par pelo
    * motor contábil. Nenhuma conta é sugerida: a escolha é do ente.

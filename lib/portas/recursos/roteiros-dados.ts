@@ -426,10 +426,19 @@ export async function opcoesDosRoteiros(): Promise<OpcoesDoCadastro> {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export async function listarRoteirosDoAlmoxarifadoDoMolde(c: ConsultaDoMolde): Promise<PaginaDoMolde> {
-  const gravados = await cliente().roteiroAlmoxarifado.findMany({
-    select: { tipo: true, contaDebito: { select: { codigo: true, nome: true } }, contaCredito: { select: { codigo: true, nome: true } } },
-  });
-  const porTipo = new Map(gravados.map((r) => [r.tipo as string, r]));
+  // V37 — a versão publicada vale sobre a linha gravada antes das versões (a mesma régua do lançamento).
+  const [porVersao, legados, contagem] = await Promise.all([
+    vigentesPorVersao("ALMOXARIFADO"),
+    cliente().roteiroAlmoxarifado.findMany({
+      select: { tipo: true, contaDebito: { select: { codigo: true, nome: true } }, contaCredito: { select: { codigo: true, nome: true } } },
+    }),
+    cliente().versaoDeRoteiro.groupBy({ by: ["chave"], where: { familia: "ALMOXARIFADO", situacao: "PUBLICADA" }, _count: { _all: true } }),
+  ]);
+  const porTipo = new Map<string, { readonly contaDebito: { readonly codigo: string; readonly nome: string }; readonly contaCredito: { readonly codigo: string; readonly nome: string } }>(
+    legados.map((r) => [r.tipo as string, r])
+  );
+  for (const [chave, v] of porVersao) porTipo.set(chave, v);
+  const versoes = new Map(contagem.map((x) => [x.chave, x._count._all]));
   const q = (c.filtros["q"] ?? "").trim().toLowerCase();
   const linhas = TIPOS_DO_ROTEIRO_ALMOXARIFADO.map((tipo) => {
     const r = porTipo.get(tipo);
@@ -438,7 +447,7 @@ export async function listarRoteirosDoAlmoxarifadoDoMolde(c: ConsultaDoMolde): P
       evento: ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO[tipo] ?? tipo,
       debito: r === undefined ? "—" : `${r.contaDebito.codigo} — ${r.contaDebito.nome}`,
       credito: r === undefined ? "—" : `${r.contaCredito.codigo} — ${r.contaCredito.nome}`,
-      situacao: r === undefined ? "Sem roteiro" : "Parametrizado",
+      situacao: r === undefined ? "Sem roteiro" : (versoes.get(tipo) ?? 0) > 1 ? `Parametrizado (${String(versoes.get(tipo))} versões)` : "Parametrizado",
       situacaoTom: r === undefined ? "alerta" : "ok",
     };
   }).filter((l) => q === "" || `${l.evento} ${l.debito} ${l.credito}`.toLowerCase().includes(q));
@@ -451,6 +460,8 @@ export async function criarRoteiroDoAlmoxarifado(c: Campos): Promise<void> {
       tipo: t(c, "tipo"),
       contaDebitoId: t(c, "contaDebitoId"),
       contaCreditoId: t(c, "contaCreditoId"),
+      // V37 — a troca das contas de um roteiro existente só com a marcação explícita.
+      substituir: t(c, "substituir") === "on" || t(c, "substituir") === "1",
       criadoPor,
     })
   );

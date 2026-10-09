@@ -169,6 +169,12 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   Subassunto: { update: ["ativo"], delete: false },
   TipoDeComunicado: { update: ["ativo"], delete: false },
 
+  // ⚠️ V37 — A LOTAÇÃO NO SETOR É DECISÃO VIGENTE, e a ausência da linha É o desfazimento. Mesma doutrina do
+  // `VinculoUsuarioPerfil` e da `PermissaoDePerfil` acima: não há coluna de encerramento a marcar, e uma lotação
+  // "desfeita" que continuasse na tabela seria a que o escopo do protocolo lê como alcance vigente. O que o usuário
+  // fez em nome do setor fica nos movimentos, que só inserem. Escritor: `desfazerLotacaoNoSetor` (M21).
+  UsuarioDoSetor: { update: [], delete: true },
+
   // ⚠️ O RASCUNHO É O ÚNICO DOCUMENTO EDITÁVEL DO REPOSITÓRIO, e o grant é por
   // coluna justamente por isso. Um rascunho é um comunicado que ainda não foi
   // enviado (não há movimento `ENVIO`), e editá-lo antes de enviar é o que se

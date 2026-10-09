@@ -32,7 +32,7 @@ const zCodigoDeConta = z.string().min(1);
 // "publicar" — o segundo encontra a versão já publicada e é recusado.
 // ═══════════════════════════════════════════════════════════════════════════
 
-export type FamiliaDeRoteiro = "PATRIMONIAL" | "RESULTADO_ALIENACAO";
+export type FamiliaDeRoteiro = "PATRIMONIAL" | "RESULTADO_ALIENACAO" | "ALMOXARIFADO";
 const zFamilia = z.enum(["PATRIMONIAL", "RESULTADO_ALIENACAO"]);
 
 /** A ação de PUBLICAR — separada de parametrizar. Constante (ver a nota no parametrizar). */
@@ -68,6 +68,12 @@ function conferirChave(familia: FamiliaDeRoteiro, chave: string): void {
     }
     if (!(TIPOS_BASE as readonly string[]).includes(chave)) {
       throw new Error(`${chave} não é um evento patrimonial conhecido. Nada foi gravado.`);
+    }
+    return;
+  }
+  if (familia === "ALMOXARIFADO") {
+    if (!(TIPOS_DO_ROTEIRO_ALMOXARIFADO as readonly string[]).includes(chave)) {
+      throw new Error(`${chave} não é um movimento do almoxarifado com roteiro próprio. Nada foi gravado.`);
     }
     return;
   }
@@ -129,6 +135,9 @@ async function vigenteOuLegado(
   if (v !== null) return v;
   if (familia === "PATRIMONIAL") {
     return tx.roteiroPatrimonial.findUnique({ where: { tipo: chave as TipoMovimentoPatrimonial }, select: sel });
+  }
+  if (familia === "ALMOXARIFADO") {
+    return tx.roteiroAlmoxarifado.findUnique({ where: { tipo: chave as TipoMovimentoAlmoxarifado }, select: sel });
   }
   return tx.roteiroResultadoAlienacao.findUnique({
     where: { chave: chave as "GANHO_ALIENACAO" | "PERDA_ALIENACAO" },
@@ -589,6 +598,8 @@ export async function parametrizarRoteiroResultadoAlienacao(
 }
 
 export const zParametrizarRoteiroAlmoxarifadoInput = z.object({
+  /** V37 — trocar as contas de um roteiro já cadastrado é ato explícito: sem ele, o roteiro existente recusa. */
+  substituir: z.boolean().default(false),
   tipo: z.string().min(1),
   contaDebitoId: zCodigoDeConta,
   contaCreditoId: zCodigoDeConta,
@@ -612,7 +623,7 @@ export type ParametrizarRoteiroAlmoxarifadoInput = z.input<typeof zParametrizarR
 export async function parametrizarRoteiroAlmoxarifado(
   prisma: PrismaClient,
   input: ParametrizarRoteiroAlmoxarifadoInput
-): Promise<{ readonly roteiroId: string }> {
+): Promise<{ readonly roteiroId: string; readonly substituiu: boolean }> {
   const d = zParametrizarRoteiroAlmoxarifadoInput.parse(input);
   if (!TIPOS_DO_ROTEIRO_ALMOXARIFADO.includes(d.tipo as TipoMovimentoAlmoxarifado)) {
     throw new Error(
@@ -632,21 +643,29 @@ export async function parametrizarRoteiroAlmoxarifado(
     ]);
     conferirContraOMotor(debito, credito);
 
-    const vigente = await tx.roteiroAlmoxarifado.findUnique({
-      where: { tipo },
-      select: { contaDebito: { select: { codigo: true, nome: true } }, contaCredito: { select: { codigo: true, nome: true } } },
-    });
-    if (vigente !== null) {
+    // V37 — a versão publicada, ou a linha gravada antes das versões. Trocar é versão nova, e só com `substituir`:
+    // ninguém sobrescreve o roteiro por ter escolhido o movimento errado.
+    const vigente = await vigenteOuLegado(tx, "ALMOXARIFADO", tipo);
+    if (vigente !== null && !d.substituir) {
       throw new Error(
         `Este movimento JÁ TEM roteiro: débito em ${vigente.contaDebito.codigo} — ${vigente.contaDebito.nome}, ` +
-          `crédito em ${vigente.contaCredito.codigo} — ${vigente.contaCredito.nome}. Nada foi gravado.`
+          `crédito em ${vigente.contaCredito.codigo} — ${vigente.contaCredito.nome}. Para trocar as contas, marque ` +
+          `"Trocar as contas de um roteiro já cadastrado": a troca vale para os movimentos seguintes. Nada foi gravado.`
       );
     }
-    const r = await tx.roteiroAlmoxarifado.create({
-      data: { tipo, contaDebitoId: debito.id, contaCreditoId: credito.id, criadoPor: d.criadoPor },
-      select: { id: true },
+    if (vigente !== null && vigente.contaDebito.id === debito.id && vigente.contaCredito.id === credito.id) {
+      throw new Error(`O roteiro deste movimento já usa estas duas contas. Nada foi gravado.`);
+    }
+    const versao = await criarVersaoNaTx(tx, {
+      familia: "ALMOXARIFADO",
+      chave: tipo,
+      debito,
+      credito,
+      motivo: vigente === null ? "Parametrização direta (primeira versão)" : "Parametrização direta (substituição das contas)",
+      criadoPor: d.criadoPor,
     });
-    return { roteiroId: r.id };
+    await publicarNaTx(tx, versao.id, d.criadoPor);
+    return { roteiroId: versao.id, substituiu: vigente !== null };
   });
 }
 

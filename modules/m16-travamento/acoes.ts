@@ -1342,6 +1342,7 @@ export type NomeDeServico =
   | "criarSetor"
   | "alterarSituacaoDoSetor"
   | "lotarUsuarioNoSetor"
+  | "desfazerLotacaoNoSetor"
   | "criarAssunto"
   | "publicarConfiguracaoDoAcesso"
   | "protocolarPedidoDeAcesso"
@@ -2221,6 +2222,7 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarSetor: "CRIAR_SETOR",
   alterarSituacaoDoSetor: "CRIAR_SETOR",
   lotarUsuarioNoSetor: "LOTAR_USUARIO_NO_SETOR",
+  desfazerLotacaoNoSetor: "LOTAR_USUARIO_NO_SETOR",
   criarAssunto: "CRIAR_ASSUNTO",
   publicarConfiguracaoDoAcesso: "PUBLICAR_CONFIGURACAO_DO_ACESSO_A_INFORMACAO",
   protocolarPedidoDeAcesso: "PROTOCOLAR_PEDIDO_DE_ACESSO_A_INFORMACAO",

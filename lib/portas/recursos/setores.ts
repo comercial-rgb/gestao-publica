@@ -44,6 +44,12 @@ export const SETORES: DefinicaoDeRecurso = definirRecurso({
         { nome: "usuarioIdent", rotulo: "Usuário", tipo: "referencia", catalogo: "usuarios-para-lotacao", obrigatorio: true, largura: 3,
           placeholder: "Nome ou identificador do usuário" },
       ] },
+    { nome: "desfazer-lotacao", rotulo: "Desfazer lotação", acaoDoCenso: "LOTAR_USUARIO_NO_SETOR", irreversivel: false,
+      aviso: "O usuário deixa de receber os processos e as comunicações deste setor. O que ele já fez em nome do setor permanece registrado. Pode ser lotado de novo.",
+      campos: [
+        { nome: "usuarioIdent", rotulo: "Usuário lotado", tipo: "referencia", catalogo: "lotados-do-setor", contexto: ["__id"], obrigatorio: true, largura: 3,
+          placeholder: "Identificador do usuário" },
+      ] },
   ],
   permissoes: { criar: "CRIAR_SETOR" },
   abas: ["dados", "relacionados"],

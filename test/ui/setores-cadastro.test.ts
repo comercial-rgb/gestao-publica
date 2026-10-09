@@ -110,4 +110,28 @@ describe("o cadastro de setores", () => {
     await expect(lotarUsuarioNoSetor(prisma, { usuarioIdent: "v37.inativa", setorId: "set-edu", criadoPor: lota.identificador })).rejects.toThrow(/USUÁRIO INATIVO/);
     expect(SETORES.acoes.find((a) => a.nome === "lotar")?.acaoDoCenso).toBe("LOTAR_USUARIO_NO_SETOR");
   });
+
+  it("t5: a lotação a desfazer vem só dos lotados DAQUELE setor, e só para quem lota na unidade dele (N=2 setores)", async () => {
+    await prisma.setor.createMany({ data: [
+      { id: "set-edu", codigo: "SEC-EDU", nome: "Secretaria de Educação", unidadeOrcId: "uo-01", criadoPor: POR },
+      { id: "set-sau", codigo: "SEC-SAU", nome: "Secretaria de Saúde", unidadeOrcId: "uo-02", criadoPor: POR },
+    ] });
+    for (const u of ["v37.ana", "v37.bia"]) await usuario(u, []);
+    await prisma.usuarioDoSetor.createMany({ data: [
+      { usuarioIdent: "v37.ana", setorId: "set-edu", criadoPor: POR },
+      { usuarioIdent: "v37.bia", setorId: "set-edu", criadoPor: POR },
+      { usuarioIdent: "v37.bia", setorId: "set-sau", criadoPor: POR },
+    ] });
+    const lotados = (s: Identidade, setorId: string, valor?: string): Promise<string[]> =>
+      buscarOpcoes(s, "lotados-do-setor", { q: "", pagina: 1, ...(valor !== undefined ? { valor } : {}), contexto: { __id: setorId } }).then((r) => r.opcoes.map((o) => o.valor));
+    const ente = await usuario("v37.ente", ["CONSULTAR_PROTOCOLO", "LOTAR_USUARIO_NO_SETOR"]);
+    expect(await lotados(ente, "set-edu")).toEqual(["v37.ana", "v37.bia"]);
+    expect(await lotados(ente, "set-sau")).toEqual(["v37.bia"]);
+    expect(await lotados(ente, "set-sau", "v37.ana")).toEqual([]);
+    // Quem lota só na Saúde não vê os lotados da Educação.
+    const saude = await usuario("v37.lota-saude", ["CONSULTAR_PROTOCOLO", "LOTAR_USUARIO_NO_SETOR"], "uo-02");
+    expect(await lotados(saude, "set-edu")).toEqual([]);
+    expect(await lotados(saude, "set-sau")).toEqual(["v37.bia"]);
+    expect(SETORES.acoes.find((a) => a.nome === "desfazer-lotacao")?.acaoDoCenso).toBe("LOTAR_USUARIO_NO_SETOR");
+  });
 });

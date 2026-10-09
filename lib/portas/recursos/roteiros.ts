@@ -301,6 +301,8 @@ export const ROTEIROS_DO_ALMOXARIFADO: DefinicaoDeRecurso = definirRecurso({
       placeholder: "Código ou nome da conta", ajuda: "Apenas contas analíticas das classes 1 a 4 (patrimoniais)." },
     { nome: "contaCreditoId", rotulo: "Conta de crédito", tipo: "referencia", catalogo: "contas-patrimoniais", obrigatorio: true, largura: 3,
       placeholder: "Código ou nome da conta", ajuda: "Conta de contrapartida, diferente da conta de débito." },
+    { nome: "substituir", rotulo: "Trocar as contas de um roteiro já cadastrado", tipo: "booleano", largura: 3,
+      ajuda: "A troca vale para os movimentos seguintes. Os lançamentos já feitos não mudam, e as contas anteriores ficam no histórico do roteiro." },
   ],
   colunas: [
     { nome: "evento", cabecalho: "Movimento", tipo: "texto" },
