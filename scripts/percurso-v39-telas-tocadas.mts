@@ -100,6 +100,20 @@ try {
     const t = await irPara(n, page, processo);
     conferir(semErro(t) && (await page.$("[data-resultado-da-licitacao]")) !== null, `processo ${processo} abre com itens, propostas e resultado`);
   }
+  // R2-021/022: a seção de importação no detalhe da LDO e do PPA (a prévia é só leitura; aqui só se abre).
+  for (const [lista, padrao, rotulo] of [["/planejamento/ldo", /\/planejamento\/ldo\/[^/?]+$/, "LDO"], ["/planejamento/ppa", /\/planejamento\/ppa\/[^/?]+$/, "PPA"]] as const) {
+    await irPara(n, page, lista);
+    const href = await page.$$eval(`a[href^='${lista}/']`, (as, fonte) => as.map((a) => a.getAttribute("href") ?? "").find((h) => new RegExp(fonte).test(h)) ?? "", padrao.source);
+    if (href === "") console.log(`   nenhuma ${rotulo} nesta base: a seção de importação não foi aberta`);
+    else {
+      const t = await irPara(n, page, href);
+      const secao = (await page.$(`[data-importacao-do-planejamento="${rotulo}"] form[data-acao="previa-da-importacao"]`)) !== null;
+      conferir(semErro(t) && secao && (rotulo === "LDO" || (await page.$("[data-revisao-do-ciclo]")) !== null), `${rotulo} ${href} abre com a seção de importação${rotulo === "PPA" ? " e a indicação da revisão por ato" : ""}`);
+    }
+  }
+  // R2-023/024: a tela das emendas (o comparativo aparece quando há proposta escolhida).
+  const em = await irPara(n, page, "/planejamento/emendas");
+  conferir(semErro(em), "a tela das emendas abre");
   const rot = await irPara(n, page, "/contabilidade/roteiros-patrimoniais");
   const temContrato = await page.$$eval('select[name="movimento"] option', (os) => os.some((o) => (o.getAttribute("value") ?? "").startsWith("CONTRATO|"))).catch(() => false);
   conferir(semErro(rot) && temContrato, "roteiros patrimoniais oferecem os movimentos do controle de contratos");

@@ -211,8 +211,24 @@ Commit da unidade: 05390eeb.
   - no plano anterior, escolher o seguinte como origem foi recusado, com a explicação da revisão por ato.
   - **Defeito achado na primeira corrida e corrigido:** a importação gravava, mas a mensagem de sucesso sumia. Depois da gravação a prévia passava a recusar (bloco preenchido), e o formulário que guardava a resposta era desmontado. Agora o formulário fica montado e só o botão some. Nessa primeira corrida, a LDO 2027 e o PPA 2030–2033 foram importados na base fictícia.
 
+Commit da unidade: 760a4414.
+
+### Publicação da frente 5 (10/10/2026)
+- **Backup:** `/var/backups/gestao-publica/esperanca-antes-v39r2-frente5-20261010T222807Z.dump`.
+- **Publicação:** `npm run publicar` (tipos aprovados, os dois recortes) enviou 7f1957d2; o Actions concluiu com sucesso e `/release` responde 7f1957d.
+- **Banco de produção:**
+  - as migrations 090000 e 100000 estão aplicadas;
+  - as três FKs da ligação estão em RESTRICT;
+  - o `gestao_app` tem INSERT nas tabelas da importação e não tem UPDATE.
+- **Telas em produção:** `percurso-v39-telas-tocadas`, sem falha. Acrescentou a LDO e o PPA com a seção de importação (o PPA com a indicação da revisão por ato) e a tela das emendas.
+- **Não operado em produção:**
+  - a importação: a base de produção não tem metas na LDO nem programas no PPA, e semeá-los só para o percurso seria fabricar movimento;
+  - o comparativo com valores: produção não tem proposta orçamentária.
+
+  Os dois foram operados na 3011.
+
 ### O próximo passo
-1. Frente 5 (R2-023 antes da R2-024; depois R2-021/022) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
+1. (feito: frente 5) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 
