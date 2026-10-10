@@ -172,6 +172,45 @@ Os percursos desta rodada gravaram nas bases de demonstração textos com "(ensa
   - Testes: `m02b-projeto-da-loa` 11/11 (mais 2: o corte do encaminhamento no caso N=2 e a negação de proposta de outro exercício e de linha negativa, com o motivo; e a prova de que "uma linha, duas fichas" não ocorre porque o banco recusa a segunda ficha de mesma classificação). `m02b-emendas` 12/12 (mais 2: aprovada antes da base não soma de novo; N=2 com uma ligada e uma sem ligação).
   - 2 mutações vermelhas: sem o corte, e sem a separação do "já no projeto".
 
+Commit da unidade: 05390eeb.
+
+### R2-021 e R2-022 (M02b) — a LDO importada para um rascunho e o PPA seguinte preparado a partir do anterior
+- **R2-021.** `modules/m02b-plurianual/importacao-da-ldo.ts`:
+  - nove blocos (prioridades, metas anuais, riscos fiscais, renúncias, alienações com a aplicação do produto, dívida consolidada, projeção do regime próprio, margem de expansão, obras previstas);
+  - mapa dos anos digitado pela pessoa ("2027=2027"); a linha de ano sem correspondência fica de fora, com o motivo;
+  - a prévia diz o que vai, o que fica de fora e por quê, e devolve uma versão (SHA-256). A confirmação recalcula e recusa se mudou;
+  - o destino tem de ser rascunho: sem envio, devolução, protocolo, sanção ou ato de alteração, e com os blocos escolhidos vazios. Nada do trâmite da origem é copiado;
+  - as metas vão pelo valor vigente (original mais os ajustes dos atos), e a prévia marca as alteradas. Os atos e as emendas da origem não se copiam;
+  - a confirmação cobra CADASTRAR_LDO e a ação de cada bloco (a mesma do cadastro manual dele), e trava a origem e o destino;
+  - o registro `ImportacaoDaLdo` guarda origem, blocos, mapa e versão; cada linha copiada vai para `ItemImportadoDaLdo`, com a de origem.
+- **R2-022.** `modules/m02b-plurianual/importacao-do-ppa.ts`:
+  - revisar o ciclo em vigor continua sendo o ato de alteração, que preserva a versão anterior. A importação recusa destino que não começa depois do fim da origem e diz isso; a tela do PPA também diz, com o link para as alterações;
+  - prepara o seguinte copiando programas (com indicadores e ações) e previsões de receita (pelo mapa dos anos, dentro do quadriênio do destino), pelos valores vigentes;
+  - a ação sem unidade executora, função e subfunção fica de fora, com o motivo. A ação copiada recebe código reduzido no plano novo;
+  - o registro `ImportacaoDoPpa` guarda a origem e a versão copiada (o último ato de alteração da origem, ou nulo para o plano como publicado); os itens guardam a linha de origem;
+  - cobra CADASTRAR_PPA e as ações dos blocos.
+- **Tela:** seção "Importar de outra LDO" no detalhe da LDO e "Preparar este plano a partir de um plano anterior" no detalhe do PPA (`app/(areas)/planejamento/_importacao/`). A prévia é por GET e só lê; a confirmação vai com a versão da prévia; as importações registradas aparecem na seção.
+- **Migration:** `20261110100000_v39r2_importacao_do_planejamento`, com quatro tabelas novas, append-only; aplicada na fictícia e na `ensaio_v39`. O papel de runtime tem SELECT e INSERT pelos privilégios padrão.
+- **Censo:** `importarLdo` (CADASTRAR_LDO) e `importarPpa` (CADASTRAR_PPA), nenhuma ação nova; as duas prévias como leitura. `m16-censo` 5/5, com 584 nomes.
+- **Testes:** `m02b-importacao.test.ts`, 5/5:
+  - LDO, N=2 prioridades e metas, com uma meta alterada por ato e uma aplicação de ano sem correspondência;
+  - LDO, negações com o motivo: prévia que mudou, bloco já preenchido, destino com trâmite e mapa com dois anos para o mesmo destino;
+  - LDO, negação de autorização: quem não tem CADASTRAR_METAS_FISCAIS_LDO não importa as metas, mas importa as prioridades;
+  - PPA: vigente do programa alterado, ação de fora, código reduzido, versão da origem;
+  - PPA, negações: plano sobreposto e ano fora do quadriênio.
+  - 3 mutações vermelhas: sem o vigente da meta, sem a guarda da versão da prévia, sem a guarda de sobreposição.
+- **Auditoria antes do commit, e o que se corrigiu:**
+  - os cadastros manuais dos blocos não travavam a peça, e um cadastro concorrente misturaria linhas no destino que a importação preenchia. Agora `exigirLdo`, `exigirPlano`, a obra prevista, o indicador e a ação do PPA travam a peça antes de ler (posto 42, antes do código reduzido, 44). Rodaram os consumidores: plurianual, obras, código reduzido, alteração, emendas do planejamento e o teste das travas;
+  - a prévia mostrava a mensagem do Zod crua: agora passa por `mensagemDoErro`;
+  - obra prevista copiada e linha levada a ano anterior ao exercício do destino ganham aviso na prévia. É aviso, não recusa: quais anos cada anexo traz é da lei, não deste serviço;
+  - testes novos: duas confirmações simultâneas (uma grava, a outra é recusada pelo bloco já preenchido, com o motivo), com mutação vermelha sem a trava; negação por bloco no PPA (sem CADASTRAR_RECEITA_PPA); N=2 no mapa dos anos do PPA. `m02b-importacao` 7/7; com os consumidores, 93/93 em 7 arquivos.
+- **Pela tela (3011, base fictícia):** `scripts/percurso-v39r2-importacao-do-planejamento.mts`, 9/9 na segunda corrida (LDO 2028 a partir da 2027; PPA 2034–2037 a partir do 2030–2033):
+  - LDO em rascunho cadastrada pela tela; a prévia mostrou a meta a copiar (mapa 2027=2028); a confirmação registrou a importação com a origem; a LDO nova seguiu sem protocolo, envio e sanção;
+  - a segunda prévia do mesmo bloco foi recusada, sem botão de confirmar;
+  - PPA cadastrado; a prévia disse a versão da origem e lembrou o ato de alteração; a preparação copiou 1 programa, 4 ações e 2 previsões, com 7 linhas de origem registradas;
+  - no plano anterior, escolher o seguinte como origem foi recusado, com a explicação da revisão por ato.
+  - **Defeito achado na primeira corrida e corrigido:** a importação gravava, mas a mensagem de sucesso sumia. Depois da gravação a prévia passava a recusar (bloco preenchido), e o formulário que guardava a resposta era desmontado. Agora o formulário fica montado e só o botão some. Nessa primeira corrida, a LDO 2027 e o PPA 2030–2033 foram importados na base fictícia.
+
 ### O próximo passo
 1. Frente 5 (R2-023 antes da R2-024; depois R2-021/022) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 

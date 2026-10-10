@@ -1339,6 +1339,8 @@ export type NomeDeServico =
   | "criarDividaConsolidadaLdo"
   | "criarProjecaoAtuarialRpps"
   | "criarMargemExpansaoLdo"
+  | "importarLdo"
+  | "importarPpa"
   // ── M21 — protocolo (ENT02) ──
   | "abrirProcesso"
   | "tramitar"
@@ -2214,6 +2216,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   criarRiscoFiscal: "CADASTRAR_RISCOS_FISCAIS_LDO",
   // V36 — TR 5.9.2.16: a obra prevista é parte da peça que o setor da LDO digita.
   criarObraPrevistaLdo: "CADASTRAR_LDO",
+  // V39-R2 (R2-021/022) — importar a LDO para um rascunho e preparar o PPA seguinte. A ação do serviço é a do cadastro da
+  // peça; dentro, cada bloco exige também a ação do seu cadastro manual. Nenhuma ação nova.
+  importarLdo: "CADASTRAR_LDO",
+  importarPpa: "CADASTRAR_PPA",
   // V36 — TR 5.9.1.1: as audiências públicas do planejamento (e as solicitações e a situação delas), sob a ação de
   // quem monta as peças do planejamento. Ato do ENTE.
   registrarAudienciaPublica: "CADASTRAR_PPA",
@@ -3763,6 +3769,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   quadroDoResultado: "leitura (V39-R2 — itens, propostas vigentes, resultado, adjudicação, homologação, atas e saldos do processo; não muta)",
   dadosDoProjeto: "leitura (V39-R2 — de onde vêm os valores da versão do projeto da LOA e a que linha da proposta cada um aponta; chamada DENTRO da captura; não muta)",
   comparativoDasEmendas: "leitura (V39-R2 — o efeito das emendas sobre a versão guardada do projeto; não muta)",
+  previaDaImportacaoDaLdo: "leitura (V39-R2 — o que a importação da LDO copiaria e o que fica de fora; chamada também DENTRO de importarLdo; não muta)",
+  previaDaImportacaoDoPpa: "leitura (V39-R2 — o que a preparação do PPA seguinte copiaria; chamada também DENTRO de importarPpa; não muta)",
   gravarContratoNaTransacao: "interna (V39-R2 — o corpo do cadastro de contrato, DENTRO da transação de quem cadastra: o contrato avulso, o do resultado e o da ata; a ação é a do serviço chamador)",
   naturezaDaBase: "leitura (V39 — a declaração vigente de que a base é oficial, de demonstração ou de ensaio; não muta)",
   declararNaturezaDaBase:

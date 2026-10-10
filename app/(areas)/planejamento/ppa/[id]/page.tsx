@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { pedidoDaImportacao, SecaoDeImportacao } from "../../_importacao/SecaoDeImportacao";
 import { FormsDoRecurso } from "../../../../../components/molde/FormsDoRecurso";
 import { DetalheDeRecurso } from "../../../../../components/molde/DetalheDeRecurso";
 import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/consulta";
@@ -23,14 +24,16 @@ export default async function Detalhe({
 }): Promise<React.ReactElement> {
   await exigirLeitura("CONSULTAR_PLANEJAMENTO");
   const { id } = await params;
-  const consulta = lerConsulta(PLANOS_PLURIANUAIS, await searchParams);
+  const brutos = await searchParams;
+  const consulta = lerConsulta(PLANOS_PLURIANUAIS, brutos);
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verPlano(id),
     opcoesDoPlano(),
-    acoesPermitidas(PLANOS_PLURIANUAIS.acoes.map((a) => a.acaoDoCenso)),
+    acoesPermitidas([...PLANOS_PLURIANUAIS.acoes.map((a) => a.acaoDoCenso), "CADASTRAR_PPA"]),
   ]);
   if (detalhe === null) notFound();
   return (
+    <div className="space-y-6">
     <DetalheDeRecurso
       definicao={PLANOS_PLURIANUAIS}
       id={id}
@@ -51,5 +54,7 @@ export default async function Detalhe({
         />
       }
     />
+      <SecaoDeImportacao destinoId={id} peca="PPA" pedido={pedidoDaImportacao(brutos)} podeImportar={permitidas.has("CADASTRAR_PPA")} rota={`/planejamento/ppa/${id}`} />
+    </div>
   );
 }

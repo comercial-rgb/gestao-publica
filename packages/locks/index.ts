@@ -428,7 +428,9 @@ export const ORDEM_DOS_LOCKS = {
    * cadastros simultâneos leriam o mesmo "último número de emenda"; duas sanções pela mesma lei leriam "nenhum ato" e
    * criariam dois. Cadastro, bloqueio e sanção travam a peça ANTES de ler.
    *
-   * ⚠️ ÚLTIMO POSTO, e por construção: o ato de alteração que a sanção grava não trava nada.
+   * ⚠️ O ato de alteração que a sanção grava não trava nada depois.
+   * V39-R2 — os cadastros dos blocos do PPA e da LDO e as importações também travam a peça (a importação conta os blocos
+   * do destino sob ela). Depois dela, só o código reduzido da ação do PPA (`PlanoPlurianual`, posto 44).
    */
   PecaDoPlanejamento: 42,
   /**

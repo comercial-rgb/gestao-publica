@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { pedidoDaImportacao, SecaoDeImportacao } from "../../_importacao/SecaoDeImportacao";
 import { FormsDoRecurso } from "../../../../../components/molde/FormsDoRecurso";
 import { DetalheDeRecurso } from "../../../../../components/molde/DetalheDeRecurso";
 import { lerConsulta, type ParametrosBrutos } from "../../../../../lib/molde/consulta";
@@ -23,14 +24,16 @@ export default async function Detalhe({
 }): Promise<React.ReactElement> {
   await exigirLeitura("CONSULTAR_PLANEJAMENTO");
   const { id } = await params;
-  const consulta = lerConsulta(LEIS_DE_DIRETRIZES, await searchParams);
+  const brutos = await searchParams;
+  const consulta = lerConsulta(LEIS_DE_DIRETRIZES, brutos);
   const [detalhe, opcoes, permitidas] = await Promise.all([
     verLdo(id),
     opcoesDaLdo(id),
-    acoesPermitidas(LEIS_DE_DIRETRIZES.acoes.map((a) => a.acaoDoCenso)),
+    acoesPermitidas([...LEIS_DE_DIRETRIZES.acoes.map((a) => a.acaoDoCenso), "CADASTRAR_LDO"]),
   ]);
   if (detalhe === null) notFound();
   return (
+    <div className="space-y-6">
     <DetalheDeRecurso
       definicao={LEIS_DE_DIRETRIZES}
       id={id}
@@ -51,5 +54,7 @@ export default async function Detalhe({
         />
       }
     />
+      <SecaoDeImportacao destinoId={id} peca="LDO" pedido={pedidoDaImportacao(brutos)} podeImportar={permitidas.has("CADASTRAR_LDO")} rota={`/planejamento/ldo/${id}`} />
+    </div>
   );
 }

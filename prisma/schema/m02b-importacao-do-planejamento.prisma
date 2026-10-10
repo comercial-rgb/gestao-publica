@@ -1,0 +1,94 @@
+// ============================================================================
+// V39-R2 (R2-021, R2-022) — A IMPORTAÇÃO DO PLANEJAMENTO: de uma LDO para a LDO de outro exercício, e de um PPA para o
+// plano do ciclo seguinte. O REGISTRO DA IMPORTAÇÃO é a origem de cada linha copiada.
+//
+// ⚠️ A CÓPIA VAI PARA UM RASCUNHO. A LDO de destino não tem trâmite (envio, devolução, protocolo, sanção); o PPA de
+// destino não tem ato de alteração. Nada do trâmite da origem é copiado — o destino tem o seu, quando houver.
+//
+// ⚠️ REVISAR O CICLO VIGENTE NÃO É IMPORTAR. A revisão do PPA em vigor é o ato de alteração (V18/C13), que ajusta a
+// linha por item com sinal e preserva a versão anterior; a importação só prepara o plano SEGUINTE (quadriênio que
+// começa depois do fim da origem).
+//
+// ⚠️ SEM `UPDATE`: os dois registros e os seus itens são append-only (o runtime só insere).
+// ============================================================================
+
+/// UMA IMPORTAÇÃO DE LDO: de onde, para onde, quais blocos, e como os anos foram mapeados.
+model ImportacaoDaLdo {
+  id String @id @default(cuid())
+
+  origemId  String
+  origem    LeiDiretrizesOrcamentarias @relation("ImportacoesDaOrigem", fields: [origemId], references: [id], onDelete: Restrict)
+  destinoId String
+  destino   LeiDiretrizesOrcamentarias @relation("ImportacoesDoDestino", fields: [destinoId], references: [id], onDelete: Restrict)
+
+  /// Os blocos escolhidos (PRIORIDADES, METAS_ANUAIS, ...), como a prévia os apresentou.
+  blocos String[]
+  /// O mapa dos anos: [{ de, para }]. Linha de ano sem correspondência não foi copiada.
+  anos   Json
+  /// O resumo da prévia confirmada (SHA-256): a confirmação recusa prévia que mudou.
+  versaoDaPrevia String @db.VarChar(64)
+
+  itens ItemImportadoDaLdo[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([origemId])
+  @@index([destinoId])
+}
+
+/// A LINHA COPIADA: o bloco, a linha de origem e a linha criada no destino (ids das tabelas do bloco).
+model ItemImportadoDaLdo {
+  id String @id @default(cuid())
+
+  importacaoId String
+  importacao   ImportacaoDaLdo @relation(fields: [importacaoId], references: [id], onDelete: Restrict)
+
+  bloco     String @db.VarChar(30)
+  origemId  String
+  destinoId String
+
+  @@unique([importacaoId, bloco, origemId])
+  @@index([destinoId])
+}
+
+/// UMA PREPARAÇÃO DO PPA SEGUINTE a partir de um plano anterior.
+model ImportacaoDoPpa {
+  id String @id @default(cuid())
+
+  origemId  String
+  origem    PlanoPlurianual @relation("PreparacoesDaOrigem", fields: [origemId], references: [id], onDelete: Restrict)
+  destinoId String
+  destino   PlanoPlurianual @relation("PreparacoesDoDestino", fields: [destinoId], references: [id], onDelete: Restrict)
+
+  /// A VERSÃO DA ORIGEM que foi copiada: o último ato de alteração dela no momento da cópia (nulo: o plano original,
+  /// sem alteração). Os valores copiados são os vigentes até esse ato.
+  versaoDaOrigemAtoId String?
+  versaoDaOrigemAto   AtoDeAlteracaoDoPlanejamento? @relation("PreparacoesNaVersao", fields: [versaoDaOrigemAtoId], references: [id], onDelete: Restrict)
+
+  blocos String[]
+  anos   Json
+  versaoDaPrevia String @db.VarChar(64)
+
+  itens ItemImportadoDoPpa[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([origemId])
+  @@index([destinoId])
+}
+
+model ItemImportadoDoPpa {
+  id String @id @default(cuid())
+
+  importacaoId String
+  importacao   ImportacaoDoPpa @relation(fields: [importacaoId], references: [id], onDelete: Restrict)
+
+  bloco     String @db.VarChar(30)
+  origemId  String
+  destinoId String
+
+  @@unique([importacaoId, bloco, origemId])
+  @@index([destinoId])
+}

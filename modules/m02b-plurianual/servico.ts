@@ -1,4 +1,5 @@
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { travar } from "../../packages/locks/index.js";
 import { atribuirCodigoReduzidoNaTransacao } from "./codigo-reduzido.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -76,11 +77,16 @@ type Tx = Omit<
   "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
 >;
 
-/** O plano existe? Devolve o quadriênio, que vários serviços precisam conferir. */
+/**
+ * O plano existe? Devolve o quadriênio, que vários serviços precisam conferir.
+ * V39-R2 — trava a peça antes de ler: a importação (`importacao-do-ppa.ts`) conta os blocos do destino sob a mesma
+ * trava, e um cadastro manual concorrente misturaria linhas no plano que ela está preenchendo.
+ */
 async function exigirPlano(
   tx: Tx,
   planoId: string
 ): Promise<{ readonly anoInicio: number; readonly anoFim: number }> {
+  await travar(tx, "PecaDoPlanejamento", [planoId]);
   const p = await tx.planoPlurianual.findUnique({
     where: { id: planoId },
     select: { anoInicio: true, anoFim: true },
@@ -89,8 +95,12 @@ async function exigirPlano(
   return p;
 }
 
-/** A LDO existe? A mensagem é DESTE serviço — o resolvedor de escopo não a sequestra. */
+/**
+ * A LDO existe? A mensagem é DESTE serviço — o resolvedor de escopo não a sequestra.
+ * V39-R2 — trava a peça antes de ler, pelo mesmo motivo do `exigirPlano` (a importação da LDO).
+ */
 async function exigirLdo(tx: Tx, ldoId: string): Promise<void> {
+  await travar(tx, "PecaDoPlanejamento", [ldoId]);
   const l = await tx.leiDiretrizesOrcamentarias.findUnique({
     where: { id: ldoId },
     select: { id: true },
@@ -274,8 +284,9 @@ export async function criarIndicadorPrograma(
 
     const pp = await tx.programaPpa.findUnique({
       where: { id: dados.programaPpaId },
-      select: { id: true },
+      select: { id: true, planoId: true },
     });
+    if (pp !== null) await travar(tx, "PecaDoPlanejamento", [pp.planoId]);
     if (pp === null) {
       throw new Error(`Programa do PPA ${dados.programaPpaId} não existe.`);
     }
@@ -313,6 +324,8 @@ export async function criarAcaoPpa(
     if (pp === null) {
       throw new Error(`Programa do PPA ${dados.programaPpaId} não existe.`);
     }
+    // V39-R2 — a peça antes do código reduzido (posto 42 antes do 44), como na importação.
+    await travar(tx, "PecaDoPlanejamento", [pp.planoId]);
 
     const acao = await tx.acao.findUnique({
       where: { id: dados.acaoId },

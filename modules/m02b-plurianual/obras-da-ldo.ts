@@ -3,6 +3,7 @@ import { emProsa, zMoney } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { travar } from "../../packages/locks/index.js";
 
 /**
  * V36 — AS OBRAS PREVISTAS NA LDO (TR 5.9.2.16). LRF art. 45: a LOA só inclui projeto novo depois de atendidos os em
@@ -42,6 +43,8 @@ export async function criarObraPrevistaLdo(prisma: PrismaClient, input: z.input<
   const d = zObraPrevista.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.criarObraPrevistaLdo, "ENTE");
+    // V39-R2 — a peça travada, como nos demais blocos da LDO (a importação conta o bloco sob a mesma trava).
+    await travar(tx, "PecaDoPlanejamento", [d.ldoId]);
     const [ldo, orgao, obra] = await Promise.all([
       tx.leiDiretrizesOrcamentarias.findUnique({ where: { id: d.ldoId }, select: { id: true } }),
       tx.orgao.findUnique({ where: { id: d.orgaoId }, select: { id: true } }),
