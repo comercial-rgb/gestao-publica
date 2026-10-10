@@ -29,7 +29,7 @@ const hoje = diaCivil(new Date());
 const CONTA = process.env["PERCURSO_CONTA"] ?? "FIC-PM-500";
 // O titular da conta que paga é o titular do Tesouro da decisão (o mesmo perímetro): lido da declaração dele, não fixado.
 const TESOURO = (await prisma.declaracaoDeTitularDaConta.findFirst({ where: { contaBancaria: { codigo: CONTA } }, orderBy: { versao: "desc" }, select: { entidadeId: true } }))?.entidadeId ?? "";
-const JUST = "Valor informado no ensaio V39-R2 conforme a nota do prestador pessoa física";
+const JUST = "Valor informado no ensaio conforme a nota do prestador pessoa física";
 
 // a liquidação: a primeira não paga cujo credor é pessoa física
 const alvo = await prisma.liquidacao.findFirst({
@@ -69,7 +69,7 @@ try {
       { sel: 'input[name="codigo"]', valor: "IRRF" },
       { sel: 'input[name="descricao"]', valor: "Imposto de renda retido na fonte" },
       { sel: 'select[name="contaPassivoCodigo"]', valor: "2.1.8.8.1.01.04", tipo: "select" },
-      { sel: '[name="fundamento"]', valor: "IR retido pelo município nos pagamentos que faz (CF, art. 158, I), ensaio V39-R2" },
+      { sel: '[name="fundamento"]', valor: "IR retido pelo município nos pagamentos que faz (CF, art. 158, I), ensaio" },
     ]);
     conferir(r.tipo === "ok", `consignação de IR cadastrada pela tela na conta 2.1.8.8.1.01.04 (${r.texto.slice(0, 60)})`);
   } else conferir(true, "consignação de IR já cadastrada");
@@ -87,7 +87,7 @@ try {
       { sel: 'select[name="contaVpaCodigo"]', valor: "4.1.1.2.1.03.01", tipo: "select" },
       { sel: 'select[name="entidadeTitularId"]', valor: TESOURO, tipo: "select" },
       { sel: 'input[name="vigenteDesde"]', valor: hoje, tipo: "data" },
-      { sel: 'input[name="fundamento"]', valor: "CF, art. 158, I: o IR retido pelo município é receita dele; natureza do ementário STN 2026 (trabalho), ensaio V39-R2" },
+      { sel: 'input[name="fundamento"]', valor: "CF, art. 158, I: o IR retido pelo município é receita dele; natureza do ementário STN 2026 (trabalho), ensaio" },
     ], "classificar-retencao-propria");
     const c = await prisma.classificacaoDaRetencaoPropria.findFirst({ where: { fato: "IRRF_PESSOA_FISICA" }, orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }], select: { criadoPor: true, entidadeTitularId: true } });
     conferir(r.tipo === "ok" && c?.criadoPor === usuario && c.entidadeTitularId === TESOURO, `decisão sobre o IR de pessoa física registrada pela tela (${r.texto.slice(0, 80)})`);
@@ -123,7 +123,7 @@ try {
   await page.select(`${F} select[name="contaBancaria"]`, contaBanco);
   const escolhida = await page.$eval(`${F} select[name="contaBancaria"]`, (s) => ((s as HTMLSelectElement).selectedOptions[0]?.textContent ?? ""));
   if (!escolhida.includes(CONTA)) throw new Error(`A conta escolhida não é a ${CONTA}: ${escolhida}`);
-  await digitar(`${F} input[name="historico"]`, "Pagamento a prestador pessoa física com IR informado (ensaio V39-R2)");
+  await digitar(`${F} input[name="historico"]`, "Pagamento a prestador pessoa física com IR informado (ensaio)");
   await page.$eval(`${F} input[name="retencaoCalculada"]`, (e) => { if (!(e as HTMLInputElement).checked) (e as HTMLInputElement).click(); });
   await page.waitForSelector(`${F} [data-valor-informado]`);
   await page.$eval(`${F} [data-valor-informado]`, (d) => { (d as HTMLDetailsElement).open = true; });
@@ -145,7 +145,7 @@ try {
   if (foraDaOrdem !== null) {
     await page.select(`${F} select[name="hipotese"]`, "V_ATIVIDADE_FINALISTICA");
     await digitar(`${F} input[name="autorizadoPor"]`, "Secretário de Finanças (ensaio)");
-    await digitar(`${F} textarea[name="justificativa"]`, "Serviço essencial prestado por pessoa física, ensaio V39-R2 na base de demonstração");
+    await digitar(`${F} textarea[name="justificativa"]`, "Serviço essencial prestado por pessoa física, ensaio na base de demonstração");
   }
   await page.$eval(`${F} button[type="submit"]`, (b) => (b as HTMLButtonElement).click());
   await page.waitForFunction((f) => {
@@ -168,7 +168,7 @@ try {
   conferir(fatos.some((f) => f.fato === "IRRF_PESSOA_FISICA" && f.valor.toFixed(2) === ir) && !fatos.some((f) => f.fato === "IRRF_FORNECEDOR_PJ"), "o IR retido entrou como IR de pessoa física, e nada como IR de pessoa jurídica");
   // A memória do tributo retido como receita própria fica no elo da retenção própria (V26), não em CalculoDaRetencao.
   const memoria = pagamento === null ? null : await prisma.retencaoPropriaDoPagamento.findFirst({ where: { pagamentoId: pagamento.id, fato: "IRRF_PESSOA_FISICA" }, select: { base: true, valor: true, fundamento: true, criadoPor: true } });
-  conferir(memoria !== null && memoria.base === null && memoria.valor.toFixed(2) === ir && (memoria.fundamento ?? "").includes("V39-R2") && memoria.criadoPor === usuario, `a memória do IR (no elo da retenção própria) guarda o valor informado sem base nem alíquota, a justificativa e o autor (${memoria?.criadoPor ?? "?"})`);
+  conferir(memoria !== null && memoria.base === null && memoria.valor.toFixed(2) === ir && (memoria.fundamento ?? "").includes(JUST) && memoria.criadoPor === usuario, `a memória do IR (no elo da retenção própria) guarda o valor informado sem base nem alíquota, a justificativa e o autor (${memoria?.criadoPor ?? "?"})`);
   await irPara(n, page, "/financeiro/retencoes-proprias");
   const tela = await page.evaluate(() => document.body.innerText);
   conferir(/pessoa f[ií]sica/i.test(tela), "a tela de retenções próprias mostra o IR retido de fornecedor pessoa física");

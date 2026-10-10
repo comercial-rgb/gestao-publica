@@ -79,12 +79,66 @@ As migrations 050000 e 060000, com os dois SQL, foram aplicadas em `gestao_publi
   - Foram declarados os 4 roteiros CONTRATO com contas do plano carregado. O contrato fictício CT-R2-141320 teve acréscimo, supressão e estorno, terminando em 11.750 a executar, sem divergência.
 - **Não operado em produção:** o pagamento ao fornecedor PF. Em produção ele lançaria movimento na FIC-PM-500, cuja conciliação de outubro está aberta. Foi operado na 3011.
 
+### Frente 4 (R2-014 a 020) — do processo licitatório ao contrato (M11)
+- **Módulo:** `modules/m11-licitacoes/resultado-da-licitacao.ts`, com o schema `m11-resultado-da-licitacao.prisma`.
+- **Itens e propostas:**
+  - itens do processo, avulsos ou em lote;
+  - participantes, que são a pessoa do cadastro único, pelo CPF/CNPJ;
+  - propostas por item ou por lote inteiro, versionadas; da versão 2 em diante, com motivo; recusadas depois do julgamento.
+- **Resultado:**
+  - é um ato com o critério de julgamento da Lei 14.133/2021, art. 33;
+  - por item, define vencedor, fracassado ou deserto. O sistema não escolhe o vencedor;
+  - quando há proposta mais vantajosa pelo critério, o ato exige a justificativa. No lote, compara-se o TOTAL do lote;
+  - o valor final não passa do proposto (menor preço);
+  - a correção substitui a linha anterior, que fica no histórico.
+- **Adjudicação e homologação:**
+  - a adjudicação é um ato com autoridade, data, documento e abrangência;
+  - a homologação também é por ato com abrangência. A correção é um ato novo que aponta o corrigido, que continua visível;
+  - o primeiro ato registra a homologação do processo;
+  - a correção não tira item contratado, nem leva a homologação para depois de contrato ou ata já firmados.
+- **Segregação:** quem julgou não adjudica nem homologa (recusa por pessoa, além da recusa por ação). Ações novas `REGISTRAR_RESULTADO_DA_LICITACAO` e `ADJUDICAR_LICITACAO`, com a atualização de permissões v45.
+- **Contrato do resultado:**
+  - contratado, itens, quantidades e preços vêm do resultado homologado;
+  - a quantidade cabe no que resta do item;
+  - o valor do contrato é a soma de quantidade × unitário por item, meio para o par;
+  - pedido com o mesmo item repetido é recusado;
+  - processo com itens não aceita mais o cadastro avulso de contrato.
+- **Ata de registro de preços:**
+  - fornecedores, itens, vigência e quantidade registrada;
+  - contrato pela ata dentro da vigência e com a ata ainda vigente hoje;
+  - item em ata se contrata só pela ata, e a ata não registra item já contratado direto;
+  - saldo da ata, saldo do contrato e saldo da dotação ficam separados na tela e no teste.
+- **Trava:** `ProcessoLicitatorio` (posto 45) em todo ato que lê o que vale e grava.
+- **Tela:** seção "Itens, propostas e resultado" na página do processo. Cada formulário só aparece para quem pode praticar o ato. As propostas aparecem pelo valor, só para leitura.
+- **Migrations:** `20261110070000` (os valores do enum de ações, em migration própria) e `20261110080000` (tabelas e CHECKs), mais `prisma/sql/ck_resultado_da_licitacao.sql`. Aplicadas na fictícia e na `ensaio_v39`; a v45 foi aplicada na fictícia.
+- **Testes:** `test/runtime/contrato-runtime-resultado-da-licitacao.test.ts`, 6/6 pelo `gestao_app`.
+  - Duas pessoas, mais uma com todas as ações para provar a segregação.
+  - Corrida de dois contratos sobre o mesmo saldo e arredondamento com dois itens (360,00 e não 360,02).
+  - Recusas: ação faltando (julgar, adjudicar, homologar, contratar); item adjudicado rejulgado; proposta tardia; ata vencida; correção para depois do contrato; contrato avulso; ata de item contratado.
+  - 16 mutações vermelhas:
+    - as 6 da primeira versão: trava, justificativa, lote pela metade, contrato direto de item em ata, correção que tira item contratado, saldo da ata;
+    - mais: ids repetidos, arredondamento, segregação na adjudicação e na homologação, correção depois do contrato, ata de item contratado, ata vencida, lote item a item, contrato avulso.
+- **Pela tela (3011):** `scripts/percurso-v39r2-resultado-da-licitacao.mts`, 22/22, com o agente de contratação fictício (`agente.contratacao@ficticio.local`, criado por `scripts/demonstracao/semear-agente-de-contratacao.mts` e já no semeador) e o administrador como autoridade.
+- **Auditoria de invariantes:** 2 graves (item repetido estourando o saldo; arredondamento meio para cima), 5 médios (correção para depois do contrato; homologação do processo velha; contrato avulso escapando; mesma pessoa julgando e homologando; ata vencida) e 2 baixos (ata de item contratado; itens sem a ação de cadastrar item, agora declarado no censo). Todos tratados. Ficam observações nomeadas:
+  - `QUANTIDADE-NAO-VOLTA-NA-RESCISAO`;
+  - limite do valor final nos critérios de técnica;
+  - a ordem das propostas na tela é sempre crescente.
+
+### R2-029 (V39-070) — lote vencido não sai
+- Feito em `exigirLoteComSaldo` (`modules/m10-patrimonial/estoque-fisico.ts`), com a mesma régua do relatório de validade: o lote que vence hoje ainda sai, o vencido ontem não.
+- Teste N=2 (lote vencido e lote válido do mesmo material), na borda das 23h do dia da validade. Passa também sob `TZ=Pacific/Kiritimati` e `TZ=Pacific/Pago_Pago`.
+- 2 mutações vermelhas: sem a guarda, e barrando o próprio dia.
+- Pendência nomeada: `DESCARTE-DE-LOTE-VENCIDO`. O descarte do vencido precisa de caminho próprio, porque a saída por consumo agora é recusada.
+
+### Fontes (0907fe2f)
+`docs/oficial/V39-R2-FONTES-REINF-SIOPS-BNAFAR.md`: o Reinf 2.1.2.1 com a NT 03/2023, o SIOPS 2016 e a Portaria GM/MS 5.713/2024, com SHA256. Ficam como pendências nomeadas os leiautes 2.1.2b do Reinf, a estrutura vigente do SIOPS e o manual de integração do SI-BNAFAR.
+
+### Nota sobre dado de demonstração
+Os percursos desta rodada gravaram nas bases de demonstração textos com "(ensaio V39-R2)", inclusive em produção, no CT-R2-141320. Isso não se reescreve (append-only). Daqui em diante, os percursos digitam só "(ensaio)".
+
 ### O próximo passo
-1. Frente 4 (R2-014 a 020): o rascunho do schema e do domínio está FORA da árvore, no scratchpad da sessão (`frente4/`). Ainda faltam:
-   - as back-relations;
-   - as ações `REGISTRAR_RESULTADO_DA_LICITACAO` e `ADJUDICAR_LICITACAO`;
-   - a trava `ProcessoLicitatorio`;
-   - `gravarContratoNaTransacao` em `contratos.ts`.
+1. Commit e publicação da frente 4 com a R2-029.
+2. Frente 5 (R2-023 antes da R2-024; depois R2-021/022) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 

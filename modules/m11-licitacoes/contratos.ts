@@ -308,7 +308,25 @@ export async function cadastrarContrato(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.cadastrarContrato, "ENTE");
+    // V39-R2 (R2-019) — processo com ITENS tem resultado por item: o contrato sai dele (vencedor, preço e quantidade
+    // conferidos), não do cadastro avulso, que não confere nada disso e não consome o saldo dos itens.
+    if ((await tx.itemDoProcesso.count({ where: { processoId: dados.processoId } })) > 0) {
+      throw new Error("PROCESSO-COM-ITENS: este processo tem itens e resultado por item; cadastre o contrato a partir do resultado (ou da ata), na página do processo. Nada foi gravado.");
+    }
+    return gravarContratoNaTransacao(tx, dados);
+  });
+}
 
+/**
+ * V39-R2 (R2-019/020) — O CORPO DO CADASTRO DE CONTRATO, dentro da transação de quem cadastra: o contrato avulso (acima),
+ * o originado do resultado e o da ata (`resultado-da-licitacao.ts`). As conferências (homologação, vigência, teto da
+ * dispensa) e o REGISTRO no controle são as MESMAS nos três caminhos — não há segunda cópia delas.
+ */
+export async function gravarContratoNaTransacao(
+  tx: Tx,
+  dados: ReturnType<typeof zCadastrarContratoInput.parse>
+): Promise<{ readonly contratoId: string }> {
+  {
     // (a) O PROCESSO EXISTE E ESTÁ HOMOLOGADO — derivado do FATO (a data), nunca
     //     de flag. Contratar sobre processo não homologado é assinar antes de
     //     poder assinar.
@@ -388,7 +406,7 @@ export async function cadastrarContrato(
     // da competência teria o cadastro inteiro recusado pelo controle.
     await lancarControleDoContrato(tx, { contratoId: criado.id, evento: "REGISTRO", origemId: criado.id, valor: toMoney(dados.valorInicial.toFixed(2)), dia: diaCivil(new Date()), criadoPor: dados.criadoPor });
     return { contratoId: criado.id };
-  });
+  }
 }
 
 /**

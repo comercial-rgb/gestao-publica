@@ -446,6 +446,14 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO: a atribuição não trava mais nada.
    */
   PlanoPlurianual: 44,
+  /**
+   * V39-R2 — O PROCESSO LICITATÓRIO (M11, `resultado-da-licitacao.ts`): propostas, resultado, adjudicação, homologação
+   * por ato, contrato do resultado e ata leem "o que vale" no processo (a proposta vigente, o resultado não substituído,
+   * o quanto já se contratou) e gravam em cima. Dois atos concorrentes no mesmo processo se enfileiram aqui.
+   *
+   * ⚠️ ÚLTIMO POSTO: o cadastro do contrato que vem depois (e o lançamento de controle dele) não trava nada.
+   */
+  ProcessoLicitatorio: 45,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

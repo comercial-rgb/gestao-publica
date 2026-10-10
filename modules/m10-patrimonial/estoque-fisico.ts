@@ -8,6 +8,8 @@ import {
   competenciaCivil,
   diaCivil,
   meioDiaCivil,
+  compararPorDiaCivil,
+  diaCivilBr,
   somarDiasCivis,
 } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -894,9 +896,18 @@ async function exigirLoteComSaldo(
 ): Promise<void> {
   const lote = await tx.loteDeMaterial.findUnique({
     where: { id: p.loteId },
-    select: { id: true, identificacao: true, materialId: true, depositoId: true },
+    select: { id: true, identificacao: true, materialId: true, depositoId: true, validade: true },
   });
   if (lote === null) throw new Error(`Lote ${p.loteId} não existe.`);
+  // V39-R2 (R2-029, V39-070) — LOTE VENCIDO NÃO SAI. A régua é a do relatório de validade (`validadeDoEstoque`): o lote
+  // que vence HOJE ainda sai (vence no fim do dia); o vencido ONTEM, não. No caso de uso: vale por tela, API e worker.
+  // Lote sem validade registrada continua saindo (a validade é dado do lote, não do código).
+  if (lote.validade !== null && compararPorDiaCivil(lote.validade, meioDiaCivil(p.dia)) < 0) {
+    throw new Error(
+      `LOTE VENCIDO: o lote ${lote.identificacao} venceu em ${diaCivilBr(lote.validade)} e a saída é de ${diaCivilBr(meioDiaCivil(p.dia))}. ` +
+        `Medicamento ou material vencido não se entrega. Nada foi gravado.`
+    );
+  }
   if (lote.materialId !== p.materialId || lote.depositoId !== p.depositoId) {
     throw new Error(
       `O lote ${lote.identificacao} é de outro material ou de outro depósito. Movimentar ` +

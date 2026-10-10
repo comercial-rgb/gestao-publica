@@ -96,6 +96,8 @@ model Pessoa {
   @@index([tipo])
   /// back-relation ENT05 (M10 fisico) — VIRTUAL.
   depositosSobResponsabilidade Deposito[] @relation("ResponsavelDeDeposito")
+  /// V39-R2 (R2-014) — a pessoa como participante de processo licitatório. VIRTUAL.
+  participacoesEmProcesso ParticipanteDoProcesso[] @relation("ParticipacoesEmProcesso")
   /// back-relations ENT05 (M10 gestão do bem) — VIRTUAIS.
   bensSobResponsabilidade MovimentoDeGestaoDoBem[]      @relation("ResponsavelPeloBem")
   /// back-relations V27 (M36 frota) — VIRTUAIS: dono e locador de veículo e de máquina.

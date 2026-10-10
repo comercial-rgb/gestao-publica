@@ -686,6 +686,33 @@ describe("t7 · as consultas que as telas pedem", () => {
     ).rejects.toThrow(/a saída não informou de qual/);
   });
 
+  it("V39-R2 (R2-029): lote VENCIDO não sai — N=2 do mesmo material; o lote que vence no dia ainda sai, às 23h do dia", async () => {
+    const classe = await prisma.classeDeMaterial.findFirstOrThrow({ select: { id: true } });
+    const { grupoId } = await cadastrarGrupoDeMaterial(prisma, { codigo: "09", descricao: "Medicamentos V", criadoPor: POR });
+    const { materialId: remedioId } = await cadastrarMaterial(prisma, {
+      codigo: "M019", descricaoSucinta: "Amoxicilina", descricaoDetalhada: "Amoxicilina 500mg",
+      grupoId, classificacao: "CONSUMO", categoria: "PERECIVEL",
+      classeDeMaterialId: classe.id, controlaLote: true,
+      unidades: [{ unidadeDeMedidaId: unidadeId, fatorParaEstoque: "1", ehDeEstoque: true }],
+      criadoPor: POR,
+    });
+    // vence em 10/03 (data civil) e em 01/09
+    await entradaDe(remedioId, "10", "2.00", "2026-03-01", { loteIdentificacao: "L-VENCE-1003", loteValidade: new Date("2026-03-10T12:00:00.000Z") });
+    await entradaDe(remedioId, "10", "2.00", "2026-03-01", { loteIdentificacao: "L-VALIDO", loteValidade: new Date("2026-09-01T12:00:00.000Z") });
+    const lotes = await prisma.loteDeMaterial.findMany({ where: { materialId: remedioId }, select: { id: true, identificacao: true } });
+    const id = (ident: string): string => lotes.find((l) => l.identificacao === ident)!.id;
+    const sair = (loteId: string, instante: string) =>
+      registrarSaidaFisica(prisma, { materialId: remedioId, depositoId, quantidade: "1", loteId, dataMovimento: new Date(instante), motivo: "dispensação ao paciente", criadoPor: POR });
+    // no dia da validade, às 23h do horário de Brasília (02h UTC do dia seguinte): ainda sai
+    await expect(sair(id("L-VENCE-1003"), "2026-03-11T02:00:00.000Z")).resolves.toBeDefined();
+    // no dia seguinte: recusado pelo motivo, e nada é gravado
+    const antes = await prisma.movimentoFisicoDeEstoque.count({ where: { loteId: id("L-VENCE-1003") } });
+    await expect(sair(id("L-VENCE-1003"), "2026-03-11T15:00:00.000Z")).rejects.toThrow(/LOTE VENCIDO: o lote L-VENCE-1003 venceu em 10\/03\/2026 e a saída é de 11\/03\/2026/);
+    expect(await prisma.movimentoFisicoDeEstoque.count({ where: { loteId: id("L-VENCE-1003") } })).toBe(antes);
+    // o outro lote do MESMO material, na mesma data, sai
+    await expect(sair(id("L-VALIDO"), "2026-03-11T15:00:00.000Z")).resolves.toBeDefined();
+  });
+
   it("⚠️ RECUSA sair por lote de OUTRO depósito", async () => {
     const classe = await prisma.classeDeMaterial.findFirstOrThrow({ select: { id: true } });
     const { grupoId } = await cadastrarGrupoDeMaterial(prisma, {

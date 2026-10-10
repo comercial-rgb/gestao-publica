@@ -105,6 +105,7 @@ const LIQUIDANTE = "liquidante@ficticio.local";
 const APROVADOR = "aprovador@ficticio.local";
 const TESOUREIRO = "tesoureiro@ficticio.local";
 const ORDENADOR = "ordenador@ficticio.local";
+const AGENTE_DE_CONTRATACAO = "agente.contratacao@ficticio.local";
 
 /** Fichas da Lei 613/2025, Secretaria de Administração (02004), fonte 500. */
 const FICHA_VENCIMENTOS = 10852; // 319011
@@ -210,6 +211,8 @@ const PAPEIS: readonly { readonly email: string; readonly nome: string; readonly
       "CONSULTAR_FINANCEIRO", "CONSULTAR_RECEITA", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
   },
   { email: ORDENADOR, nome: "Ordenador da despesa (fictício)", perfil: "ORDENAÇÃO DA DESPESA — FICTÍCIO", acoes: ["AUTORIZAR_ORDEM_PAGAMENTO", "CONSULTAR_DESPESA", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"] },
+  // V39-R2 — a licitação: quem conduz e julga não é quem adjudica e homologa (segregação do domínio, resultado-da-licitacao.ts).
+  { email: AGENTE_DE_CONTRATACAO, nome: "Agente de contratação (fictício)", perfil: "AGENTE DE CONTRATAÇÃO — FICTÍCIO", acoes: ["CADASTRAR_PROCESSO", "REGISTRAR_RESULTADO_DA_LICITACAO", "CADASTRAR_CONTRATO", "CONSULTAR_LICITACOES", "CONSULTAR_CADASTROS"] },
 ];
 
 async function semearUsuarios(prisma: PrismaClient): Promise<void> {

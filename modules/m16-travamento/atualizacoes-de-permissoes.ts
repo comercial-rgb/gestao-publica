@@ -704,6 +704,29 @@ export function derivarEmendasAoOrcamento(
   return saida;
 }
 
+/**
+ * V39-R2 (R2-016/017) — o JULGAMENTO e a ADJUDICAÇÃO da licitação, atos novos com ação própria.
+ *
+ * ⚠️ CADA UM A QUEM JÁ PRATICAVA O ATO VIZINHO, NO GLOBAL: julgar (registrar o resultado por item) vai a quem já
+ * cadastra o processo (o agente de contratação, que conduz a sessão); adjudicar vai a quem já homologa (a autoridade).
+ * Nenhum poder novo sobre valor ou contrato: o contrato continua de quem cadastra contrato.
+ */
+export function derivarResultadoDaLicitacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  const pares = [["CADASTRAR_PROCESSO", "REGISTRAR_RESULTADO_DA_LICITACAO"], ["HOMOLOGAR_PROCESSO", "ADJUDICAR_LICITACAO"]] as const;
+  for (const perfil of perfis) {
+    for (const [base, nova] of pares) {
+      if (!perfil.permissoes.some((p) => p.acao === base && p.unidadeOrcId === null)) continue;
+      if (perfil.permissoes.some((p) => p.acao === nova && p.unidadeOrcId === null)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: nova, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
 export function derivarCadastroDeContaBancaria(
   perfis: readonly PerfilComPermissoes[],
   _areaDaAcao: AreaDaAcao
@@ -1899,6 +1922,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "(total, rejeicao ou parcial), que leva os itens aprovados a proposta como ajuste. Vem com CADASTRAR_EMENDA_AO_ORCAMENTO " +
       "e SANCIONAR_EMENDA_AO_ORCAMENTO para quem ja tem CADASTRAR_LOA no global, que ja ajustava as linhas da proposta.",
     derivar: derivarEmendasAoOrcamento,
+  },
+  {
+    versao: 45,
+    nome: "resultado-da-licitacao",
+    descricao:
+      "O processo licitatorio passou a ter itens, participantes, propostas, o ato do resultado por item, a adjudicacao, " +
+      "a homologacao por ato e o contrato e a ata originados do resultado (V39-R2). Vem com REGISTRAR_RESULTADO_DA_LICITACAO " +
+      "para quem ja cadastra processo no global e ADJUDICAR_LICITACAO para quem ja homologa no global.",
+    derivar: derivarResultadoDaLicitacao,
   },
 ];
 

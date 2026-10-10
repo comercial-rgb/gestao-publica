@@ -30,7 +30,7 @@ try {
   await page.waitForSelector(F);
   await page.$eval(F, (f) => { const d = f.closest("details"); if (d !== null) (d as HTMLDetailsElement).open = true; f.scrollIntoView({ block: "center" }); });
   await page.$eval(`${F} input[name="motivo"]`, (e) => (e as HTMLInputElement).focus());
-  await page.keyboard.type("Pagamento gravado por engano na conta da Câmara; a conta segue sem movimento nesta rodada (V39-R2)", { delay: 2 });
+  await page.keyboard.type("Pagamento gravado por engano na conta da Câmara; a conta segue sem movimento nesta rodada", { delay: 2 });
   await page.$eval(`${F} input[name="data"]`, (e, v) => {
     const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     set?.call(e, v);

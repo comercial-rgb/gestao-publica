@@ -17,6 +17,7 @@ import {
   derivarPlanoDoTribunal,
   derivarCadastroDeContaBancaria,
   derivarEmendasAoOrcamento,
+  derivarResultadoDaLicitacao,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -241,6 +242,18 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     ]);
   });
 
+  it("v45: julgar vai a quem cadastra processo no global; adjudicar, a quem homologa no global; na UG ou já tendo, não (V39-R2)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "agente", nome: "AGENTE", permissoes: [{ acao: "CADASTRAR_PROCESSO", unidadeOrcId: null }] },
+      { id: "autoridade", nome: "AUTORIDADE", permissoes: [{ acao: "HOMOLOGAR_PROCESSO", unidadeOrcId: null }, { acao: "ADJUDICAR_LICITACAO", unidadeOrcId: null }] },
+      { id: "ambos", nome: "AMBOS", permissoes: [{ acao: "CADASTRAR_PROCESSO", unidadeOrcId: null }, { acao: "HOMOLOGAR_PROCESSO", unidadeOrcId: null }] },
+      { id: "ug", nome: "UG", permissoes: [{ acao: "CADASTRAR_PROCESSO", unidadeOrcId: "ug-a" }, { acao: "HOMOLOGAR_PROCESSO", unidadeOrcId: "ug-a" }] },
+      { id: "leit", nome: "LEITOR", permissoes: [{ acao: "CONSULTAR_LICITACOES", unidadeOrcId: null }] },
+    ];
+    const d = derivarResultadoDaLicitacao(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect(d).toEqual(["agente REGISTRAR_RESULTADO_DA_LICITACAO G", "ambos REGISTRAR_RESULTADO_DA_LICITACAO G", "ambos ADJUDICAR_LICITACAO G"]);
+  });
+
   it("é idempotente: o que o perfil já tem não deriva de novo; leitura existente não gera leitura", () => {
     const perfis: readonly PerfilComPermissoes[] = [
       {
@@ -432,6 +445,8 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 43, previa: 0, aplicada: false },
       // V36 — prévia 0 na instalação limpa: as duas ações das emendas chegaram a ACOES_DO_ENTE pelo bootstrap.
       { versao: 44, previa: 0, aplicada: false },
+      // V39-R2 — prévia 0 na instalação limpa: as ações do julgamento e da adjudicação chegaram a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 45, previa: 0, aplicada: false },
     ]);
   });
 

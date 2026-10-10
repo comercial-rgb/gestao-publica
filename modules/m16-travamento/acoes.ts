@@ -295,6 +295,9 @@ export type AcaoDoSistema =
   // ── M11 — licitações, contratos e obras ──
   | "CADASTRAR_PROCESSO"
   | "HOMOLOGAR_PROCESSO"
+  // V39-R2 (R2-016/017) — o julgamento (o ato do resultado) e a adjudicação, separados do cadastro e da homologação.
+  | "REGISTRAR_RESULTADO_DA_LICITACAO"
+  | "ADJUDICAR_LICITACAO"
   | "CADASTRAR_CONTRATO"
   | "REGISTRAR_ADITIVO"
   | "ESTORNAR_MOVIMENTO_CONTRATUAL"
@@ -985,6 +988,15 @@ export type NomeDeServico =
   | "estornarMovimentoProvisao"
   | "cadastrarProcesso"
   | "homologarProcesso"
+  | "cadastrarItemDoProcesso"
+  | "vincularParticipante"
+  | "registrarProposta"
+  | "registrarResultado"
+  | "adjudicar"
+  | "homologarPorAto"
+  | "cadastrarContratoDoResultado"
+  | "registrarAta"
+  | "cadastrarContratoDaAta"
   | "cadastrarContrato"
   | "registrarAditivo"
   | "estornarMovimentoContratual"
@@ -1703,6 +1715,20 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
 
   cadastrarProcesso: "CADASTRAR_PROCESSO",
   homologarProcesso: "HOMOLOGAR_PROCESSO",
+  // V39-R2 (R2-014 a 020) — do processo ao contrato. Itens, participantes e propostas são o cadastro do processo; o
+  // julgamento e a adjudicação têm ação própria; a homologação por ato é a mesma homologação; o contrato do resultado,
+  // a ata e o contrato da ata são cadastro de contrato. Os ITENS do contrato do resultado vêm junto, transportados do
+  // resultado (descrição, unidade, preço): não passam por CADASTRAR_ITEM_DO_CONTRATO porque não se digitam, e o valor do
+  // contrato é a soma deles por construção.
+  cadastrarItemDoProcesso: "CADASTRAR_PROCESSO",
+  vincularParticipante: "CADASTRAR_PROCESSO",
+  registrarProposta: "CADASTRAR_PROCESSO",
+  registrarResultado: "REGISTRAR_RESULTADO_DA_LICITACAO",
+  adjudicar: "ADJUDICAR_LICITACAO",
+  homologarPorAto: "HOMOLOGAR_PROCESSO",
+  cadastrarContratoDoResultado: "CADASTRAR_CONTRATO",
+  registrarAta: "CADASTRAR_CONTRATO",
+  cadastrarContratoDaAta: "CADASTRAR_CONTRATO",
   cadastrarContrato: "CADASTRAR_CONTRATO",
   registrarAditivo: "REGISTRAR_ADITIVO",
   estornarMovimentoContratual: "ESTORNAR_MOVIMENTO_CONTRATUAL",
@@ -3734,6 +3760,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   lancarExecucaoDaLiquidacao: "interna (V39-R2 — a execução do contrato no controle, chamada DENTRO da transação de toda liquidação gravada; a ação é a do serviço chamador)",
   conferenciaDoControleDoContrato: "leitura (V39-R2 — o controle do contrato conferido contra os fatos: valor atualizado menos o liquidado; não muta)",
   controleDoContratoParaUsuario: "leitura (V39-R2 — decide quem lê o controle do contrato, com o motivo da recusa; não muta)",
+  quadroDoResultado: "leitura (V39-R2 — itens, propostas vigentes, resultado, adjudicação, homologação, atas e saldos do processo; não muta)",
+  gravarContratoNaTransacao: "interna (V39-R2 — o corpo do cadastro de contrato, DENTRO da transação de quem cadastra: o contrato avulso, o do resultado e o da ata; a ação é a do serviço chamador)",
   naturezaDaBase: "leitura (V39 — a declaração vigente de que a base é oficial, de demonstração ou de ensaio; não muta)",
   declararNaturezaDaBase:
     "ATO DE INSTALAÇÃO (V39), como o bootstrap: roda fora da aplicação, pelo operador do servidor " +

@@ -116,6 +116,8 @@ model ItemDoContrato {
   alteracoesPorAditivo AlteracaoDeItemPorAditivo[]
   /// V7 M2 U6 — os serviços de planilha de obra vinculados a este item. VIRTUAL.
   vinculosComAPlanilha VinculoDeItemDaPlanilhaAoContrato[] @relation("VinculosComAPlanilha")
+  /// V39-R2 (R2-019/020) — o item do resultado (ou da ata) de que este item veio. VIRTUAL.
+  origemNoResultado ItemContratadoDoResultado? @relation("OrigemNoResultado")
 
   @@unique([contratoId, numero])
 }

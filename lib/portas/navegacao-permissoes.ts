@@ -255,6 +255,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   // M11 — licitações, contratos e obras
   CADASTRAR_PROCESSO: "licitacoes",
   HOMOLOGAR_PROCESSO: "licitacoes",
+  REGISTRAR_RESULTADO_DA_LICITACAO: "licitacoes",
+  ADJUDICAR_LICITACAO: "licitacoes",
   CADASTRAR_CONTRATO: "licitacoes",
   REGISTRAR_ADITIVO: "licitacoes",
   ESTORNAR_MOVIMENTO_CONTRATUAL: "licitacoes",

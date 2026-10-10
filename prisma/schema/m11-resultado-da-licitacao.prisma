@@ -1,0 +1,277 @@
+// ----------------------------------------------------------------------------
+// V39-R2 (R2-014 a 020; V39-041 a 046) — DO PROCESSO AO CONTRATO: itens, participantes, propostas, resultado,
+// adjudicação, homologação por ato, contrato originado do resultado e ata de registro de preços.
+//
+// APPEND-ONLY em tudo. Proposta corrigida é VERSÃO nova; resultado corrigido é linha nova que SUBSTITUI a anterior
+// (o elo `substituiId` é único: uma linha só é substituída uma vez); homologação corrigida é ATO novo que corrige o
+// anterior (`corrigeId`), e o anterior continua visível. "Vigente" é sempre derivado, nunca coluna.
+//
+// ⚠️ O VENCEDOR É DECISÃO DO ATO, NÃO DO SISTEMA. O resultado registra o critério de julgamento (Lei 14.133/2021,
+// art. 33) e, por item, quem venceu e por quanto; o sistema não escolhe o menor valor. Quando o escolhido não tem a
+// proposta mais vantajosa pelo critério declarado, o ato exige a justificativa (desclassificação, inabilitação).
+//
+// ⚠️ TRÊS SALDOS, TRÊS CONTROLES: o saldo da ATA (quantidade registrada menos a contratada por ela), o saldo do
+// CONTRATO (valor atualizado menos o empenhado, `saldoDoContrato`) e o saldo ORÇAMENTÁRIO (a dotação) não se
+// confundem e não se derivam um do outro.
+// ----------------------------------------------------------------------------
+
+/// O item (ou o item de um lote) que o processo licita.
+model ItemDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   ProcessoLicitatorio @relation("ItensDoProcesso", fields: [processoId], references: [id])
+
+  numero     Int
+  /// O lote a que o item pertence (nulo: julgamento por item).
+  lote       Int?
+  descricao  String
+  unidade    String
+  quantidade Decimal @db.Decimal(18, 4)
+
+  propostas  PropostaDoParticipante[]
+  resultados ItemDoResultado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([processoId, numero])
+}
+
+/// O participante: a PESSOA do cadastro único (nada se duplica), vinculada ao processo.
+model ParticipanteDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   ProcessoLicitatorio @relation("ParticipantesDoProcesso", fields: [processoId], references: [id])
+  pessoaId   String
+  pessoa     Pessoa              @relation("ParticipacoesEmProcesso", fields: [pessoaId], references: [id])
+
+  propostas  PropostaDoParticipante[]
+  resultados ItemDoResultado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([processoId, pessoaId])
+}
+
+/// A proposta de um participante para um item, por VERSÃO (a corrigida é a versão seguinte, com motivo). A proposta
+/// por LOTE grava uma linha por item do lote, no mesmo ato, com `abrangencia` = LOTE.
+model PropostaDoParticipante {
+  id String @id @default(cuid())
+
+  participanteId String
+  participante   ParticipanteDoProcesso @relation(fields: [participanteId], references: [id])
+  itemId         String
+  item           ItemDoProcesso         @relation(fields: [itemId], references: [id])
+
+  versao        Int
+  /// ITEM | LOTE (CHECK).
+  abrangencia   String  @db.VarChar(5)
+  valorUnitario Decimal @db.Decimal(18, 4)
+  /// A referência do documento da proposta (número, protocolo, arquivo do sistema de compras).
+  documento     String
+  /// Obrigatório da versão 2 em diante: por que a proposta mudou.
+  motivo        String?
+
+  resultados ItemDoResultado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([participanteId, itemId, versao])
+  @@index([itemId])
+}
+
+/// O ATO DO RESULTADO (julgamento): data, critério de julgamento, fundamento e documento. As linhas dizem, por item,
+/// o que se decidiu.
+model ResultadoDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   ProcessoLicitatorio @relation("ResultadosDoProcesso", fields: [processoId], references: [id])
+
+  data       DateTime
+  /// Lei 14.133/2021, art. 33 (CHECK): MENOR_PRECO | MAIOR_DESCONTO | MELHOR_TECNICA | TECNICA_E_PRECO |
+  /// MAIOR_LANCE | MAIOR_RETORNO_ECONOMICO.
+  criterio   String @db.VarChar(30)
+  fundamento String
+  documento  String
+
+  itens ItemDoResultado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoId])
+}
+
+/// O resultado de UM item: VENCEDOR (com o participante, a proposta considerada e o valor unitário final, que pode
+/// ser menor que o proposto pela negociação), FRACASSADO ou DESERTO. A correção é uma linha nova que substitui esta.
+model ItemDoResultado {
+  id String @id @default(cuid())
+
+  resultadoId String
+  resultado   ResultadoDoProcesso @relation(fields: [resultadoId], references: [id])
+  itemId      String
+  item        ItemDoProcesso      @relation(fields: [itemId], references: [id])
+
+  /// VENCEDOR | FRACASSADO | DESERTO (CHECK, com a coerência dos campos do vencedor).
+  situacao       String                  @db.VarChar(12)
+  participanteId String?
+  participante   ParticipanteDoProcesso? @relation(fields: [participanteId], references: [id])
+  propostaId     String?
+  proposta       PropostaDoParticipante? @relation(fields: [propostaId], references: [id])
+  valorUnitario  Decimal?                @db.Decimal(18, 4)
+  /// Por que o vencedor não é a proposta mais vantajosa pelo critério, ou por que o item fracassou.
+  justificativa  String?
+
+  /// A linha que esta corrige (cada linha é substituída no máximo uma vez).
+  substituiId   String?          @unique
+  substitui     ItemDoResultado? @relation("CorrecaoDoResultado", fields: [substituiId], references: [id])
+  substituidaPor ItemDoResultado? @relation("CorrecaoDoResultado")
+
+  adjudicacao  ItemAdjudicado?
+  itensDaAta   ItemDaAta[]
+  contratacoes ItemContratadoDoResultado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([itemId])
+}
+
+/// O ATO DE ADJUDICAÇÃO: autoridade, data, documento; a abrangência são os itens vencidos que ele adjudica.
+model AdjudicacaoDoProcesso {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   ProcessoLicitatorio @relation("AdjudicacoesDoProcesso", fields: [processoId], references: [id])
+
+  data       DateTime
+  autoridade String
+  documento  String
+
+  itens ItemAdjudicado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoId])
+}
+
+model ItemAdjudicado {
+  id String @id @default(cuid())
+
+  adjudicacaoId     String
+  adjudicacao       AdjudicacaoDoProcesso @relation(fields: [adjudicacaoId], references: [id])
+  /// Um item do resultado se adjudica uma vez.
+  itemDoResultadoId String                @unique
+  itemDoResultado   ItemDoResultado       @relation(fields: [itemDoResultadoId], references: [id])
+
+  homologacoes ItemHomologado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// O ATO DE HOMOLOGAÇÃO, com abrangência (os itens adjudicados que homologa) e correção por ato novo (`corrigeId`),
+/// que preserva o anterior. O primeiro ato registra também o `HomologacaoProcesso` (a data do processo), que o
+/// cadastro de contrato já confere.
+model AtoDeHomologacao {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   ProcessoLicitatorio @relation("AtosDeHomologacao", fields: [processoId], references: [id])
+
+  data       DateTime
+  autoridade String
+  documento  String
+
+  /// O ato que este corrige (um ato é corrigido no máximo uma vez); `motivo` obrigatório quando corrige.
+  corrigeId   String?           @unique
+  corrige     AtoDeHomologacao? @relation("CorrecaoDaHomologacao", fields: [corrigeId], references: [id])
+  corrigidoPor AtoDeHomologacao? @relation("CorrecaoDaHomologacao")
+  motivo      String?
+
+  itens ItemHomologado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([processoId])
+}
+
+model ItemHomologado {
+  id String @id @default(cuid())
+
+  atoId            String
+  ato              AtoDeHomologacao @relation(fields: [atoId], references: [id])
+  itemAdjudicadoId String
+  itemAdjudicado   ItemAdjudicado   @relation(fields: [itemAdjudicadoId], references: [id])
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([atoId, itemAdjudicadoId])
+}
+
+/// O item do contrato que veio de um item homologado do resultado (ou de uma ata): a quantidade transportada. A soma
+/// por item do resultado nunca passa da quantidade licitada (conferido no serviço, sob trava do processo).
+model ItemContratadoDoResultado {
+  id String @id @default(cuid())
+
+  itemDoContratoId  String         @unique
+  itemDoContrato    ItemDoContrato @relation("OrigemNoResultado", fields: [itemDoContratoId], references: [id])
+  itemDoResultadoId String
+  itemDoResultado   ItemDoResultado @relation(fields: [itemDoResultadoId], references: [id])
+  /// Pela ata (nulo: direto do resultado).
+  itemDaAtaId       String?
+  itemDaAta         ItemDaAta?     @relation(fields: [itemDaAtaId], references: [id])
+  quantidade        Decimal        @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([itemDoResultadoId])
+  @@index([itemDaAtaId])
+}
+
+/// A ATA DE REGISTRO DE PREÇOS (V39-046): número, vigência e documento; os itens registram, por item vencido, a
+/// quantidade registrada com o fornecedor e o preço do resultado. O saldo da ata é derivado das contratações.
+model AtaDeRegistroDePrecos {
+  id String @id @default(cuid())
+
+  processoId String
+  processo   ProcessoLicitatorio @relation("AtasDoProcesso", fields: [processoId], references: [id])
+
+  numero         String
+  vigenciaInicio DateTime
+  vigenciaFim    DateTime
+  documento      String
+
+  itens ItemDaAta[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([processoId, numero])
+}
+
+model ItemDaAta {
+  id String @id @default(cuid())
+
+  ataId             String
+  ata               AtaDeRegistroDePrecos @relation(fields: [ataId], references: [id])
+  itemDoResultadoId String
+  itemDoResultado   ItemDoResultado       @relation(fields: [itemDoResultadoId], references: [id])
+  quantidade        Decimal               @db.Decimal(18, 4)
+
+  contratacoes ItemContratadoDoResultado[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([ataId, itemDoResultadoId])
+}

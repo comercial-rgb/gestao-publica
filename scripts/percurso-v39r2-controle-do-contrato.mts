@@ -67,7 +67,7 @@ try {
     { sel: 'input[name="numeroProcesso"]', valor: numeroProcesso },
     { sel: 'select[name="modalidade"]', valor: "PREGAO_ELETRONICO", tipo: "select" },
     { sel: 'input[data-mascara="valor"]:has(+ input[name="valorLicitado"])', valor: "15000,00" },
-    { sel: 'textarea[name="objeto"]', valor: "Manutenção predial preventiva e corretiva dos prédios da administração (ensaio V39-R2)" },
+    { sel: 'textarea[name="objeto"]', valor: "Manutenção predial preventiva e corretiva dos prédios da administração (ensaio)" },
   ]);
   const proc = await prisma.processoLicitatorio.findFirst({ where: { numeroProcesso }, select: { id: true } });
   conferir(rp.tipo === "ok" && proc !== null, `processo ${numeroProcesso} cadastrado pela tela (${rp.texto.slice(0, 60)})`);
@@ -111,7 +111,7 @@ try {
       { sel: 'input[data-mascara="valor"]:has(+ input[name="valor"])', valor },
       { sel: 'input[name="data"]', valor: hoje, tipo: "data" },
       { sel: 'input[name="numeroAditivo"]', valor: numero },
-      { sel: 'input[name="motivo"]', valor: "Ajuste quantitativo do objeto por necessidade da administração (ensaio V39-R2)" },
+      { sel: 'input[name="motivo"]', valor: "Ajuste quantitativo do objeto por necessidade da administração (ensaio)" },
     ]);
     return `${r.tipo}: ${r.texto.slice(0, 60)}`;
   };
@@ -126,7 +126,7 @@ try {
   const re = await preencherEEnviar(page, "estornar-movimento", [
     { sel: 'select[name="movimentoId"]', valor: opcao, tipo: "select" },
     { sel: 'input[name="data"]', valor: hoje, tipo: "data" },
-    { sel: 'input[name="motivo"]', valor: "Aditivo registrado com valor de outro termo (ensaio V39-R2)" },
+    { sel: 'input[name="motivo"]', valor: "Aditivo registrado com valor de outro termo (ensaio)" },
   ]);
   c = await lerControle();
   conferir(!c.diverge, "o controle confere com os fatos do contrato (valor atualizado menos o liquidado): nenhuma divergência na tela");

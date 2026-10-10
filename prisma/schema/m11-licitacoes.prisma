@@ -47,6 +47,13 @@ model ProcessoLicitatorio {
   id             String              @id @default(cuid())
   /// V26 — a licitação como está no Tramita do TCE-PB (m11-tramita.prisma).
   identificacoesNoTramita IdentificacaoNoTramita[]
+  /// V39-R2 (R2-014 a 020) — do processo ao contrato (m11-resultado-da-licitacao.prisma). VIRTUAIS.
+  itens             ItemDoProcesso[]         @relation("ItensDoProcesso")
+  participantes     ParticipanteDoProcesso[] @relation("ParticipantesDoProcesso")
+  resultados        ResultadoDoProcesso[]    @relation("ResultadosDoProcesso")
+  adjudicacoes      AdjudicacaoDoProcesso[]  @relation("AdjudicacoesDoProcesso")
+  atosDeHomologacao AtoDeHomologacao[]       @relation("AtosDeHomologacao")
+  atas              AtaDeRegistroDePrecos[]  @relation("AtasDoProcesso")
   numeroProcesso String              @unique
   modalidade     ModalidadeLicitacao
   objeto         String
