@@ -8,6 +8,7 @@ import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
 import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
+import { instanteCivilBr } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { formatarMoeda } from "../../../../lib/format/moeda";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
@@ -48,8 +49,9 @@ const semSinal = (v: string): string => (v.startsWith("-") ? v.slice(1) : v);
 export const dynamic = "force-dynamic";
 
 /** dd/mm/aaaa hh:mm (UTC) — o carimbo do vínculo/import, que é evento, não data de fato. */
+/** Dia e hora no fuso do ente (V38: a hora saía em UTC — 22h03 aparecia como 01:03). */
 function carimbo(d: Date): string {
-  return `${dataBr(d)} ${d.toISOString().slice(11, 16)}`;
+  return instanteCivilBr(d);
 }
 
 export default async function ConciliacaoBancariaPage({

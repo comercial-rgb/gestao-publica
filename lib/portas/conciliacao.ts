@@ -254,7 +254,11 @@ export async function lerPainelConciliacao(p: {
   // ⚠️ V22 rodada 7 — DUAS DATAS: os fatos até o corte (o fim do extrato), os vínculos até AGORA. Com
   // uma data só, todo vínculo feito depois do fim do extrato — que é quando se concilia — sumia daqui.
   const agora = new Date();
-  const relatorio = await conciliacaoBancaria(prisma, conta.id, corte, { conhecimento: agora });
+  // ⚠️ V38 — com o corte no FIM do dia do extrato, um extrato que termina HOJE tem corte depois de agora; o motor recusa
+  // conhecimento anterior ao corte (medido em produção: o painel caiu). O conhecimento é o mais tardio dos dois — nenhum
+  // vínculo existe depois de agora, então usar o corte não acrescenta nada.
+  const conhecimento = agora.getTime() > corte.getTime() ? agora : corte;
+  const relatorio = await conciliacaoBancaria(prisma, conta.id, corte, { conhecimento });
 
   // ── AS CORRESPONDÊNCIAS — os vínculos VIVOS desta conta até o corte ──
   // "Vivo" é DERIVADO, nunca flag: um vínculo estornado tem `estornos` preenchido (append-only,

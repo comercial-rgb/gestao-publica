@@ -149,6 +149,10 @@ Correção: um módulo pequeno e puro, `modules/m09-tesouraria/dia-do-banco.ts`,
 
 O teste de borda ganhou a linha com a âncora do BB e as réguas puras na virada do ano. As duas mutações do limite dão vermelho.
 
+**Regressão desta leva, achada em produção pela sonda depois da publicação `5d145ab`.** O painel geral da conciliação caiu com "a data do conhecimento dos vínculos não pode ser anterior ao corte". A causa: o corte passou a ser o fim do dia do extrato, e um extrato que termina hoje tem o corte depois de agora. O conhecimento passou a ser o mais tardio entre agora e o corte. A falha teria aparecido se eu tivesse aberto o painel na base local antes de publicar, que tem o mesmo caso; não abri.
+
+No mesmo painel, a hora do "vínculos considerados até" e do "importado em" saía em UTC: 22h04 aparecia como 01:04. Defeito anterior a esta sessão. Agora usa `instanteCivilBr`. A sonda local confirmou o painel com competência de 01/01 a 09/10/2026, corte em 09/10, vínculos até 22h04 e importação às 21h10.
+
 **A guarda de data civil estava vermelha desde a V36.** `test/data-civil.test.ts` acusava também `modules/m10-patrimonial/cronograma-colado.ts`, que valida se o dia digitado existe no calendário, sem instante nem fuso. A suíte não roda a cada mudança, e o vermelho passou despercebido. Os dois arquivos entraram na lista de exceções, cada um com o motivo.
 
 **Provas.**
