@@ -240,7 +240,10 @@ export function FormAjusteDaLinha({
   linhaId,
   rotulo,
   valorAtual,
+  aberto = false,
 }: {
+  /** V39-015 — o editor sob demanda já abre aberto (é a linha escolhida). */
+  readonly aberto?: boolean;
   readonly propostaOrcamentariaId: string;
   readonly lado: "RECEITA" | "DESPESA";
   readonly linhaId: string;
@@ -249,7 +252,7 @@ export function FormAjusteDaLinha({
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(ajustarLinhaAction, {});
   return (
-    <details data-forma="ajustar-linha" data-linha={linhaId}>
+    <details data-forma="ajustar-linha" data-linha={linhaId} open={aberto}>
       <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-primary)]">Alterar</summary>
       <form action={action} className="mt-2 space-y-2" data-acao="ajustar-linha" aria-label={`Alterar o valor de ${rotulo}`}>
         <ChaveDeComando />

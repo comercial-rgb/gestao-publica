@@ -24,6 +24,7 @@ import { ConferenciaDaPropostaSecao } from "./Conferencia";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 import { TIPOS_DE_ATO_NA_TELA } from "../../../../../lib/portas/entidades-contabeis";
+import { paginaDaLinha, recortar } from "../recorte-da-pagina";
 /**
  * UMA PROPOSTA ORÇAMENTÁRIA (M02 V29): as receitas e as fichas importadas, com a base, o projetado e o
  * valor da proposta (o último ajuste); o que falta para gerar o orçamento; e o botão que o gera.
@@ -62,14 +63,20 @@ function UltimaAlteracao({ ajustes }: { readonly ajustes: LinhaR["ajustes"] }): 
   );
 }
 
-function colunasDaReceita(propostaOrcamentariaId: string, editavel: boolean, origem: number): readonly ColunaTabela<LinhaR>[] {
+/** V39-015 — o editor de UMA linha: o link "Alterar" leva à mesma página com `?editar=` (busca e página preservadas). */
+interface EdicaoSobDemanda {
+  readonly editar: string;
+  readonly hrefEditar: (linhaId: string) => string;
+}
+
+function colunasDaReceita(propostaOrcamentariaId: string, editavel: boolean, origem: number, ed: EdicaoSobDemanda): readonly ColunaTabela<LinhaR>[] {
   return [
     {
       chave: "natureza",
       cabecalho: "Natureza da receita",
       alinhamento: "esquerda",
       celula: (l) => (
-        <div>
+        <div id={`linha-${l.id}`} className="scroll-mt-4">
           <strong>{l.naturezaCodigo}</strong> {l.naturezaDescricao}
           {l.nova ? <p className="text-xs text-[color:var(--color-ink-3)]"><Badge status="neutro">nova</Badge> {l.motivo}</p> : null}
         </div>
@@ -92,18 +99,20 @@ function colunasDaReceita(propostaOrcamentariaId: string, editavel: boolean, ori
           </strong>
           <Variacao lei={l.valorNaLeiDeOrigem} vigente={l.valorVigente} />
           <UltimaAlteracao ajustes={l.ajustes} />
-          {editavel ? (
-            <FormAjusteDaLinha propostaOrcamentariaId={propostaOrcamentariaId} lado="RECEITA" linhaId={l.id} rotulo={`a receita ${l.naturezaCodigo} fonte ${l.fonteCodigo}`} valorAtual={l.valorVigente} />
-          ) : null}
+          {!editavel ? null : ed.editar === l.id ? (
+            <FormAjusteDaLinha aberto propostaOrcamentariaId={propostaOrcamentariaId} lado="RECEITA" linhaId={l.id} rotulo={`a receita ${l.naturezaCodigo} fonte ${l.fonteCodigo}`} valorAtual={l.valorVigente} />
+          ) : (
+            <Link href={ed.hrefEditar(l.id)} className="text-xs font-semibold text-[color:var(--color-primary)]" data-editar-linha={l.id}>Alterar</Link>
+          )}
         </div>
       ),
     },
   ];
 }
 
-function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, origem: number): readonly ColunaTabela<LinhaD>[] {
+function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, origem: number, ed: EdicaoSobDemanda): readonly ColunaTabela<LinhaD>[] {
   return [
-    { chave: "ficha", cabecalho: "Ficha", alinhamento: "esquerda", largura: "4rem", celula: (l) => (l.nova ? <Badge status="neutro">nova</Badge> : <strong id={`ficha-${String(l.numero)}`} className="scroll-mt-4">{l.numero}</strong>) },
+    { chave: "ficha", cabecalho: "Ficha", alinhamento: "esquerda", largura: "4rem", celula: (l) => (<span id={`linha-${l.id}`} className="scroll-mt-4">{l.nova ? <Badge status="neutro">nova</Badge> : <strong id={`ficha-${String(l.numero)}`} className="scroll-mt-4">{l.numero}</strong>}</span>) },
     {
       chave: "unidade",
       cabecalho: "Unidade orçamentária",
@@ -134,9 +143,11 @@ function colunasDaDespesa(propostaOrcamentariaId: string, editavel: boolean, ori
           </strong>
           <Variacao lei={l.valorNaLeiDeOrigem} vigente={l.valorVigente} />
           <UltimaAlteracao ajustes={l.ajustes} />
-          {editavel ? (
-            <FormAjusteDaLinha propostaOrcamentariaId={propostaOrcamentariaId} lado="DESPESA" linhaId={l.id} rotulo={l.nova ? `a ficha nova (${l.naturezaCodigo}, fonte ${l.fonteCodigo})` : `a ficha ${String(l.numero)}`} valorAtual={l.valorVigente} />
-          ) : null}
+          {!editavel ? null : ed.editar === l.id ? (
+            <FormAjusteDaLinha aberto propostaOrcamentariaId={propostaOrcamentariaId} lado="DESPESA" linhaId={l.id} rotulo={l.nova ? `a ficha nova (${l.naturezaCodigo}, fonte ${l.fonteCodigo})` : `a ficha ${String(l.numero)}`} valorAtual={l.valorVigente} />
+          ) : (
+            <Link href={ed.hrefEditar(l.id)} className="text-xs font-semibold text-[color:var(--color-primary)]" data-editar-linha={l.id}>Alterar</Link>
+          )}
         </div>
       ),
     },
@@ -206,10 +217,51 @@ function OQueVeio({ p }: { readonly p: PropostaDetalhada }): React.ReactElement 
   );
 }
 
-export default async function PropostaPage({ params }: { readonly params: Promise<{ readonly id: string }> }): Promise<React.ReactElement> {
+/** A soma do valor vigente de um conjunto de linhas (o total do filtro, independente da página). */
+function somaVigente(linhas: readonly { readonly valorVigente: string }[]): string {
+  return linhas.reduce((acc, l) => acc.plus(toMoney(l.valorVigente)), toMoney("0")).toFixed(2);
+}
+
+/** "Mostrando 101 a 200 de 1.059", a soma do filtro e a navegação entre páginas. */
+function ResumoDoRecorte(props: {
+  readonly r: { readonly primeira: number; readonly ultima: number; readonly total: number; readonly filtradas: readonly unknown[]; readonly pagina: number; readonly paginas: number };
+  readonly rotulo: string;
+  readonly totalFiltrado: string;
+  readonly busca: string;
+  readonly hrefPagina: (n: number) => string;
+}): React.ReactElement {
+  const { r } = props;
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs text-[color:var(--color-ink-2)]" data-recorte={props.rotulo}>
+      <span>
+        {r.filtradas.length === 0
+          ? `Nenhuma das ${String(r.total)} ${props.rotulo} casa com a busca.`
+          : `Mostrando ${String(r.primeira)} a ${String(r.ultima)} de ${String(r.filtradas.length)}${props.busca === "" ? "" : ` (das ${String(r.total)}, com a busca)`}; soma ${props.busca === "" ? "" : "do filtro "}`}
+        {r.filtradas.length === 0 ? null : <ValorMonetario valor={props.totalFiltrado} />}
+      </span>
+      {r.paginas > 1 ? (
+        <nav aria-label={`Páginas das ${props.rotulo}`} className="flex items-center gap-2" data-paginas={String(r.paginas)}>
+          {r.pagina > 1 ? <Link href={props.hrefPagina(r.pagina - 1)} className="text-[color:var(--color-primary)] underline underline-offset-2">Anteriores</Link> : null}
+          <span>{`Página ${String(r.pagina)} de ${String(r.paginas)}`}</span>
+          {r.pagina < r.paginas ? <Link href={props.hrefPagina(r.pagina + 1)} className="text-[color:var(--color-primary)] underline underline-offset-2" data-pagina-seguinte>Seguintes</Link> : null}
+        </nav>
+      ) : null}
+    </div>
+  );
+}
+
+export default async function PropostaPage({
+  params,
+  searchParams,
+}: {
+  readonly params: Promise<{ readonly id: string }>;
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<React.ReactElement> {
   // Dado do ENTE: a proposta reúne as fichas de todas as unidades.
   await telaExigeLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const { id } = await params;
+  const sp = await searchParams;
+  const um = (k: string): string => { const v = sp[k]; return typeof v === "string" ? v : ""; };
   let lido: { readonly proposta: PropostaDetalhada; readonly conferencia: ConferenciaDaProposta } | null;
   let permitidas: ReadonlySet<string>;
   try {
@@ -251,6 +303,31 @@ export default async function PropostaPage({ params }: { readonly params: Promis
   const diferenca = toMoney(p.totalDaReceita.vigente).minus(p.totalDaDespesa.vigente).toFixed(2);
   const destinoVazio = p.destino.fichas === 0 && p.destino.receitas === 0;
   const pronta = p.destino.existe && !p.destino.encerrado && destinoVazio && !p.destino.efetivadoPorOutra;
+
+  // V39-013/014/015 — o recorte da página (ver `recorte-da-pagina.ts`: 13 MB de HTML e 1.140 formulários medidos).
+  const busca = um("busca").trim().slice(0, 120);
+  const editar = um("editar");
+  const textoR = (l: LinhaR): string => `${l.naturezaCodigo} ${l.naturezaDescricao} fonte ${l.fonteCodigo} ${l.tipoReceita}`;
+  const textoD = (l: LinhaD): string => `ficha ${String(l.numero)} ${l.unidadeCodigo} ${l.unidadeNome} programa ${l.programaCodigo} ação ${l.acaoCodigo} ${l.naturezaCodigo} ${l.naturezaDescricao} fonte ${l.fonteCodigo}`;
+  const filtR = recortar(p.receitas, textoR, busca, 1).filtradas;
+  const filtD = recortar(p.despesas, textoD, busca, 1).filtradas;
+  // A linha a editar abre na página dela, mesmo que o endereço peça outra.
+  const rpag = paginaDaLinha(filtR, (l) => l.id === editar) ?? Number(um("rpag") || "1");
+  const dpag = paginaDaLinha(filtD, (l) => l.id === editar) ?? Number(um("dpag") || "1");
+  const rr = recortar(p.receitas, textoR, busca, rpag);
+  const rd = recortar(p.despesas, textoD, busca, dpag);
+  const href = (muda: { readonly rpag?: number; readonly dpag?: number; readonly editar?: string }): string => {
+    const q = new URLSearchParams();
+    if (busca !== "") q.set("busca", busca);
+    const r = muda.rpag ?? rr.pagina;
+    const d = muda.dpag ?? rd.pagina;
+    if (r > 1) q.set("rpag", String(r));
+    if (d > 1) q.set("dpag", String(d));
+    if (muda.editar !== undefined) q.set("editar", muda.editar);
+    const ancora = muda.editar !== undefined ? `#linha-${muda.editar}` : muda.rpag !== undefined ? "#receitas" : muda.dpag !== undefined ? "#fichas" : "";
+    const qs = q.toString();
+    return `/planejamento/proposta-orcamentaria/${p.id}${qs === "" ? "" : `?${qs}`}${ancora}`;
+  };
 
   return (
     <div className="space-y-4">
@@ -413,12 +490,25 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         ) : null}
       </section>
 
+      {/* V39-013/014/015 — o recorte: busca e páginas de 100 no servidor; o editor só da linha escolhida. */}
+      <form method="get" data-busca-da-proposta className="flex flex-wrap items-end gap-2 text-sm">
+        <label>
+          <span className="block text-xs font-semibold text-[color:var(--color-ink-2)]">Buscar nas receitas e fichas</span>
+          <input name="busca" defaultValue={busca} placeholder="ficha, natureza, fonte, unidade, programa ou ação" className="mt-1 w-80 max-w-full rounded-[var(--radius-sm)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1" />
+        </label>
+        <button type="submit" className="rounded-[var(--radius-sm)] border border-[color:var(--color-border)] px-3 py-1 font-semibold">Buscar</button>
+        {busca === "" ? null : <Link href={`/planejamento/proposta-orcamentaria/${p.id}`} className="text-[color:var(--color-primary)] underline underline-offset-2">Limpar</Link>}
+      </form>
+
       <section id="receitas" className="space-y-2" aria-label="Receitas da proposta">
         <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Receitas ({String(p.receitas.length)})</h2>
         {p.receitas.length === 0 ? (
           <EstadoVazio titulo="Nenhuma receita importada" descricao={`O exercício ${String(p.exercicioDeOrigem)} não tinha receita prevista.`} />
         ) : (
-          <TabelaDeDados colunas={colunasDaReceita(p.id, editavel, p.exercicioDeOrigem)} linhas={p.receitas} keyDe={(l) => l.id} legenda="valores em R$" />
+          <>
+            <ResumoDoRecorte r={rr} rotulo="receitas" totalFiltrado={somaVigente(rr.filtradas)} busca={busca} hrefPagina={(n) => href({ rpag: n })} />
+            {rr.linhas.length === 0 ? null : <TabelaDeDados colunas={colunasDaReceita(p.id, editavel, p.exercicioDeOrigem, { editar, hrefEditar: (l) => href({ editar: l }) })} linhas={rr.linhas} keyDe={(l) => l.id} legenda="valores em R$" />}
+          </>
         )}
       </section>
 
@@ -427,7 +517,10 @@ export default async function PropostaPage({ params }: { readonly params: Promis
         {p.despesas.length === 0 ? (
           <EstadoVazio titulo="Nenhuma ficha importada" descricao={`O exercício ${String(p.exercicioDeOrigem)} não tinha fichas.`} />
         ) : (
-          <TabelaDeDados colunas={colunasDaDespesa(p.id, editavel, p.exercicioDeOrigem)} linhas={p.despesas} keyDe={(l) => l.id} legenda="valores em R$" />
+          <>
+            <ResumoDoRecorte r={rd} rotulo="fichas" totalFiltrado={somaVigente(rd.filtradas)} busca={busca} hrefPagina={(n) => href({ dpag: n })} />
+            {rd.linhas.length === 0 ? null : <TabelaDeDados colunas={colunasDaDespesa(p.id, editavel, p.exercicioDeOrigem, { editar, hrefEditar: (l) => href({ editar: l }) })} linhas={rd.linhas} keyDe={(l) => l.id} legenda="valores em R$" />}
+          </>
         )}
       </section>
     </div>

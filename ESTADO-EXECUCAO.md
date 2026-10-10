@@ -99,6 +99,25 @@ O servidor de desenvolvimento respondeu 500 ao painel na PRIMEIRA compilação d
 | V39-009 | A prévia das retenções no pagamento leva à pessoa do fornecedor para cadastrar ou alterar o perfil fiscal. A volta traz a mesma liquidação e repõe número, valor, data, histórico e cheque pelo rascunho da aba. | /despesa/pagamentos | `percurso-v39-perfil-fiscal-no-pagamento` 5/5 (fictícia); mutação da reposição vermelha |
 | V39-010/011 | O dossiê do empenho mostra o IR e o ISS retidos como receita do município, com natureza, guia e lançamento, separados das consignações. **Defeito de dinheiro corrigido:** a saída de caixa ignorava a retenção própria, e o razão credita o banco pelo bruto menos TODAS as retenções. O lançamento da guia entrou no razão da cadeia. | /despesa/empenhos/[id] | `m07-retencao-calculada` 27/27 (dossiê = razão, 792,00); mutação vermelha; testes do dossiê 53/53; dossiê aberto na fictícia |
 
+### 3ª leva (10/10/2026): a proposta grande (V39-013/014/015)
+
+**Medido antes de mexer** (`scripts/medir-proposta-grande.mts`; base fictícia na 3011, servidor de desenvolvimento):
+
+| Cenário | `detalhar` (quente) | Objeto | HTML | Nós | Formulários | Até carregar |
+|---|---|---|---|---|---|---|
+| 1.133 linhas, antes | 79 ms | 484 KiB | 13 MB | 46.101 | 1.140 | 24–31 s (resposta 22–39 s) |
+| 1.133 linhas, depois | 79 ms | 484 KiB | 2,9 MB | 5.200 | 8 | 3,9–4,7 s |
+| 10.123 linhas, depois | 316 ms | 4,2 MB | 2,8 MB | 5.076 | 8 | 4,4–6,9 s |
+
+A causa medida era a página, com um formulário de ajuste por linha. O banco não era o gargalo.
+
+O que mudou:
+- **Páginas de 100 e busca no servidor:** `recorte-da-pagina.ts`, puro, com teste 3/3. O resumo diz "Mostrando a a b de N" e a soma do filtro sobre o conjunto inteiro.
+- **Editor sob demanda:** `?editar=` abre só a linha escolhida, na página dela, com a busca preservada.
+- **Percurso:** `percurso-v39-proposta-paginada` passou com 8/8 numa proposta sintética de 10.054 fichas.
+- **Smoke:** `smoke-proposta-orcamentaria` passou a abrir o editor por `?editar=`.
+- **Ressalva:** dos 2,8 MB restantes, 2,5 MB são o payload do React do modo de desenvolvimento, que é maior que o de produção.
+
 **Pendências nomeadas:**
 - `CONCILIACAO-FATO-RETROATIVO`: uma linha de extrato ou um fato do razão gravado depois do encerramento, com data dentro do período encerrado, ainda muda o relatório encerrado. O fato é datado no passado; o vínculo é por conhecimento.
 - `ENCERRAR-PERIODO-VAZIO-FIC-CM-500`: é decisão.

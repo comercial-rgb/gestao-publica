@@ -129,6 +129,8 @@ async function main(): Promise<void> {
     if (linha === null) throw new Error("a proposta não tem fichas");
     // V38 — a linha pode ser nova (sem ficha de origem); este smoke altera uma importada.
     if (linha.fichaDeOrigem === null) throw new Error("a linha escolhida é nova, sem ficha de origem");
+    // V39-015 — o editor da linha abre sob demanda (`?editar=`): a página não monta mais um formulário por linha.
+    await irPara(N, page, `${rota}?editar=${linha.id}`);
     const aj = await preencherEEnviar(page, `form[data-acao="ajustar-linha"][aria-label="Alterar o valor de a ficha ${String(linha.fichaDeOrigem.numero)}"]`, [
       { sel: 'input[name="valor"]', valor: "1.234.567,89" },
       { sel: 'input[name="motivo"]', valor: "Ampliação do atendimento aprovada" },
