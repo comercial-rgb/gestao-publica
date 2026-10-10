@@ -65,6 +65,37 @@ try {
     conferir(semErro(t) && /saída de caixa/i.test(t), `dossiê do empenho ${empenho} abre com a saída de caixa`);
   }
 
+  // V39-R2 — as telas tocadas pela continuidade.
+  // R2-001: o período encerrado da conciliação diz que a conferência é a do encerramento (ou a de antes da foto).
+  await irPara(n, page, "/financeiro/conciliacao/periodo");
+  const contasDoPeriodo = await page.$$eval('form[data-acao="abrir-conciliacao"] select[name="conta"] option', (os) => os.map((o) => o.getAttribute("value") ?? "").filter((v) => v !== "")).catch(() => [] as string[]);
+  let viuEncerrado = false;
+  for (const c of contasDoPeriodo) {
+    await irPara(n, page, `/financeiro/conciliacao/periodo?conta=${c}`);
+    const enc = await page.$$eval("li[data-periodo]", (ls) => ls.filter((l) => (l.textContent ?? "").includes("encerrada")).map((l) => l.querySelector("a")?.getAttribute("href") ?? "")).catch(() => [] as string[]);
+    if (enc[0] === undefined || enc[0] === "") continue;
+    const t = await irPara(n, page, enc[0]);
+    const fonte = await page.$eval("[data-fonte-do-relatorio]", (e) => e.getAttribute("data-fonte-do-relatorio") ?? "").catch(() => "");
+    conferir(semErro(t) && fonte !== "", `período encerrado da conta ${c} abre e diz a fonte da conferência (${fonte})`);
+    viuEncerrado = true;
+    break;
+  }
+  if (!viuEncerrado) console.log("   nenhum período encerrado nesta base: a foto do encerramento não foi aberta");
+  // R2-005/006: a tela das retenções do próprio município, com o legado.
+  const ret = await irPara(n, page, "/financeiro/retencoes-proprias");
+  conferir(semErro(ret) && /Retenções do próprio município/i.test(ret), "retenções do próprio município abrem");
+  // R2-008 a 013: o controle contábil na página do contrato.
+  await irPara(n, page, "/licitacoes/contratos");
+  const contrato = await page.$$eval("a[href^='/licitacoes/contratos/']", (as) => as.map((a) => a.getAttribute("href") ?? "").find((h) => /\/licitacoes\/contratos\/[^/?]+$/.test(h)) ?? "");
+  if (contrato === "") console.log("   nenhum contrato nesta base: o controle contábil não foi aberto");
+  else {
+    const t = await irPara(n, page, contrato);
+    conferir(semErro(t) && (await page.$("[data-controle-contabil-do-contrato]")) !== null, `contrato ${contrato} abre com o controle contábil`);
+  }
+  const rot = await irPara(n, page, "/contabilidade/roteiros-patrimoniais");
+  const temContrato = await page.$$eval('select[name="movimento"] option', (os) => os.some((o) => (o.getAttribute("value") ?? "").startsWith("CONTRATO|"))).catch(() => false);
+  conferir(semErro(rot) && temContrato, "roteiros patrimoniais oferecem os movimentos do controle de contratos");
+
   const r = await page.goto(`${n.base}/natureza-da-base`);
   conferir(r?.status() === 200, `natureza da base: ${(await r?.text())?.slice(0, 60) ?? ""}`);
 } finally {

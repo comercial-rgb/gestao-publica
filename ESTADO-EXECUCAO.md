@@ -61,10 +61,26 @@ O pedido está em `docs/lotes/V39-R2-continuidade.md`, guardado como veio. Regim
 ### Bases locais
 As migrations 050000 e 060000, com os dois SQL, foram aplicadas em `gestao_publica_esperanca_ficticio` e em `gestao_publica_ensaio_v39`. O papel `gestao_app` tem SELECT e INSERT na tabela nova.
 
+### Publicação das frentes 1 a 3 (10/10/2026)
+- **Commits:** frentes 2 e 3 em 429aed0d (a frente 1 já estava em c25a7201), com 266/266 nos testes dirigidos e os três typechecks sem erro.
+- **Publicação:**
+  - Backup antes: `/var/backups/gestao-publica/esperanca-antes-v39r2-frentes123-20261010T160926Z.dump` (2,5 MB, legível pelo `pg_restore`).
+  - `npm run publicar` enviou 3643e539 (conferência de tipos aprovada em 180 s), e `/release` responde 3643e53.
+  - Natureza da base: DEMONSTRACAO.
+- **Banco de produção conferido:**
+  - as migrations 040000, 050000 e 060000 estão aplicadas;
+  - os dois CHECKs do fato aceitam IRRF_PESSOA_FISICA;
+  - o `gestao_app` tem INSERT em `LancamentoDeControleDoContrato` e em `FotoDoEncerramentoDaConciliacao`.
+- **Telas em produção** (`percurso-v39-telas-tocadas`, ampliado com as telas da R2): abriram sem erro.
+  - O período encerrado da conta mostra a fonte da conferência (RECALCULADO: foi encerrado antes de existir a foto).
+  - Abriram também as retenções próprias e os roteiros com os movimentos de contratos.
+- **Controle do contrato em produção:** `percurso-v39r2-controle-do-contrato`, 15/15, pela tela.
+  - As conferências de banco correram pelo túnel SSH com o usuário de runtime.
+  - Foram declarados os 4 roteiros CONTRATO com contas do plano carregado. O contrato fictício CT-R2-141320 teve acréscimo, supressão e estorno, terminando em 11.750 a executar, sem divergência.
+- **Não operado em produção:** o pagamento ao fornecedor PF. Em produção ele lançaria movimento na FIC-PM-500, cuja conciliação de outubro está aberta. Foi operado na 3011.
+
 ### O próximo passo
-1. Commit das frentes 2 e 3, depois de verdes os testes e os typechecks em `r2-lote4`.
-2. Publicar: backup, `npm run publicar`, `/release`, e o percurso das telas em produção.
-3. Frente 4 (R2-014 a 020): o rascunho do schema e do domínio está FORA da árvore, no scratchpad da sessão (`frente4/`). Ainda faltam:
+1. Frente 4 (R2-014 a 020): o rascunho do schema e do domínio está FORA da árvore, no scratchpad da sessão (`frente4/`). Ainda faltam:
    - as back-relations;
    - as ações `REGISTRAR_RESULTADO_DA_LICITACAO` e `ADJUDICAR_LICITACAO`;
    - a trava `ProcessoLicitatorio`;
