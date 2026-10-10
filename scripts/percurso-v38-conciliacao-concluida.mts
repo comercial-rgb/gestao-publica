@@ -10,7 +10,7 @@ import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, type Naveg
  *
  * A contadora não achou conciliação feita para entender o comportamento. Este percurso monta o cenário e o conclui só
  * pela interface (nenhum acesso ao banco: roda igual na base local e na de produção, ambas fictícias):
- *   1. abre o período da conta FIC-CM-500, de 1º de janeiro até hoje;
+ *   1. abre o período da conta (FIC-CM-500, ou a de `PERCURSO_CONTA`), de 1º de janeiro até hoje;
  *   2. lê na tela os fatos do razão no período (data, descrição, valor);
  *   3. gera um extrato OFX FICTÍCIO com esses fatos, MENOS a última saída (que o banco ainda não debitou), e MAIS uma
  *      tarifa que só o banco tem — os dois lados de uma conciliação real;
@@ -26,7 +26,8 @@ const n: Navegador = { base: process.env["BASE"] ?? "http://localhost:3011" };
 if (/:3010\b/.test(n.base)) throw new Error("Recusado: a 3010 é a apresentação; este percurso grava.");
 const usuario = process.env["PERCURSO_USUARIO"] ?? "admin@cg.pb.gov.br";
 const senha = process.env["PERCURSO_SENHA"] ?? process.env["SEED_ADMIN_SENHA"] ?? "";
-const CONTA = "FIC-CM-500";
+// A conta vem do ambiente: as bases fictícias não têm os mesmos fatos (em produção, a FIC-CM-500 não tem movimento).
+const CONTA = process.env["PERCURSO_CONTA"] ?? "FIC-CM-500";
 const MARCA = String(Date.now()).slice(-6);
 const falhas: string[] = [];
 const conferir = (ok: boolean, o: string): void => {
@@ -45,6 +46,7 @@ interface Fato {
 }
 
 const saida = (v: string): boolean => v.startsWith("-");
+const ascii = (s: string): string => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\x20-\x7E]/g, "-");
 const ofxData = (dia: string): string => dia.replace(/-/g, "") + "120000[-3:BRT]";
 
 const nav = await lancarNavegadorDoPercurso();
@@ -104,14 +106,16 @@ try {
     const noBanco = fatos.filter((f) => f !== naoDebitada);
     const diaTarifa = fatos[fatos.length - 1]!.dia;
     const transacoes = [
-      ...noBanco.map((f, i) => ({ fitid: `DEMO-${MARCA}-${String(i + 1)}`, dia: f.dia, valor: f.valor, memo: `DEMO ${f.descricao}`.slice(0, 60) })),
+      // O MEMO em ASCII, como o cabeçalho declara (ENCODING:USASCII): medido na corrida de produção, o travessão da
+      // descrição virou caractere de controle e a linha não se achou para o vínculo.
+      ...noBanco.map((f, i) => ({ fitid: `DEMO-${MARCA}-${String(i + 1)}`, dia: f.dia, valor: f.valor, memo: ascii(`DEMO ${f.descricao}`).slice(0, 60) })),
       { fitid: `DEMO-${MARCA}-TAR`, dia: diaTarifa, valor: "-8.90", memo: `DEMO TARIFA PACOTE DE SERVICOS` },
     ];
     const ofx = [
       "OFXHEADER:100", "DATA:OFXSGML", "VERSION:102", "SECURITY:NONE", "ENCODING:USASCII", "CHARSET:1252", "COMPRESSION:NONE", "OLDFILEUID:NONE", "NEWFILEUID:NONE", "",
       "<OFX>", "<SIGNONMSGSRSV1>", "<SONRS>", "<STATUS>", "<CODE>0", "<SEVERITY>INFO", "</STATUS>", `<DTSERVER>${ofxData(hoje)}`, "<LANGUAGE>POR", "</SONRS>", "</SIGNONMSGSRSV1>",
       "<BANKMSGSRSV1>", "<STMTTRNRS>", "<TRNUID>0", "<STATUS>", "<CODE>0", "<SEVERITY>INFO", "</STATUS>", "<STMTRS>", "<CURDEF>BRL",
-      "<BANKACCTFROM>", "<BANKID>001", "<ACCTID>DEMO-CM-000002", "<ACCTTYPE>CHECKING", "</BANKACCTFROM>",
+      "<BANKACCTFROM>", "<BANKID>001", `<ACCTID>DEMO-${CONTA}`, "<ACCTTYPE>CHECKING", "</BANKACCTFROM>",
       "<BANKTRANLIST>", `<DTSTART>${ano}0101`, `<DTEND>${hoje.replace(/-/g, "")}`,
       ...transacoes.flatMap((t) => ["<STMTTRN>", `<TRNTYPE>${saida(t.valor) ? "DEBIT" : "CREDIT"}`, `<DTPOSTED>${ofxData(t.dia)}`, `<TRNAMT>${t.valor}`, `<FITID>${t.fitid}`, `<MEMO>${t.memo}`, "</STMTTRN>"]),
       "</BANKTRANLIST>", "</STMTRS>", "</STMTTRNRS>", "</BANKMSGSRSV1>", "</OFX>", "",
@@ -170,6 +174,9 @@ try {
     conferir(j1 && j2, "as duas pendências justificadas pela tela, com o motivo");
 
     await irPara(n, page, periodoHref);
+    // Encerrar é IRREVERSÍVEL: só com tudo antes conferido (medido na corrida de produção, que encerrou com um vínculo
+    // faltando e sem as justificativas).
+    if (falhas.length > 0) throw new Error(`o período NÃO foi encerrado: ${String(falhas.length)} conferência(s) falharam antes`);
     const re = await preencherEEnviar(page, "encerrar-conciliacao", []);
     await irPara(n, page, periodoHref);
     const estado = await page.$eval("[data-estado]", (e) => e.getAttribute("data-estado") ?? "").catch(() => "");

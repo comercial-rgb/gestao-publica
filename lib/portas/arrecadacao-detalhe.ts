@@ -1,5 +1,6 @@
 import { anoCivil, diaCivil } from "../../packages/datas/index";
 import { cliente } from "./cliente";
+import { instanteDoDiaDoBanco } from "../../modules/m09-tesouraria/dia-do-banco";
 import { exigirLeituraDoEnte } from "./leitura";
 
 /**
@@ -77,7 +78,7 @@ export async function lerArrecadacao(id: string): Promise<ArrecadacaoDetalhada |
     lancamentoId: r.lancamentoId,
     anulacoes: r.estornos.map((e) => ({ id: e.id, numero: e.numeroReceita, data: e.dataArrecadacao, valor: e.valor.toFixed(2), lancamentoId: e.lancamentoId })),
     conciliacao: vinculos.map((v) => ({
-      dataExtrato: v.lancamentoExtrato.dataPostagem,
+      dataExtrato: instanteDoDiaDoBanco(v.lancamentoExtrato.dataPostagem),
       valor: v.valor.toFixed(2),
       documento: v.lancamentoExtrato.documento,
       memo: v.lancamentoExtrato.memo,

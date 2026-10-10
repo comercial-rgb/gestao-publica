@@ -303,3 +303,12 @@ declara pendências, encerra); a consulta direta ao Banco do Brasil depende de c
 "dados de demonstração" só aparece para o extrato vindo da API de demonstração (`origem === "API_BB"`): um OFX
 importado é o extrato real. Pendente: entrada manual de linhas do extrato (sem campo de saldo avulso, que criaria
 segunda aritmética).
+
+## V38 — o dia do banco (`dia-do-banco.ts`)
+
+O leitor de OFX (e o da API do banco) guarda o dia informado pelo banco como meia-noite UTC: formato externo. A
+conciliação fala em dia civil do ente. A ponte é uma só: `chaveDoBancoAte(corte)` filtra as linhas "até o dia civil do
+corte"; `instanteDoDiaDoBanco` dá o instante para exibir e ordenar com os fatos do razão; `fimDoDiaDoBanco` dá o corte de
+um extrato que termina naquele dia. Antes, a linha do dia seguinte ao fim do período entrava no período e toda linha
+aparecia na tela um dia antes (`m09-extrato-dia-do-banco.test.ts`, N=2 na borda). A tela do período da conciliação
+mostra a data de cada pendência.

@@ -1,3 +1,4 @@
+import { fimDoDiaDoBanco, instanteDoDiaDoBanco, janelaDoBancoDoAno, limiteDoBancoApos } from "../../modules/m09-tesouraria/dia-do-banco";
 import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { serializar, toMoney, type Money } from "../../packages/contracts/index.js";
@@ -10,7 +11,6 @@ import type { TipoInternoConciliacao } from "../../modules/m09-tesouraria/domini
 import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
 import { estadoDoModoBb, mascararAgencia, mascararConta } from "../../modules/m17-banco-bb/modos";
 import { mascararCpfCnpj } from "../format/mascaras";
-import { janelaCivilDoAno } from "../../packages/datas/index";
 
 /**
  * PORTA — CONCILIAÇÃO BANCÁRIA (M09 bloco 3 + M17-a). Leitura, e — desde a V22 rodada 7 — o vínculo
@@ -208,6 +208,7 @@ const zero = (): Money => toMoney("0.00");
  * exercício, devolvemos `null` e a tela diz isso com todas as letras, em vez de mostrar uma
  * conciliação vazia que pareceria "tudo conciliado".
  */
+
 export async function lerPainelConciliacao(p: {
   readonly exercicio: number;
 }): Promise<PainelConciliacao | null> {
@@ -216,8 +217,9 @@ export async function lerPainelConciliacao(p: {
 
   // O recorte do exercício é pelo FIM do período: um extrato é do ano em que ele fecha.
   // ⚠️ A JANELA DO EXERCÍCIO É CIVIL — ver docs/adr/ADR-data-civil-do-ente.md.
-  const inicioDoAno = janelaCivilDoAno(p.exercicio).inicio;
-  const inicioDoAnoSeguinte = janelaCivilDoAno(p.exercicio + 1).inicio;
+  // ⚠️ V38 — o fim do extrato é um DIA DO BANCO (ver `dia-do-banco.ts`): a janela é a do dia do banco, senão o extrato
+  // que fecha em 01/01 (meia-noite UTC = 21h de 31/12 no ente) cairia no exercício anterior.
+  const { inicio: inicioDoAno, limite: inicioDoAnoSeguinte } = janelaDoBancoDoAno(p.exercicio);
 
   const extrato = await prisma.extratoBancario.findFirst({
     where: { periodoFim: { gte: inicioDoAno, lt: inicioDoAnoSeguinte } },
@@ -243,7 +245,8 @@ export async function lerPainelConciliacao(p: {
   if (extrato === null) return null;
 
   const conta = extrato.contaBancaria;
-  const corte = extrato.periodoFim;
+  // O fim do extrato é um DIA DO BANCO (meia-noite UTC): o corte é o fim desse dia civil (ver `dia-do-banco.ts`).
+  const corte = fimDoDiaDoBanco(extrato.periodoFim);
 
   // ── O MOTOR (M09 bloco 3): saldos, diferença e pendências dos dois lados ──
   // Ele é FAIL-CLOSED: se a diferença não estivesse toda nomeada, ele lança — e a tela mostra o
@@ -262,7 +265,7 @@ export async function lerPainelConciliacao(p: {
       tipo: "VINCULO",
       estornos: { none: {} },
       criadoEm: { lte: agora },
-      lancamentoExtrato: { contaBancariaId: conta.id, dataPostagem: { lte: corte } },
+      lancamentoExtrato: { contaBancariaId: conta.id, dataPostagem: { lt: limiteDoBancoApos(corte) } },
     },
     orderBy: { criadoEm: "asc" },
     select: {
@@ -284,7 +287,7 @@ export async function lerPainelConciliacao(p: {
       vinculoId: v.id,
       extrato: {
         fitid: v.lancamentoExtrato.fitid,
-        data: v.lancamentoExtrato.dataPostagem,
+        data: instanteDoDiaDoBanco(v.lancamentoExtrato.dataPostagem),
         valor: v.lancamentoExtrato.valor.toFixed(2),
         natureza: v.lancamentoExtrato.natureza,
         memo: v.lancamentoExtrato.memo,
@@ -320,8 +323,8 @@ export async function lerPainelConciliacao(p: {
     },
     extrato: {
       origem: extrato.origem,
-      periodoInicio: extrato.periodoInicio,
-      periodoFim: extrato.periodoFim,
+      periodoInicio: instanteDoDiaDoBanco(extrato.periodoInicio),
+      periodoFim: instanteDoDiaDoBanco(extrato.periodoFim),
       importadoPor: extrato.importadoPor,
       importadoEm: extrato.criadoEm,
       hashOrigem: extrato.arquivoHash,
@@ -603,7 +606,7 @@ function contaDaLista(c: {
 export async function listarExtratosImportados(p: { readonly exercicio: number }): Promise<readonly ExtratoDaLista[]> {
   await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const extratos = await cliente().extratoBancario.findMany({
-    where: { periodoFim: { gte: janelaCivilDoAno(p.exercicio).inicio, lt: janelaCivilDoAno(p.exercicio + 1).inicio } },
+    where: { periodoFim: { gte: janelaDoBancoDoAno(p.exercicio).inicio, lt: janelaDoBancoDoAno(p.exercicio).limite } },
     orderBy: [{ periodoFim: "desc" }, { criadoEm: "desc" }],
     select: {
       id: true, origem: true, periodoInicio: true, periodoFim: true, importadoPor: true, criadoEm: true,
@@ -615,8 +618,8 @@ export async function listarExtratosImportados(p: { readonly exercicio: number }
     id: e.id,
     conta: contaDaLista(e.contaBancaria),
     origem: e.origem,
-    periodoInicio: e.periodoInicio,
-    periodoFim: e.periodoFim,
+    periodoInicio: instanteDoDiaDoBanco(e.periodoInicio),
+    periodoFim: instanteDoDiaDoBanco(e.periodoFim),
     importadoPor: e.importadoPor,
     importadoEm: e.criadoEm,
     quantidadeLinhas: e._count.lancamentos,
@@ -634,8 +637,8 @@ export async function lerExtratoParaImpressao(id: string): Promise<ExtratoParaIm
     id: e.id,
     conta: contaDaLista(conta),
     origem: e.origem,
-    periodoInicio: e.periodoInicio,
-    periodoFim: e.periodoFim,
+    periodoInicio: instanteDoDiaDoBanco(e.periodoInicio),
+    periodoFim: instanteDoDiaDoBanco(e.periodoFim),
     importadoPor: e.importadoPor,
     importadoEm: e.importadoEm,
     quantidadeLinhas: e.linhas.length,

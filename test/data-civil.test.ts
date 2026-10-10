@@ -77,6 +77,10 @@ const PADRAO_HOSPEDEIRO =
 const EXCECOES: Readonly<Record<string, string>> = {
   "packages/datas/index.ts": "é a própria régua — implementa a conversão",
   "packages/ofx/parser.ts": "o OFX declara o próprio fuso; normaliza na fronteira",
+  // V38 — o dia do banco é guardado em meia-noite UTC pelo leitor (formato externo); esta é a ponte para o dia civil.
+  "modules/m09-tesouraria/dia-do-banco.ts": "lê o dia do banco como ele foi guardado (UTC, formato externo) e o converte para o dia civil",
+  // V36 (achado na V38: a guarda estava vermelha desde então) — valida o dia DIGITADO no calendário, sem instante.
+  "modules/m10-patrimonial/cronograma-colado.ts": "confere se o dia digitado existe no calendário (31/02); não há instante nem fuso em jogo",
   "modules/m14-exports-federais/manad/dominio.ts": "leiaute da Receita",
   "modules/m14-exports-federais/manad/gerador.ts": "leiaute da Receita",
   // O cadastro dos responsáveis do MANAD e o recorte do exercício entregue ao gerador: as datas vão

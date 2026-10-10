@@ -17,6 +17,7 @@ import {
 } from "./dominio.js";
 // ⚠️ A FONTE ÚNICA dos fatos que moveram a conta — ver o cabeçalho de `caixa.ts`.
 import { fatosDeCaixaDaConta, lancamentosDaContaBancaria, type ContaParaCaixa, type LancamentosDaConta } from "./caixa.js";
+import { instanteDoDiaDoBanco, limiteDoBancoApos } from "./dia-do-banco.js";
 import {
   vinculoLiquidoDoLancamento,
   vinculoLiquidoDoMovimento,
@@ -214,7 +215,9 @@ export async function conciliacaoBancaria(
 
   // ── (a) SALDO DO EXTRATO — SUM via SINAL_NATUREZA_EXTRATO ────────────────
   const linhasExtrato = await prisma.lancamentoExtrato.findMany({
-    where: { contaBancariaId: conta.id, dataPostagem: { lte: corte } },
+    // O dia do banco se compara pelo LIMITE do dia civil do corte (ver `dia-do-banco.ts`): como instante, a linha do dia
+    // seguinte ao corte entrava.
+    where: { contaBancariaId: conta.id, dataPostagem: { lt: limiteDoBancoApos(corte) } },
     select: {
       id: true,
       fitid: true,
@@ -247,7 +250,7 @@ export async function conciliacaoBancaria(
     if (residual.greaterThan(0)) {
       noExtratoSemVinculo.push({
         id: l.id,
-        data: l.dataPostagem,
+        data: instanteDoDiaDoBanco(l.dataPostagem),
         descricao: `[${l.natureza}] ${l.memo} (FITID ${l.fitid})`,
         residual: serializar(comSinalDaNatureza(l.natureza, residual)),
       });

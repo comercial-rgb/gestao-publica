@@ -1,6 +1,7 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { vinculoLiquido } from "./dominio.js";
+import { instanteDoDiaDoBanco } from "./dia-do-banco.js";
 
 /**
  * V36 — O EXTRATO IMPORTADO, COMO O BANCO O MANDOU, para consulta e impressão (TR 5.10.2.44, "permitir a impressão
@@ -90,7 +91,7 @@ export async function lerExtratoImportado(prisma: PrismaClient, extratoId: strin
       const vinculado = vinculoLiquido(l.vinculos.map((v) => ({ tipo: v.tipo, valor: toMoney(v.valor.toFixed(2)) })));
       return {
         id: l.id,
-        data: l.dataPostagem,
+        data: instanteDoDiaDoBanco(l.dataPostagem),
         fitid: l.fitid,
         documento: l.documento,
         memo: l.memo,

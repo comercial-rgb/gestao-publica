@@ -4,6 +4,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somasPorConta } from "../m01-core-contabil/adapter-prisma.js";
 import { restosParaAnexo7, type InscricaoParaAnexo7 } from "../m08-restos-a-pagar/consultas.js";
 import { conciliacaoBancaria } from "../m09-tesouraria/conciliacao.js";
+import { limiteDoBancoApos } from "../m09-tesouraria/dia-do-banco.js";
 import { SINAL_MOVIMENTO_DIVIDA, type TipoMovimentoDivida } from "../m10-patrimonial/divida.js";
 
 /**
@@ -420,7 +421,7 @@ export async function termoDeConferenciaDeCaixa(prisma: PrismaClient, p: { reado
           `${e instanceof Error ? e.message : String(e)} Concilie a conta e gere de novo.`
       );
     }
-    const linhasDeExtrato = await prisma.lancamentoExtrato.count({ where: { contaBancariaId: b.id, dataPostagem: { lte: fim } } });
+    const linhasDeExtrato = await prisma.lancamentoExtrato.count({ where: { contaBancariaId: b.id, dataPostagem: { lt: limiteDoBancoApos(fim) } } });
     const agencia = b.agencia === null ? "" : `ag. ${b.agencia}${b.digitoAgencia ? `-${b.digitoAgencia}` : ""}`;
     const conta = b.conta === null ? "" : `c/c ${b.conta}${b.digitoConta ? `-${b.digitoConta}` : ""}`;
     contas.push({
