@@ -153,6 +153,18 @@ O teste de borda ganhou a linha com a âncora do BB e as réguas puras na virada
 
 No mesmo painel, a hora do "vínculos considerados até" e do "importado em" saía em UTC: 22h04 aparecia como 01:04. Defeito anterior a esta sessão. Agora usa `instanteCivilBr`. A sonda local confirmou o painel com competência de 01/01 a 09/10/2026, corte em 09/10, vínculos até 22h04 e importação às 21h10.
 
+**Publicações da 5ª e da 6ª leva.**
+- `945c35b`: 5ª leva. Backup `esperanca-antes-v38e-20261010T001220Z.dump`.
+- `5d145ab`: dia do banco. Backup `esperanca-antes-v38f-20261010T005552Z.dump`.
+- `bf4c7c1`: painel e hora. Sem backup novo: não há migration, e o anterior é de 30 min antes.
+- `/release` foi conferido depois de cada uma. A API do GitHub estava no limite de consultas.
+- Sondas só de leitura em produção:
+  - a conciliação encerrada da FIC-PM-500 mostra a caução em 01/07 nos dois lados, e a tarifa e o pagamento em 07/08;
+  - o painel geral abre com a competência de 01/01 a 09/10/2026, 33 linhas, vínculos até 22h10 e importação às 21h18;
+  - a lista de extratos mostra 01/01/2026 a 09/10/2026.
+
+As sondas foram apagadas.
+
 **A guarda de data civil estava vermelha desde a V36.** `test/data-civil.test.ts` acusava também `modules/m10-patrimonial/cronograma-colado.ts`, que valida se o dia digitado existe no calendário, sem instante nem fuso. A suíte não roda a cada mudança, e o vermelho passou despercebido. Os dois arquivos entraram na lista de exceções, cada um com o motivo.
 
 **Provas.**
@@ -218,7 +230,7 @@ profundidade onde tocou dinheiro (guarda do saldo da dotação na data do empenh
 
 | Campo | Valor |
 |---|---|
-| HEAD | publicado como `945c35b` (main e `/release` = `945c35b`); a 6ª leva vai na publicação seguinte |
+| HEAD | publicado como `bf4c7c1` (main e `/release` = `bf4c7c1`) |
 | Catálogo | 157 de 2.037 validadas (202 parciais, 170 ausentes, 1.418 não verificadas). Contabilidade (5.9 e 5.10): 97 validadas, 31 implementadas sem percurso, 119 parciais, 36 ausentes, 2 de terceiro. |
 | Último resultado | Defeito corrigido: o acumulado da receita nos RREO (Anexos 1, 6, 8, 11, 12) e no dado aberto levava os exercícios anteriores; a janela virou obrigatória. O Anexo 1 abre as guias e exporta CSV. Antes: reserva com data, setores, roteiro do almoxarifado, buscas. |
 | Próximo passo | V38: o que resta na matriz depende do ente ou de leiaute externo — linha manual do extrato como prova bancária (AUD-047b), o que copiar da LDO anterior (AUD-104), Reinf (AUD-024/025), momento da retenção (AUD-031), contas de controle dos contratos (AUD-118 a 121), realizáveis (AUD-056), SIOPE/SIOPS (AUD-082/083), MCASP (AUD-078), vencedor da licitação (AUD-116), referência externa do empenho (AUD-124); e as dúvidas de transcrição (AUD-001/017/032/035/098) pedem reouvir o áudio. Pendências técnicas: `PROPOSTA-UM-FORMULARIO-POR-LINHA`; `CONCILIACAO-DEMONSTRACAO-PERIODO-SEGUINTE` (na produção, abrir o período seguinte da FIC-PM-500 a partir de 10/10/2026, vincular a caução herdada e justificar as outras duas pendências). Decisões do ente da V38 (`docs/lotes/V38-matriz-por-id.md`): classificação da retenção própria, IR informado de pessoa física, contas de controle dos contratos, realizáveis, SIOPE/SIOPS, Reinf. Anteriores: RREO-RGF-SEM-DRILL-DOWN nos demais anexos; replicação PPA → LDO → LOA; decisões do ente (setores e contas do roteiro do almoxarifado em produção, multas, prévia, 5.9.3.34, 5.10.2.4, estágio em liquidação). |
