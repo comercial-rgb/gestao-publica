@@ -3761,6 +3761,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   conferenciaDoControleDoContrato: "leitura (V39-R2 — o controle do contrato conferido contra os fatos: valor atualizado menos o liquidado; não muta)",
   controleDoContratoParaUsuario: "leitura (V39-R2 — decide quem lê o controle do contrato, com o motivo da recusa; não muta)",
   quadroDoResultado: "leitura (V39-R2 — itens, propostas vigentes, resultado, adjudicação, homologação, atas e saldos do processo; não muta)",
+  dadosDoProjeto: "leitura (V39-R2 — de onde vêm os valores da versão do projeto da LOA e a que linha da proposta cada um aponta; chamada DENTRO da captura; não muta)",
+  comparativoDasEmendas: "leitura (V39-R2 — o efeito das emendas sobre a versão guardada do projeto; não muta)",
   gravarContratoNaTransacao: "interna (V39-R2 — o corpo do cadastro de contrato, DENTRO da transação de quem cadastra: o contrato avulso, o do resultado e o da ata; a ação é a do serviço chamador)",
   naturezaDaBase: "leitura (V39 — a declaração vigente de que a base é oficial, de demonstração ou de ensaio; não muta)",
   declararNaturezaDaBase:

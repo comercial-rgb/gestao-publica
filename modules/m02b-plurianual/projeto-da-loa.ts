@@ -5,6 +5,7 @@ import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { vigenteNoCorte } from "../m02-planejamento/declaracao-da-unidade.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { dadosDoProjeto } from "./projeto-da-proposta.js";
 
 /**
  * V26 (ordem, item 2.1) — A VERSÃO DO PROJETO DA LOA ENCAMINHADA À CÂMARA, com a cópia dos valores naquele dia (ver
@@ -22,11 +23,13 @@ export const zCapturarVersaoDoProjetoDaLoa = z.object({
   competenciaDaRemessa: z.string().trim().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Informe o mês da remessa ao Tribunal (AAAA-MM)."),
   documento: z.string().trim().min(5, "Informe o documento do encaminhamento (mensagem, ofício, protocolo na Câmara)."),
   fundamento: z.string().trim().min(10, "Diga de onde vem a versão (o ato de encaminhamento, a emenda)."),
+  /** V39-R2 (R2-023) — a proposta orçamentária que vai à Câmara. Obrigatória quando o exercício tem proposta. */
+  propostaId: z.string().min(1).optional(),
   criadoPor: z.string().min(1),
 });
 export type CapturarVersaoDoProjetoDaLoaInput = z.input<typeof zCapturarVersaoDoProjetoDaLoa>;
 
-export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: CapturarVersaoDoProjetoDaLoaInput): Promise<{ readonly id: string; readonly numero: number }> {
+export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: CapturarVersaoDoProjetoDaLoaInput): Promise<{ readonly id: string; readonly numero: number; readonly semLigacao: number }> {
   const d = zCapturarVersaoDoProjetoDaLoa.parse(input);
   return prisma.$transaction(
     async (tx) => {
@@ -50,27 +53,19 @@ export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: 
       }
       const corte = fimDoDiaCivil(diaCivil(d.dataDoEncaminhamento));
 
-      // A despesa: as fichas do exercício de destino, pela dotação inicial.
-      const fichas = await tx.fichaOrcamentaria.findMany({
-        where: { exercicio: lei.exercicio },
-        orderBy: [{ unidadeOrcId: "asc" }, { numero: "asc" }],
-        select: {
-          exercicioFonte: true,
-          valorDotado: true,
-          unidadeOrc: { select: { id: true, codigo: true, descricao: true, declaracoes: { select: { naturezaJuridica: true, nomeSecretario: true, cpfSecretario: true, atoDeNomeacao: true, vigenteDesde: true, criadoEm: true } } } },
-          funcao: { select: { codigo: true } },
-          subfuncao: { select: { codigo: true } },
-          programa: { select: { id: true, codigo: true, declaracoes: { select: { descricao: true, objetivo: true, tipoObjetivoMilenio: true, vigenteDesde: true, criadoEm: true } } } },
-          acao: { select: { id: true, codigo: true, tipo: true, declaracoes: { select: { descricao: true, descMeta: true, unidadeMedida: true, vigenteDesde: true, criadoEm: true } } } },
-          naturezaDespesa: { select: { codCategoria: true, codNatureza: true, codModalidade: true, codElemento: true } },
-          fonte: { select: { codigo: true } },
-        },
-      });
-      if (fichas.length === 0) throw new Error(`Não há fichas de ${String(lei.exercicio)} no planejamento: não há projeto para guardar. Nada foi gravado.`);
-      const receitas = await tx.receitaPrevista.findMany({
-        where: { exercicio: lei.exercicio },
-        select: { exercicioFonte: true, tipoReceita: true, valorPrevisto: true, naturezaReceita: { select: { codigo: true } }, fonte: { select: { codigo: true } }, detalhe: { select: { tipoDeducaoSagres: true } } },
-      });
+      // V39-R2 (R2-023) — A PROPOSTA ENVIADA. Havendo proposta para o exercício, a versão diz qual vai à Câmara, e a cópia
+      // aponta as linhas dela (`projeto-da-proposta.ts`): antes da efetivação a cópia SÃO as linhas; depois, as fichas
+      // que a efetivação criou, ligadas às linhas pela classificação.
+      const propostas = await tx.propostaOrcamentaria.findMany({ where: { exercicio: lei.exercicio }, select: { id: true, descricao: true, efetivacao: { select: { id: true } } } });
+      if (propostas.length > 0 && d.propostaId === undefined) {
+        throw new Error(`O exercício ${String(lei.exercicio)} tem proposta orçamentária (${propostas.map((x) => x.descricao).join("; ")}): diga qual vai à Câmara. Nada foi gravado.`);
+      }
+      const proposta = d.propostaId === undefined ? null : (propostas.find((x) => x.id === d.propostaId) ?? null);
+      if (d.propostaId !== undefined && proposta === null) throw new Error(`A proposta escolhida não é do exercício ${String(lei.exercicio)}. Nada foi gravado.`);
+      const dados = await dadosDoProjeto(tx, lei.exercicio, proposta === null ? null : { id: proposta.id, efetivada: proposta.efetivacao !== null }, corte);
+      const fichas = dados.despesas;
+      const receitas = dados.receitas;
+      if (fichas.length === 0) throw new Error(`Não há fichas de ${String(lei.exercicio)} ${proposta === null ? "no planejamento" : "nem linhas com valor na proposta"}: não há projeto para guardar. Nada foi gravado.`);
 
       // O que o arquivo do projeto exige e falta, nomeado de uma vez.
       const falta: string[] = [];
@@ -106,7 +101,7 @@ export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: 
 
       const numero = (lei.versoesDoProjeto[0]?.numero ?? 0) + 1;
       const v = await tx.versaoDoProjetoDaLoa.create({
-        data: { leiId: d.leiId, numero, tipo: d.tipo, dataDoEncaminhamento: d.dataDoEncaminhamento, competenciaDaRemessa: d.competenciaDaRemessa, documento: d.documento, fundamento: d.fundamento, criadoPor: d.criadoPor },
+        data: { leiId: d.leiId, numero, tipo: d.tipo, dataDoEncaminhamento: d.dataDoEncaminhamento, competenciaDaRemessa: d.competenciaDaRemessa, documento: d.documento, fundamento: d.fundamento, propostaOrcamentariaId: proposta?.id ?? null, criadoPor: d.criadoPor },
         select: { id: true },
       });
       await tx.dotacaoDoProjetoDaLoa.createMany({
@@ -124,6 +119,7 @@ export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: 
           exercicioFonte: f.exercicioFonte,
           codFonte: f.fonte.codigo,
           valor: f.valorDotado,
+          linhaDaPropostaId: f.linhaDaPropostaId,
         })),
       });
       await tx.receitaDoProjetoDaLoa.createMany({
@@ -135,12 +131,13 @@ export async function capturarVersaoDoProjetoDaLoa(prisma: PrismaClient, input: 
           tipoReceita: r.tipoReceita,
           tipoDeducaoSagres: r.detalhe?.tipoDeducaoSagres ?? null,
           valor: r.valorPrevisto,
+          linhaDaPropostaId: r.linhaDaPropostaId,
         })),
       });
       await tx.programaDoProjetoDaLoa.createMany({ data: [...programas.values()].map((p) => ({ versaoId: v.id, ...p })) });
       await tx.acaoDoProjetoDaLoa.createMany({ data: [...acoes.values()].map((a) => ({ versaoId: v.id, ...a })) });
       await tx.unidadeDoProjetoDaLoa.createMany({ data: [...unidades.values()].map((u) => ({ versaoId: v.id, ...u })) });
-      return { id: v.id, numero };
+      return { id: v.id, numero, semLigacao: dados.semLigacao };
     },
     { timeout: 60_000 }
   );

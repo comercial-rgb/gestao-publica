@@ -1,3 +1,4 @@
+import { comparativoDasEmendas, type ComparativoDasEmendas } from "../../modules/m02b-plurianual/comparativo-das-emendas.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
@@ -184,4 +185,10 @@ export async function sancionarEmendaPelaTela(input: {
   return resultado === "REJEITADA"
     ? "Reprovação registrada. A proposta não mudou."
     : `Sanção registrada: ${String(r.itensAprovados)} dotação(ões) levada(s) à proposta.`;
+}
+
+/** V39-R2 (R2-024) — o efeito das emendas sobre a versão guardada do projeto. Só leitura. */
+export async function lerComparativoDasEmendas(propostaId: string): Promise<ComparativoDasEmendas> {
+  await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
+  return comparativoDasEmendas(cliente(), propostaId);
 }

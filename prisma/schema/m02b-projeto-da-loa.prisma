@@ -35,6 +35,11 @@ model VersaoDoProjetoDaLoa {
   documento            String
   fundamento           String
 
+  /// V39-R2 (R2-023) — a proposta orçamentária que esta versão leva à Câmara (nula: versão anterior à ligação, ou
+  /// exercício sem proposta registrada). As linhas da cópia apontam as linhas da proposta de que vieram.
+  propostaOrcamentariaId String?
+  proposta               PropostaOrcamentaria? @relation("VersoesDoProjetoDaProposta", fields: [propostaOrcamentariaId], references: [id], onDelete: Restrict)
+
   dotacoes  DotacaoDoProjetoDaLoa[]
   receitas  ReceitaDoProjetoDaLoa[]
   programas ProgramaDoProjetoDaLoa[]
@@ -45,6 +50,7 @@ model VersaoDoProjetoDaLoa {
   criadoPor String
 
   @@unique([leiId, numero])
+  @@index([propostaOrcamentariaId])
 }
 
 model DotacaoDoProjetoDaLoa {
@@ -63,8 +69,12 @@ model DotacaoDoProjetoDaLoa {
   exercicioFonte         Int
   codFonte               String               @db.VarChar(3)
   valor                  Decimal              @db.Decimal(18, 2)
+  /// V39-R2 (R2-023) — a linha da proposta de que esta dotação veio (nula: sem proposta, ou sem correspondência única).
+  linhaDaPropostaId      String?
+  linhaDaProposta        LinhaDeDespesaDaProposta? @relation("DotacoesDoProjetoDaLinha", fields: [linhaDaPropostaId], references: [id], onDelete: Restrict)
 
   @@index([versaoId])
+  @@index([linhaDaPropostaId])
 }
 
 model ReceitaDoProjetoDaLoa {
@@ -78,8 +88,12 @@ model ReceitaDoProjetoDaLoa {
   /// O subtipo da dedução (3, 4 ou 5), como o detalhe da linha o declarava no encaminhamento.
   tipoDeducaoSagres String?              @db.VarChar(1)
   valor             Decimal              @db.Decimal(18, 2)
+  /// V39-R2 (R2-023) — a linha da proposta de que esta receita veio.
+  linhaDaPropostaId String?
+  linhaDaProposta   LinhaDeReceitaDaProposta? @relation("ReceitasDoProjetoDaLinha", fields: [linhaDaPropostaId], references: [id], onDelete: Restrict)
 
   @@index([versaoId])
+  @@index([linhaDaPropostaId])
 }
 
 model ProgramaDoProjetoDaLoa {

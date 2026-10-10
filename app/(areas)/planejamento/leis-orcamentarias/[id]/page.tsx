@@ -78,7 +78,7 @@ export default async function Detalhe({
               <tr key={v.id} className="border-b border-[color:var(--color-border)] align-top" data-versao-do-projeto={v.numero}>
                 <td className="py-1.5 pr-4"><strong>{v.numero}. {v.tipo}</strong><span className="block text-xs">em {v.encaminhamento} · {v.documento}</span></td>
                 <td className="py-1.5 pr-4 text-xs">Despesa <ValorMonetario valor={v.despesa} /><span className="block">Receita líquida <ValorMonetario valor={v.receita} /></span></td>
-                <td className="py-1.5 pr-4 text-xs">{v.linhas}</td>
+                <td className="py-1.5 pr-4 text-xs">{v.linhas}{v.proposta !== null ? <span className="block" data-proposta-da-versao>Da proposta {v.proposta} · {v.ligadas}</span> : null}</td>
                 <td className="py-1.5 text-xs">{v.vaiAoTribunal ? `Vai na prestação de contas de ${v.remessa}` : "Não vai à prestação de contas"}</td>
               </tr>
             ))}
@@ -117,7 +117,7 @@ export default async function Detalhe({
           </details>
         );
       })}
-      {!projeto.aprovada && projeto.exercicio !== null && permitidas.has("CADASTRAR_LOA") ? <FormVersaoDoProjeto leiId={id} exercicio={projeto.exercicio} /> : null}
+      {!projeto.aprovada && projeto.exercicio !== null && permitidas.has("CADASTRAR_LOA") ? <FormVersaoDoProjeto leiId={id} exercicio={projeto.exercicio} propostas={projeto.propostas} /> : null}
     </section>
   );
 

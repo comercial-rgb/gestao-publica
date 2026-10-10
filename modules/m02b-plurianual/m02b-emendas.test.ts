@@ -26,6 +26,7 @@ import {
   revogarBloqueioDeEmenda,
   sancionarEmendaAoOrcamento,
 } from "./emendas.js";
+import { comparativoDasEmendas } from "./comparativo-das-emendas.js";
 
 /**
  * V36 — EMENDAS AO PROJETO DA LOA (TR 5.9.3.13 a 5.9.3.15).
@@ -197,5 +198,76 @@ describe("M02b V36 — emendas ao projeto da LOA", () => {
     const a = await emenda([{ linhaDeDespesaId: linha1, valor: "1.00" }], soEmenda);
     expect(await recusa(() => sancionarEmendaAoOrcamento(prisma, { emendaId: a.id, resultado: "APROVADA", data: "2026-12-15", ato: "Lei", criadoPor: soEmenda }))).toMatch(/ACESSO NEGADO[\s\S]*SANCIONAR_EMENDA_AO_ORCAMENTO/);
     expect([await prisma.emendaAoOrcamento.count(), await prisma.sancaoDaEmenda.count()]).toEqual([1, 0]);
+  });
+});
+
+/**
+ * V39-R2 (R2-024) — O EFEITO DAS EMENDAS SOBRE O PROJETO GUARDADO. Contas antes:
+ *   projeto guardado (fixture da versão ligada às linhas): ficha 1 = 1.050.000,00; ficha 7 = 420.000,00.
+ *   emenda A aprovada: ficha 1 +50.000, ficha 7 −50.000; emenda B pendente: ficha 1 +1.000; emenda C rejeitada: ficha 7 −2.000.
+ *   ficha 1: esperado 1.100.000,00 = vigente; pendente 1.000,00.  ficha 7: esperado 370.000,00; rejeitado −2.000,00;
+ *   depois de um ajuste fora das emendas (365.000,00), "outros ajustes" = −5.000,00.
+ */
+describe("V39-R2 (R2-024) — comparativo das emendas contra a versão guardada do projeto", () => {
+  beforeEach(semear, 60000);
+
+  it("sem versão guardada com a proposta, o comparativo diz que não há base e não reconstrói nada", async () => {
+    await emenda([{ linhaDeDespesaId: linha1, valor: "10.00" }]);
+    const c = await comparativoDasEmendas(prisma, proposta);
+    expect([c.versao, c.linhas.length]).toEqual([null, 0]);
+    expect(c.motivoSemVersao).toMatch(/Nenhuma versão do projeto foi guardada com esta proposta/);
+  });
+
+  it("aprovadas, rejeitadas e pendentes por linha (N=2), contra o projeto guardado; ajuste fora das emendas aparece à parte", async () => {
+    const lei = await prisma.leiOrcamentariaAnual.create({ data: { exercicio: 2027, numeroDoProjeto: "PL 1/2026", dataDoEnvio: new Date("2026-09-30T15:00:00Z"), ementa: "LOA 2027 (fixture)", criadoPor: ADMIN }, select: { id: true } });
+    const v = await prisma.versaoDoProjetoDaLoa.create({ data: { leiId: lei.id, numero: 1, tipo: "ENCAMINHADO", dataDoEncaminhamento: new Date("2026-09-30T15:00:00Z"), competenciaDaRemessa: "2026-09", documento: "Mensagem 1/2026", fundamento: "Encaminhamento (fixture)", propostaOrcamentariaId: proposta, criadoPor: ADMIN }, select: { id: true } });
+    const dot = { codUnidadeOrcamentaria: "01001", codFuncao: "04", codSubfuncao: "122", codPrograma: "0001", codAcao: "2001", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", exercicioFonte: 1, codFonte: "500" };
+    await prisma.dotacaoDoProjetoDaLoa.createMany({ data: [{ versaoId: v.id, ...dot, valor: "1050000.00", linhaDaPropostaId: linha1 }, { versaoId: v.id, ...dot, codUnidadeOrcamentaria: "01002", codFonte: "540", valor: "420000.00", linhaDaPropostaId: linha7 }] });
+    const a = await emenda([{ linhaDeDespesaId: linha1, valor: "50000.00" }, { linhaDeDespesaId: linha7, valor: "-50000.00" }]);
+    await sancionarEmendaAoOrcamento(prisma, { emendaId: a.id, resultado: "APROVADA", data: "2026-12-15", ato: "Lei nº 999/2026", criadoPor: ADMIN });
+    await emenda([{ linhaDeDespesaId: linha1, valor: "1000.00" }]);
+    const c = await emenda([{ linhaDeDespesaId: linha7, valor: "-2000.00" }]);
+    await sancionarEmendaAoOrcamento(prisma, { emendaId: c.id, resultado: "REJEITADA", data: "2026-12-15", ato: "Veto", criadoPor: ADMIN });
+    let r = await comparativoDasEmendas(prisma, proposta);
+    expect(r.versao?.numero).toBe(1);
+    expect(r.linhas.map((l) => [l.rotulo, l.projeto, l.aprovadas, l.rejeitadas, l.pendentes, l.esperado, l.vigente, l.outrosAjustes])).toEqual([
+      ["ficha 1", "1050000.00", "50000.00", "0.00", "1000.00", "1100000.00", "1100000.00", "0.00"],
+      ["ficha 7", "420000.00", "-50000.00", "-2000.00", "0.00", "370000.00", "370000.00", "0.00"],
+    ]);
+    await prisma.ajusteDeDespesaDaProposta.create({ data: { linhaId: linha7, valor: "365000.00", motivo: "Ajuste do Executivo fora das emendas (fixture)", criadoPor: ADMIN, criadoEm: new Date(Date.now() + 60_000) } });
+    r = await comparativoDasEmendas(prisma, proposta);
+    expect(r.linhas.find((l) => l.rotulo === "ficha 7")?.outrosAjustes).toBe("-5000.00");
+    // a versão guardada não mudou
+    expect((await prisma.dotacaoDoProjetoDaLoa.findMany({ where: { versaoId: v.id }, orderBy: { valor: "asc" }, select: { valor: true } })).map((d) => d.valor.toFixed(2))).toEqual(["420000.00", "1050000.00"]);
+  });
+
+  it("a emenda aprovada ANTES da base (mensagem modificativa guardada depois da sanção) já está no projeto e não soma de novo", async () => {
+    const lei = await prisma.leiOrcamentariaAnual.create({ data: { exercicio: 2027, numeroDoProjeto: "PL 1/2026", dataDoEnvio: new Date("2026-09-30T15:00:00Z"), ementa: "LOA 2027 (fixture)", criadoPor: ADMIN }, select: { id: true } });
+    const a = await emenda([{ linhaDeDespesaId: linha1, valor: "50000.00" }, { linhaDeDespesaId: linha7, valor: "-50000.00" }]);
+    await sancionarEmendaAoOrcamento(prisma, { emendaId: a.id, resultado: "APROVADA", data: "2026-12-15", ato: "Lei nº 999/2026", criadoPor: ADMIN });
+    // a mensagem modificativa é guardada no mesmo dia da sanção, depois dela: a cópia já traz o valor emendado
+    const v = await prisma.versaoDoProjetoDaLoa.create({ data: { leiId: lei.id, numero: 2, tipo: "MENSAGEM_MODIFICATIVA", dataDoEncaminhamento: new Date(), competenciaDaRemessa: "2026-12", documento: "Mensagem modificativa 2/2026", fundamento: "Mensagem modificativa (fixture)", propostaOrcamentariaId: proposta, criadoPor: ADMIN }, select: { id: true } });
+    const dot = { codUnidadeOrcamentaria: "01001", codFuncao: "04", codSubfuncao: "122", codPrograma: "0001", codAcao: "2001", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", exercicioFonte: 1, codFonte: "500" };
+    await prisma.dotacaoDoProjetoDaLoa.createMany({ data: [{ versaoId: v.id, ...dot, valor: "1100000.00", linhaDaPropostaId: linha1 }, { versaoId: v.id, ...dot, codUnidadeOrcamentaria: "01002", codFonte: "540", valor: "370000.00", linhaDaPropostaId: linha7 }] });
+    const r = await comparativoDasEmendas(prisma, proposta);
+    expect(r.linhas.map((l) => [l.rotulo, l.situacao, l.projeto, l.jaNoProjeto, l.aprovadas, l.esperado, l.vigente, l.outrosAjustes])).toEqual([
+      ["ficha 1", "NO_PROJETO", "1100000.00", "50000.00", "0.00", "1100000.00", "1100000.00", "0.00"],
+      ["ficha 7", "NO_PROJETO", "370000.00", "-50000.00", "0.00", "370000.00", "370000.00", "0.00"],
+    ]);
+  });
+
+  it("versão com dotação sem ligação: a linha citada que não aparece ligada fica sem esperado e sem diferença (N=2: uma ligada, uma não)", async () => {
+    const lei = await prisma.leiOrcamentariaAnual.create({ data: { exercicio: 2027, numeroDoProjeto: "PL 1/2026", dataDoEnvio: new Date("2026-09-30T15:00:00Z"), ementa: "LOA 2027 (fixture)", criadoPor: ADMIN }, select: { id: true } });
+    const v = await prisma.versaoDoProjetoDaLoa.create({ data: { leiId: lei.id, numero: 1, tipo: "ENCAMINHADO", dataDoEncaminhamento: new Date("2026-09-30T15:00:00Z"), competenciaDaRemessa: "2026-09", documento: "Mensagem 1/2026", fundamento: "Encaminhamento (fixture)", propostaOrcamentariaId: proposta, criadoPor: ADMIN }, select: { id: true } });
+    const dot = { codUnidadeOrcamentaria: "01001", codFuncao: "04", codSubfuncao: "122", codPrograma: "0001", codAcao: "2001", codCategoria: "3", codNatureza: "3", codModalidade: "90", codElemento: "39", exercicioFonte: 1, codFonte: "500" };
+    await prisma.dotacaoDoProjetoDaLoa.createMany({ data: [{ versaoId: v.id, ...dot, valor: "1050000.00", linhaDaPropostaId: linha1 }, { versaoId: v.id, ...dot, codUnidadeOrcamentaria: "01002", codFonte: "540", valor: "420000.00", linhaDaPropostaId: null }] });
+    const a = await emenda([{ linhaDeDespesaId: linha1, valor: "50000.00" }, { linhaDeDespesaId: linha7, valor: "-50000.00" }]);
+    await sancionarEmendaAoOrcamento(prisma, { emendaId: a.id, resultado: "APROVADA", data: "2026-12-15", ato: "Lei nº 999/2026", criadoPor: ADMIN });
+    const r = await comparativoDasEmendas(prisma, proposta);
+    expect(r.versao?.dotacoesSemLigacao).toBe(1);
+    expect(r.linhas.map((l) => [l.rotulo, l.situacao, l.projeto, l.aprovadas, l.esperado, l.outrosAjustes])).toEqual([
+      ["ficha 1", "NO_PROJETO", "1050000.00", "50000.00", "1100000.00", "0.00"],
+      ["ficha 7", "SEM_LIGACAO", null, "-50000.00", null, null],
+    ]);
   });
 });

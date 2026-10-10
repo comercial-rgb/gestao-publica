@@ -5,7 +5,7 @@ import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO as PAINEL, CLASSE_ROTULO as ROTULO } from "../../../../../components/ui/Formulario";
 import { capturarVersaoAction, type EstadoDoProjeto } from "./projeto-actions";
 
-export function FormVersaoDoProjeto({ leiId, exercicio }: { readonly leiId: string; readonly exercicio: number }): React.ReactElement {
+export function FormVersaoDoProjeto({ leiId, exercicio, propostas }: { readonly leiId: string; readonly exercicio: number; readonly propostas: readonly { readonly id: string; readonly descricao: string; readonly efetivada: boolean }[] }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDoProjeto, FormData>(capturarVersaoAction, {});
   return (
     <form action={action} className={PAINEL} data-acao="guardar-versao-do-projeto" aria-label="Guardar uma versão do projeto encaminhado">
@@ -14,7 +14,8 @@ export function FormVersaoDoProjeto({ leiId, exercicio }: { readonly leiId: stri
       <h3 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">Guardar uma versão do projeto</h3>
       <p className="mb-3 text-xs text-[color:var(--color-ink-3)]">
         Guarda uma cópia do planejamento de {exercicio} como está hoje: dotações, receita prevista, programas, ações e
-        unidades. Faça no dia do encaminhamento, antes de qualquer alteração e antes da lei aprovada.
+        unidades. Faça no dia do encaminhamento, antes de qualquer alteração e antes da lei aprovada. Com proposta ainda
+        não efetivada, a cópia são as linhas da proposta escolhida; cada linha da cópia aponta a linha de onde veio.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="text-xs">
@@ -26,6 +27,15 @@ export function FormVersaoDoProjeto({ leiId, exercicio }: { readonly leiId: stri
             <option value="EMENDADO_NA_CAMARA">Emendado na Câmara</option>
           </select>
         </label>
+        {propostas.length > 0 ? (
+          <label className="text-xs sm:col-span-3">
+            <span className={ROTULO}>Proposta orçamentária que vai à Câmara</span>
+            <select name="propostaId" required defaultValue="" className={CAMPO}>
+              <option value="">Escolha…</option>
+              {propostas.map((p) => <option key={p.id} value={p.id}>{p.descricao}{p.efetivada ? " (já efetivada)" : ""}</option>)}
+            </select>
+          </label>
+        ) : null}
         <label className="text-xs"><span className={ROTULO}>Chegou à Câmara em</span><input name="dataDoEncaminhamento" type="date" required className={CAMPO} /></label>
         <label className="text-xs"><span className={ROTULO}>Vai na prestação de contas de</span><input name="competenciaDaRemessa" type="month" required defaultValue={`${String(exercicio - 1)}-09`} className={CAMPO} /></label>
         <label className="text-xs sm:col-span-3"><span className={ROTULO}>Documento (mensagem, ofício, protocolo na Câmara)</span><input name="documento" required minLength={5} className={CAMPO} /></label>

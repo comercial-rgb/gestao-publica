@@ -6,7 +6,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { formatarMoeda } from "../../../../lib/format/moeda";
-import { lerTelaDeEmendas, type EmendaNaTela, type TelaDeEmendas } from "../../../../lib/portas/emendas";
+import { lerComparativoDasEmendas, lerTelaDeEmendas, type EmendaNaTela, type TelaDeEmendas } from "../../../../lib/portas/emendas";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
 import { acoesPermitidas } from "../../../../lib/portas/molde";
@@ -52,6 +52,7 @@ export default async function EmendasPage({
     );
   }
   const permitidas = await acoesPermitidas(["CADASTRAR_EMENDA_AO_ORCAMENTO", "SANCIONAR_EMENDA_AO_ORCAMENTO"]);
+  const comparativo = t.escolhida === null ? null : await lerComparativoDasEmendas(t.escolhida.id);
   const e = t.escolhida;
   const aberta = e !== null && !e.efetivada;
   const podeCadastrar = aberta && permitidas.has("CADASTRAR_EMENDA_AO_ORCAMENTO");
@@ -196,6 +197,62 @@ export default async function EmendasPage({
               </div>
             ) : null}
           </Card>
+          {comparativo !== null ? (
+            <Card>
+              <section aria-label="Efeito das emendas sobre o projeto enviado" data-comparativo-das-emendas>
+                <h2 className="text-sm font-semibold">Efeito das emendas sobre o projeto enviado</h2>
+                {comparativo.versao === null ? (
+                  <p className="mt-2 text-xs text-[color:var(--color-ink-2)]" data-sem-versao-do-projeto>{comparativo.motivoSemVersao}</p>
+                ) : (
+                  <>
+                    <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">
+                      Base: versão {comparativo.versao.numero} do projeto, guardada no encaminhamento ({comparativo.versao.documento}). Esperado = projeto mais as emendas aprovadas depois do envio (as aprovadas antes já estão no valor do projeto); a diferença para o valor de hoje veio de outro ajuste, fora das emendas.
+                    </p>
+                    {comparativo.versao.dotacoesSemLigacao > 0 ? (
+                      <p className="mt-1 text-xs text-[color:var(--color-ink-2)]" data-dotacoes-sem-ligacao>
+                        {comparativo.versao.dotacoesSemLigacao} dotação(ões) desta versão não se ligaram a uma única linha da proposta: a linha citada em emenda que não aparece ligada pode ter estado no projeto, e para ela não se calcula esperado nem diferença.
+                      </p>
+                    ) : null}
+                    {comparativo.linhas.length === 0 ? <p className="mt-2 text-xs">Nenhuma dotação citada em emenda.</p> : (
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="w-full min-w-[48rem] text-xs">
+                          <caption className="sr-only">Efeito das emendas por dotação</caption>
+                          <thead>
+                            <tr className="text-left text-[color:var(--color-ink-2)]">
+                              <th className={CELULA} scope="col">Dotação</th>
+                              <th className={`${CELULA} text-right`} scope="col">No projeto</th>
+                              <th className={`${CELULA} text-right`} scope="col">Já no projeto</th>
+                              <th className={`${CELULA} text-right`} scope="col">Emendas aprovadas</th>
+                              <th className={`${CELULA} text-right`} scope="col">Rejeitadas</th>
+                              <th className={`${CELULA} text-right`} scope="col">Aguardando sanção</th>
+                              <th className={`${CELULA} text-right`} scope="col">Esperado</th>
+                              <th className={`${CELULA} text-right`} scope="col">Hoje</th>
+                              <th className={`${CELULA} text-right`} scope="col">Outros ajustes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {comparativo.linhas.map((l) => (
+                              <tr className="border-t border-[color:var(--color-border)]" data-linha-do-comparativo={l.rotulo} key={l.linhaId}>
+                                <td className={CELULA}>{l.rotulo}</td>
+                                <td className={`${CELULA} text-right`}>{l.projeto !== null ? <ValorMonetario valor={l.projeto} /> : l.situacao === "SEM_LIGACAO" ? "sem ligação" : "fora do projeto"}</td>
+                                <td className={`${CELULA} text-right`}><ValorMonetario valor={l.jaNoProjeto} /></td>
+                                <td className={`${CELULA} text-right`}><ValorMonetario valor={l.aprovadas} /></td>
+                                <td className={`${CELULA} text-right`}><ValorMonetario valor={l.rejeitadas} /></td>
+                                <td className={`${CELULA} text-right`}><ValorMonetario valor={l.pendentes} /></td>
+                                <td className={`${CELULA} text-right`}>{l.esperado === null ? "não se calcula" : <ValorMonetario valor={l.esperado} />}</td>
+                                <td className={`${CELULA} text-right`}><ValorMonetario valor={l.vigente} /></td>
+                                <td className={`${CELULA} text-right`}>{l.outrosAjustes === null ? "não se calcula" : <ValorMonetario valor={l.outrosAjustes} />}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            </Card>
+          ) : null}
         </>
       ) : null}
     </div>

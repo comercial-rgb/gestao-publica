@@ -28,6 +28,7 @@ export async function capturarVersaoAction(_p: EstadoDoProjeto, f: FormData): Pr
         competenciaDaRemessa: t(f, "competenciaDaRemessa"),
         documento: t(f, "documento"),
         fundamento: t(f, "fundamento"),
+        ...(t(f, "propostaId") === "" ? {} : { propostaId: t(f, "propostaId") }),
       });
       revalidatePath(`/planejamento/leis-orcamentarias/${leiId}`);
       return { sucesso };

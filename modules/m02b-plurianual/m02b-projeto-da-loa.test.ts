@@ -71,6 +71,82 @@ const capturar = (extra: Partial<Parameters<typeof capturarVersaoDoProjetoDaLoa>
   capturarVersaoDoProjetoDaLoa(prisma, { leiId, tipo: "ENCAMINHADO", dataDoEncaminhamento: D("2026-09-30"), competenciaDaRemessa: "2026-09", documento: "Mensagem 12/2026 à Câmara", fundamento: "Ofício de encaminhamento do projeto (fixture)", criadoPor: POR, ...extra });
 const P = { codUnidadeGestora: UG, competencia: SETEMBRO };
 
+/** V39-R2 (R2-023) — uma proposta de 2027 (fixture direta: o que se testa aqui é a captura, não a geração da proposta). */
+async function proposta(descricao: string): Promise<string> {
+  return (await prisma.propostaOrcamentaria.create({
+    data: { exercicio: 2027, exercicioDeOrigem: 2026, descricao, baseDaReceita: "PREVISAO_INICIAL", percentualDaReceita: "0", baseDaDespesa: "DOTACAO_INICIAL", percentualDaDespesa: "0", aproveitaReceitas: true, aproveitaFichas: true, reajustaProjetos: false, incluiFichasAbertasPorCredito: false, criadoPor: POR },
+    select: { id: true },
+  })).id;
+}
+const novaDespesa = (propostaOrcamentariaId: string, programaId: string, acaoId: string, valor: string) =>
+  prisma.linhaDeDespesaDaProposta.create({
+    data: { propostaOrcamentariaId, orgaoId: "org-02", unidadeOrcId: "uo-02", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId, acaoId, naturezaDespesaId: "nd", fonteId: "fnt-500", exercicioFonte: 2027, motivo: "Linha nova da proposta (fixture)", criadoPor: POR, criadoEm: new Date(), valorNaLeiDeOrigem: "0", valorBase: valor, valorProjetado: valor },
+    select: { id: true },
+  });
+
+describe("V39-R2 (R2-023) — a versão do projeto aponta a proposta enviada e as linhas dela", { timeout: 120000 }, () => {
+  it("proposta não efetivada: a escolha é exigida; a cópia SÃO as linhas (valor vigente com ajuste), ligadas; a linha zero fica fora", async () => {
+    const pid = await proposta("Proposta 2027 — versão do Executivo");
+    const l1 = await novaDespesa(pid, "prg-12", "aca-2001", "900.00");
+    await prisma.ajusteDeDespesaDaProposta.create({ data: { linhaId: l1.id, valor: "1050.00", motivo: "Reajuste do contrato de transporte escolar (o ajuste é o novo valor)", criadoPor: POR, criadoEm: D("2026-09-20") } });
+    // ajuste gravado DEPOIS do dia do encaminhamento (30/09): a versão daquele dia não o leva
+    await prisma.ajusteDeDespesaDaProposta.create({ data: { linhaId: l1.id, valor: "1200.00", motivo: "Emenda sancionada depois do envio (fixture)", criadoPor: POR, criadoEm: D("2026-12-15") } });
+    const l2 = await novaDespesa(pid, "prg-5000", "aca-1001", "400.00");
+    await novaDespesa(pid, "prg-5000", "aca-1001", "0.00");
+    const lr = await prisma.linhaDeReceitaDaProposta.create({
+      data: { propostaOrcamentariaId: pid, naturezaReceitaId: (await prisma.naturezaReceita.findUniqueOrThrow({ where: { codigo: "11125001" } })).id, fonteId: "fnt-500", exercicioFonte: 2027, tipoReceita: "ORCAMENTARIA", motivo: "Linha nova (fixture)", criadoPor: POR, criadoEm: new Date(), valorNaLeiDeOrigem: "0", valorBase: "700.00", valorProjetado: "700.00" },
+      select: { id: true },
+    });
+    await expect(capturar()).rejects.toThrow(/O exercício 2027 tem proposta orçamentária \(Proposta 2027 — versão do Executivo\): diga qual vai à Câmara/);
+    expect(await prisma.versaoDoProjetoDaLoa.count()).toBe(0);
+    const v = await capturar({ propostaId: pid });
+    expect(v.semLigacao).toBe(0);
+    const guardada = await prisma.versaoDoProjetoDaLoa.findUniqueOrThrow({ where: { id: v.id }, select: { propostaOrcamentariaId: true, dotacoes: { orderBy: { valor: "asc" }, select: { codPrograma: true, valor: true, linhaDaPropostaId: true } }, receitas: { select: { codNatureza: true, valor: true, linhaDaPropostaId: true } } } });
+    expect(guardada.propostaOrcamentariaId).toBe(pid);
+    // as fichas de 2027 (1.000 e 500) NÃO são o projeto: a proposta não efetivada é
+    expect(guardada.dotacoes.map((x) => [x.codPrograma, x.valor.toFixed(2), x.linhaDaPropostaId])).toEqual([["5000", "400.00", l2.id], ["0012", "1050.00", l1.id]]);
+    expect(guardada.receitas.map((x) => [x.codNatureza, x.valor.toFixed(2), x.linhaDaPropostaId])).toEqual([["11125001", "700.00", lr.id]]);
+  });
+
+  it("proposta efetivada: a cópia são as fichas, ligadas à linha pela classificação quando o par é único (N=2: uma ligada, uma ambígua)", async () => {
+    const pid = await proposta("Proposta 2027 efetivada");
+    const lA = await prisma.linhaDeDespesaDaProposta.create({ data: { propostaOrcamentariaId: pid, fichaDeOrigemId: "f-a", valorNaLeiDeOrigem: "1000.00", valorBase: "1000.00", valorProjetado: "1000.00" }, select: { id: true } });
+    // duas linhas com a classificação da ficha f-b (a de origem e uma nova igual): o par não é único, a dotação fica sem ligação (e é contada)
+    await prisma.linhaDeDespesaDaProposta.create({ data: { propostaOrcamentariaId: pid, fichaDeOrigemId: "f-b", valorNaLeiDeOrigem: "500.00", valorBase: "300.00", valorProjetado: "300.00" } });
+    const fb = await prisma.fichaOrcamentaria.findUniqueOrThrow({ where: { id: "f-b" }, select: { exercicioFonte: true } });
+    await prisma.linhaDeDespesaDaProposta.create({ data: { propostaOrcamentariaId: pid, orgaoId: "org-02", unidadeOrcId: "uo-02", funcaoId: "fun-12", subfuncaoId: "sub-361", programaId: "prg-5000", acaoId: "aca-1001", naturezaDespesaId: "nd", fonteId: "fnt-500", exercicioFonte: fb.exercicioFonte, motivo: "Linha nova com a mesma classificação (fixture)", criadoPor: POR, criadoEm: new Date(), valorNaLeiDeOrigem: "0", valorBase: "200.00", valorProjetado: "200.00" } });
+    const previstas = await prisma.receitaPrevista.findMany({ where: { exercicio: 2027 }, select: { id: true, valorPrevisto: true } });
+    const lrs = [];
+    for (const r of previstas) lrs.push((await prisma.linhaDeReceitaDaProposta.create({ data: { propostaOrcamentariaId: pid, receitaDeOrigemId: r.id, valorNaLeiDeOrigem: r.valorPrevisto, valorBase: r.valorPrevisto, valorProjetado: r.valorPrevisto }, select: { id: true } })).id);
+    await prisma.efetivacaoDaProposta.create({ data: { propostaOrcamentariaId: pid, exercicio: 2027, fichasCriadas: 2, receitasCriadas: 2, criadoPor: POR } });
+    const v = await capturar({ propostaId: pid });
+    expect(v.semLigacao).toBe(1);
+    const guardada = await prisma.versaoDoProjetoDaLoa.findUniqueOrThrow({ where: { id: v.id }, select: { dotacoes: { orderBy: { valor: "desc" }, select: { valor: true, linhaDaPropostaId: true } }, receitas: { select: { linhaDaPropostaId: true } } } });
+    expect(guardada.dotacoes.map((x) => [x.valor.toFixed(2), x.linhaDaPropostaId])).toEqual([["1000.00", lA.id], ["500.00", null]]);
+    expect(new Set(guardada.receitas.map((x) => x.linhaDaPropostaId))).toEqual(new Set(lrs));
+  });
+
+  it("sentido inverso (UMA linha, DUAS fichas iguais) não ocorre: o banco recusa a segunda ficha com a mesma classificação", async () => {
+    // A ligação conta fichas por classificação (`fichasNaChave`); esta é a prova de que a contagem nunca passa de 1 do
+    // lado das fichas — a guarda continua lá, fail-closed, para o dia em que a unicidade mudar.
+    await expect(criarFichaDeTeste(prisma, { exercicio: 2027, orgaoId: "org-02", unidadeOrcId: "uo-02", funcaoId: "fun-12", subfuncaoId: "sub-361", naturezaDespesaId: "nd", fonteId: "fnt-500", id: "f-c", numero: 3, programaId: "prg-12", acaoId: "aca-2001", valorDotado: "300.00" }))
+      .rejects.toThrow(/Unique constraint failed on the fields: \(`exercicio`, `"unidadeOrcId"`/);
+  });
+
+  it("NEGAÇÃO: proposta de outro exercício e linha com valor negativo são recusadas com o motivo, e nada é gravado", async () => {
+    const outra = (await prisma.propostaOrcamentaria.create({
+      data: { exercicio: 2028, exercicioDeOrigem: 2027, descricao: "Proposta 2028", baseDaReceita: "PREVISAO_INICIAL", percentualDaReceita: "0", baseDaDespesa: "DOTACAO_INICIAL", percentualDaDespesa: "0", aproveitaReceitas: true, aproveitaFichas: true, reajustaProjetos: false, incluiFichasAbertasPorCredito: false, criadoPor: POR },
+      select: { id: true },
+    })).id;
+    const pid = await proposta("Proposta 2027 com linha negativa");
+    await expect(capturar({ propostaId: outra })).rejects.toThrow(/A proposta escolhida não é do exercício 2027. Nada foi gravado./);
+    const l = await novaDespesa(pid, "prg-12", "aca-2001", "100.00");
+    await prisma.ajusteDeDespesaDaProposta.create({ data: { linhaId: l.id, valor: "-10.00", motivo: "Ajuste que deixa a linha negativa (fixture)", criadoPor: POR, criadoEm: D("2026-09-20") } });
+    await expect(capturar({ propostaId: pid })).rejects.toThrow(new RegExp(`A linha ${l.id} da proposta está com valor negativo: ajuste-a antes de guardar o projeto\. Nada foi gravado\.`));
+    expect(await prisma.versaoDoProjetoDaLoa.count()).toBe(0);
+  });
+});
+
 describe("V26 — o projeto da LOA guardado no encaminhamento", { timeout: 120000 }, () => {
   it("sem versão registrada, setembro recusa nomeando o projeto; o projeto não vem do planejamento vivo", async () => {
     await expect(gerarPloaDotacao(prisma, P)).rejects.toThrow(/nenhuma versão do projeto da LOA de 2027 registrada para a remessa de 2026-09/);

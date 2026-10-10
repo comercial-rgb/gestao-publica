@@ -27,13 +27,17 @@ export interface VersaoNaTela {
   readonly despesa: string;
   readonly receita: string;
   readonly linhas: string;
+  /** V39-R2 (R2-023) — a proposta que a versão leva e quantas linhas da cópia apontam uma linha dela. */
+  readonly proposta: string | null;
+  readonly ligadas: string | null;
 }
 
-export async function lerVersoesDoProjeto(leiId: string): Promise<{ readonly versoes: readonly VersaoNaTela[]; readonly aprovada: boolean; readonly exercicio: number | null }> {
+export async function lerVersoesDoProjeto(leiId: string): Promise<{ readonly versoes: readonly VersaoNaTela[]; readonly aprovada: boolean; readonly exercicio: number | null; readonly propostas: readonly { readonly id: string; readonly descricao: string; readonly efetivada: boolean }[] }> {
   await exigirLeituraDoEnte("CONSULTAR_PLANEJAMENTO");
   const prisma = cliente();
   const lei = await prisma.leiOrcamentariaAnual.findUnique({ where: { id: leiId }, select: { exercicio: true, aprovacao: { select: { id: true } } } });
-  if (lei === null) return { versoes: [], aprovada: false, exercicio: null };
+  if (lei === null) return { versoes: [], aprovada: false, exercicio: null, propostas: [] };
+  const propostas = await prisma.propostaOrcamentaria.findMany({ where: { exercicio: lei.exercicio }, orderBy: { criadoEm: "asc" }, select: { id: true, descricao: true, efetivacao: { select: { id: true } } } });
   const vs = await prisma.versaoDoProjetoDaLoa.findMany({
     where: { leiId },
     orderBy: { numero: "asc" },
@@ -44,8 +48,9 @@ export async function lerVersoesDoProjeto(leiId: string): Promise<{ readonly ver
       dataDoEncaminhamento: true,
       competenciaDaRemessa: true,
       documento: true,
-      dotacoes: { select: { valor: true } },
-      receitas: { select: { valor: true, tipoReceita: true } },
+      dotacoes: { select: { valor: true, linhaDaPropostaId: true } },
+      receitas: { select: { valor: true, tipoReceita: true, linhaDaPropostaId: true } },
+      proposta: { select: { descricao: true } },
       _count: { select: { programas: true, acoes: true, unidades: true } },
     },
   });
@@ -55,6 +60,7 @@ export async function lerVersoesDoProjeto(leiId: string): Promise<{ readonly ver
   return {
     exercicio: lei.exercicio,
     aprovada: lei.aprovacao !== null,
+    propostas: propostas.map((p) => ({ id: p.id, descricao: p.descricao, efetivada: p.efetivacao !== null })),
     versoes: vs.map((v) => ({
       id: v.id,
       numero: v.numero,
@@ -66,13 +72,15 @@ export async function lerVersoesDoProjeto(leiId: string): Promise<{ readonly ver
       despesa: v.dotacoes.reduce((s, d) => s.plus(toMoney(d.valor.toFixed(2))), toMoney("0")).toFixed(2),
       receita: v.receitas.reduce((s, r) => (r.tipoReceita === "DEDUCAO" ? s.minus(toMoney(r.valor.toFixed(2))) : s.plus(toMoney(r.valor.toFixed(2)))), toMoney("0")).toFixed(2),
       linhas: `${String(v.dotacoes.length)} dotações, ${String(v.receitas.length)} receitas, ${String(v._count.programas)} programas, ${String(v._count.acoes)} ações, ${String(v._count.unidades)} unidades`,
+      proposta: v.proposta?.descricao ?? null,
+      ligadas: v.proposta === null ? null : `${String(v.dotacoes.filter((d) => d.linhaDaPropostaId !== null).length + v.receitas.filter((r) => r.linhaDaPropostaId !== null).length)} de ${String(v.dotacoes.length + v.receitas.length)} linhas apontam a linha da proposta`,
     })),
   };
 }
 
 export async function capturarVersaoPelaTela(input: Omit<CapturarVersaoDoProjetoDaLoaInput, "criadoPor">): Promise<string> {
   const r = await comEscritaAutenticada("CADASTRAR_LOA", (criadoPor) => capturarVersaoDoProjetoDaLoa(cliente(), { ...input, criadoPor }));
-  return `Versão ${String(r.numero)} do projeto guardada, com a cópia da despesa, da receita, dos programas, das ações e das unidades.`;
+  return `Versão ${String(r.numero)} do projeto guardada, com a cópia da despesa, da receita, dos programas, das ações e das unidades.${r.semLigacao > 0 ? ` ${String(r.semLigacao)} linha(s) sem correspondência única na proposta ficaram sem ligação.` : ""}`;
 }
 
 /** V27 — o que mudou de cada versão do projeto para a lei aprovada (só leitura; só depois da aprovação). */

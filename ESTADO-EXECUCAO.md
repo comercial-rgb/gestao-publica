@@ -144,6 +144,34 @@ Os percursos desta rodada gravaram nas bases de demonstração textos com "(ensa
 - **Telas em produção:** as telas tocadas abriram sem erro, inclusive o processo com a seção "Itens, propostas e resultado" e o contrato com o controle contábil.
 - **Não operado em produção:** o fluxo da licitação. Produção não tem agente de contratação fictício, e a segregação exige duas pessoas. Foi operado na 3011.
 
+### R2-023 e R2-024 (M02b) — a versão do projeto ligada à proposta, e o efeito das emendas
+- **R2-023.** A versão do projeto da LOA aponta a proposta enviada (`propostaOrcamentariaId`), e cada dotação e receita da cópia aponta a linha da proposta de que veio (`linhaDaPropostaId`). A escolha da proposta é exigida quando o exercício tem proposta. `modules/m02b-plurianual/projeto-da-proposta.ts`:
+  - proposta não efetivada: a cópia são as linhas, pelo valor vigente (o ajuste é o novo valor), e a linha zero fica fora;
+  - proposta efetivada: a cópia são as fichas, ligadas pela classificação quando o par é único; o par ambíguo fica sem ligação e é contado na mensagem e na tela;
+  - sem proposta: como antes.
+- **R2-024.** `modules/m02b-plurianual/comparativo-das-emendas.ts`, só leitura. A base é a última versão do Executivo guardada com a proposta. Por dotação citada em emenda, mostra:
+  - o valor no projeto, as aprovadas, as rejeitadas e as que aguardam sanção;
+  - o esperado (projeto mais aprovadas), o valor de hoje e os outros ajustes.
+
+  Sem versão guardada, diz isso e não reconstrói nada. Fica numa seção da tela das emendas.
+- **Migration:** `20261110090000_v39r2_projeto_da_loa_ligado_a_proposta`, com três colunas anuláveis e as FKs; aplicada na fictícia e na `ensaio_v39`.
+- **Testes:**
+  - `m02b-projeto-da-loa`, 9/9, com 2 novos: não efetivada N=2, com a linha ajustada e a zero; efetivada com uma ligada e uma ambígua;
+  - `m02b-emendas`, 10/10, com 2 novos: sem versão; N=2 com aprovada, rejeitada, pendente e ajuste fora das emendas.
+  - 4 mutações vermelhas: proposta não exigida, ligação ambígua, não efetivada lendo as fichas, rejeitada contada como pendente.
+- **Pela tela (3011):** `scripts/percurso-v39r2-projeto-e-emendas.mts`.
+  - Cadastrou a LOA de 2030 e tentou guardar a versão com a proposta 2030 não efetivada.
+  - A captura foi RECUSADA pelo domínio, nomeando o que o arquivo do projeto exige e a base fictícia não tem: metas das ações, objetivos dos programas, secretários das unidades. Nada foi gravado.
+  - A tela das emendas disse que não há versão guardada e não reconstruiu o projeto.
+  - A ligação com valores ficou provada só no teste do domínio. Pendência nomeada: `DECLARACOES-DO-PROJETO-NA-BASE-FICTICIA`.
+- **Auditoria antes do commit (auditor de invariantes), e o que se corrigiu:**
+  - a cópia de proposta não efetivada levava ajustes gravados DEPOIS do dia do encaminhamento: agora leva só os ajustes até o fim desse dia (data civil do ente);
+  - o comparativo somava de novo a emenda aprovada antes da base (mensagem modificativa guardada depois da sanção): a aprovada antes da base aparece em "já no projeto" e não entra no esperado. A base é o fim do dia do encaminhamento, ou o momento da gravação quando a proposta já estava efetivada;
+  - a linha que estava no projeto mas ficou sem ligação aparecia como "fora do projeto", com diferença inventada: com dotações sem ligação na versão, a linha não ligada fica "sem ligação", sem esperado e sem diferença, e a tela diz quantas dotações ficaram sem ligação;
+  - as FKs passaram a RESTRICT (a cópia guardada não muda por exclusão do que aponta), com índices nas três colunas. A migration ainda não tinha sido publicada; nas três bases locais em que já estava aplicada, a mudança foi aplicada à mão e o checksum atualizado. `migrate diff` contra a fictícia: vazio.
+  - Testes: `m02b-projeto-da-loa` 11/11 (mais 2: o corte do encaminhamento no caso N=2 e a negação de proposta de outro exercício e de linha negativa, com o motivo; e a prova de que "uma linha, duas fichas" não ocorre porque o banco recusa a segunda ficha de mesma classificação). `m02b-emendas` 12/12 (mais 2: aprovada antes da base não soma de novo; N=2 com uma ligada e uma sem ligação).
+  - 2 mutações vermelhas: sem o corte, e sem a separação do "já no projeto".
+
 ### O próximo passo
 1. Frente 5 (R2-023 antes da R2-024; depois R2-021/022) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 

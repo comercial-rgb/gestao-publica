@@ -60,6 +60,8 @@ model PropostaOrcamentaria {
   linhasDeReceita LinhaDeReceitaDaProposta[]
   linhasDeDespesa LinhaDeDespesaDaProposta[]
   efetivacao      EfetivacaoDaProposta?
+  /// V39-R2 (R2-023) — as versões do projeto da LOA que levaram esta proposta. VIRTUAL.
+  versoesDoProjeto VersaoDoProjetoDaLoa[] @relation("VersoesDoProjetoDaProposta")
   emendas         EmendaAoOrcamento[]
 
   @@index([exercicio])
@@ -93,6 +95,8 @@ model LinhaDeReceitaDaProposta {
   valorProjetado         Decimal              @db.Decimal(18, 2)
 
   ajustes AjusteDeReceitaDaProposta[]
+  /// V39-R2 (R2-023) — as receitas das versões do projeto que vieram desta linha. VIRTUAL.
+  noProjeto ReceitaDoProjetoDaLoa[] @relation("ReceitasDoProjetoDaLinha")
 
   @@unique([propostaOrcamentariaId, receitaDeOrigemId])
   @@index([propostaOrcamentariaId])
@@ -149,6 +153,8 @@ model LinhaDeDespesaDaProposta {
   valorProjetado         Decimal              @db.Decimal(18, 2)
 
   ajustes AjusteDeDespesaDaProposta[]
+  /// V39-R2 (R2-023) — as dotações das versões do projeto que vieram desta linha. VIRTUAL.
+  noProjeto DotacaoDoProjetoDaLoa[] @relation("DotacoesDoProjetoDaLinha")
   itensDeEmenda ItemDaEmenda[]
   bloqueiosDeEmenda BloqueioDeEmenda[]
 
