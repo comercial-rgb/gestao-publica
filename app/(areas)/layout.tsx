@@ -92,13 +92,6 @@ export default async function AreasLayout({
             <Footer identidade={tela} />
           </div>
         </div>
-        {/* AJUDA DO SISTEMA — 10/10/2026.
-            Uma linha: o script desenha o botão de ajuda e conversa com
-            chat.enginesistemas.com.br, que só atende pedido vindo DESTE endereço
-            (a chave vai no HTML e não autoriza nada sozinha). Fica aqui, e não no
-            layout raiz, pelo mesmo motivo que o provider de sessão veio para cá:
-            na raiz apareceria no /login, para quem ainda não entrou. */}
-        <script src="https://chat.enginesistemas.com.br/api/suporte/icone.js" data-chave="wgt_XfcZ_CGCxZe-K3mO6cGI0wEa" data-titulo="Ajuda do sistema" defer />
       </ShellProvider>
     </UiContextProvider>
   );
