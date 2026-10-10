@@ -7,7 +7,7 @@ transcrição" seguem como a análise as marcou, sem suposição.
 
 Estados: **funciona** (existe e funciona), **falha** (existe e falha), **escondido** (existe mas não é encontrável),
 **falta**, **decisão** (depende de dado ou decisão do ente), **não verificado**. Instalação: **1ª leva** = corrigido e
-publicado nesta rodada (commit da 1ª leva da V38); **2ª leva**, **3ª leva** e **4ª leva** = as levas seguintes; **já** = já estava em produção; **não** = não instalado.
+publicado nesta rodada (commit da 1ª leva da V38); **2ª leva** a **5ª leva** = as levas seguintes; **já** = já estava em produção; **não** = não instalado.
 
 | ID | Classe | Achado | Alteração ou justificativa | Teste / percurso | Instalação |
 |---|---|---|---|---|---|
@@ -60,7 +60,7 @@ publicado nesta rodada (commit da 1ª leva da V38); **2ª leva**, **3ª leva** e
 | AUD-047 | melhoria | A tela de conciliação dizia "exige extrato importado"; a conciliação por período abre sem extrato e declara pendências, mas não tem entrada manual de linhas do extrato | Texto da tela vazia aponta a conciliação por período, com link; a entrada manual de linhas do extrato espera decisão do ente: aceitar linha digitada como prova bancária e qual documento a sustenta (a linha do extrato é o fato que o banco informa) | `m09-conciliacao-periodo.test.ts` | 1ª leva (texto) |
 | AUD-048 | verificação | Importar OFX e vincular linha a registro funciona; sem sugestão automática; o aviso "dados de demonstração" aparecia até para OFX real | O aviso só aparece para o extrato da API de demonstração | `percurso-v36-importar-extrato.mts` | 1ª leva |
 | AUD-049 | verificação | API do BB: só leitura de extrato, sem credencial e sem chamador de tela | Texto da conciliação diz que a consulta direta depende de credencial e está desligada | `m17-modos` | 1ª leva (texto) |
-| AUD-050 | melhoria | A base fictícia não tem conciliação concluída (1 aberta, 0 vínculos) | Pendente: concluir uma na base de demonstração | — | não |
+| AUD-050 | melhoria | A base fictícia não tinha conciliação concluída (1 aberta, 0 vínculos) | 5ª leva: percurso que monta e conclui pela tela, na base de demonstração, uma conciliação da FIC-CM-500. Ele importa um extrato OFX fictício com os fatos do razão menos uma saída ainda não debitada, mais uma tarifa que só o banco tem; vincula, justifica as duas pendências e encerra. A tela do período passou a mostrar a data de cada pendência | percurso `percurso-v38-conciliacao-concluida`; `m09-conciliacao-periodo` | 5ª leva |
 | AUD-051 | verificação | Pagamentos efetuados: `/relatorios/pagamentos` | Nada | `m05-pagamentos-efetuados.test.ts` | já |
 | AUD-052 | defeito | O movimento diário abria em "hoje", vazio | Abre no último dia com pagamento ou arrecadação | percurso v38 passo 5 | 1ª leva |
 | AUD-053 | verificação | Receita mês a mês (`/relatorios/receita-mensal`) e arrecadação (`/receita/arrecadacoes`) | Nada; título a confirmar com a contadora | `m04-arrecadado-mes-a-mes` | já |

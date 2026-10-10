@@ -286,10 +286,14 @@ export default async function PeriodoDeConciliacaoPage({
                     <li
                       key={l.id}
                       data-pendencia-extrato={l.id}
+                      data-dia={diaCivil(l.data)}
                       className="border-t border-[color:var(--color-border)] py-2"
                     >
                       <div className="flex flex-wrap justify-between gap-2">
-                        <span>{l.descricao}</span>
+                        {/* V38 (AUD-050) — a data do fato: sem ela, a pendência não se acha no extrato nem no razão. */}
+                        <span>
+                          <span className="tabular-nums text-[color:var(--color-ink-3)]">{diaCivilBr(l.data)}</span> {l.descricao}
+                        </span>
                         <span className="tabular-nums">{l.residual}</span>
                       </div>
                       {detalhe.estado === "ABERTA" ? (
@@ -325,11 +329,12 @@ export default async function PeriodoDeConciliacaoPage({
                     <li
                       key={l.id}
                       data-pendencia-interna={l.id}
+                      data-dia={diaCivil(l.data)}
                       className="border-t border-[color:var(--color-border)] py-2"
                     >
                       <div className="flex flex-wrap justify-between gap-2">
                         <span>
-                          [{l.tipoInterno}] {l.descricao}
+                          <span className="tabular-nums text-[color:var(--color-ink-3)]">{diaCivilBr(l.data)}</span> [{l.tipoInterno}] {l.descricao}
                         </span>
                         <span className="tabular-nums">{l.residual}</span>
                       </div>

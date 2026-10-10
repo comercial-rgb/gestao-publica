@@ -119,6 +119,31 @@ passou a vermelho.
   - o rodapé mostra 1bfae79.
 - A sonda foi apagada.
 
+### 5ª leva (09/10/2026): uma conciliação concluída para a contadora ver (AUD-050)
+
+A contadora não achou nenhuma conciliação concluída na base de demonstração. O percurso
+`scripts/percurso-v38-conciliacao-concluida.mts` monta e conclui uma só pela tela, sem acessar o banco, e por isso roda igual na base local e na de produção, ambas fictícias. Ele recusa a 3010 e qualquer tela sem a marca "(base fictícia)". Os passos:
+1. abre o período da FIC-CM-500, de 1º de janeiro até hoje;
+2. lê os fatos do razão na tela do período;
+3. gera um OFX fictício (banco 001, conta de demonstração própria) com todos os fatos menos a última saída, que o banco ainda não debitou, mais uma tarifa de 8,90 que só o banco tem;
+4. importa o OFX e vincula as linhas;
+5. justifica as duas pendências com o motivo e encerra o período.
+
+A tela do período passou a mostrar a data de cada pendência. Antes ela mostrava só a descrição e o valor, e a pendência não se achava no extrato nem no razão. O percurso precisou da data, e ela vale igual para quem concilia.
+
+Achados do caminho:
+- O painel geral da conciliação mostra a conta do extrato mais recente do exercício, e não todas as contas. Desenho da V22, mantido. Depois da importação, ele passa a mostrar a FIC-CM-500.
+- O seletor `[data-periodo]` também casava com o indicador de período contábil do cabeçalho. O percurso passou a usar `li[data-periodo]`.
+
+Corrida local: 7 de 7, com o período aberto retomado de uma corrida parada:
+- 4 pagamentos de 1.000,00 lidos;
+- extrato de 4 linhas importado;
+- 3 vínculos;
+- as duas pendências do cenário justificadas;
+- período ENCERRADO.
+
+Testes: `m09-conciliacao-periodo` 17 de 17. Tipos do app e dos scripts sem erro.
+
 ### 4ª leva (09/10/2026): encontrar e não perder o que se digitou
 
 | Unidade | O que passou a funcionar | Rota | Provas |
