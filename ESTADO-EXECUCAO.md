@@ -118,6 +118,22 @@ O que mudou:
 - **Smoke:** `smoke-proposta-orcamentaria` passou a abrir o editor por `?editar=`.
 - **Ressalva:** dos 2,8 MB restantes, 2,5 MB são o payload do React do modo de desenvolvimento, que é maior que o de produção.
 
+**Publicações da V39:** `0dcedc6`, `c36b6bc`, `3501ce5` e `5fd9c59`, cada uma com backup imediatamente antes:
+- `esperanca-antes-v39a-20261010T032813Z.dump`;
+- `esperanca-antes-v39b-20261010T034404Z.dump`;
+- `esperanca-antes-v39c-20261010T041154Z.dump`;
+- `esperanca-antes-v39d-20261010T043159Z.dump`.
+
+Em todas, `/release` conferido e o percurso das telas tocadas aberto sem erro em produção.
+
+**O próximo passo:**
+- V39-028 (identidade tributária da retenção de PF);
+- V39-032 (o controle dos contratos no razão, sobre a família CONTRATO já declarável);
+- V39-042 a 045 (resultado por item ou lote, adjudicação, homologação por ato e contrato originado do resultado);
+- depois, frota (V39-063 a 066) e farmácia (070 e 071).
+
+As linhas "existe" da matriz pedem a prova pedida na ordem (N=2, percurso), não construção.
+
 **Pendências nomeadas:**
 - `CONCILIACAO-FATO-RETROATIVO`: uma linha de extrato ou um fato do razão gravado depois do encerramento, com data dentro do período encerrado, ainda muda o relatório encerrado. O fato é datado no passado; o vínculo é por conhecimento.
 - `ENCERRAR-PERIODO-VAZIO-FIC-CM-500`: é decisão.
