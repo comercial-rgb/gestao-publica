@@ -136,9 +136,16 @@ As migrations 050000 e 060000, com os dois SQL, foram aplicadas em `gestao_publi
 ### Nota sobre dado de demonstração
 Os percursos desta rodada gravaram nas bases de demonstração textos com "(ensaio V39-R2)", inclusive em produção, no CT-R2-141320. Isso não se reescreve (append-only). Daqui em diante, os percursos digitam só "(ensaio)".
 
+### Publicação da frente 4 e da R2-029 (10/10/2026)
+- **Commit:** 608ba425, com 131/131 nos testes dirigidos e os três typechecks sem erro.
+- **Backup:** `/var/backups/gestao-publica/esperanca-antes-v39r2-frente4-20261010T171900Z.dump`.
+- **Publicação:** `npm run publicar` enviou 3e5a4978, e `/release` responde 3e5a497.
+- **Banco de produção:** as migrations 070000 e 080000 estão aplicadas, os 6 CHECKs estão presentes, a v45 foi aplicada pela implantação (2 concessões) e o `gestao_app` tem INSERT em `ItemDoResultado`.
+- **Telas em produção:** as telas tocadas abriram sem erro, inclusive o processo com a seção "Itens, propostas e resultado" e o contrato com o controle contábil.
+- **Não operado em produção:** o fluxo da licitação. Produção não tem agente de contratação fictício, e a segregação exige duas pessoas. Foi operado na 3011.
+
 ### O próximo passo
-1. Commit e publicação da frente 4 com a R2-029.
-2. Frente 5 (R2-023 antes da R2-024; depois R2-021/022) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
+1. Frente 5 (R2-023 antes da R2-024; depois R2-021/022) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 

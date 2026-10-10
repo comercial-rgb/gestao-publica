@@ -92,6 +92,14 @@ try {
     const t = await irPara(n, page, contrato);
     conferir(semErro(t) && (await page.$("[data-controle-contabil-do-contrato]")) !== null, `contrato ${contrato} abre com o controle contábil`);
   }
+  // R2-014 a 020: itens, propostas e resultado na página do processo.
+  await irPara(n, page, "/licitacoes/processos");
+  const processo = await page.$$eval("a[href^='/licitacoes/processos/']", (as) => as.map((a) => a.getAttribute("href") ?? "").find((h) => /\/licitacoes\/processos\/[^/?]+$/.test(h)) ?? "");
+  if (processo === "") console.log("   nenhum processo nesta base: a seção do resultado não foi aberta");
+  else {
+    const t = await irPara(n, page, processo);
+    conferir(semErro(t) && (await page.$("[data-resultado-da-licitacao]")) !== null, `processo ${processo} abre com itens, propostas e resultado`);
+  }
   const rot = await irPara(n, page, "/contabilidade/roteiros-patrimoniais");
   const temContrato = await page.$$eval('select[name="movimento"] option', (os) => os.some((o) => (o.getAttribute("value") ?? "").startsWith("CONTRATO|"))).catch(() => false);
   conferir(semErro(rot) && temContrato, "roteiros patrimoniais oferecem os movimentos do controle de contratos");
