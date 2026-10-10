@@ -15,7 +15,7 @@ import {
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
 import { configurarRegimeDeMedicao } from "../../modules/m11-licitacoes/regime-de-medicao.js";
 import { alcanceNoContrato, contratosNoAlcanceDaFiscalizacao, definirAdministradorDaFiscalizacao, revogarAdministradorDaFiscalizacao, type AlcanceNoContrato } from "../../modules/m11-licitacoes/acesso-da-fiscalizacao.js";
-import { listarOrdensDeServicoDaSessao, type OrdemNaLista } from "../../modules/m11-licitacoes/ordens-de-servico-da-sessao.js";
+import { listarOrdensDeServicoDaSessao, type FiltroDasOrdens, type OrdemNaLista } from "../../modules/m11-licitacoes/ordens-de-servico-da-sessao.js";
 import { tiposParaPreencher } from "./agenda-da-fiscalizacao";
 import { cliente, PortaSemBancoError } from "./cliente";
 import { acoesPermitidas } from "./molde";
@@ -310,7 +310,7 @@ export async function revogarAdministradorNaTela(c: Readonly<Record<string, stri
  * V38 (AUD-122) — AS ORDENS DE SERVIÇO DA SESSÃO, de todos os contratos que ela alcança (designação vigente,
  * administrador da fiscalização ou visão financeira). O recorte é do domínio; a tela não filtra nada.
  */
-export async function ordensDeServicoDaSessao(sessao: Identidade): Promise<{ readonly ordens: readonly OrdemNaLista[]; readonly limitada: boolean; readonly todos: boolean }> {
-  return listarOrdensDeServicoDaSessao(cliente(), sessao.identificador);
+export async function ordensDeServicoDaSessao(sessao: Identidade, filtro: FiltroDasOrdens = {}): ReturnType<typeof listarOrdensDeServicoDaSessao> {
+  return listarOrdensDeServicoDaSessao(cliente(), sessao.identificador, filtro);
 }
 export type { OrdemNaLista };

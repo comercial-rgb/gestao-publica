@@ -42,16 +42,74 @@ export interface OrdemNaLista {
   readonly empenho: string | null;
 }
 
-export const LIMITE_DA_LISTA_DE_ORDENS = 300;
+/** V39-050 — a lista vai por páginas (antes: as 300 mais recentes, e as anteriores só pelo contrato). */
+export const ORDENS_POR_PAGINA = 100;
 
-/** As ordens no alcance, da mais recente para a mais antiga, até o limite (a tela diz quando ele é atingido). */
-export async function listarOrdensDeServicoDaSessao(tx: Tx, usuarioIdent: string, agora: Date = new Date()): Promise<{ readonly ordens: readonly OrdemNaLista[]; readonly limitada: boolean; readonly todos: boolean }> {
+export interface FiltroDasOrdens {
+  /** Número ("12" ou "12/2026"), número do contrato, contratado ou finalidade; sem distinguir maiúsculas. */
+  readonly busca?: string;
+  readonly ano?: number;
+  readonly situacao?: SituacaoDaOrdem;
+  /** A partir de 1. */
+  readonly pagina?: number;
+}
+
+/**
+ * As ordens no alcance, da mais recente para a mais antiga, filtradas e paginadas NO BANCO: o total é o do conjunto
+ * filtrado inteiro, não o da página. A situação é derivada (`situacaoDaOrdem`); para filtrar por ela no banco, a
+ * descartada e o rascunho saem das relações, e a suspensa é a emitida cujo ÚLTIMO movimento é a suspensão — a mesma
+ * régua, aplicada antes de paginar (senão a página viria curta e o total mentiria).
+ */
+export async function listarOrdensDeServicoDaSessao(
+  tx: Tx,
+  usuarioIdent: string,
+  filtro: FiltroDasOrdens = {},
+  agora: Date = new Date(),
+): Promise<{ readonly ordens: readonly OrdemNaLista[]; readonly total: number; readonly pagina: number; readonly paginas: number; readonly todos: boolean }> {
   const alcance = await contratosNoAlcanceDasOrdens(tx, usuarioIdent, agora);
-  if (!alcance.todos && alcance.ids.length === 0) return { ordens: [], limitada: false, todos: false };
+  if (!alcance.todos && alcance.ids.length === 0) return { ordens: [], total: 0, pagina: 1, paginas: 1, todos: false };
+  const noAlcance = alcance.todos ? {} : { contratoId: { in: [...alcance.ids] } };
+
+  const busca = (filtro.busca ?? "").trim();
+  const numeroBuscado = /^(\d{1,6})(?:\/(\d{4}))?$/.exec(busca);
+  const porBusca =
+    busca === ""
+      ? {}
+      : {
+          OR: [
+            { finalidade: { contains: busca, mode: "insensitive" as const } },
+            { contrato: { numeroContrato: { contains: busca, mode: "insensitive" as const } } },
+            { contrato: { contratadoNome: { contains: busca, mode: "insensitive" as const } } },
+            ...(numeroBuscado === null ? [] : [{ numero: Number(numeroBuscado[1]), ...(numeroBuscado[2] === undefined ? {} : { ano: Number(numeroBuscado[2]) }) }]),
+          ],
+        };
+  const porAno = filtro.ano === undefined ? {} : { ano: filtro.ano };
+
+  let porSituacao = {};
+  if (filtro.situacao === "DESCARTADA") porSituacao = { descarte: { isNot: null } };
+  else if (filtro.situacao === "RASCUNHO") porSituacao = { descarte: { is: null }, emissao: { is: null } };
+  else if (filtro.situacao === "EMITIDA" || filtro.situacao === "SUSPENSA") {
+    const emitidas = await tx.ordemDeServicoDoContrato.findMany({
+      where: { ...noAlcance, descarte: { is: null }, emissao: { isNot: null }, movimentos: { some: {} } },
+      select: { id: true, movimentos: { orderBy: [{ data: "desc" }, { criadoEm: "desc" }], take: 1, select: { tipo: true } } },
+    });
+    const suspensas = emitidas.filter((o) => o.movimentos[0]?.tipo === "SUSPENSAO").map((o) => o.id);
+    porSituacao = {
+      descarte: { is: null },
+      emissao: { isNot: null },
+      id: filtro.situacao === "SUSPENSA" ? { in: suspensas } : { notIn: suspensas },
+    };
+  }
+
+  const where = { AND: [noAlcance, porBusca, porAno, porSituacao] };
+  const total = await tx.ordemDeServicoDoContrato.count({ where });
+  const paginas = Math.max(1, Math.ceil(total / ORDENS_POR_PAGINA));
+  const pagina = Math.min(Math.max(1, Math.trunc(filtro.pagina ?? 1)), paginas);
   const os = await tx.ordemDeServicoDoContrato.findMany({
-    where: alcance.todos ? {} : { contratoId: { in: [...alcance.ids] } },
+    where,
     orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
-    take: LIMITE_DA_LISTA_DE_ORDENS + 1,
+    skip: (pagina - 1) * ORDENS_POR_PAGINA,
+    take: ORDENS_POR_PAGINA,
     select: {
       id: true, numero: true, ano: true, finalidade: true, inicioPrevisto: true, fimPrevisto: true,
       contrato: { select: { id: true, numeroContrato: true, contratadoNome: true } },
@@ -62,9 +120,11 @@ export async function listarOrdensDeServicoDaSessao(tx: Tx, usuarioIdent: string
     },
   });
   return {
-    limitada: os.length > LIMITE_DA_LISTA_DE_ORDENS,
+    total,
+    pagina,
+    paginas,
     todos: alcance.todos,
-    ordens: os.slice(0, LIMITE_DA_LISTA_DE_ORDENS).map((o) => ({
+    ordens: os.map((o) => ({
       id: o.id,
       contratoId: o.contrato.id,
       contrato: o.contrato.numeroContrato,

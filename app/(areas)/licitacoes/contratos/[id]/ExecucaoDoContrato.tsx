@@ -6,6 +6,7 @@ import type { ExecucaoParaTela } from "../../../../../lib/portas/execucao-do-con
 import { qtdBr } from "../../../../../lib/format/quantidade";
 import { AvisosDosAtos, ResultadosDosAtos } from "../../../../../components/ui/ResultadosDosAtos";
 import { FormAditivoPorItens, FormEstornarAditivo, FormNovaOrdem } from "./FormulariosDaExecucao";
+import { rotuloDaSituacaoDaOrdem } from "../../situacao-da-ordem";
 
 const dataBr = (dia: string): string => dia.split("-").reverse().join("/");
 
@@ -17,12 +18,6 @@ const dataBr = (dia: string): string => dia.split("-").reverse().join("/");
  * acontece na página da ordem.
  */
 
-export const SITUACAO: Readonly<Record<string, { readonly texto: string; readonly tom: "ok" | "alerta" | "neutro" }>> = {
-  RASCUNHO: { texto: "rascunho", tom: "neutro" },
-  DESCARTADA: { texto: "descartada", tom: "neutro" },
-  EMITIDA: { texto: "emitida", tom: "ok" },
-  SUSPENSA: { texto: "suspensa", tom: "alerta" },
-};
 
 function Valor({ rotulo, valor, definicao, dado }: { readonly rotulo: string; readonly valor: string; readonly definicao: string; readonly dado: string }): React.ReactElement {
   return (
@@ -117,7 +112,7 @@ export function ExecucaoDoContrato({ e, contratoId }: { readonly e: ExecucaoPara
                 {e.ordens.map((o) => (
                   <tr key={o.id} data-ordem-de-servico={`${o.numero}/${o.ano}`} className="border-t border-[color:var(--color-border)]">
                     <td className="py-2 pr-2"><Link href={`/licitacoes/contratos/${contratoId}/ordens/${o.id}`} className="text-[color:var(--color-primary)] underline underline-offset-2">nº {o.numero}/{o.ano}</Link><span className="block text-xs text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]">{o.finalidade}</span></td>
-                    <td className="py-2 pr-2"><Badge status={SITUACAO[o.situacao]?.tom ?? "neutro"}>{SITUACAO[o.situacao]?.texto ?? o.situacao}</Badge></td>
+                    <td className="py-2 pr-2"><Badge status={rotuloDaSituacaoDaOrdem(o.situacao).tom}>{rotuloDaSituacaoDaOrdem(o.situacao).texto}</Badge></td>
                     <td className="py-2 pr-2">{o.inicioAutorizado ?? o.inicioPrevisto} a {o.fimPrevisto}</td>
                     <td className="py-2 pr-2 text-right"><ValorMonetario valor={o.situacao === "RASCUNHO" || o.situacao === "DESCARTADA" ? o.valores.previsto : o.valores.autorizado} /></td>
                     <td className="py-2 pr-2 text-right"><ValorMonetario valor={o.valores.medido} /></td>

@@ -54,6 +54,8 @@ export interface ModoIntegracaoBb {
 }
 
 export interface ContaConciliada {
+  /** V39 — o id, para o seletor de conta do painel (`?conta=`). */
+  readonly id: string;
   readonly codigo: string;
   readonly descricao: string;
   /** Código FEBRABAN (3 dígitos). "001" = Banco do Brasil. */
@@ -209,8 +211,25 @@ const zero = (): Money => toMoney("0.00");
  * conciliação vazia que pareceria "tudo conciliado".
  */
 
+/**
+ * V39 — AS CONTAS COM EXTRATO NO EXERCÍCIO, para o painel escolher qual conciliar. Sem isto o painel mostrava só a conta
+ * do extrato de fim mais recente, e quem concilia uma segunda conta não a alcançava (medido no percurso da V39: com o
+ * extrato da FIC-CM-500 terminando depois, o da FIC-PM-500 não aparecia para vínculo).
+ */
+export async function contasComExtratoNoExercicio(exercicio: number): Promise<readonly { readonly id: string; readonly codigo: string; readonly descricao: string }[]> {
+  await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
+  const { inicio, limite } = janelaDoBancoDoAno(exercicio);
+  return cliente().contaBancaria.findMany({
+    where: { extratos: { some: { periodoFim: { gte: inicio, lt: limite } } } },
+    orderBy: { codigo: "asc" },
+    select: { id: true, codigo: true, descricao: true },
+  });
+}
+
 export async function lerPainelConciliacao(p: {
   readonly exercicio: number;
+  /** V39 — a conta escolhida na tela (id). Ausente: a do extrato de fim mais recente, como antes. */
+  readonly contaBancariaId?: string;
 }): Promise<PainelConciliacao | null> {
   await exigirLeituraDoEnte("CONSULTAR_FINANCEIRO");
   const prisma = cliente();
@@ -222,7 +241,10 @@ export async function lerPainelConciliacao(p: {
   const { inicio: inicioDoAno, limite: inicioDoAnoSeguinte } = janelaDoBancoDoAno(p.exercicio);
 
   const extrato = await prisma.extratoBancario.findFirst({
-    where: { periodoFim: { gte: inicioDoAno, lt: inicioDoAnoSeguinte } },
+    where: {
+      periodoFim: { gte: inicioDoAno, lt: inicioDoAnoSeguinte },
+      ...(p.contaBancariaId === undefined ? {} : { contaBancariaId: p.contaBancariaId }),
+    },
     orderBy: [{ periodoFim: "desc" }, { criadoEm: "desc" }],
     select: {
       id: true,
@@ -317,6 +339,7 @@ export async function lerPainelConciliacao(p: {
   return {
     modo: { modo: mock.modo, estado: mock.estado, mensagem: mock.mensagem, live: live.mensagem },
     conta: {
+      id: conta.id,
       codigo: conta.codigo,
       descricao: conta.descricao,
       banco: conta.banco,
@@ -594,16 +617,17 @@ export interface ExtratoParaImpressao extends ExtratoDaLista {
 }
 
 const SELECAO_DA_CONTA = {
+  id: true,
   codigo: true, descricao: true, banco: true, agencia: true, digitoAgencia: true, conta: true, digitoConta: true,
   contaContabil: { select: { codigo: true } },
 } as const;
 
 function contaDaLista(c: {
-  codigo: string; descricao: string; banco: string | null; agencia: string | null; digitoAgencia: string | null;
+  id: string; codigo: string; descricao: string; banco: string | null; agencia: string | null; digitoAgencia: string | null;
   conta: string | null; digitoConta: string | null; contaContabil: { codigo: string } | null;
 }): ContaConciliada {
   const id = identificacaoMascarada(c);
-  return { codigo: c.codigo, descricao: c.descricao, banco: c.banco, agenciaMascarada: id.agencia, contaMascarada: id.conta, contaContabil: c.contaContabil?.codigo ?? "" };
+  return { id: c.id, codigo: c.codigo, descricao: c.descricao, banco: c.banco, agenciaMascarada: id.agencia, contaMascarada: id.conta, contaContabil: c.contaContabil?.codigo ?? "" };
 }
 
 /** Os extratos cujo período termina no exercício (o mesmo recorte do painel), do mais recente ao mais antigo. */

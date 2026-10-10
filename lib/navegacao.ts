@@ -501,6 +501,8 @@ const ITENS_NAVEGAVEIS: readonly RelatorioNav[] = [
   ...PLANEJAMENTO,
   ...CONTABILIDADE,
   ...FINANCEIRO,
+  // V39 — sem esta linha, a trilha das telas de licitações mostrava o trecho cru da rota ("ordens-de-servico").
+  ...LICITACOES,
 ];
 
 /**
@@ -511,7 +513,19 @@ const ITENS_NAVEGAVEIS: readonly RelatorioNav[] = [
 export function rotuloDaRota(href: string): string | null {
   const area = AREAS.find((a) => rotaDaArea(a) === href);
   if (area !== null && area !== undefined) return area.rotulo;
-  return ITENS_NAVEGAVEIS.find((i) => i.href === href)?.rotulo ?? null;
+  // V39 — e o rótulo do MENU, quando a página só está nele (medido: 80 páginas do menu do contador mostravam o trecho
+  // cru da rota na trilha).
+  return ITENS_NAVEGAVEIS.find((i) => i.href === href)?.rotulo ?? rotuloNoMenu(href);
+}
+
+function rotuloNoMenu(href: string): string | null {
+  for (const aba of [...MENU_DO_CONTADOR, ABA_OUTRAS_AREAS]) {
+    for (const g of aba.grupos) {
+      const item = g.itens.find((i) => (i.href.split("?")[0] ?? i.href) === href);
+      if (item !== undefined) return item.rotulo;
+    }
+  }
+  return null;
 }
 
 /**

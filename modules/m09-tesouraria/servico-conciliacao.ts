@@ -208,7 +208,21 @@ export async function encerrarConciliacao(
   if (antes === null) {
     throw new Error(`Conciliação ${d.conciliacaoId} não encontrada.`);
   }
-  await conciliacaoBancaria(prisma, antes.contaBancariaId, antes.periodoFim);
+  // ⚠️ V39-008 — NÃO SE ENCERRA O PERÍODO QUE AINDA NÃO TERMINOU. A conciliação encerrada se lê "como estava no fim do
+  // período" (vínculos gravados até o fim do último dia). Encerrada antes desse fim, ela continuaria mudando: um fato
+  // do razão datado no último dia, ou um vínculo gravado ainda naquele dia, alteraria o relatório de um período que o
+  // controle interno lê como conferido. Medido na V38: a FIC-PM-500 foi encerrada às 21h do próprio último dia.
+  const agora = new Date();
+  if (antes.periodoFim.getTime() > agora.getTime()) {
+    throw new Error(
+      `O período termina em ${diaCivil(antes.periodoFim).split("-").reverse().join("/")} e ainda não acabou. ` +
+        `Encerrar agora deixaria o fechamento mudar com o que ainda for registrado nesse dia. ` +
+        `Encerre depois do fim do período. Nada foi gravado.`
+    );
+  }
+  // V39 (auditoria) — o encerramento lê os vínculos de AGORA: a conciliação se faz depois do fim do período, e com o
+  // conhecimento no corte nenhum vínculo feito depois contaria (a mensagem mandaria vincular, e vincular nada resolveria).
+  const relatorio = await conciliacaoBancaria(prisma, antes.contaBancariaId, antes.periodoFim, { conhecimento: conhecimentoDaConciliacao(antes.periodoFim, null, agora) });
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.encerrarConciliacao, "ENTE");
@@ -220,6 +234,7 @@ export async function encerrarConciliacao(
         periodoInicio: true,
         periodoFim: true,
         movimentos: { select: { tipo: true, criadoEm: true } },
+        justificativas: { select: { lado: true, referencia: true } },
       },
     });
 
@@ -228,6 +243,22 @@ export async function encerrarConciliacao(
       { inicio: c.periodoInicio, fim: c.periodoFim },
       "o encerramento"
     );
+
+    // ⚠️ V39-008 — A PENDÊNCIA QUE ATRAVESSA O FECHAMENTO LEVA O MOTIVO, e quem cobra é o SERVIÇO.
+    //
+    // A diferença sem explicação (acima) é PROIBIDA: a conciliação nem sai. A pendência é PERMITIDA — o cheque não
+    // compensado, o depósito em trânsito passam ao período seguinte —, mas não muda: encerrar é irreversível e o
+    // controle interno lê o encerramento como "isto foi conferido". Na V38 um roteiro de teste encerrou a FIC-PM-500
+    // com quatro pendências sem justificativa: a única proteção era o roteiro conferir antes. Agora é esta.
+    const pendentes = semJustificativa(relatorio, c.justificativas);
+    if (pendentes.length > 0) {
+      throw new Error(
+        `Encerrar leva as pendências ao período seguinte, e cada uma leva o motivo. ` +
+          `${String(pendentes.length)} pendência(s) sem justificativa: ${pendentes.slice(0, 5).join("; ")}` +
+          `${pendentes.length > 5 ? `; e mais ${String(pendentes.length - 5)}` : ""}. ` +
+          `Vincule ou justifique cada uma e encerre de novo. Nada foi gravado.`
+      );
+    }
 
     // O índice único parcial no banco é quem fecha a corrida de dois encerramentos
     // simultâneos; este guard é a mensagem legível do caminho sequencial.
@@ -240,6 +271,38 @@ export async function encerrarConciliacao(
       rotulo: rotuloDoPeriodo(c.periodoInicio, c.periodoFim),
     };
   });
+}
+
+/**
+ * V39 (auditoria) — A DATA DO CONHECIMENTO DE UMA CONCILIAÇÃO POR PERÍODO: até quando os vínculos contam.
+ *   · ENCERRADA: o instante do encerramento — ela se lê como estava quando foi conferida; vínculo feito depois não a
+ *     muda. Se foi encerrada antes do próprio fim (o caso da V38, antes da regra que o impede), vale o fim do período,
+ *     porque o motor não aceita conhecimento anterior ao corte.
+ *   · ABERTA: agora (ou o fim do período, se ele ainda não chegou) — é quando a conciliação está sendo feita.
+ * Até a V38 as duas usavam o fim do período, e como o encerramento passou a exigir o período terminado, nenhum vínculo
+ * feito na hora de conciliar contaria (achado da auditoria da V39).
+ */
+export function conhecimentoDaConciliacao(periodoFim: Date, encerradaEm: Date | null, agora: Date): Date {
+  const referencia = encerradaEm ?? agora;
+  return referencia.getTime() > periodoFim.getTime() ? referencia : periodoFim;
+}
+
+/**
+ * Puro: as pendências derivadas (linha do extrato e fato do razão sem vínculo) que não têm justificativa vigente,
+ * descritas como a tela as mostra. A chave da justificativa é (lado, referência), a mesma de `justificarPendencia`.
+ */
+export function semJustificativa(
+  relatorio: {
+    readonly noExtratoSemVinculo: readonly { readonly id: string; readonly data: Date; readonly descricao: string; readonly residual: string }[];
+    readonly internoSemVinculo: readonly { readonly id: string; readonly tipoInterno: string; readonly data: Date; readonly descricao: string; readonly residual: string }[];
+  },
+  justificativas: readonly { readonly lado: string; readonly referencia: string }[]
+): readonly string[] {
+  const tem = (lado: string, ref: string): boolean => justificativas.some((j) => j.lado === lado && j.referencia === ref);
+  return [
+    ...relatorio.noExtratoSemVinculo.filter((l) => !tem("EXTRATO", l.id)).map((l) => `no extrato, ${diaCivil(l.data)} ${l.descricao} (${l.residual})`),
+    ...relatorio.internoSemVinculo.filter((l) => !tem(l.tipoInterno, l.id)).map((l) => `no razão, ${diaCivil(l.data)} ${l.descricao} (${l.residual})`),
+  ];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -392,13 +455,10 @@ export async function lerConciliacao(
     throw new Error(`Conciliação ${conciliacaoId} não encontrada.`);
   }
 
-  const relatorio = await conciliacaoBancaria(
-    prisma,
-    c.contaBancariaId,
-    c.periodoFim
-  );
-
   const encerramento = c.movimentos.find((m) => m.tipo === "ENCERRAR");
+  const relatorio = await conciliacaoBancaria(prisma, c.contaBancariaId, c.periodoFim, {
+    conhecimento: conhecimentoDaConciliacao(c.periodoFim, encerramento?.criadoEm ?? null, new Date()),
+  });
 
   return {
     id: c.id,
@@ -442,10 +502,13 @@ async function naoResolvidasDe(
       contaBancariaId: true,
       periodoFim: true,
       justificativas: { select: { lado: true, referencia: true, motivo: true } },
+      movimentos: { select: { tipo: true, criadoEm: true } },
     },
   });
 
-  const rel = await conciliacaoBancaria(prisma, c.contaBancariaId, c.periodoFim);
+  // A foto do que estava em aberto QUANDO a anterior foi encerrada (V39: o conhecimento do encerramento).
+  const encerradaEm = c.movimentos.find((m) => m.tipo === "ENCERRAR")?.criadoEm ?? null;
+  const rel = await conciliacaoBancaria(prisma, c.contaBancariaId, c.periodoFim, { conhecimento: conhecimentoDaConciliacao(c.periodoFim, encerradaEm, new Date()) });
   const motivoDe = (lado: string, ref: string): string | null =>
     c.justificativas.find((j) => j.lado === lado && j.referencia === ref)?.motivo ?? null;
 

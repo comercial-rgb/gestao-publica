@@ -28,6 +28,7 @@ import { registrarIngressoExtra } from "../../modules/m07-extraorcamentario/extr
 import { irDaFolhaNoPagamento } from "../../modules/m07-extraorcamentario/retencao-propria.js";
 import { cadastrarTipoDeConsignacao, redefinirContaDaConsignacao } from "../../modules/m07-extraorcamentario/servico-tipos-de-consignacao.js";
 import { definirContabilizacaoDaTransferenciaEntreUgs, registrarTransferenciaEntreUgs } from "../../modules/m09-tesouraria/transferencia-entre-ugs.js";
+import { declararNaturezaDaBase, naturezaDaBase } from "../../modules/m16-travamento/natureza-da-base.js";
 import { descontosDaFolhaPendentes } from "../../modules/m33-folha/descontos-da-folha.js";
 import { toMoney } from "../../packages/contracts/index.js";
 import { criarM05DepsComAlmoxarifado } from "../../modules/m10-patrimonial/adapter-m05-almox.js";
@@ -883,6 +884,13 @@ async function main(): Promise<void> {
         ...(v?.sitio != null ? { sitio: v.sitio } : {}),
         criadoPor: ADMIN,
       });
+      return { estado: "criado", valor: null };
+    });
+    await passo("Natureza da base: DEMONSTRACAO (declarada no banco)", async () => {
+      // V39-002: a marca no nome é apresentação; a natureza que os percursos conferem é esta. Uma base declarada
+      // OFICIAL faz a semente PARAR aqui (o rebaixamento pede o script, com confirmação explícita).
+      if ((await naturezaDaBase(prisma)).natureza === "DEMONSTRACAO") return { estado: "existente", valor: null };
+      await declararNaturezaDaBase(prisma, { natureza: "DEMONSTRACAO", motivo: "Base semeada por semear-esperanca-ficticio: dados fictícios.", declaradoPor: ADMIN });
       return { estado: "criado", valor: null };
     });
     console.log("\n[2] planejamento");

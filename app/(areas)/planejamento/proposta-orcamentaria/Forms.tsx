@@ -306,27 +306,91 @@ export function FormAbrirExercicio({
 }
 
 /** EFETIVAR: gera as fichas e a receita prevista do exercício. Fica montado depois do sucesso (ver acima). */
+/**
+ * GERAR O ORÇAMENTO, com o que permite executar (V39-021): a lei aprovada; a execução provisória que a LDO autoriza
+ * enquanto a lei não sai (o dispositivo transcrito); ou o ensaio, que só aparece quando o banco declara a base de
+ * demonstração ou de ensaio. A escolha é controlada (o React 19 zera campo não controlado depois da ação).
+ */
 export function FormEfetivarProposta({
   propostaOrcamentariaId,
   exercicio,
   pronta,
   efetivada,
+  leiAprovada,
+  admiteEnsaio,
+  tiposDeAto,
 }: {
   readonly propostaOrcamentariaId: string;
   readonly exercicio: number;
   readonly pronta: boolean;
   readonly efetivada: boolean;
+  /** O número da lei aprovada do exercício, ou null quando a aprovação não está registrada. */
+  readonly leiAprovada: string | null;
+  readonly admiteEnsaio: boolean;
+  readonly tiposDeAto: readonly { readonly codigo: string; readonly rotulo: string }[];
 }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaProposta, FormData>(efetivarPropostaAction, {});
+  const [fundamento, setFundamento] = useState<string>(leiAprovada === null ? "" : "LEI_APROVADA");
+  const [ato, setAto] = useState({ atoTipo: "LEI", atoNumero: "", atoAno: "", atoDispositivo: "", atoCitacao: "" });
+  const muda = (campo: keyof typeof ato) => (e: { target: { value: string } }): void => setAto((a) => ({ ...a, [campo]: e.target.value }));
   return (
     <form action={action} className="space-y-2" data-acao="efetivar-proposta" aria-label={`Gerar o orçamento de ${String(exercicio)}`}>
       <ChaveDeComando />
       <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
       <Resultado estado={estado} acao="efetivar-proposta" />
       {efetivada ? null : (
-        <button className={BOTAO} disabled={pendente || !pronta} type="submit">
-          {pendente ? "Gerando o orçamento…" : `Gerar o orçamento de ${String(exercicio)}`}
-        </button>
+        <>
+          <fieldset className="space-y-1 text-sm" data-fundamento-da-efetivacao>
+            <legend className={ROTULO}>O que permite executar o orçamento de {String(exercicio)}</legend>
+            <label className="flex items-start gap-2">
+              <input type="radio" name="fundamento" value="LEI_APROVADA" checked={fundamento === "LEI_APROVADA"} disabled={leiAprovada === null} onChange={() => setFundamento("LEI_APROVADA")} />
+              <span>
+                A lei orçamentária aprovada
+                {leiAprovada === null ? <span className="block text-xs text-[color:var(--color-ink-2)]">A aprovação ainda não está registrada: registre o número da lei, a sanção e a publicação em Leis orçamentárias.</span> : <span className="block text-xs text-[color:var(--color-ink-2)]">Lei {leiAprovada}</span>}
+              </span>
+            </label>
+            <label className="flex items-start gap-2">
+              <input type="radio" name="fundamento" value="EXECUCAO_PROVISORIA" checked={fundamento === "EXECUCAO_PROVISORIA"} disabled={leiAprovada !== null} onChange={() => setFundamento("EXECUCAO_PROVISORIA")} />
+              <span>
+                A execução provisória autorizada pela LDO, enquanto a lei não é sancionada
+                <span className="block text-xs text-[color:var(--color-ink-2)]">Informe o dispositivo da LDO e transcreva o trecho.</span>
+              </span>
+            </label>
+            {admiteEnsaio ? (
+              <label className="flex items-start gap-2">
+                <input type="radio" name="fundamento" value="ENSAIO" checked={fundamento === "ENSAIO"} onChange={() => setFundamento("ENSAIO")} />
+                <span>
+                  Ensaio nesta base de demonstração
+                  <span className="block text-xs text-[color:var(--color-ink-2)]">Só para exercitar o sistema; não vale como orçamento aprovado.</span>
+                </span>
+              </label>
+            ) : null}
+          </fieldset>
+          {fundamento === "EXECUCAO_PROVISORIA" ? (
+            <div className="grid gap-2 sm:grid-cols-4" data-ato-da-execucao-provisoria>
+              <label className={ROTULO}>Tipo do ato
+                <select name="atoTipo" className={CAMPO} value={ato.atoTipo} onChange={muda("atoTipo")}>
+                  {tiposDeAto.map((t) => <option key={t.codigo} value={t.codigo}>{t.rotulo}</option>)}
+                </select>
+              </label>
+              <label className={ROTULO}>Número
+                <input name="atoNumero" required className={CAMPO} value={ato.atoNumero} onChange={muda("atoNumero")} />
+              </label>
+              <label className={ROTULO}>Ano
+                <input name="atoAno" required inputMode="numeric" pattern="\d{4}" className={CAMPO} value={ato.atoAno} onChange={muda("atoAno")} />
+              </label>
+              <label className={ROTULO}>Dispositivo
+                <input name="atoDispositivo" required placeholder="art. 45" className={CAMPO} value={ato.atoDispositivo} onChange={muda("atoDispositivo")} />
+              </label>
+              <label className={`${ROTULO} sm:col-span-4`}>Trecho transcrito
+                <textarea name="atoCitacao" required rows={3} className={CAMPO} value={ato.atoCitacao} onChange={muda("atoCitacao")} />
+              </label>
+            </div>
+          ) : null}
+          <button className={BOTAO} disabled={pendente || !pronta || fundamento === ""} type="submit">
+            {pendente ? "Gerando o orçamento…" : `Gerar o orçamento de ${String(exercicio)}`}
+          </button>
+        </>
       )}
     </form>
   );
@@ -429,6 +493,8 @@ export function FormReajusteEmLote({ propostaOrcamentariaId }: { readonly propos
       <summary className={SUMARIO}>Reajustar em lote (um percentual sobre as linhas de um recorte)</summary>
       <form action={action} className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-acao="reajuste-em-lote" aria-label="Reajustar linhas da proposta em lote">
         <ChaveDeComando />
+        {/* V39-016 — a versão do que a prévia mostrou; sem prévia, ou com prévia de outro recorte, a aplicação é recusada. */}
+        <input type="hidden" name="versaoDaPrevia" value={previa.previa?.versao ?? ""} />
         <input type="hidden" name="propostaOrcamentariaId" value={propostaOrcamentariaId} />
         <label className="block text-xs">
           <span className={ROTULO}>O que reajustar</span>
@@ -481,7 +547,7 @@ export function FormReajusteEmLote({ propostaOrcamentariaId }: { readonly propos
             <button className={BOTAO_SECUNDARIO} disabled={pendente || calculando} type="submit" formAction={previaAction} data-botao="previa">
               {calculando ? "Calculando…" : "Calcular a prévia"}
             </button>
-            <button className={BOTAO} disabled={pendente || calculando} type="submit" data-botao="aplicar">
+            <button className={BOTAO} disabled={pendente || calculando || previa.previa === undefined} type="submit" data-botao="aplicar">
               {pendente ? "Aplicando…" : "Aplicar o reajuste"}
             </button>
           </div>

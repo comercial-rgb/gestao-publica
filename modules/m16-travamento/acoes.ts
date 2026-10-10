@@ -3728,4 +3728,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   emendasDaProposta: "leitura (V36 — as emendas de uma proposta, com a situação derivada da sanção; não muta)",
   comparativoDaDivida: "leitura (V36 — as parcelas informadas da dívida ao lado do que os pagamentos amortizaram; não muta)",
   lerExtratoImportado: "leitura (V36 — as linhas de um extrato importado, com a situação derivada dos vínculos, para consulta e impressão; não muta)",
+  naturezaDaBase: "leitura (V39 — a declaração vigente de que a base é oficial, de demonstração ou de ensaio; não muta)",
+  declararNaturezaDaBase:
+    "ATO DE INSTALAÇÃO (V39), como o bootstrap: roda fora da aplicação, pelo operador do servidor " +
+    "(scripts/declarar-natureza-da-base.ts) ou pela semente da base fictícia. Nenhuma tela o chama; " +
+    "rebaixar uma base OFICIAL pede confirmação explícita.",
 };

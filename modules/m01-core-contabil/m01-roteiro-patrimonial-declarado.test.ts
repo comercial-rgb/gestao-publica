@@ -55,7 +55,7 @@ async function semear(): Promise<void> {
   await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: perfil.id, criadoPor: POR } });
 }
 
-const declarar = (o: { familia?: "PRECATORIO" | "CONVENIO"; chave?: string; d?: string; c?: string; h?: string; por?: string } = {}) =>
+const declarar = (o: { familia?: "PRECATORIO" | "CONVENIO" | "CONTRATO"; chave?: string; d?: string; c?: string; h?: string; por?: string } = {}) =>
   declararRoteiroPatrimonial(prisma, {
     familia: o.familia ?? "PRECATORIO", chave: o.chave ?? "INSCRICAO",
     contaDebitoCodigo: o.d ?? VPD_A, contaCreditoCodigo: o.c ?? PASSIVO,
@@ -123,6 +123,18 @@ describe("V32 — roteiro de precatório e convênio declarado pela tela", () =>
     await declarar();
     await expect(declarar()).rejects.toThrow(/já é este/);
     expect(await prisma.roteiroPatrimonialDeclarado.count()).toBe(1);
+  });
+
+  /** V39-031 — a família do controle de contratos: as chaves do domínio, as contas do contador, só classes 7 e 8. */
+  it("t3b: CONTRATO aceita conta de controle e recusa a patrimonial e a chave que o domínio não tem; versão nova vale adiante", async () => {
+    await expect(declarar({ familia: "CONTRATO", chave: "REGISTRO", d: VPD_A, c: CTRL_A })).rejects.toThrow(/não é do subsistema de controle/);
+    await expect(declarar({ familia: "CONTRATO", chave: "PAGAMENTO", d: CTRL_B, c: CTRL_A })).rejects.toThrow(/não existe em Controle de contratos/);
+    expect(await prisma.roteiroPatrimonialDeclarado.count()).toBe(0);
+    await declarar({ familia: "CONTRATO", chave: "REGISTRO", d: CTRL_A, c: CTRL_B, h: "Registro do contrato" });
+    await declarar({ familia: "CONTRATO", chave: "EXECUCAO", d: CTRL_B, c: CTRL_A, h: "Execução do contrato" });
+    const lista = await listarRoteirosPatrimoniais(prisma);
+    // as quatro chaves aparecem na tela; só as duas declaradas valem, as outras recusam o movimento (PENDENTE)
+    expect(Object.fromEntries(lista.filter((r) => r.familia === "CONTRATO").map((r) => [r.chave, r.situacao]))).toEqual({ REGISTRO: "DECLARADO", ACRESCIMO: "PENDENTE", SUPRESSAO: "PENDENTE", EXECUCAO: "DECLARADO" });
   });
 
   it("t4: quem só consulta não declara — recusa nomeando a ação, e nada nasce", async () => {

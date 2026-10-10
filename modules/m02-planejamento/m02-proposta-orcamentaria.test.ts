@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { declararNaturezaDaBase } from "../m16-travamento/natureza-da-base.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
@@ -62,6 +63,8 @@ let fichaDois = "";
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);
+  // V39-021: a base de teste é de ENSAIO — a efetivação destes testes usa esse fundamento.
+  await declararNaturezaDaBase(prisma, { natureza: "ENSAIO", motivo: "banco de teste", declaradoPor: "TESTE" });
   await semearRoteiroOrcamentario(prisma);
   await prisma.exercicio.create({ data: { ano: 2026, criadoPor: "TESTE" } });
   await prisma.orgao.createMany({ data: [...SEED_ORGAOS] });
@@ -299,8 +302,8 @@ describe("V29 — proposta orçamentária no banco", () => {
     // Só a fonte 540 (a ficha 7, que está zerada na base EMPENHADO): primeiro um valor, depois o reajuste.
     await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: ficha7.id, valor: "400000.00", motivo: "Partida da Saúde", criadoPor: ADMIN });
     const previa = await previaDoReajusteDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "10", recorte: { fonte: "540" } });
-    expect(previa).toEqual({ linhas: 1, totalAntes: "400000.00", totalDepois: "440000.00" });
-    const r = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "10", recorte: { fonte: "540" }, motivo: "Piso da saúde", criadoPor: ADMIN });
+    expect(previa).toMatchObject({ linhas: 1, totalAntes: "400000.00", totalDepois: "440000.00" });
+    const r = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "10", recorte: { fonte: "540" }, motivo: "Piso da saúde", versaoDaPrevia: previa.versao, criadoPor: ADMIN });
     expect(r).toEqual(previa);
     const p1 = (await detalharPropostaOrcamentaria(prisma, id))!;
     expect(p1.despesas.find((d) => d.numero === 7)!.valorVigente).toBe("440000.00");
@@ -309,15 +312,28 @@ describe("V29 — proposta orçamentária no banco", () => {
 
     // A receita, por prefixo da natureza (só o IPTU, 1112...), com percentual negativo.
     const iptu = p0.receitas.find((x) => x.naturezaCodigo === "11125001")!;
-    const pr = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", percentual: "-5", recorte: { naturezaPrefixo: "1112" }, motivo: "Queda da arrecadação", criadoPor: ADMIN });
+    const prv = await previaDoReajusteDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", percentual: "-5", recorte: { naturezaPrefixo: "1112" } });
+    const pr = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", percentual: "-5", recorte: { naturezaPrefixo: "1112" }, motivo: "Queda da arrecadação", versaoDaPrevia: prv.versao, criadoPor: ADMIN });
     expect(pr.linhas).toBe(1);
     expect(pr.totalDepois).toBe(projetar(toMoney(iptu.valorVigente), toPercentual("-5")).toFixed(2));
     const p2 = (await detalharPropostaOrcamentaria(prisma, id))!;
     expect(p2.receitas.find((x) => x.naturezaCodigo === "17515001")!.valorVigente).toBe(p0.receitas.find((x) => x.naturezaCodigo === "17515001")!.valorVigente);
 
     // Recorte sem linha: recusa, nada gravado.
-    await expect(reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "3", recorte: { fonte: "999" }, motivo: "Fonte que não existe", criadoPor: ADMIN })).rejects.toThrow(/Nenhuma linha da proposta está no recorte/);
+    await expect(reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "3", recorte: { fonte: "999" }, motivo: "Fonte que não existe", versaoDaPrevia: "qualquer", criadoPor: ADMIN })).rejects.toThrow(/Nenhuma linha da proposta está no recorte/);
     expect(await prisma.ajusteDeDespesaDaProposta.count()).toBe(2);
+
+    // V39-016 — N=2: a MESMA prévia, aplicada depois de mudar uma linha do recorte, é recusada; refeita, passa.
+    const pv = await previaDoReajusteDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "2", recorte: { fonte: "540" } });
+    await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: ficha7.id, valor: "441000.00", motivo: "Ajuste concorrente", criadoPor: ADMIN });
+    const ajustesAntes = await prisma.ajusteDeDespesaDaProposta.count();
+    await expect(reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "2", recorte: { fonte: "540" }, motivo: "Reajuste velho", versaoDaPrevia: pv.versao, criadoPor: ADMIN })).rejects.toThrow(/mudaram desde a prévia.*Nada foi gravado/);
+    // percentual trocado depois da prévia também é outra versão
+    const pv2 = await previaDoReajusteDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "2", recorte: { fonte: "540" } });
+    await expect(reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "3", recorte: { fonte: "540" }, motivo: "Outro percentual", versaoDaPrevia: pv2.versao, criadoPor: ADMIN })).rejects.toThrow(/mudaram desde a prévia/);
+    expect(await prisma.ajusteDeDespesaDaProposta.count()).toBe(ajustesAntes);
+    const ok = await reajustarLinhasDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", percentual: "2", recorte: { fonte: "540" }, motivo: "Reajuste conferido", versaoDaPrevia: pv2.versao, criadoPor: ADMIN });
+    expect(ok.totalDepois).toBe("449820.00");
 
     // O recorte é puro e cada critério restringe (E).
     const linhas = [
@@ -341,10 +357,16 @@ describe("V29 — proposta orçamentária no banco", () => {
       fichas: await prisma.fichaOrcamentaria.aggregate({ where: { exercicio: 2026 }, _count: { _all: true }, _sum: { valorDotado: true } }),
       receitas: await prisma.receitaPrevista.aggregate({ where: { exercicio: 2026 }, _count: { _all: true }, _sum: { valorPrevisto: true } }),
       movimentos: await prisma.movimentoDotacao.aggregate({ where: { ficha: { exercicio: 2026 } }, _count: { _all: true }, _sum: { valor: true } }),
+      // V39-022 — o RAZÃO de 2026 também: os lançamentos datados no ano (por id) e a soma das partidas por débito e
+      // crédito. A geração de 2027 lança a dotação e a previsão em 1º/01/2027; nada pode cair em 2026.
+      razao: {
+        lancamentos: (await prisma.lancamentoContabil.findMany({ where: { dataTransacao: { gte: new Date("2026-01-01T03:00:00Z"), lt: new Date("2027-01-01T03:00:00Z") } }, select: { id: true }, orderBy: { id: "asc" } })).map((l) => l.id),
+        partidas: await prisma.partidaContabil.groupBy({ by: ["tipo"], where: { lancamento: { dataTransacao: { gte: new Date("2026-01-01T03:00:00Z"), lt: new Date("2027-01-01T03:00:00Z") } } }, _sum: { valor: true }, _count: { _all: true }, orderBy: { tipo: "asc" } }),
+      },
     });
     const antes = await de2026();
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
-    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN });
+    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN });
     expect([r.fichasCriadas, r.receitasCriadas]).toEqual([4, 3]);
     const fichas = await prisma.fichaOrcamentaria.findMany({ where: { exercicio: 2027 }, orderBy: { numero: "asc" }, select: { numero: true, valorDotado: true, unidadeOrc: { select: { codigo: true } }, fonte: { select: { codigo: true } } } });
     expect(fichas.map((f) => [f.numero, f.unidadeOrc.codigo, f.fonte.codigo, f.valorDotado.toFixed(2)])).toEqual([
@@ -359,8 +381,11 @@ describe("V29 — proposta orçamentária no banco", () => {
       ["17515001", "500", "70000.00"],
       ["17515001", "540", p0.receitas.find((x) => x.naturezaCodigo === "17515001")!.valorVigente],
     ]);
-    // A origem não muda: mesmas contagens e somas em 2026, inclusive os movimentos de dotação.
+    // A origem não muda: mesmas contagens e somas em 2026, inclusive os movimentos de dotação e o razão.
+    expect(antes.razao.lancamentos.length).toBeGreaterThan(0); // senão "não mudou" passaria por vacuidade
     expect(await de2026()).toEqual(antes);
+    // e o destino recebeu os seus lançamentos (o razão de 2027 não está vazio): a régua distingue os dois anos.
+    expect(await prisma.lancamentoContabil.count({ where: { dataTransacao: { gte: new Date("2027-01-01T03:00:00Z") } } })).toBeGreaterThan(0);
     // Depois de gerado, a proposta não aceita linha nova.
     await expect(incluirFichaNaProposta(prisma, { propostaOrcamentariaId: id, classificacao: { ...CLASSIFICACAO_VALIDA, fonte: "540", unidadeOrc: "01002" }, valor: "1.00", motivo: "Tarde demais", criadoPor: ADMIN })).rejects.toThrow(/já foi efetivada/);
   });
@@ -374,7 +399,7 @@ describe("V29 — proposta orçamentária no banco", () => {
     await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", linhaId: linhaB.id, valor: "0", motivo: "Fonte extinta em 2027", criadoPor: ADMIN });
 
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
-    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN });
+    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN });
     expect(r).toEqual({ exercicio: 2027, fichasCriadas: 2, receitasCriadas: 1 });
 
     const fichas = await prisma.fichaOrcamentaria.findMany({
@@ -405,19 +430,86 @@ describe("V29 — proposta orçamentária no banco", () => {
 
   it("RECUSA efetivar sem o exercício de destino aberto — e não grava nada", async () => {
     const id = await elaborarPadrao();
-    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN })).rejects.toThrow(
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN })).rejects.toThrow(
       /Exercício 2027 não existe/
     );
     expect(await prisma.efetivacaoDaProposta.count()).toBe(0);
     expect(await prisma.receitaPrevista.count({ where: { exercicio: 2027 } })).toBe(0);
   });
 
+  /**
+   * V39-021 — O FUNDAMENTO DA EFETIVAÇÃO. Cada recusa afirma o motivo e que NADA foi gravado (nem efetivação, nem ficha,
+   * nem receita de 2027). N=2 no sentido que importa: o mesmo fundamento recusado num estado e aceito no outro.
+   */
+  const nada2027 = async (): Promise<readonly number[]> => [
+    await prisma.efetivacaoDaProposta.count(),
+    await prisma.fichaOrcamentaria.count({ where: { exercicio: 2027 } }),
+    await prisma.receitaPrevista.count({ where: { exercicio: 2027 } }),
+  ];
+  const ATO_DA_LDO = {
+    atoTipo: "LEI" as const,
+    atoNumero: "1.100",
+    atoAno: 2026,
+    atoDispositivo: "art. 45",
+    atoCitacao: "Se o projeto de lei orçamentária de 2027 não for sancionado até 31 de dezembro, a sua programação poderá ser executada na proporção de um doze avos por mês.",
+  };
+
+  it("V39-021: LEI_APROVADA recusa sem a lei e sem a aprovação; com a aprovação gera e guarda a lei e a aprovação", async () => {
+    const id = await elaborarPadrao();
+    await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "LEI_APROVADA" }, criadoPor: ADMIN })).rejects.toThrow(/lei orçamentária de 2027 não está cadastrada.*Nada foi gravado/);
+    expect(await nada2027()).toEqual([0, 0, 0]);
+    const lei = await prisma.leiOrcamentariaAnual.create({ data: { exercicio: 2027, numeroDoProjeto: "PL 10/2026", dataDoEnvio: new Date("2026-08-31T03:00:00Z"), ementa: "Estima a receita e fixa a despesa de 2027", criadoPor: ADMIN } });
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "LEI_APROVADA" }, criadoPor: ADMIN })).rejects.toThrow(/aprovação ainda não foi registrada.*Nada foi gravado/);
+    expect(await nada2027()).toEqual([0, 0, 0]);
+    const aprovacao = await prisma.aprovacaoDaLeiOrcamentaria.create({ data: { leiId: lei.id, numeroDaLei: "1.150/2026", dataDaSancao: new Date("2026-12-20T03:00:00Z"), dataDaPublicacao: new Date("2026-12-21T03:00:00Z"), veiculoDePublicacao: "Diário Oficial do Município", criadoPor: ADMIN } });
+    // com a lei aprovada, a execução provisória deixa de caber
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "EXECUCAO_PROVISORIA", ato: ATO_DA_LDO }, criadoPor: ADMIN })).rejects.toThrow(/já está aprovada \(Lei 1\.150\/2026\).*Nada foi gravado/);
+    expect(await nada2027()).toEqual([0, 0, 0]);
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "LEI_APROVADA" }, criadoPor: ADMIN });
+    expect(await prisma.efetivacaoDaProposta.findFirstOrThrow({ select: { fundamento: true, leiId: true, aprovacaoId: true, atoNumero: true } })).toEqual({ fundamento: "LEI_APROVADA", leiId: lei.id, aprovacaoId: aprovacao.id, atoNumero: null });
+  }, 60_000);
+
+  it("V39-021: EXECUCAO_PROVISORIA recusa o ato que não fala do orçamento daquele exercício; o que fala é guardado", async () => {
+    const id = await elaborarPadrao();
+    await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
+    const deOutroAno = { ...ATO_DA_LDO, atoCitacao: "Se o projeto de lei orçamentária de 2026 não for sancionado até 31 de dezembro, a sua programação poderá ser executada mês a mês." };
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "EXECUCAO_PROVISORIA", ato: deOutroAno }, criadoPor: ADMIN })).rejects.toThrow(/não fala do orçamento de 2027.*Nada foi gravado/);
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "EXECUCAO_PROVISORIA", ato: { ...ATO_DA_LDO, atoDispositivo: "conforme a lei" } }, criadoPor: ADMIN })).rejects.toThrow(/não nomeia um dispositivo/);
+    expect(await nada2027()).toEqual([0, 0, 0]);
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "EXECUCAO_PROVISORIA", ato: ATO_DA_LDO }, criadoPor: ADMIN });
+    expect(await prisma.efetivacaoDaProposta.findFirstOrThrow({ select: { fundamento: true, leiId: true, atoTipo: true, atoNumero: true, atoAno: true, atoDispositivo: true } })).toEqual({ fundamento: "EXECUCAO_PROVISORIA", leiId: null, atoTipo: "LEI", atoNumero: "1.100", atoAno: 2026, atoDispositivo: "art. 45" });
+  }, 60_000);
+
+  it("V39-021: ENSAIO só em base declarada de demonstração ou ensaio — recusado na OFICIAL, aceito depois do rebaixamento declarado", async () => {
+    const id = await elaborarPadrao();
+    await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
+    await declararNaturezaDaBase(prisma, { natureza: "OFICIAL", motivo: "implantação", declaradoPor: "TESTE", confirmarRebaixamento: true });
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN })).rejects.toThrow(/esta base está declarada OFICIAL.*Nada foi gravado/);
+    expect(await nada2027()).toEqual([0, 0, 0]);
+    await declararNaturezaDaBase(prisma, { natureza: "DEMONSTRACAO", motivo: "cópia de treino", declaradoPor: "TESTE", confirmarRebaixamento: true });
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN });
+    expect((await prisma.efetivacaoDaProposta.findFirstOrThrow({ select: { fundamento: true } })).fundamento).toBe("ENSAIO");
+  }, 60_000);
+
+  it("V39-021: sem fundamento a entrada é recusada; e o banco barra a efetivação 'por lei' sem a aprovação", async () => {
+    const id = await elaborarPadrao();
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN } as never)).rejects.toThrow(/Escolha o que permite executar o orçamento.*Nada foi gravado/);
+    await expect(
+      prisma.$executeRawUnsafe(`INSERT INTO "EfetivacaoDaProposta" (id, "propostaOrcamentariaId", exercicio, "fichasCriadas", "receitasCriadas", "criadoPor", fundamento, "leiId") VALUES ('x', '${id}', 2099, 0, 0, 'T', 'LEI_APROVADA', 'lei-x')`)
+    ).rejects.toThrow(/ck_fundamento_da_efetivacao/);
+    // ENSAIO com campo do ato preenchido: barrado pelo CHECK complementar (achado da auditoria)
+    await expect(
+      prisma.$executeRawUnsafe(`INSERT INTO "EfetivacaoDaProposta" (id, "propostaOrcamentariaId", exercicio, "fichasCriadas", "receitasCriadas", "criadoPor", fundamento, "atoCitacao") VALUES ('y', '${id}', 2098, 0, 0, 'T', 'ENSAIO', 'texto')`)
+    ).rejects.toThrow(/ck_fundamento_sem_ato_alheio/);
+  });
+
   it("RECUSA efetivar duas vezes, ajustar depois de efetivada e importar de novo para o mesmo exercício", async () => {
     const id = await elaborarPadrao();
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
-    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN });
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN });
 
-    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN })).rejects.toThrow(/já foi efetivada/);
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN })).rejects.toThrow(/já foi efetivada/);
     const p = await detalharPropostaOrcamentaria(prisma, id);
     await expect(
       ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: p!.despesas[0]!.id, valor: "1", motivo: "depois do fato", criadoPor: ADMIN })
@@ -434,7 +526,7 @@ describe("V29 — proposta orçamentária no banco", () => {
       { exercicio: 2027, numero: 99, classificacao: { ...CLASSIFICACAO_VALIDA }, exercicioFonte: 1, valorDotado: "10.00", criadoPor: ADMIN },
       criarM02Deps(prisma)
     );
-    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN })).rejects.toThrow(
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN })).rejects.toThrow(
       /já tem 1 ficha\(s\) e 0 receita\(s\) prevista\(s\)/
     );
     expect(await prisma.efetivacaoDaProposta.count()).toBe(0);
@@ -477,7 +569,7 @@ describe("V29 — proposta orçamentária no banco", () => {
     await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: p0!.despesas.find((d) => d.numero === 7)!.id, valor: "10.00", motivo: "linha da Saúde com valor", criadoPor: quem });
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
 
-    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: quem })).rejects.toThrow(
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: quem })).rejects.toThrow(
       /O ESCOPO — ele TEM a ação CRIAR_FICHA, mas só em: uo-01/
     );
     expect(await prisma.fichaOrcamentaria.count({ where: { exercicio: 2027 } })).toBe(0);
@@ -486,14 +578,14 @@ describe("V29 — proposta orçamentária no banco", () => {
     // O PAR POSITIVO, sobre o mesmo cenário: com a Saúde no escopo, a mesma efetivação passa.
     const perfil = await prisma.perfil.findFirstOrThrow({ where: { nome: `PERFIL-${quem}` }, select: { id: true } });
     await prisma.permissaoDePerfil.create({ data: { perfilId: perfil.id, acao: "CRIAR_FICHA", unidadeOrcId: "uo-02", criadoPor: "TESTE" } });
-    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: quem });
+    const r = await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: quem });
     expect(r.fichasCriadas).toBe(2);
   }, 60_000);
   it("AUTORIZAÇÃO: quem cria ficha mas não prevê receita não gera o orçamento com receita — e o motivo é essa ação", async () => {
     const quem = await usuarioCom("sem-receita@teste.local", [{ acao: "CADASTRAR_LOA" }, { acao: "CRIAR_FICHA" }]);
     const id = await elaborarPadrao(quem);
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
-    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: quem })).rejects.toThrow(
+    await expect(efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: quem })).rejects.toThrow(
       /nenhum dos perfis dele concede CRIAR_RECEITA_PREVISTA/
     );
     expect(await prisma.fichaOrcamentaria.count({ where: { exercicio: 2027 } })).toBe(0);
@@ -782,7 +874,7 @@ describe("V31 — a comparação de exercícios e a conferência da proposta, no
     await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "DESPESA", linhaId: linha7.id, valor: "450000.00", motivo: "Nova unidade", criadoPor: ADMIN });
     await ajustarLinhaDaProposta(prisma, { propostaOrcamentariaId: id, lado: "RECEITA", linhaId: linhaB.id, valor: "0", motivo: "Fonte extinta", criadoPor: ADMIN });
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
-    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, criadoPor: ADMIN });
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: id, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN });
 
     const lancamentosAntes = await prisma.lancamentoContabil.count();
     const d = await compararExercicios(prisma, { exercicioA: 2026, exercicioB: 2027, lado: "despesa", agrupamento: "unidade" });

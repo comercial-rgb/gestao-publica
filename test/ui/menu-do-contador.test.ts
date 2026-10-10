@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { ABA_OUTRAS_AREAS, AREAS, MENU_DO_CONTADOR, abaDaRota, areaDaRota, menuVisivel, rotaDaArea } from "../../lib/navegacao";
+import { ABA_OUTRAS_AREAS, AREAS, MENU_DO_CONTADOR, abaDaRota, areaDaRota, menuVisivel, rotaDaArea, rotuloDaRota } from "../../lib/navegacao";
 
 /**
  * O MENU DO CONTADOR (V31 §1). Ele só reorganiza — então o que se prova é que não MENTE:
@@ -73,5 +73,13 @@ describe("o menu do contador", () => {
     const passa = ["Multas de trânsito", "Transferências", "Portal da transparência", "Importação", "Trâmite da LDO", "Mês a mês"];
     expect(acusa.filter((r) => !JARGAO.test(r))).toEqual([]);
     expect(passa.filter((r) => JARGAO.test(r))).toEqual([]);
+  });
+
+  // V39 — a trilha da página mostrava "ordens-de-servico": a lista de licitações não entrava na tabela de rótulos.
+  // Propriedade: toda página que o menu do contador abre tem nome na trilha, e não o trecho cru da rota.
+  it("toda página do menu do contador tem rótulo na trilha", () => {
+    const hrefs = MENU_DO_CONTADOR.flatMap((a) => a.grupos.flatMap((g) => g.itens.map((i) => i.href.split("?")[0] ?? i.href)));
+    const semRotulo = hrefs.filter((h) => rotuloDaRota(h) === null);
+    expect(semRotulo).toEqual([]);
   });
 });

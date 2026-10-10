@@ -7,7 +7,7 @@ import { ValorMonetario } from "../../../../../../../components/ui/ValorMonetari
 import { qtdBr } from "../../../../../../../lib/format/quantidade";
 import { execucaoDoContratoPara, medicaoPelaPlanilhaParaTela, ordemDaExecucao } from "../../../../../../../lib/portas/execucao-do-contrato";
 import { exigirSessao } from "../../../../../../../lib/portas/sessao";
-import { SITUACAO } from "../../ExecucaoDoContrato";
+import { rotuloDaSituacaoDaOrdem } from "../../../../situacao-da-ordem";
 import {
   FormCancelarSaldo, FormDecidirControversia, FormDescartarOrdem, FormEmitirOrdem, FormEstornarMedicao, FormEstornarRecebimento, FormLiquidarParcelas, FormMedirOrdem, FormMedirPelaPlanilha, FormMovimentarOrdem, FormRecebimentoDefinitivo, FormRecebimentoProvisorio,
 } from "../../FormulariosDaExecucao";
@@ -72,7 +72,7 @@ export default async function OrdemDeServico({ params }: { readonly params: Prom
         ) : null}
       </nav>
       <header>
-        <h1 className="text-xl font-semibold">Ordem de serviço nº {o.numero}/{o.ano} <Badge status={SITUACAO[o.situacao]?.tom ?? "neutro"}>{SITUACAO[o.situacao]?.texto ?? o.situacao}</Badge></h1>
+        <h1 className="text-xl font-semibold">Ordem de serviço nº {o.numero}/{o.ano} <Badge status={rotuloDaSituacaoDaOrdem(o.situacao).tom}>{rotuloDaSituacaoDaOrdem(o.situacao).texto}</Badge></h1>
         <p className="mt-1 text-sm text-[color:var(--color-ink-2)] [overflow-wrap:anywhere]">{o.finalidade}</p>
       </header>
       <AvisosDosAtos />

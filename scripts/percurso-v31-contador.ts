@@ -127,7 +127,8 @@ async function main(): Promise<void> {
     const ab = await preencherEEnviar(page, "abrir-exercicio", []);
     R.conferir(`C.5 o administrador abre ${String(DESTINO)}`, ab.tipo === "ok", `${ab.tipo}: ${ab.texto}`);
     await irPara(N, page, rota);
-    const ef = await preencherEEnviar(page, "efetivar-proposta", []);
+    // V39-021: na base de demonstração o orçamento se gera em ENSAIO (o serviço confere a natureza da base).
+    const ef = await preencherEEnviar(page, "efetivar-proposta", [{ sel: 'input[name="fundamento"][value="ENSAIO"]', valor: "sim", tipo: "marcar" }]);
     R.conferir(`C.6 e gera o orçamento de ${String(DESTINO)}`, ef.tipo === "ok" && /gerado/i.test(ef.texto), `${ef.tipo}: ${ef.texto}`);
     const total = await prisma.fichaOrcamentaria.aggregate({ where: { exercicio: DESTINO }, _sum: { valorDotado: true } });
 

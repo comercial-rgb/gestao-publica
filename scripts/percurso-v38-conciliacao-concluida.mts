@@ -3,6 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { diaCivil } from "../packages/datas/index.js";
+import { ofxDeEnsaio } from "./ofx-de-ensaio.js";
 import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, type Navegador } from "./percursos-navegador.js";
 
 /**
@@ -10,14 +11,17 @@ import { entrar, irPara, lancarNavegadorDoPercurso, preencherEEnviar, type Naveg
  *
  * A contadora não achou conciliação feita para entender o comportamento. Este percurso monta o cenário e o conclui só
  * pela interface (nenhum acesso ao banco: roda igual na base local e na de produção, ambas fictícias):
- *   1. abre o período da conta (FIC-CM-500, ou a de `PERCURSO_CONTA`), de 1º de janeiro até hoje;
+ *   1. abre o período da conta (FIC-CM-500, ou a de `PERCURSO_CONTA`), de 1º de janeiro até ONTEM (V39: o serviço não
+ *      encerra período que ainda não terminou);
  *   2. lê na tela os fatos do razão no período (data, descrição, valor);
  *   3. gera um extrato OFX FICTÍCIO com esses fatos, MENOS a última saída (que o banco ainda não debitou), e MAIS uma
  *      tarifa que só o banco tem — os dois lados de uma conciliação real;
  *   4. importa o extrato pela tela e vincula cada linha ao fato do razão;
  *   5. justifica as duas pendências (a saída não debitada e a tarifa) e encerra o período.
  * GRAVA: um período de conciliação, um extrato com as linhas, os vínculos, as justificativas e o encerramento. Recusa a
- * 3010 e tela sem a marca "(base fictícia)". Se a conta já tem período, não executa.
+ * 3010 e tela sem a marca "(base fictícia)"; desde a V39 o `entrar` comum também recusa destino remoto não declarado e
+ * base que o servidor não declara DEMONSTRACAO ou ENSAIO (`destino-do-percurso.ts`). Se a conta já tem período, não
+ * executa. O extrato vai em windows-1252 de verdade, com a descrição acentuada (`ofx-de-ensaio.ts`, V39-007).
  *
  * Uso: BASE=http://localhost:3011 SEED_ADMIN_SENHA=... npx tsx scripts/percurso-v38-conciliacao-concluida.mts
  *      (produção: BASE=https://... PERCURSO_USUARIO=... PERCURSO_SENHA=...)
@@ -34,8 +38,9 @@ const conferir = (ok: boolean, o: string): void => {
   console.log(`${ok ? "ok " : "FALHA"} ${o}`);
   if (!ok) falhas.push(o);
 };
-const hoje = diaCivil(new Date());
-const ano = hoje.slice(0, 4);
+// O período termina ONTEM: o serviço recusa encerrar o que ainda não acabou (V39-008). Um dia civil antes de agora.
+const ultimoDia = diaCivil(new Date(Date.now() - 24 * 3600 * 1000));
+const ano = ultimoDia.slice(0, 4);
 
 interface Fato {
   readonly ref: string;
@@ -46,8 +51,6 @@ interface Fato {
 }
 
 const saida = (v: string): boolean => v.startsWith("-");
-const ascii = (s: string): string => s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\x20-\x7E]/g, "-");
-const ofxData = (dia: string): string => dia.replace(/-/g, "") + "120000[-3:BRT]";
 
 const nav = await lancarNavegadorDoPercurso();
 try {
@@ -74,11 +77,11 @@ try {
     const ra = periodos.length === 1 ? { tipo: "ok", texto: `retomado: ${periodos[0] ?? ""}` } : await preencherEEnviar(page, "abrir-conciliacao", [
       { sel: 'select[name="conta"]', valor: contaId, tipo: "select" },
       { sel: 'input[name="inicio"]', valor: `${ano}-01-01`, tipo: "data" },
-      { sel: 'input[name="fim"]', valor: hoje, tipo: "data" },
+      { sel: 'input[name="fim"]', valor: ultimoDia, tipo: "data" },
     ]);
     await irPara(n, page, `/financeiro/conciliacao/periodo?conta=${contaId}`);
     const periodoHref = await page.$eval("li[data-periodo] a", (a) => a.getAttribute("href") ?? "").catch(() => "");
-    conferir(ra.tipo === "ok" && periodoHref !== "", `período de ${CONTA} aberto pela tela, de 01/01/${ano} a hoje (${ra.texto.slice(0, 60)})`);
+    conferir(ra.tipo === "ok" && periodoHref !== "", `período de ${CONTA} aberto pela tela, de 01/01/${ano} a ${ultimoDia} (${ra.texto.slice(0, 60)})`);
     if (periodoHref === "") throw new Error("sem período, o percurso não segue");
 
     // ── 2. os fatos do razão no período, lidos da tela ──
@@ -106,22 +109,14 @@ try {
     const noBanco = fatos.filter((f) => f !== naoDebitada);
     const diaTarifa = fatos[fatos.length - 1]!.dia;
     const transacoes = [
-      // O MEMO em ASCII, como o cabeçalho declara (ENCODING:USASCII): medido na corrida de produção, o travessão da
-      // descrição virou caractere de controle e a linha não se achou para o vínculo.
-      ...noBanco.map((f, i) => ({ fitid: `DEMO-${MARCA}-${String(i + 1)}`, dia: f.dia, valor: f.valor, memo: ascii(`DEMO ${f.descricao}`).slice(0, 60) })),
-      { fitid: `DEMO-${MARCA}-TAR`, dia: diaTarifa, valor: "-8.90", memo: `DEMO TARIFA PACOTE DE SERVICOS` },
+      // V39-007: a descrição vai como é, acentuada, em windows-1252 de verdade (o cabeçalho declara CHARSET:1252). Na V38
+      // o arquivo saía em "latin1" do Node, que trunca: o travessão virou caractere de controle e a linha não se achou.
+      ...noBanco.map((f, i) => ({ fitid: `DEMO-${MARCA}-${String(i + 1)}`, dia: f.dia, valor: f.valor, memo: `DEMO ${f.descricao}`.replace(/[<>]/g, " ").slice(0, 60) })),
+      { fitid: `DEMO-${MARCA}-TAR`, dia: diaTarifa, valor: "-8.90", memo: "DEMO TARIFA “PACOTE” DE SERVIÇOS" },
     ];
-    const ofx = [
-      "OFXHEADER:100", "DATA:OFXSGML", "VERSION:102", "SECURITY:NONE", "ENCODING:USASCII", "CHARSET:1252", "COMPRESSION:NONE", "OLDFILEUID:NONE", "NEWFILEUID:NONE", "",
-      "<OFX>", "<SIGNONMSGSRSV1>", "<SONRS>", "<STATUS>", "<CODE>0", "<SEVERITY>INFO", "</STATUS>", `<DTSERVER>${ofxData(hoje)}`, "<LANGUAGE>POR", "</SONRS>", "</SIGNONMSGSRSV1>",
-      "<BANKMSGSRSV1>", "<STMTTRNRS>", "<TRNUID>0", "<STATUS>", "<CODE>0", "<SEVERITY>INFO", "</STATUS>", "<STMTRS>", "<CURDEF>BRL",
-      "<BANKACCTFROM>", "<BANKID>001", `<ACCTID>DEMO-${CONTA}`, "<ACCTTYPE>CHECKING", "</BANKACCTFROM>",
-      "<BANKTRANLIST>", `<DTSTART>${ano}0101`, `<DTEND>${hoje.replace(/-/g, "")}`,
-      ...transacoes.flatMap((t) => ["<STMTTRN>", `<TRNTYPE>${saida(t.valor) ? "DEBIT" : "CREDIT"}`, `<DTPOSTED>${ofxData(t.dia)}`, `<TRNAMT>${t.valor}`, `<FITID>${t.fitid}`, `<MEMO>${t.memo}`, "</STMTTRN>"]),
-      "</BANKTRANLIST>", "</STMTRS>", "</STMTTRNRS>", "</BANKMSGSRSV1>", "</OFX>", "",
-    ].join("\r\n");
+    const ofx = ofxDeEnsaio({ acctid: `DEMO-${CONTA}`, inicio: `${ano}-01-01`, fim: ultimoDia, transacoes });
     const arquivo = join(mkdtempSync(join(tmpdir(), "demo-conciliacao-")), `extrato-demonstracao-${MARCA}.ofx`);
-    writeFileSync(arquivo, ofx, "latin1");
+    writeFileSync(arquivo, ofx);
 
     // ── 4. importar e vincular ──
     await irPara(n, page, `/financeiro/conciliacao?exercicio=${ano}`);
@@ -137,10 +132,10 @@ try {
 
     let vinculados = 0;
     for (const [i, f] of noBanco.entries()) {
-      await irPara(n, page, `/financeiro/conciliacao?exercicio=${ano}`);
+      await irPara(n, page, `/financeiro/conciliacao?exercicio=${ano}&conta=${contaId}`);
       const memo = transacoes[i]!.memo;
       const linha = await page.$$eval('form[data-acao="vincular-conciliacao"] select[name="linhaDoExtrato"] option', (os, m) => os.find((o) => (o.textContent ?? "").includes(m as string))?.getAttribute("value") ?? "", memo);
-      // O painel geral é o da conta do extrato mais recente — depois da importação, esta. O registro é "TIPO:id".
+      // O painel na conta do percurso (V39: `?conta=`; antes ele mostrava só a do extrato de fim mais recente). O registro é "TIPO:id".
       const registro = await page.$$eval('form[data-acao="vincular-conciliacao"] select[name="registroDoSistema"] option', (os, r) => os.find((o) => (o.getAttribute("value") ?? "").endsWith(`:${r as string}`))?.getAttribute("value") ?? "", f.ref);
       if (linha === "" || registro === "") {
         console.log(`   vínculo ${f.dia} ${f.valor}: linha do extrato ${linha === "" ? "não achada" : "ok"}, registro ${registro === "" ? "não achado" : "ok"}`);

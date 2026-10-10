@@ -1,5 +1,83 @@
 # Estado da execução
 
+## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
+
+O pedido está em `docs/lotes/V39-construcao-integral-apos-V38.md`, guardado como veio. A matriz por ID, com estado, prova e residual de cada um dos 97 itens, está em `docs/lotes/V39-matriz-por-id.md`.
+
+O levantamento foi feito por dois auxiliares só de leitura (frentes B–C e D–G). A escrita ficou num escritor só. O regime de rigor é de profundidade no que toca a conciliação, a efetivação do orçamento e o reajuste; de superfície nas listas e nos rótulos.
+
+### 1ª leva (09–10/10/2026)
+
+| ID | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| V39-001 | O inventário de versão pergunta a cada lugar:<br>· ao repositório: HEAD, o ramo no remoto e a `main` remota, que é o que a publicação instala;<br>· ao servidor: `/release` e `/natureza-da-base`;<br>· ao banco: a última migration aplicada e a natureza declarada.<br>Achado: o ramo `apresentacao/contabilidade` remoto está parado em `ce8c5c45`, porque a publicação empurra para a `main`. | `scripts/inventario-de-versao.ts` | rodado contra a 3011 |
+| V39-002 | A natureza da base é declarada no banco (`DeclaracaoDaNaturezaDaBase`: append-only, CHECK do conjunto, a vigente é a de maior número). Não há fallback: sem declaração, a base é NAO_DECLARADA.<br>O `entrar` comum (`scripts/percursos-navegador.ts`, usado pelos percursos da V36 em diante) recusa, antes de digitar a senha, destino remoto sem `PERCURSO_DESTINO_AUTORIZADO` exato e base que o servidor não declara DEMONSTRACAO ou ENSAIO.<br>Quem declara: a semente fictícia (DEMONSTRACAO) e `scripts/declarar-natureza-da-base.ts`. Rebaixar uma base OFICIAL pede confirmação. | `/natureza-da-base` (pública, mínima) | `test/natureza-da-base.test.ts` 9/9, 3 mutações vermelhas; recusa real de destino remoto não declarado |
+| V39-007 | O OFX de ensaio sai em windows-1252 de verdade (`scripts/ofx-de-ensaio.ts`), recusando o caractere que não cabe. Na V38 o "latin1" do Node gravava o travessão como 0x14, um caractere de controle. O percurso da conciliação passou a usá-lo, com a descrição acentuada. | — | `test/ui/ofx-de-ensaio.test.ts` 4/4, ida e volta pela plataforma, uma mutação vermelha.<br>Importação real pela tela na 3011: memo acentuado e aspas curvas intactos no banco. |
+| V39-008 | `encerrarConciliacao` recusa, no serviço:<br>· o período que ainda não terminou;<br>· a pendência sem justificativa, nomeando qual.<br>A diferença sem explicação segue sendo a recusa proibida. | /financeiro/conciliacao/periodo | `m09-conciliacao-periodo` t7b (N=2) e t7c, 19/19, 2 mutações vermelhas |
+| Painel com a conta (V39-004/096) | O painel da conciliação mostrava só a conta do extrato de fim mais recente; uma segunda conta não se alcançava para vincular. Agora há `?conta=` com seletor entre as contas com extrato no exercício, e conta fora da lista é recusada com a frase. | /financeiro/conciliacao | percurso V39 da continuidade |
+| V39-012 | Um rótulo só e exaustivo para a situação da ordem de serviço, nas três telas. Valor fora do tipo vira frase de negócio, com registro no servidor. | ordens de serviço | `test/ui/situacao-da-ordem.test.ts` 2/2, mutação vermelha |
+| V39-050 | Lista de ordens com busca (número, contrato, contratado, finalidade), ano, situação e páginas de 100, tudo no servidor. A situação usa a mesma régua, aplicada antes de paginar; o total é o do conjunto filtrado; o filtro não abre alcance. | /licitacoes/ordens-de-servico | `ordens-de-servico-da-sessao` 4/4 (105 ordens), 2 mutações vermelhas |
+| V39-021 | A geração do orçamento exige o fundamento, gravado na efetivação:<br>· **LEI_APROVADA:** LOA com aprovação registrada;<br>· **EXECUCAO_PROVISORIA:** dispositivo da LDO conferido como ato declarado, que tem de citar o orçamento do exercício; recusado com a lei já aprovada;<br>· **ENSAIO:** só em base declarada de demonstração ou ensaio.<br>A tela oferece os três (o ensaio só quando o banco permite) e mostra o fundamento da proposta efetivada. | /planejamento/proposta-orcamentaria/[id] | `m02-proposta-orcamentaria` (4 testes novos) + `m02b-emendas` 41/41, 2 mutações vermelhas, CHECK provado por INSERT direto |
+| V39-016 | O reajuste em lote grava só o que a prévia mostrou. A prévia devolve a versão (SHA-256 de linha, valor vigente e novo); a aplicação recalcula na transação e recusa se uma linha mudou ou se o percentual ou o recorte foram trocados. "Aplicar" só habilita depois da prévia. | idem | N=2 (ajuste concorrente; percentual trocado), mutação vermelha |
+| V39-022 | A preservação do exercício de origem compara também o razão de 2026 (lançamentos por id e partidas por débito e crédito). | — | mutação (previsão lançada um ano antes) vermelha |
+| V39-031 | A família CONTRATO no roteiro declarado (REGISTRO, ACRESCIMO, SUPRESSAO, EXECUCAO; classes 7 e 8; contas do contador). O rol de famílias do zod passou a vir do mapa. | /contabilidade/roteiros-patrimoniais | `m01-roteiro-patrimonial-declarado` t3b, 5/5 |
+
+**Auditoria de invariantes, achados e o que foi feito com cada um:**
+- **Bloqueio, corrigido:** com o encerramento exigindo o período terminado, a leitura "como no fim do período" ignorava todo vínculo feito na hora de conciliar; a mensagem mandaria vincular, e vincular não resolveria.
+  - O conhecimento passou a ser `conhecimentoDaConciliacao`: a encerrada se lê como estava NO ENCERRAMENTO; a aberta, como está AGORA.
+  - Teste `t7d`: N=2 pares, um vinculado depois do fim, que resolve, e outro depois do encerramento, que não muda o encerrado. Mais o teste puro da regra.
+- **Corrigido:** `t7c` usa o último dia igual a HOJE, a borda medida.
+- **Corrigido:** a negação sem fundamento afirma a mensagem.
+- **Corrigido:** CHECK complementar `ck_fundamento_sem_ato_alheio` em migration nova e aditiva.
+- **Pendência `PERCURSOS-COM-LOGIN-PROPRIO`:** 28 scripts antigos (`smoke-*`, alguns percursos) fazem o próprio login e não passam pela guarda de destino.
+- **Pendência `CONCILIACAO-CORRIDA-NO-ENCERRAMENTO`:** o relatório é lido fora da transação. Uma importação concorrente entre a leitura e a gravação escaparia à cobrança. É da mesma família de `CONCILIACAO-FATO-RETROATIVO`. Fechar exige trava por conta, tomada também pela importação e pelo vínculo.
+- **Nota:** `leiId` e `aprovacaoId` na efetivação são texto, sem chave estrangeira, como os ids de referência das outras efetivações. A leitura da LOA na efetivação não trava a lei.
+
+**Migrations, aditivas:**
+- `20261110010000_v39_natureza_da_base`, com `prisma/sql/ck_natureza_da_base_conjunto.sql`;
+- `20261110020000_v39_fundamento_da_efetivacao`: colunas anuláveis; a efetivação anterior fica com fundamento nulo. Vem com `prisma/sql/ck_fundamento_da_efetivacao.sql`;
+- `20261110030000_v39_fundamento_sem_ato_alheio`, o CHECK complementar.
+
+As três foram aplicadas na base fictícia local (3011) e na cópia de produção `gestao_publica_ensaio_v39`.
+
+**Censo:** `naturezaDaBase` (leitura) e `declararNaturezaDaBase` (ato de instalação) ficam fora do censo, com o motivo registrado.
+
+**Continuidade da FIC-PM-500 (V39-003/004/005).**
+- **Inspeção na cópia de produção restaurada localmente.** O dump foi feito em produção às 01:46Z de 10/10; também é backup: `/var/backups/gestao-publica/esperanca-v39-ensaio-20261010T014649Z.dump`. As 4 pendências por ID estão na matriz; o par da caução conta 2, e o relato fecha.
+- **Defeito encontrado, e é ele que pede a regra nova do V39-008.** O período foi encerrado às 21h19 de 09/10, antes do próprio fim (23h59). Até o fim do dia, vínculo ou fato novo mudariam o relatório encerrado.
+- **Prudência.** A continuidade só se ensaia e só se faz em produção depois das 03:00Z de 10/10.
+- **Percurso.** `scripts/percurso-v39-continuidade-da-conciliacao.mts`. Ele mesmo recusa rodar antes desse fim.
+
+**Ensaio da continuidade:** rodado na cópia local de produção, servida na 3011, às 03:01Z de 10/10. O percurso `percurso-v39-continuidade-da-conciliacao` passou nas 13 conferências:
+- período seguinte aberto pela tela, de 10/10 a 31/10/2026;
+- herdou as 4 pendências;
+- vinculou o par da caução de 600,00 no painel da conta;
+- sobraram 2;
+- cada uma foi justificada com motivo próprio (tarifa de −8,90; FIC-PG-L2 de −2.000,00);
+- o encerrado mostra exatamente o que mostrava antes;
+- saldos do novo período iguais antes e depois do vínculo;
+- encerrar antes de 31/10 recusado pelo serviço, e o período continua ABERTO.
+
+**Trilha da página (achado do percurso das telas).** A lista de licitações não entrava na tabela de rótulos, e a trilha mostrava "ordens-de-servico". O teste de propriedade novo mediu 80 páginas do menu do contador com o trecho cru da rota. `rotuloDaRota` passou a usar também o rótulo do menu. O teste `menu-do-contador` falhou antes e passou depois; os testes de navegação deram 24/24.
+
+**Fundamento pela tela (V39-021).** O percurso `percurso-v39-fundamento-da-efetivacao` passou com 7/7 na base fictícia:
+- abriu o exercício de 2032;
+- a escolha aparece, com "lei aprovada" desabilitada (sem aprovação no banco) e o ensaio oferecido;
+- o botão fica travado sem escolha;
+- o orçamento saiu com fundamento ENSAIO no banco (1.059 fichas), e a página diz "em ensaio".
+
+O `percurso-v38-proposta-ate-o-empenho` parou antes, na busca da natureza de receita: 20 s na primeira corrida, que concorria com um typecheck. Na repetição ele não roda, porque a proposta de 2032 já existia e ele não retoma; isso é limitação do roteiro.
+
+**Telas tocadas abertas antes de publicar (V39-096).** O percurso `percurso-v39-telas-tocadas` (só leitura) passou nas duas bases:
+- **cópia de produção:** painel, ordens, filtro e natureza;
+- **base fictícia:** seletor com duas contas, as duas contas, a recusa de conta fora da lista, ordens, filtro e proposta efetivada.
+
+O servidor de desenvolvimento respondeu 500 ao painel na PRIMEIRA compilação depois de subir, duas vezes (`__webpack_modules__[moduleId] is not a function`), e 200 em todas as aberturas seguintes, com o mesmo código. Fica registrado como comportamento do modo de desenvolvimento. O build de produção da publicação compila o grafo inteiro, e o painel é conferido em produção depois de publicar.
+
+**Pendências nomeadas:**
+- `CONCILIACAO-FATO-RETROATIVO`: uma linha de extrato ou um fato do razão gravado depois do encerramento, com data dentro do período encerrado, ainda muda o relatório encerrado. O fato é datado no passado; o vínculo é por conhecimento.
+- `ENCERRAR-PERIODO-VAZIO-FIC-CM-500`: é decisão.
+
 ## V38 — os áudios da contadora (09/10/2026; vale sobre a V37 abaixo)
 
 Pedido: `docs/lotes/V38-audios-da-contadora.md` (124 itens de nove áudios de uma contadora avaliando o sistema).

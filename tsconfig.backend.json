@@ -106,6 +106,8 @@
     "test/ui/cheques-porta.test.ts",
     "test/ui/bordero-de-movimentos-pdf.test.ts",
     "test/ui/ofx-texto.test.ts",
+    "test/ui/ofx-de-ensaio.test.ts",
+    "test/ui/situacao-da-ordem.test.ts",
     "test/ui/conciliacao-pdf.test.ts",
     "test/ui/conciliacao-filtro.test.ts",
     "test/carta-de-servicos.test.ts",

@@ -19,7 +19,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
  * A tabela antiga segue valendo enquanto não houver declaração (`roteiroPatrimonialVigente` cai nela).
  */
 
-export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO" | "PERDAS_DIVIDA_ATIVA" | "APROPRIACAO_PESSOAL" | "MULTA_DE_TRANSITO";
+export type FamiliaDoRoteiro = "PRECATORIO" | "CONVENIO" | "ADIANTAMENTO" | "PERDAS_DIVIDA_ATIVA" | "APROPRIACAO_PESSOAL" | "MULTA_DE_TRANSITO" | "CONTRATO";
 
 interface DefinicaoDaFamilia {
   readonly rotulo: string;
@@ -101,6 +101,21 @@ export const FAMILIAS_DE_ROTEIRO: Readonly<Record<FamiliaDoRoteiro, DefinicaoDaF
       { chave: "BAIXA", rotulo: "Baixa da multa (paga, ressarcida pelo infrator, cancelada ou registro indevido)" },
     ],
   },
+  // V39-031 (AUD-118 a 121) — o controle dos contratos no subsistema de controle. As CHAVES são os fatos que o M11 já
+  // registra (o contrato cadastrado com o valor inicial, o aditivo de acréscimo e o de supressão, e a execução que a
+  // liquidação da parcela baixa). As CONTAS são do contador, do plano carregado, com fundamento: nenhuma vem do código.
+  // O estorno de um movimento NÃO tem chave: ele inverte as contas do lançamento original, nunca relê a versão vigente.
+  CONTRATO: {
+    rotulo: "Controle de contratos",
+    subsistema: "CONTROLE",
+    classes: ["7", "8"],
+    chaves: [
+      { chave: "REGISTRO", rotulo: "Registro do contrato pelo valor inicial (a executar)" },
+      { chave: "ACRESCIMO", rotulo: "Aditivo de acréscimo de valor" },
+      { chave: "SUPRESSAO", rotulo: "Aditivo de supressão de valor" },
+      { chave: "EXECUCAO", rotulo: "Execução do contrato (baixa do a executar pela liquidação)" },
+    ],
+  },
 };
 
 type TxDeLeitura = Pick<PrismaClient, "roteiroPatrimonialDeclarado" | "contaPcasp">;
@@ -177,7 +192,8 @@ export async function listarRoteirosPatrimoniais(prisma: PrismaClient): Promise<
 }
 
 export const zDeclararRoteiroPatrimonial = z.object({
-  familia: z.enum(["PRECATORIO", "CONVENIO", "ADIANTAMENTO", "PERDAS_DIVIDA_ATIVA", "APROPRIACAO_PESSOAL", "MULTA_DE_TRANSITO"]),
+  // V39 — o rol vem do mapa: uma família nova no mapa entra aqui sem segunda lista para esquecer.
+  familia: z.enum(Object.keys(FAMILIAS_DE_ROTEIRO) as [FamiliaDoRoteiro, ...FamiliaDoRoteiro[]]),
   chave: z.string().trim().min(1, "Escolha o movimento."),
   contaDebitoCodigo: z.string().trim().min(1, "Escolha a conta debitada."),
   contaCreditoCodigo: z.string().trim().min(1, "Escolha a conta creditada."),

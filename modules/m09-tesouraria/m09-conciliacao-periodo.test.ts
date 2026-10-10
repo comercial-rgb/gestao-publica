@@ -8,12 +8,15 @@ import { registrarMovimentoBancario } from "./movimentacao.js";
 import {
   abrirConciliacao,
   conciliacoesDaConta,
+  conhecimentoDaConciliacao,
   encerrarConciliacao,
   justificarPendencia,
   lerConciliacao,
   registrarPendenciaManual,
 } from "./servico-conciliacao.js";
 import { estadoDaConciliacao, somarSelecao } from "./conciliacao-periodo.js";
+import { importarExtrato } from "./extrato.js";
+import { vincular } from "./vinculo.js";
 
 /**
  * M09 — A CONCILIAÇÃO COMO OBJETO DISCRETO (ENT03a).
@@ -223,6 +226,13 @@ describe("M09 — a conciliação como objeto discreto", () => {
     // Junho é o primeiro período: não herda nada.
     expect(emJunho.herdadasDaAnterior).toEqual([]);
 
+    // V39-008: a pendência que atravessa o fechamento leva o motivo.
+    const pendente = emJunho.relatorio.internoSemVinculo[0];
+    if (pendente === undefined) throw new Error("esperava uma pendência interna em junho");
+    await justificarPendencia(prisma, {
+      conciliacaoId: junho.conciliacaoId, lado: "MOVIMENTO_BANCARIO", referencia: pendente.id,
+      motivo: "depósito de 10/06 ainda não creditado pelo banco", criadoPor: POR,
+    });
     await encerrarConciliacao(prisma, {
       conciliacaoId: junho.conciliacaoId, criadoPor: POR,
     });
@@ -235,9 +245,10 @@ describe("M09 — a conciliação como objeto discreto", () => {
     });
     const emJulho = await lerConciliacao(prisma, julho.conciliacaoId);
 
-    // ⚠️ JULHO VÊ a pendência de junho...
+    // ⚠️ JULHO VÊ a pendência de junho, com o motivo que ela levou...
     expect(emJulho.herdadasDaAnterior.length).toBe(1);
     expect(emJulho.herdadasDaAnterior[0]?.lado).toBe("MOVIMENTO_BANCARIO");
+    expect(emJulho.herdadasDaAnterior[0]?.justificativa).toBe("depósito de 10/06 ainda não creditado pelo banco");
 
     // ...E NENHUMA LINHA FOI CRIADA para isso. É referência, não cópia.
     expect(await prisma.pendenciaManualDeConciliacao.count()).toBe(linhasAntes);
@@ -248,6 +259,113 @@ describe("M09 — a conciliação como objeto discreto", () => {
       select: { anteriorId: true },
     });
     expect(encadeada.anteriorId).toBe(junho.conciliacaoId);
+  });
+
+  /**
+   * V39-008 — QUEM COBRA A JUSTIFICATIVA É O SERVIÇO, não o roteiro que chama. N=2 pendências: com uma justificada,
+   * a recusa nomeia a OUTRA (e não "alguma"); com as duas, encerra. A diferença sem explicação continua sendo outra
+   * recusa (a conciliação nem sai); aqui a conta fecha e só falta o motivo.
+   */
+  it("t7b: encerrar com pendência sem justificativa é recusado, nomeando a que falta, e nada é gravado", async () => {
+    await deposito("1000.00", "2026-06-10");
+    await deposito("250.00", "2026-06-20");
+    const junho = await abrirConciliacao(prisma, {
+      contaBancariaId: "cb-cp", diaInicio: "2026-06-01", diaFim: "2026-06-30", criadoPor: POR,
+    });
+    const linhas = (await lerConciliacao(prisma, junho.conciliacaoId)).relatorio.internoSemVinculo;
+    expect(linhas.length).toBe(2);
+    const mil = linhas.find((l) => l.residual === "1000.00");
+    if (mil === undefined) throw new Error("esperava o depósito de 1000.00");
+    await justificarPendencia(prisma, {
+      conciliacaoId: junho.conciliacaoId, lado: "MOVIMENTO_BANCARIO", referencia: mil.id,
+      motivo: "depósito de 10/06 ainda não creditado pelo banco", criadoPor: POR,
+    });
+
+    await expect(encerrarConciliacao(prisma, { conciliacaoId: junho.conciliacaoId, criadoPor: POR })).rejects.toThrow(
+      /1 pendência\(s\) sem justificativa: no razão, 2026-06-20 .*\(250\.00\)\. .*Nada foi gravado/
+    );
+    expect((await lerConciliacao(prisma, junho.conciliacaoId)).estado).toBe("ABERTA");
+
+    const outra = linhas.find((l) => l.residual === "250.00");
+    if (outra === undefined) throw new Error("esperava o depósito de 250.00");
+    await justificarPendencia(prisma, {
+      conciliacaoId: junho.conciliacaoId, lado: "MOVIMENTO_BANCARIO", referencia: outra.id,
+      motivo: "depósito de 20/06 creditado pelo banco só em julho", criadoPor: POR,
+    });
+    await encerrarConciliacao(prisma, { conciliacaoId: junho.conciliacaoId, criadoPor: POR });
+    expect((await lerConciliacao(prisma, junho.conciliacaoId)).estado).toBe("ENCERRADA");
+  });
+
+  /**
+   * V39 (auditoria) — O CONHECIMENTO DA CONCILIAÇÃO. A conciliação se faz DEPOIS do fim do período: o vínculo gravado
+   * então resolve a pendência no encerramento (senão a mensagem mandaria vincular e vincular não adiantaria). E depois
+   * de encerrada ela se lê como estava no encerramento: o vínculo gravado depois não a muda. N=2 pares do mesmo
+   * período: um vinculado antes do encerramento, outro depois.
+   */
+  it("t7d: o vínculo feito depois do fim resolve no encerramento; o feito depois do encerramento não muda o encerrado", async () => {
+    await deposito("1000.00", "2026-06-10");
+    await deposito("250.00", "2026-06-20");
+    await importarExtrato(prisma, {
+      contaBancariaId: "cb-cp",
+      arquivoOfx: [
+        "OFXHEADER:100", "<OFX>", "<STMTRS>", "<CURDEF>BRL", "<BANKACCTFROM>", "<BANKID>001", "<ACCTID>99999-9", "</BANKACCTFROM>",
+        "<BANKTRANLIST>", "<DTSTART>20260601", "<DTEND>20260630",
+        "<STMTTRN>", "<TRNTYPE>CREDIT", "<DTPOSTED>20260610", "<TRNAMT>1000.00", "<FITID>MIL", "<MEMO>DEPOSITO MIL", "</STMTTRN>",
+        "<STMTTRN>", "<TRNTYPE>CREDIT", "<DTPOSTED>20260620", "<TRNAMT>250.00", "<FITID>DUZ", "<MEMO>DEPOSITO DUZENTOS", "</STMTTRN>",
+        "</BANKTRANLIST>", "</STMTRS>", "</OFX>",
+      ].join("\n"),
+      importadoPor: POR,
+    });
+    const junho = await abrirConciliacao(prisma, { contaBancariaId: "cb-cp", diaInicio: "2026-06-01", diaFim: "2026-06-30", criadoPor: POR });
+    const r0 = (await lerConciliacao(prisma, junho.conciliacaoId)).relatorio;
+    const par = (valor: string): { readonly linha: string; readonly interno: string } => ({
+      linha: r0.noExtratoSemVinculo.find((l) => l.residual === valor)?.id ?? "",
+      interno: r0.internoSemVinculo.find((l) => l.residual === valor)?.id ?? "",
+    });
+    const mil = par("1000.00");
+    const duz = par("250.00");
+    // o período terminou em 30/06; o vínculo é gravado agora (outubro), como na vida real
+    await vincular(prisma, { lancamentoExtratoId: mil.linha, tipoInterno: "MOVIMENTO_BANCARIO", internoId: mil.interno, valor: "1000.00", criadoPor: POR });
+    const r1 = (await lerConciliacao(prisma, junho.conciliacaoId)).relatorio;
+    expect([r1.noExtratoSemVinculo.length, r1.internoSemVinculo.length]).toEqual([1, 1]);
+    // o encerramento cobra só o par que sobrou
+    await expect(encerrarConciliacao(prisma, { conciliacaoId: junho.conciliacaoId, criadoPor: POR })).rejects.toThrow(/2 pendência\(s\) sem justificativa.*250\.00/);
+    await justificarPendencia(prisma, { conciliacaoId: junho.conciliacaoId, lado: "EXTRATO", referencia: duz.linha, motivo: "crédito de 20/06 a identificar no razão", criadoPor: POR });
+    await justificarPendencia(prisma, { conciliacaoId: junho.conciliacaoId, lado: "MOVIMENTO_BANCARIO", referencia: duz.interno, motivo: "depósito de 20/06 a confirmar com o banco", criadoPor: POR });
+    await encerrarConciliacao(prisma, { conciliacaoId: junho.conciliacaoId, criadoPor: POR });
+    // depois do encerramento, o par de 250 é vinculado: o encerrado continua mostrando as duas pendências
+    await vincular(prisma, { lancamentoExtratoId: duz.linha, tipoInterno: "MOVIMENTO_BANCARIO", internoId: duz.interno, valor: "250.00", criadoPor: POR });
+    const encerrado = await lerConciliacao(prisma, junho.conciliacaoId);
+    expect(encerrado.estado).toBe("ENCERRADA");
+    expect([encerrado.relatorio.noExtratoSemVinculo.map((l) => l.residual), encerrado.relatorio.internoSemVinculo.map((l) => l.residual)]).toEqual([["250.00"], ["250.00"]]);
+  });
+
+  it("conhecimentoDaConciliacao (puro): encerrada lê o encerramento; aberta lê agora; nunca antes do fim do período", () => {
+    const fim = new Date("2026-07-01T02:59:59.999Z");
+    const encerrou = new Date("2026-07-05T12:00:00Z");
+    const agora = new Date("2026-10-10T12:00:00Z");
+    expect(conhecimentoDaConciliacao(fim, encerrou, agora)).toBe(encerrou);
+    expect(conhecimentoDaConciliacao(fim, null, agora)).toBe(agora);
+    // encerrada antes do próprio fim (V38): vale o fim; aberta com o fim no futuro: vale o fim
+    expect(conhecimentoDaConciliacao(fim, new Date("2026-06-30T21:00:00Z"), agora)).toBe(fim);
+    expect(conhecimentoDaConciliacao(fim, null, new Date("2026-06-15T00:00:00Z"))).toBe(fim);
+  });
+
+  /**
+   * V39-008 — o período que ainda não terminou não se encerra (N=2 com os testes acima, que encerram junho, já
+   * passado). Medido na V38: um período encerrado às 21h do próprio último dia continuaria mudando até a meia-noite.
+   */
+  it("t7c: encerrar um período cujo último dia é HOJE é recusado, com a data, e nada é gravado", async () => {
+    // HOJE, e não amanhã (auditoria): a borda medida na V38 é encerrar no próprio último dia, ainda dentro dele.
+    const amanha = diaCivil(new Date());
+    const aberto = await abrirConciliacao(prisma, {
+      contaBancariaId: "cb-cp", diaInicio: "2026-01-01", diaFim: amanha, criadoPor: POR,
+    });
+    await expect(encerrarConciliacao(prisma, { conciliacaoId: aberto.conciliacaoId, criadoPor: POR })).rejects.toThrow(
+      new RegExp(`termina em ${amanha.split("-").reverse().join("/")} e ainda não acabou.*Nada foi gravado`)
+    );
+    expect((await lerConciliacao(prisma, aberto.conciliacaoId)).estado).toBe("ABERTA");
+    expect(await prisma.movimentoDaConciliacao.count({ where: { conciliacaoId: aberto.conciliacaoId, tipo: "ENCERRAR" } })).toBe(0);
   });
 
   /**

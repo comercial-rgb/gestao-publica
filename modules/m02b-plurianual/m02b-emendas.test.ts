@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { declararNaturezaDaBase } from "../m16-travamento/natureza-da-base.js";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
@@ -59,6 +60,8 @@ async function usuarioCom(identificador: string, acoes: readonly string[]): Prom
 
 async function semear(): Promise<void> {
   await limparBanco(prisma);
+  // V39-021: a base de teste é de ENSAIO — a efetivação destes testes usa esse fundamento.
+  await declararNaturezaDaBase(prisma, { natureza: "ENSAIO", motivo: "banco de teste", declaradoPor: "TESTE" });
   await semearRoteiroOrcamentario(prisma);
   await prisma.exercicio.create({ data: { ano: 2026, criadoPor: "TESTE" } });
   await prisma.orgao.createMany({ data: [...SEED_ORGAOS] });
@@ -181,7 +184,7 @@ describe("M02b V36 — emendas ao projeto da LOA", () => {
   it("t7: proposta efetivada não recebe emenda nem sanção", async () => {
     const a = await emenda([{ linhaDeDespesaId: linha1, valor: "1.00" }]);
     await prisma.exercicio.create({ data: { ano: 2027, criadoPor: "TESTE" } });
-    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: proposta, criadoPor: ADMIN });
+    await efetivarPropostaOrcamentaria(prisma, { propostaOrcamentariaId: proposta, fundamento: { tipo: "ENSAIO" }, criadoPor: ADMIN });
     expect(await recusa(() => emenda([{ linhaDeDespesaId: linha1, valor: "1.00" }]))).toMatch(/orçamento de 2027 já foi efetivada[\s\S]*Nada foi gravado/);
     expect(await recusa(() => sancionarEmendaAoOrcamento(prisma, { emendaId: a.id, resultado: "APROVADA", data: "2026-12-15", ato: "Lei", criadoPor: ADMIN }))).toMatch(/já foi efetivada/);
     expect(await prisma.sancaoDaEmenda.count()).toBe(0);

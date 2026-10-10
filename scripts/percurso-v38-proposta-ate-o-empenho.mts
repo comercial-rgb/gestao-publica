@@ -187,6 +187,8 @@ try {
       conferir(ra.tipo === "ok", `exercício ${String(DESTINO)} aberto pela tela (${ra.texto.slice(0, 40)})`);
       await irPara(n, page, ROTA);
     }
+    // V39-021: na base de demonstração o orçamento se gera em ENSAIO (o serviço confere a natureza da base).
+    await page.click('form[data-acao="efetivar-proposta"] input[name="fundamento"][value="ENSAIO"]');
     await page.click('form[data-acao="efetivar-proposta"] button[type="submit"]');
     const efetivacao = await esperarNoBanco(() => prisma.efetivacaoDaProposta.findUnique({ where: { exercicio: DESTINO }, select: { fichasCriadas: true, receitasCriadas: true } }), 240);
     conferir(efetivacao !== null, `orçamento de ${String(DESTINO)} gerado: ${String(efetivacao?.fichasCriadas ?? 0)} fichas e ${String(efetivacao?.receitasCriadas ?? 0)} receitas`);

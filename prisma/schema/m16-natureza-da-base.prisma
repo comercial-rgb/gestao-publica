@@ -1,0 +1,26 @@
+// ----------------------------------------------------------------------------
+// A NATUREZA DA BASE (V39-001/002) — esta base é OFICIAL, de DEMONSTRAÇÃO ou de ENSAIO?
+//
+// ⚠️ POR QUE ISTO EXISTE. Até a V38 os percursos que gravam decidiam se podiam gravar pela marca
+// "(base fictícia)" no nome de exibição do ente: um TEXTO de apresentação, que qualquer
+// reconfiguração muda e que uma base oficial pode passar a ter por engano. A natureza passou a ser
+// uma DECLARAÇÃO no banco, lida pelo servidor (`/natureza-da-base`), e o percurso recusa o que não
+// for demonstração ou ensaio. Ausência de declaração vale como NÃO declarada, e não declarada não
+// admite ensaio (fail-closed).
+//
+// ⚠️ APPEND-ONLY, versionada por número. A vigente é a de maior número. Quem declara é o operador
+// do servidor, por `scripts/declarar-natureza-da-base.ts` (ou a semente da base fictícia); a
+// aplicação só LÊ. Rebaixar uma base OFICIAL para demonstração ou ensaio pede confirmação
+// explícita no script — é o caminho pelo qual dados oficiais passariam a aceitar percurso.
+// ----------------------------------------------------------------------------
+
+model DeclaracaoDaNaturezaDaBase {
+  id           String   @id @default(cuid())
+  /// Sequencial; a vigente é a de maior número. UNIQUE é a trava contra duas declarações concorrentes.
+  numero       Int      @unique
+  /// Conjunto FECHADO (CHECK na migration): OFICIAL | DEMONSTRACAO | ENSAIO.
+  natureza     String   @db.VarChar(20)
+  motivo       String
+  declaradoPor String
+  declaradoEm  DateTime @default(now())
+}

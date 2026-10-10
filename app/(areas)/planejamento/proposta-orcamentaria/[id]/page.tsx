@@ -9,6 +9,7 @@ import { EscopoDeLeituraError } from "../../../../../lib/portas/contexto";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { acoesPermitidas } from "../../../../../lib/portas/molde";
 import {
+  baseAdmiteEnsaioNaTela,
   lerPropostaComConferencia,
   PortaSemBancoError,
   ROTULO_BASE_DESPESA,
@@ -22,6 +23,7 @@ import { FormAbrirExercicio, FormAjusteDaLinha, FormEfetivarProposta, FormInclui
 import { ConferenciaDaPropostaSecao } from "./Conferencia";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
+import { TIPOS_DE_ATO_NA_TELA } from "../../../../../lib/portas/entidades-contabeis";
 /**
  * UMA PROPOSTA ORÇAMENTÁRIA (M02 V29): as receitas e as fichas importadas, com a base, o projetado e o
  * valor da proposta (o último ajuste); o que falta para gerar o orçamento; e o botão que o gera.
@@ -328,7 +330,16 @@ export default async function PropostaPage({ params }: { readonly params: Promis
           <div className="space-y-1 text-sm" data-proposta-efetivada>
             <p>
               <Badge status="ok">Orçamento gerado</Badge> em {dataBr(p.efetivacao!.criadoEm)} por {p.efetivacao!.criadoPor}:{" "}
-              {String(p.efetivacao!.fichasCriadas)} ficha(s) e {String(p.efetivacao!.receitasCriadas)} receita(s) prevista(s).{" "}
+              {String(p.efetivacao!.fichasCriadas)} ficha(s) e {String(p.efetivacao!.receitasCriadas)} receita(s) prevista(s)
+              {/* V39-021 — o que permitiu executar. Nulo: efetivação anterior à exigência. */}
+              {p.efetivacao!.fundamento === "LEI_APROVADA"
+                ? `, pela lei aprovada${p.destino.lei?.numeroDaLei == null ? "" : ` (Lei ${p.destino.lei.numeroDaLei})`}`
+                : p.efetivacao!.fundamento === "EXECUCAO_PROVISORIA"
+                  ? `, pela execução provisória autorizada no ato ${p.efetivacao!.atoNumero ?? ""}/${String(p.efetivacao!.atoAno ?? "")}, ${p.efetivacao!.atoDispositivo ?? ""}`
+                  : p.efetivacao!.fundamento === "ENSAIO"
+                    ? ", em ensaio nesta base de demonstração (não vale como orçamento aprovado)"
+                    : ""}
+              .{" "}
               <Link className="text-[color:var(--color-primary)] underline" href={`/planejamento/fichas?exercicio=${String(p.exercicio)}`}>
                 Ver as fichas
               </Link>
@@ -390,7 +401,15 @@ export default async function PropostaPage({ params }: { readonly params: Promis
           <FormAbrirExercicio ano={p.exercicio} propostaOrcamentariaId={p.id} aberto={p.destino.existe} />
         ) : null}
         {permitidas.has("CRIAR_FICHA") ? (
-          <FormEfetivarProposta propostaOrcamentariaId={p.id} exercicio={p.exercicio} pronta={pronta} efetivada={efetivada} />
+          <FormEfetivarProposta
+            propostaOrcamentariaId={p.id}
+            exercicio={p.exercicio}
+            pronta={pronta}
+            efetivada={efetivada}
+            leiAprovada={p.destino.lei?.numeroDaLei ?? null}
+            admiteEnsaio={await baseAdmiteEnsaioNaTela()}
+            tiposDeAto={TIPOS_DE_ATO_NA_TELA}
+          />
         ) : null}
       </section>
 

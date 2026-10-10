@@ -145,7 +145,8 @@ async function main(): Promise<void> {
 
     // ══ 6. GERAR O ORÇAMENTO ══
     await irPara(N, page, rota);
-    const ef = await preencherEEnviar(page, "efetivar-proposta", []);
+    // V39-021: na base de demonstração o orçamento se gera em ENSAIO (o serviço confere a natureza da base).
+    const ef = await preencherEEnviar(page, "efetivar-proposta", [{ sel: 'input[name="fundamento"][value="ENSAIO"]', valor: "sim", tipo: "marcar" }]);
     R.conferir(`6.1 gerar o orçamento de ${String(DESTINO)} confirma`, ef.tipo === "ok" && /or[çc]amento de \d{4} gerado/i.test(ef.texto), `${ef.tipo}: ${ef.texto}`);
     const efet = await prisma.efetivacaoDaProposta.findUnique({ where: { exercicio: DESTINO }, select: { fichasCriadas: true, receitasCriadas: true } });
     const fichasDestino = await prisma.fichaOrcamentaria.count({ where: { exercicio: DESTINO } });

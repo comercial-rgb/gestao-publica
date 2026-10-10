@@ -6,7 +6,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { rotuloDoModoDeIntegracao } from "../../../../lib/rotulos-de-modo";
-import { lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
+import { contasComExtratoNoExercicio, lerPainelConciliacao, PortaSemBancoError, type PainelConciliacao } from "../../../../lib/portas/conciliacao";
 import { dataBr, exercicioAutorizado, ExercicioIlegivelError } from "../../../../lib/recorte";
 import { instanteCivilBr } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
@@ -54,6 +54,30 @@ function carimbo(d: Date): string {
   return instanteCivilBr(d);
 }
 
+/** V39 — qual conta conciliar, entre as que têm extrato no exercício. Some quando há uma só. */
+function SeletorDeConta(p: {
+  readonly exercicio: number;
+  readonly contas: readonly { readonly id: string; readonly codigo: string; readonly descricao: string }[];
+  readonly atual: string | null;
+}): React.ReactElement | null {
+  if (p.contas.length < 2 && p.atual !== null) return null;
+  return (
+    <form method="get" data-seletor-de-conta className="flex flex-wrap items-end gap-2">
+      <input type="hidden" name="exercicio" value={String(p.exercicio)} />
+      <label className="text-sm">
+        <span className="block text-xs font-semibold text-[color:var(--color-ink-2)]">Conta a conciliar</span>
+        <select name="conta" defaultValue={p.atual ?? ""} className="mt-1 rounded-[var(--radius-sm)] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] px-2 py-1 text-sm">
+          {p.atual === null ? <option value="" disabled>Escolha a conta</option> : null}
+          {p.contas.map((c) => (
+            <option key={c.id} value={c.id}>{c.codigo} — {c.descricao}</option>
+          ))}
+        </select>
+      </label>
+      <button type="submit" className="rounded-[var(--radius-sm)] border border-[color:var(--color-border)] px-3 py-1 text-sm font-semibold">Ver a conta</button>
+    </form>
+  );
+}
+
 export default async function ConciliacaoBancariaPage({
   searchParams,
 }: {
@@ -99,9 +123,24 @@ export default async function ConciliacaoBancariaPage({
     />
   );
 
+  // V39 — a conta escolhida (`?conta=<id>`), entre as que têm extrato no exercício. Sem escolha: a do extrato de fim
+  // mais recente, como antes. Conta fora da lista é recusada com o motivo, não trocada em silêncio por outra.
+  const contaPedida = typeof sp["conta"] === "string" && sp["conta"] !== "" ? sp["conta"] : undefined;
   let painel: PainelConciliacao | null;
+  let contasComExtrato: Awaited<ReturnType<typeof contasComExtratoNoExercicio>>;
   try {
-    painel = await lerPainelConciliacao({ exercicio });
+    contasComExtrato = await contasComExtratoNoExercicio(exercicio);
+    if (contaPedida !== undefined && !contasComExtrato.some((c) => c.id === contaPedida)) {
+      return (
+        <div className="space-y-4">
+          <SincronizarContexto />
+          {cabecalho}
+          <SeletorDeConta exercicio={exercicio} contas={contasComExtrato} atual={null} />
+          <EstadoVazio titulo={`A conta pedida não tem extrato importado no exercício ${exercicio}`} descricao="Escolha uma das contas com extrato no exercício, ou importe o extrato da conta." />
+        </div>
+      );
+    }
+    painel = await lerPainelConciliacao({ exercicio, ...(contaPedida === undefined ? {} : { contaBancariaId: contaPedida }) });
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -168,6 +207,7 @@ export default async function ConciliacaoBancariaPage({
       <SincronizarContexto />
       {cabecalho}
       {importar}
+      <SeletorDeConta exercicio={exercicio} contas={contasComExtrato} atual={conta.id} />
 
       {/* ══ HONESTIDADE, NO TOPO — não é nota de rodapé (DIRETIVA §4/§7) ══
           V38 — só para o extrato vindo da API de demonstração: um OFX importado é o extrato real do banco. */}

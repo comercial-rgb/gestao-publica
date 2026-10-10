@@ -111,8 +111,26 @@ export async function ajustarLinhaAction(_prev: EstadoDaProposta, formData: Form
 export async function efetivarPropostaAction(_prev: EstadoDaProposta, formData: FormData): Promise<EstadoDaProposta> {
   return comComandoDoFormulario(formData, async () => {
     const propostaOrcamentariaId = campo(formData, "propostaOrcamentariaId");
+    // V39-021 — o fundamento escolhido na tela; a conferência (lei aprovada, ato da LDO, base de ensaio) é do serviço.
+    const tipo = campo(formData, "fundamento");
+    const fundamento =
+      tipo === "EXECUCAO_PROVISORIA"
+        ? {
+            tipo: "EXECUCAO_PROVISORIA" as const,
+            ato: {
+              atoTipo: campo(formData, "atoTipo") as "LEI",
+              atoNumero: campo(formData, "atoNumero"),
+              atoAno: Number(campo(formData, "atoAno")),
+              atoDispositivo: campo(formData, "atoDispositivo"),
+              atoCitacao: campo(formData, "atoCitacao"),
+            },
+          }
+        : tipo === "LEI_APROVADA" || tipo === "ENSAIO"
+          ? { tipo: tipo as "LEI_APROVADA" | "ENSAIO" }
+          : null;
+    if (fundamento === null) return { erro: "Escolha o que permite executar o orçamento: a lei aprovada, a execução provisória autorizada pela LDO ou o ensaio. Nada foi gravado." };
     try {
-      const r = await efetivarProposta(propostaOrcamentariaId);
+      const r = await efetivarProposta(propostaOrcamentariaId, fundamento);
       revalidatePath(`${ROTA}/${propostaOrcamentariaId}`);
       revalidatePath(ROTA);
       revalidatePath("/planejamento/fichas");
@@ -231,7 +249,7 @@ export async function reajustarAction(_prev: EstadoDaProposta, formData: FormDat
     const pedido = pedidoDoReajuste(formData);
     if ("erro" in pedido) return pedido;
     try {
-      const r = await reajustarLinhas({ ...pedido, motivo: campo(formData, "motivo") });
+      const r = await reajustarLinhas({ ...pedido, motivo: campo(formData, "motivo"), versaoDaPrevia: campo(formData, "versaoDaPrevia") });
       revalidatePath(`${ROTA}/${pedido.propostaOrcamentariaId}`);
       return { sucesso: `Reajuste aplicado em ${String(r.linhas)} linha(s): de ${formatarMoeda(r.totalAntes).texto} para ${formatarMoeda(r.totalDepois).texto}.` };
     } catch (e) {

@@ -24,6 +24,7 @@ import {
   ajustarLinhaDaProposta,
   detalharPropostaOrcamentaria,
   efetivarPropostaOrcamentaria,
+  type FundamentoDaEfetivacao,
   elaborarPropostaOrcamentaria,
   listarPropostasOrcamentarias,
   type ElaborarPropostaOrcamentariaInput,
@@ -35,6 +36,7 @@ import {
   levantarFatosDoPlanejamento,
   type ConferenciaDaProposta,
 } from "../../modules/m02-planejamento/conferencia-da-proposta";
+import { baseAdmiteEnsaio, naturezaDaBase } from "../../modules/m16-travamento/natureza-da-base.js";
 
 /**
  * A PORTA DA PROPOSTA ORÇAMENTÁRIA (V29) — importar um exercício, alterar linha a linha, efetivar.
@@ -110,14 +112,19 @@ export async function ajustarLinha(input: {
   );
 }
 
-export async function efetivarProposta(propostaOrcamentariaId: string): Promise<{
+export async function efetivarProposta(propostaOrcamentariaId: string, fundamento: FundamentoDaEfetivacao): Promise<{
   readonly exercicio: number;
   readonly fichasCriadas: number;
   readonly receitasCriadas: number;
 }> {
   return comEscritaAutenticada("CRIAR_FICHA", (criadoPor) =>
-    efetivarPropostaOrcamentaria(cliente(), { propostaOrcamentariaId, criadoPor })
+    efetivarPropostaOrcamentaria(cliente(), { propostaOrcamentariaId, fundamento, criadoPor })
   );
+}
+
+/** V39-021 — a base admite gerar orçamento em ENSAIO? Só o que o banco declara (a tela oferece a opção por isto). */
+export async function baseAdmiteEnsaioNaTela(): Promise<boolean> {
+  return baseAdmiteEnsaio((await naturezaDaBase(cliente())).natureza);
 }
 
 /**

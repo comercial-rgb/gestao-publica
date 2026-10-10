@@ -181,4 +181,19 @@ model EfetivacaoDaProposta {
   receitasCriadas        Int
   criadoEm               DateTime             @default(now())
   criadoPor              String
+
+  /// V39-021 — O QUE PERMITIU EXECUTAR. Conjunto fechado (CHECK): LEI_APROVADA (a LOA do exercício com a aprovação
+  /// registrada), EXECUCAO_PROVISORIA (o dispositivo da LDO que autoriza executar o projeto enquanto a lei não sai,
+  /// declarado e conferido) ou ENSAIO (só em base declarada de demonstração ou ensaio). Nulo: efetivação anterior à
+  /// V39, quando nada era exigido — o histórico não se reescreve.
+  fundamento     String?  @db.VarChar(30)
+  /// LEI_APROVADA: a lei e a aprovação vigentes na efetivação.
+  leiId          String?
+  aprovacaoId    String?
+  /// EXECUCAO_PROVISORIA: o ato, estruturado (ver `m01-core-contabil/ato-declarado.ts`).
+  atoTipo        String?  @db.VarChar(30)
+  atoNumero      String?
+  atoAno         Int?
+  atoDispositivo String?
+  atoCitacao     String?
 }

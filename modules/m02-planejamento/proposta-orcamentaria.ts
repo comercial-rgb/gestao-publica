@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import type { BaseDaDespesaDaProposta, BaseDaReceitaDaProposta } from "../../prisma/generated/client/enums.js";
@@ -12,6 +13,8 @@ import { SINAL_PREVISAO } from "./dominio.js";
 import { travar } from "../../packages/locks/index.js";
 import { CONTA_PREVISAO_DEDUCAO_FUNDEB, CONTA_PREVISAO_INICIAL_RECEITA_BRUTA, CONTA_PREVISAO_OUTRAS_DEDUCOES, CONTA_RECEITA_A_REALIZAR } from "../m01-core-contabil/roteiros.js";
 import { lancarPrevisaoDaReceita } from "./previsao-no-razao.js";
+import { AtoDeclaradoInvalidoError, conferirAtoDeclarado, zAtoDeclarado } from "../m01-core-contabil/ato-declarado.js";
+import { baseAdmiteEnsaio, naturezaDaBase } from "../m16-travamento/natureza-da-base.js";
 
 /**
  * A PROPOSTA ORÇAMENTÁRIA DO EXERCÍCIO SEGUINTE (V29, M02).
@@ -530,10 +533,80 @@ export async function ajustarLinhaDaProposta(
 // Efetivar
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * V39-021 — O QUE PERMITE EXECUTAR. Até a V38 a efetivação gerava o orçamento sem perguntar pela lei (AUD-101). Agora ela
+ * exige um fundamento, e são três, porque os casos são três:
+ *   · LEI_APROVADA — a LOA do exercício cadastrada e com a aprovação registrada (número da lei, sanção, publicação);
+ *   · EXECUCAO_PROVISORIA — a lei ainda não saiu e a LDO autoriza executar o projeto (o dispositivo, declarado e
+ *     conferido: tem de falar do orçamento daquele exercício). Recusada quando a LOA já está aprovada;
+ *   · ENSAIO — gerar o orçamento só para exercitar o motor, permitido apenas em base que o BANCO declara de
+ *     demonstração ou de ensaio (`natureza-da-base.ts`). Nunca numa base oficial, e nunca por um texto de tela.
+ */
+export const zFundamentoDaEfetivacao = z.discriminatedUnion("tipo", [
+  z.object({ tipo: z.literal("LEI_APROVADA") }),
+  z.object({ tipo: z.literal("EXECUCAO_PROVISORIA"), ato: zAtoDeclarado }),
+  z.object({ tipo: z.literal("ENSAIO") }),
+], { error: "Escolha o que permite executar o orçamento: a lei aprovada, a execução provisória autorizada pela LDO ou o ensaio." });
+export type FundamentoDaEfetivacao = z.infer<typeof zFundamentoDaEfetivacao>;
+
 export const zEfetivarPropostaOrcamentaria = z.object({
   propostaOrcamentariaId: z.string().trim().min(1),
+  fundamento: zFundamentoDaEfetivacao,
   criadoPor: z.string().trim().min(1),
 });
+
+/**
+ * As colunas do fundamento na efetivação, depois de CONFERIDO. Recusa (sem gravar) o fundamento que não se sustenta:
+ * lei sem aprovação, execução provisória com a lei já aprovada ou com ato que não trata do orçamento, ensaio em base
+ * que não é de ensaio.
+ */
+async function conferirFundamentoDaEfetivacao(
+  tx: Tx,
+  exercicio: number,
+  fundamento: FundamentoDaEfetivacao,
+): Promise<{ fundamento: string; leiId: string | null; aprovacaoId: string | null; atoTipo: string | null; atoNumero: string | null; atoAno: number | null; atoDispositivo: string | null; atoCitacao: string | null }> {
+  const vazio = { leiId: null, aprovacaoId: null, atoTipo: null, atoNumero: null, atoAno: null, atoDispositivo: null, atoCitacao: null };
+  const lei = await tx.leiOrcamentariaAnual.findUnique({ where: { exercicio }, select: { id: true, aprovacao: { select: { id: true, numeroDaLei: true } } } });
+  if (fundamento.tipo === "LEI_APROVADA") {
+    if (lei === null) {
+      throw new PropostaOrcamentariaInvalidaError(
+        `A lei orçamentária de ${exercicio} não está cadastrada. Cadastre o projeto e registre a aprovação (número da lei, sanção e publicação) antes de gerar o orçamento por ela. Nada foi gravado.`
+      );
+    }
+    if (lei.aprovacao === null) {
+      throw new PropostaOrcamentariaInvalidaError(
+        `O projeto da lei orçamentária de ${exercicio} está cadastrado, mas a aprovação ainda não foi registrada (número da lei, sanção e publicação). Sem ela, o orçamento só se gera pela execução provisória que a LDO autorizar. Nada foi gravado.`
+      );
+    }
+    return { ...vazio, fundamento: "LEI_APROVADA", leiId: lei.id, aprovacaoId: lei.aprovacao.id };
+  }
+  if (fundamento.tipo === "EXECUCAO_PROVISORIA") {
+    if (lei?.aprovacao != null) {
+      throw new PropostaOrcamentariaInvalidaError(
+        `A lei orçamentária de ${exercicio} já está aprovada (Lei ${lei.aprovacao.numeroDaLei}). Gere o orçamento pela lei, não pela execução provisória. Nada foi gravado.`
+      );
+    }
+    try {
+      conferirAtoDeclarado(fundamento.ato, { hoje: new Date(), ancoradouros: [{ rotulo: `o orçamento de ${exercicio}`, termos: ["orcament", String(exercicio)] }] });
+    } catch (e) {
+      if (e instanceof AtoDeclaradoInvalidoError && e.motivo === "ATO_NAO_TRATA_DO_OBJETO") {
+        throw new PropostaOrcamentariaInvalidaError(
+          `O trecho citado não fala do orçamento de ${exercicio}. Transcreva o dispositivo da LDO que autoriza executar o projeto de lei orçamentária de ${exercicio} enquanto a lei não é sancionada. Nada foi gravado.`
+        );
+      }
+      throw e;
+    }
+    const a = fundamento.ato;
+    return { ...vazio, fundamento: "EXECUCAO_PROVISORIA", atoTipo: a.atoTipo, atoNumero: a.atoNumero, atoAno: a.atoAno, atoDispositivo: a.atoDispositivo, atoCitacao: a.atoCitacao };
+  }
+  const base = await naturezaDaBase(tx);
+  if (!baseAdmiteEnsaio(base.natureza)) {
+    throw new PropostaOrcamentariaInvalidaError(
+      `Gerar o orçamento em ensaio só vale em base declarada de demonstração ou de ensaio; esta base está declarada ${base.natureza === "NAO_DECLARADA" ? "sem natureza" : base.natureza}. Use a lei aprovada ou a execução provisória autorizada pela LDO. Nada foi gravado.`
+    );
+  }
+  return { ...vazio, fundamento: "ENSAIO" };
+}
 export type EfetivarPropostaOrcamentariaInput = z.input<typeof zEfetivarPropostaOrcamentaria>;
 
 const CODIGO_UNIQUE_VIOLADO = "P2002";
@@ -664,6 +737,9 @@ export async function efetivarPropostaOrcamentaria(
           );
         }
 
+        // V39-021 — o que permite executar, conferido ANTES do primeiro registro.
+        const fundamento = await conferirFundamentoDaEfetivacao(tx, exercicio, d.fundamento);
+
         // V38 — a origem da linha é a receita (ou a ficha) de origem, ou a classificação própria da linha nova.
         const receitas = proposta.linhasDeReceita.map((l) => ({
           origem: l.receitaDeOrigem ?? origemDaReceitaNova(l),
@@ -775,6 +851,7 @@ export async function efetivarPropostaOrcamentaria(
             fichasCriadas: despesasACriar.length,
             receitasCriadas: receitasACriar.length,
             criadoPor: d.criadoPor,
+            ...fundamento,
           },
           select: { id: true },
         });
@@ -919,7 +996,7 @@ export interface PropostaDetalhada {
   readonly receitaBruta: TotaisDaProposta;
   readonly deducoesDaReceita: TotaisDaProposta;
   readonly totalDaDespesa: TotaisDaProposta;
-  readonly efetivacao: { readonly criadoEm: Date; readonly criadoPor: string; readonly fichasCriadas: number; readonly receitasCriadas: number } | null;
+  readonly efetivacao: { readonly criadoEm: Date; readonly criadoPor: string; readonly fichasCriadas: number; readonly receitasCriadas: number; readonly fundamento: string | null; readonly atoNumero: string | null; readonly atoAno: number | null; readonly atoDispositivo: string | null } | null;
   /** A situação do exercício de destino, para a tela dizer o que falta antes e depois de efetivar. */
   readonly destino: {
     readonly existe: boolean;
@@ -970,7 +1047,7 @@ export async function detalharPropostaOrcamentaria(prisma: Tx, id: string): Prom
       incluiFichasAbertasPorCredito: true,
       criadoEm: true,
       criadoPor: true,
-      efetivacao: { select: { criadoEm: true, criadoPor: true, fichasCriadas: true, receitasCriadas: true } },
+      efetivacao: { select: { criadoEm: true, criadoPor: true, fichasCriadas: true, receitasCriadas: true, fundamento: true, atoNumero: true, atoAno: true, atoDispositivo: true } },
       linhasDeReceita: {
         select: {
           id: true,
@@ -1396,6 +1473,8 @@ export const zReajusteDaProposta = z.object({
 });
 export const zReajustarLinhasDaProposta = zReajusteDaProposta.extend({
   motivo: z.string().trim().min(5, "Informe o motivo do reajuste.").max(500),
+  /** V39-016 — a versão que a prévia mostrou. A aplicação recalcula e só grava se o resultado for o mesmo. */
+  versaoDaPrevia: z.string().trim().min(1, "Calcule a prévia antes de aplicar: o reajuste grava exatamente o que a prévia mostrou."),
   criadoPor: z.string().trim().min(1),
 });
 export type PreviaDoReajusteInput = z.input<typeof zReajusteDaProposta>;
@@ -1405,6 +1484,18 @@ export interface ResultadoDoReajuste {
   readonly linhas: number;
   readonly totalAntes: string;
   readonly totalDepois: string;
+  /** V39-016 — a impressão digital do resultado (linha, valor vigente e valor novo de cada uma). */
+  readonly versao: string;
+}
+
+/**
+ * V39-016 — A VERSÃO DO RESULTADO de um reajuste: SHA-256 das linhas alcançadas, cada uma com o valor vigente e o novo,
+ * em ordem de id. Muda se alguém ajustar uma linha do recorte, se entrar ou sair linha, ou se o percentual ou o
+ * recorte forem trocados depois da prévia. Puro.
+ */
+export function versaoDoReajuste(linhas: readonly { readonly id: string; readonly antes: string; readonly depois: string }[]): string {
+  const ordenadas = [...linhas].sort((a, b) => a.id.localeCompare(b.id)).map((l) => [l.id, l.antes, l.depois]);
+  return createHash("sha256").update(JSON.stringify(ordenadas)).digest("hex");
 }
 
 interface LinhaParaReajuste {
@@ -1484,7 +1575,8 @@ export async function previaDoReajusteDaProposta(prisma: Tx, input: PreviaDoReaj
   const d = lerOuRecusar(zReajusteDaProposta, input);
   const alvo = linhasNoRecorte(await linhasDoLado(prisma, d.propostaOrcamentariaId, d.lado), d.recorte);
   const depois = alvo.map((l) => ({ vigente: projetar(l.vigente, d.percentual) }));
-  return { linhas: alvo.length, totalAntes: somar(alvo).toFixed(2), totalDepois: somar(depois).toFixed(2) };
+  const versao = versaoDoReajuste(alvo.map((l, i) => ({ id: l.id, antes: l.vigente.toFixed(2), depois: (depois[i]?.vigente ?? l.vigente).toFixed(2) })));
+  return { linhas: alvo.length, totalAntes: somar(alvo).toFixed(2), totalDepois: somar(depois).toFixed(2), versao };
 }
 
 /**
@@ -1502,13 +1594,21 @@ export async function reajustarLinhasDaProposta(prisma: PrismaClient, input: Rea
       throw new PropostaOrcamentariaInvalidaError("Nenhuma linha da proposta está no recorte informado. Nada foi gravado.");
     }
     const novos = alvo.map((l) => ({ id: l.id, valor: projetar(l.vigente, d.percentual) }));
+    // V39-016 — o que se grava é o que a prévia mostrou. Se uma linha do recorte foi ajustada, entrou ou saiu, ou se o
+    // percentual/recorte mudou depois da prévia, a versão difere e nada se grava.
+    const versao = versaoDoReajuste(alvo.map((l, i) => ({ id: l.id, antes: l.vigente.toFixed(2), depois: (novos[i]?.valor ?? l.vigente).toFixed(2) })));
+    if (versao !== d.versaoDaPrevia) {
+      throw new PropostaOrcamentariaInvalidaError(
+        "Os valores mudaram desde a prévia (uma linha do recorte foi ajustada, ou o percentual ou o recorte foram trocados). Calcule a prévia de novo e confira antes de aplicar. Nada foi gravado."
+      );
+    }
     const motivo = `${d.motivo} (reajuste em lote de ${d.percentual.toString().replace(".", ",")}%)`;
     if (d.lado === "RECEITA") {
       await tx.ajusteDeReceitaDaProposta.createMany({ data: novos.map((n) => ({ linhaId: n.id, valor: n.valor.toFixed(2), motivo, criadoPor: d.criadoPor })) });
     } else {
       await tx.ajusteDeDespesaDaProposta.createMany({ data: novos.map((n) => ({ linhaId: n.id, valor: n.valor.toFixed(2), motivo, criadoPor: d.criadoPor })) });
     }
-    return { linhas: alvo.length, totalAntes: somar(alvo).toFixed(2), totalDepois: somar(novos.map((n) => ({ vigente: n.valor }))).toFixed(2) };
+    return { linhas: alvo.length, totalAntes: somar(alvo).toFixed(2), totalDepois: somar(novos.map((n) => ({ vigente: n.valor }))).toFixed(2), versao };
   });
 }
 

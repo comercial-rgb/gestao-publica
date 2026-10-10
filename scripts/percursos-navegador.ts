@@ -1,5 +1,6 @@
 import puppeteer, { type Browser, type LaunchOptions, type Page } from "puppeteer";
 import { preflightDoNavegador } from "./preflight-navegador.js";
+import { exigirDestinoDoPercurso } from "./destino-do-percurso.js";
 
 /**
  * OS AJUDANTES DE NAVEGADOR DOS PERCURSOS NOVOS (V6.2) — um lugar só.
@@ -53,6 +54,8 @@ export async function texto(page: Page): Promise<string> {
 }
 
 export async function entrar(n: Navegador, page: Page, usuario: string, senha: string): Promise<void> {
+  // V39-002: o destino e a natureza da base, conferidos ANTES de digitar a senha (ver `destino-do-percurso.ts`).
+  await exigirDestinoDoPercurso(n.base);
   await page.goto(`${n.base}/login`, { waitUntil: "domcontentloaded" });
   await page.waitForSelector('button[type="submit"]', { timeout: 60000 });
   await page.type('input[name="identificador"]', usuario);
