@@ -19,7 +19,7 @@ import {
 import { redefinirContaDaConsignacao } from "./servico-tipos-de-consignacao.js";
 import { classificacaoPropriaVigente, classificarRetencaoPropria } from "./retencao-propria.js";
 import { registrarDispendioExtra } from "./extraorcamentario.js";
-import { roteiroDispendioExtra } from "./dominio.js";
+import { fatoProprioDoTributo, roteiroDispendioExtra } from "./dominio.js";
 import { anularArrecadacao } from "../m04-receita/servico.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { anularPagamentoParcial } from "../m05-despesa/anulacao-parcial.js";
@@ -612,5 +612,124 @@ describe("V26 — o legado: IR do município que ficou na consignação vira rec
     await expect(regularizar({ motivo: "curto" })).rejects.toThrow(/pelo menos 10 caracteres/);
     expect(await prisma.apropriacaoDaConsignacaoPropria.count()).toBe(0);
     expect(await prisma.receitaArrecadada.count()).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// V39-R2 (R2-005/006/007, V39-028) — O IR DE PESSOA FÍSICA TEM IDENTIDADE PRÓPRIA
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+const FORNECEDOR_PF = "52998224725";
+describe("V39-R2 — IR retido de pessoa física: fato e classificação próprios (N=2 com a PJ)", { timeout: 120000 }, () => {
+  let deps: M05Deps;
+  let liqPJ: string;
+  let liqPF: string;
+  beforeEach(async () => {
+    deps = criarM05Deps(prisma);
+    await semear();
+    liqPJ = await empenharELiquidar(deps);
+    const e = await empenhar({ fichaId: FICHA, numero: "NE-PF", tipo: "ORDINARIO", valor: "1000.00", data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: FORNECEDOR_PF, historico: "empenho PF", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR }, R_EMPENHO, deps);
+    liqPF = (await liquidar({ empenhoId: e.empenhoId, numero: "NL-PF", valor: "1000.00", data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "Fulano", historico: "liquidação PF", criadoPor: POR }, R_LIQUIDACAO, deps)).liquidacaoId;
+    await perfil();
+    await perfil({ documento: FORNECEDOR_PF });
+  }, 120000);
+  afterAll(async () => prisma.$disconnect());
+
+  // A PF: o IR não se calcula (a IN 1.234 é de PJ) e entra INFORMADO, com o fundamento.
+  const OP_PF: DadosFiscaisDaOperacao = { ...OPERACAO, informados: {
+    IRRF: { valor: toMoney("30.00"), justificativa: "Tabela progressiva do IRPF aplicada ao serviço do autônomo, conforme recibo" },
+    INSS: { valor: toMoney("110.00"), justificativa: "Contribuinte individual: 11% sobre o serviço, conforme recibo do autônomo" },
+    ISS: { valor: toMoney("50.00"), justificativa: "Prestador não inscrito no município: 5% (LC 80/2017, art. 73, § 3º)" },
+  } };
+  const pagarPF = async (numero = "NP-PF", op: DadosFiscaisDaOperacao = OP_PF) => {
+    const p = await prepararRetencoesCalculadas(prisma, { liquidacaoId: liqPF, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, operacao: op, contaBancariaId: "cb1" });
+    return pagar({ ...pgto(liqPF), numero, historico: `Pagamento ${numero}` }, R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: p.retencoes, calculos: p.calculos, proprias: p.proprias });
+  };
+  // A PF tem natureza e VPA PRÓPRIAS (11130311, trabalho; 4.1.1.2.1.03.01, IR de pessoas físicas): com os códigos da PJ,
+  // o teste não distinguiria a PF classificada como PJ.
+  const VPA_IR_PF = "4.1.1.2.1.03.01";
+  const classificarPF = async () => {
+    if ((await prisma.naturezaReceita.findUnique({ where: { codigo: "11130311" } })) === null) await prisma.naturezaReceita.create({ data: { codigo: "11130311", descricao: "IRRF - Trabalho - Principal" } });
+    if ((await prisma.contaPcasp.findUnique({ where: { codigo: VPA_IR_PF } })) === null) await prisma.contaPcasp.create({ data: conta("c-vpa-ir-pf", VPA_IR_PF, "CREDORA") });
+    return classificarRetencaoPropria(prisma, { fato: "IRRF_PESSOA_FISICA", tipoConsignacaoCodigo: "IRRF", naturezaReceitaCodigo: "11130311", fonteCodigo: "500", contaCreditoCodigo: CRED_IR, contaVpaCodigo: VPA_IR_PF, entidadeTitularId: null, vigenteDesde: new Date("2026-01-01T00:00:00Z"), fundamento: "Ensaio V39-R2: classificação do IR de PF em base de ensaio", criadoPor: POR });
+  };
+
+  it("R2-005: sem a classificação do IR de PF, o pagamento da PF é recusado nomeando o fato — o da PJ não serve de atalho — e nada é gravado", async () => {
+    await expect(pagarPF()).rejects.toThrow(/IR retido de fornecedor pessoa física: é imposto do próprio município.*Nada foi gravado/);
+    expect([await prisma.pagamento.count(), await prisma.retencaoPropriaDoPagamento.count(), await prisma.receitaArrecadada.count()]).toEqual([0, 0, 0]);
+  });
+
+  it("R2-005/007: PJ e PF no mesmo dia — cada um com o seu fato e a sua guia; a PF guarda o valor informado e o fundamento; o INSS segue consignação", async () => {
+    await classificarPF();
+    const p = await prepararRetencoesCalculadas(prisma, { liquidacaoId: liqPJ, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, operacao: OPERACAO, contaBancariaId: "cb1" });
+    await pagar(pgto(liqPJ), R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: p.retencoes, calculos: p.calculos, proprias: p.proprias });
+    const rpf = await pagarPF();
+    const elos = await prisma.retencaoPropriaDoPagamento.findMany({ include: { pagamento: true, receitaArrecadada: true }, orderBy: [{ pagamento: { numero: "asc" } }, { fato: "asc" }] });
+    expect(elos.map((e) => [e.pagamento.numero, e.fato, e.valor.toFixed(2)])).toEqual([
+      ["NP-1", "IRRF_FORNECEDOR_PJ", "48.00"], ["NP-1", "ISS", "50.00"],
+      ["NP-PF", "IRRF_PESSOA_FISICA", "30.00"], ["NP-PF", "ISS", "50.00"],
+    ]);
+    const irPF = elos.find((e) => e.fato === "IRRF_PESSOA_FISICA");
+    expect(irPF?.fundamento).toMatch(/Valor informado pelo operador: Tabela progressiva do IRPF/);
+    expect(irPF?.receitaArrecadada.valor.toFixed(2)).toBe("30.00");
+    // cada guia na natureza da sua decisão: PF no trabalho, PJ em outros rendimentos
+    const naturezas = await prisma.receitaArrecadada.findMany({ where: { id: { in: elos.filter((e) => e.fato !== "ISS").map((e) => e.receitaArrecadadaId) } }, select: { valor: true, naturezaReceita: { select: { codigo: true } } }, orderBy: { valor: "asc" } });
+    expect(naturezas.map((n) => [n.valor.toFixed(2), n.naturezaReceita.codigo])).toEqual([["30.00", "11130311"], ["48.00", "11130341"]]);
+    // o INSS do PF é consignação de terceiro, em cadeia separada
+    const inss = await prisma.movimentoExtraorcamentario.findMany({ where: { pagamentoId: rpf.pagamentoId }, include: { tipoConsignacao: true } });
+    expect(inss.map((m) => m.tipoConsignacao.codigo)).toEqual(["INSS"]);
+    // bruto, retido e líquido preservados no razão do pagamento da PF: 1000 − 110 (INSS) − 30 (IR) − 50 (ISS)
+    expect((await partidasDe(rpf.lancamentoId)).filter((x) => x.includes(CAIXA))).toEqual([`CREDITO ${CAIXA} 810.00`]);
+  });
+
+  it("R2-007: reenvio do pagamento da PF não duplica; a anulação estorna só as guias da PF; a PJ fica intacta", async () => {
+    await classificarPF();
+    const p = await prepararRetencoesCalculadas(prisma, { liquidacaoId: liqPJ, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, operacao: OPERACAO, contaBancariaId: "cb1" });
+    await pagar(pgto(liqPJ), R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: p.retencoes, calculos: p.calculos, proprias: p.proprias });
+    const rpf = await pagarPF();
+    const antes = [await prisma.pagamento.count(), await prisma.receitaArrecadada.count(), await prisma.retencaoPropriaDoPagamento.count()];
+    await expect(pagarPF()).rejects.toThrow(/Pagamento excede a liquidação .*: liquidado 1000.00, já pago 1000.00, solicitado 1000.00/);
+    expect([await prisma.pagamento.count(), await prisma.receitaArrecadada.count(), await prisma.retencaoPropriaDoPagamento.count()]).toEqual(antes);
+    await anularPagamento({ pagamentoId: rpf.pagamentoId, numero: "NP-PF-ANUL", data: new Date("2026-03-05T12:00:00Z"), historico: "Anulação do pagamento da PF", criadoPor: POR }, deps);
+    const anuladas = await prisma.receitaArrecadada.findMany({ where: { tipo: "ANULACAO" }, select: { valor: true } });
+    expect(anuladas.map((a) => a.valor.toFixed(2)).sort()).toEqual(["30.00", "50.00"]);
+    // as guias da PJ continuam vivas
+    const pj = await prisma.retencaoPropriaDoPagamento.findMany({ where: { fato: "IRRF_FORNECEDOR_PJ" }, include: { receitaArrecadada: { include: { estornos: true } } } });
+    expect(pj.map((x) => x.receitaArrecadada.estornos.length)).toEqual([0]);
+  });
+
+  it("R2-005 (legado): o IR de PF e o de PJ que ficaram na consignação, no MESMO tipo IRRF, regularizam cada um na natureza da sua decisão", async () => {
+    // O LEGADO: os dois pagamentos retiveram o IR como consignação ao município, antes das decisões.
+    const decisoes = await prisma.classificacaoDaRetencaoPropria.findMany();
+    await prisma.classificacaoDaRetencaoPropria.deleteMany({});
+    const ir = await prisma.tipoConsignacao.findUniqueOrThrow({ where: { codigo: "IRRF" } });
+    const ente = (await prisma.enteConfig.findFirstOrThrow({ select: { nome: true } })).nome;
+    const consignado = async (liq: string, numero: string, valor: string): Promise<string> => {
+      const r = await pagar({ ...pgto(liq), numero, historico: `Pagamento ${numero}` }, R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: [{ tipoConsignacaoId: ir.id, credorConsignatario: ente, valor, contaConsignacaoAPagar: P_IR }] });
+      return (await prisma.movimentoExtraorcamentario.findFirstOrThrow({ where: { pagamentoId: r.pagamentoId }, select: { id: true } })).id;
+    };
+    const ingPJ = await consignado(liqPJ, "NP-PJ-ANTIGO", "48.00");
+    const ingPF = await consignado(liqPF, "NP-PF-ANTIGO", "30.00");
+    await prisma.classificacaoDaRetencaoPropria.createMany({ data: decisoes });
+    await classificarPF();
+    const reg = (ingressoId: string) => regularizarConsignacaoPropria(prisma, { ingressoId, data: new Date("2026-03-20T12:00:00Z"), motivo: "IR do município retido como consignação antes da decisão", reconhecimentoId: null, criadoPor: POR });
+    const natureza = async (receitaId: string) => (await prisma.receitaArrecadada.findUniqueOrThrow({ where: { id: receitaId }, select: { naturezaReceita: { select: { codigo: true } } } })).naturezaReceita.codigo;
+    expect(await natureza((await reg(ingPF)).receitaId)).toBe("11130311");
+    expect(await natureza((await reg(ingPJ)).receitaId)).toBe("11130341");
+  });
+
+  it("R2-005: credor com documento fora do padrão de CPF e CNPJ — o fato do IR não se adivinha: recusa nomeando", () => {
+    expect(() => fatoProprioDoTributo("IRRF", "2998224725")).toThrow(/documento fora do padrão de CPF e de CNPJ \(2998224725\): não se sabe se o IR retido é de pessoa física ou jurídica/);
+    expect(() => fatoProprioDoTributo("IRRF", "ESTORNO_ANULACAO_PARCIAL")).toThrow(/fora do padrão/);
+    expect(fatoProprioDoTributo("ISS", "2998224725")).toBe("ISS");
+  });
+
+  it("R2-006: valor informado acima do documento fiscal é recusado; o registro antigo da PJ não é reclassificado", async () => {
+    await classificarPF();
+    await expect(pagarPF("NP-PF", { ...OP_PF, informados: { ...OP_PF.informados, IRRF: { valor: toMoney("1000.01"), justificativa: "Tabela progressiva do IRPF aplicada" } } })).rejects.toThrow(/passa do valor do documento fiscal \(1000.00\)/);
+    expect(await prisma.pagamento.count()).toBe(0);
+    expect(fatoProprioDoTributo("IRRF", "12345678000195")).toBe("IRRF_FORNECEDOR_PJ");
+    expect(fatoProprioDoTributo("IRRF", "529.982.247-25")).toBe("IRRF_PESSOA_FISICA");
+    expect([fatoProprioDoTributo("ISS", FORNECEDOR_PF), fatoProprioDoTributo("INSS", FORNECEDOR_PF)]).toEqual(["ISS", null]);
   });
 });

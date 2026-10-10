@@ -24,6 +24,7 @@ import {
 import { medirOrdemPelaPlanilha, versoesParaMedirAOrdem, type VersaoParaMedir } from "../../modules/m11-licitacoes/medicao-pela-planilha.js";
 import { estornarAditivoPorItens, preverAditivoPorItens, registrarAditivoPorItens, type ComposicaoDoAditivo } from "../../modules/m11-licitacoes/aditivo-por-itens.js";
 import { historicosDosItens, versaoNoDia } from "../../modules/m11-licitacoes/versoes-dos-itens.js";
+import { controleDoContratoParaUsuario, type LeituraDoControle } from "../../modules/m11-licitacoes/conferencia-do-controle.js";
 import { designacaoVigenteEm } from "../../modules/m33-folha/certificacao.js";
 import { cliente } from "./cliente";
 import { acoesPermitidas } from "./molde";
@@ -337,4 +338,14 @@ export async function aditivoNaTela(contratoId: string, c: Campos): Promise<stri
 export async function estornarAditivoNaTela(c: Campos): Promise<string> {
   const r = await comEscritaAutenticada("ESTORNAR_MOVIMENTO_CONTRATUAL", (criadoPor) => estornarAditivoPorItens(cliente(), { aditivoId: t(c, "aditivoId"), data: t(c, "data"), motivo: t(c, "motivo"), criadoPor }));
   return `Aditivo estornado: as versões dos itens deixaram de valer${r.movimentoEstornoId === null ? "" : " e a variação de valor foi estornada no contrato"}. O registro original continua no histórico.`;
+}
+
+/**
+ * V39-R2 (R2-008 a 013) — o CONTROLE CONTÁBIL do contrato na página dele: os lançamentos de controle (classes 7 e 8)
+ * que o roteiro CONTRATO produziu, o saldo a executar que registram e os eventos sem roteiro declarado. Leitura: quem
+ * lê licitações no ente ou alcança a projeção financeira do contrato; a fiscalização sozinha não vê o razão (a decisão
+ * e o motivo são do módulo, `controleDoContratoParaUsuario`, não de quem chama).
+ */
+export async function controleContabilDoContratoPara(sessao: Identidade, contratoId: string): Promise<LeituraDoControle> {
+  return controleDoContratoParaUsuario(cliente(), sessao.identificador, contratoId);
 }

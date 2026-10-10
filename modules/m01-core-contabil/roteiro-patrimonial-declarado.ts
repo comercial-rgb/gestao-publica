@@ -124,6 +124,8 @@ export interface RoteiroResolvido {
   readonly contaDebito: { readonly id: string };
   readonly contaCredito: { readonly id: string };
   readonly historicoPadrao: string;
+  /** V39-R2 (R2-008) — a versão declarada que resolveu o roteiro: o fato que lança a guarda. */
+  readonly versao: number;
 }
 
 /**
@@ -134,7 +136,7 @@ export async function roteiroPatrimonialVigente(tx: TxDeLeitura, familia: Famili
   const r = await tx.roteiroPatrimonialDeclarado.findFirst({
     where: { familia, chave },
     orderBy: { versao: "desc" },
-    select: { contaDebitoCodigo: true, contaCreditoCodigo: true, historicoPadrao: true },
+    select: { contaDebitoCodigo: true, contaCreditoCodigo: true, historicoPadrao: true, versao: true },
   });
   if (r === null) return null;
   const contas = await tx.contaPcasp.findMany({ where: { codigo: { in: [r.contaDebitoCodigo, r.contaCreditoCodigo] } }, select: { id: true, codigo: true } });
@@ -143,7 +145,7 @@ export async function roteiroPatrimonialVigente(tx: TxDeLeitura, familia: Famili
     if (c === undefined) throw new Error(`A conta ${codigo} do roteiro declarado de ${familia} (${chave}) não está mais no plano carregado. Declare o roteiro de novo. Nada foi gravado.`);
     return c.id;
   };
-  return { contaDebito: { id: id(r.contaDebitoCodigo) }, contaCredito: { id: id(r.contaCreditoCodigo) }, historicoPadrao: r.historicoPadrao };
+  return { contaDebito: { id: id(r.contaDebitoCodigo) }, contaCredito: { id: id(r.contaCreditoCodigo) }, historicoPadrao: r.historicoPadrao, versao: r.versao };
 }
 
 export interface RoteiroNaLista {

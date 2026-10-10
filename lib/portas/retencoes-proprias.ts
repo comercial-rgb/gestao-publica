@@ -154,6 +154,8 @@ export interface RetencaoAntigaNaTela {
   readonly natureza: string;
   /** Reconhecimentos da mesma natureza com saldo, para quando a receita já foi reconhecida. */
   readonly reconhecimentos: readonly { readonly id: string; readonly rotulo: string }[];
+  /** V39-R2 — por que esta retenção não se regulariza agora (credor com documento fora do padrão); nulo quando pode. */
+  readonly bloqueio: string | null;
 }
 
 /**
@@ -184,7 +186,15 @@ export async function lerRetencoesAntigasDoMunicipio(): Promise<readonly Retenca
   });
   const linhas: RetencaoAntigaNaTela[] = [];
   for (const m of candidatos) {
-    const fatos = m.pagamentoId === null ? undefined : await fatosDaOrigemDoPagamento(prisma, m.pagamentoId);
+    // V39-R2 — o IR de fornecedor é o da PF ou o da PJ pelo credor; credor com documento fora do padrão não se decide
+    // aqui: a linha aparece com o motivo, sem o formulário (nem some, nem derruba a tela).
+    let fatos: Awaited<ReturnType<typeof fatosDaOrigemDoPagamento>> | undefined;
+    try {
+      fatos = m.pagamentoId === null ? undefined : await fatosDaOrigemDoPagamento(prisma, m.pagamentoId);
+    } catch (e) {
+      linhas.push({ ingressoId: m.id, tipo: m.tipoConsignacao.codigo, data: diaCivilBr(m.data), pagamento: m.pagamento?.numero ?? "", valor: formatarMoeda(m.valor.toFixed(2)).texto, aRegularizar: formatarMoeda(m.valor.toFixed(2)).texto, natureza: "", reconhecimentos: [], bloqueio: e instanceof Error ? e.message : String(e) });
+      continue;
+    }
     const c = await ehTributoDoProprioTesouro(prisma, { tipoConsignacaoId: m.tipoConsignacaoId, credorConsignatario: ente.nome, contaBancariaId: m.contaBancariaId, data: hoje, fatos });
     if (c === null) continue;
     let alocado = toMoney("0.00");
@@ -206,6 +216,7 @@ export async function lerRetencoesAntigasDoMunicipio(): Promise<readonly Retenca
       aRegularizar: formatarMoeda(pendente.toFixed(2)).texto,
       natureza: c.naturezaReceitaCodigo,
       reconhecimentos: comSaldo,
+      bloqueio: null,
     });
   }
   return linhas;

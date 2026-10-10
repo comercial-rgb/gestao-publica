@@ -1,5 +1,75 @@
 # Estado da execução
 
+## V39-R2: continuidade da V39 (iniciada em 10/10/2026; vale sobre a V39 abaixo)
+
+O pedido está em `docs/lotes/V39-R2-continuidade.md`, guardado como veio. Regime: profundidade nas frentes 1 a 3 (conciliação, retenção, razão de controle); a V39 não está encerrada.
+
+### Frente 1 (R2-001 a 004) — commit c25a7201
+- **R2-001/002.** Foto do encerramento da conciliação (`FotoDoEncerramentoDaConciliacao`), gravada em REPEATABLE READ na mesma transação; o período encerrado se lê da foto; o fato registrado depois, com data no período, aparece à parte ("Registrado depois do encerramento"), e o próximo período marca as retroativas.
+  - Testes: `test/runtime/contrato-runtime-conciliacao-foto.test.ts` 2/2 com duas conexões e gancho determinístico; mutações ReadCommitted e ignorar-foto vermelhas.
+  - Na tela (3011): `scripts/percurso-v39r2-fato-tardio.mts`, 6/6.
+- **R2-003.** Os 46 scripts com login próprio passam pela guarda de destino; `test/scripts-com-login-tem-guarda.test.ts` (propriedade, mutação vermelha); recusa real conferida.
+- **R2-004.** Parâmetro de estoque e cota de consumo pelo papel de runtime: `m10-estoque-fisico` (describe de runtime), mutação vermelha.
+
+### Frente 2 (R2-005 a 007) — IR retido de pessoa física
+- **Fato próprio** `IRRF_PESSOA_FISICA`, distinto do da PJ, decidido pelo FORMATO do documento do credor (`tipoDeDocumento`).
+  - Documento fora do padrão é recusado nomeando o caso; não se adivinha PJ.
+  - A mesma regra vale na regularização do legado: um fato só, pelo credor do empenho. Na tela do legado, a linha bloqueada aparece com o motivo.
+- **Valor informado.** Sempre informado para a PF (nenhuma alíquota inventada), com justificativa e autor, e recusado acima do documento fiscal.
+- **Histórico de produção:** 0 retenções próprias e 0 decisões. Não houve o que reclassificar.
+- **Migration** `20261110050000_v39r2_fato_ir_pessoa_fisica`: amplia o CHECK por `DROP CONSTRAINT IF EXISTS` + `ADD`, no precedente de `20260913090000_v4_cnpj_alfanumerico_nos_checks`. Nenhuma linha ou coluna se apaga, e tudo que era aceito continua aceito. Vem com `prisma/sql/ck_fato_da_retencao_propria.sql`.
+- **Testes:** `m07-retencao-calculada`, describe V39-R2, 7 testes:
+  - N=2 com a PJ; a PF tem natureza 11130311 e VPA 4.1.1.2.1.03.01 próprias;
+  - legado PF × PJ no mesmo tipo IRRF;
+  - documento inválido;
+  - reenvio recusado pelo motivo.
+
+  Mutações vermelhas: legado com os dois fatos; documento inválido virando PJ; mais 2 da rodada anterior.
+- **Na tela (3011, base fictícia):** `scripts/percurso-v39r2-ir-pessoa-fisica.mts`.
+  - Pela tela, foram feitos: a natureza 1.1.1.3.03.1.1, do ementário STN 2026 em `docs/oficial/stn-sof/ementario-2026`; a consignação IRRF, na conta 2.1.8.8.1.01.04; e a decisão do IR de PF, com titular = o da conta FIC-PM-500.
+  - Depois, a prévia mostrou IR 1,50, INSS 2,20 e ISS 0,00, e o pagamento 8627455 foi feito na FIC-PM-500.
+  - No banco: `IRRF_PESSOA_FISICA` = 1,50, natureza 11130311, guia de 1,50, sem base nem alíquota, com a justificativa e o autor.
+- **Incidente, já corrigido.** A primeira corrida pagou na primeira conta da lista, a FIC-CM-500, que a ordem manda manter sem movimento nesta rodada: pagamento 8118029, de R$ 60,00.
+  - Foi anulado pela tela (`scripts/percurso-v39r2-anular-pagamento-indevido.mts`), com estorno integral 7440549.
+  - O par (pagamento e estorno) fica na FIC-CM-500, com o motivo registrado.
+  - O percurso agora escolhe a conta pelo código e recusa outra.
+
+### Frente 3 (R2-008 a 013) — controle contábil do contrato no razão
+- **O que se lança.** `LancamentoDeControleDoContrato` liga o fato do contrato ao lançamento de controle (classes 7/8) do roteiro CONTRATO declarado, com a versão do roteiro.
+  - Fatos que lançam: REGISTRO (cadastro do contrato), ACRESCIMO e SUPRESSAO (aditivo de valor, inclusive por itens), EXECUCAO (toda liquidação de empenho de contrato: parcela, obra, direta, restos a pagar).
+  - Estornos: do aditivo, da liquidação, da glosa parcial pelo valor glosado, e da glosa desfeita (estorno do estorno).
+  - O estorno inverte as contas do lançamento original. A trava do razão (`estornoDeId`) só vai no estorno único e total.
+  - O REGISTRO e os aditivos são datados no dia do registro, não no início da vigência nem na data do termo.
+- **Sem roteiro, não lança, e a tela diz:**
+  - quais eventos estão sem roteiro;
+  - "controle não aberto", para contrato cadastrado antes do roteiro (os fatos seguintes dele não lançam);
+  - **divergência**, quando o "a executar" do controle difere de valor atualizado − liquidado (evento ocorrido sem roteiro). A divergência fica visível mesmo depois de o roteiro ser declarado.
+- **Quem lê:** `controleDoContratoParaUsuario` (licitações no ente ou alcance financeiro; a fiscalização sozinha é recusada com o motivo). O link de declarar roteiros só aparece para quem parametriza.
+- **Migration** `20261110060000_v39r2_controle_contabil_do_contrato` + `prisma/sql/ck_controle_contabil_do_contrato.sql`.
+- **Testes:** `test/runtime/contrato-runtime-controle-do-contrato.test.ts`, 5/5, cada teste com semente própria.
+  - N=2 contratos; duas glosas vivas; a versão 2 do roteiro mantida no estorno depois da versão 3;
+  - divergência; recusa de leitura; idempotência; CHECK.
+  - 9 mutações vermelhas: estorno-não-inverte, sem-execução, efeito-ignora-estornos, sem-teto, controle-não-aberto, sem-divergência, leitura-sem-recusa, e as 2 da frente 2.
+- **Na tela (3011):** `scripts/percurso-v39r2-controle-do-contrato.mts`, 14/14. Roteiros declarados pela tela; processo, homologação e contrato de 12.000; acréscimo de 1.000; supressão de 250; estorno do acréscimo. O "a executar" ficou em 11.750, e no banco o estorno é C 7.1.2.3.1.02.00 / D 8.1.2.3.1.02.01.
+- **Auditoria de invariantes:** 1 achado grave (PF × PJ no legado), 3 médios (documento fora do padrão; saldo errado sem roteiro parcial; data do REGISTRO), 2 baixos (valor zero; link sem permissão) e 6 de teste. Todos corrigidos acima.
+  - Contrato de valor zero o domínio já recusa; o ramo de leitura é defensivo.
+- **Pendências de desenho, nomeadas:**
+  - `CONTROLE-POR-CATEGORIA-DE-CONTRATO`: um roteiro só para todos os contratos (serviços, fornecimento etc.), enquanto o PCASP separa por natureza.
+  - `CONTROLE-SEM-BAIXA-NA-RESCISAO`: rescisão e encerramento não baixam o saldo a executar.
+  - `CONTROLE-ABERTURA-DE-CONTRATO-ANTIGO`: não há abertura do controle para contrato anterior ao roteiro.
+
+### Bases locais
+As migrations 050000 e 060000, com os dois SQL, foram aplicadas em `gestao_publica_esperanca_ficticio` e em `gestao_publica_ensaio_v39`. O papel `gestao_app` tem SELECT e INSERT na tabela nova.
+
+### O próximo passo
+1. Commit das frentes 2 e 3, depois de verdes os testes e os typechecks em `r2-lote4`.
+2. Publicar: backup, `npm run publicar`, `/release`, e o percurso das telas em produção.
+3. Frente 4 (R2-014 a 020): o rascunho do schema e do domínio está FORA da árvore, no scratchpad da sessão (`frente4/`). Ainda faltam:
+   - as back-relations;
+   - as ações `REGISTRAR_RESULTADO_DA_LICITACAO` e `ADJUDICAR_LICITACAO`;
+   - a trava `ProcessoLicitatorio`;
+   - `gravarContratoNaTransacao` em `contratos.ts`.
+
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 
 O pedido está em `docs/lotes/V39-construcao-integral-apos-V38.md`, guardado como veio. A matriz por ID, com estado, prova e residual de cada um dos 97 itens, está em `docs/lotes/V39-matriz-por-id.md`.

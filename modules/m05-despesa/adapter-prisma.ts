@@ -58,6 +58,7 @@ import { exigirSolicitacaoParaEmpenho } from "./solicitacao-de-empenho.js";
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
 import { exigirMedicaoAprovadaDaObra } from "../m11-licitacoes/medicoes.js";
 import { conferirParcelasDaLiquidacao, gravarAlocacoesDaLiquidacao } from "../m11-licitacoes/parcelas-da-liquidacao.js";
+import { estornarControleDoContrato, lancarExecucaoDaLiquidacao } from "../m11-licitacoes/controle-contabil-do-contrato.js";
 import {
   baixarPrecatorioNoPagamento,
   exigirOrdemDoArt100,
@@ -1722,6 +1723,9 @@ export function criarDespesaRepositoryPrisma(
           },
           select: { id: true },
         });
+        // V39-R2 (R2-013) — a glosa reduz a execução do contrato: estorna, pelo valor glosado, o controle que a liquidação
+        // lançou (as contas dela). Liquidação sem controle (fora de contrato, ou sem roteiro na época): nada a inverter.
+        await estornarControleDoContrato(tx, { eventoOriginal: "EXECUCAO", origemOriginalId: original.id, origemDoEstornoId: anulacao.id, valor: p.valor, dia: diaCivil(p.data), criadoPor: p.criadoPor });
         // ⚠️ V37 — conferido DEPOIS de gravar, como em todo caminho que grava liquidação com número: a linha (empenho,
         // número) primeiro, o NumeradorDoExercicio (último posto) por último. Ordem única entre os caminhos, para dois
         // atos concorrentes com o mesmo número não se esperarem em cruz (um na linha, outro no numerador).
@@ -1991,6 +1995,8 @@ export function criarDespesaRepositoryPrisma(
             },
             select: { id: true },
           });
+          // V39-R2 (R2-013) — a glosa desfeita devolve a execução: estorna o estorno do controle que a glosa lançou.
+          await estornarControleDoContrato(tx, { eventoOriginal: "ESTORNO", origemOriginalId: parcial.id, origemDoEstornoId: estorno.id, dia: diaCivil(p.data), criadoPor: p.criadoPor });
           // V37 — conferido depois de gravar, na ordem única dos caminhos que gravam liquidação com número.
           await conferirNumeroDaLiquidacao(tx, parcial.empenhoId, p.numero, undefined);
           return estorno.id;
@@ -2281,6 +2287,8 @@ export function criarDespesaRepositoryPrisma(
         });
 
         if (p.parcelasDoContrato !== undefined) await gravarAlocacoesDaLiquidacao(tx, liq.id, p.parcelasDoContrato, p.criadoPor);
+        // V39-R2 (R2-012) — a liquidação de empenho de contrato executa o contrato no controle (mesmo commit).
+        await lancarExecucaoDaLiquidacao(tx, liq.id, p.criadoPor);
 
         // ═══ ⚠️ M10 (ENT06 item 2; sessão noturna V4 §6) — LIQUIDAR MATERIAL É UM ATO SÓ ═══
         //
@@ -2645,7 +2653,7 @@ export function criarDespesaRepositoryPrisma(
             criadoPor: p.criadoPor,
             // A memória de cada uma vem do cálculo do mesmo tributo (IR de PJ → IRRF, ISS → ISS).
             proprias: p.retencoesProprias.map((r) => {
-              const c = (p.calculosDaRetencao ?? []).find((x) => (r.fato === "IRRF_FORNECEDOR_PJ" ? x.tributo === "IRRF" : x.tributo === r.fato) && x.valor.equals(r.valor));
+              const c = (p.calculosDaRetencao ?? []).find((x) => (r.fato === "IRRF_FORNECEDOR_PJ" || r.fato === "IRRF_PESSOA_FISICA" ? x.tributo === "IRRF" : x.tributo === r.fato) && x.valor.equals(r.valor));
               return c === undefined ? r : { ...r, memoria: { base: c.base, aliquota: c.aliquota, fundamento: c.fundamento, entrada: c.entrada } };
             }),
           });
@@ -2731,6 +2739,8 @@ export function criarDespesaRepositoryPrisma(
         if (original.lancamentoId !== null) {
           await inverterControleDoFato(tx, { lancamentoOriginalId: original.lancamentoId, lancamentoDaAnulacaoId: lancamento.id, evento: "ANULACAO_LIQUIDACAO", data: p.data, criadoPor: p.criadoPor });
         }
+        // V39-R2 (R2-013) — a liquidação das parcelas do contrato desfaz o controle da EXECUÇÃO que lançou (as contas dela).
+        await estornarControleDoContrato(tx, { eventoOriginal: "EXECUCAO", origemOriginalId: original.id, origemDoEstornoId: anulacao.id, dia: diaCivil(p.data), criadoPor: p.criadoPor });
 
         // ⚠️ V37 — POR ÚLTIMO, como na liquidação: a cascata (acima) trava a classe, de posto menor que o
         // NumeradorDoExercicio. Conferido antes, anular liquidação de material com número só de dígitos era recusado

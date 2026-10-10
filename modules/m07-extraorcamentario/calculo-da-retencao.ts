@@ -370,6 +370,10 @@ export function calcularRetencoes(op: OperacaoDaRetencao, perfil: PerfilFiscal |
       throw new Error(`O ${a.tributo} foi calculado pelas tabelas; não se informa valor por cima do cálculo. Nada foi gravado.`);
     }
     if (inf.valor.isNegative()) throw new Error(`O valor informado do ${a.tributo} não pode ser negativo. Nada foi gravado.`);
+    // V39-R2 (R2-006) — coerência do valor declarado: não passa do valor do documento fiscal da operação.
+    if (inf.valor.greaterThan(op.valorDoDocumentoFiscal)) {
+      throw new Error(`O valor informado do ${a.tributo} (${inf.valor.toFixed(2)}) passa do valor do documento fiscal (${op.valorDoDocumentoFiscal.toFixed(2)}). Nada foi gravado.`);
+    }
     return { tributo: a.tributo, resultado: "INFORMADO" as const, valor: toMoney(inf.valor), fundamento: `Valor informado pelo operador: ${exigirJustificativa(inf.justificativa)} (o cálculo não cobre: ${a.motivo})` };
   });
 }

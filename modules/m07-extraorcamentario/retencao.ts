@@ -1,5 +1,5 @@
 import { toMoney, type Decimal, type Money } from "../../packages/contracts/index.js";
-import type { RetencaoParaPersistir } from "./dominio.js";
+import { FATOS_DO_IR_DE_FORNECEDOR, type RetencaoParaPersistir } from "./dominio.js";
 import {
   exigirTipoAtivo,
   totaisDoConsignatario,
@@ -256,11 +256,14 @@ export interface CalculoDaRetencaoParaPersistir {
 /** Marca, no mapa de vínculos, o tributo que casou com uma retenção própria. */
 const PROPRIA = "__retencao_propria__";
 
-/** V26 — o fato da retenção própria que o cálculo de cada tributo do pagamento de fornecedor produz. */
-const FATO_PROPRIO_DO_TRIBUTO: Readonly<Record<CalculoDaRetencaoParaPersistir["tributo"], string | null>> = {
-  IRRF: "IRRF_FORNECEDOR_PJ",
-  ISS: "ISS",
-  INSS: null,
+/**
+ * V26 — os fatos da retenção própria que o cálculo de cada tributo do pagamento de fornecedor pode produzir. V39-R2: o
+ * IR produz o da PJ ou o da PF (pelo documento do credor, decidido em `prepararRetencoesCalculadas`).
+ */
+const FATOS_PROPRIOS_DO_TRIBUTO: Readonly<Record<CalculoDaRetencaoParaPersistir["tributo"], readonly string[]>> = {
+  IRRF: FATOS_DO_IR_DE_FORNECEDOR,
+  ISS: ["ISS"],
+  INSS: [],
 };
 
 export async function registrarCalculosDaRetencao(
@@ -289,7 +292,7 @@ export async function registrarCalculosDaRetencao(
       continue;
     }
     // O IR retido de PJ e o ISS: a retenção própria do MESMO tributo e do MESMO valor.
-    const i = proprias.findIndex((r, k) => !propriasUsadas.has(k) && r.fato === FATO_PROPRIO_DO_TRIBUTO[c.tributo] && r.valor.equals(c.valor));
+    const i = proprias.findIndex((r, k) => !propriasUsadas.has(k) && FATOS_PROPRIOS_DO_TRIBUTO[c.tributo].includes(r.fato) && r.valor.equals(c.valor));
     if (c.tipoConsignacaoId === null && i >= 0) {
       propriasUsadas.add(i);
       vinculo.set(c.tributo, PROPRIA);

@@ -19,7 +19,8 @@ model ClassificacaoDaRetencaoPropria {
 
   /// O FATO, não o documento do credor: IRRF_FOLHA (IR do servidor, rendimento do trabalho),
   /// IRRF_FORNECEDOR_PJ (IR de pessoa jurídica na aquisição de bens e serviços, IN RFB 1.234/2012),
-  /// ISS (ISS do prestador, devido ao próprio município). CHECK em `prisma/sql/`.
+  /// IRRF_PESSOA_FISICA (V39-R2: IR de fornecedor pessoa física, valor informado com fundamento),
+  /// ISS (ISS do prestador, devido ao próprio município). CHECK em `prisma/sql/ck_fato_da_retencao_propria.sql`.
   fato String @db.VarChar(30)
 
   /// O tipo de consignação em que este tributo era (e no legado ainda está) retido. É por ele que o

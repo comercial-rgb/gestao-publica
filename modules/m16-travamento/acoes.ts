@@ -3728,6 +3728,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   emendasDaProposta: "leitura (V36 — as emendas de uma proposta, com a situação derivada da sanção; não muta)",
   comparativoDaDivida: "leitura (V36 — as parcelas informadas da dívida ao lado do que os pagamentos amortizaram; não muta)",
   lerExtratoImportado: "leitura (V36 — as linhas de um extrato importado, com a situação derivada dos vínculos, para consulta e impressão; não muta)",
+  lancarControleDoContrato: "interna (V39-R2 — o controle contábil de um fato do contrato, chamado DENTRO da transação de quem cadastra o contrato, registra o aditivo ou liquida as parcelas; a ação é a do serviço chamador)",
+  estornarControleDoContrato: "interna (V39-R2 — inverte o controle de um fato estornado, DENTRO da transação do estorno do aditivo ou da anulação da liquidação; a ação é a do serviço chamador)",
+  controleContabilDoContrato: "leitura (V39-R2 — os lançamentos de controle do contrato e os eventos sem roteiro declarado; não muta)",
+  lancarExecucaoDaLiquidacao: "interna (V39-R2 — a execução do contrato no controle, chamada DENTRO da transação de toda liquidação gravada; a ação é a do serviço chamador)",
+  conferenciaDoControleDoContrato: "leitura (V39-R2 — o controle do contrato conferido contra os fatos: valor atualizado menos o liquidado; não muta)",
+  controleDoContratoParaUsuario: "leitura (V39-R2 — decide quem lê o controle do contrato, com o motivo da recusa; não muta)",
   naturezaDaBase: "leitura (V39 — a declaração vigente de que a base é oficial, de demonstração ou de ensaio; não muta)",
   declararNaturezaDaBase:
     "ATO DE INSTALAÇÃO (V39), como o bootstrap: roda fora da aplicação, pelo operador do servidor " +

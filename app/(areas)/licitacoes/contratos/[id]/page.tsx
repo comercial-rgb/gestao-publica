@@ -12,7 +12,8 @@ import { contratosAction } from "../actions";
 import { alcanceDaSessaoNoContrato, dossieDoContratoPara, hojeCivil } from "../../../../../lib/portas/contrato-acompanhado";
 import { DossieDoContrato } from "./DossieDoContrato";
 import { ExecucaoDoContrato } from "./ExecucaoDoContrato";
-import { execucaoDoContratoPara } from "../../../../../lib/portas/execucao-do-contrato";
+import { controleContabilDoContratoPara, execucaoDoContratoPara } from "../../../../../lib/portas/execucao-do-contrato";
+import { ControleContabilDoContrato } from "./ControleContabilDoContrato";
 
 /**
  * O DETALHE DO CONTRATO: valor e vigência derivados dos aditivos, os empenhos que o informaram, e as ações. Os aditivos oferecidos ao estorno são SÓ os vivos deste contrato.
@@ -32,7 +33,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
   const consulta = lerConsulta(CONTRATOS, await searchParams);
   const [detalhe, opcoes, permitidas] = await Promise.all([verContrato(id), opcoesDoContrato(id), acoesPermitidas(CONTRATOS.acoes.map((a) => a.acaoDoCenso))]);
   if (detalhe === null) notFound();
-  const [dossie, execucao] = consulta.aba === "dados" ? await Promise.all([dossieDoContratoPara(sessao, id), execucaoDoContratoPara(sessao, id)]) : [null, null];
+  const [dossie, execucao, controle] = consulta.aba === "dados" ? await Promise.all([dossieDoContratoPara(sessao, id), execucaoDoContratoPara(sessao, id), controleContabilDoContratoPara(sessao, id)]) : [null, null, null];
   return (
     <div className="space-y-4">
     <DetalheDeRecurso
@@ -48,6 +49,7 @@ export default async function Detalhe({ params, searchParams }: { readonly param
     />
     {dossie !== null ? <DossieDoContrato d={dossie} hoje={hojeCivil()} /> : null}
     {execucao !== null ? <ExecucaoDoContrato e={execucao} contratoId={id} /> : null}
+    {controle !== null && "controle" in controle ? <ControleContabilDoContrato c={controle.controle} podeDeclararRoteiro={controle.podeDeclararRoteiro} /> : null}
     </div>
   );
 }

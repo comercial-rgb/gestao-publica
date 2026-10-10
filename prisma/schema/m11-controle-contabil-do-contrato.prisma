@@ -1,0 +1,45 @@
+// ----------------------------------------------------------------------------
+// V39-R2 (R2-008 a 013, V39-032) — O CONTROLE CONTÁBIL DO CONTRATO: o elo entre um fato do contrato e o lançamento
+// de controle (classes 7 e 8) que o roteiro declarado da família CONTRATO produziu.
+//
+// Um elo por (evento, origem): REGISTRO (o contrato, pelo valor inicial), ACRESCIMO e SUPRESSAO (o movimento
+// contratual), EXECUCAO (a liquidação das parcelas recebidas) e ESTORNO (o estorno de um desses). O UNIQUE é a
+// idempotência: o mesmo fato não lança duas vezes. A VERSÃO do roteiro usada fica gravada no fato — e o estorno não
+// relê o roteiro: inverte as contas que o lançamento original efetivamente usou.
+// Sem roteiro declarado para o evento, nada se lança e nada se grava aqui: a tela do contrato diz que o controle
+// daquele evento não está declarado (estado visível, não silêncio). Append-only.
+// ----------------------------------------------------------------------------
+
+model LancamentoDeControleDoContrato {
+  id String @id @default(cuid())
+
+  contratoId String
+  contrato   Contrato @relation(fields: [contratoId], references: [id])
+
+  /// Conjunto FECHADO (CHECK): REGISTRO | ACRESCIMO | SUPRESSAO | EXECUCAO | ESTORNO.
+  evento   String @db.VarChar(20)
+  /// O fato que lançou: o contrato (REGISTRO), o movimento contratual (ACRESCIMO/SUPRESSAO), a liquidação
+  /// (EXECUCAO) ou o fato do estorno (o movimento de estorno, a anulação da liquidação).
+  origemId String
+
+  lancamentoId String             @unique
+  lancamento   LancamentoContabil @relation("ControleDoContrato", fields: [lancamentoId], references: [id])
+
+  valor Decimal @db.Decimal(18, 2)
+  /// A versão do roteiro CONTRATO que resolveu as contas (nula no ESTORNO, que não lê roteiro).
+  versaoDoRoteiro Int?
+
+  /// ESTORNO: o elo que ele inverte. Pode haver mais de um (a glosa parcial da liquidação estorna parte da execução;
+  /// a anulação total, depois, estorna o resto); a soma nunca passa do efeito líquido do original (conferido no serviço).
+  /// O estorno de uma glosa desfeita é um ESTORNO que aponta o ESTORNO da glosa.
+  estornoDeId String?
+  estornoDe   LancamentoDeControleDoContrato?  @relation("EstornoDoControleDoContrato", fields: [estornoDeId], references: [id])
+  estornos    LancamentoDeControleDoContrato[] @relation("EstornoDoControleDoContrato")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([evento, origemId])
+  @@index([contratoId])
+  @@index([estornoDeId])
+}

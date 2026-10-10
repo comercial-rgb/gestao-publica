@@ -20,7 +20,7 @@ import {
   type Tributo,
 } from "./calculo-da-retencao.js";
 import { listarTiposConsignacao } from "./consultas.js";
-import type { FatoDaRetencaoPropria, RetencaoDoPagamentoInput, RetencaoPropriaParaCompor } from "./dominio.js";
+import { fatoProprioDoTributo, type FatoDaRetencaoPropria, type RetencaoDoPagamentoInput, type RetencaoPropriaParaCompor } from "./dominio.js";
 import { exigirClassificacaoPropria, mesmoPerimetro } from "./retencao-propria.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
@@ -375,7 +375,8 @@ export async function prepararRetencoesCalculadas(
     // aqui quando o local de incidência é o próprio município. Sem a decisão do ente, RECUSA nomeando.
     // Conta de OUTRO titular (fundo, autarquia): o imposto é do Tesouro, mas o dinheiro está noutra conta —
     // segue como consignação ao Tesouro, para o repasse real e conciliável.
-    const fato = FATO_PROPRIO[a.tributo];
+    // V39-R2 (R2-005) — o fato vem do tributo E do documento do credor: o IR de PF tem classificação própria.
+    const fato = fatoProprioDoTributo(a.tributo, av.documentoDoFornecedor);
     if (fato !== null) {
       const c = await exigirClassificacaoPropria(db, fato, p.data);
       if (await mesmoPerimetro(db, p.contaBancariaId, c)) {
@@ -480,11 +481,5 @@ export async function prepararRetencoesCalculadas(
   return { retencoes, calculos, proprias };
 }
 
-/** V26 — o fato da retenção própria que cada tributo do pagamento de fornecedor produz (o INSS nunca). */
-const FATO_PROPRIO: Readonly<Record<Tributo, FatoDaRetencaoPropria | null>> = {
-  IRRF: "IRRF_FORNECEDOR_PJ",
-  ISS: "ISS",
-  INSS: null,
-};
 
 export { exigirJustificativa };

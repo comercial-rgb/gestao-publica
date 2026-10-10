@@ -6,6 +6,7 @@ import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { nomeDoEnteNosDocumentos } from "../m16-travamento/apresentacao-do-ente.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { empenhadoLiquidoDoContrato, gravarAditivoNaTransacao, valorAtualizadoDoContrato } from "./contratos.js";
+import { estornarControleDoContrato } from "./controle-contabil-do-contrato.js";
 import { tipoDoEstorno, zRegistrarAditivoInput } from "./dominio.js";
 import { contratoTravado, exigirContratoVigente, type ContratoLido } from "./fiscalizacao.js";
 import { comprometidoPorItemDoContrato, manifestoCanonico } from "./ordem-de-servico.js";
@@ -320,6 +321,10 @@ export async function estornarAditivoPorItens(prisma: PrismaClient, input: Estor
         select: { id: true },
       });
       movimentoEstornoId = e.id;
+      // V39-R2 (R2-013) — o valor do aditivo por itens lançou o controle do contrato; o estorno o inverte (contas do original).
+      if (mov.tipo === "ACRESCIMO_VALOR" || mov.tipo === "SUPRESSAO_VALOR") {
+        await estornarControleDoContrato(tx, { eventoOriginal: mov.tipo === "ACRESCIMO_VALOR" ? "ACRESCIMO" : "SUPRESSAO", origemOriginalId: mov.id, origemDoEstornoId: e.id, dia: diaCivil(new Date()), criadoPor: d.criadoPor });
+      }
     }
     const r = await tx.estornoDeAditivoPorItens.create({ data: { aditivoId: a.id, movimentoEstornoId, data: inicioDoDiaCivil(d.data), motivo: d.motivo, criadoPor: d.criadoPor }, select: { id: true } });
     return { estornoId: r.id, movimentoEstornoId };

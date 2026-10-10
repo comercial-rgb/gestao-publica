@@ -9,6 +9,7 @@ import {
   FAMILIA_DO_CREDITO_TRIBUTARIO,
   FATOS_DA_RETENCAO_PROPRIA,
   ROTULO_DO_FATO_PROPRIO,
+  fatoProprioDoTributo,
   type FatoDaRetencaoPropria,
   type RetencaoPropriaParaCompor,
 } from "./dominio.js";
@@ -306,9 +307,14 @@ export async function irDaFolhaNoPagamento(
 /**
  * Os fatos possíveis de uma retenção feita num pagamento: o da FOLHA, se o pagamento é de uma liquidação de folha; o de
  * FORNECEDOR, senão. O ISS vale nos dois. É o que impede o IR antigo de um fornecedor de virar receita do IR do trabalho.
+ *
+ * ⚠️ V39-R2 (R2-005) — O IR DE FORNECEDOR É UM SÓ FATO, PELO CREDOR DO EMPENHO: o da PF (CPF) ou o da PJ (CNPJ). As
+ * duas decisões apontam, em geral, para o MESMO tipo de consignação (IRRF); oferecer os dois faria a primeira da lista
+ * vencer, e a receita de um credor PF iria para a natureza da PJ (ou o contrário). Documento fora do padrão: recusa.
  */
 export async function fatosDaOrigemDoPagamento(db: Tx, pagamentoId: string): Promise<readonly FatoDaRetencaoPropria[]> {
-  const pag = await db.pagamento.findUnique({ where: { id: pagamentoId }, select: { liquidacaoId: true } });
+  const pag = await db.pagamento.findUnique({ where: { id: pagamentoId }, select: { liquidacaoId: true, liquidacao: { select: { empenho: { select: { credorCpfCnpj: true } } } } } });
   const ehFolha = pag !== null && (await db.liquidacaoDaFolha.findUnique({ where: { liquidacaoId: pag.liquidacaoId }, select: { id: true } })) !== null;
-  return ehFolha ? ["IRRF_FOLHA", "ISS"] : ["IRRF_FORNECEDOR_PJ", "ISS"];
+  if (ehFolha || pag === null) return ["IRRF_FOLHA", "ISS"];
+  return [fatoProprioDoTributo("IRRF", pag.liquidacao.empenho.credorCpfCnpj)!, "ISS"];
 }

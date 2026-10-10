@@ -25,7 +25,9 @@ export function LinhaDoLegado({ r }: { readonly r: RetencaoAntigaNaTela }): Reac
         <span className="block text-[color:var(--color-ink-3)]">natureza {r.natureza}</span>
       </td>
       <td className="py-1.5">
-        {estado.sucesso !== undefined ? (
+        {r.bloqueio !== null ? (
+          <p role="status" data-bloqueio-da-regularizacao className="text-xs text-[color:var(--color-status-erro-fg)]">{r.bloqueio}</p>
+        ) : estado.sucesso !== undefined ? (
           <p role="status" data-resultado-da-acao="regularizar-retencao-antiga" className="text-xs text-[color:var(--color-status-ok-fg)]">{estado.sucesso}</p>
         ) : (
           <form action={action} data-acao="regularizar-retencao-antiga" className="grid gap-2 sm:grid-cols-3" aria-label={`Regularizar a retenção de ${r.tipo} do pagamento ${r.pagamento}`}>

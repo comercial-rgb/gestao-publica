@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
+import { tipoDeDocumento } from "../../packages/documento/index.js";
 import type { CalculoDaRetencaoParaPersistir } from "./retencao.js";
 import {
   validarLancamento,
@@ -360,13 +361,21 @@ export interface RetencoesDoPagamento {
 }
 
 /** V26 — os fatos de retenção que podem ser receita própria do Tesouro (CHECK no banco, mesmo rol). */
-export const FATOS_DA_RETENCAO_PROPRIA = ["IRRF_FOLHA", "IRRF_FORNECEDOR_PJ", "ISS"] as const;
+/**
+ * V39-R2 (R2-005, V39-028) — IRRF_PESSOA_FISICA: o IR que o ente retém de fornecedor PESSOA FÍSICA tem identidade
+ * própria. Até aqui ele saía gravado como IRRF_FORNECEDOR_PJ (o fato dependia só do tributo), e a classificação (a
+ * natureza da receita e as contas) era a da PJ. Agora o fato vem do tributo E do documento do credor no pagamento; a
+ * classificação da PF é decisão própria do ente (sem ela, o pagamento é recusado nomeando o cadastro). Os registros
+ * antigos ficam como estão: não se reclassifica fato pelo documento de hoje.
+ */
+export const FATOS_DA_RETENCAO_PROPRIA = ["IRRF_FOLHA", "IRRF_FORNECEDOR_PJ", "IRRF_PESSOA_FISICA", "ISS"] as const;
 export type FatoDaRetencaoPropria = (typeof FATOS_DA_RETENCAO_PROPRIA)[number];
 
 /** O rótulo do fato, como o servidor municipal o lê. */
 export const ROTULO_DO_FATO_PROPRIO: Readonly<Record<FatoDaRetencaoPropria, string>> = {
   IRRF_FOLHA: "IR retido na folha de pagamento",
   IRRF_FORNECEDOR_PJ: "IR retido de fornecedor pessoa jurídica",
+  IRRF_PESSOA_FISICA: "IR retido de fornecedor pessoa física",
   ISS: "ISS retido de prestador de serviço",
 };
 
@@ -397,8 +406,28 @@ export const FAMILIA_DO_CREDITO_TRIBUTARIO = "1.1.2.1.";
 export const FAMILIA_DA_VPA_DO_FATO: Readonly<Record<FatoDaRetencaoPropria, string>> = {
   IRRF_FOLHA: "4.1.1.2.",
   IRRF_FORNECEDOR_PJ: "4.1.1.2.",
+  IRRF_PESSOA_FISICA: "4.1.1.2.",
   ISS: "4.1.1.3.",
 };
+
+/** Os fatos do IR retido de FORNECEDOR (PJ e PF): os que o cálculo do tributo IRRF do pagamento produz. */
+export const FATOS_DO_IR_DE_FORNECEDOR: readonly FatoDaRetencaoPropria[] = ["IRRF_FORNECEDOR_PJ", "IRRF_PESSOA_FISICA"];
+
+/**
+ * Puro (R2-005): o fato próprio do tributo retido no pagamento de fornecedor. O IR é da PF quando o documento do
+ * credor é CPF; da PJ, quando é CNPJ (inclusive alfanumérico) — pelo FORMATO de `packages/documento`, não pelo
+ * comprimento. Documento fora dos dois formatos (empenho legado, CPF sem o zero à esquerda) é RECUSADO: não se sabe de
+ * quem é o IR, e adivinhar PJ seria gravar a receita na natureza errada. O INSS nunca é próprio.
+ */
+export function fatoProprioDoTributo(tributo: "IRRF" | "ISS" | "INSS", documentoDoCredor: string): FatoDaRetencaoPropria | null {
+  if (tributo === "INSS") return null;
+  if (tributo === "ISS") return "ISS";
+  const tipo = tipoDeDocumento(documentoDoCredor.replace(/[^0-9A-Za-z]/g, "").toUpperCase());
+  if (tipo === "INVALIDO") {
+    throw new Error(`O credor tem documento fora do padrão de CPF e de CNPJ (${documentoDoCredor}): não se sabe se o IR retido é de pessoa física ou jurídica. Corrija o credor do empenho. Nada foi gravado.`);
+  }
+  return tipo === "CPF" ? "IRRF_PESSOA_FISICA" : "IRRF_FORNECEDOR_PJ";
+}
 
 /**
  * O que a persistência precisa de uma retenção.

@@ -141,6 +141,8 @@ model HomologacaoProcesso {
 }
 
 model Contrato {
+  /// V39-R2 — os lançamentos de controle (classes 7 e 8) dos fatos deste contrato.
+  controlesContabeis LancamentoDeControleDoContrato[]
   numeroContrato String @unique
   id             String @id @default(cuid())
 

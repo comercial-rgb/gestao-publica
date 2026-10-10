@@ -2,6 +2,8 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { diaCivil } from "../../packages/datas/index.js";
+import { estornarControleDoContrato, lancarControleDoContrato } from "./controle-contabil-do-contrato.js";
 // A soma do empenhado é do M05 — dono do `Empenho`. O M11 delega, não recopia.
 import { empenhadoLiquidoPorContrato } from "../m05-despesa/consultas.js";
 import { exigirTetoDaDispensa } from "./limites.js";
@@ -380,6 +382,11 @@ export async function cadastrarContrato(
       },
       select: { id: true },
     });
+    // V39-R2 (R2-009) — o REGISTRO no controle (classes 7/8) pelo roteiro CONTRATO, no mesmo commit; sem roteiro
+    // declarado, não lança (a tela do contrato diz isso). ⚠️ DATADO NO DIA DO REGISTRO (o ato no sistema), não no início
+    // da vigência: um contrato de vigência futura cairia num exercício não aberto, e um cadastrado depois do travamento
+    // da competência teria o cadastro inteiro recusado pelo controle.
+    await lancarControleDoContrato(tx, { contratoId: criado.id, evento: "REGISTRO", origemId: criado.id, valor: toMoney(dados.valorInicial.toFixed(2)), dia: diaCivil(new Date()), criadoPor: dados.criadoPor });
     return { contratoId: criado.id };
   });
 }
@@ -484,6 +491,11 @@ export async function gravarAditivoNaTransacao(
       },
       select: { id: true },
     });
+    // V39-R2 (R2-010/011) — o aditivo de VALOR lança o controle (acréscimo ou supressão); a prorrogação não muda valor.
+    if ((dados.tipo === "ACRESCIMO_VALOR" || dados.tipo === "SUPRESSAO_VALOR") && dados.valor !== undefined) {
+      // Datado no dia do registro, pela mesma razão do REGISTRO (a data do termo fica no movimento).
+      await lancarControleDoContrato(tx, { contratoId: dados.contratoId, evento: dados.tipo === "ACRESCIMO_VALOR" ? "ACRESCIMO" : "SUPRESSAO", origemId: criado.id, valor: toMoney(dados.valor.toFixed(2)), dia: diaCivil(new Date()), criadoPor: dados.criadoPor });
+    }
     return { movimentoId: criado.id };
   }
 }
@@ -561,6 +573,10 @@ export async function estornarMovimentoContratual(
       },
       select: { id: true },
     });
+    // V39-R2 (R2-013) — o estorno inverte o controle que o aditivo ORIGINAL lançou (as contas dele, não o roteiro de hoje).
+    if (original.tipo === "ACRESCIMO_VALOR" || original.tipo === "SUPRESSAO_VALOR") {
+      await estornarControleDoContrato(tx, { eventoOriginal: original.tipo === "ACRESCIMO_VALOR" ? "ACRESCIMO" : "SUPRESSAO", origemOriginalId: original.id, origemDoEstornoId: criado.id, dia: diaCivil(new Date()), criadoPor: dados.criadoPor });
+    }
     return { movimentoId: criado.id };
   });
 }

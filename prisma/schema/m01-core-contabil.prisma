@@ -185,6 +185,8 @@ model LancamentoContabil {
   estornoDe      LancamentoContabil?  @relation("Estorno", fields: [estornoDeId], references: [id])
   estornos       LancamentoContabil[] @relation("Estorno")
   partidas       PartidaContabil[]
+  /// V39-R2 — o elo do controle contábil do contrato que este lançamento realiza.
+  controleDeContrato LancamentoDeControleDoContrato? @relation("ControleDoContrato")
   criadoEm       DateTime             @default(now())
   criadoPor      String
 
