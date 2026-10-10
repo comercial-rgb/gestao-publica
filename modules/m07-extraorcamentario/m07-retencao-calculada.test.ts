@@ -24,6 +24,7 @@ import { anularArrecadacao } from "../m04-receita/servico.js";
 import { criarM04Deps } from "../m04-receita/adapter-prisma.js";
 import { anularPagamentoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { regularizarConsignacaoPropria } from "../m04-receita/receita-por-retencao.js";
+import { dossieDoEmpenho } from "../m05-despesa/dossie.js";
 import { reconhecerReceita, saldoReconhecidoDe } from "../m04-receita/reconhecimento.js";
 import { parsearNaturezaReceita } from "../m04-receita/natureza.js";
 import { conferirComposicaoExtra, retencoesComSaldo } from "./consultas.js";
@@ -174,6 +175,24 @@ describe("V24 — pagar() com retenção calculada", { timeout: 60000 }, () => {
     expect(valor(CRED_IR)).toEqual(["CREDITO 48.00"]);
     expect(valor(CRED_ISS)).toEqual(["CREDITO 50.00"]);
     expect(valor(FORNECEDOR)).toEqual(["DEBITO 1000.00"]);
+
+    // V39-010/011 (AUD-041/042) — O DOSSIÊ DIZ O MESMO QUE O RAZÃO: a saída de caixa é 792,00 (antes ele mostrava
+    // 890,00 = 1.000 − 110, porque ignorava o IR e o ISS próprios); o IR e o ISS aparecem como receita do município,
+    // com a guia e o lançamento dela, e NÃO entre as consignações de terceiros.
+    const { empenhoId } = await prisma.liquidacao.findUniqueOrThrow({ where: { id: liq }, select: { empenhoId: true } });
+    const d = await dossieDoEmpenho(prisma, empenhoId);
+    if (d === null || "redirecionarPara" in d) throw new Error("dossiê não lido");
+    const pd = d.liquidacoes.flatMap((x) => x.pagamentos).find((x) => x.id === r.pagamentoId);
+    expect([pd?.saidaDeCaixa.toFixed(2), pd?.totalRetido.toFixed(2), pd?.totalRetidoProprio.toFixed(2)]).toEqual(["792.00", "110.00", "98.00"]);
+    expect([d.saidaDeCaixa.toFixed(2), d.totalRetidoProprio.toFixed(2)]).toEqual(["792.00", "98.00"]);
+    expect(pd?.retencoes.map((x) => x.tipoCodigo)).toEqual(["INSS"]);
+    expect(pd?.retencoesProprias.map((x) => [x.fato, x.naturezaCodigo, x.valor.toFixed(2), x.viva, x.guia === proprias.find((y) => y.fato === x.fato)?.receitaArrecadada.numeroReceita])).toEqual([
+      ["IRRF_FORNECEDOR_PJ", "11130341", "48.00", true, true],
+      ["ISS", "11145111", "50.00", true, true],
+    ]);
+    // o lançamento da guia entra no razão da cadeia do dossiê
+    const idsNoRazao = new Set(d.lancamentos.map((x) => x.id));
+    expect(proprias.every((x) => idsNoRazao.has(x.receitaArrecadada.lancamentoId))).toBe(true);
   });
 
   it("optante do Simples: IR e INSS não retidos (com o motivo gravado), ISS pela alíquota do documento", async () => {

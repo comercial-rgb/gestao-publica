@@ -56,6 +56,15 @@ try {
     conferir(semErro(t) && (escolha || efetivada), `proposta ${proposta} abre ${escolha ? "com a escolha do fundamento" : "efetivada"}`);
   }
 
+  // V39-010/011 — o dossiê do empenho (a saída de caixa passou a descontar a retenção própria).
+  await irPara(n, page, "/despesa/empenhos");
+  const empenho = await page.$$eval("a[href^='/despesa/empenhos/']", (as) => as.map((a) => a.getAttribute("href") ?? "").find((h) => /\/despesa\/empenhos\/[^/?]+$/.test(h)) ?? "");
+  if (empenho === "") console.log("   nenhum empenho nesta base: o dossiê não foi aberto");
+  else {
+    const t = await irPara(n, page, empenho);
+    conferir(semErro(t) && /saída de caixa/i.test(t), `dossiê do empenho ${empenho} abre com a saída de caixa`);
+  }
+
   const r = await page.goto(`${n.base}/natureza-da-base`);
   conferir(r?.status() === 200, `natureza da base: ${(await r?.text())?.slice(0, 60) ?? ""}`);
 } finally {

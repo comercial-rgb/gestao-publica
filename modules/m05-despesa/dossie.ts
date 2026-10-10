@@ -118,6 +118,34 @@ export interface RetencaoDoDossie {
   readonly criadoPor: string;
 }
 
+/**
+ * V39-010/011 (AUD-041/042) — A RETENÇÃO PRÓPRIA: o IR e o ISS que o próprio ente retém e que viram RECEITA dele (a
+ * guia de receita nasce no mesmo ato do pagamento). Não é consignação de terceiro e não aparece como tal. Viva enquanto
+ * a guia não tem estorno.
+ */
+export interface RetencaoPropriaDoDossie {
+  readonly id: string;
+  readonly pagamentoId: string;
+  /** O fato da classificação (IRRF_FORNECEDOR_PJ, ISS...). */
+  readonly fato: string;
+  readonly rotulo: string;
+  /** A natureza da receita em que entrou. */
+  readonly naturezaCodigo: string;
+  readonly valor: Money;
+  /** O número da guia de receita (`ReceitaArrecadada.numeroReceita`). */
+  readonly guia: string;
+  readonly receitaId: string;
+  readonly lancamentoId: string;
+  readonly viva: boolean;
+}
+
+/** Puro: o rótulo da retenção própria pelo fato. */
+export function rotuloDaRetencaoPropria(fato: string): string {
+  if (fato.startsWith("IRRF") || fato.startsWith("IR_")) return "IR retido na fonte (receita do município)";
+  if (fato.startsWith("ISS")) return "ISS retido (receita do município)";
+  return `Retenção própria ${fato}`;
+}
+
 export interface PagamentoDoDossie {
   readonly id: string;
   readonly numero: string;
@@ -128,13 +156,18 @@ export interface PagamentoDoDossie {
   readonly pagoLiquido: Money;
   /** Σ das retenções VIVAS deste pagamento (ingressos − estornos de ingresso). */
   readonly totalRetido: Money;
-  /** valor − totalRetido: o dinheiro que de fato saiu da conta bancária. */
+  /** valor − totalRetido − totalRetidoProprio: o dinheiro que de fato saiu da conta bancária (V39: a perna do caixa
+   *  no razão é o bruto menos TODAS as retenções, as de terceiros e as próprias — ver `comporPagamentoComRetencoes`). */
   readonly saidaDeCaixa: Money;
   readonly contaBancaria: string;
   readonly fonteCodigo: string;
   readonly anulado: boolean;
   readonly cadeia: readonly FatoDaCadeia[];
   readonly retencoes: readonly RetencaoDoDossie[];
+  /** V39-010/011 — o IR e o ISS retidos como receita do próprio ente. */
+  readonly retencoesProprias: readonly RetencaoPropriaDoDossie[];
+  /** Σ das retenções próprias vivas. */
+  readonly totalRetidoProprio: Money;
 }
 
 export interface LiquidacaoDoDossie {
@@ -245,7 +278,9 @@ export interface DossieDoEmpenho {
   readonly saldoAPagar: Money;
   /** Σ das retenções vivas de todos os pagamentos deste empenho. */
   readonly totalRetido: Money;
-  /** pago − totalRetido: o que saiu do caixa por causa deste empenho. */
+  /** V39-010/011 — Σ das retenções próprias vivas (IR e ISS que viraram receita do ente). */
+  readonly totalRetidoProprio: Money;
+  /** pago − totalRetido − totalRetidoProprio: o que saiu do caixa por causa deste empenho. */
   readonly saidaDeCaixa: Money;
   readonly anulado: boolean;
   readonly status: StatusEmpenho;
@@ -447,6 +482,37 @@ export async function dossieDoEmpenho(
     retencoesPorPagamento.set(m.pagamentoId, lista);
   }
 
+  // V39-010/011 — as retenções próprias de cada pagamento, com a guia de receita e o lançamento dela.
+  const propriasLidas = await prisma.retencaoPropriaDoPagamento.findMany({
+    where: { pagamentoId: { in: pags.map((p) => p.id) } },
+    orderBy: { id: "asc" },
+    select: {
+      id: true,
+      pagamentoId: true,
+      fato: true,
+      valor: true,
+      classificacao: { select: { naturezaReceita: { select: { codigo: true } } } },
+      receitaArrecadada: { select: { id: true, numeroReceita: true, lancamentoId: true, estornos: { select: { id: true } } } },
+    },
+  });
+  const propriasPorPagamento = new Map<string, RetencaoPropriaDoDossie[]>();
+  for (const r of propriasLidas) {
+    const lista = propriasPorPagamento.get(r.pagamentoId) ?? [];
+    lista.push({
+      id: r.id,
+      pagamentoId: r.pagamentoId,
+      fato: r.fato,
+      rotulo: rotuloDaRetencaoPropria(r.fato),
+      naturezaCodigo: r.classificacao.naturezaReceita.codigo,
+      valor: toMoney(r.valor.toFixed(2)),
+      guia: r.receitaArrecadada.numeroReceita,
+      receitaId: r.receitaArrecadada.id,
+      lancamentoId: r.receitaArrecadada.lancamentoId,
+      viva: r.receitaArrecadada.estornos.length === 0,
+    });
+    propriasPorPagamento.set(r.pagamentoId, lista);
+  }
+
   const pagsPorLiquidacao = new Map<string, PagamentoDoDossie[]>();
   const pagsOriginais = pags.filter(
     (p) => p.estornoDeId === null && p.anulacaoParcialDeId === null
@@ -454,6 +520,8 @@ export async function dossieDoEmpenho(
   for (const p of pagsOriginais) {
     const retencoes = retencoesPorPagamento.get(p.id) ?? [];
     const totalRetido = retidoVivo(retencoes);
+    const retencoesProprias = propriasPorPagamento.get(p.id) ?? [];
+    const totalRetidoProprio = sumMoney(retencoesProprias.filter((r) => r.viva).map((r) => r.valor));
     const bruto = toMoney(p.valor.toFixed(2));
     const lista = pagsPorLiquidacao.get(p.liquidacaoId) ?? [];
     lista.push({
@@ -463,7 +531,7 @@ export async function dossieDoEmpenho(
       valor: bruto,
       pagoLiquido: liquidoDeUmFato(p.id, universoPag),
       totalRetido,
-      saidaDeCaixa: bruto.minus(totalRetido),
+      saidaDeCaixa: toMoney(bruto.minus(totalRetido).minus(totalRetidoProprio)),
       contaBancaria: p.contaBancaria,
       fonteCodigo: p.fonte.codigo,
       anulado: p.estornos.length > 0,
@@ -471,6 +539,8 @@ export async function dossieDoEmpenho(
         [p, ...pags.filter((x) => x.estornoDeId === p.id || x.anulacaoParcialDeId === p.id)]
       ),
       retencoes,
+      retencoesProprias,
+      totalRetidoProprio,
     });
     pagsPorLiquidacao.set(p.liquidacaoId, lista);
   }
@@ -513,6 +583,7 @@ export async function dossieDoEmpenho(
   const totalRetido = sumMoney(
     liquidacoes.flatMap((l) => l.pagamentos.map((p) => p.totalRetido))
   );
+  const totalRetidoProprio = sumMoney(liquidacoes.flatMap((l) => l.pagamentos.map((p) => p.totalRetidoProprio)));
 
   // ── O RAZÃO DE TODA A CADEIA ──────────────────────────────────────────────
   // Todo fato da despesa é 1-1 com um lançamento; o movimento extraorçamentário
@@ -523,6 +594,8 @@ export async function dossieDoEmpenho(
     ...liqs.map((l) => l.lancamentoId),
     ...pags.map((p) => p.lancamentoId),
     ...movimentos.map((m) => m.lancamentoId),
+    // V39-010/011 — a guia da retenção própria tem lançamento próprio (a receita): entra no razão da cadeia.
+    ...propriasLidas.map((r) => r.receitaArrecadada.lancamentoId),
   ]);
   const lancamentos = await lancamentosComPartidas(prisma, [...idsDeLancamento]);
 
@@ -544,7 +617,8 @@ export async function dossieDoEmpenho(
     saldoALiquidar: empenhadoLiquido.minus(liquidado),
     saldoAPagar: liquidado.minus(pago),
     totalRetido,
-    saidaDeCaixa: pago.minus(totalRetido),
+    totalRetidoProprio,
+    saidaDeCaixa: toMoney(pago.minus(totalRetido).minus(totalRetidoProprio)),
     anulado,
     status: statusDoEmpenho({ empenhado: empenhadoLiquido, liquidado, pago, anulado }),
     origem: {

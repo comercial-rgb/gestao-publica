@@ -359,8 +359,10 @@ function Valores({ dossie: d }: { readonly dossie: DossieDaTela }): React.ReactE
               valor={d.pago}
             />
             <Linha rotulo="Retido de terceiros" valor={d.totalRetido} />
+            {/* V39-010/011 — o IR e o ISS que o ente reteve como receita dele: também não saem do caixa. */}
+            {d.totalRetidoProprio === "0.00" ? null : <Linha rotulo="Retido como receita do município (IR e ISS)" valor={d.totalRetidoProprio} />}
             <Linha
-              rotulo="Saída de caixa (bruto − retido)"
+              rotulo={d.totalRetidoProprio === "0.00" ? "Saída de caixa (bruto − retido)" : "Saída de caixa (bruto − retido de terceiros − receita retida)"}
               valor={d.saidaDeCaixa}
               destaque
             />
@@ -591,6 +593,20 @@ function BlocoPagamento({
           )}
         </span>
       </div>
+
+      {p.retencoesProprias.length === 0 ? null : (
+        <ul className="mt-1.5 space-y-1 border-l-2 border-[color:var(--color-border-strong)] pl-3 text-xs" data-retencoes-proprias>
+          {p.retencoesProprias.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-baseline gap-2" data-retencao-propria={r.id}>
+              <span className="text-[color:var(--color-ink-2)]">{r.rotulo}{r.viva ? "" : " — estornada"}:</span>
+              <span className="text-[color:var(--color-ink)]">natureza {r.naturezaCodigo}</span>
+              <a className="text-[color:var(--color-primary)] hover:underline" href={`/receita/arrecadacoes/${r.receitaId}`}>guia nº {r.guia}</a>
+              <a className="text-[color:var(--color-primary)] hover:underline" data-elo="lancamento" href={`/contabilidade/lancamentos/${r.lancamentoId}`}>lançamento</a>
+              <ValorMonetario valor={r.valor} className="ml-auto" />
+            </li>
+          ))}
+        </ul>
+      )}
 
       {p.retencoes.length === 0 ? null : (
         <ul className="mt-1.5 space-y-1 border-l-2 border-[color:var(--color-border-strong)] pl-3 text-xs">

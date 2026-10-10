@@ -24,6 +24,7 @@ import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
+import { retornoSeguro } from "../../../../../lib/retorno-seguro";
 /**
  * DETALHE DA PESSOA — dados, papéis, relacionados e histórico, no MESMO contexto.
  *
@@ -57,11 +58,16 @@ function dia(d: Date): string {
 
 export default async function DetalheDaPessoaPage({
   params,
+  searchParams,
 }: {
   readonly params: Promise<{ readonly id: string }>;
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_CADASTROS");
   const { id } = await params;
+  // V39-009 — quem chega por um atalho (a prévia das retenções do pagamento) volta para lá. Só caminho interno.
+  const bruto = (await searchParams)["retorno"];
+  const retorno = typeof bruto === "string" && bruto !== "" ? retornoSeguro(bruto, "") : "";
 
   let pessoa: Awaited<ReturnType<typeof buscarPessoaDaTela>>;
   let historico: Awaited<ReturnType<typeof historicoDaPessoa>>;
@@ -150,7 +156,17 @@ export default async function DetalheDaPessoaPage({
 
       <FormPapel pessoaId={pessoa.id} papeisVigentes={[...pessoa.papeis]} />
 
-      <FormPerfilFiscal pessoaId={pessoa.id} documento={pessoa.documento} perfis={perfisFiscais} />
+      <div id="perfil-fiscal" className="space-y-2">
+        {retorno === "" ? null : (
+          <p className="text-sm">
+            <Link href={retorno} className="font-medium text-[color:var(--color-primary)] hover:underline" data-voltar>
+              Voltar ao pagamento
+            </Link>{" "}
+            <span className="text-xs text-[color:var(--color-ink-2)]">depois de registrar o perfil fiscal; o que você tinha digitado volta junto.</span>
+          </p>
+        )}
+        <FormPerfilFiscal pessoaId={pessoa.id} documento={pessoa.documento} perfis={perfisFiscais} />
+      </div>
 
       <Card>
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">

@@ -1,7 +1,9 @@
 "use client";
 
 import { AvisoDeDebitoDoCredor } from "../../../../components/ui/AvisoDeDebitoDoCredor";
-import { useActionState, useId, useRef, useState, useTransition } from "react";
+import { useActionState, useEffect, useId, useRef, useState, useTransition } from "react";
+import { guardarNaAba, lerRascunho, serializarRascunho, tirarDaAba } from "../../../../lib/rascunho-do-formulario";
+import { desmascararValor } from "../../../../lib/format/mascaras";
 import { CampoValor } from "../../../../components/ui/Campos";
 import {
   CLASSE_AREA_TEXTO,
@@ -89,6 +91,15 @@ export interface CopiaParaPagamento {
   readonly historico: string;
 }
 
+/**
+ * V39-009 (AUD-034/039) — O RASCUNHO DO PAGAMENTO QUE ATRAVESSA O ATALHO DO PERFIL FISCAL. Ao clicar em "Cadastrar ou
+ * alterar o perfil fiscal" na prévia das retenções, os campos SEGUROS (a liquidação, número, valor, data, histórico e
+ * cheque) ficam na aba; a volta (com a mesma liquidação na URL) os repõe uma vez e apaga. Nada de retenção, ordem ou
+ * justificativa: a prévia se recalcula com o perfil novo. O mesmo mecanismo do empenho (V38, AUD-015).
+ */
+const CHAVE_DO_RASCUNHO = "rascunho-do-pagamento";
+const CAMPOS_DO_RASCUNHO = ["liquidacaoId", "numero", "valor", "data", "historico", "numeroDoCheque"] as const;
+
 export function FormPagamento({
   liquidacoes,
   contas,
@@ -119,6 +130,35 @@ export function FormPagamento({
   const pedida = copia?.liquidacaoId ?? liquidacaoInicial;
   const inicial = pedida !== undefined && liquidacoes.some((l) => l.liquidacaoId === pedida) ? pedida : "";
   const [escolhida, setEscolhida] = useState<string>(inicial);
+  const [rascunho, setRascunho] = useState<Readonly<Record<string, string>> | null>(null);
+  const rascunhoLido = useRef(false);
+  useEffect(() => {
+    // Uma vez (o React de desenvolvimento roda a montagem duas vezes; a segunda leitura da aba viria vazia).
+    if (rascunhoLido.current) return;
+    rascunhoLido.current = true;
+    if (inicial === "") return;
+    const r = lerRascunho(tirarDaAba(CHAVE_DO_RASCUNHO), CAMPOS_DO_RASCUNHO, new Date());
+    if (r === null || r["liquidacaoId"] !== inicial) return;
+    for (const nome of ["numero", "data", "historico", "numeroDoCheque"] as const) {
+      const el = ref.current?.elements.namedItem(nome);
+      const v = r[nome];
+      if (v !== undefined && el instanceof HTMLInputElement) el.value = v;
+    }
+    setRascunho(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só na montagem: o rascunho volta uma vez
+  }, []);
+  /** Guarda o rascunho ao sair pelo atalho do perfil fiscal (o clique no link, antes de a página trocar). */
+  function guardarRascunhoSeForAtalho(e: React.MouseEvent<HTMLFormElement>): void {
+    const alvo = e.target instanceof Element ? e.target.closest("[data-atalho-de-cadastro]") : null;
+    if (alvo === null || ref.current === null) return;
+    const dados = new FormData(ref.current);
+    const campos: Record<string, string> = {};
+    for (const nome of CAMPOS_DO_RASCUNHO) {
+      const v = dados.get(nome);
+      if (typeof v === "string" && v !== "") campos[nome] = nome === "valor" ? desmascararValor(v) : v;
+    }
+    guardarNaAba(CHAVE_DO_RASCUNHO, serializarRascunho(campos, new Date()));
+  }
   const [conta, setConta] = useState<string>(copia?.contaBancaria ?? "");
   /**
    * As linhas de retenção. Só o NÚMERO delas é estado; os valores vivem no DOM e chegam
@@ -166,6 +206,7 @@ export function FormPagamento({
       action={action}
       data-acao="pagar"
       className={CLASSE_PAINEL_FORMULARIO}
+      onClickCapture={guardarRascunhoSeForAtalho}
     >
       <ChaveDeComando />
       <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
@@ -214,7 +255,7 @@ export function FormPagamento({
           <span className={ROTULO}>
             Valor (R$){alvo !== undefined ? `, até ${formatarMoeda(alvo.saldoAPagar).texto}` : ""}
           </span>
-          <CampoValor name="valor" required defaultValue={copia?.valor} placeholder="2.500,00" className={CAMPO} />
+          <CampoValor key={rascunho === null ? "valor" : "valor-do-rascunho"} name="valor" required defaultValue={rascunho?.["valor"] ?? copia?.valor} placeholder="2.500,00" className={CAMPO} />
         </label>
 
         <label className="text-xs text-[color:var(--color-ink-2)]">
@@ -355,7 +396,7 @@ export function FormPagamento({
             Calcular as retenções pelas tabelas oficiais (o fornecedor vem do empenho, e o perfil fiscal dele, do cadastro de pessoas)
           </span>
         </label>
-        {calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} documento={alvo?.credorCpfCnpj} /> : null}
+        {calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} documento={alvo?.credorCpfCnpj} liquidacaoId={escolhida} /> : null}
       </fieldset>
 
       {/* As duas formas não se somam: com o cálculo ligado, as linhas manuais saem do formulário. */}
@@ -527,11 +568,14 @@ function RetencaoCalculada({
   opcoes,
   formulario,
   documento,
+  liquidacaoId,
 }: {
   readonly opcoes: OpcoesDaRetencaoParaTela;
   readonly formulario: React.RefObject<HTMLFormElement | null>;
   /** V38 — o CPF/CNPJ do credor da liquidação escolhida: a pessoa física não entra na tabela do IR das pessoas jurídicas. */
   readonly documento?: string | undefined;
+  /** V39-009 — a liquidação escolhida, para o atalho do perfil fiscal voltar a ela. */
+  readonly liquidacaoId: string;
 }): React.ReactElement {
   const [previa, setPrevia] = useState<EstadoDaPrevia>({});
   const pessoaFisica = (documento ?? "").replace(/\D/g, "").length === 11;
@@ -725,6 +769,19 @@ function RetencaoCalculada({
             Fornecedor {formatarDocumento(previa.fornecedor ?? "")}:{" "}
             {previa.perfil === null || previa.perfil === undefined ? "sem perfil fiscal cadastrado" : `perfil fiscal ${previa.perfil}`}. O
             valor é calculado de novo ao pagar.
+            {previa.pessoaId === null || previa.pessoaId === undefined ? null : (
+              <>
+                {" "}
+                <a
+                  href={`/cadastros/pessoas/${previa.pessoaId}?retorno=${encodeURIComponent(`/despesa/pagamentos?liquidacao=${liquidacaoId}`)}#perfil-fiscal`}
+                  className="font-medium text-[color:var(--color-primary)] hover:underline"
+                  data-atalho-de-cadastro
+                >
+                  {previa.perfil === null ? "Cadastrar o perfil fiscal" : "Alterar o perfil fiscal"}
+                </a>{" "}
+                (o que você digitou neste pagamento volta com você).
+              </>
+            )}
           </p>
           <table className="w-full text-left">
             <thead>

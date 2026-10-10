@@ -92,6 +92,13 @@ O servidor de desenvolvimento respondeu 500 ao painel na PRIMEIRA compilação d
 - **V39-003/004/005 em produção.**
 - O percurso das telas tocadas abriu sem erro em produção.
 
+### 2ª leva (10/10/2026)
+
+| ID | O que passou a funcionar | Rota | Provas |
+|---|---|---|---|
+| V39-009 | A prévia das retenções no pagamento leva à pessoa do fornecedor para cadastrar ou alterar o perfil fiscal. A volta traz a mesma liquidação e repõe número, valor, data, histórico e cheque pelo rascunho da aba. | /despesa/pagamentos | `percurso-v39-perfil-fiscal-no-pagamento` 5/5 (fictícia); mutação da reposição vermelha |
+| V39-010/011 | O dossiê do empenho mostra o IR e o ISS retidos como receita do município, com natureza, guia e lançamento, separados das consignações. **Defeito de dinheiro corrigido:** a saída de caixa ignorava a retenção própria, e o razão credita o banco pelo bruto menos TODAS as retenções. O lançamento da guia entrou no razão da cadeia. | /despesa/empenhos/[id] | `m07-retencao-calculada` 27/27 (dossiê = razão, 792,00); mutação vermelha; testes do dossiê 53/53; dossiê aberto na fictícia |
+
 **Pendências nomeadas:**
 - `CONCILIACAO-FATO-RETROATIVO`: uma linha de extrato ou um fato do razão gravado depois do encerramento, com data dentro do período encerrado, ainda muda o relatório encerrado. O fato é datado no passado; o vínculo é por conhecimento.
 - `ENCERRAR-PERIODO-VAZIO-FIC-CM-500`: é decisão.

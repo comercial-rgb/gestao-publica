@@ -383,6 +383,18 @@ export interface RetencaoDaTela {
   readonly lancamentoId: string;
 }
 
+/** V39-010/011 — o IR e o ISS retidos como receita do próprio ente, com a guia e o lançamento dela. */
+export interface RetencaoPropriaDaTela {
+  readonly id: string;
+  readonly rotulo: string;
+  readonly naturezaCodigo: string;
+  readonly valor: string;
+  readonly guia: string;
+  readonly receitaId: string;
+  readonly lancamentoId: string;
+  readonly viva: boolean;
+}
+
 export interface PagamentoDoDossieDaTela {
   readonly id: string;
   readonly numero: string;
@@ -396,6 +408,8 @@ export interface PagamentoDoDossieDaTela {
   readonly anulado: boolean;
   readonly cadeia: readonly FatoDaCadeiaDaTela[];
   readonly retencoes: readonly RetencaoDaTela[];
+  readonly retencoesProprias: readonly RetencaoPropriaDaTela[];
+  readonly totalRetidoProprio: string;
 }
 
 export interface LiquidacaoDoDossieDaTela {
@@ -495,6 +509,8 @@ export interface DossieDaTela {
   readonly saldoALiquidar: string;
   readonly saldoAPagar: string;
   readonly totalRetido: string;
+  /** V39-010/011 — Σ das retenções próprias vivas. */
+  readonly totalRetidoProprio: string;
   readonly saidaDeCaixa: string;
   readonly anulado: boolean;
   readonly status: string;
@@ -584,6 +600,7 @@ function paraTelaODossie(d: DossieDoEmpenho): DossieDaTela {
     saldoALiquidar: d.saldoALiquidar.toFixed(2),
     saldoAPagar: d.saldoAPagar.toFixed(2),
     totalRetido: d.totalRetido.toFixed(2),
+    totalRetidoProprio: d.totalRetidoProprio.toFixed(2),
     saidaDeCaixa: d.saidaDeCaixa.toFixed(2),
     anulado: d.anulado,
     status: d.status,
@@ -630,6 +647,17 @@ function paraTelaODossie(d: DossieDoEmpenho): DossieDaTela {
           criadoPor: r.criadoPor,
           lancamentoId: r.lancamentoId,
         })),
+        retencoesProprias: p.retencoesProprias.map((r) => ({
+          id: r.id,
+          rotulo: r.rotulo,
+          naturezaCodigo: r.naturezaCodigo,
+          valor: r.valor.toFixed(2),
+          guia: r.guia,
+          receitaId: r.receitaId,
+          lancamentoId: r.lancamentoId,
+          viva: r.viva,
+        })),
+        totalRetidoProprio: p.totalRetidoProprio.toFixed(2),
       })),
     })),
     lancamentos: d.lancamentos.map((l) => ({

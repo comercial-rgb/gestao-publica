@@ -15,6 +15,8 @@ const texto = (f: FormData, k: string): string => String(f.get(k) ?? "").trim();
 export interface EstadoDaPrevia {
   readonly erro?: string;
   readonly fornecedor?: string;
+  /** V39-009 — a pessoa do fornecedor, para o atalho do perfil fiscal. */
+  readonly pessoaId?: string | null;
   readonly perfil?: string | null;
   readonly linhas?: readonly LinhaDaPrevia[];
 }
@@ -29,7 +31,7 @@ export async function previaRetencoesAction(_prev: EstadoDaPrevia, f: FormData):
   if (typeof op === "string") return { erro: op };
   try {
     const p = await previaDasRetencoes({ liquidacaoId, valorDoPagamento: valor, data: meioDiaCivil(data), operacao: op });
-    return { fornecedor: p.fornecedor, perfil: p.perfil, linhas: p.linhas };
+    return { fornecedor: p.fornecedor, pessoaId: p.pessoaId, perfil: p.perfil, linhas: p.linhas };
   } catch (e) {
     return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível calcular." };
   }

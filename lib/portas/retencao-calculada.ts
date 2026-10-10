@@ -76,7 +76,7 @@ export async function previaDasRetencoes(input: {
   readonly valorDoPagamento: string;
   readonly data: Date;
   readonly operacao: DadosFiscaisDaOperacao;
-}): Promise<{ readonly fornecedor: string; readonly perfil: string | null; readonly linhas: readonly LinhaDaPrevia[] }> {
+}): Promise<{ readonly fornecedor: string; readonly pessoaId: string | null; readonly perfil: string | null; readonly linhas: readonly LinhaDaPrevia[] }> {
   await exigirLeituraDoEnte("CONSULTAR_DESPESA");
   const av = await avaliarRetencoesDoPagamento(cliente(), {
     liquidacaoId: input.liquidacaoId,
@@ -84,8 +84,11 @@ export async function previaDasRetencoes(input: {
     data: input.data,
     operacao: input.operacao,
   });
+  // V39-009 (AUD-034/039) — a pessoa do fornecedor, para o atalho "cadastrar o perfil fiscal" na prévia.
+  const pessoa = await cliente().pessoa.findUnique({ where: { documento: av.documentoDoFornecedor }, select: { id: true } });
   return {
     fornecedor: av.documentoDoFornecedor,
+    pessoaId: pessoa?.id ?? null,
     perfil: av.perfil === null ? null : `vigente desde ${dataDaColuna(av.perfil.vigenteDesde)} (${av.perfil.fundamento})`,
     linhas: av.avaliacoes.map((a) => {
       switch (a.resultado) {
