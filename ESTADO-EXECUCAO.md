@@ -84,6 +84,14 @@ O servidor de desenvolvimento respondeu 500 ao painel na PRIMEIRA compilação d
 - Teste com o papel real: `test/runtime/contrato-runtime-conciliacao.test.ts` cria, corrige e encerra com o papel de runtime. A mutação (tirar do censo) reproduz no teste o mesmo erro de produção.
 - Resultado: 21/21 com `papel-runtime`.
 
+**Produção depois de `c36b6bc` (backup `esperanca-antes-v39b-20261010T034404Z.dump`).**
+- O deploy aplicou os grants: `has_column_privilege` deu verdadeiro nas três tabelas para `gestao_app`.
+- O percurso da continuidade foi retomado e passou com 12/12. Ele reconhece o par da caução vinculado na corrida anterior.
+- As duas justificativas foram gravadas pela tela; o banco confirma, cada uma com o seu motivo.
+- O encerrado não mudou. Encerrar antes de 31/10 foi recusado.
+- **V39-003/004/005 em produção.**
+- O percurso das telas tocadas abriu sem erro em produção.
+
 **Pendências nomeadas:**
 - `CONCILIACAO-FATO-RETROATIVO`: uma linha de extrato ou um fato do razão gravado depois do encerramento, com data dentro do período encerrado, ainda muda o relatório encerrado. O fato é datado no passado; o vínculo é por conhecimento.
 - `ENCERRAR-PERIODO-VAZIO-FIC-CM-500`: é decisão.

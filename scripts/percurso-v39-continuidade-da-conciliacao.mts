@@ -103,9 +103,14 @@ try {
   conferir(herdadas.length === antes.pendencias.length, `o seguinte herda ${String(herdadas.length)} pendência(s) do encerrado, que tinha ${String(antes.pendencias.length)}`);
   const saldosAntesDoVinculo = await page.$eval("[data-conciliacao] dl", (e) => (e.textContent ?? "").replace(/\s+/g, " ").trim());
 
-  // ── 3. o par de mesmo valor, um de cada lado ──
-  const doExtrato = herdadas.filter((h) => h.chave.startsWith("EXTRATO:"));
-  const doRazao = herdadas.filter((h) => !h.chave.startsWith("EXTRATO:"));
+  // ── 3. o par de mesmo valor, um de cada lado — entre as herdadas AINDA pendentes no novo período (uma corrida
+  //       anterior pode já ter vinculado o par: a herança é a foto do encerramento, a pendência é a de agora) ──
+  const aindaPendentes = new Set(await page.$$eval("[data-pendencia-extrato], [data-pendencia-interna]", (ls) => ls.map((l) => l.getAttribute("data-pendencia-extrato") ?? l.getAttribute("data-pendencia-interna") ?? "")));
+  const pendente = (h: { chave: string }): boolean => aindaPendentes.has(h.chave.slice(h.chave.indexOf(":") + 1));
+  const jaResolvidas = herdadas.filter((h) => !pendente(h)).length;
+  if (jaResolvidas > 0) console.log(`   ${String(jaResolvidas)} herdada(s) já vinculada(s) numa corrida anterior`);
+  const doExtrato = herdadas.filter((h) => h.chave.startsWith("EXTRATO:") && pendente(h));
+  const doRazao = herdadas.filter((h) => !h.chave.startsWith("EXTRATO:") && pendente(h));
   const pares = doExtrato.flatMap((e) => doRazao.filter((r) => r.residual === e.residual).map((r) => ({ e, r })));
   const valoresRepetidos = pares.filter((p) => pares.filter((q) => q.e.residual === p.e.residual).length > 1);
   if (pares.length === 0) console.log("   nenhum par de mesmo valor entre extrato e razão: nada a vincular");
@@ -138,7 +143,8 @@ try {
     })),
   );
   const paresVinculados = pares.length;
-  conferir(sobra.length === herdadas.length - 2 * paresVinculados, `sobraram ${String(sobra.length)} pendência(s) depois do vínculo (eram ${String(herdadas.length)})`);
+  const pendentesAntes = doExtrato.length + doRazao.length;
+  conferir(sobra.length === pendentesAntes - 2 * paresVinculados, `sobraram ${String(sobra.length)} pendência(s) depois do vínculo (eram ${String(pendentesAntes)} das herdadas ainda pendentes)`);
   const motivos: string[] = [];
   for (const p of sobra) {
     const valor = p.residual.replace("-", "");
