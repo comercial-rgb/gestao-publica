@@ -705,6 +705,29 @@ export function derivarEmendasAoOrcamento(
 }
 
 /**
+ * V39-R2 (R2-030/031) — a DISPENSAÇÃO de medicamentos ao usuário e a PERDA ou SOBRA apurada na farmácia.
+ *
+ * ⚠️ VÃO SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a conta bancária (v43), e não a quem já informa o estoque da
+ * farmácia ou já dá saída no almoxarifado: dispensar é ato do farmacêutico, com dado de saúde do usuário, e quem
+ * registra a entrada no almoxarifado não passa a entregar medicamento por isso. O administrador concede nomeando a
+ * pessoa. Inferir de outra permissão seria conceder acesso a dado de saúde sem decisão de ninguém.
+ */
+export function derivarOperacaoDaFarmacia(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    if (!perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null)) continue;
+    for (const acao of ["DISPENSAR_MEDICAMENTO", "REGISTRAR_AJUSTE_DA_FARMACIA"] as const) {
+      if (perfil.permissoes.some((p) => p.acao === acao && p.unidadeOrcId === null)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
+/**
  * V39-R2 (R2-016/017) — o JULGAMENTO e a ADJUDICAÇÃO da licitação, atos novos com ação própria.
  *
  * ⚠️ CADA UM A QUEM JÁ PRATICAVA O ATO VIZINHO, NO GLOBAL: julgar (registrar o resultado por item) vai a quem já
@@ -1931,6 +1954,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "a homologacao por ato e o contrato e a ata originados do resultado (V39-R2). Vem com REGISTRAR_RESULTADO_DA_LICITACAO " +
       "para quem ja cadastra processo no global e ADJUDICAR_LICITACAO para quem ja homologa no global.",
     derivar: derivarResultadoDaLicitacao,
+  },
+  {
+    versao: 46,
+    nome: "operacao-da-farmacia",
+    descricao:
+      "A farmacia publica passou a operar sobre o estoque do almoxarifado (V39-R2): o deposito da farmacia, a dispensacao " +
+      "ao usuario (com lote, receita e prescritor) e a perda ou sobra apurada, com motivo e destino. Vem com DISPENSAR_MEDICAMENTO " +
+      "e REGISTRAR_AJUSTE_DA_FARMACIA so para quem administra permissoes no global, que as distribui nomeando a pessoa: " +
+      "dispensar envolve dado de saude do usuario.",
+    derivar: derivarOperacaoDaFarmacia,
   },
 ];
 

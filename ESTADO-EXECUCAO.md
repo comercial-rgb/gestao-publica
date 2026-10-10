@@ -227,8 +227,56 @@ Commit da unidade: 760a4414.
 
   Os dois foram operados na 3011.
 
+### R2-030 e R2-031 (M37 sobre o M10) — dispensação, perda e sobra pelo estoque do depósito da farmácia
+- **Modelo** (`prisma/schema/m37-dispensacao.prisma`):
+  - `DepositoDaFarmacia`, um para um e sem troca (pendência TROCA-DO-DEPOSITO-DA-FARMACIA);
+  - `DispensacaoDeMedicamento`, numerada por farmácia, com identificador do usuário na unidade (sem nome), receita e prescritor, e itens com material, lote, quantidade e a saída física;
+  - `AjusteDaFarmacia`, com PERDA ou SOBRA, motivo, destino (obrigatório na perda, por CHECK), inventário opcional e movimento físico.
+
+  Append-only. Migrations `20261110110000` (as duas ações, migration própria) e `20261110120000` (tabelas e CHECKs, também em `prisma/sql/ck_ajuste_da_farmacia.sql`).
+- **M10 reorganizado sem mudar o comportamento:**
+  - `registrarSaidaFisica` virou casca que autoriza e trava, sobre `registrarSaidaFisicaNaTx`;
+  - `registrarAjusteAlmoxarifado`, do mesmo jeito, sobre `registrarAjusteAlmoxarifadoNaTx`;
+  - novo `registrarAjusteFisicoNaTx`: perda ou sobra no estoque e no razão, ao preço médio da posição;
+  - `exigirLoteComSaldo` ganhou `aceitarVencido`, que só a perda passa. Lote vencido continua não saindo por entrega nenhuma.
+- **Serviços** (`modules/m37-farmacia/operacao.ts`):
+  - `vincularDepositoAFarmacia` (CADASTRAR_FARMACIA);
+  - `dispensarMedicamentos` (DISPENSAR_MEDICAMENTO, escopo da UG do depósito). Vários itens num ato só, travando todas as classes, depois todas as posições, depois a farmácia;
+  - `registrarAjusteDaFarmacia` (REGISTRAR_AJUSTE_DA_FARMACIA).
+- **Permissões:** v46 concede as duas ações novas só a quem administra permissões no global, que as distribui nomeando a pessoa. Dispensar envolve dado de saúde, e derivar de outra permissão seria dar esse acesso sem decisão de ninguém.
+- **Tela:** Patrimônio › Farmácias públicas › "Estoque, dispensação e perdas" (`/patrimonio/farmacias/[id]`):
+  - o depósito e o vínculo;
+  - o estoque por lote, com o vencido marcado ("não se dispensa; baixe como perda");
+  - dispensar até cinco itens;
+  - perda ou sobra, com o inventário do depósito opcional;
+  - as listas de dispensações e de ajustes. O identificador do usuário e a receita só aparecem para quem dispensa.
+- **Testes:** `m37-operacao.test.ts`, 6/6, com as contas feitas à mão:
+  - vínculo sem troca;
+  - N=2 itens ao custo médio, com lançamento do consumo e numeração;
+  - vencido recusado, sem gravar o item bom da mesma dispensação;
+  - quem só informa estoque não dispensa;
+  - perda do vencido com destino e sobra ao custo médio;
+  - perda sem destino, perda maior que o lote e ajuste sem permissão, recusados com o motivo.
+
+  Mais:
+  - 2 mutações vermelhas (aceitar vencido nunca; aceitar sempre);
+  - consumidores do M10 (estoque físico, almoxarifado, domínio do estoque) 72/72;
+  - censo e atualizações 26/26.
+- **Pela tela (3011, base fictícia):** `scripts/percurso-v39r2-farmacia.mts`, 8/8. Cadastrou a farmácia e o depósito, vinculou pela tela nova, viu o estoque por lote (vazio) e os formulários, e teve a dispensação sem medicamento recusada.
+  - Não houve dispensação com estoque pela tela: nenhuma base local tem estoque de medicamento.
+  - A entrada depende da liquidação de material e do roteiro contábil do almoxarifado, e escolher essas contas é decisão da contadora. Pendência nomeada: ESTOQUE-DE-MEDICAMENTO-NA-BASE-DE-ENSAIO. O caminho com estoque está provado no teste do domínio.
+- **Pendência resolvida:** DESCARTE-DE-LOTE-VENCIDO. O vencido sai pela perda, com destino.
+- **Auditoria antes do commit, e o que se corrigiu:**
+  - **(alta)** o identificador do usuário e a receita apareciam para quem tinha DISPENSAR_MEDICAMENTO em outra unidade. Agora `podeVerDadosDaDispensacao` usa o mesmo critério do serviço (a UG do depósito da farmácia), com teste em três casos: outra UG não vê, a mesma UG vê, o global vê. Mutação vermelha;
+  - a quantidade com ponto era lida como decimal ("1.500" virava 1,5). Agora é o formato brasileiro: o ponto só agrupa milhares e "2.5" é recusado;
+  - um fato com data anterior a movimento já gravado deixava a posição dos dias seguintes negativa: a farmácia recusa data anterior ao último movimento do medicamento, nomeando a data;
+  - o estorno pelo almoxarifado de um movimento da farmácia descasaria o razão e a dispensação: agora é recusado com o motivo. Pendência nomeada: ESTORNO-DA-DISPENSACAO-E-DO-AJUSTE-DA-FARMACIA;
+  - o saldo por lote da tela usa a tabela de sinais do M10 (exaustiva) e só os movimentos até hoje;
+  - o escopo do ajuste (ação da farmácia na UG, sem a ação de ajuste de inventário do ente) está declarado no cabeçalho do serviço;
+  - testes novos: N=2 lotes do mesmo medicamento (o custo do segundo item é o médio depois do primeiro), data retroativa, ponto decimal, estorno pelo almoxarifado, sobra com posição zerada e visibilidade por unidade. `m37-operacao` 10/10; com censo e estoque físico, 46/46.
+
 ### O próximo passo
-1. (feito: frente 5) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
+1. (feito: frente 5; frente 6 R2-029, 030, 031) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 

@@ -148,6 +148,9 @@ export type AcaoDoSistema =
   | "REGISTRAR_ABASTECIMENTO"
   | "CADASTRAR_FARMACIA"
   | "INFORMAR_ESTOQUE_DA_FARMACIA"
+  // V39-R2 (R2-030/031) — a dispensação ao usuário e a perda ou sobra apurada na farmácia.
+  | "DISPENSAR_MEDICAMENTO"
+  | "REGISTRAR_AJUSTE_DA_FARMACIA"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
   | "IMPORTAR_FOLHA"
   | "IMPORTAR_TRIBUTOS"
@@ -1281,6 +1284,9 @@ export type NomeDeServico =
   | "cadastrarFarmacia"
   | "publicarVersaoDaFarmacia"
   | "informarEstoqueDaFarmacia"
+  | "vincularDepositoAFarmacia"
+  | "dispensarMedicamentos"
+  | "registrarAjusteDaFarmacia"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -2159,6 +2165,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarFarmacia: "CADASTRAR_FARMACIA",
   publicarVersaoDaFarmacia: "CADASTRAR_FARMACIA",
   informarEstoqueDaFarmacia: "INFORMAR_ESTOQUE_DA_FARMACIA",
+  // V39-R2 (R2-030/031) — o depósito da farmácia é cadastro dela; dispensar e ajustar são ações próprias.
+  vincularDepositoAFarmacia: "CADASTRAR_FARMACIA",
+  dispensarMedicamentos: "DISPENSAR_MEDICAMENTO",
+  registrarAjusteDaFarmacia: "REGISTRAR_AJUSTE_DA_FARMACIA",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3484,6 +3494,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // serviço público) ou `registrarEntradaAlmoxarifado` (a entrada avulsa), cada um a sua.
   registrarEntradaAlmoxarifadoNaTx:
     "composável interno (a entrada que nasce dentro da transação da liquidação)",
+  // V39-R2 (R2-030/031) — os corpos da saída e dos ajustes, para a dispensação e a perda/sobra da farmácia (que
+  // cobram DISPENSAR_MEDICAMENTO e REGISTRAR_AJUSTE_DA_FARMACIA e travam antes); os serviços do M10 continuam cobrando os seus.
+  podeVerDadosDaDispensacao: "leitura (V39-R2 — se quem lê pode ver o identificador do usuário e a receita: dispensar na UG do depósito da farmácia; não muta)",
+  registrarSaidaFisicaNaTx: "composável interno (o corpo da saída física; quem chama autoriza e trava classe e posição antes)",
+  registrarAjusteFisicoNaTx: "composável interno (perda ou sobra no estoque e no razão; quem chama autoriza e trava antes)",
+  registrarAjusteAlmoxarifadoNaTx: "composável interno (o eixo contábil do ajuste; quem chama autoriza e trava a classe)",
   registrarEntradaFisicaNaTx:
     "composável interno (o eixo FÍSICO da mesma entrada, na mesma transação)",
   // V37 — a perna FÍSICA da cascata da anulação total (antes só o contábil voltava). Quem cobra o crachá é

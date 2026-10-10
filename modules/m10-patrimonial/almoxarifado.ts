@@ -640,13 +640,26 @@ export async function registrarAjusteAlmoxarifado(
   input: AjusteAlmoxarifadoInput
 ): Promise<{ readonly movimentoId: string; readonly lancamentoId: string }> {
   const d = zAjusteAlmoxarifadoInput.parse(input);
-  const tipo: TipoMovimentoAlmoxarifado =
-    d.sentido === "SOBRA" ? "AJUSTE_ENTRADA" : "AJUSTE_SAIDA";
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarAjusteAlmoxarifado, "ENTE");
 
     await travarClasse(tx, d.classeDeMaterialId);
+    return registrarAjusteAlmoxarifadoNaTx(tx, d);
+  });
+}
+
+/**
+ * V39-R2 (R2-031) — O CORPO DO AJUSTE CONTÁBIL, como o `registrarSaidaConsumoNaTx`: a perda ou a sobra apurada na
+ * farmácia mexe no estoque físico e no razão num ato só. NÃO AUTORIZA, NÃO ABRE TRANSAÇÃO E NÃO TRAVA (quem chama
+ * trava a classe antes da posição física). Está no `FORA_DO_CENSO`.
+ */
+export async function registrarAjusteAlmoxarifadoNaTx(
+  tx: Tx,
+  d: z.output<typeof zAjusteAlmoxarifadoInput>
+): Promise<{ readonly movimentoId: string; readonly lancamentoId: string }> {
+  const tipo: TipoMovimentoAlmoxarifado = d.sentido === "SOBRA" ? "AJUSTE_ENTRADA" : "AJUSTE_SAIDA";
+  {
     const classe = await exigirClasse(tx, d.classeDeMaterialId);
 
     if (tipo === "AJUSTE_SAIDA") {
@@ -684,7 +697,7 @@ export async function registrarAjusteAlmoxarifado(
       select: { id: true },
     });
     return { movimentoId: criado.id, lancamentoId };
-  });
+  }
 }
 
 /**

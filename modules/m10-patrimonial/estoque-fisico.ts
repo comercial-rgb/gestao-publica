@@ -13,7 +13,7 @@ import {
   somarDiasCivis,
 } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
-import { registrarSaidaConsumoNaTx } from "./almoxarifado.js";
+import { registrarAjusteAlmoxarifadoNaTx, registrarSaidaConsumoNaTx } from "./almoxarifado.js";
 import {
   SINAL_MOVIMENTO_FISICO,
   TIPO_DO_ESTORNO_FISICO,
@@ -68,7 +68,7 @@ const zMotivo = z
   .min(5, "o motivo é o que explica o fato a quem auditar; cinco letras é o mínimo");
 
 /** A chave do lock físico: travar o material inteiro serializaria depósitos alheios. */
-function chaveDaPosicao(materialId: string, depositoId: string): string {
+export function chaveDaPosicao(materialId: string, depositoId: string): string {
   return `${materialId}:${depositoId}`;
 }
 
@@ -892,6 +892,8 @@ async function exigirLoteComSaldo(
     readonly depositoId: string;
     readonly quantidade: Money;
     readonly dia: string;
+    /** V39-R2 (R2-031) — só a baixa por PERDA (descarte do vencido) passa com lote vencido; entrega nenhuma passa. */
+    readonly aceitarVencido?: boolean;
   }
 ): Promise<void> {
   const lote = await tx.loteDeMaterial.findUnique({
@@ -902,7 +904,7 @@ async function exigirLoteComSaldo(
   // V39-R2 (R2-029, V39-070) — LOTE VENCIDO NÃO SAI. A régua é a do relatório de validade (`validadeDoEstoque`): o lote
   // que vence HOJE ainda sai (vence no fim do dia); o vencido ONTEM, não. No caso de uso: vale por tela, API e worker.
   // Lote sem validade registrada continua saindo (a validade é dado do lote, não do código).
-  if (lote.validade !== null && compararPorDiaCivil(lote.validade, meioDiaCivil(p.dia)) < 0) {
+  if (p.aceitarVencido !== true && lote.validade !== null && compararPorDiaCivil(lote.validade, meioDiaCivil(p.dia)) < 0) {
     throw new Error(
       `LOTE VENCIDO: o lote ${lote.identificacao} venceu em ${diaCivilBr(lote.validade)} e a saída é de ${diaCivilBr(meioDiaCivil(p.dia))}. ` +
         `Medicamento ou material vencido não se entrega. Nada foi gravado.`
@@ -986,6 +988,31 @@ export async function registrarSaidaFisica(
     await travar(tx, "PosicaoFisicaDeEstoque", [
       chaveDaPosicao(d.materialId, d.depositoId),
     ]);
+    return registrarSaidaFisicaNaTx(tx, d);
+  });
+}
+
+/**
+ * V39-R2 (R2-030) — O CORPO DA SAÍDA FÍSICA, SEPARADO DO SERVIÇO, pelo mesmo motivo do
+ * `registrarEntradaFisicaNaTx`: a dispensação de vários medicamentos é UM ato, e uma transação
+ * por item não dá essa garantia.
+ *
+ * ⚠️ ELE NÃO AUTORIZA, NÃO ABRE TRANSAÇÃO E NÃO TRAVA: quem chama faz as três coisas, e trava
+ * TODAS as classes (posto 12) e DEPOIS todas as posições (posto 22) antes do primeiro item —
+ * travar por item inverteria a ordem no segundo (12 depois de 22). Está no `FORA_DO_CENSO`.
+ */
+export async function registrarSaidaFisicaNaTx(
+  tx: Tx,
+  d: z.output<typeof zRegistrarSaidaFisicaInput>
+): Promise<{
+  readonly movimentoId: string;
+  readonly movimentoContabilId: string;
+  readonly lancamentoId: string;
+  readonly valorUnitario: Money;
+}> {
+  {
+    const dep = await exigirDeposito(tx, d.depositoId);
+    const mat = await exigirMaterial(tx, d.materialId);
     await exigirNaoBloqueado(tx, d.materialId, d.depositoId, d.dataMovimento);
 
     const fator = await fatorDaUnidade(tx, d.materialId, d.unidadeDeMedidaId);
@@ -1081,7 +1108,74 @@ export async function registrarSaidaFisica(
       lancamentoId: contabil.lancamentoId,
       valorUnitario: unitario,
     };
+  }
+}
+
+/**
+ * V39-R2 (R2-031) — O AJUSTE FÍSICO COM O CONTÁBIL: a PERDA (falta: vencimento, avaria, extravio) ou a SOBRA apurada,
+ * no estoque e no razão, num ato só. O valor é a quantidade pelo preço médio da posição até a data (o mesmo da saída).
+ *
+ * ⚠️ A PERDA ACEITA LOTE VENCIDO, e é o único caminho que aceita: o vencido não se entrega (R2-029), mas tem de sair da
+ * prateleira para o descarte. A sobra com a posição zerada é recusada: não há custo médio para valorá-la.
+ *
+ * ⚠️ NÃO AUTORIZA, NÃO ABRE TRANSAÇÃO E NÃO TRAVA: quem chama trava a classe (12) e depois a posição (22). FORA_DO_CENSO.
+ */
+export async function registrarAjusteFisicoNaTx(
+  tx: Tx,
+  d: {
+    readonly materialId: string;
+    readonly depositoId: string;
+    readonly loteId: string | null;
+    readonly sentido: "PERDA" | "SOBRA";
+    readonly quantidade: Money;
+    readonly dataMovimento: Date;
+    readonly motivo: string;
+    readonly criadoPor: string;
+  }
+): Promise<{ readonly movimentoId: string; readonly lancamentoId: string; readonly valorTotal: Money }> {
+  const dep = await exigirDeposito(tx, d.depositoId);
+  const mat = await exigirMaterial(tx, d.materialId);
+  await exigirNaoBloqueado(tx, d.materialId, d.depositoId, d.dataMovimento);
+  if (!d.quantidade.greaterThan(0)) throw new Error("A quantidade do ajuste tem de ser maior que zero. Nada foi gravado.");
+  if (mat.controlaLote && d.loteId === null) {
+    throw new Error(`O material ${mat.codigo} controla lote, e o ajuste não informou de qual. Nada foi gravado.`);
+  }
+  const dia = diaCivil(d.dataMovimento);
+  if (d.loteId !== null) {
+    if (d.sentido === "PERDA") {
+      await exigirLoteComSaldo(tx, { loteId: d.loteId, materialId: d.materialId, depositoId: d.depositoId, quantidade: d.quantidade, dia, aceitarVencido: true });
+    } else {
+      const lote = await tx.loteDeMaterial.findUnique({ where: { id: d.loteId }, select: { materialId: true, depositoId: true, identificacao: true } });
+      if (lote === null || lote.materialId !== d.materialId || lote.depositoId !== d.depositoId) {
+        throw new Error("O lote informado não é deste material neste depósito. Nada foi gravado.");
+      }
+    }
+  }
+  const posicao = posicaoDeEstoque(await movimentosDa(tx, d.materialId, d.depositoId), dia);
+  if (d.sentido === "PERDA" && d.quantidade.greaterThan(posicao.quantidade)) {
+    throw new Error(
+      `PERDA MAIOR QUE O ESTOQUE do material ${mat.codigo} no depósito ${dep.codigo} em ${dia}: há ${posicao.quantidade.toFixed(4)}. Nada foi gravado.`
+    );
+  }
+  if (!posicao.quantidade.greaterThan(0)) {
+    throw new Error(`O material ${mat.codigo} não tem posição no depósito ${dep.codigo} em ${dia}: não há custo médio para valorar a sobra. Registre a entrada pelo recebimento. Nada foi gravado.`);
+  }
+  const unitario = precoMedioDaPosicao(posicao);
+  const total = toMoney(d.quantidade.times(unitario).toDecimalPlaces(2));
+  if (!total.greaterThan(0)) throw new Error(`O ajuste de ${d.quantidade.toFixed(4)} vale zero ao custo médio: não há o que lançar. Nada foi gravado.`);
+  const contabil = await registrarAjusteAlmoxarifadoNaTx(tx, {
+    classeDeMaterialId: mat.classeDeMaterialId, sentido: d.sentido === "PERDA" ? "FALTA" : "SOBRA", valor: total, dataMovimento: d.dataMovimento, motivo: d.motivo, criadoPor: d.criadoPor,
   });
+  const criado = await tx.movimentoFisicoDeEstoque.create({
+    data: {
+      materialId: d.materialId, depositoId: d.depositoId, loteId: d.loteId,
+      tipo: d.sentido === "PERDA" ? "AJUSTE_SAIDA" : "AJUSTE_ENTRADA",
+      quantidade: d.quantidade.toFixed(4), valorUnitario: unitario.toFixed(6), valorTotal: total.toFixed(2),
+      dataMovimento: d.dataMovimento, movimentoAlmoxarifadoId: contabil.movimentoId, motivo: d.motivo, criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+  return { movimentoId: criado.id, lancamentoId: contabil.lancamentoId, valorTotal: total };
 }
 
 /** TR 5.18.4 — a cota é MENSAL, por setor e material, e recusa quando estoura. */
@@ -1207,6 +1301,8 @@ export async function estornarMovimentoFisico(
         operacaoId: true,
         deposito: { select: { unidadeOrcId: true } },
         estornos: { select: { id: true } },
+        itemDaDispensacao: { select: { dispensacao: { select: { numero: true, farmacia: { select: { codigo: true } } } } } },
+        ajusteDaFarmacia: { select: { sentido: true, farmacia: { select: { codigo: true } } } },
       },
     });
     if (original === null) {
@@ -1215,6 +1311,17 @@ export async function estornarMovimentoFisico(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.estornarMovimentoFisico, {
       ug: original.deposito.unidadeOrcId,
     });
+    // V39-R2 (R2-030/031) — o movimento da FARMÁCIA não se estorna por aqui: este estorno não mexe no razão (pendência
+    // ESTORNO-FISICO-E-CONTABIL-EM-CASCATA) nem na dispensação ou no ajuste que o gerou, e a farmácia continuaria
+    // listando como feito o que voltou ao estoque. Pendência nomeada: ESTORNO-DA-DISPENSACAO-E-DO-AJUSTE-DA-FARMACIA.
+    if (original.itemDaDispensacao !== null) {
+      const x = original.itemDaDispensacao.dispensacao;
+      throw new Error(`Este movimento é da dispensação nº ${String(x.numero)} da farmácia ${x.farmacia.codigo}: ele não se estorna pelo almoxarifado, porque a dispensação e o lançamento do consumo ficariam como estão. Nada foi gravado.`);
+    }
+    if (original.ajusteDaFarmacia !== null) {
+      const x = original.ajusteDaFarmacia;
+      throw new Error(`Este movimento é da ${x.sentido === "PERDA" ? "perda" : "sobra"} registrada na farmácia ${x.farmacia.codigo}: ele não se estorna pelo almoxarifado, porque o ajuste e o lançamento ficariam como estão. Nada foi gravado.`);
+    }
 
     const tipoEstorno =
       TIPO_DO_ESTORNO_FISICO[original.tipo as TipoMovimentoFisicoEstoque];

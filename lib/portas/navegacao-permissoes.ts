@@ -152,6 +152,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   REGISTRAR_ABASTECIMENTO: "patrimonio",
   CADASTRAR_FARMACIA: "patrimonio",
   INFORMAR_ESTOQUE_DA_FARMACIA: "patrimonio",
+  DISPENSAR_MEDICAMENTO: "patrimonio",
+  REGISTRAR_AJUSTE_DA_FARMACIA: "patrimonio",
   // M20 — importadores de arquivo externo (folha/tributário)
   IMPORTAR_FOLHA: "integracoes",
   IMPORTAR_TRIBUTOS: "integracoes",

@@ -1,0 +1,109 @@
+// ============================================================================
+// V39-R2 (R2-030, R2-031) — A OPERAÇÃO DA FARMÁCIA PÚBLICA: o depósito dela, a dispensação ao usuário e a perda ou
+// sobra apurada. O estoque É o do almoxarifado (M10): a farmácia aponta um depósito, e cada dispensação, perda ou
+// sobra é um movimento físico desse depósito (com o lançamento do consumo ou do ajuste). Nada de saldo paralelo.
+//
+// DADO DE SAÚDE: a dispensação guarda só o identificador que a unidade usa para o usuário (cartão ou prontuário),
+// a receita e o prescritor — nenhum nome, endereço ou diagnóstico. A lista com o identificador só aparece para quem
+// tem a ação de dispensar. Append-only: o runtime só insere.
+// ============================================================================
+
+/// O depósito do almoxarifado que É o estoque da farmácia. Um para um, e não se troca (pendência nomeada:
+/// TROCA-DO-DEPOSITO-DA-FARMACIA): trocar mudaria de onde saiu o que já foi dispensado.
+model DepositoDaFarmacia {
+  id String @id @default(cuid())
+
+  farmaciaId String @unique
+  farmacia   FarmaciaPublica @relation("DepositoDaFarmacia", fields: [farmaciaId], references: [id], onDelete: Restrict)
+  depositoId String @unique
+  deposito   Deposito @relation("FarmaciaDoDeposito", fields: [depositoId], references: [id], onDelete: Restrict)
+
+  fundamento String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// UMA DISPENSAÇÃO: a entrega de um ou mais medicamentos a um usuário, numerada por farmácia.
+model DispensacaoDeMedicamento {
+  id String @id @default(cuid())
+
+  farmaciaId String
+  farmacia   FarmaciaPublica @relation("DispensacoesDaFarmacia", fields: [farmaciaId], references: [id], onDelete: Restrict)
+  numero     Int
+
+  data DateTime
+  /// O identificador do usuário na unidade (cartão ou prontuário), como a unidade o usa. Sem nome.
+  identificacaoDoUsuario String @db.VarChar(40)
+  /// A receita (número e data, ou o documento que a unidade usa).
+  receita    String @db.VarChar(120)
+  /// Quem prescreveu, com o registro no conselho.
+  prescritor String @db.VarChar(120)
+
+  itens ItemDaDispensacao[]
+
+  criadoEm  DateTime @default(now())
+  /// Quem dispensou.
+  criadoPor String
+
+  @@unique([farmaciaId, numero])
+  @@index([farmaciaId, data])
+}
+
+model ItemDaDispensacao {
+  id String @id @default(cuid())
+
+  dispensacaoId String
+  dispensacao   DispensacaoDeMedicamento @relation(fields: [dispensacaoId], references: [id], onDelete: Restrict)
+
+  materialId String
+  material   Material @relation("ItensDispensados", fields: [materialId], references: [id], onDelete: Restrict)
+  loteId     String
+  lote       LoteDeMaterial @relation("ItensDispensadosDoLote", fields: [loteId], references: [id], onDelete: Restrict)
+  quantidade Decimal @db.Decimal(18, 4)
+
+  /// A saída do depósito que esta entrega gerou.
+  movimentoFisicoId String @unique
+  movimentoFisico   MovimentoFisicoDeEstoque @relation("SaidaDaDispensacao", fields: [movimentoFisicoId], references: [id], onDelete: Restrict)
+
+  @@index([dispensacaoId])
+  @@index([materialId])
+  @@index([loteId])
+}
+
+enum SentidoDoAjusteDaFarmacia {
+  PERDA
+  SOBRA
+}
+
+/// A PERDA (vencimento, avaria, extravio) ou a SOBRA apurada na farmácia, com o motivo e, na perda, o destino dado ao
+/// produto. Pode citar o inventário em que foi apurada.
+model AjusteDaFarmacia {
+  id String @id @default(cuid())
+
+  farmaciaId String
+  farmacia   FarmaciaPublica @relation("AjustesDaFarmacia", fields: [farmaciaId], references: [id], onDelete: Restrict)
+
+  sentido    SentidoDoAjusteDaFarmacia
+  materialId String
+  material   Material @relation("AjustesDaFarmacia", fields: [materialId], references: [id], onDelete: Restrict)
+  loteId     String?
+  lote       LoteDeMaterial? @relation("AjustesDaFarmaciaNoLote", fields: [loteId], references: [id], onDelete: Restrict)
+  quantidade Decimal @db.Decimal(18, 4)
+  data       DateTime
+
+  motivo  String
+  /// Na perda, para onde foi o produto (descarte por empresa, devolução ao fornecedor, boletim de ocorrência...).
+  destino String?
+
+  inventarioId String?
+  inventario   InventarioDeEstoque? @relation("AjustesDaFarmaciaNoInventario", fields: [inventarioId], references: [id], onDelete: Restrict)
+
+  movimentoFisicoId String @unique
+  movimentoFisico   MovimentoFisicoDeEstoque @relation("MovimentoDoAjusteDaFarmacia", fields: [movimentoFisicoId], references: [id], onDelete: Restrict)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([farmaciaId, data])
+}

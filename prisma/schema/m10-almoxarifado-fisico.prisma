@@ -34,6 +34,8 @@
 // ----------------------------------------------------------------------------
 
 model Deposito {
+  /// V39-R2 (R2-030) — a farmácia cujo estoque é este depósito. VIRTUAL.
+  farmacia DepositoDaFarmacia? @relation("FarmaciaDoDeposito")
   id     String @id @default(cuid())
   codigo String @unique @db.VarChar(10)
   nome   String
@@ -162,6 +164,9 @@ enum CategoriaDeMaterial {
 }
 
 model Material {
+  /// V39-R2 (R2-030/031) — dispensações e ajustes da farmácia. VIRTUAIS.
+  itensDispensados  ItemDaDispensacao[] @relation("ItensDispensados")
+  ajustesDaFarmacia AjusteDaFarmacia[]  @relation("AjustesDaFarmacia")
   id     String @id @default(cuid())
   codigo String @unique @db.VarChar(20)
 
@@ -253,6 +258,9 @@ model ParametroDeEstoque {
 // ----------------------------------------------------------------------------
 
 model LoteDeMaterial {
+  /// V39-R2 (R2-030/031) — dispensações e ajustes da farmácia neste lote. VIRTUAIS.
+  itensDispensados  ItemDaDispensacao[] @relation("ItensDispensadosDoLote")
+  ajustesDaFarmacia AjusteDaFarmacia[]  @relation("AjustesDaFarmaciaNoLote")
   id String @id @default(cuid())
 
   materialId String
@@ -310,6 +318,9 @@ enum TipoMovimentoFisicoEstoque {
 }
 
 model MovimentoFisicoDeEstoque {
+  /// V39-R2 (R2-030/031) — a dispensação ou o ajuste da farmácia que gerou este movimento. VIRTUAIS.
+  itemDaDispensacao ItemDaDispensacao? @relation("SaidaDaDispensacao")
+  ajusteDaFarmacia  AjusteDaFarmacia?  @relation("MovimentoDoAjusteDaFarmacia")
   id String @id @default(cuid())
 
   materialId String
@@ -491,6 +502,8 @@ model CotaDeConsumo {
 // ----------------------------------------------------------------------------
 
 model InventarioDeEstoque {
+  /// V39-R2 (R2-031) — as perdas e sobras da farmácia apuradas neste inventário. VIRTUAL.
+  ajustesDaFarmacia AjusteDaFarmacia[] @relation("AjustesDaFarmaciaNoInventario")
   id String @id @default(cuid())
 
   depositoId String

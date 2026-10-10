@@ -18,6 +18,7 @@ import {
   derivarCadastroDeContaBancaria,
   derivarEmendasAoOrcamento,
   derivarResultadoDaLicitacao,
+  derivarOperacaoDaFarmacia,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -225,6 +226,17 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     ];
     const d = derivarCadastroDeContaBancaria(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
     expect(d).toEqual(["adm CADASTRAR_CONTA_BANCARIA G"]);
+  });
+
+  it("v46: só quem administra permissões NO GLOBAL recebe dispensar e ajustar na farmácia; quem informa o estoque ou dá saída no almoxarifado não (V39-R2)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "adm", nome: "ADMIN", permissoes: [{ acao: "CONCEDER_ACAO_A_PERFIL", unidadeOrcId: null }] },
+      { id: "adm-ug", nome: "ADMIN-UG", permissoes: [{ acao: "CONCEDER_ACAO_A_PERFIL", unidadeOrcId: "ug-a" }] },
+      { id: "ja", nome: "JA-TEM", permissoes: [{ acao: "CONCEDER_ACAO_A_PERFIL", unidadeOrcId: null }, { acao: "DISPENSAR_MEDICAMENTO", unidadeOrcId: null }] },
+      { id: "farm", nome: "FARMACIA", permissoes: [{ acao: "INFORMAR_ESTOQUE_DA_FARMACIA", unidadeOrcId: null }, { acao: "REGISTRAR_SAIDA_FISICA", unidadeOrcId: null }] },
+    ];
+    const d = derivarOperacaoDaFarmacia(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect(d).toEqual(["adm DISPENSAR_MEDICAMENTO G", "adm REGISTRAR_AJUSTE_DA_FARMACIA G", "ja REGISTRAR_AJUSTE_DA_FARMACIA G"]);
   });
 
   it("v44: quem tem CADASTRAR_LOA no global recebe as duas ações da emenda; na UG, só consulta ou já tendo, não (V36)", () => {
@@ -447,6 +459,8 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 44, previa: 0, aplicada: false },
       // V39-R2 — prévia 0 na instalação limpa: as ações do julgamento e da adjudicação chegaram a ACOES_DO_ENTE pelo bootstrap.
       { versao: 45, previa: 0, aplicada: false },
+      // V39-R2 — prévia 0 na instalação limpa: as duas ações da farmácia chegaram a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 46, previa: 0, aplicada: false },
     ]);
   });
 

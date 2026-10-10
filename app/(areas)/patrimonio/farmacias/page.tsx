@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -58,6 +59,7 @@ export default async function FarmaciasPage(): Promise<React.ReactElement> {
                   <strong className="font-mono">{f.codigo}</strong>
                   <span>{f.descricao}</span>
                   <span className="text-xs text-[color:var(--color-ink-3)]">{f.ug} · versão {f.versao}{f.ativa ? "" : " · encerrada"}</span>
+                  <Link className="text-xs underline" data-operar-farmacia={f.codigo} href={`/patrimonio/farmacias/${f.id}`}>Estoque, dispensação e perdas</Link>
                 </div>
                 <p className="text-xs text-[color:var(--color-ink-2)]">{f.endereco} · responsável: {f.responsavel}</p>
                 {f.ativa ? (
