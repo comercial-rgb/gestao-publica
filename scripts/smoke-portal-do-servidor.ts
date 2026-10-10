@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "./destino-do-percurso.js";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 
 /**
@@ -17,6 +18,8 @@ import puppeteer, { type Browser, type Page } from "puppeteer";
  * primeira livre. Helpers do smoke da folha.
  */
 const BASE = process.argv[2] ?? "http://localhost:3010";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 // O percurso atravessa TRÊS papéis: o RH admite e calcula, a contabilidade fecha, e a SERVIDORA
 // entra com a própria conta para ver o que é dela (scripts/percursos-usuarios-por-papel.ts).
 const USUARIO = process.argv[3] ?? "rh@percursos.local";

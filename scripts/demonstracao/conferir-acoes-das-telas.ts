@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "../destino-do-percurso.js";
 import { writeFileSync } from "node:fs";
 import puppeteer, { type Page } from "puppeteer";
 import { ROTEIRO } from "./roteiro-da-apresentacao.js";
@@ -23,6 +24,8 @@ import { ROTEIRO } from "./roteiro-da-apresentacao.js";
  */
 
 const BASE = process.argv[2] ?? "http://localhost:3011";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 const SAIDA = process.argv[3] ?? "acoes-das-telas.txt";
 /** Opcional: rotas avulsas separadas por vírgula, no lugar do roteiro (para provar que o conferidor acusa). */
 const AVULSAS = process.argv[4];

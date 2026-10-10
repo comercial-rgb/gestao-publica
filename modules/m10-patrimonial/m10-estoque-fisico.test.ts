@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { beforeEach, describe, expect, it } from "vitest";
-import { criarPrismaDeTeste, exigirBanco } from "../../test/banco.js";
+import { criarPrismaDeTeste, criarPrismaDoPapelDeRuntime, exigirBanco } from "../../test/banco.js";
 import { limparBanco } from "../../test/limpar-banco.js";
 import {
   abrirInventarioDeEstoque,
@@ -947,5 +947,28 @@ describe("V4 (§6) · a entrada da liquidação RELACIONA um recebimento existen
     const ri = await prisma.recebimentoDeItem.findUniqueOrThrow({ where: { id: outro }, select: { recebimentoId: true, itemDeOrdemId: true } });
     const comEntrada = await prisma.recebimentoDeItem.create({ data: { recebimentoId: ri.recebimentoId, itemDeOrdemId: ri.itemDeOrdemId, quantidade: "5.0000", movimentoFisicoId: fisicaPrevia.id, criadoPor: POR }, select: { id: true } });
     await expect(liquidarConsumindo(comEntrada.id, "5", "6")).rejects.toThrow(/JÁ DEU ENTRADA FÍSICA/);
+  });
+});
+
+/**
+ * V39-R2 (R2-004) — COM O PAPEL DE RUNTIME (a conta da aplicação), definir e REDEFINIR o parâmetro de estoque e a
+ * cota de consumo. Antes da V39 o `upsert` delas pedia UPDATE que o papel não tinha ("permission denied"), e a suíte,
+ * que chamava como dono, nunca viu. A segunda chamada é o UPDATE do upsert; o efeito é lido no banco.
+ */
+describe("V39-R2 — parâmetro de estoque e cota de consumo pelo papel de runtime", () => {
+  it("define e redefine os dois, e o banco guarda o último valor", async () => {
+    const app = criarPrismaDoPapelDeRuntime();
+    try {
+      await definirParametroDeEstoque(app, { materialId, depositoId, quantidadeMinima: "50", criadoPor: POR });
+      await definirParametroDeEstoque(app, { materialId, depositoId, quantidadeMinima: "70", quantidadeMaxima: "500", criadoPor: POR });
+      await definirCotaDeConsumo(app, { setorId, materialId, competencia: "2026-03", quantidadeLimite: "100", criadoPor: POR });
+      await definirCotaDeConsumo(app, { setorId, materialId, competencia: "2026-03", quantidadeLimite: "120", criadoPor: POR });
+      const p = await prisma.parametroDeEstoque.findFirstOrThrow({ where: { materialId, depositoId } });
+      const c = await prisma.cotaDeConsumo.findFirstOrThrow({ where: { setorId, materialId, competencia: "2026-03" } });
+      expect([p.quantidadeMinima?.toFixed(4), p.quantidadeMaxima?.toFixed(4), c.quantidadeLimite.toFixed(4)]).toEqual(["70.0000", "500.0000", "120.0000"]);
+      expect(await prisma.parametroDeEstoque.count({ where: { materialId, depositoId } })).toBe(1);
+    } finally {
+      await app.$disconnect();
+    }
   });
 });

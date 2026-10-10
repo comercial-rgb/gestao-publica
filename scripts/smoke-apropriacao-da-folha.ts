@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "./destino-do-percurso.js";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 import { apresentacaoDoAto, retirarVersao } from "./percursos-disponibilidade.js";
 
@@ -18,6 +19,8 @@ import { apresentacaoDoAto, retirarVersao } from "./percursos-disponibilidade.js
  * pendência é do banco de demonstração (`FICHA-DE-PESSOAL-NOS-PERCURSOS`), não do código.
  */
 const BASE = process.argv[2] ?? "http://localhost:3010";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 // O percurso é do PAPEL: o servidor do RH CALCULA, a contabilidade FECHA — e cada um é barrado no
 // ato do outro (scripts/percursos-usuarios-por-papel.ts).
 const USUARIO = process.argv[3] ?? "rh@percursos.local";

@@ -2,6 +2,7 @@
 // shell. O smoke do ENT02 já fazia isso; este não fazia, e a única forma de rodá-lo era
 // digitar a senha como terceiro argumento, que fica gravado no `~/.zsh_history`.
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "./destino-do-percurso.js";
 import puppeteer, { type Browser, type Page } from "puppeteer";
 
 /**
@@ -36,6 +37,8 @@ import puppeteer, { type Browser, type Page } from "puppeteer";
  */
 
 const BASE = process.argv[2] ?? "http://localhost:3000";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 const USUARIO = process.argv[3] ?? "admin@cg.pb.gov.br";
 const SENHA = process.argv[4] ?? process.env["SEED_ADMIN_SENHA"] ?? "";
 

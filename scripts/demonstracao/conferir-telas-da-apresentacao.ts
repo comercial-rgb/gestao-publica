@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "../destino-do-percurso.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import puppeteer from "puppeteer";
 import { ROTEIRO } from "./roteiro-da-apresentacao.js";
@@ -16,6 +17,8 @@ import { ROTEIRO } from "./roteiro-da-apresentacao.js";
  */
 
 const BASE = process.argv[2] ?? "http://localhost:3011";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 const PASTA = process.argv[3] ?? "telas-da-apresentacao";
 const SENHA = process.env["SEED_ADMIN_SENHA"] ?? "";
 if (SENHA === "") throw new Error("SEED_ADMIN_SENHA ausente.");

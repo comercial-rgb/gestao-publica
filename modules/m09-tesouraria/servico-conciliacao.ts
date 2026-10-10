@@ -76,6 +76,21 @@ export interface ConciliacaoDoPeriodo {
     readonly referencia: string;
     readonly motivo: string;
   }[];
+  /**
+   * V39-R2 (R2-001) — de onde vêm os saldos e as pendências do `relatorio`:
+   *   · FOTO_DO_ENCERRAMENTO: a composição gravada no encerramento (a conferência como foi feita, reproduzível);
+   *   · RECALCULADO: período aberto, ou encerrado antes da foto existir (V39-R2) — a leitura de hoje.
+   */
+  readonly fonteDoRelatorio: "FOTO_DO_ENCERRAMENTO" | "RECALCULADO";
+  /** Encerrada com foto: o que a leitura de HOJE tem com data no período e a foto não tinha (fato tardio). */
+  readonly fatosTardios: readonly PendenciaDaFoto[];
+  /** Encerrada com foto: pendência da foto que hoje não aparece mais (resolvida por algo confirmado depois). */
+  readonly resolvidosDepois: readonly PendenciaDaFoto[];
+  /**
+   * Aberta, com anterior: a pendência deste período datada ANTES do início dele que não estava na herança da anterior
+   * — um fato registrado depois do encerramento da anterior, com o período afetado.
+   */
+  readonly retroativas: readonly { readonly lado: string; readonly referencia: string; readonly periodoAfetado: string }[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -191,86 +206,127 @@ export async function abrirConciliacao(
 
 export async function encerrarConciliacao(
   prisma: PrismaClient,
-  input: EncerrarConciliacaoInput
+  input: EncerrarConciliacaoInput,
+  /**
+   * SÓ PARA TESTE (R2-002): chamado dentro da transação, depois das primeiras leituras (o retrato REPEATABLE READ já
+   * tomado) e ANTES da conferência. É por ele que o teste de concorrência segura o encerramento num ponto determinado
+   * enquanto a outra conexão grava: só o isolamento mantém o que ela grava fora da conferência e da foto.
+   */
+  ganchos: { readonly depoisDoRetrato?: () => Promise<void> } = {}
 ): Promise<{ readonly conciliacaoId: string; readonly rotulo: string }> {
   const d = zEncerrarConciliacao.parse(input);
 
-  // ⚠️ A AMARRAÇÃO É COBRADA ANTES, E FORA DA TRANSAÇÃO DE ESCRITA.
+  // ⚠️ V39-R2 (R2-001/002) — TUDO NUMA TRANSAÇÃO REPEATABLE READ, E A COMPOSIÇÃO FICA GRAVADA.
   //
-  // `conciliacaoBancaria` LANÇA quando a diferença não está toda nomeada. Encerrar um
-  // período cuja identidade não fecha carimbaria como fechado um mês em que sobra
-  // dinheiro sem explicação — e o encerramento é justamente o que o controle interno lê
-  // como "isto foi conferido".
-  const antes = await prisma.conciliacaoBancaria.findUnique({
-    where: { id: d.conciliacaoId },
-    select: { contaBancariaId: true, periodoFim: true },
-  });
-  if (antes === null) {
-    throw new Error(`Conciliação ${d.conciliacaoId} não encontrada.`);
-  }
-  // ⚠️ V39-008 — NÃO SE ENCERRA O PERÍODO QUE AINDA NÃO TERMINOU. A conciliação encerrada se lê "como estava no fim do
-  // período" (vínculos gravados até o fim do último dia). Encerrada antes desse fim, ela continuaria mudando: um fato
-  // do razão datado no último dia, ou um vínculo gravado ainda naquele dia, alteraria o relatório de um período que o
-  // controle interno lê como conferido. Medido na V38: a FIC-PM-500 foi encerrada às 21h do próprio último dia.
-  const agora = new Date();
-  if (antes.periodoFim.getTime() > agora.getTime()) {
-    throw new Error(
-      `O período termina em ${diaCivil(antes.periodoFim).split("-").reverse().join("/")} e ainda não acabou. ` +
-        `Encerrar agora deixaria o fechamento mudar com o que ainda for registrado nesse dia. ` +
-        `Encerre depois do fim do período. Nada foi gravado.`
-    );
-  }
-  // V39 (auditoria) — o encerramento lê os vínculos de AGORA: a conciliação se faz depois do fim do período, e com o
-  // conhecimento no corte nenhum vínculo feito depois contaria (a mensagem mandaria vincular, e vincular nada resolveria).
-  const relatorio = await conciliacaoBancaria(prisma, antes.contaBancariaId, antes.periodoFim, { conhecimento: conhecimentoDaConciliacao(antes.periodoFim, null, agora) });
+  // Até a V39 o relatório era calculado FORA da transação de escrita e as justificativas DENTRO: dois retratos do
+  // banco. E nada da conferência ficava gravado — a leitura do encerrado recalculava, e um fato registrado depois
+  // (com data no período) mudava o que tinha sido conferido. Agora a conferência, a cobrança das justificativas e a
+  // gravação do encerramento e da FOTO acontecem num retrato só (REPEATABLE READ: toda leitura da transação vê o
+  // mesmo instante). O que outra conexão confirmar depois desse retrato não entra na foto e aparece, na leitura, como
+  // fato tardio — com o período afetado. O índice único parcial do ENCERRAR continua fechando o encerramento duplo.
+  return prisma.$transaction(
+    async (tx) => {
+      await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.encerrarConciliacao, "ENTE");
 
-  return prisma.$transaction(async (tx) => {
-    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.encerrarConciliacao, "ENTE");
+      const c = await tx.conciliacaoBancaria.findUnique({
+        where: { id: d.conciliacaoId },
+        select: {
+          id: true,
+          contaBancariaId: true,
+          periodoInicio: true,
+          periodoFim: true,
+          movimentos: { select: { tipo: true, criadoEm: true } },
+          justificativas: { select: { lado: true, referencia: true, motivo: true } },
+        },
+      });
+      if (c === null) throw new Error(`Conciliação ${d.conciliacaoId} não encontrada.`);
 
-    const c = await tx.conciliacaoBancaria.findUniqueOrThrow({
-      where: { id: d.conciliacaoId },
-      select: {
-        id: true,
-        periodoInicio: true,
-        periodoFim: true,
-        movimentos: { select: { tipo: true, criadoEm: true } },
-        justificativas: { select: { lado: true, referencia: true } },
-      },
-    });
+      exigirConciliacaoAberta(c.movimentos, { inicio: c.periodoInicio, fim: c.periodoFim }, "o encerramento");
+      await ganchos.depoisDoRetrato?.();
 
-    exigirConciliacaoAberta(
-      c.movimentos,
-      { inicio: c.periodoInicio, fim: c.periodoFim },
-      "o encerramento"
-    );
+      // ⚠️ V39-008 — NÃO SE ENCERRA O PERÍODO QUE AINDA NÃO TERMINOU (medido na V38: a FIC-PM-500 foi encerrada às 21h
+      // do próprio último dia).
+      const agora = new Date();
+      if (c.periodoFim.getTime() > agora.getTime()) {
+        throw new Error(
+          `O período termina em ${diaCivil(c.periodoFim).split("-").reverse().join("/")} e ainda não acabou. ` +
+            `Encerrar agora deixaria o fechamento mudar com o que ainda for registrado nesse dia. ` +
+            `Encerre depois do fim do período. Nada foi gravado.`
+        );
+      }
 
-    // ⚠️ V39-008 — A PENDÊNCIA QUE ATRAVESSA O FECHAMENTO LEVA O MOTIVO, e quem cobra é o SERVIÇO.
-    //
-    // A diferença sem explicação (acima) é PROIBIDA: a conciliação nem sai. A pendência é PERMITIDA — o cheque não
-    // compensado, o depósito em trânsito passam ao período seguinte —, mas não muda: encerrar é irreversível e o
-    // controle interno lê o encerramento como "isto foi conferido". Na V38 um roteiro de teste encerrou a FIC-PM-500
-    // com quatro pendências sem justificativa: a única proteção era o roteiro conferir antes. Agora é esta.
-    const pendentes = semJustificativa(relatorio, c.justificativas);
-    if (pendentes.length > 0) {
-      throw new Error(
-        `Encerrar leva as pendências ao período seguinte, e cada uma leva o motivo. ` +
-          `${String(pendentes.length)} pendência(s) sem justificativa: ${pendentes.slice(0, 5).join("; ")}` +
-          `${pendentes.length > 5 ? `; e mais ${String(pendentes.length - 5)}` : ""}. ` +
-          `Vincule ou justifique cada uma e encerre de novo. Nada foi gravado.`
-      );
-    }
+      // A amarração: `conciliacaoBancaria` LANÇA quando a diferença não está toda nomeada (a recusa proibida). Os
+      // vínculos contam até agora — a conciliação se faz depois do fim do período (auditoria da V39).
+      const relatorio = await conciliacaoBancaria(tx as unknown as PrismaClient, c.contaBancariaId, c.periodoFim, {
+        conhecimento: conhecimentoDaConciliacao(c.periodoFim, null, agora),
+      });
 
-    // O índice único parcial no banco é quem fecha a corrida de dois encerramentos
-    // simultâneos; este guard é a mensagem legível do caminho sequencial.
-    await tx.movimentoDaConciliacao.create({
-      data: { conciliacaoId: c.id, tipo: "ENCERRAR", criadoPor: d.criadoPor },
-    });
+      // ⚠️ V39-008 — a pendência que atravessa o fechamento leva o motivo (a recusa é do serviço, não do roteiro).
+      const pendentes = semJustificativa(relatorio, c.justificativas);
+      if (pendentes.length > 0) {
+        throw new Error(
+          `Encerrar leva as pendências ao período seguinte, e cada uma leva o motivo. ` +
+            `${String(pendentes.length)} pendência(s) sem justificativa: ${pendentes.slice(0, 5).join("; ")}` +
+            `${pendentes.length > 5 ? `; e mais ${String(pendentes.length - 5)}` : ""}. ` +
+            `Vincule ou justifique cada uma e encerre de novo. Nada foi gravado.`
+        );
+      }
 
-    return {
-      conciliacaoId: c.id,
-      rotulo: rotuloDoPeriodo(c.periodoInicio, c.periodoFim),
-    };
-  });
+      await tx.movimentoDaConciliacao.create({
+        data: { conciliacaoId: c.id, tipo: "ENCERRAR", criadoPor: d.criadoPor },
+      });
+      await tx.fotoDoEncerramentoDaConciliacao.create({
+        data: {
+          conciliacaoId: c.id,
+          saldoExtrato: relatorio.saldoExtrato,
+          saldoContabil: relatorio.saldoContabil,
+          diferenca: relatorio.diferenca,
+          pendencias: composicaoDaFoto(relatorio, c.justificativas) as unknown as object,
+          criadoPor: d.criadoPor,
+        },
+      });
+
+      return { conciliacaoId: c.id, rotulo: rotuloDoPeriodo(c.periodoInicio, c.periodoFim) };
+    },
+    { isolationLevel: "RepeatableRead", timeout: 120_000 }
+  );
+}
+
+/** Uma pendência como a foto a guarda: identificada (lado, referência), datada, com valor e motivo. */
+export interface PendenciaDaFoto {
+  readonly lado: string;
+  readonly referencia: string;
+  readonly data: string;
+  readonly descricao: string;
+  readonly residual: string;
+  readonly justificativa: string | null;
+}
+
+/** Puro: a composição conferida — cada pendência dos dois lados, com a justificativa vigente. */
+export function composicaoDaFoto(
+  relatorio: Pick<ConciliacaoBancaria, "noExtratoSemVinculo" | "internoSemVinculo">,
+  justificativas: readonly { readonly lado: string; readonly referencia: string; readonly motivo: string }[]
+): readonly PendenciaDaFoto[] {
+  const motivo = (lado: string, ref: string): string | null => justificativas.find((j) => j.lado === lado && j.referencia === ref)?.motivo ?? null;
+  return [
+    ...relatorio.noExtratoSemVinculo.map((l) => ({ lado: "EXTRATO", referencia: l.id, data: l.data.toISOString(), descricao: l.descricao, residual: String(l.residual), justificativa: motivo("EXTRATO", l.id) })),
+    ...relatorio.internoSemVinculo.map((l) => ({ lado: String(l.tipoInterno), referencia: l.id, data: l.data.toISOString(), descricao: l.descricao, residual: String(l.residual), justificativa: motivo(String(l.tipoInterno), l.id) })),
+  ];
+}
+
+/**
+ * Puro (R2-001): o que a leitura de HOJE tem e a foto não tinha — e vice-versa. "Tardio" é o fato com data no período
+ * que entrou depois do encerramento (ou numa transação confirmada depois do retrato); "resolvido depois" é a pendência
+ * da foto que hoje não aparece mais (um vínculo confirmado depois). As duas listas se mostram À PARTE da foto.
+ */
+export function diferencaDaFoto(
+  foto: readonly PendenciaDaFoto[],
+  hoje: readonly PendenciaDaFoto[]
+): { readonly tardios: readonly PendenciaDaFoto[]; readonly resolvidosDepois: readonly PendenciaDaFoto[] } {
+  const chave = (x: PendenciaDaFoto): string => `${x.lado}:${x.referencia}:${x.residual}`;
+  const naFoto = new Set(foto.map(chave));
+  const agora = new Set(hoje.map(chave));
+  return { tardios: hoje.filter((x) => !naFoto.has(chave(x))), resolvidosDepois: foto.filter((x) => !agora.has(chave(x))) };
 }
 
 /**
@@ -456,9 +512,36 @@ export async function lerConciliacao(
   }
 
   const encerramento = c.movimentos.find((m) => m.tipo === "ENCERRAR");
-  const relatorio = await conciliacaoBancaria(prisma, c.contaBancariaId, c.periodoFim, {
+  const recalculado = await conciliacaoBancaria(prisma, c.contaBancariaId, c.periodoFim, {
     conhecimento: conhecimentoDaConciliacao(c.periodoFim, encerramento?.criadoEm ?? null, new Date()),
   });
+
+  // V39-R2 (R2-001) — encerrada com foto: a conferência se lê pela foto; o recálculo de hoje só aponta a diferença.
+  const foto = encerramento === undefined ? null : await prisma.fotoDoEncerramentoDaConciliacao.findUnique({ where: { conciliacaoId: c.id } });
+  const fotoPendencias = foto === null ? null : (foto.pendencias as unknown as readonly PendenciaDaFoto[]);
+  const relatorio: ConciliacaoBancaria =
+    foto === null || fotoPendencias === null
+      ? recalculado
+      : {
+          ...recalculado,
+          saldoExtrato: serializar(toMoney(foto.saldoExtrato.toFixed(2))),
+          saldoContabil: serializar(toMoney(foto.saldoContabil.toFixed(2))),
+          diferenca: serializar(toMoney(foto.diferenca.toFixed(2))),
+          noExtratoSemVinculo: fotoPendencias.filter((x) => x.lado === "EXTRATO").map((x) => ({ id: x.referencia, data: new Date(x.data), descricao: x.descricao, residual: x.residual as Dinheiro })),
+          internoSemVinculo: fotoPendencias.filter((x) => x.lado !== "EXTRATO").map((x) => ({ id: x.referencia, data: new Date(x.data), descricao: x.descricao, residual: x.residual as Dinheiro, tipoInterno: x.lado as ConciliacaoBancaria["internoSemVinculo"][number]["tipoInterno"] })),
+        };
+  const diferenca = fotoPendencias === null ? { tardios: [], resolvidosDepois: [] } : diferencaDaFoto(fotoPendencias, composicaoDaFoto(recalculado, c.justificativas));
+
+  // Aberta, com anterior: o que é datado antes do início deste período e não veio na herança é retroativo à anterior.
+  const herdadas = c.anteriorId === null ? [] : await naoResolvidasDe(prisma, c.anteriorId);
+  let retroativas: { lado: string; referencia: string; periodoAfetado: string }[] = [];
+  if (encerramento === undefined && c.anteriorId !== null) {
+    const ant = await prisma.conciliacaoBancaria.findUniqueOrThrow({ where: { id: c.anteriorId }, select: { periodoInicio: true, periodoFim: true } });
+    const naHeranca = new Set(herdadas.map((h) => `${h.lado}:${h.referencia}`));
+    retroativas = composicaoDaFoto(recalculado, [])
+      .filter((x) => new Date(x.data).getTime() < c.periodoInicio.getTime() && !naHeranca.has(`${x.lado}:${x.referencia}`))
+      .map((x) => ({ lado: x.lado, referencia: x.referencia, periodoAfetado: rotuloDoPeriodo(ant.periodoInicio, ant.periodoFim) }));
+  }
 
   return {
     id: c.id,
@@ -470,8 +553,7 @@ export async function lerConciliacao(
     encerradaPor: encerramento?.criadoPor ?? null,
     encerradaEm: encerramento?.criadoEm ?? null,
     relatorio,
-    herdadasDaAnterior:
-      c.anteriorId === null ? [] : await naoResolvidasDe(prisma, c.anteriorId),
+    herdadasDaAnterior: herdadas,
     pendenciasManuais: c.pendenciasManuais.map((p) => ({
       id: p.id,
       descricao: p.descricao,
@@ -481,6 +563,10 @@ export async function lerConciliacao(
       resolvida: p.resolucao !== null,
     })),
     justificativas: c.justificativas,
+    fonteDoRelatorio: foto === null ? "RECALCULADO" : "FOTO_DO_ENCERRAMENTO",
+    fatosTardios: diferenca.tardios,
+    resolvidosDepois: diferenca.resolvidosDepois,
+    retroativas,
   };
 }
 
@@ -503,10 +589,22 @@ async function naoResolvidasDe(
       periodoFim: true,
       justificativas: { select: { lado: true, referencia: true, motivo: true } },
       movimentos: { select: { tipo: true, criadoEm: true } },
+      fotoDoEncerramento: { select: { pendencias: true } },
     },
   });
 
-  // A foto do que estava em aberto QUANDO a anterior foi encerrada (V39: o conhecimento do encerramento).
+  // V39-R2 — a herança é a FOTO gravada no encerramento da anterior, quando existe: exatamente o que foi conferido.
+  if (c.fotoDoEncerramento !== null) {
+    return (c.fotoDoEncerramento.pendencias as unknown as readonly PendenciaDaFoto[]).map((x) => ({
+      lado: x.lado,
+      referencia: x.referencia,
+      descricao: `${diaCivil(new Date(x.data))} — ${x.descricao}`,
+      residual: x.residual as Dinheiro,
+      justificativa: x.justificativa,
+    }));
+  }
+
+  // Anterior encerrada antes da foto (V39-R2): o que estava em aberto QUANDO ela foi encerrada (o conhecimento do encerramento).
   const encerradaEm = c.movimentos.find((m) => m.tipo === "ENCERRAR")?.criadoEm ?? null;
   const rel = await conciliacaoBancaria(prisma, c.contaBancariaId, c.periodoFim, { conhecimento: conhecimentoDaConciliacao(c.periodoFim, encerradaEm, new Date()) });
   const motivoDe = (lado: string, ref: string): string | null =>

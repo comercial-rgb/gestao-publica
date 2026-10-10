@@ -391,6 +391,8 @@ model ConciliacaoBancaria {
   movimentos        MovimentoDaConciliacao[]
   pendenciasManuais PendenciaManualDeConciliacao[]
   justificativas    JustificativaDePendencia[]
+  /// V39-R2 — a composição conferida no encerramento (ver m09-foto-do-encerramento.prisma).
+  fotoDoEncerramento FotoDoEncerramentoDaConciliacao?
 
   criadoEm  DateTime @default(now())
   criadoPor String

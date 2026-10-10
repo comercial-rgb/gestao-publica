@@ -1,0 +1,30 @@
+// ----------------------------------------------------------------------------
+// V39-R2 (R2-001/002) — A FOTO DO ENCERRAMENTO DA CONCILIAÇÃO.
+//
+// ⚠️ O QUE ISTO RESOLVE, MEDIDO. A conciliação encerrada era RECALCULADA a cada leitura: os vínculos contavam até o
+// encerramento, mas os FATOS (linha de extrato, pagamento, depósito) entravam pela data de ocorrência. Um fato registrado
+// depois do encerramento, com data dentro do período, mudava o relatório de um período que o controle interno lê
+// como conferido (`m09-conciliacao-foto.test.ts`). Filtrar por `criadoEm` não resolve: uma transação aberta antes do
+// encerramento e confirmada depois tem `criadoEm` anterior e não estava visível a quem encerrou.
+//
+// A foto guarda a COMPOSIÇÃO conferida — saldos, diferença e cada pendência (lado, referência, data, descrição,
+// residual, justificativa) —, calculada e gravada na MESMA transação REPEATABLE READ do encerramento: um retrato só do
+// banco. A leitura do período encerrado mostra a foto; o recálculo de hoje é comparado com ela, e o que aparecer a mais
+// é FATO TARDIO, com o período afetado. Append-only: nasce com o encerramento e não muda.
+// ----------------------------------------------------------------------------
+
+model FotoDoEncerramentoDaConciliacao {
+  id String @id @default(cuid())
+
+  conciliacaoId String              @unique
+  conciliacao   ConciliacaoBancaria @relation(fields: [conciliacaoId], references: [id])
+
+  saldoExtrato  Decimal @db.Decimal(18, 2)
+  saldoContabil Decimal @db.Decimal(18, 2)
+  diferenca     Decimal @db.Decimal(18, 2)
+  /// [{ lado, referencia, data (ISO), descricao, residual, justificativa }] — a composição inteira, não um total.
+  pendencias    Json
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

@@ -1,4 +1,5 @@
 import { config as carregarEnv } from "dotenv";
+import { exigirDestinoDoPercurso } from "./destino-do-percurso.js";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import puppeteer, { type Browser, type BrowserContext, type Page } from "puppeteer";
@@ -63,6 +64,8 @@ function arg(chave: string, padrao: string): string {
 // devolveria um verde sobre o alvo errado. Um verificador que aponta para o lugar errado é pior
 // que nenhum. Para conferir outra porta, passe `--base=http://localhost:XXXX`.
 const BASE = arg("base", "http://localhost:3000").replace(/\/$/, "");
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 const USUARIO = arg("usuario", "admin@cg.pb.gov.br");
 // A senha pode vir do argv (para quem roda em máquina sem .env.local) ou do ambiente. NUNCA é
 // impressa: as mensagens abaixo falam da AUSÊNCIA dela, jamais do valor.

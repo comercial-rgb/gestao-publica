@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "../destino-do-percurso.js";
 import puppeteer from "puppeteer";
 import { ROTEIRO } from "./roteiro-da-apresentacao.js";
 
@@ -9,6 +10,8 @@ import { ROTEIRO } from "./roteiro-da-apresentacao.js";
  * Uso: `npx tsx scripts/demonstracao/medir-velocidade-das-telas.ts [base]` (padrão http://localhost:3010).
  */
 const BASE = process.argv[2] ?? "http://localhost:3010";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 const SENHA = process.env["SEED_ADMIN_SENHA"] ?? "";
 const nav = await puppeteer.launch({ headless: true });
 const p = await nav.newPage();

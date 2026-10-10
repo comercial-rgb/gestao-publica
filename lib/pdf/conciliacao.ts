@@ -17,6 +17,8 @@ export function documentoDaConciliacao(p: { readonly ente: string; readonly conc
   const c = p.conciliacao;
   const r = c.relatorio;
   const justificativa = (lado: string, referencia: string): string => c.justificativas.find((j) => j.lado === lado && j.referencia === referencia)?.motivo ?? "—";
+  // V39-R2 (R2-001) — a pendência deste período registrada depois do encerramento do anterior, com data dele.
+  const retro = (lado: string, id: string): string => { const x = c.retroativas.find((y) => y.lado === lado && y.referencia === id); return x === undefined ? "" : ` (registrada depois do encerramento de ${x.periodoAfetado})`; };
   const saldos: SecaoPdf = {
     titulo: "Saldos no corte",
     colunas: [{ rotulo: "Item" }, { rotulo: "Valor", alinhamento: "direita" }],
@@ -30,12 +32,12 @@ export function documentoDaConciliacao(p: { readonly ente: string; readonly conc
   const extrato: SecaoPdf = {
     titulo: "No extrato e não no sistema",
     colunas: [{ rotulo: "Data" }, { rotulo: "Descrição" }, { rotulo: "Valor", alinhamento: "direita" }, { rotulo: "Justificativa" }],
-    linhas: r.noExtratoSemVinculo.length === 0 ? [["", "Nenhuma pendência do extrato.", "", ""]] : r.noExtratoSemVinculo.map((l) => [diaCivilBr(l.data), l.descricao, brl(l.residual), justificativa("EXTRATO", l.id)]),
+    linhas: r.noExtratoSemVinculo.length === 0 ? [["", "Nenhuma pendência do extrato.", "", ""]] : r.noExtratoSemVinculo.map((l) => [diaCivilBr(l.data), `${l.descricao}${retro("EXTRATO", l.id)}`, brl(l.residual), justificativa("EXTRATO", l.id)]),
   };
   const sistema: SecaoPdf = {
     titulo: "No sistema e não no extrato",
     colunas: [{ rotulo: "Data" }, { rotulo: "Registro" }, { rotulo: "Valor", alinhamento: "direita" }, { rotulo: "Justificativa" }],
-    linhas: r.internoSemVinculo.length === 0 ? [["", "Nenhuma pendência contábil.", "", ""]] : r.internoSemVinculo.map((l) => [diaCivilBr(l.data), `[${l.tipoInterno}] ${l.descricao}`, brl(l.residual), justificativa(l.tipoInterno, l.id)]),
+    linhas: r.internoSemVinculo.length === 0 ? [["", "Nenhuma pendência contábil.", "", ""]] : r.internoSemVinculo.map((l) => [diaCivilBr(l.data), `[${l.tipoInterno}] ${l.descricao}${retro(l.tipoInterno, l.id)}`, brl(l.residual), justificativa(l.tipoInterno, l.id)]),
   };
   const secoes: SecaoPdf[] = [saldos, extrato, sistema];
   if (c.herdadasDaAnterior.length > 0) {
@@ -43,6 +45,16 @@ export function documentoDaConciliacao(p: { readonly ente: string; readonly conc
       titulo: "Pendências herdadas do período anterior",
       colunas: [{ rotulo: "Lado" }, { rotulo: "Descrição" }, { rotulo: "Valor", alinhamento: "direita" }, { rotulo: "Justificativa" }],
       linhas: c.herdadasDaAnterior.map((h) => [h.lado, h.descricao, brl(h.residual), h.justificativa ?? "—"]),
+    });
+  }
+  if (c.fatosTardios.length + c.resolvidosDepois.length > 0) {
+    secoes.push({
+      titulo: "Registrado depois do encerramento, com data neste período (fora da conferência acima)",
+      colunas: [{ rotulo: "Data" }, { rotulo: "Registro" }, { rotulo: "Valor", alinhamento: "direita" }, { rotulo: "Situação" }],
+      linhas: [
+        ...c.fatosTardios.map((x) => [diaCivilBr(new Date(x.data)), `[${x.lado}] ${x.descricao}`, brl(x.residual), "registrado depois; tratado no período seguinte"]),
+        ...c.resolvidosDepois.map((x) => [diaCivilBr(new Date(x.data)), `[${x.lado}] ${x.descricao}`, brl(x.residual), "pendente no encerramento; resolvida depois"]),
+      ],
     });
   }
   if (c.pendenciasManuais.length > 0) {
@@ -62,6 +74,11 @@ export function documentoDaConciliacao(p: { readonly ente: string; readonly conc
       c.estado === "ENCERRADA"
         ? `Período encerrado${c.encerradaPor !== null ? ` por ${c.encerradaPor}` : ""}${c.encerradaEm !== null ? ` em ${diaCivilBr(c.encerradaEm)}` : ""}; o que ficou aberto passou ao período seguinte.`
         : "Período em aberto: o relatório mostra a posição no momento da emissão.",
+      c.fonteDoRelatorio === "FOTO_DO_ENCERRAMENTO"
+        ? "Saldos e pendências como foram conferidos no encerramento; o que foi registrado depois aparece à parte."
+        : c.estado === "ENCERRADA"
+          ? "Encerrado antes de o sistema guardar a conferência: valores recalculados na data da emissão."
+          : "Valores calculados na data da emissão.",
       "A diferença é explicada pelas linhas sem vínculo dos dois lados; o sistema não emite o relatório quando não é.",
     ],
   };

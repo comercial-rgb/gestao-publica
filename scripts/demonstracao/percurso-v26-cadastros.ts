@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "../destino-do-percurso.js";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import puppeteer, { type Page } from "puppeteer";
@@ -16,6 +17,8 @@ import { gerarTransfConcedida } from "../../adapters/tribunais/tce-pb/sagres/ger
  */
 
 const BASE = process.argv[2] ?? "http://localhost:3011";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 const PASTA = process.argv[3] ?? "capturas-v26";
 if (/:3010\b/.test(BASE)) throw new Error("Recusado: a 3010 serve o banco da apresentação, e este percurso grava.");
 const URL_BANCO = process.env["DATABASE_URL"] ?? "";

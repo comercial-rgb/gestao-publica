@@ -18,7 +18,7 @@ import {
   FormPendenciaManual,
 } from "./FormsDoPeriodo";
 import type { ArrecadacaoSemConta } from "../../../../../lib/portas/tesouraria";
-import { diaCivilBr } from "../../../../../packages/datas/index";
+import { diaCivilBr, instanteCivilBr } from "../../../../../packages/datas/index";
 import { diaCivil } from "../../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 
@@ -37,6 +37,17 @@ import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
  * duplicar faria a soma contar a mesma pendência duas vezes.
  */
 export const dynamic = "force-dynamic";
+
+/** V39-R2 (R2-001) — a pendência registrada depois do encerramento do período anterior, com data dele. */
+function Retroativa({ d, lado, id }: { readonly d: { readonly retroativas: readonly { readonly lado: string; readonly referencia: string; readonly periodoAfetado: string }[] }; readonly lado: string; readonly id: string }): React.ReactElement | null {
+  const r = d.retroativas.find((x) => x.lado === lado && x.referencia === id);
+  if (r === undefined) return null;
+  return (
+    <span className="ml-2 rounded bg-[color:var(--color-status-alerta-bg)] px-1 text-[color:var(--color-status-alerta-fg)]" data-retroativa={r.periodoAfetado}>
+      registrada depois do encerramento de {r.periodoAfetado}
+    </span>
+  );
+}
 
 export default async function PeriodoDeConciliacaoPage({
   searchParams,
@@ -232,10 +243,35 @@ export default async function PeriodoDeConciliacaoPage({
                   </dd>
                 </div>
               </dl>
-              <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]">
-                Os valores são calculados a partir da contabilidade e do extrato na data da
-                consulta.
+              {/* V39-R2 (R2-001) — de onde vêm os números: a foto do encerramento ou o cálculo de hoje. */}
+              <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]" data-fonte-do-relatorio={detalhe.fonteDoRelatorio}>
+                {detalhe.fonteDoRelatorio === "FOTO_DO_ENCERRAMENTO"
+                  ? `Conferência como foi registrada no encerramento${detalhe.encerradaEm === null ? "" : `, em ${instanteCivilBr(detalhe.encerradaEm)}`}: saldos e pendências não mudam com o que for registrado depois.`
+                  : detalhe.estado === "ENCERRADA"
+                    ? "Encerrada antes de o sistema guardar a conferência: os valores são recalculados na data da consulta."
+                    : "Os valores são calculados a partir da contabilidade e do extrato na data da consulta."}
               </p>
+
+              {detalhe.fatosTardios.length + detalhe.resolvidosDepois.length === 0 ? null : (
+                <div className="mt-3 rounded-[var(--radius-md)] border border-[color:var(--color-status-alerta-fg)] bg-[color:var(--color-status-alerta-bg)] p-3 text-xs" data-fatos-tardios={String(detalhe.fatosTardios.length)}>
+                  <p className="font-semibold text-[color:var(--color-ink)]">Registrado depois do encerramento, com data neste período</p>
+                  <p className="mt-1 text-[color:var(--color-ink-2)]">Não entra na conferência acima (que é a do encerramento); é tratado no período seguinte.</p>
+                  <ul className="mt-2 space-y-1">
+                    {detalhe.fatosTardios.map((x) => (
+                      <li key={`t-${x.lado}:${x.referencia}`} data-fato-tardio={`${x.lado}:${x.referencia}`} className="flex flex-wrap justify-between gap-2">
+                        <span>{diaCivilBr(new Date(x.data))} [{x.lado}] {x.descricao}</span>
+                        <span className="tabular-nums">{x.residual}</span>
+                      </li>
+                    ))}
+                    {detalhe.resolvidosDepois.map((x) => (
+                      <li key={`r-${x.lado}:${x.referencia}`} data-resolvido-depois={`${x.lado}:${x.referencia}`} className="flex flex-wrap justify-between gap-2">
+                        <span>{diaCivilBr(new Date(x.data))} [{x.lado}] {x.descricao} — pendente no encerramento, resolvida depois</span>
+                        <span className="tabular-nums">{x.residual}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {detalhe.estado === "ABERTA" ? (
                 <FormEncerrar conciliacaoId={detalhe.id} rotulo={detalhe.rotulo} />
@@ -293,6 +329,7 @@ export default async function PeriodoDeConciliacaoPage({
                         {/* V38 (AUD-050) — a data do fato: sem ela, a pendência não se acha no extrato nem no razão. */}
                         <span>
                           <span className="tabular-nums text-[color:var(--color-ink-3)]">{diaCivilBr(l.data)}</span> {l.descricao}
+                          <Retroativa d={detalhe} lado="EXTRATO" id={l.id} />
                         </span>
                         <span className="tabular-nums">{l.residual}</span>
                       </div>
@@ -335,6 +372,7 @@ export default async function PeriodoDeConciliacaoPage({
                       <div className="flex flex-wrap justify-between gap-2">
                         <span>
                           <span className="tabular-nums text-[color:var(--color-ink-3)]">{diaCivilBr(l.data)}</span> [{l.tipoInterno}] {l.descricao}
+                          <Retroativa d={detalhe} lado={l.tipoInterno} id={l.id} />
                         </span>
                         <span className="tabular-nums">{l.residual}</span>
                       </div>

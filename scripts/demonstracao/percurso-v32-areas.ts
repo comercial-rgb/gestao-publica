@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { exigirDestinoDoPercurso } from "../destino-do-percurso.js";
 import puppeteer, { type Page } from "puppeteer";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import { criarM05Deps } from "../../modules/m05-despesa/adapter-prisma.js";
@@ -20,6 +21,8 @@ import { preencherEEnviar, type CampoDoPercurso } from "../percursos-navegador.j
  */
 
 const BASE = process.argv[2] ?? "http://localhost:3012";
+// V39-R2 (R2-003): o destino e a natureza da base (declarada no banco) conferidos ANTES de qualquer credencial ou escrita.
+await exigirDestinoDoPercurso(BASE);
 if (/:301[01]\b/.test(BASE)) throw new Error("Recusado: a 3010 é a apresentação e a 3011 é da outra linha; este percurso grava.");
 const URL_BANCO = process.env["DATABASE_URL"] ?? "";
 if (!/\/gestao_publica_v28(\?|$)/.test(URL_BANCO)) throw new Error("Recusado: o banco tem de ser o clone gestao_publica_v28.");

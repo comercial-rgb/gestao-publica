@@ -39,6 +39,10 @@ const base = (x: Partial<ConciliacaoDoPeriodo> = {}): ConciliacaoDoPeriodo =>
     },
     herdadasDaAnterior: [],
     pendenciasManuais: [],
+    fonteDoRelatorio: "RECALCULADO",
+    fatosTardios: [],
+    resolvidosDepois: [],
+    retroativas: [],
     justificativas: [
       { lado: "EXTRATO", referencia: "x1", motivo: "tarifa do mês, registro no próximo período" },
       { lado: "PAGAMENTO", referencia: "i1", motivo: "cheque não compensado" },
@@ -83,5 +87,16 @@ describe("PDF da conciliação do período", () => {
     expect(secao(doc, "Pendências herdadas do período anterior")?.linhas).toEqual([["EXTRATO", "Depósito de fevereiro", "10,00", "—"]]);
     expect(secao(doc, "Pendências declaradas")?.linhas).toEqual([["Bloqueio judicial", "débito", "5,00", "aguardando ofício", "aberta"]]);
     expect(doc.notas?.[0]).toBe("Período encerrado por tesouraria@ente em 02/04/2026; o que ficou aberto passou ao período seguinte.");
+  });
+
+  // V39-R2 (R2-001) — a encerrada lida pela foto diz isso, e o fato registrado depois sai À PARTE, fora da conferência;
+  // na aberta, a pendência retroativa leva o período afetado.
+  it("encerrada com foto: nota da origem e o fato tardio numa seção à parte; aberta: a retroativa leva o período afetado", () => {
+    const enc = documentoDaConciliacao({ ente: "E", conciliacao: base({ estado: "ENCERRADA", encerradaPor: "t", encerradaEm: d("2026-04-02"), fonteDoRelatorio: "FOTO_DO_ENCERRAMENTO",
+      fatosTardios: [{ lado: "MOVIMENTO_BANCARIO", referencia: "z9", data: "2026-03-20T12:00:00.000Z", descricao: "Depósito tardio", residual: "250.00", justificativa: null }] }) });
+    expect(secao(enc, "Registrado depois do encerramento, com data neste período (fora da conferência acima)")?.linhas).toEqual([["20/03/2026", "[MOVIMENTO_BANCARIO] Depósito tardio", "250,00", "registrado depois; tratado no período seguinte"]]);
+    expect(enc.notas?.[1]).toMatch(/como foram conferidos no encerramento/);
+    const aberta = documentoDaConciliacao({ ente: "E", conciliacao: base({ retroativas: [{ lado: "PAGAMENTO", referencia: "i1", periodoAfetado: "01/02/2026 a 28/02/2026" }] }) });
+    expect(secao(aberta, "No sistema e não no extrato")?.linhas[0]?.[1]).toBe("[PAGAMENTO] Pagamento NP-9 (registrada depois do encerramento de 01/02/2026 a 28/02/2026)");
   });
 });

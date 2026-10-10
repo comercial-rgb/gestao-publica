@@ -107,3 +107,39 @@ candidatos, nomeados aqui para que sejam verificados **antes** de construir:
 **Quando um requisito disser "na data", verifique antes de construir se o modelo
 tem o eixo.** É mais barato do que descobrir no meio da implementação, e foi o
 que aconteceu nas três vezes.
+
+---
+
+## Revisão V39-R2 (10/10/2026): a conferência encerrada é guardada, não recalculada
+
+**A evidência.** O desenho acima derivava o relatório de um período encerrado a cada leitura: os vínculos contavam
+até o encerramento, mas os FATOS (linha de extrato, pagamento, depósito) entravam pela data de ocorrência. Medido
+em `test/runtime/contrato-runtime-conciliacao-foto.test.ts`:
+- um depósito registrado depois do encerramento de junho, com data de 20/06, mudava o saldo e as pendências da
+  conferência de junho;
+- e a conferência e a gravação do encerramento liam dois retratos diferentes do banco (o relatório fora da
+  transação, as justificativas dentro).
+
+**O que muda.**
+1. **A foto do encerramento** (`FotoDoEncerramentoDaConciliacao`) guarda a COMPOSIÇÃO conferida:
+   - os saldos e a diferença;
+   - cada pendência dos dois lados (lado, referência, data, descrição, residual, justificativa).
+
+   Não é um total congelado: a herança do período seguinte e a reprodução da conferência saem dela.
+2. **Um retrato só.** Conferência, cobrança das justificativas, `ENCERRAR` e foto acontecem numa transação
+   REPEATABLE READ. O que outra conexão confirmar depois do retrato não entra. A prova usa duas conexões e
+   sincronização determinística: um gancho segura o encerramento depois do retrato. Com READ COMMITTED (a mutação),
+   o fato concorrente entrava na conferência e o encerramento recusava.
+3. **Leitura.** O período encerrado se lê pela foto. O recálculo de hoje é comparado com ela, e as diferenças
+   aparecem à parte, na tela e no PDF:
+   - **fatos tardios:** data no período, registro depois;
+   - **resolvidos depois.**
+
+   No período seguinte, a pendência datada antes do início dele que não veio na herança é marcada **retroativa**,
+   com o período afetado. A data de ocorrência nunca é alterada, e o fato continua no razão de hoje.
+
+**O que NÃO se fez, e por quê.** Não se filtrou fato por `criadoEm`: uma transação aberta antes do encerramento e
+confirmada depois tem `criadoEm` anterior e não estava visível a quem encerrou. O que define o conjunto conhecido
+é o retrato da transação que encerrou, e a foto o registra.
+
+**Encerradas antes da foto** (a FIC-PM-500 de produção) continuam recalculadas, e a tela e o PDF dizem isso.
