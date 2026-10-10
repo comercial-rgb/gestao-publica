@@ -74,6 +74,16 @@ O `percurso-v38-proposta-ate-o-empenho` parou antes, na busca da natureza de rec
 
 O servidor de desenvolvimento respondeu 500 ao painel na PRIMEIRA compilação depois de subir, duas vezes (`__webpack_modules__[moduleId] is not a function`), e 200 em todas as aberturas seguintes, com o mesmo código. Fica registrado como comportamento do modo de desenvolvimento. O build de produção da publicação compila o grafo inteiro, e o painel é conferido em produção depois de publicar.
 
+**Publicação `0dcedc6` e o defeito que ela mostrou.**
+- Backup em `esperanca-antes-v39a-20261010T032813Z.dump` (4.704 objetos). `/release` = `0dcedc6`.
+- A natureza da base de produção foi declarada DEMONSTRACAO pelo script, na versão ativa, como o usuário do serviço; `/natureza-da-base` confirma.
+- Continuidade em produção: período 10/10–31/10 aberto pela tela e caução vinculada. As DUAS justificativas falharam com **"permission denied for table JustificativaDePendencia"**, a mensagem lida por sonda.
+- Causa: o `upsert` vira `INSERT ... ON CONFLICT DO UPDATE`, e o Postgres exige UPDATE nas colunas do SET já no primeiro uso. A tabela não estava no censo de escrita do papel de runtime. O desenvolvimento e a suíte conectam como dono e nunca acusaram. **Em produção, justificar pendência nunca funcionou**; a V38 não chegou a justificar.
+- A varredura nova (`test/upsert-no-censo-de-escrita.test.ts`, propriedade sobre todo `.upsert(` do código) achou mais duas tabelas com o mesmo defeito: `ParametroDeEstoque` (mínimo/máximo do material no depósito) e `CotaDeConsumo` (cota do setor).
+- As três entraram no censo coluna a coluna (`prisma/papel-runtime.ts`).
+- Teste com o papel real: `test/runtime/contrato-runtime-conciliacao.test.ts` cria, corrige e encerra com o papel de runtime. A mutação (tirar do censo) reproduz no teste o mesmo erro de produção.
+- Resultado: 21/21 com `papel-runtime`.
+
 **Pendências nomeadas:**
 - `CONCILIACAO-FATO-RETROATIVO`: uma linha de extrato ou um fato do razão gravado depois do encerramento, com data dentro do período encerrado, ainda muda o relatório encerrado. O fato é datado no passado; o vínculo é por conhecimento.
 - `ENCERRAR-PERIODO-VAZIO-FIC-CM-500`: é decisão.

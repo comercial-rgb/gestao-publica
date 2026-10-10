@@ -272,6 +272,18 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   // `declararCentralizacaoDaEscrituracao` já existia, conferia a ação e devolvia o anterior; faltava
   // só o banco deixar a tela chamá-lo.
   EnteConfig: { update: ["indCentralizacao"], delete: false },
+
+  // ⚠️ V39 — TRÊS `upsert` QUE NUNCA FUNCIONARAM EM PRODUÇÃO. O `upsert` do Prisma é `INSERT ... ON CONFLICT DO UPDATE`,
+  // e o Postgres exige UPDATE nas colunas do SET já no primeiro uso. Medido em 10/10/2026: "permission denied for table
+  // JustificativaDePendencia" ao justificar a primeira pendência da conciliação em produção. O desenvolvimento e a
+  // suíte conectam como dono e nunca acusaram; `test/upsert-no-censo-de-escrita.test.ts` varre o código e cobra isto.
+  //  · a justificativa da pendência: corrigir o texto substitui o motivo (uma vigente por pendência, o desenho do
+  //    serviço); conciliação, lado e referência ficam fora — mover a justificativa de pendência a reescreveria;
+  //  · o parâmetro de estoque (mínimo e máximo de um material no depósito) e a cota de consumo do setor: redefinir é
+  //    trocar a quantidade; material, depósito, setor e competência ficam fora.
+  JustificativaDePendencia: { update: ["motivo", "criadoPor"], delete: false },
+  ParametroDeEstoque: { update: ["quantidadeMinima", "quantidadeMaxima"], delete: false },
+  CotaDeConsumo: { update: ["quantidadeLimite"], delete: false },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */
