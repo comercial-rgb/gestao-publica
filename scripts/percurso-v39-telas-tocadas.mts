@@ -114,6 +114,16 @@ try {
   // R2-023/024: a tela das emendas (o comparativo aparece quando há proposta escolhida).
   const em = await irPara(n, page, "/planejamento/emendas");
   conferir(semErro(em), "a tela das emendas abre");
+  // R2-030/031: a operação da farmácia (se houver farmácia); R2-025 a 028: a operação da frota.
+  await irPara(n, page, "/patrimonio/farmacias");
+  const farm = await page.$$eval("a[data-operar-farmacia]", (as) => as.map((a) => a.getAttribute("href") ?? "")[0] ?? "");
+  if (farm === "") console.log("   nenhuma farmácia nesta base: a operação da farmácia não foi aberta");
+  else {
+    const tf = await irPara(n, page, farm);
+    conferir(semErro(tf) && (await page.$("[data-dispensacoes]")) !== null, `operação da farmácia ${farm} abre`);
+  }
+  const fr = await irPara(n, page, "/patrimonio/frota/operacao");
+  conferir(semErro(fr) && (await page.$("[data-condutores]")) !== null && (await page.$("[data-ordens-de-abastecimento]")) !== null && (await page.$("[data-manutencoes]")) !== null, "operação da frota abre com condutores, ordens e manutenção");
   const rot = await irPara(n, page, "/contabilidade/roteiros-patrimoniais");
   const temContrato = await page.$$eval('select[name="movimento"] option', (os) => os.some((o) => (o.getAttribute("value") ?? "").startsWith("CONTRATO|"))).catch(() => false);
   conferir(semErro(rot) && temContrato, "roteiros patrimoniais oferecem os movimentos do controle de contratos");

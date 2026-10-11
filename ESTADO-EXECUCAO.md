@@ -329,6 +329,22 @@ Commit da unidade: 549079d9.
   - as decisões (categorias declaradas pelo ente, 30 dias como parâmetro de tela, a ordem das travas) estão no `MODULO.md` do M36. Pendência nomeada: CATEGORIA-ACC (a ACC não cabe no campo de duas posições).
   - **Instrumento provado:** o teste de dois abastecimentos simultâneos passou também SEM a trava (as duas chamadas não se cruzaram), então ele não prova a trava. Foi acrescentada a prova determinística: outra transação segura a trava do bem, e o abastecimento espera e só grava depois. Ela fica vermelha sem a trava e verde com ela. `m36-operacao` 7/7.
 
+Commit da unidade: 2ec748e4.
+
+### Publicação da frente 6 (11/10/2026, UTC)
+- **Backup:** `/var/backups/gestao-publica/esperanca-antes-v39r2-frente6-20261011T000621Z.dump`.
+- **Primeiro envio recusado:** a main remota tinha dois commits feitos fora desta sessão (o ícone de ajuda e a reversão dele, sem efeito líquido na árvore). Foram integrados por merge (de6aa6af); a árvore ficou idêntica à aprovada. `npm run publicar` enviou de6aa6af, o Actions concluiu com sucesso e `/release` responde de6aa6a.
+- **Banco de produção:**
+  - as migrations 110000 a 140000 estão aplicadas, e os 9 CHECKs da farmácia e da frota estão presentes;
+  - v46 e v47 foram aplicadas pela implantação: 2 concessões cada, ao perfil administrador, no global;
+  - o `gestao_app` tem INSERT nas tabelas novas e não tem UPDATE.
+- **Telas em produção:** `percurso-v39-telas-tocadas`, sem falha. A operação da frota abre com condutores, ordens e manutenção. A da farmácia não foi aberta: não há farmácia na base de produção.
+- **Não operado em produção:**
+  - a frota: a base de produção não tem veículo;
+  - a farmácia: não há farmácia nem estoque de medicamento.
+
+  Criar esses cadastros só para o percurso seria fabricar dado. Os dois foram operados na 3011.
+
 ### O próximo passo
 1. (feito: frente 5; frente 6 R2-025 a 031) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 
