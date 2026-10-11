@@ -157,6 +157,8 @@ export type AcaoDoSistema =
   | "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"
   | "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO"
   | "TRANSCREVER_EXTRATO"
+  | "PARAMETRIZAR_REALIZAVEL"
+  | "MOVIMENTAR_REALIZAVEL"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
   | "IMPORTAR_FOLHA"
   | "IMPORTAR_TRIBUTOS"
@@ -1312,6 +1314,11 @@ export type NomeDeServico =
   | "registrarPreviaDeRetencao"
   | "transcreverLinhasDeExtrato"
   | "revisarTranscricaoDeExtrato"
+  | "cadastrarCategoriaDeRealizavel"
+  | "decidirContaDoRealizavel"
+  | "constituirRealizavel"
+  | "baixarRealizavel"
+  | "anularMovimentoDeRealizavel"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -2223,6 +2230,12 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V39-R3 (R3-015) — a linha de extrato digitada a partir de um documento, e a revisão dela por outra pessoa. Ação nova.
   transcreverLinhasDeExtrato: "TRANSCREVER_EXTRATO",
   revisarTranscricaoDeExtrato: "TRANSCREVER_EXTRATO",
+  // V39-R3 (R3-016) — o realizável de natureza ativa: parametrizar (categoria e conta decidida pelo ente) e movimentar.
+  cadastrarCategoriaDeRealizavel: "PARAMETRIZAR_REALIZAVEL",
+  decidirContaDoRealizavel: "PARAMETRIZAR_REALIZAVEL",
+  constituirRealizavel: "MOVIMENTAR_REALIZAVEL",
+  baixarRealizavel: "MOVIMENTAR_REALIZAVEL",
+  anularMovimentoDeRealizavel: "MOVIMENTAR_REALIZAVEL",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3563,6 +3576,12 @@ export const FORA_DO_CENSO: Record<string, string> = {
   divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
   saldoDoTanqueNaTx: "leitura pura (o saldo do combustível no tanque, pela soma dos movimentos)",
   previaVigenteDaLiquidacao: "leitura pura (a prévia de maior versão da liquidação)",
+  registrarMovimentoBancarioNaTx: "núcleo do movimento bancário na transação de quem chama; quem chama (o registro público, o realizável) autoriza",
+  estornarMovimentoBancarioNaTx: "núcleo do estorno do movimento bancário; quem chama autoriza",
+  realizavelPorFonte: "leitura pura (o dinheiro de cada fonte que está fora num realizável, para o superávit)",
+  lerRealizaveis: "leitura pura (os fluxos do realizável para o Anexo 13 e a DFC)",
+  decisaoVigenteDoRealizavel: "leitura pura (a decisão mais recente da categoria de realizável)",
+  saldoDoRealizavel: "leitura pura (o saldo do realizável por categoria, devedor e conta)",
   linhasDigitadasQueNaoValem: "leitura pura (as linhas digitadas da conta que ainda não valem como extrato)",
   idsDeLinhasQueNaoValem: "leitura pura (os ids das linhas digitadas que não valem, para quem soma ou vincula excluir)",
   exigirDigitadasSemVinculoNoPeriodo: "guarda de leitura dentro da importação do extrato (que autoriza IMPORTAR_EXTRATO)",

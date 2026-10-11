@@ -84,6 +84,7 @@ export async function balancoFinanceiro(
     inscricoes,
     pagamentosRP,
     depositos,
+    realizaveis,
     saldoAnterior,
     caixaApurado,
   ] = await Promise.all([
@@ -94,6 +95,7 @@ export async function balancoFinanceiro(
       : lerInscricoesDoExercicio(prisma, exercicio),
     lerPagamentosDeRestos(prisma, exercicio, inicio, corte),
     lerDepositos(prisma, inicio, corte),
+    lerRealizaveis(prisma, inicio, corte),
     // SALDO ANTERIOR: o caixa como estava NO ENCERRAMENTO do exercício passado.
     //
     // ⚠️ `inicio === null` aqui NÃO quer dizer "sem limite" — quer dizer que NÃO
@@ -118,6 +120,8 @@ export async function balancoFinanceiro(
     pagamentoRestosNaoProcessados: pagamentosRP.naoProcessados,
     pagamentoRestosProcessados: pagamentosRP.processados,
     depositosPagos: depositos.pagos,
+    outrosRecebidosExtra: realizaveis.recebidos,
+    outrosPagosExtra: realizaveis.pagos,
     saldoAnterior,
     caixaApurado,
   });
@@ -303,6 +307,31 @@ async function lerPagamentosDeRestos(
  *
  * Os quatro tipos NÃO têm o mesmo sinal (lição do M07/M08): os ESTORNO_* desfazem.
  */
+/**
+ * V39-R3 (R3-016) — OS REALIZÁVEIS DE NATUREZA ATIVA (M07): o dinheiro do município que saiu para um valor a receber de
+ * volta e o que voltou. "Outros pagamentos/recebimentos extraorçamentários" no Anexo 13 e "outros desembolsos/ingressos
+ * operacionais" na DFC. A anulação desfaz o tipo do original (ela tem o mesmo tipo e aponta o original). Mesma janela
+ * dos depósitos (`criadoEm`), a mesma régua do caixa apurado — sem isso, o caixa saía no razão e nenhum fluxo o explicava
+ * (achado da auditoria).
+ */
+export async function lerRealizaveis(
+  prisma: PrismaClient,
+  inicio: Date | null,
+  corte: Date | null
+): Promise<{ recebidos: Money; pagos: Money }> {
+  const movimentos = await prisma.movimentoDeRealizavel.findMany({ select: { tipo: true, valor: true, criadoEm: true, estornoDeId: true } });
+  let recebidos = toMoney("0.00");
+  let pagos = toMoney("0.00");
+  for (const m of movimentos) {
+    if (!naJanela(m.criadoEm, inicio, corte)) continue;
+    const v = toMoney(m.valor.toFixed(2));
+    const sinal = m.estornoDeId === null ? 1 : -1;
+    if (m.tipo === "CONSTITUICAO") pagos = toMoney(sinal === 1 ? pagos.plus(v) : pagos.minus(v));
+    else recebidos = toMoney(sinal === 1 ? recebidos.plus(v) : recebidos.minus(v));
+  }
+  return { recebidos, pagos };
+}
+
 export async function lerDepositos(
   prisma: PrismaClient,
   inicio: Date | null,

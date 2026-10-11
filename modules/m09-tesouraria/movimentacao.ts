@@ -1,5 +1,13 @@
 import { toMoney } from "../../packages/contracts/index.js";
-import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import type { PrismaClient, TipoMovimentoBancario } from "../../prisma/generated/client/client.js";
+import type { z } from "zod";
+
+type TxDoMovimento = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
+
+/** V39-R3 (R3-016) — os tipos que só o realizável grava e desfaz. */
+const TIPOS_DO_REALIZAVEL: ReadonlySet<TipoMovimentoBancario> = new Set<TipoMovimentoBancario>(["SAIDA_PARA_REALIZAVEL", "RETORNO_DE_REALIZAVEL"]);
+/** Os tipos do realizável na mensagem de saldo (os demais seguem pelo nome, como sempre foi). */
+const ROTULO_NA_MENSAGEM: Partial<Record<TipoMovimentoBancario, string>> = { SAIDA_PARA_REALIZAVEL: "a saída para valor a receber de volta", RETORNO_DE_REALIZAVEL: "o retorno de valor a receber" };
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
@@ -62,8 +70,6 @@ export async function registrarMovimentoBancario(
   input: RegistrarMovimentoBancarioInput
 ): Promise<ResultadoMovimentoBancario> {
   const dados = zRegistrarMovimentoBancario.parse(input);
-  const valorStr = dados.valor.toFixed(2);
-
   return prisma.$transaction(async (tx) => {
     await autorizarNo(
       tx,
@@ -71,6 +77,28 @@ export async function registrarMovimentoBancario(
       ACAO_DO_SERVICO.registrarMovimentoBancario,
       "ENTE"
     );
+    return registrarMovimentoBancarioNaTx(tx, dados);
+  });
+}
+
+/** O movimento como o núcleo o recebe: o tipo pode ser também um dos que só outro serviço grava (o realizável). */
+export type MovimentoBancarioNoNucleo = Omit<z.output<typeof zRegistrarMovimentoBancario>, "tipo"> & { readonly tipo: TipoMovimentoBancario };
+
+/**
+ * V39-R3 (R3-016) — O NÚCLEO DO MOVIMENTO BANCÁRIO, na transação de quem chama. NÃO autoriza: quem chama já autorizou a
+ * sua ação (o registro público, REGISTRAR_MOVIMENTO_BANCARIO; o realizável, MOVIMENTAR_REALIZAVEL). Período aberto,
+ * fonte no rol, trava da conta e saldo bancário são os mesmos para todos.
+ *
+ * `antesDeGravar` roda DEPOIS da trava da conta e da conferência do saldo bancário e ANTES de gravar: é onde o realizável
+ * trava e confere o saldo dele, na ordem dos postos (a conta, 19, antes do saldo do realizável, 50).
+ */
+export async function registrarMovimentoBancarioNaTx(
+  tx: TxDoMovimento,
+  dados: MovimentoBancarioNoNucleo,
+  opcoes: { readonly antesDeGravar?: () => Promise<void>; readonly origemTipo?: string } = {}
+): Promise<ResultadoMovimentoBancario> {
+  const valorStr = dados.valor.toFixed(2);
+  {
 
     // ⚠️ PERÍODO ABERTO, PELA DATA DO FATO. Escrita financeira em exercício encerrado
     // moveria um saldo cujos demonstrativos já foram publicados.
@@ -160,12 +188,14 @@ export async function registrarMovimentoBancario(
         saldo,
         dados.valor,
         `${conta.codigo} (${conta.descricao})`,
-        `${dados.tipo} de ${valorStr}`
+        `${ROTULO_NA_MENSAGEM[dados.tipo] ?? dados.tipo} de ${valorStr}`
       );
     }
 
     // ⚠️ AS DUAS PERNAS, NA MESMA TRANSAÇÃO — "lançamento simultâneo". Entrada debita a
     // conta bancária (ativo sobe) e credita a contrapartida; saída faz o inverso.
+    if (opcoes.antesDeGravar !== undefined) await opcoes.antesDeGravar();
+
     const entrada = SINAL_MOVIMENTO_BANCARIO[dados.tipo] === 1;
     const lancamentoId = await lancarNoRazao(tx, {
       numeroControle: `MB-${dados.tipo}-${conta.codigo}-${dados.data
@@ -173,7 +203,7 @@ export async function registrarMovimentoBancario(
         .slice(0, 10)}`,
       dataTransacao: dados.data,
       historico: dados.historico,
-      origemTipo: "MOVIMENTO_BANCARIO",
+      origemTipo: opcoes.origemTipo ?? "MOVIMENTO_BANCARIO",
       criadoPor: dados.criadoPor,
       partidas: [
         {
@@ -216,7 +246,7 @@ export async function registrarMovimentoBancario(
       lancamentoId,
       saldoResultante: saldoResultante.toFixed(2),
     };
-  });
+  }
 }
 
 /**
@@ -234,7 +264,6 @@ export async function estornarMovimentoBancario(
   input: EstornarMovimentoBancarioInput
 ): Promise<ResultadoMovimentoBancario> {
   const dados = zEstornarMovimentoBancario.parse(input);
-
   return prisma.$transaction(async (tx) => {
     await autorizarNo(
       tx,
@@ -242,6 +271,30 @@ export async function estornarMovimentoBancario(
       ACAO_DO_SERVICO.estornarMovimentoBancario,
       "ENTE"
     );
+    // V39-R3 (R3-016) — o movimento que leva um valor a receber de volta ao caixa só se desfaz pelo realizável: estorná-lo
+    // por aqui tiraria o dinheiro do razão e deixaria o direito vivo no M07, e a baixa seguinte devolveria o mesmo
+    // dinheiro duas vezes (achado da auditoria).
+    const alvo = await tx.movimentoBancario.findUnique({ where: { id: dados.movimentoId }, select: { tipo: true } });
+    if (alvo !== null && TIPOS_DO_REALIZAVEL.has(alvo.tipo)) {
+      throw new Error(
+        "Este movimento leva ao caixa um valor a receber de volta: ele se anula em Financeiro › Valores a receber de volta, " +
+          "que desfaz o direito e o caixa juntos. Nada foi gravado."
+      );
+    }
+    return estornarMovimentoBancarioNaTx(tx, dados);
+  });
+}
+
+/**
+ * V39-R3 (R3-016) — O NÚCLEO DO ESTORNO, na transação de quem chama, sem autorizar (quem chama autorizou). O
+ * `antesDeGravar` roda depois da trava da conta e antes de gravar, como no registro.
+ */
+export async function estornarMovimentoBancarioNaTx(
+  tx: TxDoMovimento,
+  dados: z.output<typeof zEstornarMovimentoBancario>,
+  opcoes: { readonly antesDeGravar?: () => Promise<void>; readonly origemTipo?: string } = {}
+): Promise<ResultadoMovimentoBancario> {
+  {
     await exigirCompetenciaEmExercicioAberto(
       tx,
       dados.data,
@@ -299,11 +352,12 @@ export async function estornarMovimentoBancario(
     // ⚠️ AS PERNAS INVERTIDAS, UMA A UMA — cada uma preserva o SEU valor. É a mesma
     // lição do estorno do M05: recarimbar um valor único desfaria errado o que o
     // lançamento original fez certo quando as pernas têm valores diferentes.
+    if (opcoes.antesDeGravar !== undefined) await opcoes.antesDeGravar();
     const lancamentoId = await lancarNoRazao(tx, {
       numeroControle: `MB-EST-${original.id}`,
       dataTransacao: dados.data,
       historico: `Estorno de ${original.tipo}: ${dados.motivo}`,
-      origemTipo: "ESTORNO_MOVIMENTO_BANCARIO",
+      origemTipo: opcoes.origemTipo ?? "ESTORNO_MOVIMENTO_BANCARIO",
       criadoPor: dados.criadoPor,
       partidas: original.lancamento.partidas.map((p) => ({
         contaId: p.contaId,
@@ -349,7 +403,7 @@ export async function estornarMovimentoBancario(
       lancamentoId,
       saldoResultante: saldoResultante.toFixed(2),
     };
-  });
+  }
 }
 
 /** Reexportado para quem monta a tela — o sinal é sempre o do domínio. */

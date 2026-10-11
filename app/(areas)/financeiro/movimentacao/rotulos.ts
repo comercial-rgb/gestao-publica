@@ -6,4 +6,6 @@ export const ROTULO_TIPO: Readonly<Record<string, string>> = {
   RESGATE: "Resgate de aplicação",
   RENDIMENTO: "Rendimento creditado",
   TARIFA: "Tarifa bancária",
+  SAIDA_PARA_REALIZAVEL: "Saída para valor a receber de volta",
+  RETORNO_DE_REALIZAVEL: "Retorno de valor a receber",
 };

@@ -255,6 +255,10 @@ enum TipoMovimentoBancario {
   RENDIMENTO
   /// Tarifa debitada pelo banco. SAÍDA que o ente não provocou.
   TARIFA
+  /// V39-R3 (R3-016) — sai para um valor a receber de volta (realizável); só pelo serviço do realizável.
+  SAIDA_PARA_REALIZAVEL
+  /// V39-R3 (R3-016) — volta de um valor a receber (baixa do realizável); só pelo serviço do realizável.
+  RETORNO_DE_REALIZAVEL
 }
 
 model MovimentoBancario {
@@ -316,6 +320,9 @@ model MovimentoBancario {
 
   /// V36 — os documentos anexados ao movimento bancário (M22).
   anexos Anexo[] @relation("AnexoDoMovimentoBancario")
+
+  /// V39-R3 (R3-016) — o movimento do realizável que este movimento bancário leva ao caixa.
+  realizavel MovimentoDeRealizavel? @relation("CaixaDoRealizavel")
 }
 
 // ============================================================================

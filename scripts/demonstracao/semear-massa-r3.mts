@@ -169,6 +169,15 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "conferente.tesouraria@ficticio.local", nome: "Conferente da tesouraria (fictícia)", perfil: "CONFERÊNCIA DO EXTRATO — ENSAIO",
     acoes: ["TRANSCREVER_EXTRATO", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-016) — quem parametriza os valores a receber de volta (categoria e conta) e quem os movimenta.
+  {
+    email: "contabilidade.parametros@ficticio.local", nome: "Contadora de parâmetros (fictícia)", perfil: "PARÂMETROS DO REALIZÁVEL — ENSAIO",
+    acoes: ["PARAMETRIZAR_REALIZAVEL", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    email: "tesouraria.realizavel@ficticio.local", nome: "Tesoureiro dos valores a receber (fictício)", perfil: "MOVIMENTO DO REALIZÁVEL — ENSAIO",
+    acoes: ["MOVIMENTAR_REALIZAVEL", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
+  },
   {
     email: "farmaceutico.assistencia@ficticio.local", nome: "Farmacêutico da Assistência Social (fictício)", perfil: "FARMÁCIA DA ASSISTÊNCIA — ENSAIO",
     acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],

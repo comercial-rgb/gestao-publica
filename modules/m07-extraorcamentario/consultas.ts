@@ -513,3 +513,24 @@ export async function composicaoDoRecolhimento(
     valor: new Decimal(l.valor).toFixed(2),
   }));
 }
+
+/**
+ * V39-R3 (R3-016) — O DINHEIRO DE CADA FONTE QUE ESTÁ FORA, NUM VALOR A RECEBER DE VOLTA (realizável de natureza ativa):
+ * constituições menos baixas, líquidas das anulações, até a data. O superávit por fonte o tira do caixa da fonte — ele
+ * saiu do banco e ainda não voltou. A fonte é a do movimento (declarada), nunca a padrão da conta.
+ */
+export async function realizavelPorFonte(prisma: Tx, p: { readonly ate: Date }): Promise<ReadonlyMap<string, Money>> {
+  const movimentos = await prisma.movimentoDeRealizavel.findMany({
+    where: { data: { lte: p.ate } },
+    select: { tipo: true, valor: true, fonteId: true, estornoDeId: true },
+  });
+  const por = new Map<string, Money>();
+  for (const m of movimentos) {
+    const v = toMoney(m.valor.toFixed(2));
+    // constituição tira do caixa (+ no "fora"), baixa devolve; a anulação inverte o sinal do tipo dela.
+    const sinal = (m.tipo === "CONSTITUICAO" ? 1 : -1) * (m.estornoDeId === null ? 1 : -1);
+    const atual = por.get(m.fonteId) ?? toMoney("0.00");
+    por.set(m.fonteId, toMoney(sinal === 1 ? atual.plus(v) : atual.minus(v)));
+  }
+  return por;
+}

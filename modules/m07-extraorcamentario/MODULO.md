@@ -369,3 +369,52 @@ conferido contra `docs/oficial/MANIFEST-RETENCAO.json`). A classificação da re
   existe; hoje o parcial informa os dados fiscais dele.
 - **PREVIA-SEM-AVISO-AO-PAGAR-SEM-ELA**: havendo prévia, o pagamento sem a caixa marcada segue o caminho de sempre
   (sem retenção ou com a informada). A tela oferece a prévia, mas não exige.
+
+## V39-R3 (R3-016) — os realizáveis de natureza ativa ("valores a receber de volta")
+
+`realizavel.ts`, tela `/financeiro/realizaveis`.
+
+- **O que é:** valor do município que está com outra pessoa e volta em dinheiro (depósito restituível feito pelo
+  município, adiantamento a devolver, crédito diverso a receber). É ATIVO, o espelho da consignação (passivo), e mora
+  em tabelas próprias: a consignação não foi renomeada nem estendida para o ativo.
+- **Configurável:** `CategoriaDeRealizavel` e `DecisaoDaCategoriaDeRealizavel`. A conta do ativo de cada categoria é
+  decisão do ente, com fundamento (append-only, vale a mais recente; suspensa não movimenta). O serviço confere só a
+  natureza: analítica, de saldo devedor e dos grupos de crédito realizável do ativo (1.1.2, 1.1.3, 1.2.1.1, 1.2.1.2), como o tipo de consignação
+  confere que a dele é do passivo. Nenhuma conta no código; sem decisão, a categoria não movimenta.
+- **Movimentos** (`MovimentoDeRealizavel`, append-only): constituição (D ativo / C disponibilidade da conta bancária),
+  baixa (o inverso, até o saldo) e anulação (outro movimento que aponta o original).
+- **O caixa vai pelo movimento bancário do M09** (tipos SAIDA_PARA_REALIZAVEL e RETORNO_DE_REALIZAVEL, só por este
+  serviço; o registro público não os aceita e o estorno público os recusa — eles se desfazem só pela anulação do realizável), pelo núcleo `registrarMovimentoBancarioNaTx`/`estornarMovimentoBancarioNaTx`:
+  período aberto, fonte no rol da conta, trava da conta e saldo bancário. Por isso o saldo da conta, a conciliação e a
+  trava do saque enxergam o realizável. Na primeira versão o realizável lançava à parte e o caixa saía sem fato de caixa:
+  o Anexo 13 e a DFC não fechavam, o superávit por fonte mostrava caixa que não havia e um saque passaria sem saldo
+  (achado da auditoria, corrigido antes do commit).
+- **Relatórios:** `lerRealizaveis` (M12) alimenta "Outros Recebimentos/Pagamentos Extraorçamentários" no Anexo 13 e
+  "Outros Ingressos/Desembolsos Operacionais" na DFC; `realizavelPorFonte` tira do caixa de cada fonte o que está fora.
+- **Saldo** por categoria, devedor, conta do ativo e FONTE (o valor volta à fonte de onde saiu), conferido na data do
+  fato: o MENOR saldo da linha do tempo a partir da data (cada movimento no dia dele, a anulação no dia dela) — uma baixa
+  com data antiga não deixa negativo um ponto posterior. A baixa usa a última decisão com conta (categoria suspensa não constitui, mas o dinheiro pode voltar);
+  o saldo em conta anterior não é alcançado (a mensagem diz o saldo na conta nova). Trava `SaldoDeRealizavel` (posto
+  50), tomada depois da trava da conta bancária (19), no hook do núcleo.
+- **Natureza da conta:** grupos 1.1.2, 1.1.3, 1.2.1.1 e 1.2.1.2 e saldo devedor (as redutoras de ajuste de perdas e os
+  estoques, investimentos temporários e VPD antecipada do longo prazo ficam de fora). Uma lista só, usada pela tela.
+- **Ações:** `PARAMETRIZAR_REALIZAVEL` e `MOVIMENTAR_REALIZAVEL`, atualização v51 (a quem gere tipos de consignação e a
+  quem registra dispêndio extraorçamentário, no mesmo escopo).
+
+### Pendências (nomeadas)
+- **REALIZAVEL-SEM-MOVIMENTO-FINANCEIRO**: o crédito constituído sem saída de dinheiro (contrapartida em variação
+  patrimonial, como dano ao patrimônio) não está aqui; só o realizável que sai e volta em dinheiro.
+- **SALDO-EM-CONTA-ANTERIOR**: baixar o saldo que ficou numa conta antes da decisão nova pede reclassificação, que não
+  existe; a tela mostra o saldo por conta.
+- **REALIZAVEL-NO-SAGRES**: o realizável não tem leiaute próprio no SAGRES desta base; o saldo mensal da conta (pelo
+  extrato) e o razão o refletem, mas não há fato de realizável exportado.
+- **MOVIMENTO-BANCARIO-FORA-DO-ANEXO13-E-DFC** (anterior à R3): tarifa e rendimento registrados pela movimentação
+  bancária movem o caixa com contrapartida fora da disponibilidade, e o Anexo 13 e a DFC não os leem; o realizável foi
+  ensinado aos dois, os demais tipos não.
+- **LINHA-DO-SUPERAVIT-SEM-COLUNA-DO-REALIZAVEL**: o caixa da fonte no Anexo 14 e no RGF Anexo 5 já desconta o
+  realizável, mas a linha publicada não tem coluna para ele; arrecadado + ingressos − pagamentos − dispêndios difere do
+  caixa pelo valor que está fora.
+- **REALIZAVEL-NA-MSC**: os lançamentos do realizável (como os do movimento bancário) saem da MSC sem a fonte resolvida
+  (`modules/m14-exports-federais/msc/resolver.ts`), embora o movimento tenha a fonte.
+- **MOVIMENTOS-DE-ENSAIO-SEM-CAIXA**: os movimentos de realizável gravados na base R3 antes da passagem pelo caixa não
+  têm movimento bancário (coluna nula) e não se anulam pela tela; somem quando a base R3 for refeita do zero.

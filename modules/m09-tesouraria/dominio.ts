@@ -397,6 +397,9 @@ export const SINAL_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, 1 | -1> = {
   RESGATE: 1,
   RENDIMENTO: 1,
   TARIFA: -1,
+  // V39-R3 (R3-016) — o realizável: o dinheiro sai na constituição e volta na baixa.
+  SAIDA_PARA_REALIZAVEL: -1,
+  RETORNO_DE_REALIZAVEL: 1,
 };
 
 /** O sentido de cada tipo, para o guard de natureza da conciliação. */
@@ -410,6 +413,8 @@ export const SENTIDO_MOVIMENTO_BANCARIO: Record<
   RESGATE: "ENTRADA",
   RENDIMENTO: "ENTRADA",
   TARIFA: "SAIDA",
+  SAIDA_PARA_REALIZAVEL: "SAIDA",
+  RETORNO_DE_REALIZAVEL: "ENTRADA",
 };
 
 /**
@@ -432,6 +437,9 @@ export const E_ATO_DO_ENTE: Record<TipoMovimentoBancario, boolean> = {
   RENDIMENTO: false,
   /** O banco debita; recusar o registro não desfaz o débito. */
   TARIFA: false,
+  /** O município manda o dinheiro para fora: confere o saldo, como o saque. */
+  SAIDA_PARA_REALIZAVEL: true,
+  RETORNO_DE_REALIZAVEL: true,
 };
 
 export function comSinalDoMovimentoBancario(

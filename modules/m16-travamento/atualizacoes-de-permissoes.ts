@@ -789,6 +789,29 @@ export function derivarTranscricaoDeExtrato(
 }
 
 /**
+ * V39-R3 (R3-016) — OS REALIZÁVEIS DE NATUREZA ATIVA: parametrizar a quem já gere os tipos de consignação (a mesma
+ * decisão contábil, do outro lado do balanço) e movimentar a quem já registra dispêndio extraorçamentário, no mesmo
+ * escopo. Sem a decisão da conta pelo ente, nenhuma categoria movimenta.
+ */
+export function derivarRealizavel(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  const pares = [["GERIR_TIPOS_DE_CONSIGNACAO", "PARAMETRIZAR_REALIZAVEL"], ["REGISTRAR_DISPENDIO_EXTRA", "MOVIMENTAR_REALIZAVEL"]] as const;
+  for (const perfil of perfis) {
+    for (const [base, nova] of pares) {
+      for (const p of perfil.permissoes.filter((x) => x.acao === base)) {
+        if (perfil.permissoes.some((x) => x.acao === nova && x.unidadeOrcId === p.unidadeOrcId)) continue;
+        if (saida.some((x) => x.perfilId === perfil.id && x.acao === nova && x.unidadeOrcId === p.unidadeOrcId)) continue;
+        saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: nova, unidadeOrcId: p.unidadeOrcId });
+      }
+    }
+  }
+  return saida;
+}
+
+/**
  * V39-R3 (R3-009) — CORRIGIR A DISPENSAÇÃO (cancelar o registro incorreto ou receber a devolução conferida).
  *
  * ⚠️ SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a v46: a correção devolve medicamento ao estoque e estorna o
@@ -2082,6 +2105,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "integracao, com a revisao por outra pessoa; a linha digitada so vale como extrato depois de confirmada (V39-R3). " +
       "Vem com TRANSCREVER_EXTRATO para quem ja importa extrato, no mesmo escopo.",
     derivar: derivarTranscricaoDeExtrato,
+  },
+  {
+    versao: 51,
+    nome: "realizavel-de-natureza-ativa",
+    descricao:
+      "O financeiro passou a registrar valores do municipio que estao com outra pessoa e voltam em dinheiro (realizaveis " +
+      "de natureza ativa): categoria com a conta do ativo decidida pelo ente, constituicao, baixa, saldo e anulacao " +
+      "(V39-R3). Vem com PARAMETRIZAR_REALIZAVEL para quem gere os tipos de consignacao e MOVIMENTAR_REALIZAVEL para " +
+      "quem registra dispendio extraorcamentario, no mesmo escopo.",
+    derivar: derivarRealizavel,
   },
 ];
 

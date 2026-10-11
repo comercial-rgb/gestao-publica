@@ -187,6 +187,9 @@ export interface FatosDfc {
   readonly depositosRecebidos: Money;
   /** M07: DISPENDIO − ESTORNO_DISPENDIO (repasses, devoluções) — idem. */
   readonly depositosPagos: Money;
+  /** V39-R3 — realizáveis de natureza ativa: baixas (ingresso) e constituições (desembolso), líquidas das anulações. */
+  readonly outrosRecebidosExtra?: Money | undefined;
+  readonly outrosPagosExtra?: Money | undefined;
   /** Caixa no encerramento do exercício anterior (zero se não houver). */
   readonly caixaInicial: Money;
   /** O caixa REAL no fim da janela, somado das partidas. A prova dos nove. */
@@ -409,6 +412,9 @@ export function montarDfc(f: FatosDfc): DemonstracaoFluxosDeCaixa {
       // operacionais" no leiaute. O mesmo leitor e os mesmos sinais do Anexo 13.
       ingressos.push({ rotulo: "Depósitos Restituíveis e Valores Vinculados", nivel: "ITEM", valor: f.depositosRecebidos });
       desembolsos.push({ rotulo: "Depósitos Restituíveis e Valores Vinculados", nivel: "ITEM", valor: f.depositosPagos });
+      // V39-R3 — o dinheiro do município que saiu para um valor a receber de volta, e o que voltou.
+      ingressos.push({ rotulo: "Outros Ingressos Operacionais", nivel: "ITEM", valor: f.outrosRecebidosExtra ?? zero() });
+      desembolsos.push({ rotulo: "Outros Desembolsos Operacionais", nivel: "ITEM", valor: f.outrosPagosExtra ?? zero() });
       // Linhas do leiaute, hoje SEMPRE zero — mesma razão do Anexo 13: o modelo não tem
       // transferência financeira entre órgãos/entidades do mesmo ente. Zeradas, não omitidas.
       ingressos.push({ rotulo: "Transferências Financeiras Recebidas", nivel: "ITEM", valor: zero() });

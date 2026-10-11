@@ -23,6 +23,7 @@ import {
   derivarCorrecaoDaDispensacao,
   derivarReferenciaExternaDoEmpenho,
   derivarTranscricaoDeExtrato,
+  derivarRealizavel,
   situacaoDasAtualizacoes,
   type PerfilComPermissoes,
 } from "./atualizacoes-de-permissoes.js";
@@ -251,6 +252,17 @@ describe("a regra da v1 — leitura por área, no escopo em que o perfil já age
     ];
     const d = derivarAutorizacoesDaFrota(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
     expect(d).toEqual(["adm EMITIR_ORDEM_DE_ABASTECIMENTO G", "adm AUTORIZAR_MANUTENCAO_DA_FROTA G"]);
+  });
+
+  it("v51: quem gere consignação parametriza o realizável, quem registra dispêndio o movimenta; no mesmo escopo; sem repetir (V39-R3)", () => {
+    const perfis: readonly PerfilComPermissoes[] = [
+      { id: "cont", nome: "CONTABIL", permissoes: [{ acao: "GERIR_TIPOS_DE_CONSIGNACAO", unidadeOrcId: null }] },
+      { id: "tes", nome: "TESOURARIA", permissoes: [{ acao: "REGISTRAR_DISPENDIO_EXTRA", unidadeOrcId: null }, { acao: "MOVIMENTAR_REALIZAVEL", unidadeOrcId: null }] },
+      { id: "ambos", nome: "AMBOS", permissoes: [{ acao: "GERIR_TIPOS_DE_CONSIGNACAO", unidadeOrcId: null }, { acao: "REGISTRAR_DISPENDIO_EXTRA", unidadeOrcId: null }] },
+      { id: "leit", nome: "LEITOR", permissoes: [{ acao: "CONSULTAR_FINANCEIRO", unidadeOrcId: null }] },
+    ];
+    const d = derivarRealizavel(perfis, AREA_DA_ACAO).map((c) => `${c.perfilId} ${c.acao} ${c.unidadeOrcId ?? "G"}`);
+    expect(d).toEqual(["cont PARAMETRIZAR_REALIZAVEL G", "ambos PARAMETRIZAR_REALIZAVEL G", "ambos MOVIMENTAR_REALIZAVEL G"]);
   });
 
   it("v50: quem importa extrato recebe a transcrição; quem só consulta, não; quem já tem, não de novo (V39-R3)", () => {
@@ -515,6 +527,8 @@ describe("instalação limpa e atualização — no banco", () => {
       { versao: 49, previa: 0, aplicada: false },
       // V39-R3 — prévia 0 na instalação limpa: a ação de transcrever extrato chegou a ACOES_DO_ENTE pelo bootstrap.
       { versao: 50, previa: 0, aplicada: false },
+      // V39-R3 — prévia 0 na instalação limpa: as ações do realizável chegaram a ACOES_DO_ENTE pelo bootstrap.
+      { versao: 51, previa: 0, aplicada: false },
     ]);
   });
 

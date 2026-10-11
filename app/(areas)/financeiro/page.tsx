@@ -8,6 +8,7 @@ import { AREAS } from "../../../lib/navegacao";
 
 const ITENS: readonly ItemHub[] = [
   { titulo: "Extraorçamentário", descricao: "Consignações e retenções na fonte, com saldo por consignatário e recolhimentos.", href: "/financeiro/extraorcamentario" },
+  { titulo: "Valores a receber de volta", descricao: "Depósito restituível, adiantamento a devolver, crédito a receber: valores do município com outra pessoa, no ativo.", href: "/financeiro/realizaveis" },
   { titulo: "Fila de pagamentos", descricao: "Ordem cronológica de pagamentos por fonte e categoria (Lei 14.133/2021, art. 141).", href: "/despesa/pagamentos", onde: "Despesa" },
   // ⚠️ ANTES este item apontava para /integracoes, e o card do BB de lá não tinha ação: dois links
   // que se apontavam e nenhum que chegava ao número. Aponta direto para a tela que responde a

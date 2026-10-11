@@ -482,6 +482,12 @@ export const ORDEM_DOS_LOCKS = {
    * fechamento leem "está aberto?" e gravam. Mesma razão do inventário do almoxarifado.
    */
   InventarioDeBens: 49,
+  /**
+   * V39-R3 (R3-016) — O SALDO DO REALIZÁVEL por categoria e devedor (M07, `realizavel.ts`): a baixa e a anulação da
+   * constituição leem o saldo e gravam; duas ao mesmo tempo baixariam o mesmo valor duas vezes. Chave
+   * "categoriaId:devedor". Nada é travado depois dele no fluxo do realizável.
+   */
+  SaldoDeRealizavel: 50,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

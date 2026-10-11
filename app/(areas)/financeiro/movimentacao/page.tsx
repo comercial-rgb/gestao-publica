@@ -211,7 +211,8 @@ export default async function MovimentacaoPage({
                       <td>
                         {/* V36 — o aviso do banco, o contrato da aplicação: na página do movimento. */}
                         <a className="text-[color:var(--color-primary)] hover:underline" data-elo="documentos-do-movimento" href={`/financeiro/movimentacao/${m.id}`}>abrir</a>
-                        {m.ehEstorno ? null : <> · <LinkDuplicar href={`/financeiro/movimentacao?conta=${selecionada?.id ?? ""}&duplicar=${m.id}`} /></>}
+                        {/* O movimento do realizável nasce e se desfaz na tela dos valores a receber; aqui não se duplica. */}
+                        {m.ehEstorno || m.tipo === "SAIDA_PARA_REALIZAVEL" || m.tipo === "RETORNO_DE_REALIZAVEL" ? null : <> · <LinkDuplicar href={`/financeiro/movimentacao?conta=${selecionada?.id ?? ""}&duplicar=${m.id}`} /></>}
                       </td>
                     </tr>
                   ))}

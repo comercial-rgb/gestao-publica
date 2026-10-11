@@ -1,0 +1,96 @@
+// ============================================================================
+// V39-R3 (R3-016, V39-030) — OS REALIZÁVEIS DE NATUREZA ATIVA.
+//
+// Valor do ente que está com outra pessoa e volta (depósito restituível feito pelo município, adiantamento a ser
+// devolvido, crédito diverso a receber em dinheiro). É ATIVO — o espelho da consignação (passivo, dinheiro de terceiro
+// que o município guarda). Separados por construção: tabelas próprias; a consignação continua só no passivo.
+//
+// A conta do ativo de cada categoria é DECISÃO DO ENTE, com fundamento (DecisaoDaCategoriaDeRealizavel, append-only,
+// vale a mais recente): nenhuma conta no código. Sem decisão, a categoria não movimenta.
+//
+// Movimentos append-only, simétricos desde o dia 1: CONSTITUICAO (o dinheiro sai, nasce o direito) e BAIXA (o dinheiro
+// volta, o direito se extingue); a anulação de qualquer um é outro movimento que aponta o original (`estornoDeId`) e
+// inverte o lançamento. O saldo por categoria e devedor é a soma com sinal; baixa acima do saldo é recusada.
+// ============================================================================
+
+model CategoriaDeRealizavel {
+  id String @id @default(cuid())
+
+  codigo    String @unique
+  descricao String
+
+  decisoes   DecisaoDaCategoriaDeRealizavel[]
+  movimentos MovimentoDeRealizavel[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A conta do ativo que a categoria movimenta, decidida pelo ente. Vale a mais recente; `ativa = false` suspende a
+/// categoria (sem conta, nada se movimenta).
+model DecisaoDaCategoriaDeRealizavel {
+  id String @id @default(cuid())
+
+  categoriaId String
+  categoria   CategoriaDeRealizavel @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+
+  contaAtivoId String?
+  contaAtivo   ContaPcasp? @relation("ContaDoRealizavel", fields: [contaAtivoId], references: [id], onDelete: Restrict)
+  ativa        Boolean
+  fundamento   String
+
+  movimentos MovimentoDeRealizavel[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([categoriaId, criadoEm])
+}
+
+enum TipoMovimentoDeRealizavel {
+  CONSTITUICAO
+  BAIXA
+}
+
+model MovimentoDeRealizavel {
+  id String @id @default(cuid())
+
+  categoriaId String
+  categoria   CategoriaDeRealizavel @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  /// A decisão (e portanto a conta) que valia quando o movimento nasceu.
+  decisaoId   String
+  decisao     DecisaoDaCategoriaDeRealizavel @relation(fields: [decisaoId], references: [id], onDelete: Restrict)
+
+  tipo      TipoMovimentoDeRealizavel
+  /// Com quem está o valor (CPF/CNPJ, só dígitos).
+  devedor   String
+  valor     Decimal  @db.Decimal(18, 2)
+  data      DateTime
+  historico String
+  /// O documento que sustenta o fato (recibo, guia de depósito, termo).
+  documento String
+
+  contaBancariaId String
+  contaBancaria   ContaBancaria @relation("MovimentosDeRealizavel", fields: [contaBancariaId], references: [id], onDelete: Restrict)
+  fonteId         String
+  fonte           FonteRecurso  @relation("MovimentosDeRealizavel", fields: [fonteId], references: [id], onDelete: Restrict)
+
+  lancamentoId String            @unique
+  lancamento   LancamentoContabil @relation("LancamentoDoRealizavel", fields: [lancamentoId], references: [id], onDelete: Restrict)
+
+  /// O movimento bancário que leva este fato ao caixa (saída na constituição, retorno na baixa, estorno na anulação):
+  /// é por ele que o saldo da conta, a conciliação e a trava do saldo bancário o enxergam. O lançamento é o dele.
+  /// Nulo só nos movimentos gravados antes da integração (base de ensaio).
+  movimentoBancarioId String?            @unique
+  movimentoBancario   MovimentoBancario? @relation("CaixaDoRealizavel", fields: [movimentoBancarioId], references: [id], onDelete: Restrict)
+
+  /// A anulação aponta o original, uma vez.
+  estornoDeId String?                 @unique
+  estornoDe   MovimentoDeRealizavel?  @relation("EstornoDoRealizavel", fields: [estornoDeId], references: [id], onDelete: Restrict)
+  estorno     MovimentoDeRealizavel?  @relation("EstornoDoRealizavel")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([categoriaId, devedor])
+}

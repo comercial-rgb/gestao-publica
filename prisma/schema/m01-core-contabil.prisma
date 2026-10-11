@@ -35,6 +35,8 @@ enum Subsistema {
 // ----------------------------------------------------------------------------
 
 model ContaPcasp {
+  /// V39-R3 (R3-016) — as categorias de realizável que decidiram esta conta.
+  decisoesDeRealizavel DecisaoDaCategoriaDeRealizavel[] @relation("ContaDoRealizavel")
   /// V26 — as contas da transferência entre UGs (m01-unidade-gestora.prisma).
   vpdDaTransferenciaEntreUgs ContabilizacaoDaTransferenciaEntreUgs[] @relation("VpdDaTransferenciaEntreUgs")
   vpaDaTransferenciaEntreUgs ContabilizacaoDaTransferenciaEntreUgs[] @relation("VpaDaTransferenciaEntreUgs")
@@ -159,6 +161,8 @@ enum NaturezaLancamento {
 /// entidade DONA do fato, com LEITOR NOMEADO. Ver `MODULO.md` (§ a competência) e a migração
 /// `*_remove_competencia_lancamento`.
 model LancamentoContabil {
+  /// V39-R3 (R3-016) — o movimento de realizável que gerou este lançamento.
+  movimentoDeRealizavel MovimentoDeRealizavel? @relation("LancamentoDoRealizavel")
   /// V35 — a apropriação do 13º e das férias, e o acerto do 13º, que geraram este lançamento. VIRTUAIS.
   apropriacaoDePessoal ApropriacaoPorCompetencia? @relation("LancamentoDaApropriacaoDePessoal")
   acertoDo13 AcertoDoDecimoTerceiro? @relation("LancamentoDoAcertoDo13")

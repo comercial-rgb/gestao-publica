@@ -27,10 +27,55 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
-| R3-015 linha de extrato digitada | este | sim | 8 testes, 9 mutações vermelhas | `percurso-v39r3-transcricao-de-extrato.mts` 11/11 | sem permissão, dia futuro, repetida, quem digitou não revisa, dia coberto pelo banco | base R3 |
+| R3-016 valores a receber de volta (realizáveis) | este | sim | 8 testes, 14 mutações vermelhas | `percurso-v39r3-realizavel.mts` 9/9 | sem decisão do ente, conta fora dos grupos, baixa acima do saldo, sem permissão | base R3 |
+| R3-015 linha de extrato digitada | d1ca4988 | sim | 8 testes, 9 mutações vermelhas | `percurso-v39r3-transcricao-de-extrato.mts` 11/11 | sem permissão, dia futuro, repetida, quem digitou não revisa, dia coberto pelo banco | base R3 |
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-016 (V39-030, M07) — os realizáveis de natureza ativa
+- **Rota:** Financeiro › Valores a receber de volta (`/financeiro/realizaveis`), também no menu do extraorçamentário.
+  Quem parametriza cadastra a categoria e registra a conta do ativo decidida pelo ente (com fundamento); quem movimenta
+  constitui, baixa e anula; o quadro mostra saldos por devedor e conta.
+- **Regras:** tabelas próprias (a consignação continua só no passivo); conta do ativo por decisão do ente, conferida só
+  na natureza (analítica, saldo devedor, grupos 1.1.2, 1.1.3, 1.2.1.1, 1.2.1.2); constituição D ativo / C disponibilidade;
+  baixa o inverso, até o menor saldo da linha do tempo, na mesma fonte; anulação pelo estorno do movimento bancário, uma
+  vez; o caixa pelo núcleo do movimento bancário do M09; trava da conta e do saldo.
+- **Parâmetro de ensaio:** na base R3, a categoria do percurso usa 1.1.3.5.1.02.00 (depósitos judiciais) do plano
+  oficial carregado, com o fundamento dizendo que é parâmetro de ensaio e não decisão do município. Nenhuma conta foi
+  criada.
+- **Ações novas:** PARAMETRIZAR_REALIZAVEL e MOVIMENTAR_REALIZAVEL, atualização v51 (na base R3: 2 concessões ao perfil
+  de administração). Trava nova `SaldoDeRealizavel` (posto 50).
+- **Schema:** migrations `20261111091100_v39r3_acoes_do_realizavel` e `20261111091200_v39r3_realizavel_de_natureza_ativa`
+  e `prisma/sql/ck_realizavel.sql`; aplicadas na base de teste e na R3.
+- **Auditoria de invariantes, achado ALTO corrigido antes do commit:** a primeira versão lançava o caixa à parte e
+  nenhum leitor de caixa via o fato: o Anexo 13 e a DFC deixavam de sair, o superávit por fonte mostrava caixa que não
+  havia, o saldo da conta e a trava do saque ignoravam a saída, e a constituição não tinha teto. Agora o caixa vai pelo
+  núcleo do movimento bancário (tipos próprios), o Anexo 13 e a DFC têm a linha de "outros" e o superávit tira o
+  realizável da fonte. Corrigidos também: baixa por outra fonte, saldo na data, suspensa sem baixa, natureza da conta
+  (redutora e estoque do longo prazo), data da anulação, anulação concorrente, data UTC no percurso, contas inventadas no
+  teste (agora do plano oficial). Pendências novas nomeadas no MODULO.md do M07: REALIZAVEL-NO-SAGRES,
+  MOVIMENTO-BANCARIO-FORA-DO-ANEXO13-E-DFC (anterior à R3), MOVIMENTOS-DE-ENSAIO-SEM-CAIXA.
+- **Schema adicional:** `20261111091300_v39r3_movimento_bancario_do_realizavel` (tipos de movimento bancário) e
+  `20261111091400_v39r3_realizavel_pelo_caixa` (o vínculo com o movimento bancário).
+- **Segunda auditoria, achados corrigidos:** o estorno público da movimentação bancária alcançava o caixa do realizável
+  (o dinheiro voltaria duas vezes) — agora recusa e aponta a tela certa; a porta da tesouraria contava o retorno do
+  realizável como saída no saldo por fonte — agora usa o sentido do domínio; a conferência "na data e no total" deixava
+  negativo um ponto posterior — agora é o menor saldo da linha do tempo; a DFC sem teste — agora afirmada; a negação do
+  saldo bancário aceitava qualquer "saldo" — agora afirma a mensagem; o nome interno do tipo na tela e o "duplicar"
+  indevido. Nomeados: LINHA-DO-SUPERAVIT-SEM-COLUNA-DO-REALIZAVEL e REALIZAVEL-NA-MSC.
+- **Depois da segunda auditoria:** `m07-realizavel.test.ts` 8/8 (Anexo 13, DFC, S1 do superávit, linha do tempo e estorno
+  público afirmados); 14 mutações vermelhas e restauradas; M09, M07, relatórios de caixa do M12 e atualizações 423/423;
+  censo 5/5.
+- **Comandos depois da correção:** `m07-realizavel.test.ts` 7/7 (razão, saldo da conta bancária, Anexo 13 e S1 do
+  superávit afirmados); 12 mutações vermelhas e restauradas (inclusive Anexo 13 sem realizável, superávit sem realizável
+  e caixa à parte); M09, M07 e os relatórios de caixa do M12 396/396; censo 5/5; atualizações 26/26; typecheck 0;
+  percurso 9/9, com cada movimento ligado ao movimento bancário.
+- **Comandos da primeira versão:** `m07-realizavel.test.ts` 6/6 (razão conferido por soma de partidas, N=2 devedores); 6 mutações vermelhas
+  e restauradas — a de "mover sem a decisão do ente" ficou verde na primeira corrida porque a suspensão era testada
+  sem conta; o teste passou a suspender mantendo a conta e a mutação ficou vermelha. `modules/m07-extraorcamentario`
+  180/180; censo 5/5 depois de pôr a autorização no corpo de cada serviço (o t6 recusou o helper); atualizações 26/26;
+  typecheck dos três projetos 0; percurso 9/9.
 
 ### R3-015 (V39-029, M09) — a linha de extrato transcrita à mão
 - **Rota:** Financeiro › Conciliação bancária › "Sem arquivo do banco? Transcrever linhas do extrato"
@@ -102,7 +147,7 @@ Nenhuma linha acima foi validada externamente nem publicada.
   `m07-calculo-da-retencao` e `m07` 58/58.
 
 ### O próximo passo
-1. R3-016 (realizáveis de natureza ativa), depois R3-019 a R3-030 na ordem do pedido.
+1. R3-019 a R3-030 na ordem do pedido.
 2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
 3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
 

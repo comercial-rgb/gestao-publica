@@ -9,7 +9,7 @@ import { saldoDasContas } from "../m01-core-contabil/adapter-prisma.js";
 // ═══ NENHUMA ARITMÉTICA AQUI: cada total vem do módulo DONO do dado. ═══
 import { arrecadadoPorFonte } from "../m04-receita/consultas.js";
 import { despesaPorFonte } from "../m05-despesa/consultas.js";
-import { extraorcamentarioPorFonte } from "../m07-extraorcamentario/consultas.js";
+import { extraorcamentarioPorFonte, realizavelPorFonte } from "../m07-extraorcamentario/consultas.js";
 import { restosAPagarPorFonte } from "../m08-restos-a-pagar/consultas.js";
 
 /**
@@ -109,11 +109,12 @@ export async function linhasDoSuperavitPorFonte(
   readonly totalCaixa: Money;
   readonly totalSuperavit: Money;
 }> {
-  const [arrecadado, despesa, extra, restos] = await Promise.all([
+  const [arrecadado, despesa, extra, restos, realizavel] = await Promise.all([
     arrecadadoPorFonte(prisma, { ate: p.corte }),
     despesaPorFonte(prisma, { ate: p.corte }),
     extraorcamentarioPorFonte(prisma, { ate: p.corte }),
     restosAPagarPorFonte(prisma, { ate: p.corte }),
+    realizavelPorFonte(prisma, { ate: p.corte }),
   ]);
 
   // TODA fonte que apareceu em QUALQUER perna entra na listagem — inclusive a que
@@ -124,6 +125,7 @@ export async function linhasDoSuperavitPorFonte(
     ...despesa.keys(),
     ...extra.keys(),
     ...restos.keys(),
+    ...realizavel.keys(),
   ]);
 
   const fontes = await prisma.fonteRecurso.findMany({
@@ -152,9 +154,14 @@ export async function linhasDoSuperavitPorFonte(
 
     // O CAIXA DA FONTE, com os sinais explícitos: entra a arrecadação e o ingresso
     // avulso; sai o pagamento (LÍQUIDO — só isso saiu do banco) e o repasse.
+    // V39-R3 — o realizável: o dinheiro que saiu para um valor a receber (e ainda não voltou) não é caixa da fonte.
+    const realizavelLiquido = realizavel.get(f.id) ?? zero();
     const caixa = sub(
-      soma(arr, ingressosExtra),
-      soma(pagamentosLiquidos, dispendiosExtra)
+      sub(
+        soma(arr, ingressosExtra),
+        soma(pagamentosLiquidos, dispendiosExtra)
+      ),
+      realizavelLiquido
     );
 
     const superavit = sub(caixa, soma(obrigacoesAPagar, consignacoes));

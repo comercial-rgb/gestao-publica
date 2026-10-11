@@ -5,7 +5,7 @@ import { parcelasDaReceitaRealizada, restosPagosNaJanela } from "./composicao.js
 // OS MESMOS FATOS DO ANEXO 13 — importados, não recopiados: a janela, o caixa (a apuração do
 // M01 pelas partidas) e o dinheiro de terceiros (M07). Duas cópias de cada um seriam duas
 // verdades sobre o mesmo saldo.
-import { apurarCaixa, lerDepositos } from "./balanco-financeiro.js";
+import { apurarCaixa, lerDepositos, lerRealizaveis } from "./balanco-financeiro.js";
 // E A MESMA DESPESA PAGA DO ANEXO 12: a coluna "pagas", por ficha, pelo bruto, com o corte que
 // separa o pago do exercício do pago de restos a pagar.
 import { lerDespesas } from "./balanco-orcamentario.js";
@@ -80,12 +80,13 @@ export async function demonstracaoFluxosDeCaixa(
   });
   const inicio: Date | null = anterior?.encerramento?.criadoEm ?? null;
 
-  const [receitas, despesasDoExercicio, restosPagos, depositos, caixaInicial, caixaApurado] =
+  const [receitas, despesasDoExercicio, restosPagos, depositos, realizaveis, caixaInicial, caixaApurado] =
     await Promise.all([
       lerReceitasPorNatureza(prisma, exercicio, corte),
       lerDespesas(prisma, exercicio, corte),
       lerRestosPagosPorNatureza(prisma, exercicio, inicio, corte),
       lerDepositos(prisma, inicio, corte),
+      lerRealizaveis(prisma, inicio, corte),
       inicio === null
         ? Promise.resolve(toMoney("0.00"))
         : apurarCaixa(prisma, contasDisponibilidade, inicio),
@@ -104,6 +105,8 @@ export async function demonstracaoFluxosDeCaixa(
     restosPagos,
     depositosRecebidos: depositos.recebidos,
     depositosPagos: depositos.pagos,
+    outrosRecebidosExtra: realizaveis.recebidos,
+    outrosPagosExtra: realizaveis.pagos,
     caixaInicial,
     caixaApurado,
   });

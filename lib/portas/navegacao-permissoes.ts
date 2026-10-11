@@ -102,6 +102,8 @@ export const AREA_DA_ACAO: Record<AcaoDoSistema, DestinoDaAcao> = {
   EMPENHAR: "despesa",
   REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO: "despesa",
   TRANSCREVER_EXTRATO: "financeiro",
+  PARAMETRIZAR_REALIZAVEL: "financeiro",
+  MOVIMENTAR_REALIZAVEL: "financeiro",
   ANULAR_EMPENHO: "despesa",
   ANULAR_EMPENHO_PARCIAL: "despesa",
   LIQUIDAR: "despesa",

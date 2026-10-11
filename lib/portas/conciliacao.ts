@@ -496,6 +496,8 @@ const ROTULO_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, string> = {
   RESGATE: "Resgate de aplicação",
   RENDIMENTO: "Rendimento creditado",
   TARIFA: "Tarifa bancária",
+  SAIDA_PARA_REALIZAVEL: "Saída para valor a receber de volta",
+  RETORNO_DE_REALIZAVEL: "Retorno de valor a receber",
 };
 
 /** Os lançamentos sem conta bancária, com o que o contador precisa para achá-los no razão. */

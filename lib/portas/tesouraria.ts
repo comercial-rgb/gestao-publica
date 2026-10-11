@@ -1,6 +1,7 @@
 import { cliente, PortaSemBancoError } from "./cliente";
 import { comEscritaAutenticada } from "./sessao";
 import { saldoDaContaBancaria } from "../../modules/m09-tesouraria/caixa";
+import { SENTIDO_MOVIMENTO_BANCARIO } from "../../modules/m09-tesouraria/dominio";
 import {
   estornarMovimentoBancario,
   registrarMovimentoBancario,
@@ -122,7 +123,8 @@ export async function contasComSaldo(ate: string): Promise<readonly ContaDaTela[
      */
     const porFonte = new Map<string, Money>();
     for (const m of movimentos) {
-      const entrada = ["DEPOSITO", "RESGATE", "RENDIMENTO"].includes(m.tipo);
+      // O sentido vem do domínio (`SENTIDO_MOVIMENTO_BANCARIO`): a lista à mão contava o retorno do realizável como saída.
+      const entrada = SENTIDO_MOVIMENTO_BANCARIO[m.tipo] === "ENTRADA";
       const atual = porFonte.get(m.fonte.codigo) ?? toMoney("0.00");
       const parcela = toMoney(m.valor);
       porFonte.set(m.fonte.codigo, entrada ? atual.plus(parcela) : atual.minus(parcela));

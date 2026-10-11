@@ -437,6 +437,8 @@ model Liquidacao {
 /// conta" é uma regra que não dá para checar. `Pagamento.contaBancaria` guarda
 /// o código, e o adapter confere a fonte contra esta tabela.
 model ContaBancaria {
+  /// V39-R3 (R3-016)
+  movimentosDeRealizavel MovimentoDeRealizavel[] @relation("MovimentosDeRealizavel")
   /// V36 — os cheques emitidos desta conta (m09-cheques.prisma).
   cheques Cheque[] @relation("ChequesDaConta")
   /// V35 — as deduções retidas na origem desta conta. VIRTUAL.

@@ -94,6 +94,9 @@ export interface FatosBalancoFinanceiro {
   readonly pagamentoRestosProcessados: Money;
   /** M07: DISPENDIO − ESTORNO_DISPENDIO no exercício (repasses e devoluções). */
   readonly depositosPagos: Money;
+  /** V39-R3 — realizáveis de natureza ativa: o que voltou (baixas) e o que saiu (constituições), líquidos das anulações. */
+  readonly outrosRecebidosExtra?: Money | undefined;
+  readonly outrosPagosExtra?: Money | undefined;
 
   // CAIXA
   readonly saldoAnterior: Money;
@@ -141,7 +144,7 @@ export function montarBalancoFinanceiro(
     soma(f.inscricaoRestosNaoProcessados, f.inscricaoRestosProcessados),
     f.depositosRecebidos
   );
-  const outrosRecebimentos = zero();
+  const outrosRecebimentos = f.outrosRecebidosExtra ?? zero();
 
   const ingressos: LinhaFinanceira[] = [
     linha(null, "RECEITAS ORÇAMENTÁRIAS", "GRUPO", receitaTotal),
@@ -201,7 +204,7 @@ export function montarBalancoFinanceiro(
     soma(f.pagamentoRestosNaoProcessados, f.pagamentoRestosProcessados),
     f.depositosPagos
   );
-  const outrosPagamentos = zero();
+  const outrosPagamentos = f.outrosPagosExtra ?? zero();
 
   const dispendiosSemSaldo = soma(
     soma(despesaTotal, transferenciasConcedidas),
