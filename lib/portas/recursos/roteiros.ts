@@ -293,7 +293,8 @@ export const ROTEIROS_DO_ALMOXARIFADO: DefinicaoDeRecurso = definirRecurso({
   rota: "/patrimonio/almoxarifado/roteiros",
   descricao:
     "Contas do PCASP de débito e de crédito da saída de material por consumo e dos ajustes de inventário. Sem roteiro, " +
-    "o movimento não é registrado. A entrada é lançada pela liquidação, e o estorno inverte as contas do movimento original.",
+    "o movimento não é registrado. A conta do estoque em cada lançamento é a da classe do material; daqui vem a outra " +
+    "conta (a variação patrimonial). A entrada é lançada pela liquidação, e o estorno inverte o lançamento do movimento original.",
   campos: [
     { nome: "tipo", rotulo: "Movimento", tipo: "selecao", obrigatorio: true, largura: 2,
       opcoes: Object.entries(ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO).map(([valor, rotulo]) => ({ valor, rotulo })) },

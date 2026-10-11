@@ -6,7 +6,7 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { comporPartidas, TIPOS_BASE } from "./dominio.js";
 import type { TipoMovimentoPatrimonial } from "./dominio.js";
 import type { AcaoDoSistema } from "../m16-travamento/acoes.js";
-import { TEM_ROTEIRO_ALMOXARIFADO } from "./almoxarifado.js";
+import { GRUPO_DOS_ESTOQUES, LADO_DO_ESTOQUE, TEM_ROTEIRO_ALMOXARIFADO } from "./almoxarifado.js";
 import type { TipoMovimentoAlmoxarifado } from "./almoxarifado.js";
 
 const zCodigoDeConta = z.string().min(1);
@@ -642,6 +642,17 @@ export async function parametrizarRoteiroAlmoxarifado(
       conferirConta(tx, d.contaCreditoId, "crédito"),
     ]);
     conferirContraOMotor(debito, credito);
+    // V39-R3 — no lançamento a perna do estoque é a conta da CLASSE do material; a do roteiro tem de ser do grupo dos
+    // estoques (é o lado que a classe substitui) e a outra, a contrapartida, não pode ser estoque.
+    const lado = LADO_DO_ESTOQUE[tipo];
+    const doEstoque = lado === "DEBITO" ? debito : credito;
+    const contrapartida = lado === "DEBITO" ? credito : debito;
+    if (!doEstoque.codigo.startsWith(GRUPO_DOS_ESTOQUES)) {
+      throw new Error(`No movimento escolhido o estoque fica no ${lado === "DEBITO" ? "débito" : "crédito"}, e a conta ${doEstoque.codigo} — ${doEstoque.nome} não é de estoque (${GRUPO_DOS_ESTOQUES}…). No lançamento vale a conta da classe do material; aqui informe uma conta de estoque desse lado. O roteiro NÃO foi gravado.`);
+    }
+    if (contrapartida.codigo.startsWith(GRUPO_DOS_ESTOQUES)) {
+      throw new Error(`A conta ${contrapartida.codigo} — ${contrapartida.nome} é de estoque: o movimento viraria transferência entre estoques. A outra conta é a variação patrimonial. O roteiro NÃO foi gravado.`);
+    }
 
     // V37 — a versão publicada, ou a linha gravada antes das versões. Trocar é versão nova, e só com `substituir`:
     // ninguém sobrescreve o roteiro por ter escolhido o movimento errado.

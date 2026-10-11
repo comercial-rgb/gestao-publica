@@ -11,6 +11,7 @@ import {
   type VersaoDeRoteiroLida,
 } from "../../../modules/m10-patrimonial/roteiros.js";
 import { TIPOS_BASE } from "../../../modules/m10-patrimonial/dominio.js";
+import { LADO_DO_ESTOQUE } from "../../../modules/m10-patrimonial/almoxarifado.js";
 import type { ConsultaDoMolde } from "../../molde/consulta.js";
 import { comEscritaAutenticada } from "../sessao";
 import { cliente, PortaSemBancoError } from "../cliente";
@@ -446,14 +447,17 @@ export async function listarRoteirosDoAlmoxarifadoDoMolde(c: ConsultaDoMolde): P
     return {
       id: tipo,
       evento: ROTULO_DO_MOVIMENTO_DO_ALMOXARIFADO[tipo] ?? tipo,
-      debito: r === undefined ? "—" : `${r.contaDebito.codigo} — ${r.contaDebito.nome}`,
-      credito: r === undefined ? "—" : `${r.contaCredito.codigo} — ${r.contaCredito.nome}`,
+      // V39-R3 — o lado do estoque é a conta da classe do material, não a gravada no roteiro.
+      debito: r === undefined ? "—" : LADO_DO_ESTOQUE[tipo] === "DEBITO" ? ESTOQUE_DA_CLASSE : `${r.contaDebito.codigo} — ${r.contaDebito.nome}`,
+      credito: r === undefined ? "—" : LADO_DO_ESTOQUE[tipo] === "CREDITO" ? ESTOQUE_DA_CLASSE : `${r.contaCredito.codigo} — ${r.contaCredito.nome}`,
       situacao: r === undefined ? "Sem roteiro" : (versoes.get(tipo) ?? 0) > 1 ? `Parametrizado (${String(versoes.get(tipo))} versões)` : "Parametrizado",
       situacaoTom: r === undefined ? "alerta" : "ok",
     };
   }).filter((l) => q === "" || `${l.evento} ${l.debito} ${l.credito}`.toLowerCase().includes(q));
   return { total: linhas.length, linhas };
 }
+
+const ESTOQUE_DA_CLASSE = "Estoque: a conta da classe de cada material";
 
 export async function criarRoteiroDoAlmoxarifado(c: Campos): Promise<void> {
   await comEscritaAutenticada("PARAMETRIZAR_ROTEIRO_PATRIMONIAL", (criadoPor) =>

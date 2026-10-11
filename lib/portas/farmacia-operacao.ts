@@ -34,7 +34,7 @@ export interface TelaDaFarmacia {
   readonly depositosLivres: readonly { readonly id: string; readonly rotulo: string }[];
   readonly lotes: readonly LoteNaTela[];
   readonly dispensacoes: readonly { readonly numero: number; readonly data: string; readonly usuario: string | null; readonly receita: string | null; readonly itens: string; readonly por: string }[];
-  readonly ajustes: readonly { readonly sentido: string; readonly data: string; readonly item: string; readonly motivo: string; readonly destino: string | null; readonly por: string }[];
+  readonly ajustes: readonly { readonly sentido: string; readonly data: string; readonly item: string; readonly motivo: string; readonly destino: string | null; readonly por: string; readonly valor: string }[];
   readonly inventarios: readonly { readonly id: string; readonly rotulo: string }[];
   readonly pode: { readonly vincular: boolean; readonly dispensar: boolean; readonly ajustar: boolean };
   /** O identificador do usuário e a receita estão na lista (quem pode dispensar na unidade do depósito). */
@@ -51,9 +51,11 @@ export async function lerTelaDaFarmacia(farmaciaId: string): Promise<TelaDaFarma
   });
   if (f === null) return null;
   const permitidas = await acoesPermitidas(["CADASTRAR_FARMACIA", "DISPENSAR_MEDICAMENTO", "REGISTRAR_AJUSTE_DA_FARMACIA"]);
-  const pode = { vincular: permitidas.has("CADASTRAR_FARMACIA"), dispensar: permitidas.has("DISPENSAR_MEDICAMENTO"), ajustar: permitidas.has("REGISTRAR_AJUSTE_DA_FARMACIA") };
-  // O identificador e a receita: só para quem pode dispensar NA UNIDADE do depósito (o menu acima é por ação, sem unidade).
-  const verDados = await podeVerDadosDaDispensacao(prisma, sessao.identificador, farmaciaId);
+  // O identificador e a receita, e os formulários de dispensar e de perda ou sobra: só para quem tem a ação NA UNIDADE do
+  // depósito, o mesmo critério do serviço que grava. Ter a ação em outra unidade não basta (o formulário seria recusado).
+  const verDados = permitidas.has("DISPENSAR_MEDICAMENTO") && (await podeVerDadosDaDispensacao(prisma, sessao.identificador, farmaciaId));
+  const ajustaNaUnidade = permitidas.has("REGISTRAR_AJUSTE_DA_FARMACIA") && (await podeVerDadosDaDispensacao(prisma, sessao.identificador, farmaciaId, "REGISTRAR_AJUSTE_DA_FARMACIA"));
+  const pode = { vincular: permitidas.has("CADASTRAR_FARMACIA"), dispensar: verDados, ajustar: ajustaNaUnidade };
   const depositoId = f.deposito?.depositoId ?? null;
   const hoje = diaCivil(new Date());
   const [livres, lotesDb, disp, ajustes, inventarios] = await Promise.all([
@@ -66,7 +68,7 @@ export async function lerTelaDaFarmacia(farmaciaId: string): Promise<TelaDaFarma
       where: { farmaciaId }, orderBy: { numero: "desc" }, take: 50,
       select: { numero: true, data: true, identificacaoDoUsuario: true, receita: true, criadoPor: true, itens: { select: { quantidade: true, material: { select: { codigo: true } }, lote: { select: { identificacao: true } } } } },
     }),
-    prisma.ajusteDaFarmacia.findMany({ where: { farmaciaId }, orderBy: { criadoEm: "desc" }, take: 50, select: { sentido: true, data: true, quantidade: true, motivo: true, destino: true, criadoPor: true, material: { select: { codigo: true } }, lote: { select: { identificacao: true } } } }),
+    prisma.ajusteDaFarmacia.findMany({ where: { farmaciaId }, orderBy: { criadoEm: "desc" }, take: 50, select: { sentido: true, data: true, quantidade: true, motivo: true, destino: true, criadoPor: true, material: { select: { codigo: true } }, lote: { select: { identificacao: true } }, movimentoFisico: { select: { valorUnitario: true, valorTotal: true } } } }),
     depositoId === null ? Promise.resolve([]) : prisma.inventarioDeEstoque.findMany({ where: { depositoId }, orderBy: { dataAbertura: "desc" }, take: 12, select: { id: true, dataAbertura: true, dataFechamento: true } }),
   ]);
   const lotes: LoteNaTela[] = lotesDb.flatMap((l) => {
@@ -88,7 +90,9 @@ export async function lerTelaDaFarmacia(farmaciaId: string): Promise<TelaDaFarma
       usuario: verDados ? d.identificacaoDoUsuario : null, receita: verDados ? d.receita : null,
       itens: d.itens.map((i) => `${i.material.codigo} lote ${i.lote.identificacao}: ${i.quantidade.toFixed(4)}`).join("; "), por: d.criadoPor,
     })),
-    ajustes: ajustes.map((a) => ({ sentido: a.sentido === "PERDA" ? "perda" : "sobra", data: diaCivilBr(a.data), item: `${a.material.codigo}${a.lote === null ? "" : ` lote ${a.lote.identificacao}`}: ${a.quantidade.toFixed(4)}`, motivo: a.motivo, destino: a.destino, por: a.criadoPor })),
+    ajustes: ajustes.map((a) => ({ sentido: a.sentido === "PERDA" ? "perda" : "sobra", data: diaCivilBr(a.data), item: `${a.material.codigo}${a.lote === null ? "" : ` lote ${a.lote.identificacao}`}: ${a.quantidade.toFixed(4)}`, motivo: a.motivo, destino: a.destino, por: a.criadoPor,
+      // V39-R3 (R3-008) — a origem do valor: o custo médio da posição do medicamento no depósito, no dia do ajuste.
+      valor: `R$ ${a.movimentoFisico.valorTotal.toFixed(2).replace(".", ",")} ao custo médio de R$ ${a.movimentoFisico.valorUnitario.toFixed(6).replace(".", ",")} por unidade (posição do depósito no dia)` })),
     inventarios: inventarios.map((i) => ({ id: i.id, rotulo: `aberto em ${diaCivilBr(i.dataAbertura)}${i.dataFechamento === null ? " (em andamento)" : `, fechado em ${diaCivilBr(i.dataFechamento)}`}` })),
     pode,
     dadosDoUsuarioVisiveis: verDados,

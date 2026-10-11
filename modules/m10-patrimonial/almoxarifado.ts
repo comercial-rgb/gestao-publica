@@ -13,6 +13,7 @@ import { exigirElementoOficial } from "../m02-planejamento/dominio.js";
 // travamento de competência (M16). Ver `m01-funil.test.ts`: o grep-teste proíbe o
 // `lancamentoContabil.create` fora dele.
 import { lancarNoRazao } from "../m01-core-contabil/razao.js";
+import { comporPartidas } from "./dominio.js";
 
 /**
  * M10 — ALMOXARIFADO (TR 5.85/5.86).
@@ -78,6 +79,16 @@ export const TEM_ROTEIRO_ALMOXARIFADO: Record<TipoMovimentoAlmoxarifado, boolean
   ESTORNO_SAIDA_CONSUMO: true,
   ESTORNO_AJUSTE_ENTRADA: true,
   ESTORNO_AJUSTE_SAIDA: true,
+};
+
+/** V39-R3 — o grupo dos estoques no PCASP (estrutura do plano, como as classes de `conta-da-liquidacao.ts`). */
+export const GRUPO_DOS_ESTOQUES = "1.1.5.";
+
+/** V39-R3 — de que lado do lançamento fica o ESTOQUE (a conta da classe) em cada movimento com roteiro próprio. */
+export const LADO_DO_ESTOQUE: Partial<Record<TipoMovimentoAlmoxarifado, "DEBITO" | "CREDITO">> = {
+  SAIDA_CONSUMO: "CREDITO",
+  AJUSTE_SAIDA: "CREDITO",
+  AJUSTE_ENTRADA: "DEBITO",
 };
 
 export const TIPO_DO_ESTORNO_ALMOXARIFADO: Record<
@@ -264,6 +275,8 @@ async function lancar(
   p: {
     readonly tipoDoRoteiro: TipoMovimentoAlmoxarifado;
     readonly inverter: boolean;
+    /** No estorno (inverter), o lançamento do movimento original — é ele que se inverte. */
+    readonly lancamentoOriginalId?: string | null;
     readonly codigo: string;
     readonly valor: Money;
     readonly data: Date;
@@ -272,9 +285,50 @@ async function lancar(
     readonly historico: string;
   }
 ): Promise<string> {
-  const r = await exigirRoteiro(tx, p.tipoDoRoteiro);
-  const debito = p.inverter ? r.contaCreditoId : r.contaDebitoId;
-  const credito = p.inverter ? r.contaDebitoId : r.contaCreditoId;
+  let debito: string;
+  let credito: string;
+  if (p.inverter) {
+    // V39-R3 — O ESTORNO INVERTE O LANÇAMENTO ORIGINAL, não o roteiro de hoje: trocadas as contas depois do fato, o
+    // estorno pelo roteiro novo deixaria a conta antiga com o saldo do original e a nova com o inverso.
+    const partidas = p.lancamentoOriginalId === null || p.lancamentoOriginalId === undefined
+      ? []
+      : await tx.partidaContabil.findMany({ where: { lancamentoId: p.lancamentoOriginalId }, select: { contaId: true, tipo: true } });
+    const d0 = partidas.find((x) => x.tipo === "DEBITO");
+    const c0 = partidas.find((x) => x.tipo === "CREDITO");
+    if (partidas.length !== 2 || d0 === undefined || c0 === undefined) {
+      throw new Error(`O lançamento do movimento original não foi achado com uma partida de débito e uma de crédito: o estorno não se monta pelo roteiro atual. Nada foi gravado.`);
+    }
+    debito = c0.contaId;
+    credito = d0.contaId;
+  } else {
+    // V39-R3 — A CONTA DO ESTOQUE É A DA CLASSE DO MATERIAL. O roteiro é um por tipo de movimento, e a classe é que
+    // diz em que conta o estoque está (medicamento, material de consumo...). Com duas classes em contas diferentes, a
+    // perna do estoque tirada do roteiro creditaria a conta da outra classe, e a amarração com o razão quebraria.
+    // O roteiro dá a CONTRAPARTIDA (a variação patrimonial); a perna do estoque vem da classe.
+    const r = await exigirRoteiro(tx, p.tipoDoRoteiro);
+    const lado = LADO_DO_ESTOQUE[p.tipoDoRoteiro];
+    if (lado === undefined) throw new Error(`O movimento ${p.tipoDoRoteiro} não tem lado de estoque declarado. Nada foi gravado.`);
+    const classe = await tx.classeDeMaterial.findUnique({ where: { id: p.classeDeMaterialId }, select: { contaContabilId: true, contaContabil: { select: { codigo: true, nome: true, analitica: true } } } });
+    if (classe === null) throw new Error(`Classe de material ${p.classeDeMaterialId} não existe.`);
+    const contrapartida = lado === "CREDITO" ? r.contaDebitoId : r.contaCreditoId;
+    if (contrapartida === classe.contaContabilId) {
+      throw new Error(`O roteiro de ${NOME_DO_MOVIMENTO[p.tipoDoRoteiro] ?? p.tipoDoRoteiro} tem como contrapartida a própria conta do estoque da classe ${p.codigo}: o lançamento não mudaria nada. Corrija o roteiro. Nada foi gravado.`);
+    }
+    // A conta da classe entra no razão: tem de ser analítica e do grupo dos estoques (1.1.5 do PCASP); a contrapartida
+    // não pode ser estoque (o consumo viraria transferência entre estoques). E o par passa pelo motor, como o roteiro.
+    const k = classe.contaContabil;
+    if (!k.analitica || !k.codigo.startsWith(GRUPO_DOS_ESTOQUES)) {
+      throw new Error(`A classe de material ${p.codigo} aponta a conta ${k.codigo} — ${k.nome}, que não é conta analítica de estoque (${GRUPO_DOS_ESTOQUES}…): o estoque não se lança nela. Corrija a conta da classe. Nada foi gravado.`);
+    }
+    const cp = await tx.contaPcasp.findUnique({ where: { id: contrapartida }, select: { codigo: true, nome: true } });
+    if (cp === null) throw new Error(`A contrapartida do roteiro de ${NOME_DO_MOVIMENTO[p.tipoDoRoteiro] ?? p.tipoDoRoteiro} não existe no plano. Nada foi gravado.`);
+    if (cp.codigo.startsWith(GRUPO_DOS_ESTOQUES)) {
+      throw new Error(`O roteiro de ${NOME_DO_MOVIMENTO[p.tipoDoRoteiro] ?? p.tipoDoRoteiro} tem como contrapartida a conta de estoque ${cp.codigo} — ${cp.nome}: o movimento viraria transferência entre estoques. A contrapartida é a variação patrimonial. Nada foi gravado.`);
+    }
+    debito = lado === "DEBITO" ? classe.contaContabilId : contrapartida;
+    credito = lado === "CREDITO" ? classe.contaContabilId : contrapartida;
+    comporPartidas(p.valor, { contaDebito: lado === "DEBITO" ? k.codigo : cp.codigo, contaCredito: lado === "CREDITO" ? k.codigo : cp.codigo });
+  }
 
   const id = randomUUID();
   await lancarNoRazao(tx, {
@@ -733,6 +787,7 @@ export async function estornarMovimentoAlmoxarifado(
         tipo: true,
         valor: true,
         liquidacaoId: true,
+        lancamentoId: true,
         estornos: { select: { id: true } },
       },
     });
@@ -788,6 +843,7 @@ export async function estornarMovimentoAlmoxarifado(
       ? await lancar(tx, {
           tipoDoRoteiro: original.tipo,
           inverter: true,
+          lancamentoOriginalId: original.lancamentoId,
           codigo: classe.codigo,
           valor,
           data: d.dataMovimento,

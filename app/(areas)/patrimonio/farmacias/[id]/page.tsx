@@ -112,7 +112,7 @@ export default async function OperacaoDaFarmacia({ params }: { readonly params: 
           {t.ajustes.length === 0 ? <p className="mt-1 text-xs">Nenhuma perda ou sobra registrada.</p> : (
             <ul className="mt-2 space-y-1 text-xs">
               {t.ajustes.map((a, i) => (
-                <li data-ajuste={a.sentido} key={`${a.data}-${String(i)}`}>{a.data}, {a.sentido} de {a.item}: {a.motivo}{a.destino !== null ? `; destino: ${a.destino}` : ""}; por {a.por}</li>
+                <li data-ajuste={a.sentido} key={`${a.data}-${String(i)}`}>{a.data}, {a.sentido} de {a.item}: {a.motivo}{a.destino !== null ? `; destino: ${a.destino}` : ""}; <span data-custo-do-ajuste>{a.valor}</span>; por {a.por}</li>
               ))}
             </ul>
           )}

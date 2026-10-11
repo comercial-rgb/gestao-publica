@@ -90,6 +90,12 @@ const BANCO = "gestao_publica_esperanca_ficticio";
  */
 const BANCO_DE_PRODUCAO = "gestao_publica_esperanca";
 const CONFIRMACAO_DE_PRODUCAO = "dados ficticios para apresentar, apagar depois";
+/**
+ * V39-R3-001 — a base ISOLADA de ensaio das jornadas da R3 (local, refeita do ensaio limpo de Esperança). Recebe a mesma
+ * semente e a massa de `semear-massa-r3.mts`, e é declarada de ENSAIO, não de demonstração.
+ */
+const BANCO_DE_ENSAIO = "gestao_publica_esperanca_r3";
+let NATUREZA: "DEMONSTRACAO" | "ENSAIO" = "DEMONSTRACAO";
 const RAIZ = resolve(import.meta.dirname, "../..");
 const ADMIN = process.env["FICTICIO_ADMIN"] ?? "admin@cg.pb.gov.br";
 let SENHA = process.env["FICTICIO_SENHA"] ?? "Ficticio#2026";
@@ -140,7 +146,8 @@ function exigirBanco(): string {
     const senha = process.env["FICTICIO_SENHA"] ?? "";
     if (senha.length < 16) throw new Error("Em produção os usuários fictícios ficam na internet: informe FICTICIO_SENHA com 16 caracteres ou mais. Nada foi gravado.");
     SENHA = senha;
-  } else if (nome !== BANCO) throw new Error(`Recusado: este script só semeia o banco "${BANCO}", e o DATABASE_URL aponta para "${nome}". Nada foi gravado.`);
+  } else if (nome !== BANCO && nome !== BANCO_DE_ENSAIO) throw new Error(`Recusado: este script só semeia o banco "${BANCO}" (ou o de ensaio "${BANCO_DE_ENSAIO}"), e o DATABASE_URL aponta para "${nome}". Nada foi gravado.`);
+  NATUREZA = nome === BANCO_DE_ENSAIO ? "ENSAIO" : "DEMONSTRACAO";
   if ((process.env["ANEXOS_DIR"] ?? "").trim() === "") throw new Error("Informe ANEXOS_DIR (a pasta dos anexos desta base, a mesma que o servidor vai usar). Nada foi gravado.");
   return url;
 }
@@ -889,11 +896,11 @@ async function main(): Promise<void> {
       });
       return { estado: "criado", valor: null };
     });
-    await passo("Natureza da base: DEMONSTRACAO (declarada no banco)", async () => {
+    await passo(`Natureza da base: ${NATUREZA} (declarada no banco)`, async () => {
       // V39-002: a marca no nome é apresentação; a natureza que os percursos conferem é esta. Uma base declarada
       // OFICIAL faz a semente PARAR aqui (o rebaixamento pede o script, com confirmação explícita).
-      if ((await naturezaDaBase(prisma)).natureza === "DEMONSTRACAO") return { estado: "existente", valor: null };
-      await declararNaturezaDaBase(prisma, { natureza: "DEMONSTRACAO", motivo: "Base semeada por semear-esperanca-ficticio: dados fictícios.", declaradoPor: ADMIN });
+      if ((await naturezaDaBase(prisma)).natureza === NATUREZA) return { estado: "existente", valor: null };
+      await declararNaturezaDaBase(prisma, { natureza: NATUREZA, motivo: "Base semeada por semear-esperanca-ficticio: dados fictícios.", declaradoPor: ADMIN });
       return { estado: "criado", valor: null };
     });
     console.log("\n[2] planejamento");

@@ -67,11 +67,17 @@ async function exigirSemMovimentoPosterior(tx: Tx, materialId: string, depositoI
  * DADO DE SAÚDE NA TELA: o identificador do usuário e a receita só aparecem para quem pode dispensar NA UNIDADE do
  * depósito da farmácia — o mesmo critério do serviço que grava. Ter a ação em outra unidade não basta.
  */
-export async function podeVerDadosDaDispensacao(tx: Tx, identificador: string, farmaciaId: string): Promise<boolean> {
+export async function podeVerDadosDaDispensacao(
+  tx: Tx,
+  identificador: string,
+  farmaciaId: string,
+  /** V39-R3 — a mesma régua serve para mostrar o formulário de perda ou sobra (a ação de ajuste, na unidade). */
+  acao: "DISPENSAR_MEDICAMENTO" | "REGISTRAR_AJUSTE_DA_FARMACIA" = "DISPENSAR_MEDICAMENTO",
+): Promise<boolean> {
   const f = await tx.farmaciaPublica.findUnique({ where: { id: farmaciaId }, select: { deposito: { select: { deposito: { select: { unidadeOrcId: true } } } } } });
   if (f === null || f.deposito === null) return false;
   try {
-    await autorizarNo(tx, identificador, "DISPENSAR_MEDICAMENTO", { ug: f.deposito.deposito.unidadeOrcId });
+    await autorizarNo(tx, identificador, acao, { ug: f.deposito.deposito.unidadeOrcId });
     return true;
   } catch {
     return false;

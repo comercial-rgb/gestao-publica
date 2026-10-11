@@ -341,7 +341,7 @@ describe("V37 · o roteiro do almoxarifado se parametriza pela tela (antes, nenh
     expect(await versoes()).toBe(0);
 
     await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-estoque", criadoPor: POR });
-    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpd", contaCreditoId: "c-ativo", criadoPor: POR })).rejects.toThrow(/JÁ TEM roteiro: débito em 3\.3\.3\.1\.1\.01\.00[\s\S]*Trocar as contas de um roteiro já cadastrado/);
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_SAIDA", contaDebitoId: "c-vpa", contaCreditoId: "c-estoque", criadoPor: POR })).rejects.toThrow(/JÁ TEM roteiro: débito em 3\.3\.3\.1\.1\.01\.00[\s\S]*Trocar as contas de um roteiro já cadastrado/);
     expect(await versoes()).toBe(1);
   });
 
@@ -357,23 +357,30 @@ describe("V37 · o roteiro do almoxarifado se parametriza pela tela (antes, nenh
     expect(await contas(l1)).toEqual(["CREDITO:c-vpa", "DEBITO:c-estoque"]);
 
     // Sem marcar a troca, o roteiro antigo recusa; com as mesmas contas, também.
-    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-ativo", contaCreditoId: "c-vpa", criadoPor: POR })).rejects.toThrow(/JÁ TEM roteiro: débito em 1\.1\.5\.6\.1\.01\.00/);
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpd", criadoPor: POR })).rejects.toThrow(/JÁ TEM roteiro: débito em 1\.1\.5\.6\.1\.01\.00/);
     await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpa", substituir: true, criadoPor: POR })).rejects.toThrow(/já usa estas duas contas\. Nada foi gravado\./);
 
-    const t1 = await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-ativo", contaCreditoId: "c-vpa", substituir: true, criadoPor: POR });
+    // V39-R3 — a troca que muda o lançamento é a da CONTRAPARTIDA (a VPA). A perna do estoque é a conta da classe:
+    // um roteiro que aponte outra conta de estoque não desvia o estoque da classe (a amarração com o razão quebraria).
+    await prisma.contaPcasp.create({ data: { id: "c-vpa2", codigo: "4.6.3.1.1.00.00", nome: "Ganhos com incorporação de ativos por descobertas", naturezaSaldo: "CREDORA", nivel: 7, analitica: true } });
+    // o lado do estoque tem de ser conta de estoque, e a contrapartida não: as duas recusas dizem o motivo.
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-ativo", contaCreditoId: "c-vpa2", substituir: true, criadoPor: POR })).rejects.toThrow(/o estoque fica no débito, e a conta 1\.2\.3\.1\.1\.01\.00[\s\S]*não é de estoque/);
+    await prisma.contaPcasp.create({ data: { id: "c-estoque2", codigo: "1.1.5.6.1.05.00", nome: "Medicamentos", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true } });
+    await expect(parametrizarRoteiroAlmoxarifado(prisma, { tipo: "SAIDA_CONSUMO", contaDebitoId: "c-estoque2", contaCreditoId: "c-estoque", criadoPor: POR })).rejects.toThrow(/é de estoque: o movimento viraria transferência entre estoques/);
+    const t1 = await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpa2", substituir: true, criadoPor: POR });
     expect(t1.substituiu).toBe(true);
     const l2 = (await sobra("20.00", "2026-06-02")).lancamentoId;
-    expect(await contas(l2)).toEqual(["CREDITO:c-vpa", "DEBITO:c-ativo"]);
+    expect(await contas(l2)).toEqual(["CREDITO:c-vpa2", "DEBITO:c-estoque"]);
 
     await parametrizarRoteiroAlmoxarifado(prisma, { tipo: "AJUSTE_ENTRADA", contaDebitoId: "c-estoque", contaCreditoId: "c-vpa", substituir: true, criadoPor: POR });
     const l3 = (await sobra("30.00", "2026-06-03")).lancamentoId;
     expect(await contas(l3)).toEqual(["CREDITO:c-vpa", "DEBITO:c-estoque"]);
 
     // O já lançado não muda, e o histórico guarda as duas versões, com motivo.
-    expect([await contas(l1), await contas(l2)]).toEqual([["CREDITO:c-vpa", "DEBITO:c-estoque"], ["CREDITO:c-vpa", "DEBITO:c-ativo"]]);
-    expect(await prisma.versaoDeRoteiro.findMany({ where: { familia: "ALMOXARIFADO", chave: "AJUSTE_ENTRADA" }, orderBy: { numero: "asc" }, select: { numero: true, contaDebitoId: true, motivo: true } })).toEqual([
-      { numero: 1, contaDebitoId: "c-ativo", motivo: "Parametrização direta (substituição das contas)" },
-      { numero: 2, contaDebitoId: "c-estoque", motivo: "Parametrização direta (substituição das contas)" },
+    expect([await contas(l1), await contas(l2)]).toEqual([["CREDITO:c-vpa", "DEBITO:c-estoque"], ["CREDITO:c-vpa2", "DEBITO:c-estoque"]]);
+    expect(await prisma.versaoDeRoteiro.findMany({ where: { familia: "ALMOXARIFADO", chave: "AJUSTE_ENTRADA" }, orderBy: { numero: "asc" }, select: { numero: true, contaCreditoId: true, motivo: true } })).toEqual([
+      { numero: 1, contaCreditoId: "c-vpa2", motivo: "Parametrização direta (substituição das contas)" },
+      { numero: 2, contaCreditoId: "c-vpa", motivo: "Parametrização direta (substituição das contas)" },
     ]);
     // O outro movimento (N=2 chaves) segue sem roteiro.
     await expect(registrarAjusteAlmoxarifado(prisma, { classeDeMaterialId, sentido: "FALTA", valor: "1.00", dataMovimento: new Date("2026-06-04T15:00:00Z"), motivo: "inventário", criadoPor: POR })).rejects.toThrow(/ajuste de inventário por falta/);

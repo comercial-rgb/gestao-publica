@@ -657,6 +657,79 @@ describe("M10 — almoxarifado", () => {
     ).toBe(0);
     await conferirAlmoxarifadoContraRazao(prisma, 'c-estoque');
   });
+
+  // t12 — V39-R3: duas classes em contas de estoque diferentes, um roteiro por movimento.
+  //   classe A (expediente) na conta ESTOQUE; classe B (medicamento) na conta ESTOQUE_B. Entrada 1.000 em cada.
+  //   consumo A 300, consumo B 400, falta B 50, sobra B 20 → A = 700; B = 1.000 − 400 − 50 + 20 = 570.
+  //   O roteiro do consumo credita ESTOQUE (o de A): antes da correção, o consumo de B saía de A e as duas amarrações
+  //   discordavam. Depois a contadora troca a VPD do consumo; o estorno do consumo de B devolve 400 à VPD ORIGINAL.
+  it("t12: a perna do estoque é a conta da CLASSE (não a do roteiro) e o estorno inverte o lançamento original", async () => {
+    const ESTOQUE_B = "1.1.5.6.1.05.00";
+    await prisma.contaPcasp.createMany({
+      data: [
+        { id: "c-estoque-b", codigo: ESTOQUE_B, nome: "Medicamentos", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "P" },
+        { id: "c-vpd-outra", codigo: "3.3.1.1.1.08.00", nome: "Material farmacológico", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true },
+      ],
+    });
+    const classeB = (await cadastrarClasseDeMaterial(prisma, { codigo: "30.09", descricao: "Medicamentos", contaContabilId: "c-estoque-b", criadoPor: POR })).classeDeMaterialId;
+    await liquidarMaterial("1000.00", "41");
+    const eB = await empenhar(
+      { fichaId: FICHA, numero: "NE-42", tipo: "ORDINARIO", valor: "1000.00", data: new Date("2026-02-01T12:00:00Z"), credorCpfCnpj: "12345678000195", historico: "compra de medicamento", categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: POR },
+      R_EMPENHO, deps
+    );
+    await liquidar(
+      { empenhoId: eB.empenhoId, numero: "NL-42", valor: "1000.00", data: new Date("2026-03-01T12:00:00Z"), responsavelAtesto: "Farmacêutica", historico: "medicamento recebido", criadoPor: POR, entradasDeMaterial: [{ classeDeMaterialId: classeB, valor: "1000.00" }] },
+      roteiroLiquidacao({ variacaoDiminutiva: ESTOQUE_B, obrigacaoAPagar: FORNECEDOR, creditoEmpenhado: C_EMPENHADO, creditoLiquidado: C_LIQUIDADO }),
+      deps
+    );
+    const dia = new Date("2026-06-01T12:00:00Z");
+    await registrarSaidaConsumo(prisma, { classeDeMaterialId: classeId, valor: "300.00", dataMovimento: dia, motivo: "requisição da classe A", criadoPor: POR });
+    const consumoB = await registrarSaidaConsumo(prisma, { classeDeMaterialId: classeB, valor: "400.00", dataMovimento: dia, motivo: "dispensação da classe B", criadoPor: POR });
+    await registrarAjusteAlmoxarifado(prisma, { classeDeMaterialId: classeB, sentido: "FALTA", valor: "50.00", dataMovimento: dia, motivo: "perda apurada na classe B", criadoPor: POR });
+    await registrarAjusteAlmoxarifado(prisma, { classeDeMaterialId: classeB, sentido: "SOBRA", valor: "20.00", dataMovimento: dia, motivo: "sobra apurada na classe B", criadoPor: POR });
+
+    const a = await conferirAlmoxarifadoContraRazao(prisma, "c-estoque");
+    const b = await conferirAlmoxarifadoContraRazao(prisma, "c-estoque-b");
+    expect([a.pelosMovimentos.toFixed(2), a.peloRazao.toFixed(2)]).toEqual(["700.00", "700.00"]);
+    expect([b.pelosMovimentos.toFixed(2), b.peloRazao.toFixed(2)]).toEqual(["570.00", "570.00"]);
+
+    // a contadora troca a VPD do consumo; o estorno do consumo de B inverte o lançamento ORIGINAL (VPD de consumo).
+    await prisma.roteiroAlmoxarifado.update({ where: { tipo: "SAIDA_CONSUMO" }, data: { contaDebitoId: "c-vpd-outra" } });
+    const estorno = await estornarMovimentoAlmoxarifado(prisma, { movimentoId: consumoB.movimentoId, dataMovimento: new Date("2026-06-02T12:00:00Z"), motivo: "consumo lançado em duplicidade", criadoPor: POR });
+    const lanc = await prisma.movimentoAlmoxarifado.findUniqueOrThrow({ where: { id: estorno.movimentoId }, select: { lancamentoId: true } });
+    const partidas = await prisma.partidaContabil.findMany({ where: { lancamentoId: lanc.lancamentoId! }, select: { tipo: true, valor: true, conta: { select: { codigo: true } } } });
+    expect(partidas.map((p) => `${p.tipo} ${p.conta.codigo} ${p.valor.toFixed(2)}`).sort()).toEqual([`CREDITO ${VPD_CONSUMO} 400.00`, `DEBITO ${ESTOQUE_B} 400.00`]);
+    expect((await conferirAlmoxarifadoContraRazao(prisma, "c-estoque-b")).peloRazao.toFixed(2)).toBe("970.00");
+    expect(await vpdConsumoNoRazao()).toBe(300 + 50);
+
+    // roteiro cuja contrapartida é a própria conta do estoque da classe: recusa nomeando, nada grava.
+    await prisma.roteiroAlmoxarifado.update({ where: { tipo: "SAIDA_CONSUMO" }, data: { contaDebitoId: "c-estoque-b" } });
+    const antes = await prisma.movimentoAlmoxarifado.count();
+    await expect(registrarSaidaConsumo(prisma, { classeDeMaterialId: classeB, valor: "10.00", dataMovimento: dia, motivo: "consumo com roteiro errado", criadoPor: POR }))
+      .rejects.toThrow(/tem como contrapartida a própria conta do estoque da classe 30\.09/);
+    expect(await prisma.movimentoAlmoxarifado.count()).toBe(antes);
+
+    // a classe que aponta conta que não é de estoque: a conta da classe entra no razão, então o lançamento recusa.
+    await prisma.roteiroAlmoxarifado.update({ where: { tipo: "SAIDA_CONSUMO" }, data: { contaDebitoId: "c-vpd-consumo" } });
+    await prisma.classeDeMaterial.update({ where: { id: classeB }, data: { contaContabilId: "c-vpd-outra" } });
+    await expect(registrarSaidaConsumo(prisma, { classeDeMaterialId: classeB, valor: "10.00", dataMovimento: dia, motivo: "consumo com classe errada", criadoPor: POR }))
+      .rejects.toThrow(/aponta a conta 3\.3\.1\.1\.1\.08\.00[\s\S]*não é conta analítica de estoque/);
+    expect(await prisma.movimentoAlmoxarifado.count()).toBe(antes);
+  });
+
+  // t13 — o movimento lançado ANTES da correção (perna do estoque tirada do roteiro, na conta de outra classe) se
+  // estorna invertendo o que foi gravado: o estorno desfaz exatamente o lançamento, mesmo na conta errada.
+  it("t13: o estorno de um consumo lançado pela regra antiga inverte as partidas gravadas, não as da classe", async () => {
+    await prisma.contaPcasp.create({ data: { id: "c-estoque-b", codigo: "1.1.5.6.1.05.00", nome: "Medicamentos", naturezaSaldo: "DEVEDORA", nivel: 7, analitica: true, indicadorSuperavit: "P" } });
+    await liquidarMaterial("1000.00", "51");
+    const consumo = await registrarSaidaConsumo(prisma, { classeDeMaterialId: classeId, valor: "250.00", dataMovimento: new Date("2026-06-01T12:00:00Z"), motivo: "consumo da regra antiga", criadoPor: POR });
+    // simula o lançamento antigo: a perna do estoque gravada em outra conta de estoque
+    await prisma.partidaContabil.updateMany({ where: { lancamentoId: consumo.lancamentoId, tipo: "CREDITO" }, data: { contaId: "c-estoque-b" } });
+    const est = await estornarMovimentoAlmoxarifado(prisma, { movimentoId: consumo.movimentoId, dataMovimento: new Date("2026-06-02T12:00:00Z"), motivo: "estorno do consumo antigo", criadoPor: POR });
+    const lanc = await prisma.movimentoAlmoxarifado.findUniqueOrThrow({ where: { id: est.movimentoId }, select: { lancamentoId: true } });
+    const partidas = await prisma.partidaContabil.findMany({ where: { lancamentoId: lanc.lancamentoId! }, select: { tipo: true, conta: { select: { codigo: true } } } });
+    expect(partidas.map((p) => `${p.tipo} ${p.conta.codigo}`).sort()).toEqual([`CREDITO ${VPD_CONSUMO}`, "DEBITO 1.1.5.6.1.05.00"]);
+  });
 });
 
 describe("M10 — o guard do ELEMENTO (TR 5.85)", () => {
