@@ -3,6 +3,7 @@ import { comporTermo, MODELO_DO_TERMO, sha256DoDocumento } from "./termo-documen
 import { randomUUID } from "node:crypto";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
+import { travar } from "../../packages/locks/index.js";
 import { toMoney, toPercentual, type Money } from "../../packages/contracts/index.js";
 import {
   diaCivil,
@@ -720,6 +721,8 @@ export async function transferirBemEntreEntidades(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.transferirBemEntreEntidades, {
       ugs: [d.unidadeOrcOrigemId, d.unidadeOrcDestinoId],
     });
+    // V39-R2 — a trava do bem ANTES de ler onde ele está: duas transferências simultâneas não o põem em duas unidades.
+    await travar(tx, "BemPatrimonial", [d.bemId]);
 
     // ⚠️ VIABILIDADE ANTES DE QUALQUER ESCRITA — a forma do `porNaFila` do ENT03a.
     const estado = await estadoDoBem(tx, d.bemId, diaCivil(d.dataMovimento));

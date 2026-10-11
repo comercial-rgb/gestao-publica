@@ -182,9 +182,15 @@ try {
   const r7 = await preencherEEnviar(page, `form[data-acao="registrar-prestacao"][data-concessao="${numSup}"]`, [
     { sel: 'input[inputmode="decimal"]', valor: "500,00", indice: 0 },
     { sel: 'input[name="relatorio"]', valor: "Notas de pronto pagamento cobrindo o valor inteiro concedido." },
+    // V39-R2 — a aplicação, comprovante por comprovante: 300,00 + 200,00 = 500,00, dentro do período de 02 a 04/10.
+    { sel: 'textarea[name="comprovantes"]', valor: "02/10/2026; NF 101; Papelaria do percurso; Material de expediente; 300,00\n03/10/2026; NF 102; Mercado do percurso; Copa e cozinha; 200,00" },
     { sel: 'input[name="diaApresentacao"]', valor: "2026-10-05", tipo: "data" },
   ], "registrar-prestacao");
-  conferir(r7.tipo === "ok", `nova prestação, sem devolução (${r7.texto.slice(0, 70)})`);
+  conferir(r7.tipo === "ok", `nova prestação, sem devolução, com dois comprovantes (${r7.texto.slice(0, 70)})`);
+  const comprovantes = await prisma.comprovanteDaPrestacaoDoAdiantamento.findMany({ where: { prestacao: { concessao: { numero: numSup } } }, orderBy: { documento: "asc" }, select: { documento: true, valor: true } });
+  conferir(comprovantes.map((c) => `${c.documento}=${c.valor.toFixed(2)}`).join(",") === "NF 101=300.00,NF 102=200.00", "os dois comprovantes da aplicação estão gravados com a prestação");
+  await irPara(n, page, "/despesa/adiantamentos");
+  conferir((await page.$(`[data-comprovantes-da-prestacao="${numSup}"]`)) !== null, "a prestação em análise mostra os comprovantes na tela");
   await irPara(n, page, "/despesa/adiantamentos");
   const r8 = await preencherEEnviar(page, `form[data-acao="decidir-prestacao"][data-concessao="${numSup}"]`, [
     { sel: 'select[name="decisao"]', valor: "aprovar", tipo: "select" },

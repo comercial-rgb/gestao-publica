@@ -345,6 +345,31 @@ Commit da unidade: 2ec748e4.
 
   Criar esses cadastros só para o percurso seria fabricar dado. Os dois foram operados na 3011.
 
+### Fluxos existentes: encerramento, convênios, diárias, suprimento, patrimônio, folha até a tesouraria
+O levantamento (inventário de leitura) achou cinco lacunas reais. As três de função foram construídas:
+- **Convênio convenente sem a receita pela tela.** O serviço aceitava `receitaArrecadadaId` sem conferir nada, e a tela não oferecia o campo.
+  - Agora `exigirReceitaDoConvenio` exige que a receita exista, seja arrecadação em vigor e da fonte do convênio, que o ente seja convenente, e que o que as liberações já ligaram a ela, mais esta, não passe do arrecadado.
+  - A tela oferece as arrecadações em vigor da fonte do convênio.
+  - Teste novo em `m28-convenios`, 13/13; mutação vermelha.
+- **Transferência de bem entre unidades, sem tela.** Virou a ação "Transferir para outra unidade" no detalhe do bem, com o serviço que já existia (baixa na origem e incorporação no destino num ato; permissão nas duas unidades).
+- **Suprimento sem a etapa de aplicação.** Nasceram os comprovantes da aplicação (`ComprovanteDaPrestacaoDoAdiantamento`, migration `20261110150000`, CHECK de valor positivo):
+  - são opcionais; quando vêm, somam o comprovado, cada data cai no período de aplicação declarado na concessão, e não há documento repetido do mesmo emitente;
+  - a tela recebe um por linha e os mostra na prestação em análise;
+  - teste novo em `m05-adiantamentos`, com os consumidores 9/9.
+
+Os percursos pela tela (3011, base fictícia):
+- **Folha até a tesouraria:** `scripts/percurso-v39r2-folha-ate-tesouraria.mts`, 5/5. A folha na tela, a liquidação de uma folha na fila, o pagamento pela tela (com o desconto do contracheque retido gravado no pagamento) e a liquidação fora da fila.
+- **Diárias e suprimento:** `scripts/percurso-v36-adiantamentos.mts`, 20/20 depois de acrescentar os comprovantes na nova prestação do suprimento (os dois gravados com a prestação e mostrados na tela). Na primeira corrida, a página deu 500 na compilação inicial do modo de desenvolvimento ("frame.join is not a function", erro interno do Next). A segunda, com o servidor já compilado, passou inteira.
+- **Convênios e patrimônio:** a base fictícia não tem roteiro de convênio nem classe de bens, e escolher as contas desses roteiros é decisão da contadora. Os percursos param na abertura das telas, nomeando o que falta (pendência ROTEIROS-DE-CONVENIO-E-PATRIMONIO-NA-BASE-DE-ENSAIO).
+- **Auditoria antes do commit, e o que se corrigiu:**
+  - duas liberações de convênios diferentes podiam ligar a mesma receita ao mesmo tempo, e cada uma travava só o seu convênio. Nasceu o posto `ReceitaDoConvenio` (47), que trava a receita antes de somar. Prova determinística: com a receita presa por outra transação, a liberação espera. A prova fica vermelha sem a trava;
+  - a transferência do bem, agora pela tela, não travava. Nasceu o posto `BemPatrimonial` (46), que trava o bem antes de ler a unidade. A baixa e os demais movimentos do bem ainda não o tomam (pendência TRAVA-DO-BEM-NOS-DEMAIS-MOVIMENTOS);
+  - comprovante com data impossível (30/02) passava pela comparação de texto do período: agora é recusado, nomeando a data;
+  - receita arrecadada depois da liberação passava: agora é recusada;
+  - testes: `m28-convenios` 14/14, `m05-adiantamentos` com os consumidores, `m10-gestao-do-bem` e o teste das travas, 48/48 no total.
+  - Os campos novos de convênio (receita) e de bem (transferência) não passaram por percurso de navegador: a base fictícia não tem convênio nem bem.
+- **Encerramento anual:** o percurso `percurso-v33-encerramento.ts` já existe e encerra o exercício da base. Não foi rodado nesta rodada, para não encerrar 2026 na base de demonstração. Pendência nomeada: ENCERRAMENTO-EM-BASE-ISOLADA, que é rodá-lo numa cópia isolada.
+
 ### O próximo passo
 1. (feito: frente 5; frente 6 R2-025 a 031) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 

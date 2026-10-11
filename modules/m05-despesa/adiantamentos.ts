@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { toMoney, zMoney, type Money } from "../../packages/contracts/index.js";
-import { diaCivil, fimDoDiaCivil, inicioDoDiaCivil } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil, meioDiaCivil } from "../../packages/datas/index.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -255,6 +255,19 @@ export const zRegistrarPrestacao = z.object({
   valorDevolvido: zMoney,
   relatorio: z.string().trim().min(20, "Descreva a prestação: o que foi feito e os comprovantes apresentados."),
   diaApresentacao: zDia,
+  /**
+   * V39-R2 — A APLICAÇÃO, comprovante por comprovante (opcional). Quando vem, a soma é o valor comprovado e cada data cai
+   * no período de aplicação declarado na concessão (início e fim).
+   */
+  comprovantes: z
+    .array(z.object({
+      dia: zDia,
+      documento: z.string().trim().min(1, "Informe o número do documento.").max(80),
+      emitente: z.string().trim().min(2, "Informe o emitente.").max(120),
+      descricao: z.string().trim().min(3, "Diga o que foi comprado ou pago."),
+      valor: zMoney,
+    }))
+    .optional(),
   criadoPor: z.string().min(1),
 });
 
@@ -268,7 +281,7 @@ export async function registrarPrestacaoDeAdiantamento(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarPrestacaoDeAdiantamento, "ENTE");
     const c = await tx.concessaoDeAdiantamento.findUnique({
       where: { id: d.concessaoId },
-      select: { id: true, numero: true, valor: true, empenhoId: true, prestacoes: { select: { decisao: { select: { aprovada: true } } } } },
+      select: { id: true, numero: true, valor: true, empenhoId: true, dataInicio: true, dataFim: true, prestacoes: { select: { decisao: { select: { aprovada: true } } } } },
     });
     if (c === null) throw new Error("A concessão indicada não existe. Nada foi gravado.");
     await travar(tx, "AdiantamentoDoEmpenho", [c.empenhoId]);
@@ -283,10 +296,31 @@ export async function registrarPrestacaoDeAdiantamento(
           `e a concessão ${c.numero} foi de ${concedido.toFixed(2)}. A prestação tem de explicar o valor inteiro. Nada foi gravado.`
       );
     }
+    const comprovantes = d.comprovantes ?? [];
+    if (comprovantes.length > 0) {
+      const inicio = diaCivil(c.dataInicio);
+      const fim = diaCivil(c.dataFim);
+      const vistos = new Set<string>();
+      for (const [k, x] of comprovantes.entries()) {
+        const n = `Comprovante ${String(k + 1)} (${x.documento})`;
+        if (!x.valor.greaterThan(0)) throw new Error(`${n}: o valor tem de ser maior que zero. Nada foi gravado.`);
+        // Data que existe: "31/02" passaria pela comparação de texto e viraria outro dia na gravação.
+        if (diaCivil(meioDiaCivil(x.dia)) !== x.dia) throw new Error(`${n}: a data ${x.dia.split("-").reverse().join("/")} não existe. Nada foi gravado.`);
+        if (x.dia < inicio || x.dia > fim) throw new Error(`${n}: a data ${diaCivilBr(meioDiaCivil(x.dia))} está fora do período de aplicação da concessão ${c.numero} (${diaCivilBr(c.dataInicio)} a ${diaCivilBr(c.dataFim)}). Nada foi gravado.`);
+        const chave = `${x.documento.toUpperCase()}|${x.emitente.toUpperCase()}`;
+        if (vistos.has(chave)) throw new Error(`${n}: o mesmo documento do mesmo emitente aparece duas vezes. Nada foi gravado.`);
+        vistos.add(chave);
+      }
+      const somaDosComprovantes = comprovantes.reduce((t, x) => toMoney(t.plus(x.valor)), toMoney(0));
+      if (!somaDosComprovantes.equals(d.valorComprovado)) {
+        throw new Error(`Os comprovantes somam ${somaDosComprovantes.toFixed(2)}, e o valor comprovado informado é ${d.valorComprovado.toFixed(2)}. Nada foi gravado.`);
+      }
+    }
     const p = await tx.prestacaoDeContasDoAdiantamento.create({
       data: {
         concessaoId: c.id, valorComprovado: d.valorComprovado.toFixed(2), valorDevolvido: d.valorDevolvido.toFixed(2),
         relatorio: d.relatorio, apresentadaEm: inicioDoDiaCivil(d.diaApresentacao), criadoPor: d.criadoPor,
+        ...(comprovantes.length > 0 ? { comprovantes: { create: comprovantes.map((x) => ({ data: meioDiaCivil(x.dia), documento: x.documento, emitente: x.emitente, descricao: x.descricao, valor: x.valor.toFixed(2) })) } } : {}),
       },
       select: { id: true },
     });
@@ -421,7 +455,11 @@ export interface AdiantamentoNaLista {
   readonly valor: string;
   readonly diaPrazo: string;
   readonly situacao: SituacaoDoAdiantamento;
-  readonly prestacaoEmAnalise: { readonly id: string; readonly valorComprovado: string; readonly valorDevolvido: string; readonly relatorio: string } | null;
+  readonly prestacaoEmAnalise: {
+    readonly id: string; readonly valorComprovado: string; readonly valorDevolvido: string; readonly relatorio: string;
+    /** V39-R2 — os comprovantes da aplicação, quando vieram. */
+    readonly comprovantes: readonly { readonly dia: string; readonly documento: string; readonly emitente: string; readonly descricao: string; readonly valor: string }[];
+  } | null;
   readonly ultimaDecisao: { readonly aprovada: boolean; readonly motivo: string; readonly por: string } | null;
 }
 
@@ -435,7 +473,7 @@ export async function listarAdiantamentos(prisma: PrismaClient, agora: Date, esp
       dataInicio: true, dataFim: true, valor: true, prazoDePrestacao: true, empenho: { select: { id: true, numero: true } },
       prestacoes: {
         orderBy: { criadoEm: "asc" },
-        select: { id: true, valorComprovado: true, valorDevolvido: true, relatorio: true, decisao: { select: { aprovada: true, motivo: true, criadoPor: true } } },
+        select: { id: true, valorComprovado: true, valorDevolvido: true, relatorio: true, decisao: { select: { aprovada: true, motivo: true, criadoPor: true } }, comprovantes: { orderBy: [{ data: "asc" }, { documento: "asc" }], select: { data: true, documento: true, emitente: true, descricao: true, valor: true } } },
       },
     },
   });
@@ -453,6 +491,7 @@ export async function listarAdiantamentos(prisma: PrismaClient, agora: Date, esp
       situacao: situacaoDoAdiantamento(l, agora),
       prestacaoEmAnalise: emAnalise === undefined ? null : {
         id: emAnalise.id, valorComprovado: emAnalise.valorComprovado.toFixed(2), valorDevolvido: emAnalise.valorDevolvido.toFixed(2), relatorio: emAnalise.relatorio,
+        comprovantes: emAnalise.comprovantes.map((x) => ({ dia: diaCivil(x.data), documento: x.documento, emitente: x.emitente, descricao: x.descricao, valor: x.valor.toFixed(2) })),
       },
       ultimaDecisao: ultima === null ? null : { aprovada: ultima.aprovada, motivo: ultima.motivo, por: ultima.criadoPor },
     };

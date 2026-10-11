@@ -10,6 +10,7 @@ import { empenhar } from "../m05-despesa/servico.js";
 import { anularEmpenhoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import { pendenteDePrestacao, saldoALiberar } from "./dominio.js";
+import { travar } from "../../packages/locks/index.js";
 import {
   aprovarPrestacaoDeContas,
   cadastrarConvenio,
@@ -454,5 +455,74 @@ describe("V34 — a anulação parcial no empenho da liberação do convênio", 
 
     await liberar(e1, 1);
     expect(await prisma.movimentoConvenio.count({ where: { convenioId, empenhoId: e1 } })).toBe(1);
+  });
+});
+
+/**
+ * V39-R2 — A RECEITA QUE TROUXE A PARCELA no convênio em que o ente é CONVENENTE. Duas arrecadações da fonte 500 (60.000 e
+ * 50.000) e uma de outra fonte. Contas: a parcela 1 de 40.000 liga a primeira; a parcela 2 de 30.000 na mesma passaria
+ * de 60.000 (40.000 + 30.000 = 70.000) e é recusada; na segunda, entra.
+ */
+describe("V39-R2 — a receita arrecadada na liberação do convenente", () => {
+  beforeEach(semear);
+
+  async function arrecadacao(numero: string, valor: string, fonteId: string): Promise<string> {
+    const lanc = await prisma.lancamentoContabil.create({
+      data: {
+        numeroControle: numero, dataTransacao: new Date("2026-02-10T12:00:00Z"), historico: "arrecadação (fixture)", origemTipo: "ARRECADACAO_RECEITA", criadoPor: POR,
+        partidas: { create: [{ contaId: "c-ctrl-a", tipo: "DEBITO", subsistema: "CONTROLE", valor }, { contaId: "c-ctrl-b", tipo: "CREDITO", subsistema: "CONTROLE", valor }] },
+      },
+      select: { id: true },
+    });
+    return (await prisma.receitaArrecadada.create({
+      data: { exercicio: 2026, naturezaReceitaId: "nr-conv", fonteId, exercicioFonte: 1, tipo: "ARRECADACAO", valor, dataArrecadacao: new Date("2026-02-10T12:00:00Z"), numeroReceita: numero, lancamentoId: lanc.id, criadoPor: POR },
+      select: { id: true },
+    })).id;
+  }
+
+  it("liga a arrecadação da fonte do convênio; recusa outra fonte, o que passa do arrecadado e o concedente, com o motivo", async () => {
+    await prisma.naturezaReceita.create({ data: { id: "nr-conv", codigo: "17199901", descricao: "Transferências de convênios (fixture)" } });
+    await prisma.fonteRecurso.create({ data: { id: "fnt-700", codigo: "700", descricao: "Outra fonte (fixture)", codigoTce: "700" } });
+    const convenente = await convenioDeTeste("CONVENENTE");
+    const r1 = await arrecadacao("2026RC000001", "60000.00", FONTE);
+    const r2 = await arrecadacao("2026RC000002", "50000.00", FONTE);
+    const outra = await arrecadacao("2026RC000003", "50000.00", "fnt-700");
+    const base = { convenioId: convenente, diaMovimento: "2026-02-15", competencia: "2026-02", criadoPor: POR };
+    await expect(liberarParcela(prisma, { ...base, valor: "1000.00", parcela: 9, receitaArrecadadaId: outra, motivo: "Parcela com receita de outra fonte." }))
+      .rejects.toThrow(/A receita 2026RC000003 é de outra fonte de recurso que a do convênio CV-2026-002/);
+    await liberarParcela(prisma, { ...base, valor: "40000.00", parcela: 1, receitaArrecadadaId: r1, motivo: "Primeira parcela recebida." });
+    await expect(liberarParcela(prisma, { ...base, valor: "30000.00", parcela: 2, receitaArrecadadaId: r1, motivo: "Segunda parcela na mesma receita." }))
+      .rejects.toThrow(/A receita 2026RC000001 trouxe 60000\.00, já explica 40000\.00 de outras liberações, e esta é de 30000\.00: passa do que entrou/);
+    await liberarParcela(prisma, { ...base, valor: "30000.00", parcela: 2, receitaArrecadadaId: r2, motivo: "Segunda parcela recebida." });
+    const concedente = await convenioDeTeste("CONCEDENTE");
+    const e = await empenhoDoConvenio(concedente, "2026NE000900", "10000.00");
+    await expect(liberarParcela(prisma, { ...base, convenioId: concedente, valor: "10000.00", parcela: 1, empenhoId: e, receitaArrecadadaId: r2, motivo: "Concedente com receita." }))
+      .rejects.toThrow(/o ente é concedente: quem repassa liga o empenho, não a receita/);
+    const ligados = await prisma.movimentoConvenio.findMany({ where: { convenioId: convenente }, orderBy: { parcela: "asc" }, select: { parcela: true, receitaArrecadadaId: true } });
+    expect(ligados.map((m) => [m.parcela, m.receitaArrecadadaId])).toEqual([[1, r1], [2, r2]]);
+    // a receita arrecadada DEPOIS da liberação não a explica
+    const r3 = await arrecadacao("2026RC000004", "10000.00", FONTE);
+    await expect(liberarParcela(prisma, { ...base, diaMovimento: "2026-02-05", valor: "1000.00", parcela: 3, receitaArrecadadaId: r3, motivo: "Parcela antes da receita." }))
+      .rejects.toThrow(/A receita 2026RC000004 foi arrecadada em 10\/02\/2026, depois da liberação/);
+  });
+
+  it("A TRAVA EXISTE: com a receita travada por outra transação, a liberação que a liga espera e só grava depois", async () => {
+    await prisma.naturezaReceita.create({ data: { id: "nr-conv", codigo: "17199901", descricao: "Transferências de convênios (fixture)" } });
+    const convenente = await convenioDeTeste("CONVENENTE");
+    const r1 = await arrecadacao("2026RC000001", "60000.00", FONTE);
+    let liberar: () => void = () => undefined;
+    const presa = new Promise<void>((r) => { liberar = r; });
+    let travado: () => void = () => undefined;
+    const jaTravou = new Promise<void>((r) => { travado = r; });
+    const segurando = prisma.$transaction(async (tx) => { await travar(tx, "ReceitaDoConvenio", [r1]); travado(); await presa; }, { timeout: 20_000 });
+    await jaTravou;
+    let terminou = false;
+    const lib = liberarParcela(prisma, { convenioId: convenente, diaMovimento: "2026-02-15", competencia: "2026-02", criadoPor: POR, valor: "10000.00", parcela: 1, receitaArrecadadaId: r1, motivo: "Parcela durante a trava." }).then(() => { terminou = true; });
+    await new Promise((r) => setTimeout(r, 800));
+    expect(terminou).toBe(false);
+    liberar();
+    await segurando;
+    await lib;
+    expect(terminou).toBe(true);
   });
 });

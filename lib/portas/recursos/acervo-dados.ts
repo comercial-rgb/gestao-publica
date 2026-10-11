@@ -7,6 +7,7 @@ import {
   cadastrarClasseDeBens,
   gerarEtiquetaDeBem,
   registrarMovimentoDeGestao,
+  transferirBemEntreEntidades,
 } from "../../../modules/m10-patrimonial/gestao-do-bem.js";
 // ⚠️ ENT12 — O EIXO DE VALOR. Estes DOIS lançam no razão, ao contrário dos quatro de gestão:
 // por isso vêm de `patrimonio.js` (o bloco 1 do M10) e cobram crachá próprio.
@@ -584,6 +585,15 @@ export async function acaoDoBem(acao: string, bemId: string, c: Campos): Promise
   });
 
   switch (acao) {
+    case "transferir-entre-entidades":
+      await comEscritaAutenticada("TRANSFERIR_BEM_ENTRE_ENTIDADES", (criadoPor) =>
+        transferirBemEntreEntidades(cliente(), {
+          ...comum(criadoPor),
+          unidadeOrcOrigemId: t(c, "unidadeOrcOrigemId"),
+          unidadeOrcDestinoId: t(c, "unidadeOrcDestinoId"),
+        })
+      );
+      return;
     case "mover-localizacao":
       await comEscritaAutenticada("REGISTRAR_MOVIMENTO_DE_GESTAO", (criadoPor) =>
         registrarMovimentoDeGestao(cliente(), {
@@ -814,7 +824,12 @@ export async function opcoesDoAcervo(): Promise<OpcoesDoCadastro> {
     }),
   ]);
 
+  // V39-R2 — as unidades para a transferência entre entidades (origem e destino); o serviço confere a origem pelo estado do bem.
+  const unidades = await cliente().unidadeOrcamentaria.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true, descricao: true } });
+  const opUnidades = unidades.map((u) => ({ valor: u.id, rotulo: `${u.codigo} — ${u.descricao}` }));
   return {
+    unidadeOrcOrigemId: opUnidades,
+    unidadeOrcDestinoId: opUnidades,
     contaContabilAtivoId: contas.map((c) => ({
       valor: c.id,
       rotulo: `${c.codigo} — ${c.nome}`,

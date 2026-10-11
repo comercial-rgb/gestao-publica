@@ -209,6 +209,10 @@ function FormPrestacao({ concessaoId, numero, acao }: { readonly concessaoId: st
         <span className={ROTULO}>Relatório e comprovantes</span>
         <input name="relatorio" required minLength={20} placeholder="O que foi feito e quais comprovantes foram apresentados" className={CAMPO} />
       </label>
+      <label className={`${ROTULO_CAMPO} sm:col-span-2`}>
+        <span className={ROTULO}>Comprovantes da aplicação (opcional; um por linha: dd/mm/aaaa; documento; emitente; descrição; valor)</span>
+        <textarea name="comprovantes" rows={3} placeholder="05/02/2026; NF 10; Papelaria Exemplo; Material de expediente; 300,00" className={CAMPO} />
+      </label>
       <label className={ROTULO_CAMPO}>
         <span className={ROTULO}>Data da apresentação</span>
         <input name="diaApresentacao" type="date" required className={CAMPO} />

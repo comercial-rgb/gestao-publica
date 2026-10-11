@@ -56,6 +56,7 @@ export async function registrarPrestacaoAction(_p: EstadoDoAdiantamento, f: Form
         valorDevolvido: t(f, "valorDevolvido") === "" ? "0.00" : t(f, "valorDevolvido"),
         relatorio: t(f, "relatorio"),
         diaApresentacao: t(f, "diaApresentacao"),
+        comprovantes: String(f.get("comprovantes") ?? ""),
       });
       revalidatePath(CAMINHO);
       return { sucesso };

@@ -204,3 +204,33 @@ describe("V32 — diárias e suprimento de fundos", () => {
     expect((await listarDiariasPublicas(2025)).linhas).toEqual([]);
   });
 });
+
+/**
+ * V39-R2 — A APLICAÇÃO DO SUPRIMENTO, COMPROVANTE POR COMPROVANTE. Suprimento S-1 de 500,00 com aplicação de 01/02 a
+ * 28/02/2026. Contas: os comprovantes de 300,00 (05/02) e 200,00 (20/02) somam 500,00, o comprovado.
+ */
+describe("V39-R2 — comprovantes da aplicação do adiantamento", () => {
+  beforeEach(semear);
+
+  it("N=2 comprovantes somam o comprovado e ficam gravados; soma diferente, data fora da aplicação e documento repetido são recusados", async () => {
+    await roteiros();
+    const e = await empenho("ficha-30", "5000.00");
+    await suprimento(e, "S-1", "500.00", "2026-02-01", "2026-02-28");
+    const s1 = (await prisma.concessaoDeAdiantamento.findFirstOrThrow({ where: { numero: "S-1" }, select: { id: true } })).id;
+    const base = { concessaoId: s1, valorComprovado: "500.00", valorDevolvido: "0.00", relatorio: "Notas fiscais das compras de pronto pagamento.", diaApresentacao: "2026-03-01", criadoPor: POR };
+    const nota = (documento: string, dia: string, valor: string) => ({ dia, documento, emitente: "Papelaria Exemplo Ltda", descricao: "Material de expediente", valor });
+    await expect(registrarPrestacaoDeAdiantamento(prisma, { ...base, comprovantes: [nota("NF 10", "2026-02-05", "300.00"), nota("NF 11", "2026-02-20", "150.00")] }))
+      .rejects.toThrow(/Os comprovantes somam 450\.00, e o valor comprovado informado é 500\.00/);
+    await expect(registrarPrestacaoDeAdiantamento(prisma, { ...base, comprovantes: [nota("NF 10", "2026-02-05", "300.00"), nota("NF 11", "2026-03-01", "200.00")] }))
+      .rejects.toThrow(/Comprovante 2 \(NF 11\): a data 01\/03\/2026 está fora do período de aplicação da concessão S-1 \(01\/02\/2026 a 28\/02\/2026\)/);
+    await expect(registrarPrestacaoDeAdiantamento(prisma, { ...base, comprovantes: [nota("NF 10", "2026-02-05", "300.00"), nota("nf 10", "2026-02-20", "200.00")] }))
+      .rejects.toThrow(/o mesmo documento do mesmo emitente aparece duas vezes/);
+    // data que não existe: passaria pela comparação de texto do período e viraria outro dia na gravação
+    await expect(registrarPrestacaoDeAdiantamento(prisma, { ...base, comprovantes: [nota("NF 10", "2026-02-05", "300.00"), nota("NF 11", "2026-02-30", "200.00")] }))
+      .rejects.toThrow(/Comprovante 2 \(NF 11\): a data 30\/02\/2026 não existe/);
+    expect(await prisma.prestacaoDeContasDoAdiantamento.count()).toBe(0);
+    const p = await registrarPrestacaoDeAdiantamento(prisma, { ...base, comprovantes: [nota("NF 10", "2026-02-05", "300.00"), nota("NF 11", "2026-02-20", "200.00")] });
+    const gravados = await prisma.comprovanteDaPrestacaoDoAdiantamento.findMany({ where: { prestacaoId: p.prestacaoId }, orderBy: { documento: "asc" }, select: { documento: true, valor: true } });
+    expect(gravados.map((x) => [x.documento, x.valor.toFixed(2)])).toEqual([["NF 10", "300.00"], ["NF 11", "200.00"]]);
+  });
+});

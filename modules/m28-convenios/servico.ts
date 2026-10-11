@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { roteiroPatrimonialVigente } from "../m01-core-contabil/roteiro-patrimonial-declarado.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
-import { fimDoDiaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
+import { diaCivil, diaCivilBr, fimDoDiaCivil, inicioDoDiaCivil, janelaCivilDoMes } from "../../packages/datas/index.js";
 import { travar } from "../../packages/locks/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 // ⚠️ O FUNIL DO RAZÃO (M01). Todo lançamento passa por ele — e é lá que mora o travamento de
@@ -208,6 +208,7 @@ export async function liberarParcela(
       );
     }
     if (d.empenhoId !== undefined) await exigirEmpenhoDoConvenio(tx, d.empenhoId, c.id);
+    if (d.receitaArrecadadaId !== undefined) await exigirReceitaDoConvenio(tx, d.receitaArrecadadaId, c.id, d.valor, d.diaMovimento);
 
     const criado = await tx.movimentoConvenio.create({
       data: {
@@ -452,6 +453,33 @@ export async function estornarMovimentoConvenio(
  * repassamos neste termo" veria um empenho que pertence a outro, e o outro termo ficaria com
  * despesa a menos. O vínculo existe justamente para que essa pergunta tenha UMA resposta.
  */
+/**
+ * V39-R2 — A RECEITA QUE TROUXE A PARCELA, quando o ente é CONVENENTE (o espelho do empenho do concedente). Ela existe,
+ * é arrecadação não anulada, da FONTE do convênio, e o que as liberações já ligaram a ela mais esta não passa do que
+ * entrou: a mesma receita não explica duas vezes o mesmo dinheiro.
+ */
+async function exigirReceitaDoConvenio(tx: Tx, receitaId: string, convenioId: string, valor: Money, diaMovimento: string): Promise<void> {
+  // A receita travada antes de somar o que ela já explica: liberações de convênios diferentes podem ligar a mesma.
+  await travar(tx, "ReceitaDoConvenio", [receitaId]);
+  const [r, c] = await Promise.all([
+    tx.receitaArrecadada.findUnique({
+      where: { id: receitaId },
+      select: { numeroReceita: true, tipo: true, valor: true, fonteId: true, dataArrecadacao: true, estornoDeId: true, estornos: { select: { id: true } }, movimentosConvenio: { where: { estornos: { none: {} } }, select: { valor: true } } },
+    }),
+    tx.convenio.findUnique({ where: { id: convenioId }, select: { identificador: true, papelDoEnte: true, fonteRecursoId: true } }),
+  ]);
+  if (r === null || c === null) throw new Error("A receita arrecadada escolhida não existe. Nada foi gravado.");
+  if (c.papelDoEnte !== "CONVENENTE") throw new Error(`No convênio ${c.identificador} o ente é concedente: quem repassa liga o empenho, não a receita. Nada foi gravado.`);
+  if (r.tipo !== "ARRECADACAO" || r.estornoDeId !== null || r.estornos.length > 0) throw new Error(`A receita ${r.numeroReceita} não é uma arrecadação em vigor (é anulação, retificação ou foi estornada). Nada foi gravado.`);
+  if (diaCivil(r.dataArrecadacao) > diaMovimento) throw new Error(`A receita ${r.numeroReceita} foi arrecadada em ${diaCivilBr(r.dataArrecadacao)}, depois da liberação: ela não explica dinheiro que ainda não tinha entrado. Nada foi gravado.`);
+  if (r.fonteId !== c.fonteRecursoId) throw new Error(`A receita ${r.numeroReceita} é de outra fonte de recurso que a do convênio ${c.identificador}. Nada foi gravado.`);
+  const ja = r.movimentosConvenio.reduce((t, m) => t.plus(m.valor.toFixed(2)), toMoney(0));
+  const arrecadado = toMoney(r.valor.toFixed(2));
+  if (ja.plus(valor).gt(arrecadado)) {
+    throw new Error(`A receita ${r.numeroReceita} trouxe ${arrecadado.toFixed(2)}, já explica ${ja.toFixed(2)} de outras liberações, e esta é de ${valor.toFixed(2)}: passa do que entrou. Nada foi gravado.`);
+  }
+}
+
 async function exigirEmpenhoDoConvenio(
   tx: Tx,
   empenhoId: string,

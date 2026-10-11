@@ -192,6 +192,18 @@ export const BENS_PATRIMONIAIS: DefinicaoDeRecurso = definirRecurso({
   ],
   acoes: [
     {
+      nome: "transferir-entre-entidades",
+      rotulo: "Transferir para outra unidade",
+      acaoDoCenso: "TRANSFERIR_BEM_ENTRE_ENTIDADES",
+      aviso: "Baixa o bem na unidade de origem e o incorpora na de destino, num ato só. Exige a permissão nas duas unidades.",
+      campos: [
+        { nome: "unidadeOrcOrigemId", rotulo: "Unidade de origem (onde o bem está)", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "unidadeOrcDestinoId", rotulo: "Unidade de destino", tipo: "selecao", obrigatorio: true, largura: 2, opcoes: [] },
+        { nome: "dataMovimento", rotulo: "Data do fato", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "motivo", rotulo: "Motivo", tipo: "texto", obrigatorio: true, largura: 3 },
+      ],
+    },
+    {
       nome: "mover-localizacao",
       rotulo: "Mover de localização",
       acaoDoCenso: "REGISTRAR_MOVIMENTO_DE_GESTAO",

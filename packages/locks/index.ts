@@ -456,6 +456,20 @@ export const ORDEM_DOS_LOCKS = {
    * ⚠️ ÚLTIMO POSTO: o cadastro do contrato que vem depois (e o lançamento de controle dele) não trava nada.
    */
   ProcessoLicitatorio: 45,
+  /**
+   * V39-R2 — O BEM PATRIMONIAL na transferência entre unidades (M10, `gestao-do-bem.ts`): duas transferências do mesmo
+   * bem leriam a mesma unidade de origem e gravariam as duas. Trava o bem antes de ler onde ele está.
+   *
+   * ⚠️ A baixa e os demais movimentos do bem ainda não tomam esta trava (pendência TRAVA-DO-BEM-NOS-DEMAIS-MOVIMENTOS):
+   * eles travam postos anteriores, e incluí-los pede reordenar.
+   */
+  BemPatrimonial: 46,
+  /**
+   * V39-R2 — A RECEITA ARRECADADA ligada à liberação de parcela do convênio convenente (M28): liberações de convênios
+   * diferentes podem ligar a mesma receita, e cada uma trava só o seu convênio (posto 20). Trava a receita antes de somar
+   * o que ela já explica. ÚLTIMO POSTO: a liberação não trava mais nada depois.
+   */
+  ReceitaDoConvenio: 47,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

@@ -124,6 +124,11 @@ try {
   }
   const fr = await irPara(n, page, "/patrimonio/frota/operacao");
   conferir(semErro(fr) && (await page.$("[data-condutores]")) !== null && (await page.$("[data-ordens-de-abastecimento]")) !== null && (await page.$("[data-manutencoes]")) !== null, "operação da frota abre com condutores, ordens e manutenção");
+  // Fluxos existentes: convênios, bens e diárias/suprimento abrem (o convênio e o bem só têm o detalhe quando existem).
+  for (const [rota, rotulo] of [["/transferencias/convenios", "convênios"], ["/patrimonio/bens-patrimoniais", "bens patrimoniais"], ["/despesa/adiantamentos", "diárias e suprimento"]] as const) {
+    const tx = await irPara(n, page, rota);
+    conferir(semErro(tx), `a tela de ${rotulo} abre`);
+  }
   const rot = await irPara(n, page, "/contabilidade/roteiros-patrimoniais");
   const temContrato = await page.$$eval('select[name="movimento"] option', (os) => os.some((o) => (o.getAttribute("value") ?? "").startsWith("CONTRATO|"))).catch(() => false);
   conferir(semErro(rot) && temContrato, "roteiros patrimoniais oferecem os movimentos do controle de contratos");

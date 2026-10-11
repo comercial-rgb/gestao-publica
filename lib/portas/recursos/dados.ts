@@ -943,6 +943,7 @@ export async function acaoDoConvenio(
           ...comum(criadoPor),
           parcela: n(c, "parcela", 1),
           ...(opcional(c, "empenhoId") !== undefined ? { empenhoId: t(c, "empenhoId") } : {}),
+          ...(opcional(c, "receitaArrecadadaId") !== undefined ? { receitaArrecadadaId: t(c, "receitaArrecadadaId") } : {}),
         })
       );
       return;
@@ -1807,6 +1808,14 @@ export async function opcoesDoCadastro(
           orderBy: [{ exercicio: "desc" }, { dataAssinatura: "desc" }],
         }),
     ]);
+  // V39-R2 — SÓ AS ARRECADAÇÕES EM VIGOR DA FONTE DO CONVÊNIO, e só quando o ente é convenente: é o que
+  // `exigirReceitaDoConvenio` aceita. As mais recentes primeiro, num recorte de 100.
+  const doConvenio = p.convenioId === undefined ? null : await prisma.convenio.findUnique({ where: { id: p.convenioId }, select: { papelDoEnte: true, fonteRecursoId: true } });
+  const receitasDoConvenio = doConvenio === null || doConvenio.papelDoEnte !== "CONVENENTE" ? [] : await prisma.receitaArrecadada.findMany({
+    where: { fonteId: doConvenio.fonteRecursoId, tipo: "ARRECADACAO", estornoDeId: null, estornos: { none: {} } },
+    orderBy: { dataArrecadacao: "desc" }, take: 100,
+    select: { id: true, numeroReceita: true, valor: true, dataArrecadacao: true },
+  });
   return {
     fonteRecursoId: fontes.map((f) => ({ valor: f.id, rotulo: `${f.codigo} — ${f.descricao}` })),
     contaContabilId: contas.map((c) => ({ valor: c.id, rotulo: `${c.codigo} — ${c.nome}` })),
@@ -1822,6 +1831,10 @@ export async function opcoesDoCadastro(
     empenhoId: empenhosDoConvenio.map((e) => ({
       valor: e.id,
       rotulo: `${e.numero} — ${e.valor.toFixed(2)} (${diaCivilBr(e.data)})`,
+    })),
+    receitaArrecadadaId: receitasDoConvenio.map((r) => ({
+      valor: r.id,
+      rotulo: `${r.numeroReceita} — ${r.valor.toFixed(2)} (${diaCivilBr(r.dataArrecadacao)})`,
     })),
     aditivoDeId: rateiosDoConsorcio.map((r) => ({
       valor: r.id,

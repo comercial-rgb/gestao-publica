@@ -131,6 +131,13 @@ export default async function AdiantamentosPage(): Promise<React.ReactElement> {
                             {formatarMoeda(l.prestacaoEmAnalise.valorDevolvido).texto}. {l.prestacaoEmAnalise.relatorio}
                           </p>
                         ) : null}
+                        {l.prestacaoEmAnalise !== null && l.prestacaoEmAnalise.comprovantes.length > 0 ? (
+                          <ul className="mt-1 list-disc pl-4 text-[color:var(--color-ink-2)]" data-comprovantes-da-prestacao={l.numero}>
+                            {l.prestacaoEmAnalise.comprovantes.map((x) => (
+                              <li key={`${x.documento}-${x.emitente}`}>{x.dia.split("-").reverse().join("/")}, {x.documento}, {x.emitente}: {x.descricao}, R$ {formatarMoeda(x.valor).texto}</li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </PrestacaoDaConcessao>
                     </td>
                   </tr>

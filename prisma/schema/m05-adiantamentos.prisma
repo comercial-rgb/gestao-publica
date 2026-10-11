@@ -66,11 +66,31 @@ model PrestacaoDeContasDoAdiantamento {
   apresentadaEm   DateTime
 
   decisao DecisaoDaPrestacaoDoAdiantamento?
+  /// V39-R2 — a APLICAÇÃO: os comprovantes, um por despesa (opcional; quando vêm, somam o comprovado).
+  comprovantes ComprovanteDaPrestacaoDoAdiantamento[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
 
   @@index([concessaoId])
+}
+
+/// V39-R2 — UM COMPROVANTE DA APLICAÇÃO (nota, cupom, recibo), dentro do período de aplicação declarado na concessão.
+/// Append-only: a prestação rejeitada fica com os dela; a nova traz os seus.
+model ComprovanteDaPrestacaoDoAdiantamento {
+  id String @id @default(cuid())
+
+  prestacaoId String
+  prestacao   PrestacaoDeContasDoAdiantamento @relation(fields: [prestacaoId], references: [id], onDelete: Restrict)
+
+  data      DateTime
+  documento String  @db.VarChar(80)
+  emitente  String  @db.VarChar(120)
+  descricao String
+  valor     Decimal @db.Decimal(18, 2)
+
+  @@unique([prestacaoId, documento, emitente])
+  @@index([prestacaoId])
 }
 
 /// A DECISÃO sobre uma prestação: aprovada (com o lançamento que baixa o controle) ou rejeitada (com o motivo).
