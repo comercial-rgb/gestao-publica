@@ -148,6 +148,8 @@ model ReservaEmpenho {
 // ----------------------------------------------------------------------------
 
 model Empenho {
+  /// V39-R3 (R3-017) — as referências deste empenho em outros sistemas (declaradas e, à parte, conferidas).
+  referenciasExternas ReferenciaExternaDoEmpenho[] @relation("ReferenciasExternasDoEmpenho")
   id      String            @id @default(cuid())
   fichaId String
   ficha   FichaOrcamentaria @relation(fields: [fichaId], references: [id])

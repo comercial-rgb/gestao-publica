@@ -155,6 +155,7 @@ export type AcaoDoSistema =
   | "DISPENSAR_MEDICAMENTO"
   | "REGISTRAR_AJUSTE_DA_FARMACIA"
   | "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"
+  | "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
   | "IMPORTAR_FOLHA"
   | "IMPORTAR_TRIBUTOS"
@@ -1304,6 +1305,9 @@ export type NomeDeServico =
   | "registrarAjusteDaFarmacia"
   | "corrigirDispensacao"
   | "trocarDepositoDaFarmacia"
+  | "cadastrarTanqueDeCombustivel"
+  | "registrarReferenciaExterna"
+  | "conferirReferenciaExterna"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -2205,6 +2209,11 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // depósito da farmácia com vigência, ato de quem cadastra a farmácia.
   corrigirDispensacao: "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO",
   trocarDepositoDaFarmacia: "CADASTRAR_FARMACIA",
+  // V39-R3 (R3-018) — o tanque próprio de combustível é cadastro da frota, nenhuma ação nova.
+  cadastrarTanqueDeCombustivel: "CADASTRAR_FROTA",
+  // V39-R3 (R3-017) — a referência externa do empenho: declarar e, por outra pessoa, conferir. Ação nova.
+  registrarReferenciaExterna: "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO",
+  conferirReferenciaExterna: "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3543,6 +3552,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   estornarSaidaFisicaNaTx: "composável interno (o estorno de uma saída física; quem chama autoriza e trava classe e posição antes)",
   depositoDaFarmaciaNoDia: "leitura pura (o depósito da farmácia num dia, pela vigência das trocas)",
   divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
+  saldoDoTanqueNaTx: "leitura pura (o saldo do combustível no tanque, pela soma dos movimentos)",
   registrarEntradaFisicaNaTx:
     "composável interno (o eixo FÍSICO da mesma entrada, na mesma transação)",
   // V37 — a perna FÍSICA da cascata da anulação total (antes só o contábil voltava). Quem cobra o crachá é

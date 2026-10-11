@@ -139,7 +139,7 @@ export function FormSituacao({ bemId, categoria, identificacao, situacoes }: { r
   );
 }
 
-export function FormAbastecimento({ bemId, categoria, identificacao, combustiveis }: { readonly bemId: string; readonly categoria: string; readonly identificacao: string; readonly combustiveis: Opcoes }): React.ReactElement {
+export function FormAbastecimento({ bemId, categoria, identificacao, combustiveis, tanques }: { readonly bemId: string; readonly categoria: string; readonly identificacao: string; readonly combustiveis: Opcoes; readonly tanques: Opcoes }): React.ReactElement {
   const [estado, action, pendente] = useActionState<EstadoDaFrota, FormData>(registrarAbastecimentoAction, {});
   return (
     <details>
@@ -152,6 +152,12 @@ export function FormAbastecimento({ bemId, categoria, identificacao, combustivei
         <Escolha nome="combustivel" rotulo="Combustível" opcoes={combustiveis} />
         <label className="text-xs"><span className={ROTULO}>Quantidade (litros; m³ no gás natural)</span><input name="quantidade" required inputMode="decimal" className={CAMPO} /></label>
         <label className="text-xs"><span className={ROTULO}>Cupom, nota ou ordem de abastecimento</span><input name="documento" required className={CAMPO} /></label>
+        <label className="text-xs"><span className={ROTULO}>De onde saiu o combustível</span>
+          <select name="tanqueId" defaultValue="" className={CAMPO}>
+            <option value="">Posto externo (sem tanque próprio)</option>
+            {Object.entries(tanques).map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+          </select>
+        </label>
         <label className="text-xs"><span className={ROTULO}>Número da ordem de abastecimento (se houver)</span><input name="ordemNumero" inputMode="numeric" className={CAMPO} /></label>
         <label className="text-xs"><span className={ROTULO}>Leitura do hodômetro ou horímetro (opcional, ex.: 45.230,5)</span><input name="leitura" inputMode="decimal" className={CAMPO} /></label>
         <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Registrar"}</button>

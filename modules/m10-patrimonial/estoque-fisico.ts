@@ -718,6 +718,7 @@ export async function registrarEntradaFisicaNaTx(
     if (d.recebimentoDeItemId !== undefined) {
       await exigirRecebimentoConsumivel(tx, { recebimentoDeItemId: d.recebimentoDeItemId, materialId: d.materialId, quantidade });
     }
+    await exigirQueCabeNoTanque(tx, d.depositoId, d.materialId, mat.codigo, quantidade);
 
     const criado = await tx.movimentoFisicoDeEstoque.create({
       data: {
@@ -1304,6 +1305,7 @@ export async function estornarMovimentoFisico(
         itemDaDispensacao: { select: { dispensacao: { select: { numero: true, farmacia: { select: { codigo: true } } } } } },
         ajusteDaFarmacia: { select: { sentido: true, farmacia: { select: { codigo: true } } } },
         ajusteDoInventario: { select: { id: true } },
+        abastecimentoDaFrota: { select: { id: true } },
       },
     });
     if (original === null) {
@@ -1318,6 +1320,9 @@ export async function estornarMovimentoFisico(
     if (original.itemDaDispensacao !== null) {
       const x = original.itemDaDispensacao.dispensacao;
       throw new Error(`Este movimento é da dispensação nº ${String(x.numero)} da farmácia ${x.farmacia.codigo}: ele não se estorna pelo almoxarifado. Corrija a dispensação na tela da farmácia (cancelamento do registro ou devolução), que estorna a saída e o consumo juntos. Nada foi gravado.`);
+    }
+    if (original.abastecimentoDaFrota !== null) {
+      throw new Error("Este movimento é a saída do tanque de um abastecimento da frota: anule o abastecimento, que devolve o combustível e estorna o consumo juntos. Nada foi gravado.");
     }
     if (original.ajusteDoInventario !== null) {
       throw new Error("Este movimento é o ajuste de um inventário aplicado: ele não se estorna sozinho pelo almoxarifado, porque o lançamento e o rastro do inventário ficariam como estão. Nada foi gravado.");
@@ -1370,6 +1375,23 @@ export async function estornarMovimentoFisico(
 }
 
 /**
+ * V39-R3 (R3-018) — O DEPÓSITO QUE É TANQUE DE COMBUSTÍVEL recebe só o combustível dele e não passa da capacidade. Vale
+ * para TODA entrada no depósito (a do recebimento, a da transferência e a devolução do estorno de uma saída): uma guarda
+ * numa forma só deixaria as outras passarem. Quem chama já travou a posição: duas entradas simultâneas não passam juntas
+ * do limite.
+ */
+async function exigirQueCabeNoTanque(tx: Tx, depositoId: string, materialId: string, codigoDoMaterial: string, quantidade: Money): Promise<void> {
+  const tanque = await tx.tanqueDeCombustivel.findUnique({ where: { depositoId }, select: { codigo: true, materialId: true, capacidade: true } });
+  if (tanque === null) return;
+  if (tanque.materialId !== materialId) throw new Error(`O tanque ${tanque.codigo} guarda outro combustível: a entrada de ${codigoDoMaterial} não cabe nele. Nada foi gravado.`);
+  const saldo = posicaoDeEstoque(await movimentosDa(tx, materialId, depositoId), "9999-12-31").quantidade;
+  const capacidade = toMoney(tanque.capacidade.toFixed(2));
+  if (saldo.plus(quantidade).greaterThan(capacidade)) {
+    throw new Error(`O tanque ${tanque.codigo} tem ${saldo.toFixed(2)} L e capacidade de ${capacidade.toFixed(2)} L: a entrada de ${quantidade.toFixed(2)} L passa da capacidade. Nada foi gravado.`);
+  }
+}
+
+/**
  * V39-R3 (R3-009) — O ESTORNO DE UMA SAÍDA FÍSICA, para compor com o estorno do consumo na mesma transação (a correção
  * da dispensação). Devolve ao depósito a quantidade da saída, no mesmo lote e ao custo dela (não ao custo médio do
  * dia), e aponta o estorno contábil que a acompanha. NÃO AUTORIZA E NÃO TRAVA: quem chama trava classe, posição e o
@@ -1386,6 +1408,10 @@ export async function estornarSaidaFisicaNaTx(
   if (original === null) throw new Error(`Movimento físico ${d.movimentoId} não existe. Nada foi gravado.`);
   if (original.tipo !== "SAIDA") throw new Error(`O movimento ${original.id} não é uma saída: só a saída se devolve por aqui. Nada foi gravado.`);
   if (original.estornos.length > 0) throw new Error(`A saída ${original.id} já foi estornada: devolvê-la de novo poria a quantidade em dobro no estoque. Nada foi gravado.`);
+  // A devolução é ENTRADA no depósito: o bloqueio (inventário em andamento) e a capacidade do tanque valem para ela.
+  await exigirNaoBloqueado(tx, original.materialId, original.depositoId, d.dataMovimento);
+  const codigo = (await tx.material.findUniqueOrThrow({ where: { id: original.materialId }, select: { codigo: true } })).codigo;
+  await exigirQueCabeNoTanque(tx, original.depositoId, original.materialId, codigo, toMoney(original.quantidade.toFixed(4)));
   const criado = await tx.movimentoFisicoDeEstoque.create({
     data: {
       materialId: original.materialId, depositoId: original.depositoId, loteId: original.loteId, tipo: "ESTORNO_SAIDA",
@@ -1584,6 +1610,8 @@ export async function transferirEntreDepositos(
       criadoPor: d.criadoPor,
     };
 
+    // V39-R3 (R3-018) — o destino que é tanque recebe só o combustível dele, até a capacidade.
+    await exigirQueCabeNoTanque(tx, d.depositoDestinoId, d.materialId, (await tx.material.findUniqueOrThrow({ where: { id: d.materialId }, select: { codigo: true } })).codigo, quantidade);
     const saida = await tx.movimentoFisicoDeEstoque.create({
       data: { ...comum, depositoId: d.depositoOrigemId, tipo: "TRANSFERENCIA_SAIDA" },
       select: { id: true },

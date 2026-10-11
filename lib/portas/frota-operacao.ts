@@ -1,4 +1,6 @@
 import { cliente } from "./cliente";
+import { ROTULO_COMBUSTIVEL } from "../../modules/m36-frota/dominio";
+import { cadastrarTanqueDeCombustivel, saldoDoTanqueNaTx } from "../../modules/m36-frota/tanque";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
 import { acoesPermitidas } from "./molde";
@@ -38,6 +40,10 @@ export interface TelaDaOperacaoDaFrota {
   readonly contratos: readonly { readonly id: string; readonly rotulo: string }[];
   readonly bemEscolhido: { readonly chave: string; readonly rotulo: string; readonly unidade: string; readonly consumo: readonly ConsumoNoAbastecimento[]; readonly leituras: readonly { readonly id: string; readonly rotulo: string }[] } | null;
   readonly pode: { readonly cadastrar: boolean; readonly ordem: boolean; readonly leitura: boolean; readonly autorizarManutencao: boolean };
+  /** V39-R3 (R3-018) — os tanques próprios, com o saldo pela soma dos movimentos, e o que o cadastro oferece. */
+  readonly tanques: readonly { readonly id: string; readonly codigo: string; readonly descricao: string; readonly deposito: string; readonly combustivel: string; readonly saldo: string; readonly capacidade: string }[];
+  readonly depositosParaTanque: readonly { readonly id: string; readonly rotulo: string }[];
+  readonly combustiveisDoAlmoxarifado: readonly { readonly id: string; readonly rotulo: string }[];
 }
 
 const alvoDaChave = (chave: string): { veiculoId: string } | { maquinaId: string } | null =>
@@ -107,7 +113,27 @@ export async function lerTelaDaOperacaoDaFrota(bemChave: string | undefined): Pr
     }),
     contratos: contratos.map((c) => ({ id: c.id, rotulo: c.numeroContrato })),
     bemEscolhido,
+    ...(await tanquesDaTela(prisma)),
     pode: { cadastrar: permitidas.has("CADASTRAR_FROTA"), ordem: permitidas.has("EMITIR_ORDEM_DE_ABASTECIMENTO"), leitura: permitidas.has("REGISTRAR_ABASTECIMENTO"), autorizarManutencao: permitidas.has("AUTORIZAR_MANUTENCAO_DA_FROTA") },
+  };
+}
+
+/** V39-R3 (R3-018) — os tanques com o saldo, os depósitos livres e os combustíveis do almoxarifado. */
+async function tanquesDaTela(prisma: ReturnType<typeof cliente>): Promise<Pick<TelaDaOperacaoDaFrota, "tanques" | "depositosParaTanque" | "combustiveisDoAlmoxarifado">> {
+  const [tanques, livres, combustiveis] = await Promise.all([
+    prisma.tanqueDeCombustivel.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true, descricao: true, combustivel: true, capacidade: true, depositoId: true, materialId: true, deposito: { select: { codigo: true } } } }),
+    prisma.deposito.findMany({ where: { ativo: true, tanque: null, farmacia: null }, orderBy: { codigo: "asc" }, take: 200, select: { id: true, codigo: true, nome: true } }),
+    prisma.material.findMany({ where: { categoria: "COMBUSTIVEL" }, orderBy: { codigo: "asc" }, take: 200, select: { id: true, codigo: true, descricaoSucinta: true } }),
+  ]);
+  const comSaldo = [];
+  for (const t of tanques) {
+    const saldo = await saldoDoTanqueNaTx(prisma, t.depositoId, t.materialId);
+    comSaldo.push({ id: t.id, codigo: t.codigo, descricao: t.descricao, deposito: t.deposito.codigo, combustivel: ROTULO_COMBUSTIVEL[t.combustivel].toLowerCase(), saldo: saldo.toFixed(2).replace(".", ","), capacidade: t.capacidade.toFixed(2).replace(".", ",") });
+  }
+  return {
+    tanques: comSaldo,
+    depositosParaTanque: livres.map((d) => ({ id: d.id, rotulo: `${d.codigo} — ${d.nome}` })),
+    combustiveisDoAlmoxarifado: combustiveis.map((m) => ({ id: m.id, rotulo: `${m.codigo} — ${m.descricaoSucinta}` })),
   };
 }
 
@@ -121,6 +147,11 @@ const alvoDoCampo = (c: Campos): { veiculoId?: string; maquinaId?: string } => {
 export async function atoDaOperacaoDaFrota(ato: string, c: Campos): Promise<string> {
   const p = cliente();
   switch (ato) {
+    case "cadastrar-tanque": {
+      const combustivel = t(c, "combustivel") as Parameters<typeof cadastrarTanqueDeCombustivel>[1]["combustivel"];
+      await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => cadastrarTanqueDeCombustivel(p, { codigo: t(c, "codigo"), descricao: t(c, "descricao"), depositoId: t(c, "depositoId"), materialId: t(c, "materialId"), combustivel, capacidade: t(c, "capacidade"), fundamento: t(c, "fundamento"), criadoPor }));
+      return "Tanque cadastrado. O combustível entra pela liquidação da compra, no depósito do tanque, até a capacidade.";
+    }
     case "cadastrar-condutor":
       await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => cadastrarCondutor(p, { nome: t(c, "nome"), matricula: t(c, "matricula"), cnhNumero: t(c, "cnhNumero"), cnhCategoria: t(c, "cnhCategoria"), cnhValidade: t(c, "cnhValidade"), vinculo: t(c, "vinculo"), vigenteDesde: t(c, "vigenteDesde"), fundamento: t(c, "fundamento"), criadoPor }));
       return "Condutor cadastrado.";

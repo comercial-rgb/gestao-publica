@@ -23,6 +23,8 @@ import { acoesPermitidas } from "../../../../../lib/portas/molde";
 import { FormDuplicar } from "./FormDuplicar";
 import { FormAnularSubempenho, FormEmitirSubempenho } from "./FormsDoSubempenho";
 import { lerSubempenhosDaTela, type QuadroDosSubempenhos } from "../../../../../lib/portas/subempenhos";
+import { lerReferenciasExternas, type ReferenciaNaTela } from "../../../../../lib/portas/referencia-externa";
+import { FormConferirReferencia, FormRegistrarReferencia } from "./FormsDaReferencia";
 
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 /**
@@ -181,7 +183,8 @@ export default async function DetalheDoEmpenhoPage({
 
   const d = resultado.dossie;
   // V36 — duplicar é emitir: o formulário só aparece para quem empenha (o domínio cobra de novo, na ficha).
-  const permitidas = await acoesPermitidas(["EMPENHAR", "ANULAR_EMPENHO_PARCIAL", "LIQUIDAR"]);
+  const permitidas = await acoesPermitidas(["EMPENHAR", "ANULAR_EMPENHO_PARCIAL", "LIQUIDAR", "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO"]);
+  const referencias = await lerReferenciasExternas(d.id);
   const podeDuplicar = permitidas.has("EMPENHAR");
   // V36 (TR 5.10.1.7) — o subempenho só existe no global e no estimativo; a leitura vem depois do dossiê (acesso conferido).
   const repartivel = d.tipo === "GLOBAL" || d.tipo === "ESTIMATIVO";
@@ -235,11 +238,38 @@ export default async function DetalheDoEmpenhoPage({
           podeAnular={permitidas.has("ANULAR_EMPENHO_PARCIAL") && d.status !== "ANULADO"}
         />
       ) : null}
+      <ReferenciasExternas empenhoId={d.id} referencias={referencias} pode={permitidas.has("REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO")} />
       <Liquidacoes dossie={d} />
       <Anulacoes dossie={d} />
       <Lancamentos dossie={d} />
       <Historico dossie={d} />
     </div>
+  );
+}
+
+/**
+ * V39-R3 (R3-017) — AS REFERÊNCIAS DO EMPENHO EM OUTROS SISTEMAS, com a condição sempre escrita: a declarada não aparece
+ * como protocolo confirmado. Os vínculos internos (contrato, ordem de compra...) estão na origem, acima.
+ */
+function ReferenciasExternas({ empenhoId, referencias, pode }: { readonly empenhoId: string; readonly referencias: readonly ReferenciaNaTela[]; readonly pode: boolean }): React.ReactElement {
+  return (
+    <Card>
+      <section aria-labelledby="t-ref" data-referencias-externas>
+        <h2 className="text-sm font-semibold text-[color:var(--color-ink)]" id="t-ref">Referências em outros sistemas</h2>
+        {referencias.length === 0 ? <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">Nenhuma referência registrada.</p> : (
+          <ul className="mt-2 space-y-2 text-xs">
+            {referencias.map((r) => (
+              <li data-referencia={r.identificador} data-condicao={r.condicao} key={r.id}>
+                <strong>{r.sistemaDeOrigem}</strong> nº {r.identificador} — {r.documento}; declarada por {r.declaradaPor} em {r.declaradaEm}.{" "}
+                <span className={r.condicao === "CONFIRMADA" ? "text-[color:var(--color-status-ok-fg)]" : "text-[color:var(--color-status-alerta-fg)]"} data-condicao-da-referencia>{r.textoDaCondicao}</span>
+                {pode ? <FormConferirReferencia conferida={r.condicao !== "DECLARADA"} empenhoId={empenhoId} identificador={r.identificador} referenciaId={r.id} /> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+        {pode ? <details className="mt-2"><summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-primary)]">Registrar uma referência</summary><FormRegistrarReferencia empenhoId={empenhoId} /></details> : null}
+      </section>
+    </Card>
   );
 }
 

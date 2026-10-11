@@ -231,3 +231,9 @@ export async function informarEstoquePelaTela(input: SemAutor<Parameters<typeof 
   const r = await comEscritaAutenticada("INFORMAR_ESTOQUE_DA_FARMACIA", (criadoPor) => informarEstoqueDaFarmacia(cliente(), { ...input, criadoPor }));
   return `Estoque de ${String(input.mes).padStart(2, "0")}/${String(input.ano)} informado com ${String(r.itens)} produto(s). Ele substitui, na remessa, o informe anterior do mesmo mês.`;
 }
+
+/** V39-R3 (R3-018) — os tanques próprios, para o abastecimento interno escolher de onde saiu o combustível. */
+export async function lerTanquesParaAbastecimento(): Promise<Readonly<Record<string, string>>> {
+  const ts = await cliente().tanqueDeCombustivel.findMany({ orderBy: { codigo: "asc" }, select: { id: true, codigo: true, descricao: true, combustivel: true } });
+  return Object.fromEntries(ts.map((t) => [t.id, `Tanque ${t.codigo} — ${t.descricao} (${ROTULO_COMBUSTIVEL[t.combustivel].toLowerCase()})`]));
+}

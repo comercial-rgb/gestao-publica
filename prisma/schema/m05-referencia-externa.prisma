@@ -1,0 +1,54 @@
+// ============================================================================
+// V39-R3 (R3-017, V39-033) — A REFERÊNCIA EXTERNA DO EMPENHO: o identificador que o empenho tem em outro sistema
+// (o processo no sistema de compras, a requisição no sistema da saúde, o protocolo de outro órgão).
+//
+// A referência é DECLARADA por quem a registra: sistema de origem, identificador e o documento que a traz. Ela não vale
+// como protocolo confirmado só por estar escrita: a CONFERÊNCIA é um fato à parte, por outra pessoa, que diz como
+// conferiu e se confirmou ou divergiu. Os vínculos internos do empenho (contrato, ordem de compra, convênio...) ficam
+// como estão; a referência não substitui nenhum deles. Append-only.
+// ============================================================================
+
+enum ResultadoDaConferenciaDaReferencia {
+  CONFIRMADA
+  DIVERGENTE
+}
+
+model ReferenciaExternaDoEmpenho {
+  id String @id @default(cuid())
+
+  empenhoId String
+  empenho   Empenho @relation("ReferenciasExternasDoEmpenho", fields: [empenhoId], references: [id], onDelete: Restrict)
+
+  /// O sistema ou órgão de origem (ex.: sistema de compras, protocolo da Secretaria de Saúde).
+  sistemaDeOrigem String  @db.VarChar(80)
+  /// O identificador lá (número do processo, da requisição, do protocolo).
+  identificador   String  @db.VarChar(80)
+  /// O documento que traz a referência (ofício, despacho, tela impressa).
+  documento       String
+  observacao      String?
+
+  conferencia ConferenciaDaReferenciaExterna?
+
+  criadoEm  DateTime @default(now())
+  /// Quem declarou.
+  criadoPor String
+
+  @@unique([empenhoId, sistemaDeOrigem, identificador])
+  @@index([empenhoId])
+}
+
+model ConferenciaDaReferenciaExterna {
+  id String @id @default(cuid())
+
+  referenciaId String                     @unique
+  referencia   ReferenciaExternaDoEmpenho @relation(fields: [referenciaId], references: [id], onDelete: Restrict)
+
+  resultado ResultadoDaConferenciaDaReferencia
+  /// Como conferiu (consulta ao sistema de origem, ofício de resposta, conferência no processo físico).
+  meio       String
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  /// Quem conferiu (não é quem declarou).
+  criadoPor String
+}

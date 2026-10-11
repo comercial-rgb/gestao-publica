@@ -17,9 +17,13 @@ import { concederPerfil, criarUsuario } from "../../modules/m16-travamento/servi
 import { criarM19Deps } from "../../modules/m19-pessoas/adapter-prisma.js";
 import { cadastrarPessoa } from "../../modules/m19-pessoas/servico.js";
 import { vincularDepositoAFarmacia } from "../../modules/m37-farmacia/operacao.js";
+import { cadastrarVeiculo } from "../../modules/m36-frota/servico.js";
+import { cadastrarCondutor } from "../../modules/m36-frota/operacao.js";
+import { cadastrarTanqueDeCombustivel } from "../../modules/m36-frota/tanque.js";
 import { cadastrarFarmacia } from "../../modules/m37-farmacia/servico.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
+import { toMoney } from "../../packages/contracts/index.js";
 import { papelDoAmbiente, urlDoRuntime } from "../../prisma/papel-runtime.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 
@@ -58,6 +62,9 @@ const UO_SAUDE = "02016";
 const FICHA_MEDICAMENTOS = 11311;
 /** Secretaria de Administração (02004): o almoxarifado geral, ficha 10857 da Lei 613/2025 (elemento 30, fonte 500). */
 const UO_ADMINISTRACAO = "02004";
+/** Obras, Urbanismo e Transporte (02011): a garagem e o tanque, ficha 11034 da Lei 613/2025 (elemento 30, fonte 500). */
+const UO_OBRAS = "02011";
+const FICHA_COMBUSTIVEL = 11034;
 const FICHA_EXPEDIENTE = 10857;
 /** A outra unidade, para a recusa por escopo (o farmacêutico de lá não dispensa aqui). */
 const UO_OUTRA = "02009";
@@ -143,6 +150,14 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "chefe.almoxarifado@ficticio.local", nome: "Chefe do Almoxarifado (fictícia)", perfil: "CHEFIA DO ALMOXARIFADO — ENSAIO",
     acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
     naUnidade: { codigo: UO_ADMINISTRACAO, acoes: ["REGISTRAR_AJUSTE_ALMOXARIFADO"] },
+  },
+  {
+    email: "gestor.frota@ficticio.local", nome: "Gestor da Frota (fictício)", perfil: "GESTÃO DA FROTA — ENSAIO",
+    acoes: ["CADASTRAR_FROTA", "REGISTRAR_ABASTECIMENTO", "EMITIR_ORDEM_DE_ABASTECIMENTO", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    email: "conferente.despesa@ficticio.local", nome: "Conferente da despesa (fictícia)", perfil: "CONFERÊNCIA DA DESPESA — ENSAIO",
+    acoes: ["REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
   },
   {
     email: "farmaceutico.assistencia@ficticio.local", nome: "Farmacêutico da Assistência Social (fictício)", perfil: "FARMÁCIA DA ASSISTÊNCIA — ENSAIO",
@@ -355,7 +370,7 @@ async function semearFarmacia(prisma: PrismaClient): Promise<void> {
   });
   const ficha = await prisma.fichaOrcamentaria.findUnique({ where: { exercicio_numero: { exercicio: 2026, numero: FICHA_MEDICAMENTOS } }, select: { id: true, naturezaDespesa: { select: { codigoCompleto: true } }, unidadeOrc: { select: { codigo: true } } } });
   if (ficha === null || !ficha.naturezaDespesa.codigoCompleto.startsWith("339030") || ficha.unidadeOrc.codigo !== UO_SAUDE) throw new Error(`A ficha ${String(FICHA_MEDICAMENTOS)} de material de consumo do Fundo de Saúde não está nesta base. Nada foi gravado.`);
-  const total = LOTES.reduce((t, l) => t + Number(l.quantidade) * Number(l.unitario), 0).toFixed(2);
+  const total = LOTES.reduce((t, l) => t.plus(toMoney(l.quantidade).times(l.unitario)), toMoney(0)).toFixed(2);
   const m05 = criarM05DepsComAlmoxarifado(prisma);
   const empenhoId = await passo(`Empenho R3-MED-001/2026 de medicamentos R$ ${total}`, async () => {
     const ja = await prisma.empenho.findFirst({ where: { numero: "R3-MED-001/2026", fichaId: ficha.id }, select: { id: true } });
@@ -370,7 +385,7 @@ async function semearFarmacia(prisma: PrismaClient): Promise<void> {
         empenhoId, numero: "R3-MED-L1", valor: total, data: D(DIA_DO_RECEBIMENTO), responsavelAtesto: "Farmacêutica responsável (fictícia)",
         notaFiscalNum: "88001", notaFiscalSerie: "1", notaFiscalData: D("2026-09-30"), notaFiscalValor: total, historico: `Medicamentos recebidos e conferidos por lote ${ENSAIO}`, criadoPor: ADMIN,
         entradasDeMaterial: LOTES.map((l) => ({
-          classeDeMaterialId: classeId, valor: (Number(l.quantidade) * Number(l.unitario)).toFixed(2),
+          classeDeMaterialId: classeId, valor: toMoney(l.quantidade).times(l.unitario).toFixed(2),
           fisica: { materialId: materiais[l.material] as string, depositoId, quantidade: l.quantidade, valorUnitario: l.unitario, unidadeDeMedidaId, loteIdentificacao: l.lote, loteValidade: D(l.validade) },
         })),
       },
@@ -430,7 +445,7 @@ async function semearAlmoxarifadoGeral(prisma: PrismaClient): Promise<void> {
     { material: "R3EXP001", quantidade: "100", unitario: "25.00", lote: null },
     { material: "R3EXP002", quantidade: "50", unitario: "2.00", lote: { identificacao: "CAN-2610", validade: "2029-12-31" } },
   ] as const;
-  const total = itens.reduce((t, i) => t + Number(i.quantidade) * Number(i.unitario), 0).toFixed(2);
+  const total = itens.reduce((t, i) => t.plus(toMoney(i.quantidade).times(i.unitario)), toMoney(0)).toFixed(2);
   const m05 = criarM05DepsComAlmoxarifado(prisma);
   const empenhoId = await passo(`Empenho R3-EXP-001/2026 de material de expediente R$ ${total}`, async () => {
     const ja = await prisma.empenho.findFirst({ where: { numero: "R3-EXP-001/2026", fichaId: ficha.id }, select: { id: true } });
@@ -444,9 +459,92 @@ async function semearAlmoxarifadoGeral(prisma: PrismaClient): Promise<void> {
         empenhoId, numero: "R3-EXP-L1", valor: total, data: D(DIA_DO_RECEBIMENTO), responsavelAtesto: "Almoxarife (fictício)", notaFiscalNum: "5521", notaFiscalSerie: "1", notaFiscalData: D("2026-09-30"), notaFiscalValor: total,
         historico: `Material de expediente recebido e conferido ${ENSAIO}`, criadoPor: ADMIN,
         entradasDeMaterial: itens.map((i) => ({
-          classeDeMaterialId: classeId, valor: (Number(i.quantidade) * Number(i.unitario)).toFixed(2),
+          classeDeMaterialId: classeId, valor: toMoney(i.quantidade).times(i.unitario).toFixed(2),
           fisica: { materialId: materiais[i.material] as string, depositoId, quantidade: i.quantidade, valorUnitario: i.unitario, unidadeDeMedidaId, ...(i.lote === null ? {} : { loteIdentificacao: i.lote.identificacao, loteValidade: D(i.lote.validade) }) },
         })),
+      },
+      roteiroLiquidacao({ codElemento: "30", obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: contaDoEstoque }),
+      m05
+    );
+    return { estado: "criado", valor: null };
+  });
+}
+
+// ═══ 5. FROTA: o caminhão e a motocicleta, um condutor B, e o tanque próprio com diesel recebido por liquidação ═══
+
+async function semearFrota(prisma: PrismaClient): Promise<void> {
+  const ug = await prisma.unidadeGestora.findFirst({ where: { codigoTce: "201078" }, select: { id: true } });
+  if (ug === null) throw new Error("A unidade gestora 201078 não está nesta base. Nada foi gravado.");
+  for (const v of [
+    { placa: "QRT3A01", anoModelo: 2022, renavam: "01234567891", combustivel: "DIESEL" as const, rotulo: "caminhão basculante" },
+    { placa: "QRT3B02", anoModelo: 2024, renavam: "01234567892", combustivel: "GASOLINA" as const, rotulo: "ciclomotor de entregas" },
+  ]) {
+    await passo(`Veículo ${v.placa} (${v.rotulo})`, async () => {
+      if ((await prisma.veiculoDaFrota.findFirst({ where: { placa: v.placa }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await cadastrarVeiculo(prisma, { ugId: ug.id, placa: v.placa, anoModelo: v.anoModelo, renavam: v.renavam, numeroModelo: "1234", tipoFrota: "PROPRIO", combustivelPrincipal: v.combustivel, vigenteDesde: "2026-01-02", situacaoInicial: "EM_USO", fundamento: `Documento do veículo ${ENSAIO}`, criadoPor: ADMIN });
+      return { estado: "criado", valor: null };
+    });
+  }
+  await passo("Condutor 9001 com CNH B", async () => {
+    if ((await prisma.condutorDaFrota.findFirst({ where: { matricula: "9001" }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await cadastrarCondutor(prisma, { nome: "Bruna Motorista (fictícia)", matricula: "9001", cnhNumero: "55566677788", cnhCategoria: "B", cnhValidade: "2028-06-30", vinculo: "Servidora efetiva", vigenteDesde: "2026-01-02", fundamento: `CNH apresentada ${ENSAIO}`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  const contaDoEstoque = (await exigirContaDaLiquidacao(prisma, "30")).contaCodigo;
+  const classeId = await passo(`Classe de material R3-30.01 Combustíveis (conta ${contaDoEstoque})`, async () => {
+    const ja = await prisma.classeDeMaterial.findFirst({ where: { codigo: "R3-30.01" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarClasseDeMaterial(prisma, { codigo: "R3-30.01", descricao: `Combustíveis ${ENSAIO}`, contaContabilId: await contaId(prisma, contaDoEstoque), criadoPor: ADMIN })).classeDeMaterialId };
+  });
+  const obras = await uoId(prisma, UO_OBRAS);
+  const depositoId = await passo("Depósito TQ-R3 (tanque da garagem)", async () => {
+    const ja = await prisma.deposito.findFirst({ where: { codigo: "TQ-R3" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarDeposito(prisma, { codigo: "TQ-R3", nome: `Tanque de diesel da garagem ${ENSAIO}`, unidadeOrcId: obras, criadoPor: ADMIN })).depositoId };
+  });
+  const litro = await passo("Unidade de medida L (litro)", async () => {
+    const ja = await prisma.unidadeDeMedida.findFirst({ where: { sigla: "L" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarUnidadeDeMedida(prisma, { sigla: "L", descricao: "Litro", criadoPor: ADMIN })).unidadeDeMedidaId };
+  });
+  const grupoId = await passo("Grupo de material R3-01 Combustíveis", async () => {
+    const ja = await prisma.grupoDeMaterial.findFirst({ where: { codigo: "R3-01" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarGrupoDeMaterial(prisma, { codigo: "R3-01", descricao: `Combustíveis ${ENSAIO}`, criadoPor: ADMIN })).grupoId };
+  });
+  const diesel = await passo("Material R3CMB001 Óleo diesel S10 (litro)", async () => {
+    const ja = await prisma.material.findFirst({ where: { codigo: "R3CMB001" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarMaterial(prisma, { codigo: "R3CMB001", descricaoSucinta: "Óleo diesel S10", descricaoDetalhada: `Óleo diesel S10 ${ENSAIO}`, grupoId, classificacao: "CONSUMO", categoria: "COMBUSTIVEL", classeDeMaterialId: classeId, controlaLote: false, unidades: [{ unidadeDeMedidaId: litro, fatorParaEstoque: "1", ehDeEstoque: true }], criadoPor: ADMIN })).materialId };
+  });
+  await passo("Tanque TQ-R3 de 5.000 L de diesel", async () => {
+    if ((await prisma.tanqueDeCombustivel.findUnique({ where: { codigo: "TQ-R3" }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await cadastrarTanqueDeCombustivel(prisma, { codigo: "TQ-R3", descricao: `Tanque aéreo da garagem municipal ${ENSAIO}`, depositoId, materialId: diesel, combustivel: "DIESEL", capacidade: "5000", fundamento: `Placa de identificação do tanque ${ENSAIO}`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  const credor = cnpjComDv("815204370001");
+  await passo(`Pessoa ${credor} Distribuidora de Combustíveis do Brejo (fictícia)`, async () => {
+    const m19 = criarM19Deps(prisma);
+    if ((await m19.pessoas.buscarPorDocumento(credor)) !== null) return { estado: "existente", valor: null };
+    await cadastrarPessoa({ documento: credor, nome: "Distribuidora de Combustíveis do Brejo Ltda (fictícia)", municipio: "Esperança", uf: "PB", criadoPor: ADMIN }, m19);
+    return { estado: "criado", valor: null };
+  });
+  const ficha = await prisma.fichaOrcamentaria.findUnique({ where: { exercicio_numero: { exercicio: 2026, numero: FICHA_COMBUSTIVEL } }, select: { id: true, naturezaDespesa: { select: { codigoCompleto: true } }, unidadeOrc: { select: { codigo: true } } } });
+  if (ficha === null || !ficha.naturezaDespesa.codigoCompleto.startsWith("339030") || ficha.unidadeOrc.codigo !== UO_OBRAS) throw new Error(`A ficha ${String(FICHA_COMBUSTIVEL)} de material de consumo de Obras não está nesta base. Nada foi gravado.`);
+  const total = toMoney("3000").times("6.20").toFixed(2);
+  const m05 = criarM05DepsComAlmoxarifado(prisma);
+  const empenhoId = await passo(`Empenho R3-CMB-001/2026 de diesel R$ ${total}`, async () => {
+    const ja = await prisma.empenho.findFirst({ where: { numero: "R3-CMB-001/2026", fichaId: ficha.id }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await empenhar({ fichaId: ficha.id, numero: "R3-CMB-001/2026", tipo: "ORDINARIO", valor: total, data: D("2026-09-22"), credorCpfCnpj: credor, historico: `Diesel para o tanque da garagem ${ENSAIO}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN }, roteiroEmpenho(), m05)).empenhoId };
+  });
+  await passo("Liquidação R3-CMB-L1 com 3.000 L recebidos no tanque TQ-R3", async () => {
+    if ((await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId, numero: "R3-CMB-L1" } }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await liquidar(
+      {
+        empenhoId, numero: "R3-CMB-L1", valor: total, data: D(DIA_DO_RECEBIMENTO), responsavelAtesto: "Encarregado da garagem (fictício)", notaFiscalNum: "9012", notaFiscalSerie: "1", notaFiscalData: D("2026-09-30"), notaFiscalValor: total,
+        historico: `Diesel recebido no tanque, régua conferida ${ENSAIO}`, criadoPor: ADMIN,
+        entradasDeMaterial: [{ classeDeMaterialId: classeId, valor: total, fisica: { materialId: diesel, depositoId, quantidade: "3000", valorUnitario: "6.20", unidadeDeMedidaId: litro } }],
       },
       roteiroLiquidacao({ codElemento: "30", obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: contaDoEstoque }),
       m05
@@ -488,6 +586,8 @@ async function main(): Promise<void> {
     await semearFarmacia(prisma);
     console.log("\n[4] almoxarifado geral");
     await semearAlmoxarifadoGeral(prisma);
+    console.log("\n[5] frota e tanque");
+    await semearFrota(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

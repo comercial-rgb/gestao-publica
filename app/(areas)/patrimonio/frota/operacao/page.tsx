@@ -161,6 +161,31 @@ export default async function OperacaoDaFrota({ searchParams }: { readonly searc
       </Card>
 
       <Card>
+        <section aria-labelledby="t-tq" data-tanques>
+          <h2 className="text-sm font-semibold" id="t-tq">Tanques próprios de combustível</h2>
+          <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">O tanque é um depósito do almoxarifado: o combustível entra pela liquidação da compra, sai no abastecimento interno (escolhendo o tanque no registro do abastecimento) e se confere no inventário do almoxarifado. O abastecimento em posto externo não passa pelo tanque.</p>
+          {t.tanques.length === 0 ? <p className="mt-1 text-xs">Nenhum tanque cadastrado.</p> : (
+            <ul className="mt-2 space-y-1 text-xs">
+              {t.tanques.map((x) => <li data-tanque={x.codigo} key={x.id}><strong>{x.codigo}</strong> — {x.descricao} (depósito {x.deposito}, {x.combustivel}): <span data-saldo-do-tanque>{x.saldo} L de {x.capacidade} L</span></li>)}
+            </ul>
+          )}
+          {t.pode.cadastrar ? (
+            <div className="mt-2">
+              <FormDoAto ato="cadastrar-tanque" botao="Cadastrar" titulo="Cadastrar tanque" campos={[
+                { nome: "codigo", rotulo: "Código do tanque", obrigatorio: true },
+                { nome: "descricao", rotulo: "Descrição (local, tipo)", obrigatorio: true },
+                { nome: "depositoId", rotulo: "Depósito do almoxarifado que é o tanque", tipo: "selecao", obrigatorio: true, opcoes: t.depositosParaTanque.map((d) => ({ valor: d.id, rotulo: d.rotulo })) },
+                { nome: "materialId", rotulo: "Combustível (material do almoxarifado, em litros)", tipo: "selecao", obrigatorio: true, opcoes: t.combustiveisDoAlmoxarifado.map((m) => ({ valor: m.id, rotulo: m.rotulo })) },
+                { nome: "combustivel", rotulo: "Tipo de combustível", tipo: "selecao", obrigatorio: true, opcoes: COMBUSTIVEIS },
+                { nome: "capacidade", rotulo: "Capacidade em litros", obrigatorio: true },
+                { nome: "fundamento", rotulo: "De onde vem a capacidade (placa, laudo, projeto)", obrigatorio: true },
+              ]} />
+            </div>
+          ) : null}
+        </section>
+      </Card>
+
+      <Card>
         <section aria-labelledby="t-man" data-manutencoes>
           <h2 className="text-sm font-semibold" id="t-man">Manutenção</h2>
           {t.pode.cadastrar ? (

@@ -784,12 +784,14 @@ export async function estornarMovimentoAlmoxarifado(
     // INVENTÁRIO não se estorna sozinho: o estoque físico e o fato da farmácia ou do inventário ficariam como estão, e o
     // item não se corrigiria mais pelo caminho certo. Cada um tem a sua correção, que estorna as duas pernas juntas.
     const fisico = await tx.movimentoFisicoDeEstoque.findFirst({
-      where: { movimentoAlmoxarifadoId: d.movimentoId, OR: [{ itemDaDispensacao: { isNot: null } }, { ajusteDaFarmacia: { isNot: null } }, { ajusteDoInventario: { isNot: null } }] },
-      select: { itemDaDispensacao: { select: { id: true } }, ajusteDaFarmacia: { select: { id: true } } },
+      where: { movimentoAlmoxarifadoId: d.movimentoId, OR: [{ itemDaDispensacao: { isNot: null } }, { ajusteDaFarmacia: { isNot: null } }, { ajusteDoInventario: { isNot: null } }, { abastecimentoDaFrota: { isNot: null } }] },
+      select: { itemDaDispensacao: { select: { id: true } }, ajusteDaFarmacia: { select: { id: true } }, abastecimentoDaFrota: { select: { id: true } } },
     });
     if (fisico !== null) {
       throw new Error(
-        fisico.itemDaDispensacao !== null
+        fisico.abastecimentoDaFrota !== null
+          ? "Este lançamento é o consumo de um abastecimento pelo tanque da frota: anule o abastecimento, que devolve o combustível e estorna o consumo juntos. Nada foi gravado."
+          : fisico.itemDaDispensacao !== null
           ? "Este lançamento é o consumo de uma dispensação da farmácia: corrija a dispensação na tela da farmácia, que estorna a saída e o consumo juntos. Nada foi gravado."
           : fisico.ajusteDaFarmacia !== null
             ? "Este lançamento é de uma perda ou sobra registrada na farmácia: ele não se estorna sozinho pelo almoxarifado, porque o estoque e o registro da farmácia ficariam como estão. Nada foi gravado."

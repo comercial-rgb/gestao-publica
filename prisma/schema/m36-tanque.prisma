@@ -1,0 +1,35 @@
+// ============================================================================
+// V39-R3 (R3-018, V39-068) — O TANQUE PRÓPRIO DE COMBUSTÍVEL DA FROTA.
+//
+// O tanque É um depósito do almoxarifado (M10) e o combustível estocado é um material dele, em litros: o recebimento é a
+// liquidação com a entrada física (como o medicamento da farmácia), o saldo é a soma dos movimentos, e o inventário é o
+// do almoxarifado (contagem, fechamento e ajuste). Aqui fica só o que é do tanque: o combustível que ele guarda e a
+// capacidade, conferida na entrada. O abastecimento interno aponta a saída do tanque que ele gerou (uma por
+// abastecimento: o estoque se consome uma vez); o abastecimento em posto externo continua sem tanque. Append-only.
+// ============================================================================
+
+model TanqueDeCombustivel {
+  id String @id @default(cuid())
+
+  codigo    String @unique @db.VarChar(20)
+  descricao String
+
+  depositoId String   @unique
+  deposito   Deposito @relation("TanqueDoDeposito", fields: [depositoId], references: [id], onDelete: Restrict)
+  /// O combustível estocado, como material do almoxarifado (unidade de estoque: litro).
+  materialId String
+  material   Material @relation("CombustivelDoTanque", fields: [materialId], references: [id], onDelete: Restrict)
+
+  combustivel CombustivelDaFrota
+  /// Em litros, como a unidade de estoque do material.
+  capacidade  Decimal @db.Decimal(15, 2)
+
+  fundamento String
+
+  abastecimentos AbastecimentoDaFrota[] @relation("AbastecimentosDoTanque")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([materialId])
+}

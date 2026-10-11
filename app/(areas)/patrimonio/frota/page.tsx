@@ -4,7 +4,7 @@ import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
 import { SincronizarContexto } from "../../../../components/ui/SincronizarContexto";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
-import { lerFrota, ROTULO_COMBUSTIVEL, ROTULO_SITUACAO, ROTULO_TIPO_DE_FROTA } from "../../../../lib/portas/frota";
+import { lerFrota, lerTanquesParaAbastecimento, ROTULO_COMBUSTIVEL, ROTULO_SITUACAO, ROTULO_TIPO_DE_FROTA } from "../../../../lib/portas/frota";
 import { FormAbastecimento, FormAnular, FormCadastrarMaquina, FormCadastrarVeiculo, FormSituacao, FormVersao } from "./Forms";
 
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
@@ -21,9 +21,11 @@ const SUBTITULO = "Veículos e máquinas, situação e abastecimento";
 
 export default async function FrotaPage(): Promise<React.ReactElement> {
   let dados: Awaited<ReturnType<typeof lerFrota>>;
+  let tanques: Readonly<Record<string, string>> = {};
   try {
     await telaExigeLeituraDoEnte("CONSULTAR_PATRIMONIO");
     dados = await lerFrota();
+    tanques = await lerTanquesParaAbastecimento();
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -70,7 +72,7 @@ export default async function FrotaPage(): Promise<React.ReactElement> {
                 <div className="mt-1 grid gap-2 sm:grid-cols-3">
                   <FormVersao bemId={b.id} categoria={b.categoria} identificacao={b.identificacao} dados={b.dados} tipos={ROTULO_TIPO_DE_FROTA} combustiveis={ROTULO_COMBUSTIVEL} />
                   <FormSituacao bemId={b.id} categoria={b.categoria} identificacao={b.identificacao} situacoes={ROTULO_SITUACAO} />
-                  <FormAbastecimento bemId={b.id} categoria={b.categoria} identificacao={b.identificacao} combustiveis={ROTULO_COMBUSTIVEL} />
+                  <FormAbastecimento bemId={b.id} categoria={b.categoria} identificacao={b.identificacao} combustiveis={ROTULO_COMBUSTIVEL} tanques={tanques} />
                 </div>
                 <div className="mt-2 grid gap-2 text-xs sm:grid-cols-2">
                   <div>

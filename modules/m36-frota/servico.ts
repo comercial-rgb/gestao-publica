@@ -23,6 +23,9 @@ import {
   type MudancaNoDia,
 } from "./dominio.js";
 import { conferirOrdemNoAbastecimentoNaTx, registrarLeituraNaTx } from "./operacao.js";
+import { ROTULO_COMBUSTIVEL as ROTULO_DO_COMBUSTIVEL } from "./dominio.js";
+import { chaveDaPosicao, estornarSaidaFisicaNaTx, registrarSaidaFisicaNaTx, zRegistrarSaidaFisicaInput } from "../m10-patrimonial/estoque-fisico.js";
+import { estornarMovimentoAlmoxarifadoNaTx } from "../m10-patrimonial/almoxarifado.js";
 
 /**
  * V27 — M36 FROTA: os serviços. Cada ato confere a autorização no servidor, trava o bem antes de ler o estado, e
@@ -302,6 +305,8 @@ export const zRegistrarAbastecimento = z.object({
   ordemId: z.string().min(1).optional(),
   /** V39-R2 (R2-027) — a leitura do hodômetro ou do horímetro no abastecimento (opcional). */
   leitura: z.string().trim().min(1).optional(),
+  /** V39-R3 (R3-018) — o tanque próprio de onde o combustível saiu (abastecimento INTERNO). Sem ele, posto externo. */
+  tanqueId: z.string().min(1).optional(),
   criadoPor: z.string().min(1),
 });
 
@@ -311,6 +316,15 @@ export async function registrarAbastecimento(prisma: PrismaClient, input: z.inpu
   const quantidade = exigirQuantidade(d.quantidade);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarAbastecimento, "ENTE");
+    // V39-R3 (R3-018) — o abastecimento INTERNO sai do tanque: trava a classe do combustível (13) e a posição do tanque
+    // (23) ANTES do bem da frota (35), a ordem dos postos. O tanque e o material dele não mudam depois do cadastro.
+    const tanque = d.tanqueId === undefined ? null : await tx.tanqueDeCombustivel.findUnique({ where: { id: d.tanqueId }, select: { id: true, codigo: true, depositoId: true, materialId: true, combustivel: true, material: { select: { classeDeMaterialId: true } } } });
+    if (d.tanqueId !== undefined && tanque === null) throw new Error("Tanque não encontrado. Nada foi gravado.");
+    if (tanque !== null) {
+      if (tanque.combustivel !== d.combustivel) throw new Error(`O tanque ${tanque.codigo} guarda ${ROTULO_DO_COMBUSTIVEL[tanque.combustivel].toLowerCase()}, e o abastecimento é de ${ROTULO_DO_COMBUSTIVEL[d.combustivel].toLowerCase()}. Nada foi gravado.`);
+      await travar(tx, "ClasseDeMaterial", [tanque.material.classeDeMaterialId]);
+      await travar(tx, "PosicaoFisicaDeEstoque", [chaveDaPosicao(tanque.materialId, tanque.depositoId)]);
+    }
     await travar(tx, "BemDaFrota", [d.veiculoId ?? d.maquinaId ?? ""]);
     const bem = await nomeDoBem(tx, d);
     const situacao = situacaoNoDia(await mudancasVivas(tx, bem.filtro), d.data);
@@ -318,7 +332,13 @@ export async function registrarAbastecimento(prisma: PrismaClient, input: z.inpu
     if (situacao === null) throw new Error(`${bem.O} não estava na frota em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
     if (situacao === "BAIXADA") throw new Error(`${bem.O} estava ${bem.baixado} em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
     if (d.ordemId !== undefined) await conferirOrdemNoAbastecimentoNaTx(tx, { ordemId: d.ordemId, alvo: bem.filtro, combustivel: d.combustivel, quantidade, dia: d.data });
-    const c = await tx.abastecimentoDaFrota.create({ data: { ...bem.filtro, data: meioDiaCivil(d.data), combustivel: d.combustivel, quantidade, documento: d.documento, ordemId: d.ordemId ?? null, criadoPor: d.criadoPor }, select: { id: true } });
+    // A saída do tanque: o estoque se consome UMA vez, por este abastecimento (o banco liga um ao outro, único), com o
+    // lançamento do consumo e a recusa de saldo do almoxarifado.
+    const saida = tanque === null ? null : await registrarSaidaFisicaNaTx(tx, zRegistrarSaidaFisicaInput.parse({
+      materialId: tanque.materialId, depositoId: tanque.depositoId, quantidade, dataMovimento: meioDiaCivil(d.data),
+      motivo: `Abastecimento interno de ${bem.o} pelo tanque ${tanque.codigo} (${d.documento})`, criadoPor: d.criadoPor,
+    }));
+    const c = await tx.abastecimentoDaFrota.create({ data: { ...bem.filtro, data: meioDiaCivil(d.data), combustivel: d.combustivel, quantidade, documento: d.documento, ordemId: d.ordemId ?? null, tanqueId: tanque?.id ?? null, movimentoFisicoId: saida?.movimentoId ?? null, criadoPor: d.criadoPor }, select: { id: true } });
     if (d.leitura !== undefined) await registrarLeituraNaTx(tx, { alvo: bem.filtro, nome: bem.o, ehVeiculo: "veiculoId" in bem.filtro, dia: d.data, valor: d.leitura, abastecimentoId: c.id, criadoPor: d.criadoPor });
     return { id: c.id };
   });
@@ -328,10 +348,23 @@ export async function anularAbastecimento(prisma: PrismaClient, input: z.input<t
   const d = zAnular.parse(input);
   await prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.anularAbastecimento, "ENTE");
-    const a = await tx.abastecimentoDaFrota.findUnique({ where: { id: d.id }, select: { veiculoId: true, maquinaId: true, anulacao: { select: { id: true } } } });
+    const a = await tx.abastecimentoDaFrota.findUnique({ where: { id: d.id }, select: { veiculoId: true, maquinaId: true, anulacao: { select: { id: true } }, movimentoFisico: { select: { id: true, materialId: true, depositoId: true, movimentoAlmoxarifadoId: true, material: { select: { classeDeMaterialId: true } } } } } });
     if (a === null) throw new Error("Abastecimento não encontrado. Nada foi gravado.");
+    // V39-R3 (R3-018) — o abastecimento interno anulado devolve o combustível ao tanque (estorno da saída e do consumo):
+    // classe (13) e posição (23) antes do bem (35).
+    const m = a.movimentoFisico;
+    if (m !== null) {
+      await travar(tx, "ClasseDeMaterial", [m.material.classeDeMaterialId]);
+      await travar(tx, "PosicaoFisicaDeEstoque", [chaveDaPosicao(m.materialId, m.depositoId)]);
+    }
     await travar(tx, "BemDaFrota", [a.veiculoId ?? a.maquinaId ?? ""]);
-    if (a.anulacao !== null) throw new Error("Este abastecimento já foi anulado. Nada foi gravado.");
+    if ((await tx.anulacaoDeAbastecimento.count({ where: { abastecimentoId: d.id } })) > 0) throw new Error("Este abastecimento já foi anulado. Nada foi gravado.");
+    if (m !== null) {
+      if (m.movimentoAlmoxarifadoId === null) throw new Error("A saída do tanque não tem o lançamento do consumo: não há o que estornar. Nada foi gravado.");
+      const motivo = `Anulação do abastecimento: ${d.motivo}`;
+      const contabil = await estornarMovimentoAlmoxarifadoNaTx(tx, { movimentoId: m.movimentoAlmoxarifadoId, dataMovimento: new Date(), motivo, criadoPor: d.criadoPor });
+      await estornarSaidaFisicaNaTx(tx, { movimentoId: m.id, dataMovimento: new Date(), motivo, criadoPor: d.criadoPor, movimentoAlmoxarifadoId: contabil.movimentoId });
+    }
     await tx.anulacaoDeAbastecimento.create({ data: { abastecimentoId: d.id, motivo: d.motivo, criadoPor: d.criadoPor } });
   });
 }

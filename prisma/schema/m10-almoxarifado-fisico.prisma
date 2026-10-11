@@ -36,6 +36,8 @@
 model Deposito {
   /// V39-R2 (R2-030) — a farmácia cujo estoque é este depósito. VIRTUAL.
   farmacia DepositoDaFarmacia? @relation("FarmaciaDoDeposito")
+  /// V39-R3 (R3-018) — o tanque de combustível que este depósito é, se for.
+  tanque TanqueDeCombustivel? @relation("TanqueDoDeposito")
   /// V39-R3 (R3-010) — as trocas em que este depósito saiu ou entrou como estoque de uma farmácia.
   trocasComoAnterior TrocaDoDepositoDaFarmacia[] @relation("DepositoAnteriorDaTroca")
   trocasComoNovo     TrocaDoDepositoDaFarmacia[] @relation("DepositoNovoDaTroca")
@@ -167,6 +169,8 @@ enum CategoriaDeMaterial {
 }
 
 model Material {
+  /// V39-R3 (R3-018) — os tanques de combustível que guardam este material.
+  tanques TanqueDeCombustivel[] @relation("CombustivelDoTanque")
   /// V39-R2 (R2-030/031) — dispensações e ajustes da farmácia. VIRTUAIS.
   itensDispensados  ItemDaDispensacao[] @relation("ItensDispensados")
   ajustesDaFarmacia AjusteDaFarmacia[]  @relation("AjustesDaFarmacia")
@@ -328,6 +332,8 @@ model MovimentoFisicoDeEstoque {
   correcaoDaDispensacao CorrecaoDoItemDaDispensacao? @relation("EstornoDoItemDaDispensacao")
   /// V39-R3 (R3-012) — o ajuste de inventário do almoxarifado que gerou este movimento.
   ajusteDoInventario AjusteDoInventario? @relation("MovimentoDoAjusteDoInventario")
+  /// V39-R3 (R3-018) — o abastecimento interno que gerou esta saída do tanque.
+  abastecimentoDaFrota AbastecimentoDaFrota? @relation("SaidaDoTanque")
   id String @id @default(cuid())
 
   materialId String

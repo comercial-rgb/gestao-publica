@@ -187,6 +187,11 @@ model AbastecimentoDaFrota {
   ordemId String?
   ordem   OrdemDeAbastecimento? @relation("AbastecimentosDaOrdem", fields: [ordemId], references: [id], onDelete: Restrict)
   leitura LeituraDoMarcadorDaFrota? @relation("LeituraDoAbastecimento")
+  /// V39-R3 (R3-018) — o abastecimento INTERNO: o tanque de onde saiu e a saída física que ele gerou (uma só).
+  tanqueId          String?
+  tanque            TanqueDeCombustivel?      @relation("AbastecimentosDoTanque", fields: [tanqueId], references: [id], onDelete: Restrict)
+  movimentoFisicoId String?                   @unique
+  movimentoFisico   MovimentoFisicoDeEstoque? @relation("SaidaDoTanque", fields: [movimentoFisicoId], references: [id], onDelete: Restrict)
   id String @id @default(cuid())
 
   veiculoId String?

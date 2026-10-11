@@ -750,6 +750,25 @@ export function derivarOperacaoDaFarmacia(
 }
 
 /**
+ * V39-R3 (R3-017) — A REFERÊNCIA EXTERNA DO EMPENHO (declarar e conferir), a quem já empenha, NO MESMO ESCOPO: é dado do
+ * empenho, e a conferência continua sendo de outra pessoa (o serviço recusa quem declarou). Nenhum poder sobre valor.
+ */
+export function derivarReferenciaExternaDoEmpenho(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    for (const p of perfil.permissoes.filter((x) => x.acao === "EMPENHAR")) {
+      if (perfil.permissoes.some((x) => x.acao === "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO" && x.unidadeOrcId === p.unidadeOrcId)) continue;
+      if (saida.some((x) => x.perfilId === perfil.id && x.unidadeOrcId === p.unidadeOrcId)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO", unidadeOrcId: p.unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
+/**
  * V39-R3 (R3-009) — CORRIGIR A DISPENSAÇÃO (cancelar o registro incorreto ou receber a devolução conferida).
  *
  * ⚠️ SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a v46: a correção devolve medicamento ao estoque e estorna o
@@ -2025,6 +2044,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "o item apto ao reuso volta ao estoque. Vem com CORRIGIR_DISPENSACAO_DE_MEDICAMENTO so para quem administra " +
       "permissoes no global, que a distribui nomeando a pessoa.",
     derivar: derivarCorrecaoDaDispensacao,
+  },
+  {
+    versao: 49,
+    nome: "referencia-externa-do-empenho",
+    descricao:
+      "O empenho passou a registrar a referencia dele em outro sistema (sistema de origem, identificador e documento), " +
+      "declarada, e a conferencia dela por outra pessoa, confirmada ou divergente (V39-R3). Vem com " +
+      "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO para quem ja empenha, no mesmo escopo (global ou na unidade).",
+    derivar: derivarReferenciaExternaDoEmpenho,
   },
 ];
 
