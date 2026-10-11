@@ -370,8 +370,26 @@ Os percursos pela tela (3011, base fictícia):
   - Os campos novos de convênio (receita) e de bem (transferência) não passaram por percurso de navegador: a base fictícia não tem convênio nem bem.
 - **Encerramento anual:** o percurso `percurso-v33-encerramento.ts` já existe e encerra o exercício da base. Não foi rodado nesta rodada, para não encerrar 2026 na base de demonstração. Pendência nomeada: ENCERRAMENTO-EM-BASE-ISOLADA, que é rodá-lo numa cópia isolada.
 
+Commit da unidade: 950b5340.
+
+### Publicação dos fluxos existentes (11/10/2026, UTC)
+- **Backup:** `/var/backups/gestao-publica/esperanca-antes-v39r2-fluxos-20261011T011250Z.dump`.
+- **Publicação:** `npm run publicar` enviou 29ba05dc; o Actions concluiu com sucesso e `/release` responde 29ba05d.
+- **Banco de produção:** a migration `20261110150000` está aplicada, o CHECK `ck_comprovante_do_adiantamento` está presente, e o `gestao_app` insere comprovante e não altera.
+- **Telas em produção:** `percurso-v39-telas-tocadas`, sem falha (inclusive convênios, bens e diárias e suprimento).
+
+### Resumo atual (11/10/2026)
+- **HEAD publicado:** 29ba05d. As frentes 1 a 6 da V39-R2 foram construídas, publicadas e conferidas em produção. Os fluxos existentes foram percorridos (folha até a tesouraria, diárias e suprimento) ou paravam numa lacuna, que foi construída (receita do convenente, transferência de bem, comprovantes da aplicação).
+- **Matriz:** `docs/lotes/V39-matriz-por-id.md`, com 97 IDs e uma linha cada: 27 em produção, 11 feito, 40 existe, 11 depende, 8 lacuna. **A V39 não está fechada.**
+- **Pendências nomeadas desta rodada:**
+  - dados da base de ensaio: DECLARACOES-DO-PROJETO-NA-BASE-FICTICIA, ESTOQUE-DE-MEDICAMENTO-NA-BASE-DE-ENSAIO, ROTEIROS-DE-CONVENIO-E-PATRIMONIO-NA-BASE-DE-ENSAIO, ENCERRAMENTO-EM-BASE-ISOLADA;
+  - travas, estornos e cadastro: TRAVA-DO-BEM-NOS-DEMAIS-MOVIMENTOS, ESTORNO-DA-DISPENSACAO-E-DO-AJUSTE-DA-FARMACIA, TROCA-DO-DEPOSITO-DA-FARMACIA, CATEGORIA-ACC, AJUSTE-DE-INVENTARIO-EM-LOTE;
+  - fontes oficiais: FONTE-REINF-LEIAUTES-2.1.2B, FONTE-SIOPS-ESTRUTURA-VIGENTE, FONTE-BNAFAR-MANUAL-DE-INTEGRACAO.
+- **Não operado em produção (falta o dado de partida, e criá-lo seria fabricar):** frota, farmácia, importação do planejamento, comparativo com valores, licitação até o contrato e o PF com IR (este para não mexer na FIC-PM-500 com outubro aberto).
+
 ### O próximo passo
-1. (feito: frente 5; frente 6 R2-025 a 031) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
+1. As lacunas da matriz que não dependem de terceiro: 027 (prévia da retenção na liquidação), 029 (linha de extrato digitada), 030 (realizáveis de natureza ativa), 033 (referência externa no empenho), 068 (tanque próprio), 092 a 094 (conferência de PDF e CSV, percurso por perfil).
+2. As provas pedidas nas linhas "existe", começando por 057 a 062 (almoxarifado e patrimônio) e 088 a 091 (SAGRES com duas UGs, RREO/RGF por anexo).
 
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 
