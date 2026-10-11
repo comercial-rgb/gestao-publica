@@ -29,7 +29,7 @@ model VersaoDoCondutor {
 
   cnhNumero    String @db.VarChar(11)
   /// A categoria como está na CNH (A, B, C, D, E, ou A combinada: AB, AC, AD, AE).
-  cnhCategoria String @db.VarChar(2)
+  cnhCategoria String @db.VarChar(3)
   cnhValidade  DateTime
   /// Servidor efetivo, comissionado, terceirizado, contratado...: como a unidade registra o vínculo.
   vinculo      String @db.VarChar(60)

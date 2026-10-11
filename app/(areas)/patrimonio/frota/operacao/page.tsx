@@ -14,7 +14,7 @@ import { FormDoAto, type CampoDoAto } from "./FormDoAto";
 export const dynamic = "force-dynamic";
 const CELULA = "px-2 py-1 align-top";
 const COMBUSTIVEIS = [["GASOLINA", "Gasolina"], ["DIESEL", "Diesel"], ["ETANOL", "Etanol"], ["GAS_NATURAL", "Gás natural"], ["ARLA_32", "Arla 32"], ["ELETRICIDADE", "Eletricidade"]].map(([valor, rotulo]) => ({ valor: valor!, rotulo: rotulo! }));
-const CATEGORIAS = ["A", "B", "C", "D", "E", "AB", "AC", "AD", "AE"].map((c) => ({ valor: c, rotulo: c }));
+const CATEGORIAS = ["A", "B", "C", "D", "E", "AB", "AC", "AD", "AE", "ACC"].map((c) => ({ valor: c, rotulo: c === "ACC" ? "ACC (ciclomotor)" : c }));
 
 export default async function OperacaoDaFrota({ searchParams }: { readonly searchParams: Promise<Readonly<Record<string, string | string[] | undefined>>> }): Promise<React.ReactElement> {
   await telaExigeLeituraDoEnte("CONSULTAR_PATRIMONIO");
@@ -64,7 +64,7 @@ export default async function OperacaoDaFrota({ searchParams }: { readonly searc
               ) : null}
               <FormDoAto ato="exigencia-de-habilitacao" botao="Declarar" titulo="Categorias de CNH aceitas para um bem (declaração do ente)" campos={[
                 { nome: "bem", rotulo: "Bem", tipo: "selecao", obrigatorio: true, opcoes: bens },
-                { nome: "categorias", rotulo: "Categorias aceitas", tipo: "marcar", opcoes: ["A", "B", "C", "D", "E"].map((c) => ({ valor: c, rotulo: c })) },
+                { nome: "categorias", rotulo: "Categorias aceitas", tipo: "marcar", opcoes: ["A", "B", "C", "D", "E", "ACC"].map((c) => ({ valor: c, rotulo: c === "ACC" ? "ACC (ciclomotor)" : c })) },
                 { nome: "vigenteDesde", rotulo: "Vale desde", tipo: "data", obrigatorio: true, valor: hoje },
                 { nome: "fundamento", rotulo: "De onde vem a exigência", obrigatorio: true },
               ]} />

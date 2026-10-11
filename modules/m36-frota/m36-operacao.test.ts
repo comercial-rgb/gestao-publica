@@ -171,3 +171,27 @@ describe("V39-R2 (R2-028) — manutenção do pedido à conclusão", { timeout: 
     expect([await prisma.autorizacaoDaManutencaoDaFrota.count(), await prisma.ordemDeAbastecimento.count()]).toEqual([0, 0]);
   });
 });
+
+describe("V39-R3 (R3-013) — a ACC é categoria própria, e a validade é conferida na ordem e no abastecimento", { timeout: 120000 }, () => {
+  it("ACC não vira A nem C, e A não vira ACC: o que o bem aceita é o que o ente declara; CNH vencida na ordem e condutor inativo no abastecimento são recusados", async () => {
+    const carla = (await cadastrarCondutor(prisma, { nome: "Carla Ciclomotor", matricula: "1003", cnhNumero: "22233344455", cnhCategoria: "ACC", cnhValidade: "2026-03-20", vinculo: "Servidora efetiva", vigenteDesde: "2026-01-01", fundamento: "ACC apresentada (fixture)", criadoPor: POR })).id;
+    const daniel = (await cadastrarCondutor(prisma, { nome: "Daniel Motociclista", matricula: "1004", cnhNumero: "33344455566", cnhCategoria: "A", cnhValidade: "2026-12-31", vinculo: "Servidor efetivo", vigenteDesde: "2026-01-01", fundamento: "CNH apresentada (fixture)", criadoPor: POR })).id;
+    expect((await prisma.versaoDoCondutor.findFirstOrThrow({ where: { condutorId: carla }, select: { cnhCategoria: true } })).cnhCategoria).toBe("ACC");
+    // o bem que aceita A: a ACC NÃO é A (lida letra a letra, seria)
+    await declararExigenciaDeHabilitacao(prisma, { veiculoId, categoriasAceitas: ["A"], vigenteDesde: "2026-03-01", fundamento: "Motocicleta (fixture)", criadoPor: POR });
+    await expect(ordem({ condutorId: carla, validaAte: "2026-03-10" })).rejects.toThrow(/A CNH do condutor Carla Ciclomotor é da categoria ACC, e o veículo ABC1234 aceita A \(declarado pelo ente\)/);
+    await expect(ordem({ condutorId: daniel, validaAte: "2026-03-10" })).resolves.toMatchObject({ numero: 1 });
+    // o bem que aceita ACC: o A NÃO é ACC por conta do sistema
+    await declararExigenciaDeHabilitacao(prisma, { maquinaId, categoriasAceitas: ["ACC"], vigenteDesde: "2026-03-01", fundamento: "Ciclomotor (fixture)", criadoPor: POR });
+    const ordemDaMaquina = (extra: Record<string, unknown>) => ordem({ veiculoId: undefined, maquinaId, combustivel: "DIESEL", ...extra });
+    await expect(ordemDaMaquina({ condutorId: daniel, validaAte: "2026-03-10" })).rejects.toThrow(/é da categoria A, e a máquina RET0001 aceita ACC/);
+    // a validade da ACC na ordem: vence em 20/03, a ordem até 31/03 é recusada; até 18/03 passa
+    await expect(ordemDaMaquina({ condutorId: carla })).rejects.toThrow(/A CNH do condutor Carla Ciclomotor vence em 20\/03\/2026, antes de 31\/03\/2026/);
+    const { id: ordemId } = await ordemDaMaquina({ condutorId: carla, validaAte: "2026-03-18" });
+    // no abastecimento: a condutora desligada depois da ordem não abastece por ela
+    await publicarVersaoDoCondutor(prisma, { condutorId: carla, ativo: false, cnhNumero: "22233344455", cnhCategoria: "ACC", cnhValidade: "2026-03-20", vinculo: "Servidora efetiva", vigenteDesde: "2026-03-10", fundamento: "Desligamento (fixture)", criadoPor: POR });
+    await expect(registrarAbastecimento(prisma, { maquinaId, data: "2026-03-12", combustivel: "DIESEL", quantidade: "5", documento: "Cupom 12/03", ordemId, criadoPor: POR })).rejects.toThrow(/O condutor Carla Ciclomotor não estava ativo em 12\/03\/2026/);
+    await expect(cadastrarCondutor(prisma, { nome: "Erro", matricula: "1005", cnhNumero: "44455566677", cnhCategoria: "AAC", cnhValidade: "2026-12-31", vinculo: "x", vigenteDesde: "2026-01-01", fundamento: "Categoria inexistente (fixture)", criadoPor: POR })).rejects.toThrow(/ou a ACC \(ciclomotor\)/);
+    expect(await prisma.abastecimentoDaFrota.count()).toBe(0);
+  });
+});

@@ -24,8 +24,17 @@ import { COMBUSTIVEIS, exigirQuantidade, situacaoNoDia } from "./dominio.js";
 
 const zDia = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data.");
 const br = (dia: string): string => diaCivilBr(meioDiaCivil(dia));
-const CATEGORIAS_DA_CNH = ["A", "B", "C", "D", "E", "AB", "AC", "AD", "AE"] as const;
-const zCategoria = z.string().trim().toUpperCase().refine((c) => (CATEGORIAS_DA_CNH as readonly string[]).includes(c), "A categoria da CNH é A, B, C, D, E, ou A combinada com outra (AB, AC, AD, AE).");
+/**
+ * V39-R3 (R3-013) — A ACC (Autorização para Conduzir Ciclomotor, CTB art. 140; Resolução CONTRAN 168/2004) é habilitação
+ * própria do ciclomotor e entra como CATEGORIA INTEIRA: lida letra a letra, "ACC" viraria A e C. E não equivale a nenhuma
+ * outra por conta do sistema: o que o bem aceita é o que o ente declara na exigência dele (ACC, A, ou as duas).
+ */
+const CATEGORIAS_DA_CNH = ["A", "B", "C", "D", "E", "AB", "AC", "AD", "AE", "ACC"] as const;
+const zCategoria = z.string().trim().toUpperCase().refine((c) => (CATEGORIAS_DA_CNH as readonly string[]).includes(c), "A categoria da CNH é A, B, C, D, E, A combinada com outra (AB, AC, AD, AE), ou a ACC (ciclomotor).");
+/** As categorias que a habilitação dá: a ACC é uma só; as demais, uma por letra (AB é A e B). */
+export function categoriasDaHabilitacao(cnhCategoria: string): readonly string[] {
+  return cnhCategoria === "ACC" ? ["ACC"] : [...cnhCategoria];
+}
 const zAlvo = { veiculoId: z.string().min(1).optional(), maquinaId: z.string().min(1).optional() };
 const umBem = (a: { veiculoId?: string | undefined; maquinaId?: string | undefined }): boolean => (a.veiculoId === undefined) !== (a.maquinaId === undefined);
 const MSG_BEM = "Escolha um veículo ou uma máquina.";
@@ -119,7 +128,7 @@ async function condutorHabilitado(tx: Tx, condutorId: string, b: Bem, dia: strin
     throw new Error(`A CNH do condutor ${c.nome} vence em ${diaCivilBr(v.cnhValidade)}, antes de ${br(ate)}: com a habilitação vencida ele não dirige ${b.nome}. Nada foi gravado.`);
   }
   const ex = await tx.exigenciaDeHabilitacaoDaFrota.findFirst({ where: { ...b.filtro, vigenteDesde: { lte: meioDiaCivil(dia) } }, orderBy: [{ vigenteDesde: "desc" }, { criadoEm: "desc" }], select: { categoriasAceitas: true } });
-  if (ex !== null && ![...v.cnhCategoria].some((letra) => ex.categoriasAceitas.includes(letra))) {
+  if (ex !== null && !categoriasDaHabilitacao(v.cnhCategoria).some((cat) => ex.categoriasAceitas.includes(cat))) {
     throw new Error(`A CNH do condutor ${c.nome} é da categoria ${v.cnhCategoria}, e ${b.nome} aceita ${ex.categoriasAceitas.join(", ")} (declarado pelo ente). Nada foi gravado.`);
   }
   return { nome: c.nome };
@@ -128,7 +137,7 @@ async function condutorHabilitado(tx: Tx, condutorId: string, b: Bem, dia: strin
 export const zDeclararExigenciaDeHabilitacao = z
   .object({
     ...zAlvo,
-    categoriasAceitas: z.array(z.enum(["A", "B", "C", "D", "E"])).min(1, "Escolha ao menos uma categoria."),
+    categoriasAceitas: z.array(z.enum(["A", "B", "C", "D", "E", "ACC"])).min(1, "Escolha ao menos uma categoria."),
     vigenteDesde: zDia,
     fundamento: z.string().trim().min(5, "Diga de onde vem a exigência (manual do veículo, norma interna, contrato de locação)."),
     criadoPor: z.string().min(1),

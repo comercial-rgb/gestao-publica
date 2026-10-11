@@ -101,3 +101,11 @@ abastecimento, hodômetro e manutenção".
 - **Leitura do marcador:** não diminui; a correção é leitura nova que aponta a errada, e a cadeia de correções é seguida
   até a última. A leitura de abastecimento anulado sai da conta junto com ele.
 - **Manutenção:** cada fase lê o estado depois de travar o bem (as fases moram em tabelas diferentes).
+
+## V39-R3 (R3-013) — a ACC como categoria própria
+
+- A Autorização para Conduzir Ciclomotor (ACC) é habilitação própria do ciclomotor: CTB (Lei 9.503/1997) art. 140, que dá os requisitos, e a Resolução CONTRAN 168/2004, que regula a ACC; a Resolução CONTRAN 789/2020 consolidou depois as regras de habilitação. O texto consolidado do CTB no Planalto não respondeu durante a pesquisa (11/10/2026), e por isso a redação dos arts. 141 e 143 não foi transcrita: pendência nomeada `FONTE-CTB-ACC-TEXTO-CONSOLIDADO`.
+- O modelo guarda `ACC` como categoria INTEIRA (`VersaoDoCondutor.cnhCategoria`, até 3 caracteres; CHECK ampliado na migration `20261111090400`). Lida letra a letra, "ACC" viraria A e C — e um portador de ACC passaria por exigência de categoria A. `categoriasDaHabilitacao` evita isso.
+- Nenhuma equivalência é presumida pelo sistema (nem A cobre ACC, nem ACC cobre A): o que cada veículo ou máquina aceita é a exigência que o ente declara, que pode listar ACC, A ou as duas.
+- A validade é conferida na emissão da ordem (CNH válida até o fim do prazo da ordem) e no abastecimento (a versão do condutor vigente no dia: ativo, habilitação válida, categoria aceita).
+- A combinação de ACC com outra categoria na mesma CNH (por exemplo, B e ACC) não está modelada: pendência nomeada `ACC-COMBINADA-COM-OUTRA-CATEGORIA`.

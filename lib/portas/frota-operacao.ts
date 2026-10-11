@@ -129,7 +129,7 @@ export async function atoDaOperacaoDaFrota(ato: string, c: Campos): Promise<stri
       return `Versão ${String(r.versao)} do condutor publicada.`;
     }
     case "exigencia-de-habilitacao": {
-      const categorias = (c["categorias"] ?? "").split(",").map((x) => x.trim()).filter((x) => x !== "") as ("A" | "B" | "C" | "D" | "E")[];
+      const categorias = (c["categorias"] ?? "").split(",").map((x) => x.trim()).filter((x) => x !== "") as ("A" | "B" | "C" | "D" | "E" | "ACC")[];
       await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => declararExigenciaDeHabilitacao(p, { ...alvoDoCampo(c), categoriasAceitas: categorias, vigenteDesde: t(c, "vigenteDesde"), fundamento: t(c, "fundamento"), criadoPor }));
       return "Exigência de habilitação declarada para o bem.";
     }

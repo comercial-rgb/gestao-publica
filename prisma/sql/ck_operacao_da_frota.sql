@@ -5,7 +5,7 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_versao_do_condutor') THEN
-    ALTER TABLE "VersaoDoCondutor" ADD CONSTRAINT "ck_versao_do_condutor" CHECK ("versao" >= 1 AND "cnhCategoria" ~ '^(A|B|C|D|E|AB|AC|AD|AE)$');
+    ALTER TABLE "VersaoDoCondutor" ADD CONSTRAINT "ck_versao_do_condutor" CHECK ("versao" >= 1 AND "cnhCategoria" ~ '^(A|B|C|D|E|AB|AC|AD|AE|ACC)$');
   END IF;
 END $$;
 DO $$
