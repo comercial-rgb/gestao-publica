@@ -1,9 +1,11 @@
 import { cliente, PortaSemBancoError } from "./cliente";
+import { toMoney } from "../../packages/contracts/index";
 import { apropriarCustoDaFolha } from "../../modules/m12-relatorios/custos-da-folha";
 import { comEscritaAutenticada } from "./sessao";
 import {
   centrosDeCusto,
   composicaoDoCentro,
+  composicaoSemCentro,
   criteriosDeRateio,
   custoPorCentro,
 } from "../../modules/m12-relatorios/custos-consultas";
@@ -49,6 +51,17 @@ export interface CustoParaTela {
   readonly ate: Date;
   readonly centros: readonly CustoDoCentroParaTela[];
   readonly total: string;
+  /** V39-R3 (R3-021) — a folha sem centro de custo, em linha própria; `apropriado` = `total` + `semCentro`. */
+  readonly semCentro: string;
+  readonly apropriado: string;
+  readonly linhasSemCentro: readonly {
+    readonly id: string;
+    readonly competencia: Date;
+    readonly matricula: string;
+    readonly valor: string;
+    readonly liquidacaoNumero: string;
+    readonly empenhoNumero: string;
+  }[];
 }
 
 export interface LinhaDaComposicaoParaTela {
@@ -89,11 +102,22 @@ export async function lerCustoPorCentro(p: {
   readonly de?: Date;
   readonly ate?: Date;
 }): Promise<CustoParaTela> {
-  const r = await custoPorCentro(cliente(), p);
+  const db = cliente();
+  const [r, semCentro] = await Promise.all([custoPorCentro(db, p), composicaoSemCentro(db, p)]);
   return {
     de: r.de,
     ate: r.ate,
     total: r.total.toFixed(2),
+    semCentro: r.semCentro.toFixed(2),
+    apropriado: r.apropriado.toFixed(2),
+    linhasSemCentro: semCentro.map((l, i) => ({
+      id: `${l.apropriacaoId}-${String(i)}`,
+      competencia: l.competencia,
+      matricula: l.matricula,
+      valor: l.valor.toFixed(2),
+      liquidacaoNumero: l.liquidacaoNumero,
+      empenhoNumero: l.empenhoNumero,
+    })),
     centros: r.centros.map((c) => ({
       centroId: c.centroId,
       codigo: c.centroCodigo,
@@ -171,6 +195,8 @@ export async function lerLiquidacoesApropriaveis(p: {
       estornoDeId: null,
       anulacaoParcialDeId: null,
       empenho: { ficha: { exercicio: p.exercicio } },
+      // V39-R3 — a folha se apropria pelo seu próprio formulário (centro de cada servidor), não por critério.
+      liquidacaoDaFolha: { is: null },
     },
     orderBy: { data: "desc" },
     take: p.limite ?? 60,
@@ -246,10 +272,11 @@ export async function lerLiquidacoesDeFolhaSemCusto(p: { readonly exercicio: num
 }
 
 /** V28 — APROPRIAR o custo de uma liquidação de folha pelo centro de cada vínculo (`APROPRIAR_CUSTO`). */
-export async function apropriarCustoDaFolhaNaTela(liquidacaoId: string): Promise<{ readonly valor: string; readonly centros: number; readonly novo: boolean }> {
+export async function apropriarCustoDaFolhaNaTela(liquidacaoId: string): Promise<{ readonly valor: string; readonly centros: number; readonly novo: boolean; readonly semCentro: string; readonly matriculasSemCentro: readonly string[] }> {
   return comEscritaAutenticada("APROPRIAR_CUSTO", async (criadoPor) => {
     const r = await apropriarCustoDaFolha(cliente(), { liquidacaoId, criadoPor });
-    return { valor: r.valor.toFixed(2), centros: r.partes.length, novo: r.novo };
+    const semCentro = r.semCentro.reduce((s, x) => s.plus(x.valor), toMoney("0.00"));
+    return { valor: r.valor.toFixed(2), centros: r.partes.length, novo: r.novo, semCentro: semCentro.toFixed(2), matriculasSemCentro: r.semCentro.map((x) => x.matricula) };
   });
 }
 

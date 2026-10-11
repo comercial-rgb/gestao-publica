@@ -1,0 +1,19 @@
+{
+  "descricao": "Textos oficiais da pesquisa de preços (V39-R3, R3-020): baixados das páginas oficiais em 11/10/2026 e convertidos de HTML para texto (marcação removida, conteúdo preservado). O sha256 é do texto gravado aqui.",
+  "arquivos": [
+    {
+      "arquivo": "lei-14133-2021.txt",
+      "fonte": "Lei nº 14.133, de 1º de abril de 2021 (art. 23)",
+      "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+      "dataDownload": "2026-10-11",
+      "sha256": "9516fc217c6f9ab584b563d4654e2726ed4ef8dc15e4f9efb607d58e4a3d07e0"
+    },
+    {
+      "arquivo": "in-seges-me-65-2021.txt",
+      "fonte": "Instrução Normativa SEGES/ME nº 65, de 7 de julho de 2021 (arts. 5º e 6º)",
+      "url": "https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-seges-me-no-65-de-7-de-julho-de-2021",
+      "dataDownload": "2026-10-11",
+      "sha256": "e8b0532d8b141cbe104bdeffb551054c1030c332a2672d45e17c1a38055192ac"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { PageHeader } from "../../../../components/ui/PageHeader";
 import { ValorMonetario } from "../../../../components/ui/ValorMonetario";
 import { anoCivil, competenciaCivil, diaCivilBr } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
 import {
   lerCentrosDeCusto,
   lerComposicaoDoCentro,
@@ -146,7 +147,7 @@ export default async function Page({
         <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">
           Acumulado por centro
         </h2>
-        {custo.centros.length === 0 ? (
+        {custo.centros.length === 0 && custo.semCentro === "0.00" ? (
           <EstadoVazio
             descricao="Nenhuma despesa foi apropriada a centro de custo neste período. Publique um critério de rateio e aproprie o custo de uma liquidação para que o acumulado apareça aqui."
             titulo="Nenhum custo apropriado no período"
@@ -185,6 +186,16 @@ export default async function Page({
                       </td>
                     </tr>
                   ))}
+                  {custo.semCentro === "0.00" ? null : (
+                    <tr className="border-b border-[color:var(--color-border)]" data-sem-centro>
+                      <td className={CELULA} colSpan={3}>
+                        Sem centro de custo (folha de servidor sem centro na competência; não rateado)
+                      </td>
+                      <td className={`${CELULA} text-right font-semibold`} data-custo-sem-centro={String(exercicio)}>
+                        <ValorMonetario valor={custo.semCentro} />
+                      </td>
+                    </tr>
+                  )}
                   <tr className="border-t-2 border-[color:var(--color-border-strong)]">
                     <td className={`${CELULA} font-semibold`} colSpan={3}>
                       Total apropriado no período
@@ -193,7 +204,7 @@ export default async function Page({
                       className={`${CELULA} text-right font-semibold`}
                       data-custo-total={String(exercicio)}
                     >
-                      <ValorMonetario valor={custo.total} />
+                      <ValorMonetario valor={custo.apropriado} />
                     </td>
                   </tr>
                 </tbody>
@@ -205,6 +216,52 @@ export default async function Page({
           </>
         )}
       </Card>
+
+      {custo.linhasSemCentro.length === 0 ? null : !(await acoesPermitidas(["CONSULTAR_FOLHA"])).has("CONSULTAR_FOLHA") ? (
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Folha sem centro de custo</h2>
+          <p className="text-xs text-[color:var(--color-ink-2)]" data-sem-centro-resumo>
+            {custo.linhasSemCentro.length} servidor(es) por competência sem centro de custo no período. A lista por matrícula, com
+            o valor de cada um, é de quem consulta a folha.
+          </p>
+        </Card>
+      ) : (
+        <Card>
+          <h2 className="mb-3 text-sm font-semibold text-[color:var(--color-ink)]">Folha sem centro de custo</h2>
+          <p className="mb-2 text-xs text-[color:var(--color-ink-2)]">
+            Estes servidores não tinham centro de custo no último dia da competência. O valor deles fica nesta linha, e não é
+            repartido entre os outros centros. O centro registrado agora no vínculo, no Pessoal, vale para as competências
+            ainda não apropriadas; as já apropriadas continuam nesta lista.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse" data-lista-sem-centro>
+              <thead>
+                <tr className="border-b border-[color:var(--color-border)]">
+                  <th className={CABECA}>Competência</th>
+                  <th className={CABECA}>Matrícula</th>
+                  <th className={CABECA}>Liquidação</th>
+                  <th className={CABECA}>Empenho</th>
+                  <th className={`${CABECA} text-right`}>Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {custo.linhasSemCentro.slice(0, 200).map((l) => (
+                  <tr className="border-b border-[color:var(--color-border)]" data-matricula-sem-centro={l.matricula} key={l.id}>
+                    <td className={CELULA}>{mesCivilBr(l.competencia)}</td>
+                    <td className={CELULA}>{l.matricula}</td>
+                    <td className={CELULA}>{l.liquidacaoNumero}</td>
+                    <td className={CELULA}>{l.empenhoNumero}</td>
+                    <td className={`${CELULA} text-right`}><ValorMonetario valor={l.valor} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {custo.linhasSemCentro.length > 200 ? (
+            <p className="mt-2 text-xs text-[color:var(--color-ink-3)]">Mostrando as 200 primeiras de {custo.linhasSemCentro.length} linhas, por competência e matrícula. O total da linha "Sem centro de custo" acima soma todas.</p>
+          ) : null}
+        </Card>
+      )}
 
       {centroValido === "" ? null : (
         <Card>
@@ -368,7 +425,7 @@ export default async function Page({
         />
       )}
 
-      {daFolha.length > 0 ? <FormCustoDaFolha liquidacoes={daFolha} /> : null}
+      {daFolha.length > 0 && (await acoesPermitidas(["APROPRIAR_CUSTO"])).has("APROPRIAR_CUSTO") ? <FormCustoDaFolha liquidacoes={daFolha} /> : null}
 
       {chavesVigentes.length === 0 || liquidacoes.length === 0 ? (
         <EstadoVazio

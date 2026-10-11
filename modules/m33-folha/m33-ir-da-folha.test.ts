@@ -16,6 +16,8 @@ import { certificarFolha, designarNaFolha, liquidarFolha } from "./certificacao.
 import { irDaFolhaPendente } from "./ir-da-folha.js";
 import { declararConsignacaoDaRubrica, descontosDaFolhaPendentes } from "./descontos-da-folha.js";
 import { apropriarCustoDaFolha } from "../m12-relatorios/custos-da-folha.js";
+import { custoPorCentro } from "../m12-relatorios/custos-consultas.js";
+import { apropriarCustoDaLiquidacao } from "../m12-relatorios/custos-servico.js";
 import { anularLiquidacaoParcial, estornarAnulacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import { registrarMovimentacao } from "../m32-pessoal/servico.js";
 import { registrarAgrupamentoDaFolha } from "./agrupamento-no-tribunal.js";
@@ -57,12 +59,17 @@ async function pessoa(documento: string, nome: string): Promise<string> {
   return p.id;
 }
 
+/** V39-R3 — o credor do empenho ÚNICO da folha (grupo não por servidor): fixture. */
+async function pessoaJuridicaDaFolha(): Promise<string> {
+  return (await prisma.pessoa.create({ data: { documento: "11222333000181", tipo: "JURIDICA", criadoPor: PREPARA }, select: { id: true } })).id;
+}
+
 let rubricaPrev = "";
 let rubricaVenc = "";
 let rubricaIr = "";
 let tipoRpps = "";
 
-async function semear(comDecisao = true, comDescontoDeclarado = true): Promise<void> {
+async function semear(comDecisao = true, comDescontoDeclarado = true, porServidor = true): Promise<void> {
   await limparBanco(prisma);
   await prisma.enteConfig.create({
     data: { id: "unico", codigoIbge: "2506004", poderOrgao: "10131", tribunalCodigo: "TCE-PB", tribunalUf: "PB", planoContasSeed: "pcasp-federal", nome: "Municipio de Teste", cnpj: "08993917000146", conferidoPor: "TESTE", conferidoEm: D(2026, 1, 1) },
@@ -111,7 +118,7 @@ async function semear(comDecisao = true, comDescontoDeclarado = true): Promise<v
   await r({ codigo: "VENC", descricao: "Vencimento", tipo: "PROVENTO", natureza: "VENCIMENTO_BASE", incideContribuicao: true, incideIrrf: true, proporcionalAosDias: true, ordem: 1, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
   await r({ codigo: "PREV", descricao: "Contribuicao", tipo: "DESCONTO", natureza: "CONTRIBUICAO_PREVIDENCIARIA", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 90, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
   await r({ codigo: "IRRF", descricao: "IRRF", tipo: "DESCONTO", natureza: "IMPOSTO_DE_RENDA", incideContribuicao: false, incideIrrf: false, proporcionalAosDias: false, ordem: 91, fundamentacaoLegal: "fixture", criadoPor: PREPARA });
-  await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FP-VENC", descricao: "Vencimentos", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPM", porServidor: true, contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [ids["VENC"]!], criadoPor: PREPARA });
+  await cadastrarGrupoDeEmpenhoDaFolha(prisma, { codigo: "FP-VENC", descricao: "Vencimentos", fichaId: FICHA, categoriaOrdemCronologica: "PRESTACAO_SERVICOS", tipoEmpenho: "ORDINARIO", serie: "FPM", porServidor, ...(porServidor ? {} : { credorId: await pessoaJuridicaDaFolha() }), contaVariacaoId: "c-vpd-pessoal", contaObrigacaoId: "c-pessoal-pagar", rubricaIds: [ids["VENC"]!], criadoPor: PREPARA });
 
   // A decisão do ente para o IR da folha (ementário STN 2026: 1.1.1.3.03.1.1, IR retido — trabalho — principal).
   await prisma.naturezaReceita.create({ data: { codigo: "11130311", descricao: "IRRF - Trabalho - Principal" } });
@@ -365,11 +372,56 @@ describe("V28 — o custo da folha pelo centro de custo de cada vínculo", { tim
     expect(a.partes.map((x) => [x.centroId, x.valor.toFixed(2)])).toEqual([["cc-edu", "3000.00"]]);
   });
 
-  it("vínculo sem centro de custo na competência: recusa nomeando a matrícula, e nada é gravado", async () => {
+  it("V39-R3 — vínculo sem centro de custo na competência: o valor fica na parcela SEM CENTRO, com a matrícula, e a soma fecha com a liquidação", async () => {
     const c = await centros();
     // MAT-B ganha centro só em julho: em junho ela não tinha.
     await registrarMovimentacao(prisma, { vinculoId: c.vinculoB, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2026, 7, 1), motivo: "apropriacao a partir de julho", centroDeCustoId: c.sau, criadoPor: PREPARA });
-    await expect(apropriarCustoDaFolha(prisma, { liquidacaoId: liquidacaoDe["MAT-B"]!, criadoPor: PREPARA })).rejects.toThrow(/matrículas MAT-B não têm centro de custo na competência 2026-06/);
+    const b = await apropriarCustoDaFolha(prisma, { liquidacaoId: liquidacaoDe["MAT-B"]!, criadoPor: PREPARA });
+    // à mão: MAT-B 2.000,00 sem centro em junho; nenhum centro recebe nada (não se rateia por quem não decidiu).
+    expect([b.partes.length, b.semCentro.map((p) => [p.matricula, p.valor.toFixed(2)]), b.valor.toFixed(2)]).toEqual([0, [["MAT-B", "2000.00"]], "2000.00"]);
+    expect(await prisma.itemDaApropriacaoDeCusto.count()).toBe(0);
+    // repetir devolve a mesma apropriação, com a parcela, sem gravar outra
+    const de_novo = await apropriarCustoDaFolha(prisma, { liquidacaoId: liquidacaoDe["MAT-B"]!, criadoPor: PREPARA });
+    expect([de_novo.novo, de_novo.apropriacaoId, de_novo.semCentro.map((p) => p.matricula)]).toEqual([false, b.apropriacaoId, ["MAT-B"]]);
+    expect(await prisma.parcelaSemCentroDeCusto.count()).toBe(1);
+  });
+
+  it("V39-R3 — N=2 na MESMA liquidação (grupo não por servidor): MAT-A vai ao centro, MAT-B fica sem centro; o relatório mostra a linha e o total reconcilia", async () => {
+    await semear(true, true, false);
+    const c = await centros();
+    await registrarMovimentacao(prisma, { vinculoId: c.vinculoA, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2026, 1, 1), motivo: "lotacao na educacao", centroDeCustoId: c.edu, criadoPor: PREPARA });
+    const liquidacaoId = Object.values(liquidacaoDe)[0]!;
+    expect(Object.keys(liquidacaoDe)).toHaveLength(1);
+    const r = await apropriarCustoDaFolha(prisma, { liquidacaoId, criadoPor: PREPARA });
+    // à mão: 3.000,00 (MAT-A) na educação + 2.000,00 (MAT-B) sem centro = 5.000,00, o valor da liquidação
+    expect([r.valor.toFixed(2), r.partes.map((p) => [p.centroId, p.valor.toFixed(2)]), r.semCentro.map((p) => [p.matricula, p.valor.toFixed(2)])]).toEqual(["5000.00", [["cc-edu", "3000.00"]], [["MAT-B", "2000.00"]]]);
+    const ap = await prisma.apropriacaoDeCusto.findUniqueOrThrow({ where: { id: r.apropriacaoId }, select: { motivo: true } });
+    expect(ap.motivo).toMatch(/Sem centro de custo na competência: MAT-B\./);
+    const rel = await custoPorCentro(prisma, { exercicio: 2026 });
+    expect([rel.centros.map((x) => [x.centroCodigo, x.total.toFixed(2)]), rel.semCentro.toFixed(2), rel.total.toFixed(2), rel.apropriado.toFixed(2)]).toEqual([[["CC-EDU", "3000.00"]], "2000.00", "3000.00", "5000.00"]);
+    // com os DOIS no centro, nada fica sem centro (a parcela não aparece por vacuidade)
+    await semear(true, true, false);
+    const c2 = await centros();
+    await registrarMovimentacao(prisma, { vinculoId: c2.vinculoA, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2026, 1, 1), motivo: "lotacao na educacao", centroDeCustoId: c2.edu, criadoPor: PREPARA });
+    await registrarMovimentacao(prisma, { vinculoId: c2.vinculoB, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2026, 1, 1), motivo: "lotacao na saude", centroDeCustoId: c2.sau, criadoPor: PREPARA });
+    const r2 = await apropriarCustoDaFolha(prisma, { liquidacaoId: Object.values(liquidacaoDe)[0]!, criadoPor: PREPARA });
+    expect([r2.partes.map((p) => [p.centroId, p.valor.toFixed(2)]), r2.semCentro]).toEqual([[["cc-edu", "3000.00"], ["cc-sau", "2000.00"]], []]);
+    expect((await custoPorCentro(prisma, { exercicio: 2026 })).semCentro.toFixed(2)).toBe("0.00");
+  });
+
+  it("V39-R3 — a RECONCILIAÇÃO é a guarda: proventos do fechamento que não somam a liquidação recusam, nada gravado", async () => {
+    const c = await centros();
+    await registrarMovimentacao(prisma, { vinculoId: c.vinculoA, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: D(2026, 1, 1), motivo: "lotacao na educacao", centroDeCustoId: c.edu, criadoPor: PREPARA });
+    // Divergência fabricada SÓ para provar a guarda (o dono do banco de teste altera o contracheque fechado): 3.000 → 2.990.
+    const linha = await prisma.linhaDoContracheque.findFirstOrThrow({ where: { tipo: "PROVENTO", contracheque: { vinculo: { matricula: "MAT-A" } } }, select: { id: true } });
+    await prisma.linhaDoContracheque.update({ where: { id: linha.id }, data: { valor: "2990.00" } });
+    await expect(apropriarCustoDaFolha(prisma, { liquidacaoId: liquidacaoDe["MAT-A"]!, criadoPor: PREPARA })).rejects.toThrow(/somam 2990\.00, e a liquidação .* vale 3000\.00\. O fechamento e a despesa divergem/);
+    expect([await prisma.apropriacaoDeCusto.count(), await prisma.parcelaSemCentroDeCusto.count()]).toEqual([0, 0]);
+  });
+
+  it("V39-R3 — a liquidação de folha não se apropria por critério de rateio (os dois caminhos somariam o custo duas vezes)", async () => {
+    await centros();
+    await expect(apropriarCustoDaLiquidacao(prisma, { liquidacaoId: liquidacaoDe["MAT-A"]!, criterioChave: "qualquer", competencia: D(2026, 6, 1), motivo: "rateio da folha por critério", criadoPor: PREPARA })).rejects.toThrow(/é de folha de pagamento: aproprie o custo dela pelo centro de cada servidor/);
     expect(await prisma.apropriacaoDeCusto.count()).toBe(0);
   });
 

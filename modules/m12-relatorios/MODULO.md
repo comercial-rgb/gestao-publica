@@ -1026,3 +1026,30 @@ com o catálogo `contas-do-razao`: contas analíticas (o razão soma pela conta 
 busca por código ou nome, e a leitura da própria tela (CONSULTAR_RELATORIOS). A conta que chega pela URL (links do
 balancete, das demonstrações e do lançamento) é conferida pelo mesmo catálogo antes de virar escolha; o domínio
 (`razaoAnalitico`) não mudou.
+
+## V39-R3 (R3-021) — a folha sem centro de custo fica numa parcela própria
+
+`custos-da-folha.ts`, `custos-consultas.ts` (`custoPorCentro.semCentro`/`apropriado`, `composicaoSemCentro`); tela
+Contabilidade › Custos.
+
+- Antes, uma matrícula sem centro de custo no último dia da competência recusava a apropriação da liquidação
+  inteira: o custo de todos ficava fora do relatório. Agora o valor dela vai para `ParcelaSemCentroDeCusto` (um por
+  vínculo, append-only, valor positivo por `ck_parcela_sem_centro_de_custo`), e os outros vão aos seus centros.
+- **Não se rateia:** a parcela sem centro não é repartida entre os centros que existem.
+- **Reconciliação:** a soma dos centros mais a parcela sem centro é o valor da liquidação (a base de custo da folha:
+  os proventos do grupo no contracheque do fechamento); se divergir, recusa como antes.
+- **A tela:** "Sem centro de custo" é uma linha do acumulado, e o "Total apropriado" a inclui. Abaixo, a lista por
+  matrícula, liquidação e empenho, para registrar o centro no Pessoal. A mensagem ao apropriar diz o valor e as
+  matrículas sem centro.
+
+- **Um caminho só para a folha:** a apropriação por critério recusa liquidação de folha, e as duas travam a liquidação
+  (antes, critério e folha podiam apropriar a mesma liquidação ao mesmo tempo e dobrar o custo). A lista do formulário de
+  critério não oferece liquidação de folha.
+- **Remuneração individual:** a lista por matrícula, com o valor de cada servidor, só aparece para quem tem
+  CONSULTAR_FOLHA; quem só consulta a contabilidade vê o total da linha e quantos estão sem centro. Até 200 linhas na tela.
+
+Pendências nomeadas (R3-021):
+- `ATRIBUIR-DEPOIS-A-PARCELA-SEM-CENTRO`: registrado o centro no vínculo depois da apropriação, a parcela não migra
+  (a apropriação é uma vez por liquidação). Falta a operação de atribuição posterior, append-only, com o centro
+  vigente na competência.
+- `BASE-DE-RATEIO-CALCULADA` continua (só percentual declarado, para o que não é folha).

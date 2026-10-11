@@ -434,6 +434,12 @@ export const zRegistrarPesquisaDePrecosInput = z.object({
               fornecedorId: z.string().min(1),
               valorUnitario: z.union([z.string(), z.number()]),
               origem: z.string().trim().min(3),
+              // V39-R3 (R3-020) — a origem verificável do preço: o parâmetro (IN SEGES/ME 65/2021, art. 5º), o dia do preço e
+              // o documento. Opcionais aqui (a pesquisa pode ser registrada aos poucos); o preço sem eles não entra no
+              // preço estimado fixado.
+              parametro: z.enum(["PAINEL_DE_PRECOS", "CONTRATACOES_SIMILARES", "MIDIA_TABELAS_E_SITIOS", "FORNECEDORES", "NOTAS_FISCAIS"]).optional(),
+              dataDoPreco: z.coerce.date().optional(),
+              documento: z.string().trim().optional(),
             })
           )
           .default([]),
@@ -479,6 +485,9 @@ export async function registrarPesquisaDePrecos(
                 fornecedorId: c.fornecedorId,
                 valorUnitario: toMoney(c.valorUnitario).toFixed(6),
                 origem: c.origem,
+                parametro: c.parametro ?? null,
+                dataDoPreco: c.dataDoPreco ?? null,
+                documento: c.documento === undefined || c.documento === "" ? null : c.documento,
                 criadoPor: d.criadoPor,
               })),
             },

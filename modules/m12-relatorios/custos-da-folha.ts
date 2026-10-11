@@ -24,8 +24,11 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
  * Cada vínculo vai ao centro de custo vigente no ÚLTIMO dia civil da competência. Vínculos do mesmo
  * centro somam. Nada é lançado no razão: custo é apropriação gerencial, como o resto do M12.
  *
- * ⚠️ FAIL-CLOSED, ANTES DE GRAVAR: vínculo sem centro de custo na competência recusa nomeando a
- * matrícula; a soma das partes tem de ser o valor da liquidação (senão o fechamento e o empenho
+ * ⚠️ V39-R3 (R3-021) — VÍNCULO SEM CENTRO DE CUSTO NA COMPETÊNCIA NÃO RECUSA MAIS A FOLHA INTEIRA, E NÃO É
+ * RATEADO: o valor dele fica numa `ParcelaSemCentroDeCusto`, com o vínculo, e o relatório o mostra numa linha
+ * própria. Antes, uma matrícula sem centro deixava a liquidação inteira fora do custo — o que também esconde.
+ *
+ * ⚠️ FAIL-CLOSED, ANTES DE GRAVAR: a soma das partes (centros mais a parcela sem centro) tem de ser o valor da liquidação (senão o fechamento e o empenho
  * divergiram, e apropriar esconderia a divergência); liquidação com anulação parcial recusa — não há
  * como saber de qual vínculo saiu a anulação, e ratear pro rata seria escolher por quem não decidiu.
  *
@@ -38,6 +41,8 @@ export interface ResultadoDoCustoDaFolha {
   readonly novo: boolean;
   readonly valor: Money;
   readonly partes: readonly { readonly centroId: string; readonly valor: Money }[];
+  /** V39-R3 (R3-021) — o que ficou sem centro de custo, por vínculo. Centros + isto = valor da liquidação. */
+  readonly semCentro: readonly { readonly vinculoId: string; readonly matricula: string; readonly valor: Money }[];
 }
 
 export async function apropriarCustoDaFolha(
@@ -69,7 +74,10 @@ export async function apropriarCustoDaFolha(
 
     const existente = await tx.apropriacaoDeCusto.findFirst({
       where: { liquidacaoId: liq.id },
-      select: { id: true, valor: true, criterioId: true, itens: { select: { centroId: true, valor: true } } },
+      select: {
+        id: true, valor: true, criterioId: true, itens: { select: { centroId: true, valor: true } },
+        semCentro: { select: { vinculoId: true, valor: true, vinculo: { select: { matricula: true } } } },
+      },
     });
     if (existente !== null) {
       if (existente.criterioId !== null) {
@@ -78,6 +86,9 @@ export async function apropriarCustoDaFolha(
       return {
         apropriacaoId: existente.id, novo: false, valor: toMoney(existente.valor.toFixed(2)),
         partes: existente.itens.map((i) => ({ centroId: i.centroId, valor: toMoney(i.valor.toFixed(2)) })),
+        semCentro: existente.semCentro
+          .map((p) => ({ vinculoId: p.vinculoId, matricula: p.vinculo.matricula, valor: toMoney(p.valor.toFixed(2)) }))
+          .sort((a, b) => a.matricula.localeCompare(b.matricula)),
       };
     }
 
@@ -108,6 +119,7 @@ export async function apropriarCustoDaFolha(
       select: {
         vinculo: {
           select: {
+            id: true,
             matricula: true,
             eventos: { select: { data: true, criadoEm: true, tipo: true, cargoId: true, lotacaoId: true, salarioBase: true, centroDeCustoId: true } },
           },
@@ -119,7 +131,7 @@ export async function apropriarCustoDaFolha(
     // O último instante civil da competência: o centro de custo de maio é o de 31 de maio.
     const quando = janelaCivilDoMes(folha.competencia).fim;
     const porCentro = new Map<string, Money>();
-    const semCentro: string[] = [];
+    const semCentro: { vinculoId: string; matricula: string; valor: Money }[] = [];
     for (const c of contracheques) {
       const valor = c.linhas
         .filter((l) => rubricasDoGrupo.has(l.rubricaId))
@@ -128,18 +140,13 @@ export async function apropriarCustoDaFolha(
       const eventos = c.vinculo.eventos.map((x) => ({ ...x, salarioBase: x.salarioBase === null ? null : toMoney(x.salarioBase.toFixed(2)) })) as unknown as EventoDoVinculo[];
       const centro = centroDeCustoVigenteEm(eventos, quando);
       if (centro === null) {
-        semCentro.push(c.vinculo.matricula);
+        semCentro.push({ vinculoId: c.vinculo.id, matricula: c.vinculo.matricula, valor });
         continue;
       }
       porCentro.set(centro, toMoney((porCentro.get(centro) ?? toMoney("0.00")).plus(valor)));
     }
-    if (semCentro.length > 0) {
-      throw new Error(
-        `As matrículas ${semCentro.sort().join(", ")} não têm centro de custo na competência ${folha.competencia}; o custo delas não tem ` +
-          `para onde ir. Registre o centro de custo no vínculo (Pessoal) e aproprie de novo. Nada foi gravado.`
-      );
-    }
-    const soma = [...porCentro.values()].reduce((s, v) => toMoney(s.plus(v)), toMoney("0.00"));
+    semCentro.sort((a, b) => a.matricula.localeCompare(b.matricula));
+    const soma = [...porCentro.values(), ...semCentro.map((p) => p.valor)].reduce((s, v) => toMoney(s.plus(v)), toMoney("0.00"));
     if (!soma.equals(valorDaLiquidacao)) {
       throw new Error(
         `Os proventos do grupo ${e.grupo.codigo} nos contracheques do fechamento somam ${soma.toFixed(2)}, e a liquidação ${liq.numero} ` +
@@ -154,12 +161,15 @@ export async function apropriarCustoDaFolha(
         criterioId: null,
         competencia: janelaCivilDoMes(folha.competencia).inicio,
         valor: valorDaLiquidacao.toFixed(2),
-        motivo: `Folha ${folha.competencia}, grupo ${e.grupo.codigo}: custo repartido pelo centro de custo de cada vínculo.`,
+        motivo:
+          `Folha ${folha.competencia}, grupo ${e.grupo.codigo}: custo repartido pelo centro de custo de cada vínculo.` +
+          (semCentro.length === 0 ? "" : ` Sem centro de custo na competência: ${semCentro.map((p) => p.matricula).join(", ")}.`),
         criadoPor: input.criadoPor,
         itens: { create: partes.map((p) => ({ centroId: p.centroId, valor: p.valor.toFixed(2) })) },
+        semCentro: { create: semCentro.map((p) => ({ vinculoId: p.vinculoId, valor: p.valor.toFixed(2) })) },
       },
       select: { id: true },
     });
-    return { apropriacaoId: criada.id, novo: true, valor: valorDaLiquidacao, partes };
+    return { apropriacaoId: criada.id, novo: true, valor: valorDaLiquidacao, partes, semCentro };
   });
 }

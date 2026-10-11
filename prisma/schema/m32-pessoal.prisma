@@ -599,6 +599,8 @@ model Vinculo {
 
   lancamentosDaFolha LancamentoDaFolha[]
   contracheques      Contracheque[]
+  /// V39-R3 (R3-021) — o custo da folha que ficou sem centro de custo na competência.
+  parcelasSemCentroDeCusto ParcelaSemCentroDeCusto[]
   /// V11 V9.5 (M33) — as linhas do FATO de abrangência que citam este vínculo. VIRTUAL.
   abrangenciasDeCalculo AbrangenciaDoCalculo[]
   empenhosDaFolha    EmpenhoDaFolha[]

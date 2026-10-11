@@ -23,6 +23,7 @@ import { cadastrarTanqueDeCombustivel } from "../../modules/m36-frota/tanque.js"
 import { cadastrarFarmacia } from "../../modules/m37-farmacia/servico.js";
 import { registrarPerfilFiscal } from "../../modules/m07-extraorcamentario/retencao-calculada.js";
 import { criarSetor } from "../../modules/m21-protocolo/cadastros.js";
+import { registrarMovimentacao } from "../../modules/m32-pessoal/servico.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -175,6 +176,11 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "solicitante.compras@ficticio.local", nome: "Solicitante de compras (fictícia)", perfil: "SOLICITAÇÕES DE COMPRA — ENSAIO",
     acoes: ["REGISTRAR_SOLICITACAO_DE_COMPRA", "MOVIMENTAR_SOLICITACAO_DE_COMPRA", "CONSULTAR_LICITACOES", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-020) — quem registra a pesquisa de preços e fixa o preço estimado.
+  {
+    email: "pesquisa.precos@ficticio.local", nome: "Pesquisadora de preços (fictícia)", perfil: "PESQUISA DE PREÇOS — ENSAIO",
+    acoes: ["REGISTRAR_PESQUISA_DE_PRECOS", "CONSULTAR_LICITACOES", "CONSULTAR_CADASTROS"],
+  },
   // V39-R3 (R3-016) — quem parametriza os valores a receber de volta (categoria e conta) e quem os movimenta.
   {
     email: "contabilidade.parametros@ficticio.local", nome: "Contadora de parâmetros (fictícia)", perfil: "PARÂMETROS DO REALIZÁVEL — ENSAIO",
@@ -183,6 +189,15 @@ export const PAPEIS_R3: readonly PapelR3[] = [
   {
     email: "tesouraria.realizavel@ficticio.local", nome: "Tesoureiro dos valores a receber (fictício)", perfil: "MOVIMENTO DO REALIZÁVEL — ENSAIO",
     acoes: ["MOVIMENTAR_REALIZAVEL", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
+  },
+  // V39-R3 (R3-021) — quem apropria o custo da folha e quem só consulta a contabilidade.
+  {
+    email: "custos.contabilidade@ficticio.local", nome: "Contador de custos (fictício)", perfil: "CUSTOS — ENSAIO",
+    acoes: ["APROPRIAR_CUSTO", "CONSULTAR_CONTABILIDADE", "CONSULTAR_FOLHA"],
+  },
+  {
+    email: "consulta.contabilidade@ficticio.local", nome: "Consulta da contabilidade (fictícia)", perfil: "CONSULTA DA CONTABILIDADE — ENSAIO",
+    acoes: ["CONSULTAR_CONTABILIDADE"],
   },
   {
     email: "farmaceutico.assistencia@ficticio.local", nome: "Farmacêutico da Assistência Social (fictício)", perfil: "FARMÁCIA DA ASSISTÊNCIA — ENSAIO",
@@ -194,7 +209,14 @@ export const PAPEIS_R3: readonly PapelR3[] = [
 async function semearUsuarios(prisma: PrismaClient): Promise<void> {
   for (const p of PAPEIS_R3) {
     await passo(`Usuário ${p.email} (${p.perfil})`, async () => {
-      if ((await prisma.usuario.findUnique({ where: { identificador: p.email }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      if ((await prisma.usuario.findUnique({ where: { identificador: p.email }, select: { id: true } })) !== null) {
+        // Ação acrescentada ao papel depois da primeira carga: entra no perfil existente (só inclusão; nada se retira).
+        const perfil = await prisma.perfil.findFirst({ where: { nome: p.perfil }, select: { id: true, permissoes: { where: { unidadeOrcId: null }, select: { acao: true } } } });
+        const faltam = perfil === null ? [] : p.acoes.filter((a) => !perfil.permissoes.some((x) => x.acao === a));
+        if (perfil === null || faltam.length === 0) return { estado: "existente", valor: null };
+        await prisma.permissaoDePerfil.createMany({ data: faltam.map((acao) => ({ perfilId: perfil.id, acao, unidadeOrcId: null, criadoPor: ADMIN })) });
+        return { estado: "criado", valor: null };
+      }
       const unidade = p.naUnidade === undefined ? null : await uoId(prisma, p.naUnidade.codigo);
       const perfil = await prisma.$transaction(async (tx) => {
         const criado = await tx.perfil.create({ data: { nome: p.perfil, descricao: `Papel da base de ensaio: ${[...p.acoes, ...(p.naUnidade?.acoes ?? [])].join(", ")}.`, criadoPor: ADMIN }, select: { id: true } });
@@ -613,6 +635,20 @@ async function semearCompras(prisma: PrismaClient): Promise<void> {
   }
 }
 
+// ═══ 8. CUSTO DA FOLHA: um servidor com centro de custo, outro sem (N=2) ═══
+
+async function semearCentroDeCusto(prisma: PrismaClient): Promise<void> {
+  await passo("Centro de custo da matrícula FIC-0001 desde 01/01/2026 (R3-ADM); FIC-0002 fica sem centro", async () => {
+    const v = await prisma.vinculo.findFirst({ where: { matricula: "FIC-0001" }, select: { id: true } });
+    const setor = await prisma.setor.findFirst({ where: { codigo: "R3-ADM" }, select: { id: true } });
+    if (v === null || setor === null) throw new Error("A semente fictícia não tem a matrícula FIC-0001 ou a massa não tem o setor R3-ADM. Nada foi gravado.");
+    const ja = await prisma.historicoVinculo.findFirst({ where: { vinculoId: v.id, centroDeCustoId: { not: null } }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: null };
+    await registrarMovimentacao(prisma, { vinculoId: v.id, tipo: "MUDANCA_CENTRO_DE_CUSTO", data: meioDiaCivil("2026-01-01"), motivo: `Lotação no setor de compras da Administração ${ENSAIO}`, centroDeCustoId: setor.id, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+}
+
 // ═══ PRINCIPAL ═══
 
 function exigirBanco(): string {
@@ -652,6 +688,8 @@ async function main(): Promise<void> {
     await semearRetencao(prisma);
     console.log("\n[7] compras");
     await semearCompras(prisma);
+    console.log("\n[8] custo da folha");
+    await semearCentroDeCusto(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

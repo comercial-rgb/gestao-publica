@@ -617,3 +617,39 @@ inativo, nada; a situação pura), 3 mutações vermelhas. Leituras fora do cens
   (forma-se o item à mão).
 - **CONSOLIDAVEIS-SEM-RECORTE**: a lista de solicitações consolidáveis lê todas as autorizadas, uma situação por vez;
   com volume, pede recorte por período ou setor.
+
+## V39-R3 (R3-020) — pesquisa de preços com origem verificável e preço estimado fixado
+
+`preco-estimado.ts`, `fontes-da-pesquisa.ts`; no detalhe da pesquisa, "Preço estimado de cada item".
+
+- **Fonte:** Lei nº 14.133/2021, art. 23, e IN SEGES/ME nº 65/2021, arts. 5º e 6º, baixadas dos sítios oficiais e
+  guardadas em `docs/oficial/compras/` com o sha256 no manifesto.
+- **Cada preço** diz de onde veio (os cinco parâmetros do art. 5º), o dia do preço e o documento que o prova
+  (colunas anuláveis em `CotacaoDePreco`; as cotações anteriores ficam sem e não entram num preço fixado).
+- **Preço estimado fixado** (`PrecoEstimadoDoItem`, append-only, vale o mais recente): método declarado (média,
+  mediana, menor — art. 6º), a memória de cada preço usado (fornecedor, valor, parâmetro, dia, documento), os descartes
+  com o motivo (§ 3º) e, abaixo do mínimo, a justificativa (§ 5º). O cálculo é um só (`precoPeloMetodo`, Decimal).
+- **Regra do mínimo** (`RegraDaPesquisaDePrecos`): lida da frase do art. 6º do texto guardado pela carga
+  `scripts/carregar-regra-da-pesquisa-de-precos.ts`; sem regra, não se fixa.
+- Poder: REGISTRAR_PESQUISA_DE_PRECOS (nenhuma ação nova). A tela de registro oferece três cotações por item.
+- **A estimativa da pesquisa** no detalhe é a soma de quantidade × preço FIXADO; com item sem preço fixado, ela não se
+  mostra e se diz quantos faltam. A faixa das cotações (mínimo a máximo) fica no histórico, só como registro.
+- **A regra vale pela data da pesquisa**, e a vigência é a da publicação lida do "Publicado em" da página oficial
+  guardada (08/07/2021), no início do dia civil do ente. Preço de dia futuro recusa.
+
+Pendências nomeadas (R3-020):
+- `PRECO-FIXADO-NAO-ALIMENTA-O-PROCESSO`: o preço fixado ainda não é o valor estimado do item do processo licitatório
+  nem da contratação direta; só a pesquisa o mostra.
+- `APROVACAO-DA-JUSTIFICATIVA-DE-MENOS-PRECOS`: o art. 6º, § 5º pede a justificativa do gestor E a aprovação da
+  autoridade competente; o sistema guarda só a justificativa, e a tela diz que a aprovação fica nos autos.
+- `VALIDADE-DO-PRECO-PELO-EDITAL`: os prazos do art. 5º (incisos III e IV até 6 meses antes da divulgação do edital;
+  II e V até 1 ano) dependem da data do edital, que a pesquisa não conhece; não são conferidos. Também não se confere:
+  hora do acesso (inciso III), mínimo de fornecedores consultados (inciso IV), conteúdo da proposta formal (§ 2º),
+  prioridade dos incisos I e II (§ 1º), teto pela mediana (art. 6º, § 6º), outros métodos e percentuais (§§ 1º e 2º).
+- `PRECO-QUE-NAO-E-COTACAO`: a cotação tem fornecedor obrigatório e um preço por fornecedor no item. Preço do painel,
+  de contratação similar ou de nota fiscal precisa de uma pessoa cadastrada como "fornecedor", e duas contratações
+  similares da mesma empresa não cabem. Decisão de modelo a tomar.
+- `ADOCAO-DA-REGRA-PELO-ENTE`: a IN 65 é norma federal (art. 1º); o município a aplica por regulamento próprio ou pela
+  adoção que o art. 187 da Lei 14.133 permite. A regra carregada é a do texto federal e não registra ato de adoção do
+  ente; regulamento municipal diferente entra como regra nova com a vigência dele.
+- `DATA-DO-DIARIO-OFICIAL`: a vigência é a data de publicação da página oficial; a edição do DOU não foi conferida.

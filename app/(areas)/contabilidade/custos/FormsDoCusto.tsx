@@ -282,7 +282,8 @@ export function FormCustoDaFolha({ liquidacoes }: { readonly liquidacoes: readon
         <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs leading-relaxed text-[color:var(--color-ink-2)]">
           O valor da liquidação é repartido pelos servidores que ela paga, conforme o contracheque da folha fechada, e cada
           parte vai ao centro de custo do servidor no último dia da competência. <strong>Sem novo lançamento contábil.</strong>{" "}
-          Servidor sem centro de custo na competência impede a apropriação, que diz qual matrícula falta.
+          O valor de servidor sem centro de custo na competência fica numa linha própria, &quot;sem centro de custo&quot;, com a
+          matrícula; ele não é repartido entre os outros centros.
         </div>
         <label className="block">
           <span className={ROTULO}>Liquidação da folha</span>

@@ -1320,6 +1320,7 @@ export type NomeDeServico =
   | "baixarRealizavel"
   | "anularMovimentoDeRealizavel"
   | "consolidarSolicitacoesNoProcesso"
+  | "fixarPrecoEstimado"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -2239,6 +2240,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   anularMovimentoDeRealizavel: "MOVIMENTAR_REALIZAVEL",
   // V39-R3 (R3-019) — consolidar as solicitações forma os itens do processo: o poder de quem cadastra o item do processo.
   consolidarSolicitacoesNoProcesso: "CADASTRAR_PROCESSO",
+  // V39-R3 (R3-020) — fixar o preço estimado é parte da pesquisa de preços: o poder de quem a registra.
+  fixarPrecoEstimado: "REGISTRAR_PESQUISA_DE_PRECOS",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3579,6 +3582,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
   saldoDoTanqueNaTx: "leitura pura (o saldo do combustível no tanque, pela soma dos movimentos)",
   previaVigenteDaLiquidacao: "leitura pura (a prévia de maior versão da liquidação)",
+  regraVigente: "leitura pura (a regra vigente do número mínimo de preços)",
   consolidadoEmProcesso: "leitura pura (o que cada item de solicitação já tem consolidado em processo)",
   origemDosItensDoProcesso: "leitura pura (as parcelas das solicitações em cada item do processo)",
   solicitacoesConsolidaveis: "leitura pura (as solicitações autorizadas com o que consolidar)",
@@ -3652,6 +3656,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // e APROPRIAR_CUSTO.
   custoPorCentro: "leitura (soma as partes gravadas por centro na janela de competência — não muta)",
   composicaoDoCentro: "leitura (a composição que volta ao fato: liquidação, empenho e credor — não muta)",
+  composicaoSemCentro: "leitura (V39-R3: a parcela da folha sem centro de custo, por vínculo, com a liquidação — não muta)",
   criteriosDeRateio: "leitura (os critérios publicados, com a marca do vigente — não muta)",
   centrosDeCusto: "leitura (o rol curto de setores ativos que o formulário do critério oferece)",
   criterioVigenteDeRateio: "leitura (resolve a versão vigente de uma chave numa data — composável interno do apropriar)",

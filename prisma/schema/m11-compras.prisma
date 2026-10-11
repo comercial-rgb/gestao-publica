@@ -204,6 +204,8 @@ model ItemDePesquisaDePrecos {
   quantidade Decimal @db.Decimal(18, 4)
 
   cotacoes CotacaoDePreco[]
+  /// V39-R3 (R3-020) — o preço estimado fixado (append-only; vale o mais recente), com a memória do cálculo.
+  precosEstimados PrecoEstimadoDoItem[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -227,6 +229,13 @@ model CotacaoDePreco {
 
   /// A origem da cotação: proposta do fornecedor, nota fiscal, portal de compras.
   origem String
+
+  /// V39-R3 (R3-020) — de onde veio o preço (IN SEGES/ME 65/2021, art. 5º, I a V), o dia do preço (o da cotação, do
+  /// contrato similar, do acesso ao sítio, da nota) e o documento que o prova. Nulos só nas cotações anteriores à R3:
+  /// essas não entram num preço estimado fixado (origem não verificável).
+  parametro   ParametroDaPesquisaDePrecos?
+  dataDoPreco DateTime?
+  documento   String?
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -620,4 +629,76 @@ model AlocacaoDeSolicitacaoNoProcesso {
 
   @@unique([itemDeSolicitacaoId, itemDoProcessoId])
   @@index([itemDoProcessoId])
+}
+
+// ============================================================================
+// V39-R3 (R3-020, V39-040) — O PREÇO ESTIMADO FIXADO, COM MÉTODO, FONTES E MEMÓRIA.
+//
+// Fonte: Lei nº 14.133/2021, art. 23, e Instrução Normativa SEGES/ME nº 65/2021, arts. 5º e 6º
+// (docs/oficial/compras/, com MANIFEST-PESQUISA-DE-PRECOS.json).
+// ============================================================================
+
+/// Os parâmetros do art. 5º da IN SEGES/ME 65/2021 (incisos I a V).
+enum ParametroDaPesquisaDePrecos {
+  /// I — sistemas oficiais de governo (Painel de Preços, banco de preços em saúde).
+  PAINEL_DE_PRECOS
+  /// II — contratações similares da Administração Pública, no ano anterior.
+  CONTRATACOES_SIMILARES
+  /// III — mídia especializada, tabela de referência do Poder Executivo federal, sítios eletrônicos (com data e hora).
+  MIDIA_TABELAS_E_SITIOS
+  /// IV — pesquisa direta com fornecedores, por solicitação formal de cotação.
+  FORNECEDORES
+  /// V — base nacional de notas fiscais eletrônicas.
+  NOTAS_FISCAIS
+}
+
+/// Os métodos do art. 6º da IN SEGES/ME 65/2021.
+enum MetodoDoPrecoEstimado {
+  MEDIA
+  MEDIANA
+  MENOR
+}
+
+/// A regra do número mínimo de preços (IN 65, art. 6º: "um conjunto de três ou mais preços"), carregada do texto
+/// oficial por scripts/carregar-regra-da-pesquisa-de-precos.ts. Vale a de vigência mais recente; sem regra, não se fixa.
+model RegraDaPesquisaDePrecos {
+  id String @id @default(cuid())
+
+  minimoDePrecos Int
+  /// O dispositivo e o arquivo de onde a regra foi lida (com o sha256 do manifesto).
+  fonte          String
+  vigenteDesde   DateTime
+
+  precosEstimados PrecoEstimadoDoItem[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([vigenteDesde])
+}
+
+/// O preço estimado de um item, fixado: método, preços usados (com o parâmetro e o documento de cada um), descartes
+/// com o motivo, e a justificativa quando há menos preços que o mínimo. Append-only; vale o mais recente.
+model PrecoEstimadoDoItem {
+  id String @id @default(cuid())
+
+  itemId String
+  item   ItemDePesquisaDePrecos @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  metodo        MetodoDoPrecoEstimado
+  valorEstimado Decimal @db.Decimal(18, 6)
+  precosUsados  Int
+  /// [{ cotacaoId, fornecedor, valor, parametro, dataDoPreco, documento }]
+  memoria       Json
+  /// [{ cotacaoId, fornecedor, valor, motivo }]
+  descartes     Json
+  justificativaMenosPrecos String?
+
+  regraId String
+  regra   RegraDaPesquisaDePrecos @relation(fields: [regraId], references: [id], onDelete: Restrict)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([itemId, criadoEm])
 }

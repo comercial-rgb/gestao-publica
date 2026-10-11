@@ -54,7 +54,8 @@ export function FormPesquisaDePrecos(): React.ReactElement {
               <span className={ROTULO}>Quantidade</span>
               <input name={`itens.${i}.quantidade`} inputMode="decimal" placeholder="10" className={CAMPO} />
             </label>
-            {[0, 1].map((j) => (
+            {/* V39-R3 (R3-020) — três cotações por item: o preço estimado pede três ou mais preços (IN SEGES/ME 65/2021, art. 6º). */}
+            {[0, 1, 2].map((j) => (
               <div key={j} data-cotacao={j} className="contents">
                 <CampoReferenciado
                   name={`itens.${i}.cotacoes.${j}.fornecedorId`}
@@ -70,6 +71,25 @@ export function FormPesquisaDePrecos(): React.ReactElement {
                 <label className="text-xs text-[color:var(--color-ink-2)]">
                   <span className={ROTULO}>Origem</span>
                   <input name={`itens.${i}.cotacoes.${j}.origem`} placeholder="proposta por e-mail" className={CAMPO} />
+                </label>
+                <label className="text-xs text-[color:var(--color-ink-2)]">
+                  <span className={ROTULO}>De onde veio o preço</span>
+                  <select name={`itens.${i}.cotacoes.${j}.parametro`} defaultValue="" className={CAMPO}>
+                    <option value="">Escolha…</option>
+                    <option value="PAINEL_DE_PRECOS">Painel de preços ou banco de preços em saúde</option>
+                    <option value="CONTRATACOES_SIMILARES">Contratação similar da Administração</option>
+                    <option value="MIDIA_TABELAS_E_SITIOS">Mídia especializada, tabela oficial ou sítio eletrônico</option>
+                    <option value="FORNECEDORES">Pesquisa direta com fornecedor</option>
+                    <option value="NOTAS_FISCAIS">Nota fiscal eletrônica</option>
+                  </select>
+                </label>
+                <label className="text-xs text-[color:var(--color-ink-2)]">
+                  <span className={ROTULO}>Dia do preço</span>
+                  <input type="date" name={`itens.${i}.cotacoes.${j}.dataDoPreco`} className={CAMPO} />
+                </label>
+                <label className="text-xs text-[color:var(--color-ink-2)]">
+                  <span className={ROTULO}>Documento que prova o preço</span>
+                  <input name={`itens.${i}.cotacoes.${j}.documento`} placeholder="ofício de cotação nº, endereço e hora do acesso, chave da nota" className={CAMPO} />
                 </label>
               </div>
             ))}

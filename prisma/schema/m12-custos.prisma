@@ -125,6 +125,8 @@ model ApropriacaoDeCusto {
   motivo String
 
   itens ItemDaApropriacaoDeCusto[]
+  /// V39-R3 (R3-021) — a parte da folha sem centro de custo, mostrada e não rateada.
+  semCentro ParcelaSemCentroDeCusto[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -150,4 +152,25 @@ model ItemDaApropriacaoDeCusto {
   /// somariam certo e impediriam a leitura "quanto foi para este centro".
   @@unique([apropriacaoId, centroId])
   @@index([centroId])
+}
+
+/// V39-R3 (R3-021) — A PARCELA SEM CENTRO DE CUSTO, uma por vínculo.
+///
+/// O custo da folha vai ao centro de custo de cada vínculo na competência. O vínculo que não tem centro não
+/// some e não é rateado entre os outros (isso seria escolher por quem não decidiu): o valor dele fica aqui,
+/// com a matrícula, e o relatório o mostra numa linha própria. A soma dos centros mais estas parcelas é o
+/// valor da liquidação — a base de custo escolhida. Append-only, como a apropriação.
+model ParcelaSemCentroDeCusto {
+  id String @id @default(cuid())
+
+  apropriacaoId String
+  apropriacao   ApropriacaoDeCusto @relation(fields: [apropriacaoId], references: [id], onDelete: Restrict)
+
+  vinculoId String
+  vinculo   Vinculo @relation(fields: [vinculoId], references: [id], onDelete: Restrict)
+
+  valor Decimal @db.Decimal(18, 2)
+
+  @@unique([apropriacaoId, vinculoId])
+  @@index([vinculoId])
 }

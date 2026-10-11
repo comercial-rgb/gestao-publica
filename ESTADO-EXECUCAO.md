@@ -27,12 +27,61 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
-| R3-019 solicitações formam os itens do processo | este | sim | 6 testes, 7 mutações vermelhas | `percurso-v39r3-solicitacao-no-processo.mts` 13/13 | pendente, já com itens, já comprometida, sem permissão, anulação, duas unidades | base R3 |
+| R3-021 custo da folha com a parcela sem centro | este | sim | 4 testes novos (19 no arquivo), 6 mutações vermelhas | `percurso-v39r3-custo-da-folha.mts` 6/6 | quem só consulta não recebe o formulário nem a lista por matrícula; divergência com o fechamento; folha por critério; sem permissão (teste) | base R3 |
+| R3-020 pesquisa de preços com origem e preço fixado | este | sim | 8 testes, 16 mutações vermelhas | `percurso-v39r3-pesquisa-de-precos.mts` 6/6 | abaixo do mínimo sem justificativa, justificativa curta, preço sem parâmetro, sem dia ou sem documento, dia futuro, sem regra na data da pesquisa, quem só consulta | base R3 |
+| R3-019 solicitações formam os itens do processo | f9ead49f | sim | 6 testes, 7 mutações vermelhas | `percurso-v39r3-solicitacao-no-processo.mts` 13/13 | pendente, já com itens, já comprometida, sem permissão, anulação, duas unidades | base R3 |
 | R3-016 valores a receber de volta (realizáveis) | 43b2cbba | sim | 8 testes, 14 mutações vermelhas | `percurso-v39r3-realizavel.mts` 9/9 | sem decisão do ente, conta fora dos grupos, baixa acima do saldo, sem permissão | base R3 |
 | R3-015 linha de extrato digitada | d1ca4988 | sim | 8 testes, 9 mutações vermelhas | `percurso-v39r3-transcricao-de-extrato.mts` 11/11 | sem permissão, dia futuro, repetida, quem digitou não revisa, dia coberto pelo banco | base R3 |
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-021 (V39-056, M12) — o custo da folha com a parcela sem centro de custo
+- **Rota:** Contabilidade › Custos por centro › "Apropriar o custo da folha pelo centro de cada servidor" (só para quem
+  tem APROPRIAR_CUSTO). O acumulado ganha a linha "Sem centro de custo", o "Total apropriado" a inclui, e abaixo a lista
+  por matrícula, liquidação e empenho.
+- **Regra:** antes, um servidor sem centro de custo no último dia da competência recusava a liquidação inteira. Agora o
+  valor dele vai a `ParcelaSemCentroDeCusto` (por vínculo, append-only), sem rateio; centros + parcela = valor da
+  liquidação, ou recusa. O teste antigo de recusa foi substituído pela regra nova, com N=2 na mesma liquidação (grupo
+  não por servidor: um com centro, outro sem) e o caso sem nada sem centro.
+- **Schema:** `20261111091700_v39r3_custo_da_folha_sem_centro` e `prisma/sql/ck_parcela_sem_centro_de_custo.sql`; na base de
+  teste e na R3. Massa seção 8: FIC-0001 com centro (R3-ADM) desde janeiro, FIC-0002 sem; contador de custos e consulta.
+- **Comandos:** `m33-ir-da-folha` 17/17 (a fixture do grupo não por servidor precisou do credor declarado); 4 mutações
+  vermelhas (parcela não gravada, volta a recusar, soma sem a parcela, relatório sem a linha); percurso 5/5 (competência
+  09/2026: 2.400,00 ao centro, 2.800,00 sem centro, total 5.200,00 na tela igual ao banco); depois da auditoria, 6/6 na
+  competência 08/2026 (sem centro 5.600,00, total 10.400,00, tela igual ao banco), com a lista por matrícula escondida
+  de quem não consulta a folha.
+- **Auditoria de invariantes (R3-021 e a revisão das correções da R3-020), achados corrigidos:** a estimativa da pesquisa
+  arredondava o preço fixado a 2 casas antes de multiplicar (10,333333 × 500 dava 5.165,00, não 5.166,67) — agora
+  `estimativaPeloFixado`, pura e testada; a recusa ainda mostrava o documento do fornecedor; a guarda de reconciliação
+  não tinha teste; a apropriação por critério não travava a liquidação nem excluía a de folha (dois caminhos somavam o
+  custo duas vezes); a tela prometia que registrar o centro corrigia o passado; a remuneração por matrícula aparecia sem
+  CONSULTAR_FOLHA e sem limite; o percurso usava fuso cravado e comparação por trecho; desempate do preço vigente.
+  Mais 4 testes e 4 mutações vermelhas (reconciliação, critério aceita folha, arredondamento antes, documento na recusa).
+- Pendência nomeada: `ATRIBUIR-DEPOIS-A-PARCELA-SEM-CENTRO` (MODULO.md do M12).
+
+### R3-020 (V39-040, M11) — a pesquisa de preços com origem verificável e o preço estimado fixado
+- **Rota:** Licitações › Pesquisas de preços › Nova: três cotações por item, cada uma com de onde veio o preço (os cinco
+  parâmetros da IN SEGES/ME 65/2021, art. 5º), o dia do preço e o documento que o prova. No detalhe da pesquisa, "Preço
+  estimado de cada item": os preços com a origem e o formulário para fixar (método, descartes com motivo, justificativa
+  abaixo do mínimo).
+- **Fonte oficial:** Lei 14.133/2021 e IN 65/2021 baixadas de planalto.gov.br e gov.br, guardadas em
+  `docs/oficial/compras/` com sha256 no manifesto; o mínimo de preços (3) é lido da frase do art. 6º pela carga
+  `scripts/carregar-regra-da-pesquisa-de-precos.ts` (carregada na base R3; sem regra, não se fixa).
+- **Schema:** `20261111091600_v39r3_pesquisa_de_precos_com_fonte_e_memoria` e `prisma/sql/ck_pesquisa_de_precos.sql`;
+  aplicadas na base de teste e na R3. `PrecoEstimadoDoItem` é append-only, com a memória de cada preço usado e os
+  descartes. Poder REGISTRAR_PESQUISA_DE_PRECOS, nenhuma ação nova. Massa: a pesquisadora de preços.
+- **Auditoria de invariantes, achados corrigidos:** a estimativa do detalhe ainda era a média de TODAS as cotações (com as
+  sem origem e as descartadas) — passou a ser a soma pelo preço fixado, e não se mostra enquanto faltar item; a regra
+  valia por hoje, não pela data da pesquisa; a vigência era a data do título em meia-noite UTC — passou a ser a de
+  publicação da página guardada, no início do dia civil; a recusa mostrava nome de arquivo e sha256; preço de dia futuro
+  entrava; o documento do fornecedor (podia ser CPF) aparecia na tela — agora o nome; preço com milhar e sem truncar; a
+  justificativa curta não dizia o que faltava; testes que não provavam o motivo (o título casava as duas mensagens) e
+  campo a campo da origem. Nomeadas no MODULO.md: o preço fixado não alimenta o processo, a aprovação da autoridade
+  (art. 6º, § 5º), os prazos e requisitos do art. 5º, o preço que não é cotação, a adoção da regra pelo ente, a data do DOU.
+- **Comandos:** `m11-preco-estimado.test.ts` 7/7; 6 + 8 mutações vermelhas e restauradas; `modules/m11-licitacoes`, censo,
+  `m33-ir-da-folha` e `m12-custos-por-centro` 200/200 (uma falha de fixture corrigida, abaixo); typecheck 0/0/0;
+  percurso 6/6. A regra foi recarregada na R3 com a vigência nova (a linha antiga, mínimo igual, fica até a R3 ser refeita).
 
 ### R3-019 (V39-039, M11) — as solicitações de compra formam os itens do processo
 - **Rota:** Licitações › Processos › (processo sem itens) › "Formar os itens a partir das solicitações de compra": as
@@ -169,7 +218,7 @@ Nenhuma linha acima foi validada externamente nem publicada.
   `m07-calculo-da-retencao` e `m07` 58/58.
 
 ### O próximo passo
-1. R3-020 a R3-030 na ordem do pedido (R3-020 já tem os textos oficiais em `docs/oficial/compras/`).
+1. R3-022 a R3-030 na ordem do pedido (R3-022: não há relação material → GTIN, bloqueio a nomear, sem inventar).
 2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
 3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
 

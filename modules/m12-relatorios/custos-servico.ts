@@ -1,4 +1,5 @@
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { travar } from "../../packages/locks/index.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { somaLiquidaEstornaveis } from "../../packages/estornaveis/index.js";
 import {
@@ -160,6 +161,13 @@ export async function apropriarCustoDaLiquidacao(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.apropriarCustoDaLiquidacao, "ENTE");
+    // V39-R3 — a MESMA trava do caminho da folha: duas telas sobre a mesma liquidação não leem "nada apropriado" juntas.
+    await travar(tx, "Liquidacao", [d.liquidacaoId]);
+    // A folha se apropria pelo centro de cada servidor (e o que não tem centro fica à parte); por critério, seria
+    // ratear por quem não decidiu — e os dois caminhos somariam o custo duas vezes.
+    if ((await tx.liquidacaoDaFolha.findUnique({ where: { liquidacaoId: d.liquidacaoId }, select: { liquidacaoId: true } })) !== null) {
+      throw new Error("Esta liquidação é de folha de pagamento: aproprie o custo dela pelo centro de cada servidor, não por critério de rateio. Nada foi gravado.");
+    }
 
     const liq = await tx.liquidacao.findUnique({
       where: { id: d.liquidacaoId },

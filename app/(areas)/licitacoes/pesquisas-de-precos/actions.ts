@@ -37,10 +37,14 @@ export async function criarPesquisaAction(_prev: EstadoDaPesquisa, formData: For
       const materialId = String(formData.get(`itens.${i}.materialId`) ?? "").trim();
       const quantidade = String(formData.get(`itens.${i}.quantidade`) ?? "").trim();
       if (materialId === "" && quantidade === "") return [];
-      const cotacoes = linhasDoFormulario(formData, `itens.${i}.cotacoes`, ["fornecedorId", "valorUnitario", "origem"], ["fornecedorId", "valorUnitario"]).map((q) => ({
+      const cotacoes = linhasDoFormulario(formData, `itens.${i}.cotacoes`, ["fornecedorId", "valorUnitario", "origem", "parametro", "dataDoPreco", "documento"], ["fornecedorId", "valorUnitario"]).map((q) => ({
         fornecedorId: q["fornecedorId"] ?? "",
         valorUnitario: q["valorUnitario"] ?? "",
         origem: q["origem"] ?? "",
+        // V39-R3 (R3-020) — a origem verificável do preço; o serviço guarda, e só o preço com ela entra no preço fixado.
+        parametro: q["parametro"] ?? "",
+        dataDoPreco: q["dataDoPreco"] ?? "",
+        documento: q["documento"] ?? "",
       }));
       return [{ materialId, quantidade, cotacoes }];
     });

@@ -40,6 +40,12 @@ export interface CustoPorCentro {
   readonly centros: readonly CustoDoCentro[];
   /** Σ dos centros. A conta que o leitor faria com o dedo. */
   readonly total: Money;
+  /**
+   * V39-R3 (R3-021) — a folha apropriada que ficou SEM CENTRO de custo (vínculo sem centro na competência). Linha
+   * própria, não rateada; `apropriado` = `total` + `semCentro`, e é este que reconcilia com as liquidações apropriadas.
+   */
+  readonly semCentro: Money;
+  readonly apropriado: Money;
 }
 
 /** A janela: o exercício civil do ente, ou o intervalo pedido. */
@@ -113,12 +119,52 @@ export async function custoPorCentro(
     .map((c) => ({ ...c.dados, apropriacoes: c.apropriacoes.size }))
     .sort((a, b) => a.centroCodigo.localeCompare(b.centroCodigo));
 
-  return {
-    de,
-    ate,
-    centros,
-    total: centros.reduce((acc, c) => toMoney(acc.plus(c.total)), toMoney("0.00")),
-  };
+  const parcelas = await tx.parcelaSemCentroDeCusto.findMany({
+    where: { apropriacao: { competencia: { gte: de, lte: ate } } },
+    select: { valor: true },
+  });
+  const total = centros.reduce((acc, c) => toMoney(acc.plus(c.total)), toMoney("0.00"));
+  const semCentro = parcelas.reduce((acc, x) => toMoney(acc.plus(x.valor.toFixed(2))), toMoney("0.00"));
+  return { de, ate, centros, total, semCentro, apropriado: toMoney(total.plus(semCentro)) };
+}
+
+export interface LinhaSemCentro {
+  readonly apropriacaoId: string;
+  readonly competencia: Date;
+  readonly matricula: string;
+  readonly valor: Money;
+  readonly liquidacaoNumero: string;
+  readonly liquidacaoData: Date;
+  readonly empenhoNumero: string;
+}
+
+/**
+ * V39-R3 (R3-021) — DE ONDE VEIO A PARCELA SEM CENTRO: cada vínculo, com a liquidação e o empenho. É a lista de quem
+ * precisa ter o centro de custo registrado no Pessoal.
+ */
+export async function composicaoSemCentro(
+  tx: Tx,
+  p: { readonly exercicio?: number; readonly de?: Date; readonly ate?: Date }
+): Promise<readonly LinhaSemCentro[]> {
+  const { de, ate } = janela(p);
+  const linhas = await tx.parcelaSemCentroDeCusto.findMany({
+    where: { apropriacao: { competencia: { gte: de, lte: ate } } },
+    orderBy: [{ apropriacao: { competencia: "asc" } }, { vinculo: { matricula: "asc" } }],
+    select: {
+      valor: true,
+      vinculo: { select: { matricula: true } },
+      apropriacao: { select: { id: true, competencia: true, liquidacao: { select: { numero: true, data: true, empenho: { select: { numero: true } } } } } },
+    },
+  });
+  return linhas.map((l) => ({
+    apropriacaoId: l.apropriacao.id,
+    competencia: l.apropriacao.competencia,
+    matricula: l.vinculo.matricula,
+    valor: toMoney(l.valor.toFixed(2)),
+    liquidacaoNumero: l.apropriacao.liquidacao.numero,
+    liquidacaoData: l.apropriacao.liquidacao.data,
+    empenhoNumero: l.apropriacao.liquidacao.empenho.numero,
+  }));
 }
 
 export interface LinhaDaComposicao {

@@ -137,10 +137,12 @@ export async function apropriarCustoDaFolhaAction(_prev: EstadoDoCusto, formData
     try {
       const r = await apropriarCustoDaFolhaNaTela(liquidacaoId);
       revalidatePath("/contabilidade/custos");
+      // V39-R3 (R3-021) — o que ficou sem centro de custo é dito, com as matrículas: não some e não se rateia.
+      const sem = r.matriculasSemCentro.length === 0 ? "" : ` Sem centro de custo na competência: R$ ${r.semCentro} (matrícula(s) ${r.matriculasSemCentro.join(", ")}); o centro registrado no vínculo, no Pessoal, vale para as competências ainda não apropriadas.`;
       return {
         sucesso: r.novo
-          ? `Custo da folha apropriado: R$ ${r.valor} em ${String(r.centros)} centro(s) de custo, conforme o centro de cada servidor na competência.`
-          : `Esta liquidação da folha já estava apropriada (R$ ${r.valor} em ${String(r.centros)} centro(s)). Nada foi gravado de novo.`,
+          ? `Custo da folha apropriado: R$ ${r.valor}, em ${String(r.centros)} centro(s) de custo conforme o centro de cada servidor na competência.${sem}`
+          : `Esta liquidação da folha já estava apropriada (R$ ${r.valor} em ${String(r.centros)} centro(s)). Nada foi gravado de novo.${sem}`,
       };
     } catch (e) {
       return { erro: mensagemDoErro(e, "Não foi possível apropriar o custo da folha. Nada foi gravado.") };

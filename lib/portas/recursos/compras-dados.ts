@@ -1,5 +1,6 @@
 import { diaCivilBr, meioDiaCivil } from "../../../packages/datas/index.js";
-import { toMoney } from "../../../packages/contracts/index.js";
+import { Decimal, toMoney } from "../../../packages/contracts/index.js";
+import { estimativaPeloFixado } from "../../../modules/m11-licitacoes/preco-estimado.js";
 import { formatarDocumento } from "../../../packages/documento/index.js";
 import type { Prisma } from "../../../prisma/generated/client/client.js";
 import {
@@ -363,6 +364,8 @@ export async function verPesquisa(id: string): Promise<DetalheLido | null> {
         select: {
           id: true, materialId: true, quantidade: true, criadoEm: true, criadoPor: true,
           material: { select: { codigo: true, descricaoSucinta: true } },
+          // V39-R3 (R3-020) — o preço estimado que vale é o FIXADO (o mais recente), com método e origem verificável.
+          precosEstimados: { orderBy: [{ criadoEm: "desc" }, { id: "desc" }], take: 1, select: { valorEstimado: true } },
           cotacoes: { orderBy: { criadoEm: "asc" }, select: { id: true, valorUnitario: true, origem: true, criadoEm: true, criadoPor: true, fornecedor: { select: { documento: true, versoes: { select: { nome: true }, orderBy: { criadoEm: "desc" }, take: 1 } } } } },
         },
       },
@@ -371,10 +374,11 @@ export async function verPesquisa(id: string): Promise<DetalheLido | null> {
   if (p === null) return null;
   const estatisticas = await estatisticasDaPesquisa(prisma, id);
   const porMaterial = new Map(estatisticas.map((e) => [e.materialId, e]));
-  const totalPeloMedio = p.itens.reduce((s, i) => {
-    const e = porMaterial.get(i.materialId);
-    return e === undefined ? s : s.plus(e.medio.times(i.quantidade.toFixed(4)));
-  }, toMoney("0"));
+  // V39-R3 (R3-020) — a estimativa da pesquisa é a soma de quantidade × preço FIXADO. Item sem preço fixado não entra
+  // por média nenhuma: enquanto faltar, a estimativa não se mostra e se diz quantos faltam.
+  const { total: totalPeloFixado, semFixar } = estimativaPeloFixado(
+    p.itens.map((i) => ({ quantidade: new Decimal(i.quantidade.toString()), fixado: i.precosEstimados[0] === undefined ? null : new Decimal(i.precosEstimados[0].valorEstimado.toString()) }))
+  );
   const historico: LinhaDoHistorico[] = p.itens.flatMap((i) => {
     const e = porMaterial.get(i.materialId);
     return [
@@ -384,7 +388,7 @@ export async function verPesquisa(id: string): Promise<DetalheLido | null> {
         quando: diaCivilBr(p.data),
         registradoEm: diaCivilBr(i.criadoEm),
         por: i.criadoPor,
-        motivo: e === undefined || e.cotacoes === 0 ? "Sem cotação: média, mínimo e máximo indisponíveis." : `${e.cotacoes} cotação(ões) · mínimo ${e.minimo.toFixed(6)} · médio ${e.medio.toFixed(6)} · máximo ${e.maximo.toFixed(6)}`,
+        motivo: e === undefined || e.cotacoes === 0 ? "Sem cotação." : `${e.cotacoes} cotação(ões) registrada(s), de ${e.minimo.toFixed(6)} a ${e.maximo.toFixed(6)}; o preço estimado é o fixado na seção abaixo`,
       },
       ...i.cotacoes.map((q) => ({
         id: q.id,
@@ -404,7 +408,9 @@ export async function verPesquisa(id: string): Promise<DetalheLido | null> {
       { rotulo: "Número", valor: p.numero },
       { rotulo: "Objeto", valor: p.objeto, tipo: "longo" },
       { rotulo: "Data", valor: diaCivilBr(p.data), tipo: "data" },
-      { rotulo: "Estimativa pelo preço médio", valor: totalPeloMedio.toFixed(2), tipo: "dinheiro", nota: "Soma de quantidade × preço médio das cotações de cada item." },
+      totalPeloFixado !== null
+        ? { rotulo: "Estimativa pelo preço fixado", valor: totalPeloFixado.toFixed(2), tipo: "dinheiro", nota: "Soma de quantidade × preço estimado fixado de cada item (método e origem na seção abaixo)." }
+        : { rotulo: "Estimativa pelo preço fixado", valor: `Ainda sem preço fixado em ${String(semFixar)} de ${String(p.itens.length)} item(ns).` },
       { rotulo: "Cadastrada em", valor: diaCivilBr(p.criadoEm), tipo: "data" },
       { rotulo: "Cadastrada por", valor: p.criadoPor },
     ],
@@ -415,7 +421,7 @@ export async function verPesquisa(id: string): Promise<DetalheLido | null> {
 export interface ItemDaPesquisaLido {
   readonly materialId: string;
   readonly quantidade: string;
-  readonly cotacoes: readonly { readonly fornecedorId: string; readonly valorUnitario: string; readonly origem: string }[];
+  readonly cotacoes: readonly { readonly fornecedorId: string; readonly valorUnitario: string; readonly origem: string; readonly parametro?: string; readonly dataDoPreco?: string; readonly documento?: string }[];
 }
 
 export async function criarPesquisa(c: Campos, itens: readonly ItemDaPesquisaLido[]): Promise<string> {
@@ -427,7 +433,12 @@ export async function criarPesquisa(c: Campos, itens: readonly ItemDaPesquisaLid
       itens: itens.map((i) => ({
         materialId: i.materialId,
         quantidade: decimalDaTela(i.quantidade),
-        cotacoes: i.cotacoes.map((q) => ({ fornecedorId: q.fornecedorId, valorUnitario: decimalDaTela(q.valorUnitario), origem: q.origem })),
+        cotacoes: i.cotacoes.map((q) => ({
+          fornecedorId: q.fornecedorId, valorUnitario: decimalDaTela(q.valorUnitario), origem: q.origem,
+          ...(q.parametro === undefined || q.parametro === "" ? {} : { parametro: q.parametro as "PAINEL_DE_PRECOS" }),
+          ...(q.dataDoPreco === undefined || q.dataDoPreco === "" ? {} : { dataDoPreco: meioDiaCivil(q.dataDoPreco) }),
+          ...(q.documento === undefined || q.documento === "" ? {} : { documento: q.documento }),
+        })),
       })),
       criadoPor,
     });
