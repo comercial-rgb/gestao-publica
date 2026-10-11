@@ -266,6 +266,22 @@ const FATOS_PROPRIOS_DO_TRIBUTO: Readonly<Record<CalculoDaRetencaoParaPersistir[
   INSS: [],
 };
 
+/**
+ * V39-R3 (R3-014) — recusa a prévia da liquidação que outro pagamento VIVO já usou (a memória dele aponta a mesma versão,
+ * no cálculo ou na retenção própria). Pagamento anulado libera a versão. Leitura; quem chama trava a liquidação antes.
+ */
+export async function exigirPreviaAindaNaoUsada(tx: Tx, previaId: string, pagamentoId: string | null): Promise<void> {
+  const vivo = { estornoDeId: null, estornos: { none: {} }, ...(pagamentoId === null ? {} : { id: { not: pagamentoId } }) };
+  const pelaPrevia = { path: ["previaDaLiquidacao", "id"], equals: previaId };
+  const usado =
+    (await tx.calculoDaRetencao.findFirst({ where: { entrada: pelaPrevia, pagamento: vivo }, select: { pagamento: { select: { numero: true } } } }))?.pagamento ??
+    (await tx.retencaoPropriaDoPagamento.findFirst({ where: { entrada: pelaPrevia, estornoDeId: null, pagamento: vivo }, select: { pagamento: { select: { numero: true } } } }))?.pagamento ??
+    null;
+  if (usado !== null) {
+    throw new Error(`Esta prévia das retenções já foi usada no pagamento ${usado.numero}: usá-la de novo reteria outra vez sobre o mesmo documento fiscal. Informe os dados fiscais deste pagamento, ou guarde uma prévia nova. Nada foi gravado.`);
+  }
+}
+
 export async function registrarCalculosDaRetencao(
   tx: Tx,
   p: {
@@ -281,6 +297,11 @@ export async function registrarCalculosDaRetencao(
     readonly proprias?: readonly { readonly fato: string; readonly valor: Money }[] | undefined;
   }
 ): Promise<void> {
+  // V39-R3 (R3-014) — UMA versão da prévia da liquidação serve a UM pagamento vivo. A base do INSS e do ISS é o documento
+  // fiscal guardado na prévia: duas parcelas com o mesmo valor previsto reteriam duas vezes sobre o documento inteiro.
+  // Aqui, dentro da transação do pagamento e depois da trava da liquidação, duas parcelas simultâneas não passam juntas.
+  const previas = new Set(p.calculos.map((c) => (c.entrada as { previaDaLiquidacao?: { id?: unknown } } | null)?.previaDaLiquidacao?.id).filter((x): x is string => typeof x === "string"));
+  for (const previaId of previas) await exigirPreviaAindaNaoUsada(tx, previaId, p.pagamentoId);
   const usados = new Set<string>();
   const vinculo = new Map<string, string | null>();
   const propriasUsadas = new Set<number>();

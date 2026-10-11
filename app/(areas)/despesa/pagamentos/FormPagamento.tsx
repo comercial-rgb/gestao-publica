@@ -27,6 +27,8 @@ export interface LiquidacaoPagavel {
   readonly saldoAPagar: string;
   readonly fonteCodigo: string;
   readonly categoria: string;
+  /** V39-R3 (R3-014) — a prévia das retenções guardada na liquidação, quando há (o rótulo). */
+  readonly previaDeRetencao?: string | undefined;
 }
 
 export interface ContaParaPagar {
@@ -173,6 +175,8 @@ export function FormPagamento({
   const [linhasRetencao, setLinhasRetencao] = useState<number>(0);
   /** V24 — retenção calculada ligada: IR, INSS e ISS pelas tabelas, no lugar das linhas manuais. */
   const [calculada, setCalculada] = useState<boolean>(false);
+  /** V39-R3 (R3-014) — reaproveitar a prévia guardada na liquidação: os dados fiscais dela, recalculados no pagamento. */
+  const [pelaPrevia, setPelaPrevia] = useState<boolean>(false);
   if (estado.sucesso !== undefined) {
     ref.current?.reset();
   }
@@ -390,17 +394,23 @@ export function FormPagamento({
 
       <fieldset className="mt-4 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3">
         <legend className="px-1 text-xs font-semibold text-[color:var(--color-ink)]">IR, INSS e ISS do fornecedor</legend>
-        <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)]">
+        {alvo?.previaDeRetencao !== undefined ? (
+          <label className="mb-2 flex items-center gap-2 text-xs text-[color:var(--color-ink-2)]" data-usar-previa>
+            <input type="checkbox" name="usarPrevia" checked={pelaPrevia} onChange={(e) => { setPelaPrevia(e.target.checked); if (e.target.checked) setCalculada(false); }} />
+            <span>Usar os dados fiscais da prévia guardada na liquidação ({alvo.previaDeRetencao}). O valor é calculado de novo com o valor e a data deste pagamento.</span>
+          </label>
+        ) : null}
+        {pelaPrevia ? null : <label className="flex items-center gap-2 text-xs text-[color:var(--color-ink-2)]">
           <input type="checkbox" name="retencaoCalculada" checked={calculada} onChange={(e) => setCalculada(e.target.checked)} />
           <span>
             Calcular as retenções pelas tabelas oficiais (o fornecedor vem do empenho, e o perfil fiscal dele, do cadastro de pessoas)
           </span>
-        </label>
-        {calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} documento={alvo?.credorCpfCnpj} liquidacaoId={escolhida} /> : null}
+        </label>}
+        {pelaPrevia ? null : <>{calculada ? <RetencaoCalculada opcoes={opcoesDaRetencao} formulario={ref} documento={alvo?.credorCpfCnpj} liquidacaoId={escolhida} /> : null}</>}
       </fieldset>
 
       {/* As duas formas não se somam: com o cálculo ligado, as linhas manuais saem do formulário. */}
-      {calculada ? null : <Retencoes tipos={tiposDeConsignacao} linhas={linhasRetencao} aoMudar={setLinhasRetencao} />}
+      {calculada || pelaPrevia ? null : <Retencoes tipos={tiposDeConsignacao} linhas={linhasRetencao} aoMudar={setLinhasRetencao} />}
 
       {estado.erro !== undefined ? (
         <p
@@ -564,11 +574,12 @@ export interface OpcoesDaRetencaoParaTela {
  * ⚠️ A PRÉVIA NÃO É AÇÃO DO FORMULÁRIO: uma ação de `<form>` limpa os campos ao terminar, e o operador
  * perderia o que digitou. O botão monta o FormData e chama a função do servidor por fora.
  */
-function RetencaoCalculada({
+export function RetencaoCalculada({
   opcoes,
   formulario,
   documento,
   liquidacaoId,
+  retorno,
 }: {
   readonly opcoes: OpcoesDaRetencaoParaTela;
   readonly formulario: React.RefObject<HTMLFormElement | null>;
@@ -576,6 +587,8 @@ function RetencaoCalculada({
   readonly documento?: string | undefined;
   /** V39-009 — a liquidação escolhida, para o atalho do perfil fiscal voltar a ela. */
   readonly liquidacaoId: string;
+  /** V39-R3 (R3-014) — para onde o atalho do perfil fiscal volta (padrão: o pagamento desta liquidação). */
+  readonly retorno?: string | undefined;
 }): React.ReactElement {
   const [previa, setPrevia] = useState<EstadoDaPrevia>({});
   const pessoaFisica = (documento ?? "").replace(/\D/g, "").length === 11;
@@ -773,7 +786,7 @@ function RetencaoCalculada({
               <>
                 {" "}
                 <a
-                  href={`/cadastros/pessoas/${previa.pessoaId}?retorno=${encodeURIComponent(`/despesa/pagamentos?liquidacao=${liquidacaoId}`)}#perfil-fiscal`}
+                  href={`/cadastros/pessoas/${previa.pessoaId}?retorno=${encodeURIComponent(retorno ?? `/despesa/pagamentos?liquidacao=${liquidacaoId}`)}#perfil-fiscal`}
                   className="font-medium text-[color:var(--color-primary)] hover:underline"
                   data-atalho-de-cadastro
                 >

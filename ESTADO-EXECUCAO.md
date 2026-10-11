@@ -1,5 +1,77 @@
 # Estado da execução
 
+## V39-R3: operações, dados de ensaio e lacunas (iniciada em 11/10/2026; vale sobre a V39-R2 abaixo)
+
+O pedido está em `docs/lotes/V39-R3-operacoes-e-lacunas.md`, guardado como veio. A V39 não está encerrada. Regime:
+profundidade em estoque, retenção, estorno e travas; superfície nas telas de consulta.
+
+### Resumo atual (11/10/2026)
+- **HEAD local:** ver o último commit "V39-R3". **Publicado:** 29ba05d (nada da R3 foi publicado ainda).
+- **Base de ensaio:** `gestao_publica_esperanca_r3`, declarada ENSAIO, criada do modelo v35. Recebeu migrations, SQL
+  manual, papel de runtime, atualizações de permissão, licença de ensaio, a semente fictícia, as tabelas oficiais da
+  retenção (`scripts/carregar-tabelas-da-retencao.ts`, sha256 conferido) e a massa `scripts/demonstracao/semear-massa-r3.mts`
+  (seções 1 a 6, pelos serviços com o papel de runtime; segunda corrida cria 0). Servida na 3012 em modo dev com o
+  papel de runtime.
+- **Produção (R3-002):** declarada DEMONSTRACAO desde 05/10. Carregar a massa da R3 nela **não foi feito**: falta a
+  confirmação de destino e autorização que o pedido exige.
+
+### Unidades
+| Unidade | Commit | Construído | Teste (runtime) | Caminho positivo | Recusa | Instalado |
+|---|---|---|---|---|---|---|
+| R3-001 massa reproduzível | f4da6ec9 + seguintes | sim | massa pelo papel de runtime | sim | massa recusa base que não é ENSAIO | só na base R3 |
+| R3-003/004 projeto da LOA e emendas pela tela | f4da6ec9 | (existente) | percurso | `percurso-v39r3-projeto-e-emendas.mts` ok | - | base R3 |
+| R3-005 a 008 dispensação, vencido, perda, sobra | f4da6ec9 | conta da classe no estoque | t12/t13, t-alm4 | `percurso-v39r3-farmacia.mts` 19/19 | lote vencido recusado | base R3 |
+| R3-009/010 correção da dispensação, troca de depósito | 1e84a8a0 | sim | sim, com mutação | `percurso-v39r3-correcao-e-troca-da-farmacia.mts` 16/16 | sim | base R3 |
+| R3-011 trava do bem | 1e84a8a0 | sim | mutação vermelha | - | bem baixado não move | base R3 |
+| R3-012 ajuste do inventário | 1e84a8a0 | sim | sim, com mutação | `percurso-v39r3-ajuste-do-inventario.mts` ok | segregação, repetição | base R3 |
+| R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
+| R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
+| R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-014 prévia das retenções | este | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
+
+Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-014 (V39-027, M07) — a prévia das retenções na liquidação
+- **Rota:** Despesa › Liquidações › "Prévia das retenções" na linha (`/despesa/liquidacoes/[id]/retencoes`). O formulário
+  é o mesmo componente da retenção calculada do pagamento; "Calcular" só mostra, "Guardar a prévia" grava uma versão.
+  No pagamento, a caixa "Usar os dados fiscais da prévia guardada na liquidação" reaproveita a versão vigente.
+- **Regras:** previsão sem lançamento nem consignação; versões append-only sob a trava da liquidação; `LIQUIDAR` para
+  guardar; recálculo no pagamento com a data dele, e a memória de cada tributo leva `previaDaLiquidacao {versao,
+  valorPrevisto, divergiu}`; só o pagamento do valor previsto reaproveita (a base do INSS e do ISS é o documento
+  fiscal: no parcial, reter de novo a cada parcela seria dobrar). Detalhes e pendências em `modules/m07-extraorcamentario/MODULO.md`.
+- **Schema:** migration `20261111090800_v39r3_previa_de_retencao_da_liquidacao` (tabela nova) e `prisma/sql/ck_previa_de_retencao.sql`;
+  aplicadas na base de teste e na base R3.
+- **Comandos:** `vitest m07-retencao-calculada.test.ts -t "V39-R3"` 5/5; mutações (sem a guarda do valor previsto; `divergiu`
+  sempre falso) deixaram 2 vermelhos e foram revertidas; `m16-censo.test.ts` 5/5; typecheck backend, app-sem-rotas e
+  scripts 0; percurso 8/8 na 3012 com o papel de runtime.
+- **Achado no percurso, corrigido no percurso:** a primeira corrida mandou a caixa com o valor errado do auxiliar
+  (`"on"` em vez de `"sim"`), a caixa ficou desmarcada e o pagamento saiu pelo caminho de sempre, sem retenção. O
+  pagamento 662654 da base R3 foi anulado pelo serviço (estorno, com motivo). O comportamento "havendo prévia, pagar sem
+  ela continua possível" ficou nomeado: PREVIA-SEM-AVISO-AO-PAGAR-SEM-ELA.
+- **Recusa nomeada vista na tela:** pagar pela prévia com IR de PJ sem a decisão do ente sobre a receita própria
+  (`/financeiro/retencoes-proprias`) é recusado e nada é gravado. A base R3 não tem essa decisão, e criá-la seria
+  inventar natureza de receita e contas do município.
+- **Serviço corrigido antes do commit:** o serviço lia o valor previsto como texto mascarado e transformaria `1234.56`
+  em `123456`; passou a aceitar só o canônico e recusar o mascarado.
+- **Auditoria de invariantes (antes do commit), achados corrigidos:**
+  - ALTO: duas parcelas com o mesmo valor previsto reaproveitariam a mesma versão e reteriam INSS e ISS duas vezes
+    sobre o documento. Agora uma versão serve a um pagamento vivo, com guarda dentro da transação do pagamento (depois
+    da trava da liquidação). Teste N=2 com o cálculo preparado antes da primeira parcela; a mutação que desliga a guarda
+    de dentro deixa o teste vermelho.
+  - MÉDIO: a tela exigia leitura do ente inteiro e trancava quem liquida numa unidade. Agora a leitura é pela unidade
+    da liquidação, e o formulário aparece só para quem tem LIQUIDAR no ente ou nesta unidade. Teste: LIQUIDAR em outra
+    unidade recusado com o motivo.
+  - Ficaram como estão, nomeados: a versão é lida fora da transação do pagamento (pode registrar a versão N com a N+1
+    já guardada; nada retém em dobro); a tela mostra o erro de acesso no lugar em vez de redirecionar; a exclusão mútua
+    "prévia contra dados fiscais" na porta do pagamento não tem teste de unidade (o percurso passa por ela).
+- **Comandos depois dos achados:** bloco V39-R3 7/7; `m07-retencao-calculada` e `m16-censo` 45/45; `m07-retencao`,
+  `m07-calculo-da-retencao` e `m07` 58/58.
+
+### O próximo passo
+1. R3-015 (linha de extrato digitada), R3-016 (realizáveis de natureza ativa), depois R3-019 a R3-030 na ordem do pedido.
+2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
+3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
+
 ## V39-R2: continuidade da V39 (iniciada em 10/10/2026; vale sobre a V39 abaixo)
 
 O pedido está em `docs/lotes/V39-R2-continuidade.md`, guardado como veio. Regime: profundidade nas frentes 1 a 3 (conciliação, retenção, razão de controle); a V39 não está encerrada.

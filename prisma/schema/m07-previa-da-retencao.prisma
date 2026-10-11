@@ -1,0 +1,33 @@
+// ============================================================================
+// V39-R3 (R3-014, V39-027) — A PRÉVIA DA RETENÇÃO GUARDADA NA LIQUIDAÇÃO.
+//
+// PREVISÃO, não reconhecimento: os dados fiscais da operação e a memória do cálculo pelas tabelas vigentes no dia
+// previsto. Não lança, não reserva, não vale como valor retido. O pagamento reaproveita os dados fiscais e recalcula
+// com o valor e a data dele; a memória gravada no pagamento (`CalculoDaRetencao.entrada`) aponta a prévia e diz se o
+// retido divergiu. Versões append-only: vale a de maior número.
+// ============================================================================
+
+model PreviaDeRetencaoDaLiquidacao {
+  id String @id @default(cuid())
+
+  liquidacaoId String
+  liquidacao   Liquidacao @relation("PreviasDeRetencaoDaLiquidacao", fields: [liquidacaoId], references: [id], onDelete: Restrict)
+  versao       Int
+
+  dataPrevista  DateTime
+  valorPrevisto Decimal  @db.Decimal(15, 2)
+  /// Os dados fiscais da operação (dinheiro em texto), para o pagamento reaproveitar.
+  operacao      Json
+  /// A memória por tributo: resultado, base, alíquota, valor e o porquê.
+  memoria       Json
+  totalPrevisto Decimal  @db.Decimal(15, 2)
+
+  /// O credor do empenho e o perfil fiscal vigente no dia previsto, como estavam.
+  documentoDoFornecedor String
+  perfilFiscalId        String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([liquidacaoId, versao])
+}

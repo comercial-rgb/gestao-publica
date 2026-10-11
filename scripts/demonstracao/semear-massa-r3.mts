@@ -21,6 +21,7 @@ import { cadastrarVeiculo } from "../../modules/m36-frota/servico.js";
 import { cadastrarCondutor } from "../../modules/m36-frota/operacao.js";
 import { cadastrarTanqueDeCombustivel } from "../../modules/m36-frota/tanque.js";
 import { cadastrarFarmacia } from "../../modules/m37-farmacia/servico.js";
+import { registrarPerfilFiscal } from "../../modules/m07-extraorcamentario/retencao-calculada.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -553,6 +554,28 @@ async function semearFrota(prisma: PrismaClient): Promise<void> {
   });
 }
 
+// ═══ 6. RETENÇÃO NA FONTE: o perfil fiscal do fornecedor do material de expediente (fictício) ═══
+// As tabelas do IR, do INSS e do ISS NÃO entram aqui: vêm de `scripts/carregar-tabelas-da-retencao.ts`, dos textos
+// oficiais com o sha256 conferido. Aqui só a situação fiscal do fornecedor fictício, que um servidor cadastraria.
+
+async function semearRetencao(prisma: PrismaClient): Promise<void> {
+  const empenho = await prisma.empenho.findFirst({ where: { numero: "R3-EXP-001/2026" }, select: { credorCpfCnpj: true } });
+  if (empenho === null) throw new Error("O empenho R3-EXP-001/2026 não está na base: rode a seção do almoxarifado antes. Nada foi gravado.");
+  if ((await prisma.naturezaDaRetencaoDoIR.count()) === 0) throw new Error("As tabelas da retenção não estão carregadas nesta base: rode scripts/carregar-tabelas-da-retencao.ts antes. Nada foi gravado.");
+  // O estabelecimento no próprio município do ente (do cadastro do ente, não de literal).
+  const municipio = (await prisma.enteConfig.findFirstOrThrow({ select: { codigoIbge: true } })).codigoIbge;
+  await passo(`Perfil fiscal do fornecedor ${empenho.credorCpfCnpj}: fora do Simples, sem dispensa do IR`, async () => {
+    const ja = await prisma.perfilFiscalDoFornecedor.findFirst({ where: { documento: empenho.credorCpfCnpj }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: null };
+    await registrarPerfilFiscal(prisma, {
+      documento: empenho.credorCpfCnpj, vigenteDesde: new Date("2026-01-01T00:00:00Z"), optanteSimplesNacional: false, tributadoNoAnexoIVDoSimples: false,
+      contribuiSobreReceitaBruta: false, dispensaDoIR: null, municipioDoEstabelecimento: municipio,
+      fundamento: `Situação fiscal fictícia do fornecedor da massa ${ENSAIO}`, criadoPor: ADMIN,
+    });
+    return { estado: "criado", valor: null };
+  });
+}
+
 // ═══ PRINCIPAL ═══
 
 function exigirBanco(): string {
@@ -588,6 +611,8 @@ async function main(): Promise<void> {
     await semearAlmoxarifadoGeral(prisma);
     console.log("\n[5] frota e tanque");
     await semearFrota(prisma);
+    console.log("\n[6] retenção na fonte");
+    await semearRetencao(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

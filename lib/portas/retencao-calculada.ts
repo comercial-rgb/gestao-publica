@@ -1,4 +1,5 @@
 import { cliente } from "./cliente";
+import { rotulosDasPrevias } from "../../modules/m07-extraorcamentario/previa-da-retencao";
 import { comEscritaAutenticada } from "./sessao";
 import { exigirLeituraDoEnte } from "./leitura";
 import {
@@ -151,4 +152,9 @@ export async function registrarPerfilFiscalPelaTela(input: {
   readonly fundamento: string;
 }): Promise<string> {
   return comEscritaAutenticada("ALTERAR_PESSOA", async (criadoPor) => registrarPerfilFiscal(cliente(), { ...input, criadoPor }));
+}
+
+/** V39-R3 (R3-014) — o rótulo da prévia guardada em cada liquidação da fila, para o pagamento oferecer o reaproveitamento. */
+export async function lerRotulosDasPrevias(liquidacaoIds: readonly string[]): Promise<Readonly<Record<string, string>>> {
+  return rotulosDasPrevias(cliente(), liquidacaoIds);
 }

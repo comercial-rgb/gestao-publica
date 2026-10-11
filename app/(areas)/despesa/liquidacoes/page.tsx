@@ -303,6 +303,9 @@ function colunas(x: Extras): readonly ColunaTabela<LiquidacaoDaTela>[] {
               Pagar
             </Link>
           ) : null}
+          <Link className="text-xs text-[color:var(--color-primary)] hover:underline" href={`/despesa/liquidacoes/${l.id}/retencoes`} data-previa-das-retencoes-link>
+            Prévia das retenções
+          </Link>
           <Link className="text-xs text-[color:var(--color-primary)] hover:underline" href={`/despesa/documento/LIQUIDACAO/${l.id}`}>Documento</Link>
           <FormAnular tipo="liquidacao" id={l.id} anulavelSaldo={l.saldoAPagar} estornavel={l.pago === "0.00"} numeroSugerido={x.numeroSugerido} />
         </span>

@@ -1,4 +1,5 @@
 import { cliente, PortaSemBancoError } from "./cliente";
+import { retencoesPelaPreviaDaLiquidacao } from "../../modules/m07-extraorcamentario/previa-da-retencao";
 import { comEscritaAutenticada } from "./sessao";
 import { criarOrdemCronologicaPrisma } from "../../modules/m06-ordem-cronologica/adapter-prisma";
 import {
@@ -297,6 +298,8 @@ export async function registrarPagamento(input: {
    * autorização do pagamento; a memória de cada tributo nasce na mesma transação. Exclui `retencoes`.
    */
   readonly operacaoFiscal?: DadosFiscaisDaOperacao | undefined;
+  /** V39-R3 (R3-014) — reaproveitar os dados fiscais da prévia guardada na liquidação (o pagamento recalcula). */
+  readonly usarPreviaDaLiquidacao?: boolean | undefined;
   /**
    * V32 — a justificativa para pagar um PRECATÓRIO fora da ordem cronológica constitucional (acordo
    * homologado, sequestro de verba). Só texto; quem decide se é exigida é o `pagar`, na transação.
@@ -318,6 +321,9 @@ export async function registrarPagamento(input: {
     throw new Error(`A conta bancária ${conta.codigo} não tem conta contábil mapeada; o pagamento não sabe de que conta do razão sai. Parametrize o mapeamento antes. Nada foi gravado.`);
   }
   const contaContabilDaConta = conta.contaContabil.codigo;
+  if (input.usarPreviaDaLiquidacao === true && (input.operacaoFiscal !== undefined || (input.retencoes ?? []).length > 0)) {
+    throw new Error("Escolha entre reaproveitar a prévia da liquidação e informar os dados fiscais ou as retenções de novo; os dois juntos não são aceitos. Nada foi gravado.");
+  }
   if (input.operacaoFiscal !== undefined && (input.retencoes ?? []).length > 0) {
     throw new Error("Escolha entre calcular as retenções de IR, INSS e ISS e informá-las manualmente; as duas juntas não são aceitas. Nada foi gravado.");
   }
@@ -328,8 +334,14 @@ export async function registrarPagamento(input: {
     const obrigacaoDaLiquidacao = (await deps.despesa.buscarLiquidacao(input.liquidacaoId))?.obrigacoes ?? [];
     // V24 — calculadas DENTRO da autorização: quem não pode pagar não chega a calcular.
     const operacao = input.operacaoFiscal;
+    // V39-R3 (R3-014) — a prévia da liquidação: os dados fiscais dela, recalculados com o valor e a data deste pagamento.
+    const pelaPrevia = input.usarPreviaDaLiquidacao === true
+      ? await retencoesPelaPreviaDaLiquidacao(cliente(), { liquidacaoId: input.liquidacaoId, valorDoPagamento: toMoney(input.valor), data: input.data, contaBancariaId: conta.id })
+      : null;
     const retencoes: RetencoesDoPagamento | undefined =
-      operacao === undefined
+      pelaPrevia !== null
+        ? { contaDisponibilidade: contaContabilDaConta, retencoes: pelaPrevia.retencoes, calculos: pelaPrevia.calculos, proprias: pelaPrevia.proprias }
+        : operacao === undefined
         ? retencoesManuais
         : await (async () => {
             const p = await prepararRetencoesCalculadas(cliente(), {

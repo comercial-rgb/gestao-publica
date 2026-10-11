@@ -329,6 +329,8 @@ model Empenho {
 // ----------------------------------------------------------------------------
 
 model Liquidacao {
+  /// V39-R3 (R3-014) — as prévias das retenções guardadas nesta liquidação (previsão; o reconhecimento é no pagamento).
+  previasDeRetencao PreviaDeRetencaoDaLiquidacao[] @relation("PreviasDeRetencaoDaLiquidacao")
   id        String  @id @default(cuid())
   empenhoId String
   empenho   Empenho @relation(fields: [empenhoId], references: [id])

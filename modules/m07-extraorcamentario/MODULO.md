@@ -335,3 +335,37 @@ traz "Sem cálculo"). Decisão pendente: o IR informado de pessoa física é gra
 na base fictícia e em produção: carregadas por `scripts/carregar-tabelas-da-retencao.ts` (idempotente, sha256
 conferido contra `docs/oficial/MANIFEST-RETENCAO.json`). A classificação da retenção própria do município
 (`/financeiro/retencoes-proprias`) continua sendo decisão do ente: sem ela, IR e ISS calculados são recusados.
+
+## V39-R3 (R3-014) — a prévia das retenções guardada na liquidação
+
+`previa-da-retencao.ts`, modelo `PreviaDeRetencaoDaLiquidacao`, tela `/despesa/liquidacoes/[id]/retencoes`.
+
+- **Previsão, não reconhecimento.** Guarda os dados fiscais da operação e a memória por tributo (resultado, base,
+  alíquota, valor, porquê), calculados pelas tabelas vigentes no dia previsto. Não lança, não reserva, não cria
+  consignação, não muda a liquidação.
+- **Versões append-only** (`@@unique([liquidacaoId, versao])`, trava `Liquidacao`). Vale a de maior número; as
+  anteriores ficam na tela como substituídas. CHECK `ck_previa_de_retencao`.
+- **Quem guarda:** `LIQUIDAR`, no escopo da liquidação. Quem só consulta a despesa vê as versões e não recebe o
+  formulário. Liquidação anulada é recusada.
+- **No pagamento:** a caixa "Usar os dados fiscais da prévia" manda `usarPreviaDaLiquidacao`; exclui dados fiscais e
+  linhas manuais no mesmo envio. O pagamento **recalcula** pelos dados fiscais da prévia com a data dele
+  (`prepararRetencoesCalculadas`, o mesmo do pagamento comum) e grava, na memória de cada tributo
+  (`CalculoDaRetencao.entrada` ou `RetencaoPropriaDoPagamento.entrada`), `previaDaLiquidacao {id, versao,
+  valorPrevisto, divergiu}`.
+- **Só o valor previsto reaproveita.** A base do INSS e do ISS é o valor do documento fiscal guardado na prévia, não o
+  valor pago; reaproveitar num pagamento parcial reteria de novo sobre o documento inteiro a cada parcela. Pagamento de
+  outro valor é recusado com o motivo e informa os dados fiscais dele.
+- **Uma versão serve a um pagamento vivo** (`exigirPreviaAindaNaoUsada`, em `retencao.ts`). Sem isso, uma prévia de
+  meia liquidação seria reaproveitada pelas duas parcelas e reteria INSS e ISS duas vezes sobre o documento inteiro
+  (achado da auditoria antes do commit). A guarda roda dentro da transação do pagamento, depois da trava da liquidação,
+  e também antes, para recusar cedo. Pagamento anulado libera a versão.
+- **Leitura da tela** pela unidade da liquidação (`autorizarLeituraDoRegistroPara`), como o dossiê. O formulário só
+  aparece para quem tem LIQUIDAR no ente ou nesta unidade.
+- Valor previsto canônico (`1234.56`); a tela desmascara antes. Texto mascarado é recusado, não reinterpretado.
+
+### Pendências (nomeadas)
+
+- **PREVIA-PARA-PAGAMENTO-PARCIAL**: dividir a prévia entre parcelas (quanto do documento cada pagamento consome) não
+  existe; hoje o parcial informa os dados fiscais dele.
+- **PREVIA-SEM-AVISO-AO-PAGAR-SEM-ELA**: havendo prévia, o pagamento sem a caixa marcada segue o caminho de sempre
+  (sem retenção ou com a informada). A tela oferece a prévia, mas não exige.

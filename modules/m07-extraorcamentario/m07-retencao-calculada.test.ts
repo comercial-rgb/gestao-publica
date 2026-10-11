@@ -7,7 +7,8 @@ import { criarFichasDeTeste } from "../../test/ficha-teste.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
-import { anularPagamento, exigirObrigacaoDaLiquidacao, liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
+import { anularLiquidacao, anularPagamento, exigirObrigacaoDaLiquidacao, liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
+import { registrarPreviaDeRetencao, retencoesPelaPreviaDaLiquidacao, rotulosDasPrevias } from "./previa-da-retencao.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
 import {
   avaliarRetencoesDoPagamento,
@@ -731,5 +732,135 @@ describe("V39-R2 — IR retido de pessoa física: fato e classificação própri
     expect(fatoProprioDoTributo("IRRF", "12345678000195")).toBe("IRRF_FORNECEDOR_PJ");
     expect(fatoProprioDoTributo("IRRF", "529.982.247-25")).toBe("IRRF_PESSOA_FISICA");
     expect([fatoProprioDoTributo("ISS", FORNECEDOR_PF), fatoProprioDoTributo("INSS", FORNECEDOR_PF)]).toEqual(["ISS", null]);
+  });
+});
+
+// ═══ V39-R3 (R3-014, V39-027) — A PRÉVIA DAS RETENÇÕES GUARDADA NA LIQUIDAÇÃO ═══
+describe("V39-R3 — a prévia das retenções na liquidação: previsão guardada, sem lançamento; o pagamento recalcula", { timeout: 60000 }, () => {
+  let deps: M05Deps;
+  let liq: string;
+  const LIQUIDA = "liquidante@cg.pb.gov.br";
+  const SO_CONSULTA = "consulta@cg.pb.gov.br";
+  async function usuarioCom(identificador: string, acoes: readonly string[], unidadeOrcId = "uo-01"): Promise<void> {
+    const u = await prisma.usuario.create({ data: { identificador, nome: identificador, criadoPor: "TESTE" }, select: { id: true } });
+    const p = await prisma.perfil.create({ data: { nome: `PERFIL-${identificador}`, descricao: "perfil do teste", criadoPor: "TESTE", permissoes: { create: acoes.map((acao) => ({ acao: acao as "LIQUIDAR", unidadeOrcId, criadoPor: "TESTE" })) } }, select: { id: true } });
+    await prisma.vinculoUsuarioPerfil.create({ data: { usuarioId: u.id, perfilId: p.id, criadoPor: "TESTE" } });
+  }
+  const guardar = (o: Partial<Parameters<typeof registrarPreviaDeRetencao>[1]> = {}) =>
+    registrarPreviaDeRetencao(prisma, { liquidacaoId: liq, valorPrevisto: "1000.00", dataPrevista: "2026-03-01", operacao: OPERACAO, criadoPor: LIQUIDA, ...o });
+  beforeEach(async () => {
+    deps = criarM05Deps(prisma);
+    await semear();
+    liq = await empenharELiquidar(deps);
+    await perfil();
+    await usuarioCom(LIQUIDA, ["LIQUIDAR"]);
+    await usuarioCom(SO_CONSULTA, ["CONSULTAR_DESPESA"]);
+  }, 60000);
+  afterAll(async () => prisma.$disconnect());
+
+  it("guarda a memória por tributo, em versões, sem lançar nada nem mexer na liquidação", async () => {
+    const lancamentosAntes = await prisma.lancamentoContabil.count();
+    const movimentosAntes = await prisma.movimentoExtraorcamentario.count();
+    const v1 = await guardar();
+    expect([v1.versao, v1.totalPrevisto]).toEqual([1, "208.00"]);
+    // Segunda versão, sem ISS (fornecimento de bens): a de maior número vale; a anterior fica.
+    const v2 = await guardar({ operacao: { ...OPERACAO, iss: { subitem: null, municipioDaPrestacao: null, aliquotaDoSimplesNoDocumento: null } } });
+    expect([v2.versao, v2.totalPrevisto]).toEqual([2, "158.00"]);
+    const ps = await prisma.previaDeRetencaoDaLiquidacao.findMany({ where: { liquidacaoId: liq }, orderBy: { versao: "asc" } });
+    expect(ps.map((p) => [p.versao, p.totalPrevisto.toFixed(2), p.documentoDoFornecedor, p.criadoPor])).toEqual([
+      [1, "208.00", FORNECEDOR_PJ, LIQUIDA],
+      [2, "158.00", FORNECEDOR_PJ, LIQUIDA],
+    ]);
+    const m1 = ps[0]!.memoria as unknown as readonly { tributo: string; resultado: string; valor: string | null; base: string | null }[];
+    expect(m1.map((l) => [l.tributo, l.resultado, l.valor, l.base]).sort()).toEqual([
+      ["INSS", "RETIDO", "110.00", "1000.00"],
+      ["IRRF", "RETIDO", "48.00", "1000.00"],
+      ["ISS", "RETIDO", "50.00", "1000.00"],
+    ]);
+    // Previsão, não reconhecimento: nenhum lançamento, nenhuma consignação, a liquidação igual.
+    expect(await prisma.lancamentoContabil.count()).toBe(lancamentosAntes);
+    expect(await prisma.movimentoExtraorcamentario.count()).toBe(movimentosAntes);
+    expect((await prisma.liquidacao.findUniqueOrThrow({ where: { id: liq }, select: { valor: true } })).valor.toFixed(2)).toBe("1000.00");
+    expect(await rotulosDasPrevias(prisma, [liq])).toEqual({ [liq]: "versão 2, de 01/03/2026, retenção prevista de R$ 158,00" });
+  });
+
+  it("o pagamento pela prévia recalcula na data dele e grava, por tributo, a versão usada e se divergiu (N=2 liquidações)", async () => {
+    // A prévia é de 01/02; em 15/02 a alíquota do ISS do subitem muda para 3% (linha nova, vigência própria).
+    await guardar({ dataPrevista: "2026-02-01" });
+    const e2 = await empenhar({ fichaId: FICHA, numero: "NE-2", tipo: "ORDINARIO", valor: "1000.00", data: new Date("2026-01-02T12:00:00Z"), credorCpfCnpj: FORNECEDOR_PJ, historico: "empenho 2", categoriaOrdemCronologica: "PRESTACAO_SERVICOS", criadoPor: POR }, R_EMPENHO, deps);
+    const liq2 = (await liquidar({ empenhoId: e2.empenhoId, numero: "NL-2", valor: "1000.00", data: new Date("2026-02-10T12:00:00Z"), responsavelAtesto: "Fulano", historico: "liquidação 2", criadoPor: POR }, R_LIQUIDACAO, deps)).liquidacaoId;
+    await guardar({ liquidacaoId: liq2, dataPrevista: "2026-02-01" });
+    await prisma.itemDaListaDoISS.create({ data: { municipioIbge: ESPERANCA, subitem: "17.05", descricao: "Fornecimento de mão-de-obra", aliquota: "0.03", localDeIncidencia: "ESTABELECIMENTO_DO_TOMADOR", marcadoRetencaoNaFonte: true, vigenteDesde: new Date("2026-02-15T00:00:00Z"), fonte: "Linha fictícia do teste: alteração de alíquota", consultadoEm: DESDE, criadoPor: POR } });
+
+    type Elo = { previaDaLiquidacao?: { versao: number; valorPrevisto: string | null; divergiu: boolean } };
+    const memoriaDo = async (pagamentoId: string) => {
+      const calc = await prisma.calculoDaRetencao.findMany({ where: { pagamentoId }, select: { tributo: true, valor: true, entrada: true } });
+      const prop = await prisma.retencaoPropriaDoPagamento.findMany({ where: { pagamentoId }, select: { fato: true, valor: true, entrada: true } });
+      return [
+        ...calc.map((c) => [c.tributo, c.valor.toFixed(2), (c.entrada as Elo).previaDaLiquidacao]),
+        ...prop.map((c) => [c.fato, c.valor.toFixed(2), (c.entrada as Elo | null)?.previaDaLiquidacao]),
+      ].sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+    };
+    const elo = (valorPrevisto: string, divergiu: boolean) => expect.objectContaining({ versao: 1, valorPrevisto, divergiu });
+    for (const [l, numero] of [[liq, "NP-1"], [liq2, "NP-2"]] as const) {
+      const a = await retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: l, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, contaBancariaId: "cb1" });
+      expect(a.previa.divergentes).toEqual(["ISS"]);
+      const r = await pagar({ ...pgto(l), numero, historico: `Pagamento ${numero}` }, R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: a.retencoes, calculos: a.calculos, proprias: a.proprias });
+      expect(await memoriaDo(r.pagamentoId)).toEqual([
+        ["INSS", "110.00", elo("110.00", false)],
+        ["IRRF_FORNECEDOR_PJ", "48.00", elo("48.00", false)],
+        ["ISS", "30.00", elo("50.00", true)],
+      ]);
+    }
+  });
+
+  it("pagamento de outro valor não reaproveita a prévia: a base do documento seria retida de novo a cada parcela", async () => {
+    await guardar();
+    await expect(retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("600.00"), data: DATA_PGTO, contaBancariaId: "cb1" })).rejects.toThrow(/feita para um pagamento de R\$ 1000,00, e este é de R\$ 600,00/);
+  });
+
+  it("pagamento igual ao previsto, na data prevista: o elo grava divergiu=false", async () => {
+    await guardar();
+    const a = await retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, contaBancariaId: "cb1" });
+    expect(a.previa.divergentes).toEqual([]);
+    const r = await pagar(pgto(liq), R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: a.retencoes, calculos: a.calculos, proprias: a.proprias });
+    const calc = await prisma.calculoDaRetencao.findUniqueOrThrow({ where: { pagamentoId_tributo: { pagamentoId: r.pagamentoId, tributo: "INSS" } }, select: { entrada: true } });
+    expect((calc.entrada as { previaDaLiquidacao?: { divergiu: boolean } }).previaDaLiquidacao?.divergiu).toBe(false);
+  });
+
+  it("uma versão serve a um pagamento vivo: a segunda parcela com o mesmo valor previsto é recusada, também com o cálculo preparado antes (N=2)", async () => {
+    // A prévia para metade do valor, com o documento fiscal inteiro (1.000): cada parcela reteria INSS e ISS sobre 1.000.
+    await guardar({ valorPrevisto: "500.00" });
+    const a = await retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("500.00"), data: DATA_PGTO, contaBancariaId: "cb1" });
+    // Preparado ANTES da primeira parcela: a guarda de fora já passou; só a de dentro da transação pode recusar.
+    const b = await retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("500.00"), data: DATA_PGTO, contaBancariaId: "cb1" });
+    const r1 = await pagar({ ...pgto(liq), valor: "500.00" }, R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: a.retencoes, calculos: a.calculos, proprias: a.proprias });
+    await expect(pagar({ ...pgto(liq), numero: "NP-2", valor: "500.00", historico: "Pagamento NP-2" }, R_PAGAMENTO, deps, { contaDisponibilidade: CAIXA, retencoes: b.retencoes, calculos: b.calculos, proprias: b.proprias }))
+      .rejects.toThrow(/já foi usada no pagamento NP-1: usá-la de novo reteria outra vez/);
+    await expect(retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("500.00"), data: DATA_PGTO, contaBancariaId: "cb1" }))
+      .rejects.toThrow(/já foi usada no pagamento NP-1/);
+    expect(await prisma.pagamento.count({ where: { liquidacaoId: liq } })).toBe(1);
+    const inss = await prisma.movimentoExtraorcamentario.findMany({ where: { pagamento: { liquidacaoId: liq } }, select: { valor: true } });
+    expect(inss.map((m) => m.valor.toFixed(2))).toEqual(["110.00"]);
+    // Anulado o pagamento, a versão fica livre de novo.
+    await anularPagamento({ pagamentoId: r1.pagamentoId, numero: "NP-1-ANUL", data: DATA_PGTO, historico: "Anulação do pagamento", criadoPor: POR }, deps);
+    const c = await retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("500.00"), data: DATA_PGTO, contaBancariaId: "cb1" });
+    expect(c.previa.versao).toBe(1);
+  });
+
+  it("LIQUIDAR em outra unidade não guarda prévia desta liquidação", async () => {
+    await prisma.unidadeOrcamentaria.create({ data: { id: "uo-02", codigo: "01002", descricao: "Saúde", orgaoId: "org-01" } });
+    await usuarioCom("liquida.outra@cg.pb.gov.br", ["LIQUIDAR"], "uo-02");
+    await expect(guardar({ criadoPor: "liquida.outra@cg.pb.gov.br" })).rejects.toThrow(/não tem permissão para LIQUIDAR/);
+    expect(await prisma.previaDeRetencaoDaLiquidacao.count()).toBe(0);
+  });
+
+  it("recusas com o motivo, sem gravar: sem permissão de liquidar, liquidação anulada, valor mascarado, pagamento sem prévia", async () => {
+    await expect(guardar({ criadoPor: SO_CONSULTA })).rejects.toThrow(/não tem permissão para LIQUIDAR/);
+    await expect(guardar({ valorPrevisto: "1.000,00" })).rejects.toThrow(/valor previsto do pagamento em reais e centavos/);
+    await expect(retencoesPelaPreviaDaLiquidacao(prisma, { liquidacaoId: liq, valorDoPagamento: toMoney("1000.00"), data: DATA_PGTO, contaBancariaId: "cb1" })).rejects.toThrow(/não tem prévia das retenções guardada/);
+    await anularLiquidacao({ liquidacaoId: liq, numero: "NL-1-AN", data: DATA_PGTO, historico: "Nota fiscal cancelada pelo fornecedor", criadoPor: POR }, deps);
+    await expect(guardar()).rejects.toThrow(/foi anulada: não há pagamento a prever/);
+    expect(await prisma.previaDeRetencaoDaLiquidacao.count()).toBe(0);
   });
 });

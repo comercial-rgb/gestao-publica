@@ -28,7 +28,7 @@ import { FormPagamento, type LiquidacaoPagavel, type OrdemAutorizadaParaTela } f
 import { lerCopiaDoPagamento, type CopiaDoPagamento } from "../../../../lib/portas/duplicacao";
 import { lerDebitosDosCredores } from "../../../../lib/portas/debitos-do-credor";
 import { AvisoDeDuplicacao, idParaDuplicar, LinkDuplicar } from "../../../../components/ui/Duplicacao";
-import { lerOpcoesDaRetencao, type OpcoesDaRetencao } from "../../../../lib/portas/retencao-calculada";
+import { lerOpcoesDaRetencao, lerRotulosDasPrevias, type OpcoesDaRetencao } from "../../../../lib/portas/retencao-calculada";
 import { lerOrdensDePagamento } from "../../../../lib/portas/ordem-pagamento";
 import { listarPagamentosDaExecucao, type PagamentoDaTela } from "../../../../lib/portas/anulacao";
 import { FormAnular } from "../FormAnular";
@@ -92,6 +92,7 @@ export default async function PagamentosPage({
   const duplicar = idParaDuplicar(sp);
   let copia: CopiaDoPagamento | null = null;
   let debitos: Awaited<ReturnType<typeof lerDebitosDosCredores>> = {};
+  let previas: Readonly<Record<string, string>> = {};
   try {
     // ⚠️ O RECORTE AUTORIZADO ALIMENTA DUAS DAS CINCO LEITURAS DESTA TELA, e **não** a
     // fila. `lerFilasDePagamento()` não recebe argumento de propósito: a ordem do art. 141
@@ -118,6 +119,8 @@ export default async function PagamentosPage({
     if (duplicar !== "") copia = await lerCopiaDoPagamento(duplicar);
     // V36 (TR 5.10.1.38) — o aviso de débito do credor, para os credores da fila.
     debitos = await lerDebitosDosCredores(filas.flatMap((f) => f.linhas.map((l) => l.credorCpfCnpj)));
+    // V39-R3 (R3-014) — as prévias das retenções guardadas nas liquidações da fila.
+    previas = await lerRotulosDasPrevias(filas.flatMap((f) => f.linhas.map((l) => l.liquidacaoId)));
   } catch (erro) {
     return (
       <div className="space-y-4">
@@ -165,6 +168,7 @@ export default async function PagamentosPage({
               saldoAPagar: l.saldoAPagar,
               fonteCodigo: f.fonteCodigo,
               categoria: f.categoria,
+              ...(previas[l.liquidacaoId] !== undefined ? { previaDeRetencao: previas[l.liquidacaoId] } : {}),
             })
           )
         )}

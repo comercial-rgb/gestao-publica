@@ -51,6 +51,8 @@ export async function pagarAction(
     if (typeof retencoes === "string") return { erro: retencoes };
     // V24 — com a retenção calculada ligada, os dados fiscais vão no lugar das linhas manuais.
     const calculada = formData.get("retencaoCalculada") === "on";
+    // V39-R3 (R3-014) — reaproveitar a prévia da liquidação: nem os dados fiscais nem as linhas manuais vão junto.
+    const usarPrevia = formData.get("usarPrevia") === "on";
     const operacaoFiscal = calculada ? lerOperacaoFiscal(formData, desmascararValor(valor)) : undefined;
     if (typeof operacaoFiscal === "string") return { erro: operacaoFiscal };
 
@@ -101,7 +103,8 @@ export async function pagarAction(
           : {}),
         // Lista vazia vira AUSENTE na porta — o caminho sem retenção continua sendo o de
         // sempre, partida por partida.
-        ...(calculada ? {} : retencoes.length > 0 ? { retencoes } : {}),
+        ...(calculada || usarPrevia ? {} : retencoes.length > 0 ? { retencoes } : {}),
+        ...(usarPrevia ? { usarPreviaDaLiquidacao: true } : {}),
         ...(operacaoFiscal !== undefined ? { operacaoFiscal } : {}),
         ...(ordemDePagamentoId !== "" ? { ordemDePagamentoId } : {}),
         ...(justificativaOrdemConstitucional !== "" ? { justificativaOrdemConstitucional } : {}),

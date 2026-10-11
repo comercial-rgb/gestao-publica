@@ -1308,6 +1308,7 @@ export type NomeDeServico =
   | "cadastrarTanqueDeCombustivel"
   | "registrarReferenciaExterna"
   | "conferirReferenciaExterna"
+  | "registrarPreviaDeRetencao"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -2214,6 +2215,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   // V39-R3 (R3-017) — a referência externa do empenho: declarar e, por outra pessoa, conferir. Ação nova.
   registrarReferenciaExterna: "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO",
   conferirReferenciaExterna: "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO",
+  // V39-R3 (R3-014) — a prévia das retenções guardada na liquidação: é de quem liquida, nenhuma ação nova.
+  registrarPreviaDeRetencao: "LIQUIDAR",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3553,6 +3556,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   depositoDaFarmaciaNoDia: "leitura pura (o depósito da farmácia num dia, pela vigência das trocas)",
   divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
   saldoDoTanqueNaTx: "leitura pura (o saldo do combustível no tanque, pela soma dos movimentos)",
+  previaVigenteDaLiquidacao: "leitura pura (a prévia de maior versão da liquidação)",
+  exigirPreviaAindaNaoUsada: "guarda de leitura dentro da transação do pagamento (a prévia já usada por pagamento vivo); quem chama é o pagamento, que autoriza",
+  retencoesPelaPreviaDaLiquidacao: "composável do pagamento (reaproveita a prévia e recalcula; quem chama é o pagamento, que autoriza)",
+  rotulosDasPrevias: "leitura pura (o rótulo da prévia vigente por liquidação, para a tela do pagamento)",
   registrarEntradaFisicaNaTx:
     "composável interno (o eixo FÍSICO da mesma entrada, na mesma transação)",
   // V37 — a perna FÍSICA da cascata da anulação total (antes só o contábil voltava). Quem cobra o crachá é
