@@ -1,4 +1,5 @@
 import { serializar, toMoney, type Money } from "../../packages/contracts/index.js";
+import { idsDeLinhasQueNaoValem } from "../m09-tesouraria/linhas-digitadas.js";
 import { anoCivil, janelaCivilDoAno } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { somasPorConta } from "../m01-core-contabil/adapter-prisma.js";
@@ -421,7 +422,8 @@ export async function termoDeConferenciaDeCaixa(prisma: PrismaClient, p: { reado
           `${e instanceof Error ? e.message : String(e)} Concilie a conta e gere de novo.`
       );
     }
-    const linhasDeExtrato = await prisma.lancamentoExtrato.count({ where: { contaBancariaId: b.id, dataPostagem: { lt: limiteDoBancoApos(fim) } } });
+    // V39-R3 (R3-015) — conta as linhas que valem como extrato (a digitada, só revisada e confirmada).
+    const linhasDeExtrato = await prisma.lancamentoExtrato.count({ where: { contaBancariaId: b.id, dataPostagem: { lt: limiteDoBancoApos(fim) }, id: { notIn: await idsDeLinhasQueNaoValem(prisma, b.id) } } });
     const agencia = b.agencia === null ? "" : `ag. ${b.agencia}${b.digitoAgencia ? `-${b.digitoAgencia}` : ""}`;
     const conta = b.conta === null ? "" : `c/c ${b.conta}${b.digitoConta ? `-${b.digitoConta}` : ""}`;
     contas.push({

@@ -15,6 +15,7 @@ export const SITUACAO_DA_LINHA: Readonly<Record<ExtratoParaImpressao["linhas"][n
   CONCILIADA: "conciliada",
   PARCIAL: "conciliada em parte",
   PENDENTE: "pendente",
+  NAO_VALE: "não vale como extrato",
 };
 
 export function documentoDoExtratoImportado(p: { readonly ente: string; readonly extrato: ExtratoParaImpressao }): DocumentoPdf {
@@ -30,7 +31,7 @@ export function documentoDoExtratoImportado(p: { readonly ente: string; readonly
   ]);
   if (linhas.length === 0) linhas.push(["", "", "O extrato não tem lançamentos.", "", "", "", ""]);
   const indiceDoTotal = linhas.length;
-  linhas.push(["", "", "Total do arquivo", "", brl(e.totalCreditos), brl(e.totalDebitos), ""]);
+  linhas.push(["", "", e.origem === "DIGITADO" ? "Total das linhas que valem como extrato" : "Total do arquivo", "", brl(e.totalCreditos), brl(e.totalDebitos), ""]);
   linhas.push(["", "", "Movimento do período (créditos menos débitos)", "", brl(e.movimentoLiquido), "", ""]);
 
   const doArquivo =
@@ -61,7 +62,7 @@ export function documentoDoExtratoImportado(p: { readonly ente: string; readonly
       },
     ],
     notas: [
-      `Origem: ${e.origem === "API_BB" ? "API do Banco do Brasil" : "arquivo OFX"}. Importado por ${e.importadoPor} em ${diaCivilBr(e.importadoEm)}. ${doArquivo}`,
+      `Origem: ${e.origem === "API_BB" ? "API do Banco do Brasil" : e.origem === "DIGITADO" ? "digitado a partir de documento; só a linha revisada e confirmada por outra pessoa vale como extrato" : "arquivo OFX"}. Importado por ${e.importadoPor} em ${diaCivilBr(e.importadoEm)}. ${doArquivo}`,
       `Identificação do arquivo (sha256): ${e.hashOrigem}.`,
       "Os totais são do movimento do arquivo, não o saldo da conta: o extrato gravado não guarda o saldo inicial.",
       "A coluna da conciliação mostra a situação no momento da emissão.",

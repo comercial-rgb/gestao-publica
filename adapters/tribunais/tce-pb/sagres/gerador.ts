@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../../../prisma/generated/client/client.js";
+import { idsDeLinhasQueNaoValem } from "../../../../modules/m09-tesouraria/linhas-digitadas.js";
 import { Decimal, toMoney } from "../../../../packages/contracts/index.js";
 import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
@@ -349,8 +350,9 @@ export async function lerFatosSaldoMensal(
     const t = exigirTripla(c);
     // Saldo na EXPORTAÇÃO (não há coluna materializada): Σcrédito − Σdébito até o fim do mês.
     // Leitura pura (findMany) + soma em JS via Decimal — a agregação fica no gerador, não no Prisma.
+    // V39-R3 (R3-015) — linha digitada só entra no saldo mensal quando vale como extrato (revisada, confirmada, dia sem banco).
     const linhas = await prisma.lancamentoExtrato.findMany({
-      where: { contaBancariaId: c.id, dataPostagem: { lt: fimDoMes } },
+      where: { contaBancariaId: c.id, dataPostagem: { lt: fimDoMes }, id: { notIn: await idsDeLinhasQueNaoValem(prisma, c.id) } },
       select: { valor: true, natureza: true },
     });
     const saldo = linhas.reduce((acc, l) => (l.natureza === "CREDITO" ? acc.plus(l.valor) : acc.minus(l.valor)), new Decimal(0));

@@ -85,7 +85,7 @@ export default async function ExtratosImportadosPage({
                       <div className="text-xs text-[color:var(--color-ink-3)]">agência {e.conta.agenciaMascarada} · conta {e.conta.contaMascarada}</div>
                     </td>
                     <td className={`${CELULA} whitespace-nowrap`}>{dataBr(e.periodoInicio)} a {dataBr(e.periodoFim)}</td>
-                    <td className={CELULA}>{e.origem === "API_BB" ? "API do Banco do Brasil" : "arquivo OFX"}</td>
+                    <td className={CELULA}>{e.origem === "API_BB" ? "API do Banco do Brasil" : e.origem === "DIGITADO" ? "digitado de documento (vale só o revisado e confirmado)" : "arquivo OFX"}</td>
                     <td className={`${CELULA} text-right tabular`}>{e.quantidadeLinhas}</td>
                     <td className={CELULA}>{e.importadoPor} · {dataBr(e.importadoEm)}</td>
                     <td className={`${CELULA} whitespace-nowrap`}>

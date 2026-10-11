@@ -159,8 +159,22 @@ export default async function ConciliacaoBancariaPage({
   }
 
   // V36 — a importação do OFX mora aqui, para quem tem a ação (a mesma fonte que o serviço confere).
-  const podeImportar = (await acoesPermitidas(["IMPORTAR_EXTRATO"])).has("IMPORTAR_EXTRATO");
-  const importar = podeImportar ? <FormImportarExtrato contas={(await lerContasBancarias()).map((c) => ({ codigo: c.codigo, descricao: c.descricao }))} /> : null;
+  const acoesDoExtrato = await acoesPermitidas(["IMPORTAR_EXTRATO", "TRANSCREVER_EXTRATO"]);
+  const podeImportar = acoesDoExtrato.has("IMPORTAR_EXTRATO");
+  // V39-R3 (R3-015) — sem arquivo do banco, as linhas se transcrevem a partir de um documento, em tela própria.
+  const transcrever = acoesDoExtrato.has("TRANSCREVER_EXTRATO") ? (
+    <p className="text-sm">
+      <Link href="/financeiro/conciliacao/transcricao" className="font-medium text-[color:var(--color-primary)] hover:underline" data-link-transcricao>
+        Sem arquivo do banco? Transcrever linhas do extrato a partir de um documento
+      </Link>
+    </p>
+  ) : null;
+  const importar = podeImportar || transcrever !== null ? (
+    <>
+      {podeImportar ? <FormImportarExtrato contas={(await lerContasBancarias()).map((c) => ({ codigo: c.codigo, descricao: c.descricao }))} /> : null}
+      {transcrever}
+    </>
+  ) : null;
 
   // Sem extrato importado NÃO é "tudo conciliado" — é "não há o que conciliar". A diferença
   // importa: um zero mudo aqui faria a Comissão ler uma conta fechada onde não há conta nenhuma.
@@ -234,7 +248,7 @@ export default async function ConciliacaoBancariaPage({
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            <Badge status="neutro">origem {extrato.origem}</Badge>
+            <Badge status="neutro">{extrato.origem === "API_BB" ? "origem: API do banco" : extrato.origem === "DIGITADO" ? "origem: digitado de documento" : "origem: arquivo OFX"}</Badge>
             <Badge status={modo.estado === "DISPONIVEL" ? "ok" : "alerta"}>{rotuloDoModoDeIntegracao(modo.modo)}</Badge>
           </div>
         </div>

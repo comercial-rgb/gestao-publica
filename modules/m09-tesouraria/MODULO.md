@@ -301,8 +301,7 @@ A tela vazia dizia "a conciliação exige um extrato importado" e mandava para a
 BB manda de volta. Agora diz: com arquivo OFX, importe; sem arquivo, a conciliação por período (abre a conta e o período,
 declara pendências, encerra); a consulta direta ao Banco do Brasil depende de credencial e está desligada. O aviso
 "dados de demonstração" só aparece para o extrato vindo da API de demonstração (`origem === "API_BB"`): um OFX
-importado é o extrato real. Pendente: entrada manual de linhas do extrato (sem campo de saldo avulso, que criaria
-segunda aritmética).
+importado é o extrato real. A entrada manual de linhas chegou na V39-R3 (abaixo), sem campo de saldo avulso.
 
 ## V38 — o dia do banco (`dia-do-banco.ts`)
 
@@ -312,3 +311,45 @@ corte"; `instanteDoDiaDoBanco` dá o instante para exibir e ordenar com os fatos
 um extrato que termina naquele dia. Antes, a linha do dia seguinte ao fim do período entrava no período e toda linha
 aparecia na tela um dia antes (`m09-extrato-dia-do-banco.test.ts`, N=2 na borda). A tela do período da conciliação
 mostra a data de cada pendência.
+
+## V39-R3 (R3-015) — a linha de extrato transcrita à mão
+
+`transcricao.ts`, `linhas-digitadas.ts`, tela `/financeiro/conciliacao/transcricao` (link na conciliação).
+
+- **Entrada:** sem arquivo nem integração, as linhas se digitam a partir de um documento (extrato impresso, PDF do
+  banco). Cada lote vira um `ExtratoBancario` de origem **DIGITADO** pelo MESMO núcleo da importação (`ingerir`), e
+  cada linha ganha `TranscricaoDeLinhaDeExtrato` (documento de suporte, quem digitou). A aritmética da conciliação é
+  uma só; não existe saldo avulso.
+- **Revisão:** `RevisaoDaTranscricaoDeExtrato`, por outra pessoa, uma vez, CONFIRMADA ou DIVERGENTE. Divergente não
+  vale nunca: corrige-se transcrevendo a linha certa.
+- **Quando vale como extrato** (`linhasDigitadasQueNaoValem`): só confirmada e só em dia que nenhum extrato do banco
+  (arquivo ou API) da mesma conta cobre. Os leitores que somam ou vinculam excluem o resto: saldo do extrato da
+  conciliação, `vincular`, saldo mensal do SAGRES, contagem do termo de conferência de caixa.
+- **O banco substitui a transcrição:** importar o extrato do banco cobrindo um dia com linha digitada já conciliada é
+  recusado, nomeando a linha, até o vínculo ser estornado. Transcrever dia já coberto pelo banco é recusado.
+- **Repetição:** linha igual (dia, valor, natureza) a outra digitada pede a declaração de que é outra transação.
+- **Trava da conta** (`ContaBancaria`): vincular, importar e transcrever travam a conta antes de decidir. Sem ela, o
+  vínculo de uma linha digitada e a importação do extrato que a cobre liam cada um o que o outro não tinha gravado, e a
+  conciliação deixava de fechar (achado da auditoria).
+- **Data do conhecimento:** a validade é "como estava" na data do conhecimento da conciliação (revisão e extrato do
+  banco gravados depois não contam). Uma conciliação fechada não muda porque uma linha foi confirmada depois.
+- **Painel:** o extrato digitado só serve de referência (e de corte) quando tem linha confirmada, e a contagem de
+  linhas conta só as confirmadas. Correspondências, detalhe da arrecadação e impressão dizem "linha digitada" em vez do
+  código interno, e a impressão marca "não vale como extrato" e tira essas linhas dos totais.
+- **Data:** dia inexistente (30/02) é recusado, e não levado ao dia seguinte.
+- **Ação:** `TRANSCREVER_EXTRATO` (escopo do ente, como a importação), concedida pela atualização v50 a quem importa
+  extrato.
+- **Rótulos de origem:** a conciliação, a lista de extratos e o PDF do extrato dizem "digitado de documento"; antes da R3 a lista
+  chamaria de "arquivo OFX" tudo o que não fosse API.
+
+### Pendências (nomeadas)
+- **IMPRESSAO-SEM-O-MOTIVO**: a impressão marca a linha que não vale, sem dizer se é por falta de revisão, divergência
+  ou cobertura do banco; a tela da transcrição diz.
+- **SALDO-MENSAL-SEM-DATA-DO-CONHECIMENTO**: o saldo mensal ao tribunal usa o estado atual (como já fazia com as
+  linhas do banco importadas depois); retransmitir um mês antigo pode trazer linha confirmada depois.
+- **LISTA-DE-EXCLUSAO-CRESCE**: os leitores excluem por lista de ids; a linha digitada coberta pelo banco fica na lista
+  para sempre. Com volume, a falha é fechada (erro de parâmetros). A transcrição é exceção (sem arquivo do banco).
+- **VALOR-DE-ENUM-NA-MIGRATION-DAS-TABELAS**: `DIGITADO` entrou na mesma migration das tabelas (20261111091000);
+  não é usado nela, e a migration já foi aplicada nas bases locais, por isso não foi reescrita.
+- **PAINEL-SEM-TESTE-DE-UNIDADE**: a escolha do extrato de referência do painel é da porta (com sessão) e não tem teste
+  próprio; o efeito na conciliação está no teste do domínio.

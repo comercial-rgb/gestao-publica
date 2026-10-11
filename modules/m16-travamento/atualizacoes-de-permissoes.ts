@@ -769,6 +769,26 @@ export function derivarReferenciaExternaDoEmpenho(
 }
 
 /**
+ * V39-R3 (R3-015) — TRANSCREVER E REVISAR LINHA DE EXTRATO, a quem já importa extrato (a ação é do ente, sem unidade). A
+ * revisão continua sendo de outra pessoa (o serviço recusa quem transcreveu), e a linha digitada só vale como extrato
+ * depois de revisada e confirmada.
+ */
+export function derivarTranscricaoDeExtrato(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    for (const p of perfil.permissoes.filter((x) => x.acao === "IMPORTAR_EXTRATO")) {
+      if (perfil.permissoes.some((x) => x.acao === "TRANSCREVER_EXTRATO" && x.unidadeOrcId === p.unidadeOrcId)) continue;
+      if (saida.some((x) => x.perfilId === perfil.id && x.unidadeOrcId === p.unidadeOrcId)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "TRANSCREVER_EXTRATO", unidadeOrcId: p.unidadeOrcId });
+    }
+  }
+  return saida;
+}
+
+/**
  * V39-R3 (R3-009) — CORRIGIR A DISPENSAÇÃO (cancelar o registro incorreto ou receber a devolução conferida).
  *
  * ⚠️ SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a v46: a correção devolve medicamento ao estoque e estorna o
@@ -2053,6 +2073,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "declarada, e a conferencia dela por outra pessoa, confirmada ou divergente (V39-R3). Vem com " +
       "REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO para quem ja empenha, no mesmo escopo (global ou na unidade).",
     derivar: derivarReferenciaExternaDoEmpenho,
+  },
+  {
+    versao: 50,
+    nome: "transcricao-de-extrato",
+    descricao:
+      "A conciliacao passou a aceitar linhas de extrato digitadas a partir de um documento, quando nao ha arquivo nem " +
+      "integracao, com a revisao por outra pessoa; a linha digitada so vale como extrato depois de confirmada (V39-R3). " +
+      "Vem com TRANSCREVER_EXTRATO para quem ja importa extrato, no mesmo escopo.",
+    derivar: derivarTranscricaoDeExtrato,
   },
 ];
 

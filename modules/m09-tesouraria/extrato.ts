@@ -1,5 +1,7 @@
+import { travar } from "../../packages/locks/index.js";
 import { createHash } from "node:crypto";
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { exigirDigitadasSemVinculoNoPeriodo } from "./linhas-digitadas.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { parseOfx, type ExtratoOfx, type TransacaoOfx } from "../../packages/ofx/index.js";
@@ -34,7 +36,7 @@ import {
  * cross-origem é decisão do Winner — ver `modules/m17-banco-bb/normalizar.ts`.
  */
 
-type Origem = "OFX" | "API_BB";
+type Origem = "OFX" | "API_BB" | "DIGITADO";
 
 interface NucleoInput {
   readonly contaBancariaId: string;
@@ -56,6 +58,9 @@ type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 async function ingerir(tx: Tx, input: NucleoInput): Promise<ResultadoImport> {
   const conta = await tx.contaBancaria.findUnique({ where: { id: input.contaBancariaId }, select: { id: true, codigo: true, banco: true } });
   if (conta === null) throw new Error(`Conta bancária ${input.contaBancariaId} não cadastrada.`);
+  // V39-R3 (R3-015) — a conta travada: o vínculo de linha digitada e a transcrição travam a mesma, e a guarda (1c)
+  // abaixo só vale se ninguém vincular ou transcrever no meio.
+  await travar(tx, "ContaBancaria", [conta.id]);
 
   // (1) IDEMPOTÊNCIA DA ORIGEM — DENTRO DA CONTA. ⚠️ V36: o hash era procurado no sistema inteiro, e o mesmo
   // arquivo pedido em OUTRA conta voltava "já importado" (a tela nomeava a conta errada) sem gravar nada. O
@@ -76,6 +81,9 @@ async function ingerir(tx: Tx, input: NucleoInput): Promise<ResultadoImport> {
 
   // (1b) V36 — A CONTA DO ARQUIVO É A CONTA ESCOLHIDA? Antes de gravar qualquer coisa.
   await conferirContaDoArquivo(tx, conta, input.bancoDoArquivo, input.contaDoArquivo);
+  // (1c) V39-R3 (R3-015) — o extrato do BANCO substitui a transcrição dos dias que cobre; linha digitada já conciliada
+  // nesses dias recusa a importação (o vínculo tem de ser estornado antes). Antes de gravar qualquer coisa.
+  if (input.origem !== "DIGITADO") await exigirDigitadasSemVinculoNoPeriodo(tx, conta.id, input.periodoInicio, input.periodoFim);
 
   const fitids = input.transacoes.map((t) => t.fitid);
   const existentes = await tx.lancamentoExtrato.findMany({
@@ -241,5 +249,26 @@ export async function importarExtratoBb(prisma: PrismaClient, input: ImportarExt
       origem: "API_BB",
       importadoPor: input.importadoPor,
     });
+  });
+}
+
+/**
+ * V39-R3 (R3-015) — AS LINHAS DIGITADAS entram pelo MESMO núcleo, com origem DIGITADO (a aritmética da conciliação é uma
+ * só). NÃO autoriza: quem chama (`transcreverLinhasDeExtrato`) já autorizou TRANSCREVER_EXTRATO e grava a transcrição de
+ * cada linha na mesma transação.
+ */
+export async function ingerirLinhasDigitadas(
+  tx: Tx,
+  input: { readonly contaBancariaId: string; readonly transacoes: readonly TransacaoOfx[]; readonly hashOrigem: string; readonly importadoPor: string },
+): Promise<ResultadoImport> {
+  const datas = input.transacoes.map((t) => t.dataPostagem.getTime());
+  return ingerir(tx, {
+    contaBancariaId: input.contaBancariaId,
+    transacoes: input.transacoes,
+    periodoInicio: new Date(Math.min(...datas)),
+    periodoFim: new Date(Math.max(...datas)),
+    hashOrigem: input.hashOrigem,
+    origem: "DIGITADO",
+    importadoPor: input.importadoPor,
   });
 }

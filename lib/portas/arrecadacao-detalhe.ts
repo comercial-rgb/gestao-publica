@@ -60,7 +60,7 @@ export async function lerArrecadacao(id: string): Promise<ArrecadacaoDetalhada |
   if (r.estornoDeId !== null) return lerArrecadacao(r.estornoDeId);
   const vinculos = await db.vinculoConciliacao.findMany({
     where: { tipoInterno: "ARRECADACAO", internoId: r.id, estornoDeId: null, estornos: { none: {} } },
-    select: { valor: true, lancamentoExtrato: { select: { dataPostagem: true, documento: true, memo: true, contaBancaria: { select: { codigo: true } } } } },
+    select: { valor: true, lancamentoExtrato: { select: { dataPostagem: true, documento: true, memo: true, contaBancaria: { select: { codigo: true } }, extrato: { select: { origem: true } } } } },
   });
   return {
     id: r.id,
@@ -81,7 +81,8 @@ export async function lerArrecadacao(id: string): Promise<ArrecadacaoDetalhada |
       dataExtrato: instanteDoDiaDoBanco(v.lancamentoExtrato.dataPostagem),
       valor: v.valor.toFixed(2),
       documento: v.lancamentoExtrato.documento,
-      memo: v.lancamentoExtrato.memo,
+      // V39-R3 (R3-015) — a prova que veio da digitação diz que veio dela.
+      memo: v.lancamentoExtrato.extrato.origem === "DIGITADO" ? `${v.lancamentoExtrato.memo} (linha digitada de documento, conferida por outra pessoa)` : v.lancamentoExtrato.memo,
       conta: v.lancamentoExtrato.contaBancaria.codigo,
     })),
     dia: diaCivil(r.dataArrecadacao),

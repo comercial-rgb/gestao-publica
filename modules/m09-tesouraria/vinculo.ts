@@ -1,4 +1,6 @@
+import { travar } from "../../packages/locks/index.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
+import { linhasDigitadasQueNaoValem, TEXTO_DO_MOTIVO } from "./linhas-digitadas.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
@@ -470,6 +472,14 @@ export async function vincular(
       throw new Error(
         `Lançamento de extrato ${dados.lancamentoExtratoId} não encontrado.`
       );
+    }
+    // V39-R3 (R3-015) — linha digitada que ainda não vale como extrato não concilia nada. A conta travada ANTES de
+    // decidir: a importação do extrato do banco (que substitui a transcrição) trava a mesma conta, e sem isso as duas
+    // transações liam cada uma o que a outra ainda não gravou (achado da auditoria).
+    await travar(tx, "ContaBancaria", [linha.contaBancariaId]);
+    const naoVale = (await linhasDigitadasQueNaoValem(tx, linha.contaBancariaId)).get(linha.id);
+    if (naoVale !== undefined) {
+      throw new Error(`Esta linha do extrato não pode ser conciliada: ${TEXTO_DO_MOTIVO[naoVale]}. Nada foi gravado.`);
     }
 
     // (c) (d) (g) — o movimento interno existe, não é estorno, não está estornado.

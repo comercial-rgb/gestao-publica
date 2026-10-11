@@ -1,3 +1,4 @@
+import { idsDeLinhasQueNaoValem } from "./linhas-digitadas.js";
 import {
   serializar,
   toMoney,
@@ -217,7 +218,8 @@ export async function conciliacaoBancaria(
   const linhasExtrato = await prisma.lancamentoExtrato.findMany({
     // O dia do banco se compara pelo LIMITE do dia civil do corte (ver `dia-do-banco.ts`): como instante, a linha do dia
     // seguinte ao corte entrava.
-    where: { contaBancariaId: conta.id, dataPostagem: { lt: limiteDoBancoApos(corte) } },
+    // V39-R3 (R3-015) — a linha digitada só entra no saldo do extrato quando vale (revisada, confirmada, dia sem banco).
+    where: { contaBancariaId: conta.id, dataPostagem: { lt: limiteDoBancoApos(corte) }, id: { notIn: await idsDeLinhasQueNaoValem(prisma, conta.id, conhecimento) } },
     select: {
       id: true,
       fitid: true,

@@ -70,7 +70,7 @@ export interface ContaConciliada {
 
 export interface ExtratoImportado {
   /** `API_BB` = veio da API do Banco do Brasil; `OFX` = veio de arquivo. */
-  readonly origem: "OFX" | "API_BB";
+  readonly origem: "OFX" | "API_BB" | "DIGITADO";
   readonly periodoInicio: Date;
   readonly periodoFim: Date;
   readonly importadoPor: string;
@@ -244,6 +244,9 @@ export async function lerPainelConciliacao(p: {
     where: {
       periodoFim: { gte: inicioDoAno, lt: inicioDoAnoSeguinte },
       ...(p.contaBancariaId === undefined ? {} : { contaBancariaId: p.contaBancariaId }),
+      // V39-R3 (R3-015) — o extrato digitado só serve de referência do painel (e do corte) quando tem linha confirmada:
+      // uma transcrição sem revisão, ou divergente, não decide até onde a conta é conferida.
+      OR: [{ origem: { not: "DIGITADO" } }, { lancamentos: { some: { transcricao: { revisao: { resultado: "CONFIRMADA" } } } } }],
     },
     orderBy: [{ periodoFim: "desc" }, { criadoEm: "desc" }],
     select: {
@@ -261,7 +264,8 @@ export async function lerPainelConciliacao(p: {
           contaContabil: { select: { codigo: true } },
         },
       },
-      _count: { select: { lancamentos: true } },
+      // A linha digitada conta só confirmada; a do banco, sempre.
+      _count: { select: { lancamentos: { where: { OR: [{ transcricao: null }, { transcricao: { revisao: { resultado: "CONFIRMADA" } } }] } } } },
     },
   });
   if (extrato === null) return null;
@@ -298,7 +302,7 @@ export async function lerPainelConciliacao(p: {
       id: true, valor: true, tipoInterno: true, internoId: true,
       criadoEm: true, criadoPor: true,
       lancamentoExtrato: {
-        select: { fitid: true, dataPostagem: true, valor: true, natureza: true, memo: true, documento: true },
+        select: { fitid: true, dataPostagem: true, valor: true, natureza: true, memo: true, documento: true, extrato: { select: { origem: true } } },
       },
     },
   });
@@ -312,7 +316,8 @@ export async function lerPainelConciliacao(p: {
     correspondencias.push({
       vinculoId: v.id,
       extrato: {
-        fitid: v.lancamentoExtrato.fitid,
+        // V39-R3 (R3-015) — a linha digitada não tem identificador do banco: diz o que ela é, em vez do código interno.
+        fitid: v.lancamentoExtrato.extrato.origem === "DIGITADO" ? "linha digitada de documento" : v.lancamentoExtrato.fitid,
         data: instanteDoDiaDoBanco(v.lancamentoExtrato.dataPostagem),
         valor: v.lancamentoExtrato.valor.toFixed(2),
         natureza: v.lancamentoExtrato.natureza,
@@ -586,7 +591,7 @@ export async function importarExtratoOfxPelaTela(input: { readonly contaBancaria
 export interface ExtratoDaLista {
   readonly id: string;
   readonly conta: ContaConciliada;
-  readonly origem: "OFX" | "API_BB";
+  readonly origem: "OFX" | "API_BB" | "DIGITADO";
   readonly periodoInicio: Date;
   readonly periodoFim: Date;
   readonly importadoPor: string;
@@ -602,7 +607,7 @@ export interface LinhaDoExtratoParaImpressao {
   readonly natureza: "CREDITO" | "DEBITO";
   readonly valor: string;
   readonly vinculado: string;
-  readonly situacao: "CONCILIADA" | "PARCIAL" | "PENDENTE";
+  readonly situacao: "CONCILIADA" | "PARCIAL" | "PENDENTE" | "NAO_VALE";
 }
 
 export interface ExtratoParaImpressao extends ExtratoDaLista {

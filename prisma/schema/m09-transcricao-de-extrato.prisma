@@ -1,0 +1,49 @@
+// ============================================================================
+// V39-R3 (R3-015, V39-029) — A LINHA DE EXTRATO TRANSCRITA À MÃO.
+//
+// Quando não há arquivo nem integração com o banco, o servidor digita as linhas do extrato a partir de um documento
+// (extrato impresso, PDF do banco). A linha entra como `LancamentoExtrato` de um `ExtratoBancario` de origem DIGITADO
+// (a aritmética da conciliação é a mesma), e AO LADO dela fica a transcrição: o documento de suporte e quem digitou.
+//
+// A LINHA DIGITADA NÃO É PROVA BANCÁRIA POR PADRÃO: só vale como extrato (saldo da conciliação, vínculo, saldo mensal
+// ao tribunal) depois de revisada e CONFIRMADA por outra pessoa, e só nos dias que nenhum extrato do banco (arquivo ou
+// API) cobre. Quem decide é `linhasDigitadasQueNaoValem` (modules/m09-tesouraria/transcricao.ts). Append-only.
+// ============================================================================
+
+model TranscricaoDeLinhaDeExtrato {
+  id String @id @default(cuid())
+
+  lancamentoExtratoId String            @unique
+  lancamentoExtrato   LancamentoExtrato @relation("TranscricaoDaLinha", fields: [lancamentoExtratoId], references: [id], onDelete: Restrict)
+
+  /// O documento de onde a linha foi copiada (extrato impresso de tal data, PDF enviado pelo banco em tal dia).
+  documentoDeSuporte String
+  observacao         String?
+
+  revisao RevisaoDaTranscricaoDeExtrato?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+enum ResultadoDaRevisaoDaTranscricao {
+  CONFIRMADA
+  DIVERGENTE
+}
+
+/// A revisão, por outra pessoa, contra o documento de suporte. Uma por transcrição; DIVERGENTE não vale nunca (corrige-se
+/// transcrevendo a linha certa).
+model RevisaoDaTranscricaoDeExtrato {
+  id String @id @default(cuid())
+
+  transcricaoId String                      @unique
+  transcricao   TranscricaoDeLinhaDeExtrato @relation(fields: [transcricaoId], references: [id], onDelete: Restrict)
+
+  resultado  ResultadoDaRevisaoDaTranscricao
+  /// Como foi conferida (documento original na mão, consulta ao internet banking).
+  meio       String
+  observacao String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

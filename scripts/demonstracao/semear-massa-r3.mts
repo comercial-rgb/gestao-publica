@@ -160,6 +160,15 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "conferente.despesa@ficticio.local", nome: "Conferente da despesa (fictícia)", perfil: "CONFERÊNCIA DA DESPESA — ENSAIO",
     acoes: ["REGISTRAR_REFERENCIA_EXTERNA_DO_EMPENHO", "CONSULTAR_DESPESA", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-015) — quem transcreve o extrato e quem confere a transcrição: duas pessoas, a mesma ação.
+  {
+    email: "auxiliar.tesouraria@ficticio.local", nome: "Auxiliar da tesouraria (fictício)", perfil: "TRANSCRIÇÃO DE EXTRATO — ENSAIO",
+    acoes: ["TRANSCREVER_EXTRATO", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    email: "conferente.tesouraria@ficticio.local", nome: "Conferente da tesouraria (fictícia)", perfil: "CONFERÊNCIA DO EXTRATO — ENSAIO",
+    acoes: ["TRANSCREVER_EXTRATO", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
+  },
   {
     email: "farmaceutico.assistencia@ficticio.local", nome: "Farmacêutico da Assistência Social (fictício)", perfil: "FARMÁCIA DA ASSISTÊNCIA — ENSAIO",
     acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],

@@ -27,9 +27,43 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
-| R3-014 prévia das retenções | este | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
+| R3-015 linha de extrato digitada | este | sim | 8 testes, 9 mutações vermelhas | `percurso-v39r3-transcricao-de-extrato.mts` 11/11 | sem permissão, dia futuro, repetida, quem digitou não revisa, dia coberto pelo banco | base R3 |
+| R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-015 (V39-029, M09) — a linha de extrato transcrita à mão
+- **Rota:** Financeiro › Conciliação bancária › "Sem arquivo do banco? Transcrever linhas do extrato"
+  (`/financeiro/conciliacao/transcricao?conta=`). Quem digita informa o documento de suporte e as linhas; outra pessoa
+  revisa cada linha (confere ou não confere, e como conferiu).
+- **Regras:** origem DIGITADO pelo mesmo núcleo da importação; a linha só vale como extrato quando revisada, CONFIRMADA
+  e em dia que o banco não cobre. Saldo do extrato, vínculo, saldo mensal do SAGRES e termo de conferência de caixa
+  excluem o resto. O extrato do banco substitui a transcrição; se a linha digitada já estava conciliada, a importação é
+  recusada até o vínculo ser estornado. Detalhes em `modules/m09-tesouraria/MODULO.md`.
+- **Ação nova:** TRANSCREVER_EXTRATO, com atualização de permissões v50 (quem importa extrato recebe, no mesmo escopo).
+  Na base R3 a v50 concedeu a 1 perfil (administração); a massa ganhou o auxiliar e a conferente da tesouraria.
+- **Schema:** migrations `20261111090900_v39r3_acao_de_transcrever_extrato` e `20261111091000_v39r3_transcricao_de_extrato`
+  (um valor novo em OrigemExtrato, duas tabelas append-only) e `prisma/sql/ck_transcricao_de_extrato.sql`; aplicadas na
+  base de teste e na R3.
+- **Comandos:** `m09-transcricao.test.ts` 4/4, com valores esperados escritos à mão; 5 mutações (sem exclusão no SAGRES,
+  sem exclusão na conciliação, sem a cobertura do banco, importação sem a guarda, revisor igual a quem digitou), todas
+  vermelhas e restauradas; `modules/m09-tesouraria` e `m12-demonstrativos-da-pca` 161/161; SAGRES (abrangência,
+  competência, gerador) 23/23; `m16-censo` 5/5 e `m16-atualizacoes` 25/25; typecheck dos três projetos 0; percurso 11/11.
+- **Auditoria de invariantes (antes do commit), achados corrigidos:** corrida entre vincular linha digitada e importar
+  o extrato do banco que a cobre (trava da conta nos três caminhos; teste determinístico de trava); o painel tomava um
+  extrato digitado sem revisão como referência e corte; a validade ignorava a data do conhecimento (conciliação fechada
+  mudaria depois); dia inexistente (30/02) virava 02/03; linha digitada exibida como prova do banco nas
+  correspondências, na arrecadação e na impressão (totais incluíam linha que não vale); duas transcrições simultâneas
+  passavam pela checagem de repetição. Testes novos: revisão sem permissão, dia futuro na hora de borda (23h30 do ente),
+  dia inexistente, data do conhecimento. Ficaram nomeados no MODULO.md do M09: IMPRESSAO-SEM-O-MOTIVO,
+  SALDO-MENSAL-SEM-DATA-DO-CONHECIMENTO, LISTA-DE-EXCLUSAO-CRESCE, VALOR-DE-ENUM-NA-MIGRATION-DAS-TABELAS,
+  PAINEL-SEM-TESTE-DE-UNIDADE.
+- **Depois dos achados:** `m09-transcricao` 8/8; 9 mutações vermelhas e restauradas (as de trava derrubam só o teste
+  da trava, depois que a trava passou a se soltar no finally); M09, termo de caixa e SAGRES 188/188.
+- **Achados ao construir:** a lista de extratos e o PDF chamariam o extrato digitado de "arquivo OFX" (o typecheck
+  apontou os tipos; os rótulos foram corrigidos). Uma corrida do percurso clicou "Mais uma linha" antes da hidratação
+  (modo dev) e esperou em vão; o percurso agora espera a chave do comando pronta. O `t5` do censo estourou 5 s rodando
+  junto de outro arquivo e passou sozinho (7,5 s com disputa; disputa de máquina, não defeito).
 
 ### R3-014 (V39-027, M07) — a prévia das retenções na liquidação
 - **Rota:** Despesa › Liquidações › "Prévia das retenções" na linha (`/despesa/liquidacoes/[id]/retencoes`). O formulário
@@ -68,7 +102,7 @@ Nenhuma linha acima foi validada externamente nem publicada.
   `m07-calculo-da-retencao` e `m07` 58/58.
 
 ### O próximo passo
-1. R3-015 (linha de extrato digitada), R3-016 (realizáveis de natureza ativa), depois R3-019 a R3-030 na ordem do pedido.
+1. R3-016 (realizáveis de natureza ativa), depois R3-019 a R3-030 na ordem do pedido.
 2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
 3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
 

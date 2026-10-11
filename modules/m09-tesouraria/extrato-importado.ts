@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
+import { linhasDigitadasQueNaoValem } from "./linhas-digitadas.js";
 import { toMoney, type Money } from "../../packages/contracts/index.js";
 import { vinculoLiquido } from "./dominio.js";
 import { instanteDoDiaDoBanco } from "./dia-do-banco.js";
@@ -16,7 +17,8 @@ import { instanteDoDiaDoBanco } from "./dia-do-banco.js";
  * zero pareceria o saldo do banco sem ser. Os totais são do movimento do arquivo, e assim são rotulados.
  */
 
-export type SituacaoDaLinha = "CONCILIADA" | "PARCIAL" | "PENDENTE";
+/** V39-R3 (R3-015) — NAO_VALE: linha digitada sem confirmação, divergente ou substituída pelo extrato do banco. */
+export type SituacaoDaLinha = "CONCILIADA" | "PARCIAL" | "PENDENTE" | "NAO_VALE";
 
 export interface LinhaDoExtratoImportado {
   readonly id: string;
@@ -33,7 +35,7 @@ export interface LinhaDoExtratoImportado {
 export interface ExtratoImportadoCompleto {
   readonly id: string;
   readonly contaBancariaId: string;
-  readonly origem: "OFX" | "API_BB";
+  readonly origem: "OFX" | "API_BB" | "DIGITADO";
   readonly periodoInicio: Date;
   readonly periodoFim: Date;
   readonly importadoPor: string;
@@ -84,6 +86,8 @@ export async function lerExtratoImportado(prisma: PrismaClient, extratoId: strin
     },
   });
   if (e === null) return null;
+  // V39-R3 (R3-015) — no extrato digitado, a linha que não vale aparece como tal e fica fora dos totais.
+  const naoValem = e.origem === "DIGITADO" ? await linhasDigitadasQueNaoValem(prisma, e.contaBancariaId) : new Map<string, unknown>();
 
   const linhas = e.lancamentos
     .map((l): LinhaDoExtratoImportado => {
@@ -92,13 +96,13 @@ export async function lerExtratoImportado(prisma: PrismaClient, extratoId: strin
       return {
         id: l.id,
         data: instanteDoDiaDoBanco(l.dataPostagem),
-        fitid: l.fitid,
+        fitid: e.origem === "DIGITADO" ? "linha digitada" : l.fitid,
         documento: l.documento,
         memo: l.memo,
         natureza: l.natureza,
         valor,
         vinculado,
-        situacao: situacaoDaLinha(valor, vinculado),
+        situacao: naoValem.has(l.id) ? "NAO_VALE" : situacaoDaLinha(valor, vinculado),
       };
     })
     .sort((a, b) => a.data.getTime() - b.data.getTime() || ordemNatural.compare(a.fitid, b.fitid));
@@ -106,6 +110,7 @@ export async function lerExtratoImportado(prisma: PrismaClient, extratoId: strin
   let creditos = toMoney("0.00");
   let debitos = toMoney("0.00");
   for (const l of linhas) {
+    if (l.situacao === "NAO_VALE") continue;
     if (l.natureza === "CREDITO") creditos = toMoney(creditos.plus(l.valor));
     else debitos = toMoney(debitos.plus(l.valor));
   }

@@ -90,6 +90,8 @@ model ExtratoBancario {
 enum OrigemExtrato {
   OFX
   API_BB
+  /// V39-R3 (R3-015) — linhas digitadas a partir de um documento; ver m09-transcricao-de-extrato.prisma.
+  DIGITADO
 }
 
 // ----------------------------------------------------------------------------
@@ -131,6 +133,9 @@ model LancamentoExtrato {
   linhaHash String
 
   vinculos VinculoConciliacao[]
+
+  /// V39-R3 (R3-015) — presente só na linha digitada (origem DIGITADO).
+  transcricao TranscricaoDeLinhaDeExtrato? @relation("TranscricaoDaLinha")
 
   criadoEm DateTime @default(now())
 
