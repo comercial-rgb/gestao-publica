@@ -22,6 +22,7 @@ import { cadastrarCondutor } from "../../modules/m36-frota/operacao.js";
 import { cadastrarTanqueDeCombustivel } from "../../modules/m36-frota/tanque.js";
 import { cadastrarFarmacia } from "../../modules/m37-farmacia/servico.js";
 import { registrarPerfilFiscal } from "../../modules/m07-extraorcamentario/retencao-calculada.js";
+import { criarSetor } from "../../modules/m21-protocolo/cadastros.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -168,6 +169,11 @@ export const PAPEIS_R3: readonly PapelR3[] = [
   {
     email: "conferente.tesouraria@ficticio.local", nome: "Conferente da tesouraria (fictícia)", perfil: "CONFERÊNCIA DO EXTRATO — ENSAIO",
     acoes: ["TRANSCREVER_EXTRATO", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
+  },
+  // V39-R3 (R3-019) — quem registra e autoriza as solicitações de compra dos setores (a consolidação é do agente de contratação).
+  {
+    email: "solicitante.compras@ficticio.local", nome: "Solicitante de compras (fictícia)", perfil: "SOLICITAÇÕES DE COMPRA — ENSAIO",
+    acoes: ["REGISTRAR_SOLICITACAO_DE_COMPRA", "MOVIMENTAR_SOLICITACAO_DE_COMPRA", "CONSULTAR_LICITACOES", "CONSULTAR_CADASTROS"],
   },
   // V39-R3 (R3-016) — quem parametriza os valores a receber de volta (categoria e conta) e quem os movimenta.
   {
@@ -594,6 +600,19 @@ async function semearRetencao(prisma: PrismaClient): Promise<void> {
   });
 }
 
+// ═══ 7. COMPRAS: dois setores que pedem (a solicitação de compra é de um setor) ═══
+
+async function semearCompras(prisma: PrismaClient): Promise<void> {
+  for (const [codigo, nome, uo] of [["R3-ADM", `Setor de compras da Administração ${ENSAIO}`, UO_ADMINISTRACAO], ["R3-SAU", `Setor de compras da Saúde ${ENSAIO}`, UO_SAUDE]] as const) {
+    await passo(`Setor ${codigo}`, async () => {
+      const ja = await prisma.setor.findFirst({ where: { codigo }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: null };
+      await criarSetor(prisma, { codigo, nome, unidadeOrcId: await uoId(prisma, uo), criadoPor: ADMIN });
+      return { estado: "criado", valor: null };
+    });
+  }
+}
+
 // ═══ PRINCIPAL ═══
 
 function exigirBanco(): string {
@@ -631,6 +650,8 @@ async function main(): Promise<void> {
     await semearFrota(prisma);
     console.log("\n[6] retenção na fonte");
     await semearRetencao(prisma);
+    console.log("\n[7] compras");
+    await semearCompras(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

@@ -1,3 +1,4 @@
+import { consolidarSolicitacoesNoProcesso, origemDosItensDoProcesso, solicitacoesConsolidaveis } from "../../modules/m11-licitacoes/consolidacao";
 import {
   adjudicar,
   cadastrarContratoDaAta,
@@ -26,14 +27,20 @@ import { comEscritaAutenticada } from "./sessao";
 export type QuadroNaTela = Awaited<ReturnType<typeof quadroDoResultado>> & {
   readonly pode: { readonly cadastrar: boolean; readonly julgar: boolean; readonly adjudicar: boolean; readonly homologar: boolean; readonly contratar: boolean };
   readonly criterios: readonly { readonly valor: string; readonly rotulo: string }[];
+  /** V39-R3 (R3-019) — de que solicitação (e setor) veio cada parcela de cada item; vazio no item digitado. */
+  readonly origem: Readonly<Record<string, readonly { readonly solicitacao: string; readonly setor: string; readonly quantidade: string }[]>>;
+  /** As solicitações autorizadas que ainda podem formar os itens (só antes de o processo ter itens). */
+  readonly consolidaveis: readonly { readonly id: string; readonly numero: string; readonly setor: string; readonly itens: number; readonly resumo: string }[];
 };
 
 export async function lerQuadroDoResultado(processoId: string): Promise<QuadroNaTela> {
   await exigirLeituraDoEnte("CONSULTAR_LICITACOES");
-  const [quadro, permitidas] = await Promise.all([
+  const [quadro, permitidas, origem] = await Promise.all([
     quadroDoResultado(cliente(), processoId),
     acoesPermitidas(["CADASTRAR_PROCESSO", "REGISTRAR_RESULTADO_DA_LICITACAO", "ADJUDICAR_LICITACAO", "HOMOLOGAR_PROCESSO", "CADASTRAR_CONTRATO"]),
+    origemDosItensDoProcesso(cliente(), processoId),
   ]);
+  const consolidaveis = quadro.itens.length === 0 && permitidas.has("CADASTRAR_PROCESSO") ? await solicitacoesConsolidaveis(cliente()) : [];
   return {
     ...quadro,
     pode: {
@@ -44,7 +51,15 @@ export async function lerQuadroDoResultado(processoId: string): Promise<QuadroNa
       contratar: permitidas.has("CADASTRAR_CONTRATO"),
     },
     criterios: CRITERIOS_DE_JULGAMENTO.map((c) => ({ valor: c, rotulo: ROTULO_DO_CRITERIO[c] })),
+    origem: Object.fromEntries(origem),
+    consolidaveis,
   };
+}
+
+/** V39-R3 (R3-019) — formar os itens do processo a partir das solicitações autorizadas escolhidas. */
+export async function consolidarSolicitacoesPelaTela(input: { readonly processoId: string; readonly solicitacaoIds: readonly string[] }): Promise<string> {
+  const r = await comEscritaAutenticada("CADASTRAR_PROCESSO", (criadoPor) => consolidarSolicitacoesNoProcesso(cliente(), { processoId: input.processoId, solicitacaoIds: [...input.solicitacaoIds], criadoPor }));
+  return `${String(r.itens)} item(ns) formado(s) a partir de ${String(r.parcelas)} parcela(s) das solicitações; cada item mostra de que solicitação e setor veio.`;
 }
 
 type Sem<T> = Omit<T, "criadoPor">;

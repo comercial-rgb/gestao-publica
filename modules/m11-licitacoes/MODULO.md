@@ -586,3 +586,34 @@ da ordem passou a ser uma régua só, `situacaoDaOrdem` (pura), usada pela execu
 `/licitacoes/ordens-de-servico`, no submenu de Licitações e no menu do contador ("Execução e fiscalização"). Testes:
 `test/ordens-de-servico-da-sessao.test.ts` (N=2 contratos com fiscais distintos; financeiro vê os dois; sem acesso e
 inativo, nada; a situação pura), 3 mutações vermelhas. Leituras fora do censo.
+
+## V39-R3 (R3-019) — as solicitações de compra formam os itens do processo
+
+`consolidacao.ts`; na página do processo, "Formar os itens a partir das solicitações de compra".
+
+- As solicitações AUTORIZADAS escolhidas viram os itens do processo: um por material, com a quantidade = Σ do que falta
+  consolidar de cada item de solicitação. Cada parcela fica em `AlocacaoDeSolicitacaoNoProcesso` (solicitação, setor,
+  quantidade) e a tela mostra a origem embaixo de cada item. O item ganha o material (`ItemDoProcesso.materialId`).
+- **Uma necessidade, um caminho:** o que resta de cada item de solicitação é o pedido menos o que está em ORDEM viva e o
+  que foi a PROCESSO — a mesma conta do atendimento da solicitação (`atendimentoDaSolicitacao`, agora com `emProcesso`).
+  A consolidação usa essa régua, e a ordem de compra recusa a parcela que passaria do que restou depois do processo.
+  Sem isso, a mesma necessidade seria comprada pelos dois caminhos (achado da auditoria).
+- **Solicitação consolidada não se anula:** o processo licitaria o que ninguém pede. A anulação trava os itens da
+  solicitação (o mesmo trinco da consolidação e da ordem), e a consolidação lê a situação depois da trava.
+- **Unidade:** a solicitação grava a quantidade sem unidade. A consolidação só aceita material de uma unidade só (a de
+  estoque); com mais de uma, recusa nomeando, em vez de presumir. A tela mostra a unidade em cada parcela e, na escolha,
+  o material e a quantidade de cada solicitação.
+- **A reserva não é tocada:** a solicitação não reserva e consolidar também não; a reserva continua uma só, a do
+  processo (`ReservaDotacao.processoId`). O teste afirma que a reserva do processo não muda.
+- **Uma vez, antes do julgamento:** a quantidade do item não se reescreve, então processo que já tem itens (digitados
+  ou consolidados) ou resultado recusa; item de solicitação já consolidado inteiro não entra em outro processo.
+- Poder: CADASTRAR_PROCESSO (o de quem cadastra item do processo). Travas: itens da solicitação (24) antes do processo (45).
+
+### Pendências (nomeadas)
+- **CONSOLIDACAO-EM-UMA-VEZ**: acrescentar solicitações a um processo que já tem itens pede um ato de retificação dos
+  itens, que não existe.
+- **DESFAZER-CONSOLIDACAO**: não há desfazimento da parcela antes do julgamento.
+- **SOLICITACAO-SEM-UNIDADE**: a solicitação não declara a unidade; material com mais de uma unidade não se consolida
+  (forma-se o item à mão).
+- **CONSOLIDAVEIS-SEM-RECORTE**: a lista de solicitações consolidáveis lê todas as autorizadas, uma situação por vez;
+  com volume, pede recorte por período ou setor.

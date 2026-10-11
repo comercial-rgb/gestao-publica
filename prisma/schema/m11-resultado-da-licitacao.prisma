@@ -29,6 +29,12 @@ model ItemDoProcesso {
   unidade    String
   quantidade Decimal @db.Decimal(18, 4)
 
+  /// V39-R3 (R3-019) — o material, quando o item nasce da consolidação das solicitações (nulo no item digitado).
+  materialId String?
+  material   Material? @relation("MaterialDoItemDoProcesso", fields: [materialId], references: [id])
+  /// As parcelas das solicitações que formam o item (a origem: solicitação, setor, quantidade).
+  alocacoesDeSolicitacao AlocacaoDeSolicitacaoNoProcesso[]
+
   propostas  PropostaDoParticipante[]
   resultados ItemDoResultado[]
 

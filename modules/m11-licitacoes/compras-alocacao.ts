@@ -103,6 +103,9 @@ export async function alocarDentroDaTransacao(
     },
   });
   const itemDaSolicitacaoPorId = new Map(itensDaSolicitacao.map((i) => [i.id, i]));
+  // V39-R3 (R3-019) — o que já foi consolidado em processo licitatório também consome o pedido: a mesma necessidade não
+  // se compra pela ordem E pelo processo (achado da auditoria).
+  const noProcesso = await consolidadoEmProcesso(tx, idsDeItem);
 
   // a situação de cada solicitação envolvida, uma vez
   const situacoes = new Map<string, "PENDENTE" | "AUTORIZADA" | "ANULADA">();
@@ -140,7 +143,14 @@ export async function alocarDentroDaTransacao(
 
     const vivasDaSolicitacao = is.alocacoes.filter((x) => !estornadas.has(x.itemDeOrdem.ordemId));
     const jaOrdenado = somaViva(vivasDaSolicitacao).plus(novoPorItemDaSolicitacao.get(is.id) ?? toMoney("0"));
-    const solicitado = toMoney(is.quantidade.toFixed(4));
+    const emProcesso = noProcesso.get(is.id) ?? toMoney("0");
+    const solicitado = toMoney(is.quantidade.toFixed(4)).minus(emProcesso);
+    if (emProcesso.greaterThan(0) && jaOrdenado.plus(q).greaterThan(solicitado)) {
+      throw new Error(
+        `A solicitação ${is.solicitacao.numero}, item ${is.material.codigo}, já tem ${emProcesso.toFixed(4)} consolidado(s) em processo licitatório; ` +
+          `restam ${solicitado.minus(jaOrdenado).toFixed(4)} para ordem. A mesma necessidade não se compra pelos dois caminhos. Nada foi gravado.`
+      );
+    }
     if (jaOrdenado.plus(q).greaterThan(solicitado)) {
       throw new Error(
         `EXCESSO: a solicitação ${is.solicitacao.numero}, item ${is.material.codigo}, pede ${solicitado.toFixed(4)}; ` +
@@ -281,8 +291,17 @@ export interface AtendimentoDoItem {
   readonly ordenado: Money;
   readonly recebido: Money;
   readonly cancelado: Money;
+  /** V39-R3 (R3-019) — consolidado em processo licitatório (não volta a ficar pendente para ordem). */
+  readonly emProcesso: Money;
   readonly pendente: Money;
   readonly parcelas: readonly ParcelaDaSolicitacao[];
+}
+
+/** V39-R3 (R3-019) — Σ das parcelas de cada item de solicitação consolidadas em processo licitatório. Leitura. */
+export async function consolidadoEmProcesso(tx: Tx, itemIds: readonly string[]): Promise<ReadonlyMap<string, Money>> {
+  if (itemIds.length === 0) return new Map();
+  const grupos = await tx.alocacaoDeSolicitacaoNoProcesso.groupBy({ by: ["itemDeSolicitacaoId"], where: { itemDeSolicitacaoId: { in: [...itemIds] } }, _sum: { quantidade: true } });
+  return new Map(grupos.map((g) => [g.itemDeSolicitacaoId, toMoney(g._sum.quantidade?.toFixed(4) ?? "0")]));
 }
 
 /** O ATENDIMENTO DA SOLICITAÇÃO, item a item — leitura, tudo derivado. */
@@ -303,6 +322,7 @@ export async function atendimentoDaSolicitacao(tx: Tx, solicitacaoId: string): P
       },
     },
   });
+  const noProcesso = await consolidadoEmProcesso(tx, itens.map((i) => i.id));
   const saida: AtendimentoDoItem[] = [];
   for (const i of itens) {
     const atribuidoPorItemDaOrdem = new Map<string, Map<string, Money>>();
@@ -334,9 +354,11 @@ export async function atendimentoDaSolicitacao(tx: Tx, solicitacaoId: string): P
       });
     }
     const solicitado = toMoney(i.quantidade.toFixed(4));
+    // V39-R3 (R3-019) — o que foi ao processo não está mais pendente para ordem.
+    const emProcesso = noProcesso.get(i.id) ?? toMoney("0");
     saida.push({
       itemId: i.id, materialId: i.materialId, materialCodigo: i.material.codigo, materialDescricao: i.material.descricaoSucinta,
-      solicitado, ordenado, recebido, cancelado, pendente: solicitado.minus(ordenado), parcelas,
+      solicitado, ordenado, recebido, cancelado, emProcesso, pendente: solicitado.minus(ordenado).minus(emProcesso), parcelas,
     });
   }
   return saida;

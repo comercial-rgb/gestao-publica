@@ -1319,6 +1319,7 @@ export type NomeDeServico =
   | "constituirRealizavel"
   | "baixarRealizavel"
   | "anularMovimentoDeRealizavel"
+  | "consolidarSolicitacoesNoProcesso"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -2236,6 +2237,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   constituirRealizavel: "MOVIMENTAR_REALIZAVEL",
   baixarRealizavel: "MOVIMENTAR_REALIZAVEL",
   anularMovimentoDeRealizavel: "MOVIMENTAR_REALIZAVEL",
+  // V39-R3 (R3-019) — consolidar as solicitações forma os itens do processo: o poder de quem cadastra o item do processo.
+  consolidarSolicitacoesNoProcesso: "CADASTRAR_PROCESSO",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3576,6 +3579,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
   divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
   saldoDoTanqueNaTx: "leitura pura (o saldo do combustível no tanque, pela soma dos movimentos)",
   previaVigenteDaLiquidacao: "leitura pura (a prévia de maior versão da liquidação)",
+  consolidadoEmProcesso: "leitura pura (o que cada item de solicitação já tem consolidado em processo)",
+  origemDosItensDoProcesso: "leitura pura (as parcelas das solicitações em cada item do processo)",
+  solicitacoesConsolidaveis: "leitura pura (as solicitações autorizadas com o que consolidar)",
   registrarMovimentoBancarioNaTx: "núcleo do movimento bancário na transação de quem chama; quem chama (o registro público, o realizável) autoriza",
   estornarMovimentoBancarioNaTx: "núcleo do estorno do movimento bancário; quem chama autoriza",
   realizavelPorFonte: "leitura pura (o dinheiro de cada fonte que está fora num realizável, para o superávit)",

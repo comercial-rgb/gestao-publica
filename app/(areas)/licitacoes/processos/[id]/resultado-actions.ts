@@ -6,6 +6,7 @@ import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
 import {
   adjudicarPelaTela,
   cadastrarItemPelaTela,
+  consolidarSolicitacoesPelaTela,
   contratoDaAtaPelaTela,
   contratoDoResultadoPelaTela,
   homologarPorAtoPelaTela,
@@ -55,6 +56,15 @@ export async function cadastrarItemAction(_p: EstadoDoResultado, f: FormData): P
     const lote = t(f, "lote");
     await cadastrarItemPelaTela({ processoId, numero: t(f, "numero"), ...(lote === "" ? {} : { lote }), descricao: t(f, "descricao"), unidade: t(f, "unidade"), quantidade: num(t(f, "quantidade")) });
     return `Item ${t(f, "numero")} cadastrado.`;
+  });
+}
+
+/** V39-R3 (R3-019) — os itens formados a partir das solicitações marcadas. */
+export async function consolidarSolicitacoesAction(_p: EstadoDoResultado, f: FormData): Promise<EstadoDoResultado> {
+  return ato(f, async (processoId) => {
+    const solicitacaoIds = f.getAll("solicitacaoId").map((v) => String(v)).filter((v) => v !== "");
+    if (solicitacaoIds.length === 0) throw new Error("Marque ao menos uma solicitação. Nada foi gravado.");
+    return consolidarSolicitacoesPelaTela({ processoId, solicitacaoIds });
   });
 }
 

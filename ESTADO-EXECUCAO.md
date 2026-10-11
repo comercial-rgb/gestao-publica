@@ -27,11 +27,33 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
-| R3-016 valores a receber de volta (realizáveis) | este | sim | 8 testes, 14 mutações vermelhas | `percurso-v39r3-realizavel.mts` 9/9 | sem decisão do ente, conta fora dos grupos, baixa acima do saldo, sem permissão | base R3 |
+| R3-019 solicitações formam os itens do processo | este | sim | 6 testes, 7 mutações vermelhas | `percurso-v39r3-solicitacao-no-processo.mts` 13/13 | pendente, já com itens, já comprometida, sem permissão, anulação, duas unidades | base R3 |
+| R3-016 valores a receber de volta (realizáveis) | 43b2cbba | sim | 8 testes, 14 mutações vermelhas | `percurso-v39r3-realizavel.mts` 9/9 | sem decisão do ente, conta fora dos grupos, baixa acima do saldo, sem permissão | base R3 |
 | R3-015 linha de extrato digitada | d1ca4988 | sim | 8 testes, 9 mutações vermelhas | `percurso-v39r3-transcricao-de-extrato.mts` 11/11 | sem permissão, dia futuro, repetida, quem digitou não revisa, dia coberto pelo banco | base R3 |
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-019 (V39-039, M11) — as solicitações de compra formam os itens do processo
+- **Rota:** Licitações › Processos › (processo sem itens) › "Formar os itens a partir das solicitações de compra": as
+  solicitações autorizadas escolhidas viram um item por material, com a quantidade somada; embaixo de cada item, de que
+  solicitação e setor veio cada parcela, com a unidade.
+- **Regras:** parcelas em `AlocacaoDeSolicitacaoNoProcesso` (append-only) e `ItemDoProcesso.materialId`; a reserva não é
+  tocada (uma só, a do processo); uma necessidade, um caminho (ordem ou processo, pela mesma conta do atendimento);
+  solicitação consolidada não se anula; material com mais de uma unidade recusa; uma vez, antes do julgamento. Poder
+  CADASTRAR_PROCESSO, nenhuma ação nova. Detalhes e pendências no MODULO.md do M11.
+- **Schema:** `20261111091500_v39r3_solicitacao_consolidada_no_processo` e `prisma/sql/ck_alocacao_no_processo.sql`;
+  aplicadas na base de teste e na R3. Massa: os setores R3-ADM e R3-SAU e a solicitante de compras.
+- **Auditoria de invariantes, achados corrigidos antes do commit:** a mesma solicitação podia ser comprada pelo processo
+  e por uma ordem (dobrava a demanda e o empenho); a solicitação consolidada podia ser anulada calada; a unidade era
+  presumida; a situação era lida antes da trava (corrida com a anulação); a lista não mostrava o que se somava; duas
+  negações do percurso passavam por vazio.
+- **Comandos:** `m11-consolidacao.test.ts` 6/6 (N=2 solicitações de dois setores, ordem antes e depois do processo,
+  anulação recusada, material com duas unidades); 7 mutações vermelhas e restauradas; `modules/m11-licitacoes` 153/153; censo 5/5; typecheck 0; percurso 13/13.
+- **Achados ao percorrer:** a mensagem de sucesso sumia junto com o formulário (o processo passa a ter itens) — o
+  formulário fica montado e mostra a resposta; num servidor frio, a primeira busca de material compilou por mais de 20 s
+  e o percurso esperou em vão (tempo de compilação do modo dev, não defeito; a corrida seguinte passou); a leitura da
+  lista do segundo processo usava `$eval` em vez de `$eval` no próprio percurso.
 
 ### R3-016 (V39-030, M07) — os realizáveis de natureza ativa
 - **Rota:** Financeiro › Valores a receber de volta (`/financeiro/realizaveis`), também no menu do extraorçamentário.
@@ -147,7 +169,7 @@ Nenhuma linha acima foi validada externamente nem publicada.
   `m07-calculo-da-retencao` e `m07` 58/58.
 
 ### O próximo passo
-1. R3-019 a R3-030 na ordem do pedido.
+1. R3-020 a R3-030 na ordem do pedido (R3-020 já tem os textos oficiais em `docs/oficial/compras/`).
 2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
 3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
 

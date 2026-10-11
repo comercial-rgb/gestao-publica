@@ -6,6 +6,7 @@ import { elegibilidadeParaEstornarOrdem, elegibilidadeParaReceberOrdem } from ".
 import { diaCivil } from "../../packages/datas/index.js";
 import type { PrismaClient } from "../../prisma/generated/client/client.js";
 import { alocarDentroDaTransacao, zLinhaDeAlocacao } from "./compras-alocacao.js";
+import { travar } from "../../packages/locks/index.js";
 
 /**
  * M11 — A COMPRA (TR 5.17, o subconjunto de suprimentos).
@@ -380,6 +381,18 @@ export async function movimentarSolicitacaoDeCompra(
       );
     }
     if (d.tipo === "ANULACAO") {
+      // V39-R3 (R3-019) — os itens travados (o mesmo trinco da consolidação e da ordem): anular no meio de uma consolidação
+      // levaria a parcela de uma solicitação anulada ao processo.
+      const itensDaSolicitacao = await tx.itemDeSolicitacaoDeCompra.findMany({ where: { solicitacaoId: d.solicitacaoId }, select: { id: true } });
+      await travar(tx, "ItemDeSolicitacaoDeCompra", itensDaSolicitacao.map((i) => i.id));
+      const noProcesso = await tx.alocacaoDeSolicitacaoNoProcesso.findMany({ where: { itemDeSolicitacao: { solicitacaoId: d.solicitacaoId } }, select: { itemDoProcesso: { select: { processo: { select: { numeroProcesso: true } } } } } });
+      if (noProcesso.length > 0) {
+        const processos = [...new Set(noProcesso.map((p) => p.itemDoProcesso.processo.numeroProcesso))].join(", ");
+        throw new Error(
+          `A solicitação ${s.numero} já foi consolidada no processo ${processos}: o item do processo foi formado com a quantidade dela. ` +
+            `Anulá-la deixaria o processo licitando o que ninguém pede. Nada foi gravado.`
+        );
+      }
       // ⚠️ V6 P1.1 — com parcelas VIVAS em ordens VIVAS, anular deixaria ordens apontando para um
       // pedido que não existe mais. Desfaça os vínculos (ou estorne as ordens) antes.
       const vivas = await tx.alocacaoDeSolicitacaoNaOrdem.findMany({

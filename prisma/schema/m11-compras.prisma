@@ -129,6 +129,8 @@ model ItemDeSolicitacaoDeCompra {
 
   /// V6 P1.1 — as parcelas deste item já alocadas a itens de ordem (ordenado é Σ das vivas).
   alocacoes AlocacaoDeSolicitacaoNaOrdem[]
+  /// V39-R3 (R3-019) — as parcelas consolidadas em processo licitatório.
+  alocacoesNoProcesso AlocacaoDeSolicitacaoNoProcesso[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -591,4 +593,31 @@ model MovimentoDoDocumentoFiscal {
   criadoPor String
 
   @@index([documentoId, tipo])
+}
+
+// ============================================================================
+// V39-R3 (R3-019, V39-039) — A SOLICITAÇÃO CONSOLIDADA NO PROCESSO LICITATÓRIO.
+//
+// Uma parcela de um item de solicitação AUTORIZADA, alocada a um item do processo. O item do processo nasce da
+// consolidação (um por material), com a quantidade = Σ das parcelas; cada parcela guarda de que solicitação (e setor)
+// veio. Append-only. NÃO toca a reserva orçamentária: a solicitação não reserva, e consolidar não reserva — a reserva
+// continua sendo uma só, a do processo (ReservaDotacao.processoId), quando houver.
+// ============================================================================
+
+model AlocacaoDeSolicitacaoNoProcesso {
+  id String @id @default(cuid())
+
+  itemDeSolicitacaoId String
+  itemDeSolicitacao   ItemDeSolicitacaoDeCompra @relation(fields: [itemDeSolicitacaoId], references: [id], onDelete: Restrict)
+
+  itemDoProcessoId String
+  itemDoProcesso   ItemDoProcesso @relation(fields: [itemDoProcessoId], references: [id], onDelete: Restrict)
+
+  quantidade Decimal @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([itemDeSolicitacaoId, itemDoProcessoId])
+  @@index([itemDoProcessoId])
 }

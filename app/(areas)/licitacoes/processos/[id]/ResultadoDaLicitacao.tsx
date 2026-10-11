@@ -9,6 +9,7 @@ import type { QuadroNaTela } from "../../../../../lib/portas/resultado-da-licita
 import {
   adjudicarAction,
   cadastrarItemAction,
+  consolidarSolicitacoesAction,
   contratoDaAtaAction,
   contratoDoResultadoAction,
   homologarAction,
@@ -307,6 +308,35 @@ function FormContratoDaAta({ q, processoId }: { readonly q: QuadroNaTela; readon
   );
 }
 
+/**
+ * V39-R3 (R3-019) — formar os itens a partir das solicitações. Fica MONTADO depois do sucesso (o processo recarrega com
+ * itens e o formulário deixa de caber): aí mostra só a resposta do servidor, para quem formou ler o que aconteceu.
+ */
+function FormarItens({ processoId, disponivel, consolidaveis }: { readonly processoId: string; readonly disponivel: boolean; readonly consolidaveis: QuadroNaTela["consolidaveis"] }): React.ReactElement | null {
+  const [estado, disparar, pendente] = useActionState<EstadoDoResultado, FormData>(consolidarSolicitacoesAction, {});
+  if (!disponivel) return estado.sucesso === undefined ? null : <Resultado estado={estado} acao="consolidar-solicitacoes" />;
+  return (
+    <details className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] p-3">
+      <summary className="cursor-pointer text-sm font-medium text-[color:var(--color-primary)]">Formar os itens a partir das solicitações de compra</summary>
+      <form action={disparar} data-acao="consolidar-solicitacoes" className="mt-3 space-y-3" aria-label="Formar os itens a partir das solicitações de compra">
+        <ChaveDeComando />
+        <input type="hidden" name="processoId" value={processoId} />
+        <fieldset className="space-y-1 text-xs">
+          <legend className={ROTULO}>Solicitações autorizadas (um item por material, com a quantidade somada; cada item guarda de que solicitação e setor veio)</legend>
+          {consolidaveis.map((c) => (
+            <label key={c.id} className="flex items-center gap-2">
+              <input type="checkbox" name="solicitacaoId" value={c.id} />
+              <span>{c.numero}, {c.setor}: {c.resumo}</span>
+            </label>
+          ))}
+        </fieldset>
+        <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Formar os itens"}</button>
+        <Resultado estado={estado} acao="consolidar-solicitacoes" />
+      </form>
+    </details>
+  );
+}
+
 export function ResultadoDaLicitacao({ q, processoId }: { readonly q: QuadroNaTela; readonly processoId: string }): React.ReactElement {
   return (
     <section className={PAINEL} aria-label="Itens, propostas e resultado" data-resultado-da-licitacao>
@@ -329,7 +359,14 @@ export function ResultadoDaLicitacao({ q, processoId }: { readonly q: QuadroNaTe
             <tbody>
               {q.itens.map((i) => (
                 <tr key={i.id} className="border-t border-[color:var(--color-border)] align-top" data-item-do-processo={i.numero} data-situacao={i.resultado?.situacao ?? ""}>
-                  <td className="py-1 pr-2">{i.numero}{i.lote !== null ? ` (lote ${String(i.lote)})` : ""} — {i.descricao}</td>
+                  <td className="py-1 pr-2">
+                    {i.numero}{i.lote !== null ? ` (lote ${String(i.lote)})` : ""} — {i.descricao}
+                    {(q.origem[i.id] ?? []).map((o, k) => (
+                      <span key={`${o.solicitacao}-${String(k)}`} className="block text-[color:var(--color-ink-3)]" data-origem-do-item={o.solicitacao}>
+                        solicitação {o.solicitacao} ({o.setor}): {n4(o.quantidade)} {i.unidade}
+                      </span>
+                    ))}
+                  </td>
                   <td className="py-1 pr-2">{n4(i.quantidade)} {i.unidade}</td>
                   <td className="py-1 pr-2">
                     {[...i.propostas].sort((a, b) => new Decimal(a.valorUnitario).comparedTo(b.valorUnitario)).map((p) => (
@@ -382,6 +419,7 @@ export function ResultadoDaLicitacao({ q, processoId }: { readonly q: QuadroNaTe
       <div className="mt-4 space-y-2">
         {q.pode.cadastrar ? (
           <>
+            <FormarItens processoId={processoId} disponivel={q.itens.length === 0 && q.consolidaveis.length > 0} consolidaveis={q.consolidaveis} />
             <Ato titulo="Cadastrar item do processo" acao="cadastrar-item-do-processo" action={cadastrarItemAction} processoId={processoId} botao="Cadastrar item">
               <div className="grid gap-3 sm:grid-cols-5">
                 <Campo rotulo="Número do item"><input name="numero" required inputMode="numeric" className={CAMPO} /></Campo>

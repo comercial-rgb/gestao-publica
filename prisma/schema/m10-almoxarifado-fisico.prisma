@@ -169,6 +169,7 @@ enum CategoriaDeMaterial {
 }
 
 model Material {
+  itensDeProcesso ItemDoProcesso[] @relation("MaterialDoItemDoProcesso")
   /// V39-R3 (R3-018) — os tanques de combustível que guardam este material.
   tanques TanqueDeCombustivel[] @relation("CombustivelDoTanque")
   /// V39-R2 (R2-030/031) — dispensações e ajustes da farmácia. VIRTUAIS.
