@@ -647,6 +647,13 @@ export async function registrarMovimentoDeGestao(
   return prisma.$transaction(async (tx) => {
     const bem = await exigirBem(tx, d.bemId);
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarMovimentoDeGestao, "ENTE");
+    // V39-R3 (R3-011) — a trava do bem ANTES de ler a situação dele: a baixa e a transferência simultâneas (ou duas
+    // baixas) não passam as duas. E o bem baixado não se movimenta mais (para desfazer a baixa, estorna-se o movimento dela).
+    await travar(tx, "BemPatrimonial", [bem.id]);
+    const estado = await estadoDoBem(tx, bem.id, diaCivil(d.dataMovimento));
+    if (estado.situacao === "BAIXADO") {
+      throw new Error(`O bem ${bem.numeroTombamento} está BAIXADO em ${diaCivil(d.dataMovimento)}: um bem baixado não se movimenta. Para desfazer a baixa, estorne o movimento dela. Nada foi gravado.`);
+    }
 
     const criado = await tx.movimentoDeGestaoDoBem.create({
       data: {
@@ -797,6 +804,8 @@ export async function estornarMovimentoDeGestao(
     await autorizarNo(
       tx, d.criadoPor, ACAO_DO_SERVICO.estornarMovimentoDeGestao, "ENTE"
     );
+    // V39-R3 (R3-011) — o bem travado antes de ler os alvos e os estornos deles: dois estornos simultâneos não passam.
+    await travar(tx, "BemPatrimonial", [original.bemId]);
 
     const alvos =
       original.operacaoId === null
@@ -878,6 +887,8 @@ export async function gerarEtiquetaDeBem(
   const d = zGerarEtiquetaDeBemInput.parse(input);
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.gerarEtiquetaDeBem, "ENTE");
+    // V39-R3 (R3-011) — duas etiquetas simultâneas leriam "sem código" e gravariam duas vezes.
+    await travar(tx, "BemPatrimonial", [d.bemId]);
     const bem = await tx.bemPatrimonial.findUnique({
       where: { id: d.bemId },
       select: { id: true, numeroTombamento: true, codigoDeBarras: true },
@@ -940,6 +951,8 @@ export async function emitirTermoPatrimonial(
       ACAO_DO_SERVICO.emitirTermoPatrimonial,
       d.setorId === undefined ? "ENTE" : { setor: d.setorId }
     );
+    // V39-R3 (R3-011) — os bens do termo travados antes de compor o documento e de gravar os movimentos dele.
+    await travar(tx, "BemPatrimonial", [...d.bensId]);
 
     // ═══ V4 (§5) — A EMISSÃO É CONGELADA NA MESMA TRANSAÇÃO ═══
     // O documento é composto AGORA (valores e localizações desta hora) e gravado com o termo:
@@ -1102,6 +1115,14 @@ export async function registrarContagemDeBem(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarContagemDeBem, {
       ug: inv.unidadeOrcId,
     });
+    // V39-R3 (R3-011) — a contagem pode mover o bem para onde ele foi achado: trava antes, como a transferência. E o
+    // inventário depois (posto 49), relendo o fechamento: a recontagem não se grava depois de fechado.
+    await travar(tx, "BemPatrimonial", [d.bemId]);
+    await travar(tx, "InventarioDeBens", [inv.id]);
+    const fechadoEm = (await tx.inventarioDeBens.findUniqueOrThrow({ where: { id: inv.id }, select: { dataFechamento: true } })).dataFechamento;
+    if (fechadoEm !== null) {
+      throw new Error(`O inventário já foi FECHADO em ${diaCivil(fechadoEm)}. Contar depois do fechamento mudaria um resultado já apurado.`);
+    }
     if (inv.dataFechamento !== null) {
       throw new Error(
         `O inventário já foi FECHADO em ${diaCivil(inv.dataFechamento)}. Contar depois ` +
@@ -1130,7 +1151,11 @@ export async function registrarContagemDeBem(
               select: { id: true },
             })
           ).id
-        : (await tx.contagemDeBem.update({ where: { id: existente.id }, data: dados }), existente.id);
+        : (await tx.contagemDeBem.update({
+            where: { id: existente.id },
+            // V39-R3 — as colunas escritas, por extenso: são as do censo de escrita do papel de runtime.
+            data: { encontrado: dados.encontrado, localizacaoObservadaId: dados.localizacaoObservadaId, estadoObservado: dados.estadoObservado, observacao: dados.observacao },
+          }), existente.id);
 
     let transferido = false;
     if (d.transferirParaOndeFoiEncontrado && d.localizacaoObservadaId !== undefined) {
@@ -1184,6 +1209,10 @@ export async function fecharInventarioDeBens(
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.fecharInventarioDeBens, {
       ug: inv.unidadeOrcId,
     });
+    // V39-R3 — trava o inventário e relê "aberto?" e as contagens (a contagem concorrente espera).
+    await travar(tx, "InventarioDeBens", [inv.id]);
+    const relido = await tx.inventarioDeBens.findUniqueOrThrow({ where: { id: inv.id }, select: { dataFechamento: true, contagens: { select: { id: true } } } });
+    Object.assign(inv, { dataFechamento: relido.dataFechamento, contagens: relido.contagens });
     if (inv.dataFechamento !== null) {
       throw new Error(`O inventário já foi fechado em ${diaCivil(inv.dataFechamento)}.`);
     }
@@ -1197,13 +1226,14 @@ export async function fecharInventarioDeBens(
       );
     }
 
-    await tx.inventarioDeBens.update({
-      where: { id: d.inventarioId },
+    const fechou = await tx.inventarioDeBens.updateMany({
+      where: { id: d.inventarioId, dataFechamento: null },
       data: {
         dataFechamento: d.dataFechamento,
         termoFechamentoId: d.termoFechamentoId ?? null,
       },
     });
+    if (fechou.count !== 1) throw new Error("O inventário já foi fechado. Nada foi gravado.");
     return { inventarioId: inv.id, contagens: inv.contagens.length };
   });
 }

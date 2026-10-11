@@ -592,6 +592,9 @@ export async function baixarBem(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.baixarBem, "ENTE");
+    // V39-R3 (R3-011) — a baixa do bem lê o valor contábil dele antes de lançar: duas baixas simultâneas do mesmo bem
+    // passariam as duas na conferência. Trava o bem antes de ler.
+    if (dados.bemId !== undefined) await travar(tx, "BemPatrimonial", [dados.bemId]);
 
     // ═══ NÃO SE BAIXA O QUE NÃO SE TEM ═══
     // O limite sai do SUM REAL (com os sinais), DENTRO da transação.
@@ -1093,6 +1096,7 @@ export async function registrarCustoSubsequente(
       ACAO_DO_SERVICO.registrarCustoSubsequente,
       "ENTE"
     );
+    if (dados.bemId !== undefined) await travar(tx, "BemPatrimonial", [dados.bemId]);
 
     return registrarMovimentoPatrimonial(tx, {
       classeDeBensId: dados.classeDeBensId,
@@ -1124,6 +1128,8 @@ export async function registrarReavaliacao(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.registrarReavaliacao, "ENTE");
+    // V39-R3 (R3-011) — a redução confere o teto do bem antes de lançar: trava antes de ler.
+    if (dados.bemId !== undefined) await travar(tx, "BemPatrimonial", [dados.bemId]);
 
     if (dados.sentido === "REDUCAO") {
       await exigirTetoDeReducao(tx, dados.classeDeBensId, dados.valor, "reavaliação", dados.bemId);
@@ -1150,6 +1156,7 @@ export async function registrarImpairment(
 
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.registrarImpairment, "ENTE");
+    if (dados.bemId !== undefined) await travar(tx, "BemPatrimonial", [dados.bemId]);
 
     await exigirTetoDeReducao(tx, dados.classeDeBensId, dados.valor, "impairment", dados.bemId);
 
@@ -1268,6 +1275,8 @@ export async function alienarBem(
     // SEM UG: o bem é do ENTE (nem `ClasseDeBens` nem `BemPatrimonial` têm unidade), e vendê-lo gera
     // receita — que também é do ente.
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.alienarBem, "ENTE");
+    // V39-R3 (R3-011) — a venda lê o bruto e a acumulada do bem: trava antes de ler.
+    if (dados.bemId !== undefined) await travar(tx, "BemPatrimonial", [dados.bemId]);
 
     // (a) A ACUMULADA NÃO ZERA O BRUTO.
     // Um bem 100% depreciado ainda tem o valor RESIDUAL — se a acumulada baixada
@@ -1681,6 +1690,14 @@ export async function estornarMovimentoPatrimonial(
     // ⚠️ O ESCOPO SEGUE O MOVIMENTO: a AQUISIÇÃO tem liquidação (e unidade); a depreciação em lote,
     // não. Ver `ugDoMovimentoPatrimonial`.
     await autorizarNo(tx, dados.criadoPor, ACAO_DO_SERVICO.estornarMovimentoPatrimonial, { movimentoPatrimonial: dados.movimentoId });
+    // V39-R3 (R3-011) — os bens da operação travados ANTES de ler o original e os estornos dele: dois estornos
+    // simultâneos, ou o estorno e a baixa do mesmo bem, não se cruzam. O vínculo do movimento ao bem não muda.
+    const alvoDoEstorno = await tx.movimentoPatrimonial.findUnique({ where: { id: dados.movimentoId }, select: { bemId: true, operacaoId: true } });
+    if (alvoDoEstorno !== null) {
+      const daOperacao = alvoDoEstorno.operacaoId === null ? [] : await tx.movimentoPatrimonial.findMany({ where: { operacaoId: alvoDoEstorno.operacaoId, bemId: { not: null } }, select: { bemId: true } });
+      const bens = [alvoDoEstorno.bemId, ...daOperacao.map((m) => m.bemId)].filter((b): b is string => b !== null);
+      if (bens.length > 0) await travar(tx, "BemPatrimonial", [...new Set(bens)]);
+    }
 
     const original = await tx.movimentoPatrimonial.findUnique({
       where: { id: dados.movimentoId },

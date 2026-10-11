@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../../lib/portas/mensagem-do-erro";
-import { ajustarPelaTela, dispensarPelaTela, vincularDepositoPelaTela } from "../../../../../lib/portas/farmacia-operacao";
+import { ajustarPelaTela, corrigirPelaTela, dispensarPelaTela, trocarDepositoPelaTela, vincularDepositoPelaTela } from "../../../../../lib/portas/farmacia-operacao";
 
 /**
  * V39-R2 (R2-030, R2-031) — os atos da operação da farmácia. Nenhuma regra aqui: a recusa do domínio sobe como veio.
@@ -55,4 +55,22 @@ export async function dispensarAction(_p: EstadoDaOperacao, f: FormData): Promis
 
 export async function ajustarAction(_p: EstadoDaOperacao, f: FormData): Promise<EstadoDaOperacao> {
   return ato(f, ajustarPelaTela, "Não foi possível registrar o ajuste. Nada foi gravado.");
+}
+
+/** V39-R3 (R3-009) — corrigir a dispensação. Na devolução, cada item vem como `condicao_<id do item>`. */
+export async function corrigirAction(_p: EstadoDaOperacao, f: FormData): Promise<EstadoDaOperacao> {
+  return ato(f, (id, c) => {
+    const itens: { itemId: string; condicao: "APTO_AO_REUSO" | "INAPTO" }[] = [];
+    for (const [k, v] of Object.entries(c)) {
+      if (!k.startsWith("condicao_")) continue;
+      const condicao = v.trim();
+      if (condicao === "APTO_AO_REUSO" || condicao === "INAPTO") itens.push({ itemId: k.slice("condicao_".length), condicao });
+    }
+    return corrigirPelaTela(id, c, itens);
+  }, "Não foi possível corrigir a dispensação. Nada foi gravado.");
+}
+
+/** V39-R3 (R3-010) — trocar o depósito da farmácia com vigência. */
+export async function trocarDepositoAction(_p: EstadoDaOperacao, f: FormData): Promise<EstadoDaOperacao> {
+  return ato(f, trocarDepositoPelaTela, "Não foi possível trocar o depósito. Nada foi gravado.");
 }

@@ -750,6 +750,26 @@ export function derivarOperacaoDaFarmacia(
 }
 
 /**
+ * V39-R3 (R3-009) — CORRIGIR A DISPENSAÇÃO (cancelar o registro incorreto ou receber a devolução conferida).
+ *
+ * ⚠️ SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a v46: a correção devolve medicamento ao estoque e estorna o
+ * consumo, e quem dispensa não passa a corrigir por isso (o cancelamento é conferido por outra pessoa). O administrador
+ * concede nomeando a pessoa, de preferência na unidade da farmácia.
+ */
+export function derivarCorrecaoDaDispensacao(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    if (!perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null)) continue;
+    if (perfil.permissoes.some((p) => p.acao === "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO" && p.unidadeOrcId === null)) continue;
+    saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao: "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO", unidadeOrcId: null });
+  }
+  return saida;
+}
+
+/**
  * V39-R2 (R2-016/017) — o JULGAMENTO e a ADJUDICAÇÃO da licitação, atos novos com ação própria.
  *
  * ⚠️ CADA UM A QUEM JÁ PRATICAVA O ATO VIZINHO, NO GLOBAL: julgar (registrar o resultado por item) vai a quem já
@@ -1995,6 +2015,16 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "hodometro ou horimetro com o consumo e manutencao do pedido a conclusao (V39-R2). Vem com EMITIR_ORDEM_DE_ABASTECIMENTO " +
       "e AUTORIZAR_MANUTENCAO_DA_FROTA so para quem administra permissoes no global, que as distribui nomeando a pessoa.",
     derivar: derivarAutorizacoesDaFrota,
+  },
+  {
+    versao: 48,
+    nome: "correcao-da-dispensacao",
+    descricao:
+      "A dispensacao de medicamentos passou a ter correcao auditavel (V39-R3): o cancelamento do registro incorreto, " +
+      "feito por outra pessoa, devolve os itens ao estoque e estorna o consumo; a devolucao pelo usuario e conferida, e so " +
+      "o item apto ao reuso volta ao estoque. Vem com CORRIGIR_DISPENSACAO_DE_MEDICAMENTO so para quem administra " +
+      "permissoes no global, que a distribui nomeando a pessoa.",
+    derivar: derivarCorrecaoDaDispensacao,
   },
 ];
 

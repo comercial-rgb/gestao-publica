@@ -778,7 +778,39 @@ export async function estornarMovimentoAlmoxarifado(
     // ⚠️ O ESCOPO SEGUE O MOVIMENTO ESTORNADO: se era ENTRADA (tem liquidação), o estorno é ato da
     // unidade dela; se era AJUSTE de inventário, não é de unidade nenhuma. Ver `ugDoMovimentoAlmoxarifado`.
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.estornarMovimentoAlmoxarifado, { movimentoAlmoxarifado: d.movimentoId });
+    const alvo = await tx.movimentoAlmoxarifado.findUnique({ where: { id: d.movimentoId }, select: { classeDeMaterialId: true } });
+    if (alvo === null) throw new Error(`Movimento de almoxarifado ${d.movimentoId} não existe.`);
+    // V39-R3 — o lançamento que tem a perna física de uma DISPENSAÇÃO, de um ajuste da FARMÁCIA ou de um ajuste de
+    // INVENTÁRIO não se estorna sozinho: o estoque físico e o fato da farmácia ou do inventário ficariam como estão, e o
+    // item não se corrigiria mais pelo caminho certo. Cada um tem a sua correção, que estorna as duas pernas juntas.
+    const fisico = await tx.movimentoFisicoDeEstoque.findFirst({
+      where: { movimentoAlmoxarifadoId: d.movimentoId, OR: [{ itemDaDispensacao: { isNot: null } }, { ajusteDaFarmacia: { isNot: null } }, { ajusteDoInventario: { isNot: null } }] },
+      select: { itemDaDispensacao: { select: { id: true } }, ajusteDaFarmacia: { select: { id: true } } },
+    });
+    if (fisico !== null) {
+      throw new Error(
+        fisico.itemDaDispensacao !== null
+          ? "Este lançamento é o consumo de uma dispensação da farmácia: corrija a dispensação na tela da farmácia, que estorna a saída e o consumo juntos. Nada foi gravado."
+          : fisico.ajusteDaFarmacia !== null
+            ? "Este lançamento é de uma perda ou sobra registrada na farmácia: ele não se estorna sozinho pelo almoxarifado, porque o estoque e o registro da farmácia ficariam como estão. Nada foi gravado."
+            : "Este lançamento é de um ajuste de inventário: ele não se estorna sozinho pelo almoxarifado, porque o estoque físico e o rastro do inventário ficariam como estão. Nada foi gravado."
+      );
+    }
+    await travarClasse(tx, alvo.classeDeMaterialId);
+    return estornarMovimentoAlmoxarifadoNaTx(tx, d);
+  });
+}
 
+/**
+ * V39-R3 (R3-009) — O CORPO DO ESTORNO do movimento do almoxarifado, para compor com outro ato na MESMA transação (a
+ * correção da dispensação estorna o consumo junto com a saída física). NÃO AUTORIZA E NÃO TRAVA: quem chama trava a
+ * classe ANTES (posto 13) das posições e da farmácia. Está no `FORA_DO_CENSO`.
+ */
+export async function estornarMovimentoAlmoxarifadoNaTx(
+  tx: Tx,
+  d: z.output<typeof zEstornarMovimentoAlmoxarifadoInput>
+): Promise<{ readonly movimentoId: string }> {
+  {
     const original = await tx.movimentoAlmoxarifado.findUnique({
       where: { id: d.movimentoId },
       select: {
@@ -814,7 +846,6 @@ export async function estornarMovimentoAlmoxarifado(
       );
     }
 
-    await travarClasse(tx, original.classeDeMaterialId);
     const classe = await exigirClasse(tx, original.classeDeMaterialId);
 
     if (original.estornos.length > 0) {
@@ -868,7 +899,7 @@ export async function estornarMovimentoAlmoxarifado(
       select: { id: true },
     });
     return { movimentoId: criado.id };
-  });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

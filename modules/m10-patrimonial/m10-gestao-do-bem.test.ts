@@ -21,6 +21,7 @@ import {
   registrarMovimentoDeGestao,
   transferirBemEntreEntidades,
 } from "./gestao-do-bem.js";
+import { travar } from "../../packages/locks/index.js";
 
 /**
  * M10 — PATRIMÔNIO, EIXO DE GESTÃO (TR 5.19): OS CASOS DE USO CONTRA BANCO.
@@ -498,5 +499,59 @@ describe("t9 · ⚠️ O EIXO DE GESTÃO NÃO TOCA O RAZÃO, e a autorização �
       })
     ).rejects.toThrow();
     expect(await prisma.movimentoDeGestaoDoBem.count()).toBe(antes);
+  });
+});
+
+/**
+ * V39-R3 (R3-011) — OS MOVIMENTOS QUE DISPUTAM O MESMO BEM. A baixa (situação BAIXADO, pelo movimento de gestão ou pelo
+ * termo), a transferência entre entidades, a localização, o responsável, o estorno e a etiqueta travam o BEM (posto 46)
+ * antes de ler o estado dele. Combinações incompatíveis: a baixa e a transferência ao mesmo tempo, duas baixas, o
+ * movimento depois da baixa.
+ */
+describe("t10 · V39-R3 — concorrência nos movimentos do bem", () => {
+  const baixar = (data = "2026-06-01") => registrarMovimentoDeGestao(prisma, { bemId, tipo: "SITUACAO", situacao: "BAIXADO", dataMovimento: new Date(`${data}T12:00:00Z`), motivo: "bem inservível, baixa autorizada", criadoPor: POR });
+  const transferir = (data = "2026-06-01") => transferirBemEntreEntidades(prisma, { bemId, unidadeOrcOrigemId: "uo-01", unidadeOrcDestinoId: "uo-02", dataMovimento: new Date(`${data}T12:00:00Z`), motivo: "cessão para a Saúde", criadoPor: POR });
+
+  it("A TRAVA EXISTE: com o bem travado por outra transação, a baixa espera e só grava depois", async () => {
+    let liberar: () => void = () => undefined;
+    const presa = new Promise<void>((x) => { liberar = x; });
+    let travado: () => void = () => undefined;
+    const jaTravou = new Promise<void>((x) => { travado = x; });
+    const segurando = prisma.$transaction(async (tx) => { await travar(tx, "BemPatrimonial", [bemId]); travado(); await presa; }, { timeout: 20_000 });
+    await jaTravou;
+    let terminou = false;
+    const b = baixar().then(() => { terminou = true; });
+    await new Promise((x) => setTimeout(x, 800));
+    expect(terminou).toBe(false);
+    liberar();
+    await segurando;
+    await b;
+    expect(terminou).toBe(true);
+  });
+
+  it("baixa e transferência AO MESMO TEMPO: uma só passa; a outra é recusada com o motivo, e o bem não fica baixado e transferido", async () => {
+    const r = await Promise.allSettled([baixar(), transferir()]);
+    const recusas = r.filter((x): x is PromiseRejectedResult => x.status === "rejected").map((x) => String(x.reason));
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(recusas).toHaveLength(1);
+    expect(recusas[0]).toMatch(/está BAIXADO/);
+    const e = await estadoDoBem(prisma, bemId, "2026-06-01");
+    expect(e.situacao === "BAIXADO" && e.unidadeOrcId === "uo-02").toBe(false);
+  });
+
+  it("depois da baixa: nova baixa, localização e transferência são recusadas nomeando a baixa; o estorno da baixa devolve o bem ao movimento", async () => {
+    const b = await baixar();
+    await expect(baixar("2026-06-02")).rejects.toThrow(/está BAIXADO em 2026-06-02: um bem baixado não se movimenta/);
+    await expect(registrarMovimentoDeGestao(prisma, { bemId, tipo: "LOCALIZACAO", localizacaoId: sala2, dataMovimento: new Date("2026-06-03T12:00:00Z"), motivo: "mudança de sala depois da baixa", criadoPor: POR })).rejects.toThrow(/um bem baixado não se movimenta/);
+    await expect(transferir("2026-06-03")).rejects.toThrow(/está BAIXADO/);
+    await estornarMovimentoDeGestao(prisma, { movimentoId: b.movimentoId, dataMovimento: new Date("2026-06-04T12:00:00Z"), motivo: "baixa lançada no bem errado", criadoPor: POR });
+    await registrarMovimentoDeGestao(prisma, { bemId, tipo: "LOCALIZACAO", localizacaoId: sala2, dataMovimento: new Date("2026-06-05T12:00:00Z"), motivo: "volta ao uso na sala 2", criadoPor: POR });
+    expect((await estadoDoBem(prisma, bemId, "2026-06-05")).localizacaoId).toBe(sala2);
+  });
+
+  it("duas baixas AO MESMO TEMPO: uma só passa", async () => {
+    const r = await Promise.allSettled([baixar(), baixar()]);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(await prisma.movimentoDeGestaoDoBem.count({ where: { bemId, situacao: "BAIXADO" } })).toBe(1);
   });
 });

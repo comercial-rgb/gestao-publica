@@ -6,7 +6,7 @@ import { SincronizarContexto } from "../../../../../components/ui/SincronizarCon
 import { telaExigeLeituraDoEnte } from "../../../../../lib/portas/leitura";
 import { lerTelaDaFarmacia } from "../../../../../lib/portas/farmacia-operacao";
 import { diaCivil } from "../../../../../packages/datas/index";
-import { FormAjuste, FormDispensar, FormVincularDeposito } from "./Forms";
+import { FormAjuste, FormCorrigirDispensacao, FormDispensar, FormTrocarDeposito, FormVincularDeposito } from "./Forms";
 
 /**
  * V39-R2 (R2-030, R2-031) — A OPERAÇÃO DA FARMÁCIA: o depósito do almoxarifado que guarda o estoque dela, o estoque por
@@ -37,12 +37,32 @@ export default async function OperacaoDaFarmacia({ params }: { readonly params: 
               O estoque desta farmácia é o do depósito <strong>{t.deposito.codigo} — {t.deposito.nome}</strong>. A dispensação baixa o estoque dele e lança o consumo; a perda e a sobra são ajustes dele.
               {" "}O inventário é o do almoxarifado: <Link className="underline" href="/patrimonio/almoxarifado/inventarios">abrir ou contar o inventário do depósito</Link>.
             </p>
-          ) : (
+          ) : null}
+          {t.deposito !== null && t.trocas.length > 0 ? (
+            <div className="mt-2 text-xs" data-trocas-do-deposito>
+              <p className="font-semibold">Trocas do depósito</p>
+              <ul className="mt-1 space-y-1">
+                {t.trocas.map((x) => <li data-troca={x.vigenteDesde} key={x.vigenteDesde}>a partir de {x.vigenteDesde}: de {x.de} para {x.para} ({x.fundamento}); por {x.por}</li>)}
+              </ul>
+              {t.saldoNoDepositoAnterior.length > 0 ? (
+                <p className="mt-1" data-saldo-no-deposito-anterior>
+                  Ficou no depósito anterior, sem transferência: {t.saldoNoDepositoAnterior.map((m) => `${m.material} ${m.saldo}`).join("; ")}. Transfira pelo almoxarifado se o estoque for acompanhar a farmácia.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {t.deposito !== null && t.pode.trocar ? (
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-primary)]">Trocar o depósito da farmácia</summary>
+              <div className="mt-1"><FormTrocarDeposito depositos={t.depositosParaTroca} farmaciaId={t.id} hoje={hoje} /></div>
+            </details>
+          ) : null}
+          {t.deposito === null ? (
             <>
               <p className="mt-1 text-xs text-[color:var(--color-ink-2)]">A farmácia ainda não tem depósito: sem ele não há estoque para dispensar.</p>
               {t.pode.vincular ? <div className="mt-2"><FormVincularDeposito depositos={t.depositosLivres} farmaciaId={t.id} /></div> : null}
             </>
-          )}
+          ) : null}
         </section>
       </Card>
 
@@ -99,6 +119,12 @@ export default async function OperacaoDaFarmacia({ params }: { readonly params: 
               {t.dispensacoes.map((d) => (
                 <li data-dispensacao={d.numero} key={d.numero}>
                   nº {d.numero}, {d.data}{d.usuario !== null ? `, usuário ${d.usuario}, ${d.receita ?? ""}` : ""}: {d.itens}; por {d.por}
+                  {d.itensDetalhados.some((i) => i.correcao !== null) ? (
+                    <ul className="ml-4 list-disc" data-correcoes-da-dispensacao>
+                      {d.itensDetalhados.filter((i) => i.correcao !== null).map((i) => <li data-correcao-do-item={i.rotulo} key={i.id}>{i.rotulo}: {i.correcao}</li>)}
+                    </ul>
+                  ) : null}
+                  {d.podeCorrigir ? <FormCorrigirDispensacao dispensacaoId={d.id} farmaciaId={t.id} hoje={hoje} itens={d.itensDetalhados.filter((i) => i.correcao === null).map((i) => ({ id: i.id, rotulo: i.rotulo }))} numero={d.numero} /> : null}
                 </li>
               ))}
             </ul>

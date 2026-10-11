@@ -56,6 +56,9 @@ const ORIGEM = "semear-massa-r3 (V39-R3, R3-001)";
 /** Fundo Municipal de Saúde (02016): ficha 11311 da Lei 613/2025, elemento 30, fonte 500. */
 const UO_SAUDE = "02016";
 const FICHA_MEDICAMENTOS = 11311;
+/** Secretaria de Administração (02004): o almoxarifado geral, ficha 10857 da Lei 613/2025 (elemento 30, fonte 500). */
+const UO_ADMINISTRACAO = "02004";
+const FICHA_EXPEDIENTE = 10857;
 /** A outra unidade, para a recusa por escopo (o farmacêutico de lá não dispensa aqui). */
 const UO_OUTRA = "02009";
 
@@ -121,6 +124,25 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "farmaceutica@ficticio.local", nome: "Farmacêutica do Fundo de Saúde (fictícia)", perfil: "FARMÁCIA DA SAÚDE — ENSAIO",
     acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
     naUnidade: { codigo: UO_SAUDE, acoes: ["DISPENSAR_MEDICAMENTO", "REGISTRAR_AJUSTE_DA_FARMACIA"] },
+  },
+  {
+    email: "supervisora.farmacia@ficticio.local", nome: "Supervisora da Farmácia Básica (fictícia)", perfil: "SUPERVISÃO DA FARMÁCIA — ENSAIO",
+    acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+    naUnidade: { codigo: UO_SAUDE, acoes: ["CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"] },
+  },
+  {
+    email: "coordenador.farmacia@ficticio.local", nome: "Coordenador da Assistência Farmacêutica (fictício)", perfil: "COORDENAÇÃO DA FARMÁCIA — ENSAIO",
+    acoes: ["CADASTRAR_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    email: "almoxarife@ficticio.local", nome: "Almoxarife da Administração (fictício)", perfil: "ALMOXARIFADO GERAL — ENSAIO",
+    acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+    naUnidade: { codigo: UO_ADMINISTRACAO, acoes: ["ABRIR_INVENTARIO_DE_ESTOQUE", "REGISTRAR_CONTAGEM_DE_INVENTARIO", "FECHAR_INVENTARIO_DE_ESTOQUE", "REGISTRAR_SAIDA_FISICA"] },
+  },
+  {
+    email: "chefe.almoxarifado@ficticio.local", nome: "Chefe do Almoxarifado (fictícia)", perfil: "CHEFIA DO ALMOXARIFADO — ENSAIO",
+    acoes: ["CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+    naUnidade: { codigo: UO_ADMINISTRACAO, acoes: ["REGISTRAR_AJUSTE_ALMOXARIFADO"] },
   },
   {
     email: "farmaceutico.assistencia@ficticio.local", nome: "Farmacêutico da Assistência Social (fictício)", perfil: "FARMÁCIA DA ASSISTÊNCIA — ENSAIO",
@@ -294,6 +316,34 @@ async function semearFarmacia(prisma: PrismaClient): Promise<void> {
     await vincularDepositoAFarmacia(prisma, { farmaciaId, depositoId, fundamento: `Organização da Farmácia Básica ${ENSAIO}`, criadoPor: ADMIN });
     return { estado: "criado", valor: null };
   });
+  // V39-R3 (R3-010) — a segunda farmácia, só para a troca do depósito (a 9001 continua com o FARM-R3 e o estoque dela).
+  const depositoDistrital = await passo("Depósito FARM-R3C da farmácia distrital", async () => {
+    const ja = await prisma.deposito.findFirst({ where: { codigo: "FARM-R3C" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarDeposito(prisma, { codigo: "FARM-R3C", nome: `Farmácia do Posto Distrital ${ENSAIO}`, unidadeOrcId: saude, criadoPor: ADMIN })).depositoId };
+  });
+  await passo("Depósito FARM-R3D (livre, para receber a farmácia distrital)", async () => {
+    const ja = await prisma.deposito.findFirst({ where: { codigo: "FARM-R3D" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarDeposito(prisma, { codigo: "FARM-R3D", nome: `Nova sala da farmácia distrital ${ENSAIO}`, unidadeOrcId: saude, criadoPor: ADMIN })).depositoId };
+  });
+  const distrital = await passo("Farmácia pública 9002 — Farmácia do Posto Distrital", async () => {
+    const ja = await prisma.farmaciaPublica.findFirst({ where: { codigo: "9002" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return {
+      estado: "criado",
+      valor: (await cadastrarFarmacia(prisma, {
+        ugId: ug.id, codigo: "9002", descricao: `Farmácia do Posto Distrital ${ENSAIO}`, endereco: "Sítio Lagoa de Pedra, s/n (fictício)",
+        nomeResponsavel: "Farmacêutico distrital (fictício)", cpfResponsavel: cpfComDv("731845291"), crfResponsavel: "PB-99998",
+        vigenteDesde: "2026-01-02", fundamento: `Designação do responsável técnico ${ENSAIO}`, criadoPor: ADMIN,
+      })).id,
+    };
+  });
+  await passo("Depósito FARM-R3C vinculado à farmácia 9002", async () => {
+    if ((await prisma.depositoDaFarmacia.findUnique({ where: { farmaciaId: distrital }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await vincularDepositoAFarmacia(prisma, { farmaciaId: distrital, depositoId: depositoDistrital, fundamento: `Organização da farmácia distrital ${ENSAIO}`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
 
   // O estoque entra pela liquidação de material (empenho, liquidação com o recebimento físico por lote).
   const credor = cnpjComDv("612730480001");
@@ -322,6 +372,80 @@ async function semearFarmacia(prisma: PrismaClient): Promise<void> {
         entradasDeMaterial: LOTES.map((l) => ({
           classeDeMaterialId: classeId, valor: (Number(l.quantidade) * Number(l.unitario)).toFixed(2),
           fisica: { materialId: materiais[l.material] as string, depositoId, quantidade: l.quantidade, valorUnitario: l.unitario, unidadeDeMedidaId, loteIdentificacao: l.lote, loteValidade: D(l.validade) },
+        })),
+      },
+      roteiroLiquidacao({ codElemento: "30", obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: contaDoEstoque }),
+      m05
+    );
+    return { estado: "criado", valor: null };
+  });
+}
+
+// ═══ 4. ALMOXARIFADO GERAL: depósito, material de expediente (um sem lote, um com lote), recebido por liquidação ═══
+
+async function semearAlmoxarifadoGeral(prisma: PrismaClient): Promise<void> {
+  const contaDoEstoque = (await exigirContaDaLiquidacao(prisma, "30")).contaCodigo;
+  const classeId = await passo(`Classe de material R3-30.16 Material de expediente (conta ${contaDoEstoque})`, async () => {
+    const ja = await prisma.classeDeMaterial.findFirst({ where: { codigo: "R3-30.16" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarClasseDeMaterial(prisma, { codigo: "R3-30.16", descricao: `Material de expediente ${ENSAIO}`, contaContabilId: await contaId(prisma, contaDoEstoque), criadoPor: ADMIN })).classeDeMaterialId };
+  });
+  const adm = await uoId(prisma, UO_ADMINISTRACAO);
+  const depositoId = await passo("Depósito ALM-R3 do almoxarifado central (Administração)", async () => {
+    const ja = await prisma.deposito.findFirst({ where: { codigo: "ALM-R3" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarDeposito(prisma, { codigo: "ALM-R3", nome: `Almoxarifado central ${ENSAIO}`, unidadeOrcId: adm, criadoPor: ADMIN })).depositoId };
+  });
+  const unidadeDeMedidaId = await passo("Unidade de medida UN (unidade)", async () => {
+    const ja = await prisma.unidadeDeMedida.findFirst({ where: { sigla: "UN" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarUnidadeDeMedida(prisma, { sigla: "UN", descricao: "Unidade", criadoPor: ADMIN })).unidadeDeMedidaId };
+  });
+  const grupoId = await passo("Grupo de material R3-16 Expediente", async () => {
+    const ja = await prisma.grupoDeMaterial.findFirst({ where: { codigo: "R3-16" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarGrupoDeMaterial(prisma, { codigo: "R3-16", descricao: `Material de expediente ${ENSAIO}`, criadoPor: ADMIN })).grupoId };
+  });
+  const materiais: Record<string, string> = {};
+  for (const [codigo, nome, lote] of [["R3EXP001", "Papel A4, resma de 500 folhas", false], ["R3EXP002", "Caneta esferográfica azul", true]] as const) {
+    materiais[codigo] = await passo(`Material ${codigo} ${nome}`, async () => {
+      const ja = await prisma.material.findFirst({ where: { codigo }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      return { estado: "criado", valor: (await cadastrarMaterial(prisma, {
+        codigo, descricaoSucinta: nome, descricaoDetalhada: `${nome} ${ENSAIO}`, grupoId, classificacao: "CONSUMO", categoria: "ESTOCAVEL",
+        classeDeMaterialId: classeId, controlaLote: lote, unidades: [{ unidadeDeMedidaId, fatorParaEstoque: "1", ehDeEstoque: true }], criadoPor: ADMIN,
+      })).materialId };
+    });
+  }
+  const credor = cnpjComDv("704518260001");
+  await passo(`Pessoa ${credor} Papelaria Borborema (fictícia)`, async () => {
+    const m19 = criarM19Deps(prisma);
+    if ((await m19.pessoas.buscarPorDocumento(credor)) !== null) return { estado: "existente", valor: null };
+    await cadastrarPessoa({ documento: credor, nome: "Papelaria Borborema Ltda (fictícia)", municipio: "Esperança", uf: "PB", criadoPor: ADMIN }, m19);
+    return { estado: "criado", valor: null };
+  });
+  const ficha = await prisma.fichaOrcamentaria.findUnique({ where: { exercicio_numero: { exercicio: 2026, numero: FICHA_EXPEDIENTE } }, select: { id: true, naturezaDespesa: { select: { codigoCompleto: true } }, unidadeOrc: { select: { codigo: true } } } });
+  if (ficha === null || !ficha.naturezaDespesa.codigoCompleto.startsWith("339030") || ficha.unidadeOrc.codigo !== UO_ADMINISTRACAO) throw new Error(`A ficha ${String(FICHA_EXPEDIENTE)} de material de consumo da Administração não está nesta base. Nada foi gravado.`);
+  const itens = [
+    { material: "R3EXP001", quantidade: "100", unitario: "25.00", lote: null },
+    { material: "R3EXP002", quantidade: "50", unitario: "2.00", lote: { identificacao: "CAN-2610", validade: "2029-12-31" } },
+  ] as const;
+  const total = itens.reduce((t, i) => t + Number(i.quantidade) * Number(i.unitario), 0).toFixed(2);
+  const m05 = criarM05DepsComAlmoxarifado(prisma);
+  const empenhoId = await passo(`Empenho R3-EXP-001/2026 de material de expediente R$ ${total}`, async () => {
+    const ja = await prisma.empenho.findFirst({ where: { numero: "R3-EXP-001/2026", fichaId: ficha.id }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await empenhar({ fichaId: ficha.id, numero: "R3-EXP-001/2026", tipo: "ORDINARIO", valor: total, data: D("2026-09-21"), credorCpfCnpj: credor, historico: `Material de expediente do almoxarifado central ${ENSAIO}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN }, roteiroEmpenho(), m05)).empenhoId };
+  });
+  await passo("Liquidação R3-EXP-L1 com o recebimento no depósito ALM-R3", async () => {
+    if ((await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId, numero: "R3-EXP-L1" } }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await liquidar(
+      {
+        empenhoId, numero: "R3-EXP-L1", valor: total, data: D(DIA_DO_RECEBIMENTO), responsavelAtesto: "Almoxarife (fictício)", notaFiscalNum: "5521", notaFiscalSerie: "1", notaFiscalData: D("2026-09-30"), notaFiscalValor: total,
+        historico: `Material de expediente recebido e conferido ${ENSAIO}`, criadoPor: ADMIN,
+        entradasDeMaterial: itens.map((i) => ({
+          classeDeMaterialId: classeId, valor: (Number(i.quantidade) * Number(i.unitario)).toFixed(2),
+          fisica: { materialId: materiais[i.material] as string, depositoId, quantidade: i.quantidade, valorUnitario: i.unitario, unidadeDeMedidaId, ...(i.lote === null ? {} : { loteIdentificacao: i.lote.identificacao, loteValidade: D(i.lote.validade) }) },
         })),
       },
       roteiroLiquidacao({ codElemento: "30", obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: contaDoEstoque }),
@@ -362,6 +486,8 @@ async function main(): Promise<void> {
     await semearPlanejamento(prisma);
     console.log("\n[3] farmácia");
     await semearFarmacia(prisma);
+    console.log("\n[4] almoxarifado geral");
+    await semearAlmoxarifadoGeral(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

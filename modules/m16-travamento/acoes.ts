@@ -154,6 +154,7 @@ export type AcaoDoSistema =
   // V39-R2 (R2-030/031) — a dispensação ao usuário e a perda ou sobra apurada na farmácia.
   | "DISPENSAR_MEDICAMENTO"
   | "REGISTRAR_AJUSTE_DA_FARMACIA"
+  | "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"
   // ── M20 — importadores de arquivo externo (folha/tributário) ──
   | "IMPORTAR_FOLHA"
   | "IMPORTAR_TRIBUTOS"
@@ -946,6 +947,7 @@ export type NomeDeServico =
   | "abrirInventarioDeEstoque"
   | "registrarContagemDeInventario"
   | "fecharInventarioDeEstoque"
+  | "aplicarAjusteDoInventario"
   | "bloquearEstoque"
   | "encerrarBloqueioDeEstoque"
   | "cadastrarLocalizacaoFisica"
@@ -1300,6 +1302,8 @@ export type NomeDeServico =
   | "vincularDepositoAFarmacia"
   | "dispensarMedicamentos"
   | "registrarAjusteDaFarmacia"
+  | "corrigirDispensacao"
+  | "trocarDepositoDaFarmacia"
   | "importarLicitacoesDoTribunal"
   | "informarProtocoloDaNorma"
   | "criarUnidadeDeAtendimento"
@@ -1661,6 +1665,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   abrirInventarioDeEstoque: "ABRIR_INVENTARIO_DE_ESTOQUE",
   registrarContagemDeInventario: "REGISTRAR_CONTAGEM_DE_INVENTARIO",
   fecharInventarioDeEstoque: "FECHAR_INVENTARIO_DE_ESTOQUE",
+  // V39-R3 (R3-012) — aplicar o ajuste do inventário fechado: é o ajuste de inventário do almoxarifado, nenhuma ação nova.
+  aplicarAjusteDoInventario: "REGISTRAR_AJUSTE_ALMOXARIFADO",
   bloquearEstoque: "BLOQUEAR_ESTOQUE",
   encerrarBloqueioDeEstoque: "ENCERRAR_BLOQUEIO_DE_ESTOQUE",
 
@@ -2195,6 +2201,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   vincularDepositoAFarmacia: "CADASTRAR_FARMACIA",
   dispensarMedicamentos: "DISPENSAR_MEDICAMENTO",
   registrarAjusteDaFarmacia: "REGISTRAR_AJUSTE_DA_FARMACIA",
+  // V39-R3 (R3-009/010) — corrigir a dispensação (cancelamento do registro ou devolução conferida), ação nova; trocar o
+  // depósito da farmácia com vigência, ato de quem cadastra a farmácia.
+  corrigirDispensacao: "CORRIGIR_DISPENSACAO_DE_MEDICAMENTO",
+  trocarDepositoDaFarmacia: "CADASTRAR_FARMACIA",
   // V27 — a lista de licitações do Tribunal (dados abertos) para identificar o processo no Tramita: quem cadastra o processo.
   importarLicitacoesDoTribunal: "CADASTRAR_PROCESSO",
   // V27 — o protocolo do banco de legislação que chegou depois do registro da lei: quem registra a lei registra o protocolo.
@@ -3529,6 +3539,10 @@ export const FORA_DO_CENSO: Record<string, string> = {
   registrarSaidaFisicaNaTx: "composável interno (o corpo da saída física; quem chama autoriza e trava classe e posição antes)",
   registrarAjusteFisicoNaTx: "composável interno (perda ou sobra no estoque e no razão; quem chama autoriza e trava antes)",
   registrarAjusteAlmoxarifadoNaTx: "composável interno (o eixo contábil do ajuste; quem chama autoriza e trava a classe)",
+  estornarMovimentoAlmoxarifadoNaTx: "composável interno (o corpo do estorno contábil; quem chama autoriza e trava a classe antes)",
+  estornarSaidaFisicaNaTx: "composável interno (o estorno de uma saída física; quem chama autoriza e trava classe e posição antes)",
+  depositoDaFarmaciaNoDia: "leitura pura (o depósito da farmácia num dia, pela vigência das trocas)",
+  divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
   registrarEntradaFisicaNaTx:
     "composável interno (o eixo FÍSICO da mesma entrada, na mesma transação)",
   // V37 — a perna FÍSICA da cascata da anulação total (antes só o contábil voltava). Quem cobra o crachá é

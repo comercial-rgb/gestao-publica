@@ -3,7 +3,8 @@
 import { useActionState, useId } from "react";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_ROTULO as ROTULO } from "../../../../../components/ui/Formulario";
 import { ChaveDeComando } from "../../../../../components/ui/ChaveDeComando";
-import { ajustarAction, dispensarAction, vincularDepositoAction, type EstadoDaOperacao } from "./actions";
+import { useState } from "react";
+import { ajustarAction, corrigirAction, dispensarAction, trocarDepositoAction, vincularDepositoAction, type EstadoDaOperacao } from "./actions";
 
 /** V39-R2 (R2-030, R2-031) — os formulários da operação da farmácia, com a resposta do servidor abaixo de cada um. */
 
@@ -150,6 +151,111 @@ export function FormAjuste({ farmaciaId, lotes, inventarios, hoje }: { readonly 
       </div>
       <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">Registrar no estoque e no razão</button>
       <Resultado estado={estado} nome="ajustar" />
+    </form>
+  );
+}
+
+/**
+ * V39-R3 (R3-009) — CORRIGIR UMA DISPENSAÇÃO. O cancelamento devolve todos os itens ao estoque (só outra pessoa cancela
+ * o registro de quem dispensou); a devolução pede a conferência de cada item devolvido: apto ao reuso volta ao estoque,
+ * inapto não volta e leva o destino. O formulário fica montado depois do ato (só a resposta, quando não há mais item a
+ * corrigir), para a confirmação não sumir com a recarga da página.
+ */
+export function FormCorrigirDispensacao({ farmaciaId, dispensacaoId, numero, itens, hoje }: {
+  readonly farmaciaId: string;
+  readonly dispensacaoId: string;
+  readonly numero: number;
+  readonly itens: readonly { readonly id: string; readonly rotulo: string }[];
+  readonly hoje: string;
+}): React.ReactElement {
+  const uid = useId();
+  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(corrigirAction, {});
+  const [tipo, setTipo] = useState<"CANCELAMENTO_DO_REGISTRO" | "DEVOLUCAO">("CANCELAMENTO_DO_REGISTRO");
+  if (itens.length === 0) return <Resultado estado={estado} nome={`corrigir-${String(numero)}`} />;
+  return (
+    <details className="mt-1">
+      <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-primary)]">Corrigir a dispensação nº {numero}</summary>
+      <form action={action} className={`${QUADRO} mt-1 space-y-2`} data-acao="corrigir-dispensacao" data-dispensacao={numero}>
+        <ChaveDeComando />
+        <input name="farmaciaId" type="hidden" value={farmaciaId} />
+        <input name="dispensacaoId" type="hidden" value={dispensacaoId} />
+        <fieldset className="flex flex-wrap gap-4 text-xs">
+          <legend className={ROTULO}>O que aconteceu</legend>
+          <label className="flex items-center gap-1"><input checked={tipo === "CANCELAMENTO_DO_REGISTRO"} name="tipo" onChange={() => setTipo("CANCELAMENTO_DO_REGISTRO")} type="radio" value="CANCELAMENTO_DO_REGISTRO" /> O registro foi feito por engano (a entrega não aconteceu)</label>
+          <label className="flex items-center gap-1"><input checked={tipo === "DEVOLUCAO"} name="tipo" onChange={() => setTipo("DEVOLUCAO")} type="radio" value="DEVOLUCAO" /> O usuário devolveu o medicamento</label>
+        </fieldset>
+        {tipo === "DEVOLUCAO" ? (
+          <fieldset className="space-y-1">
+            <legend className={ROTULO}>Conferência de cada item devolvido</legend>
+            {itens.map((i) => (
+              <div className="grid gap-2 sm:grid-cols-[1fr_14rem]" key={i.id}>
+                <label className="text-xs" htmlFor={`${uid}-c-${i.id}`}>{i.rotulo}</label>
+                <select className={CAMPO} id={`${uid}-c-${i.id}`} name={`condicao_${i.id}`}>
+                  <option value="">Não devolvido</option>
+                  <option value="APTO_AO_REUSO">Apto ao reuso (volta ao estoque)</option>
+                  <option value="INAPTO">Inapto (não volta ao estoque)</option>
+                </select>
+              </div>
+            ))}
+          </fieldset>
+        ) : <p className="text-xs">Todos os itens voltam ao estoque e o consumo é estornado. Quem dispensou não cancela o próprio registro.</p>}
+        <div className="grid gap-2 sm:grid-cols-3">
+          <div>
+            <label className={ROTULO} htmlFor={`${uid}-d`}>Data</label>
+            <input className={CAMPO} defaultValue={hoje} id={`${uid}-d`} name="data" required type="date" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className={ROTULO} htmlFor={`${uid}-m`}>Motivo</label>
+            <input className={CAMPO} id={`${uid}-m`} name="motivo" required />
+          </div>
+        </div>
+        {tipo === "DEVOLUCAO" ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <label className={ROTULO} htmlFor={`${uid}-cp`}>Quem conferiu o produto devolvido</label>
+              <input className={CAMPO} id={`${uid}-cp`} name="conferidoPor" />
+            </div>
+            <div>
+              <label className={ROTULO} htmlFor={`${uid}-de`}>Destino do item inapto (descarte, recolhimento)</label>
+              <input className={CAMPO} id={`${uid}-de`} name="destino" />
+            </div>
+          </div>
+        ) : null}
+        <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">{pendente ? "Gravando..." : "Registrar a correção"}</button>
+        <Resultado estado={estado} nome={`corrigir-${String(numero)}`} />
+      </form>
+    </details>
+  );
+}
+
+/** V39-R3 (R3-010) — TROCAR O DEPÓSITO DA FARMÁCIA a partir de um dia. O estoque não se transfere pela troca. */
+export function FormTrocarDeposito({ farmaciaId, depositos, hoje }: { readonly farmaciaId: string; readonly depositos: readonly { readonly id: string; readonly rotulo: string }[]; readonly hoje: string }): React.ReactElement {
+  const uid = useId();
+  const [estado, action, pendente] = useActionState<EstadoDaOperacao, FormData>(trocarDepositoAction, {});
+  return (
+    <form action={action} className={`${QUADRO} space-y-2`} data-acao="trocar-deposito">
+      <ChaveDeComando />
+      <input name="farmaciaId" type="hidden" value={farmaciaId} />
+      <p className="text-xs">A farmácia passa a usar o depósito novo a partir do dia escolhido. O estoque não muda de depósito com a troca: o que ficar no anterior sai por transferência do almoxarifado.</p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="sm:col-span-2">
+          <label className={ROTULO} htmlFor={`${uid}-n`}>Depósito novo</label>
+          <select className={CAMPO} id={`${uid}-n`} name="depositoNovoId" required>
+            <option value="">Escolha</option>
+            {depositos.map((d) => <option key={d.id} value={d.id}>{d.rotulo}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={ROTULO} htmlFor={`${uid}-v`}>A partir de</label>
+          <input className={CAMPO} defaultValue={hoje} id={`${uid}-v`} name="vigenteDesde" required type="date" />
+        </div>
+      </div>
+      <div>
+        <label className={ROTULO} htmlFor={`${uid}-f`}>Fundamento (ato, reorganização)</label>
+        <input className={CAMPO} id={`${uid}-f`} name="fundamento" required />
+      </div>
+      <button className={CLASSE_BOTAO_PRIMARIO} disabled={pendente} type="submit">{pendente ? "Gravando..." : "Trocar o depósito"}</button>
+      <Resultado estado={estado} nome="trocar-deposito" />
     </form>
   );
 }

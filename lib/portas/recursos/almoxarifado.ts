@@ -267,10 +267,17 @@ export const INVENTARIOS_DE_ESTOQUE: DefinicaoDeRecurso = definirRecurso({
         { nome: "quantidadeContada", rotulo: "Quantidade contada", tipo: "texto", obrigatorio: true, largura: 1, placeholder: "0" },
       ] },
     { nome: "fechar", rotulo: "Fechar inventário", acaoDoCenso: "FECHAR_INVENTARIO_DE_ESTOQUE", irreversivel: true,
-      aviso: "O fechamento libera a movimentação do depósito. As divergências não geram ajuste automático; o ajuste é registrado como movimento próprio, com motivo.",
+      aviso: "O fechamento libera a movimentação do depósito. As divergências não geram ajuste automático: o ajuste é aplicado depois, por quem autoriza, em \"Aplicar o ajuste do inventário\".",
       campos: [
         { nome: "dataFechamento", rotulo: "Data de fechamento", tipo: "data", obrigatorio: true, largura: 1 },
         { nome: "termoFechamentoId", rotulo: "Termo de fechamento", tipo: "selecao", largura: 2, opcoes: [] },
+      ] },
+    // V39-R3 (R3-012) — o ajuste das diferenças, depois do fechamento, por quem não contou.
+    { nome: "aplicar-ajuste", rotulo: "Aplicar o ajuste do inventário", acaoDoCenso: "REGISTRAR_AJUSTE_ALMOXARIFADO", irreversivel: true,
+      aviso: "Cada diferença entre o contado e o registrado na abertura vira perda ou sobra no estoque, ao custo médio, com o lançamento contábil. Um inventário se aplica uma vez; quem contou não aplica.",
+      campos: [
+        { nome: "data", rotulo: "Data da aplicação", tipo: "data", obrigatorio: true, largura: 1 },
+        { nome: "fundamento", rotulo: "Fundamento (termo de fechamento, decisão de quem autoriza)", tipo: "texto", obrigatorio: true, largura: 3 },
       ] },
   ],
   permissoes: { criar: "ABRIR_INVENTARIO_DE_ESTOQUE" },

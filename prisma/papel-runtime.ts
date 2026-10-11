@@ -284,6 +284,26 @@ export const ESCRITA_MUTAVEL_DO_RUNTIME: Readonly<
   JustificativaDePendencia: { update: ["motivo", "criadoPor"], delete: false },
   ParametroDeEstoque: { update: ["quantidadeMinima", "quantidadeMaxima"], delete: false },
   CotaDeConsumo: { update: ["quantidadeLimite"], delete: false },
+
+  // ⚠️ V39-R3 — OITO ESCRITAS QUE NUNCA FUNCIONARAM COM O PAPEL DE RUNTIME. Medido em 11/10/2026 na base de ensaio da R3,
+  // operando pela tela: "permission denied for table InventarioDeEstoque" ao FECHAR o inventário. A guarda do `upsert`
+  // não via o `update` simples; `test/update-no-censo-de-escrita.test.ts` varre o código e cobra isto agora. Cada uma é
+  // uma coluna de CICLO DE VIDA, gravada uma vez pelo serviço (que recusa a segunda), e nada mais da linha:
+  //  · o FECHAMENTO do inventário (estoque e bens): a data e o termo; depósito, abertura e contagens ficam fora;
+  //  · o FIM do bloqueio de estoque: só `fim` (o serviço recusa encerrar duas vezes); material, depósito e início fora;
+  //  · a ETIQUETA do bem: `codigoDeBarras`, gravado uma vez a partir do tombamento (a segunda chamada reaproveita);
+  //  · o BORDERÔ ligado à fila de assinatura criada depois dele: só `filaAssinaturaId`; o conteúdo e o hash ficam fora;
+  //  · a APRECIAÇÃO da providência do controle interno: aceita ou recusa, com o motivo (o serviço recusa a segunda);
+  //  · a RECONTAGEM com o inventário aberto: o contado de estoque e o observado do bem. A contagem anterior não fica
+  //    guardada (pendência nomeada RECONTAGEM-SEM-HISTORICO); depois do fechamento não se reconta.
+  InventarioDeEstoque: { update: ["dataFechamento", "termoFechamentoId"], delete: false },
+  InventarioDeBens: { update: ["dataFechamento", "termoFechamentoId"], delete: false },
+  BloqueioDeEstoque: { update: ["fim"], delete: false },
+  BemPatrimonial: { update: ["codigoDeBarras"], delete: false },
+  Bordero: { update: ["filaAssinaturaId"], delete: false },
+  ProvidenciaDaIrregularidade: { update: ["aceita", "motivoDaRecusa"], delete: false },
+  ContagemDeInventario: { update: ["quantidadeContada"], delete: false },
+  ContagemDeBem: { update: ["encontrado", "localizacaoObservadaId", "estadoObservado", "observacao"], delete: false },
 };
 
 /** Tabelas que o runtime NÃO lê nem escreve — controle do próprio Prisma. */

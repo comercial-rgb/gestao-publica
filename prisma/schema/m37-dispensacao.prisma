@@ -8,8 +8,8 @@
 // tem a ação de dispensar. Append-only: o runtime só insere.
 // ============================================================================
 
-/// O depósito do almoxarifado que É o estoque da farmácia. Um para um, e não se troca (pendência nomeada:
-/// TROCA-DO-DEPOSITO-DA-FARMACIA): trocar mudaria de onde saiu o que já foi dispensado.
+/// O PRIMEIRO depósito do almoxarifado que é o estoque da farmácia. A troca (V39-R3) não altera esta linha: é um fato
+/// novo em `TrocaDoDepositoDaFarmacia`, com vigência. O depósito de um fato passado é o do movimento físico dele.
 model DepositoDaFarmacia {
   id String @id @default(cuid())
 
@@ -66,6 +66,9 @@ model ItemDaDispensacao {
   movimentoFisicoId String @unique
   movimentoFisico   MovimentoFisicoDeEstoque @relation("SaidaDaDispensacao", fields: [movimentoFisicoId], references: [id], onDelete: Restrict)
 
+  /// V39-R3 (R3-009) — a correção deste item (cancelamento do registro ou devolução), se houver. Uma só.
+  correcao CorrecaoDoItemDaDispensacao?
+
   @@index([dispensacaoId])
   @@index([materialId])
   @@index([loteId])
@@ -106,4 +109,81 @@ model AjusteDaFarmacia {
   criadoPor String
 
   @@index([farmaciaId, data])
+}
+
+// ============================================================================
+// V39-R3 (R3-009) — A CORREÇÃO AUDITÁVEL DA DISPENSAÇÃO. O original fica como está (append-only); a correção é um fato
+// novo por item, e o banco impede a segunda (itemId único).
+//   CANCELAMENTO_DO_REGISTRO — a dispensação foi registrada por engano (a entrega não aconteceu): todos os itens voltam
+//     ao estoque (estorno físico e do consumo, ao custo da saída). Feito por outra pessoa, não por quem dispensou.
+//   DEVOLUCAO — o usuário devolveu o medicamento. Quem recebe confere: APTO_AO_REUSO volta ao estoque disponível (lote
+//     dentro da validade); INAPTO não volta (o consumo fica) e diz o destino dado ao produto.
+// ============================================================================
+
+enum TipoDaCorrecaoDaDispensacao {
+  CANCELAMENTO_DO_REGISTRO
+  DEVOLUCAO
+}
+
+enum CondicaoDaDevolucao {
+  APTO_AO_REUSO
+  INAPTO
+}
+
+model CorrecaoDoItemDaDispensacao {
+  id String @id @default(cuid())
+
+  itemId String            @unique
+  item   ItemDaDispensacao @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  tipo     TipoDaCorrecaoDaDispensacao
+  /// Só na devolução: a conferência do produto devolvido.
+  condicao CondicaoDaDevolucao?
+  data     DateTime
+  motivo   String
+  /// Na devolução, quem conferiu o produto (nome e registro).
+  conferidoPor String?
+  /// Na devolução inapta, para onde foi o produto.
+  destino      String?
+
+  /// O estorno físico (cancelamento e devolução apta). Nulo na devolução inapta: nada volta ao estoque.
+  movimentoFisicoId String?                   @unique
+  movimentoFisico   MovimentoFisicoDeEstoque? @relation("EstornoDoItemDaDispensacao", fields: [movimentoFisicoId], references: [id], onDelete: Restrict)
+
+  /// Agrupa as correções de um mesmo ato (o cancelamento corrige todos os itens de uma vez).
+  operacaoId String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([operacaoId])
+}
+
+// ============================================================================
+// V39-R3 (R3-010) — A TROCA DO DEPÓSITO DA FARMÁCIA, com vigência. A farmácia passa a usar o depósito novo a partir do
+// dia dito; o estoque NÃO se transfere pela troca (o que ficou no depósito anterior continua lá, e sai por
+// transferência do almoxarifado, que é ato próprio). Os fatos passados continuam apontando o depósito usado neles (o do
+// movimento físico). Recusada com inventário aberto no depósito anterior ou com fato da farmácia depois da vigência.
+// ============================================================================
+
+model TrocaDoDepositoDaFarmacia {
+  id String @id @default(cuid())
+
+  farmaciaId String
+  farmacia   FarmaciaPublica @relation("TrocasDoDepositoDaFarmacia", fields: [farmaciaId], references: [id], onDelete: Restrict)
+
+  depositoAnteriorId String
+  depositoAnterior   Deposito @relation("DepositoAnteriorDaTroca", fields: [depositoAnteriorId], references: [id], onDelete: Restrict)
+  depositoNovoId     String
+  depositoNovo       Deposito @relation("DepositoNovoDaTroca", fields: [depositoNovoId], references: [id], onDelete: Restrict)
+
+  /// O primeiro dia em que a farmácia opera com o depósito novo.
+  vigenteDesde DateTime
+  fundamento   String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([farmaciaId, vigenteDesde])
+  @@index([depositoNovoId])
 }

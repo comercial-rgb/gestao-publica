@@ -6,13 +6,15 @@ import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { Decimal } from "../../packages/contracts/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { cadastrarDeposito, cadastrarGrupoDeMaterial, cadastrarMaterial, cadastrarUnidadeDeMedida } from "../m10-patrimonial/estoque-fisico.js";
-import { cadastrarClasseDeMaterial, saldoDaClasseDeMaterial } from "../m10-patrimonial/almoxarifado.js";
+import { cadastrarClasseDeMaterial, estornarMovimentoAlmoxarifado, saldoDaClasseDeMaterial } from "../m10-patrimonial/almoxarifado.js";
 import { criarM05DepsComAlmoxarifado } from "../m10-patrimonial/adapter-m05-almox.js";
 import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
 import { liquidar } from "../m05-despesa/servico-bloco2.js";
 import { empenhar } from "../m05-despesa/servico.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
-import { dispensarMedicamentos, podeVerDadosDaDispensacao, registrarAjusteDaFarmacia, vincularDepositoAFarmacia } from "./operacao.js";
+import { corrigirDispensacao, depositoDaFarmaciaNoDia, dispensarMedicamentos, podeVerDadosDaDispensacao, registrarAjusteDaFarmacia, trocarDepositoDaFarmacia, vincularDepositoAFarmacia } from "./operacao.js";
+import { travar } from "../../packages/locks/index.js";
+import { diaCivil } from "../../packages/datas/index.js";
 import { estornarMovimentoFisico } from "../m10-patrimonial/estoque-fisico.js";
 
 /**
@@ -69,7 +71,7 @@ async function usuarioCom(identificador: string, acoes: readonly string[], unida
 
 async function lote(id: string): Promise<string> {
   const ms = await prisma.movimentoFisicoDeEstoque.findMany({ where: { loteId: id }, select: { tipo: true, quantidade: true } });
-  const sinal: Record<string, number> = { ENTRADA: 1, SAIDA: -1, AJUSTE_ENTRADA: 1, AJUSTE_SAIDA: -1 };
+  const sinal: Record<string, number> = { ENTRADA: 1, SAIDA: -1, AJUSTE_ENTRADA: 1, AJUSTE_SAIDA: -1, ESTORNO_SAIDA: 1, ESTORNO_ENTRADA: -1 };
   return ms.reduce((t, m) => t.plus(new Decimal(m.quantidade.toFixed(4)).times(sinal[m.tipo] ?? 0)), new Decimal(0)).toFixed(4);
 }
 
@@ -134,7 +136,7 @@ describe("V39-R2 (R2-030) — dispensação pelo estoque do depósito da farmác
   it("sem depósito vinculado a dispensação é recusada; o vínculo é um para um e não se troca", async () => {
     await expect(dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "1" }])).rejects.toThrow(/A farmácia 0000001 não tem depósito vinculado/);
     await vincular();
-    await expect(vincularDepositoAFarmacia(prisma, { farmaciaId: "farm-1", depositoId: outroDepositoId, fundamento: "Tentativa de troca (fixture)", criadoPor: POR })).rejects.toThrow(/já tem o depósito DEP-F: trocar mudaria de onde saiu o que já foi dispensado/);
+    await expect(vincularDepositoAFarmacia(prisma, { farmaciaId: "farm-1", depositoId: outroDepositoId, fundamento: "Tentativa de troca (fixture)", criadoPor: POR })).rejects.toThrow(/já tem o depósito DEP-F\. Para mudar, use a troca do depósito/);
     expect(await prisma.depositoDaFarmacia.count()).toBe(1);
   });
 
@@ -236,5 +238,166 @@ describe("V39-R2 (R2-031) — perda e sobra na farmácia, com motivo e destino",
     await expect(registrarAjusteDaFarmacia(prisma, { farmaciaId: "farm-1", sentido: "SOBRA", materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "1", data: "2026-04-10", motivo: "Contagem", criadoPor: POR }))
       .rejects.toThrow(/não tem posição no depósito DEP-F em 2026-04-10: não há custo médio para valorar a sobra/);
     expect(await prisma.ajusteDaFarmacia.count()).toBe(1);
+  });
+});
+
+/**
+ * V39-R3 (R3-009) — A CORREÇÃO DA DISPENSAÇÃO. Contas feitas à mão sobre a fixture: dispensação de 10 da dipirona L2 e
+ * 5 da amoxicilina A1 em 10/04 (13,33 e 15,00 ao custo médio). O cancelamento devolve os dois lotes (50 e 30) e o valor
+ * da classe (28,33); o estorno do consumo inverte o lançamento original (D estoque / C VPD de consumo).
+ */
+describe("V39-R3 (R3-009) — correção auditável da dispensação", { timeout: 120000 }, () => {
+  const corrigir = (input: Partial<Parameters<typeof corrigirDispensacao>[1]> & { dispensacaoId: string }, por: string) =>
+    corrigirDispensacao(prisma, { tipo: "CANCELAMENTO_DO_REGISTRO", data: "2026-04-11", motivo: "Registro feito na ficha errada (fixture)", criadoPor: por, ...input });
+
+  it("CANCELAMENTO: quem dispensou não cancela; outra pessoa cancela, os N=2 itens voltam ao lote e o consumo é estornado; o original fica; a segunda correção é recusada", async () => {
+    await vincular();
+    const supervisora = await usuarioCom("supervisora@cg.pb.gov.br", ["CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"], "uo-01");
+    const saldoAntes = await saldoDaClasseDeMaterial(prisma, classeId);
+    const r = await dispensar([{ materialId: dipirona, loteId: lotes["L2"]!, quantidade: "10" }, { materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "5" }]);
+    await expect(corrigir({ dispensacaoId: r.id }, POR)).rejects.toThrow(/Quem dispensou não cancela o próprio registro/);
+    expect(await prisma.correcaoDoItemDaDispensacao.count()).toBe(0);
+
+    const c = await corrigir({ dispensacaoId: r.id }, supervisora);
+    expect(c).toEqual({ corrigidos: 2, devolvidosAoEstoque: 2 });
+    expect([await lote(lotes["L2"]!), await lote(lotes["A1"]!)]).toEqual(["50.0000", "30.0000"]);
+    expect((await saldoDaClasseDeMaterial(prisma, classeId)).toFixed(2)).toBe(saldoAntes.toFixed(2));
+    const corr = await prisma.correcaoDoItemDaDispensacao.findMany({ select: { tipo: true, condicao: true, movimentoFisico: { select: { tipo: true, valorTotal: true, estornoDeId: true, movimentoAlmoxarifado: { select: { tipo: true, lancamentoId: true } } } } } });
+    expect(corr.map((x) => [x.tipo, x.condicao, x.movimentoFisico?.tipo, x.movimentoFisico?.movimentoAlmoxarifado?.tipo]).sort()).toEqual([
+      ["CANCELAMENTO_DO_REGISTRO", null, "ESTORNO_SAIDA", "ESTORNO_SAIDA_CONSUMO"],
+      ["CANCELAMENTO_DO_REGISTRO", null, "ESTORNO_SAIDA", "ESTORNO_SAIDA_CONSUMO"],
+    ]);
+    expect(corr.map((x) => x.movimentoFisico?.valorTotal.toFixed(2)).sort()).toEqual(["13.33", "15.00"]);
+    const lanc = corr[0]!.movimentoFisico!.movimentoAlmoxarifado!.lancamentoId!;
+    const ps = await prisma.partidaContabil.findMany({ where: { lancamentoId: lanc }, select: { tipo: true, conta: { select: { codigo: true } } } });
+    expect(ps.map((p) => `${p.tipo} ${p.conta.codigo}`).sort()).toEqual(["CREDITO 3.3.1.1.1.00.00", "DEBITO 1.1.5.1.1.00.00"]);
+    // o original não muda
+    expect(await prisma.itemDaDispensacao.count({ where: { dispensacaoId: r.id } })).toBe(2);
+    expect((await prisma.dispensacaoDeMedicamento.findUniqueOrThrow({ where: { id: r.id }, select: { numero: true } })).numero).toBe(1);
+    // de novo: cancelamento e devolução recusados nomeando o item
+    await expect(corrigir({ dispensacaoId: r.id }, supervisora)).rejects.toThrow(/já foi corrigido \(cancelamento\)\. Cada item se corrige uma vez/);
+    const item = await prisma.itemDaDispensacao.findFirstOrThrow({ where: { dispensacaoId: r.id, loteId: lotes["L2"]! }, select: { id: true } });
+    await expect(corrigir({ dispensacaoId: r.id, tipo: "DEVOLUCAO", itens: [{ itemId: item.id, condicao: "APTO_AO_REUSO" }], conferidoPor: "Farmacêutica (fixture)" }, supervisora)).rejects.toThrow(/já foi corrigido/);
+    expect([await lote(lotes["L2"]!), await prisma.correcaoDoItemDaDispensacao.count()]).toEqual(["50.0000", 2]);
+  });
+
+  it("DEVOLUÇÃO: o apto volta ao lote; o inapto NÃO volta e diz o destino; o lote vencido não volta como apto; sem destino ou sem conferência é recusada", async () => {
+    await vincular();
+    await entrada(amoxicilina, "10", "3.00", "A9", "2026-04-15");
+    const r = await dispensar([{ materialId: dipirona, loteId: lotes["L2"]!, quantidade: "4" }, { materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "3" }, { materialId: amoxicilina, loteId: lotes["A9"]!, quantidade: "2" }], "2026-04-12");
+    const itens = await prisma.itemDaDispensacao.findMany({ where: { dispensacaoId: r.id }, select: { id: true, loteId: true } });
+    const doLote = (l: string): string => itens.find((i) => i.loteId === lotes[l])!.id;
+    const base = { dispensacaoId: r.id, tipo: "DEVOLUCAO" as const, data: "2026-04-20", motivo: "Usuário devolveu na farmácia (fixture)" };
+    await expect(corrigir({ ...base, itens: [{ itemId: doLote("A1"), condicao: "INAPTO" }], conferidoPor: "Farmacêutica (fixture)" }, POR)).rejects.toThrow(/diga o destino dado a ele/);
+    await expect(corrigir({ ...base, itens: [{ itemId: doLote("L2"), condicao: "APTO_AO_REUSO" }] }, POR)).rejects.toThrow(/diga quem conferiu/);
+    await expect(corrigir({ ...base, itens: [{ itemId: doLote("A9"), condicao: "APTO_AO_REUSO" }], conferidoPor: "Farmacêutica (fixture)" }, POR)).rejects.toThrow(/O lote A9 venceu em 15\/04\/2026: o medicamento devolvido não volta ao estoque disponível/);
+    expect(await prisma.correcaoDoItemDaDispensacao.count()).toBe(0);
+
+    const antesA1 = await lote(lotes["A1"]!);
+    const c = await corrigir({ ...base, itens: [{ itemId: doLote("L2"), condicao: "APTO_AO_REUSO" }, { itemId: doLote("A1"), condicao: "INAPTO" }], conferidoPor: "Farmacêutica (fixture)", destino: "Recolhido para descarte (fixture)" }, POR);
+    expect(c).toEqual({ corrigidos: 2, devolvidosAoEstoque: 1 });
+    expect([await lote(lotes["L2"]!), await lote(lotes["A1"]!)]).toEqual(["50.0000", antesA1]);
+    const inapta = await prisma.correcaoDoItemDaDispensacao.findUniqueOrThrow({ where: { itemId: doLote("A1") }, select: { movimentoFisicoId: true, destino: true, conferidoPor: true } });
+    expect(inapta).toEqual({ movimentoFisicoId: null, destino: "Recolhido para descarte (fixture)", conferidoPor: "Farmacêutica (fixture)" });
+    // o vencido devolvido entra como inapto, e a segunda devolução do mesmo item é recusada
+    await corrigir({ ...base, itens: [{ itemId: doLote("A9"), condicao: "INAPTO" }], conferidoPor: "Farmacêutica (fixture)", destino: "Descarte (fixture)" }, POR);
+    await expect(corrigir({ ...base, itens: [{ itemId: doLote("L2"), condicao: "APTO_AO_REUSO" }], conferidoPor: "Farmacêutica (fixture)" }, POR)).rejects.toThrow(/já foi corrigido \(devolução\)/);
+    expect(await prisma.correcaoDoItemDaDispensacao.count()).toBe(3);
+  });
+
+  it("NEGAÇÃO: quem tem a correção em OUTRA unidade não corrige a dispensação desta; o estorno do consumo pelo almoxarifado é recusado", async () => {
+    await vincular();
+    await prisma.unidadeOrcamentaria.create({ data: { id: "uo-02", codigo: "01002", descricao: "Secretaria de Educação", orgaoId: "org-01" } });
+    const deFora = await usuarioCom("corrige-fora@cg.pb.gov.br", ["CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"], "uo-02");
+    const r = await dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "2" }]);
+    await expect(corrigir({ dispensacaoId: r.id }, deFora)).rejects.toThrow(/ACESSO NEGADO: o usuário "corrige-fora@cg\.pb\.gov\.br" não tem permissão para CORRIGIR_DISPENSACAO_DE_MEDICAMENTO/);
+    const consumo = await prisma.itemDaDispensacao.findFirstOrThrow({ where: { dispensacaoId: r.id }, select: { movimentoFisico: { select: { movimentoAlmoxarifadoId: true } } } });
+    await expect(estornarMovimentoAlmoxarifado(prisma, { movimentoId: consumo.movimentoFisico.movimentoAlmoxarifadoId!, dataMovimento: D("2026-04-11"), motivo: "Tentativa de estorno pelo almoxarifado", criadoPor: POR }))
+      .rejects.toThrow(/Este lançamento é o consumo de uma dispensação da farmácia: corrija a dispensação na tela da farmácia/);
+    expect([await prisma.correcaoDoItemDaDispensacao.count(), await lote(lotes["A1"]!)]).toEqual([0, "28.0000"]);
+  });
+
+  it("A TRAVA EXISTE: com a farmácia travada por outra transação, a correção espera e só grava depois", async () => {
+    await vincular();
+    const supervisora = await usuarioCom("supervisora2@cg.pb.gov.br", ["CORRIGIR_DISPENSACAO_DE_MEDICAMENTO"], "uo-01");
+    const r = await dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "2" }]);
+    let liberar: () => void = () => undefined;
+    const presa = new Promise<void>((x) => { liberar = x; });
+    let travado: () => void = () => undefined;
+    const jaTravou = new Promise<void>((x) => { travado = x; });
+    const segurando = prisma.$transaction(async (tx) => { await travar(tx, "FarmaciaPublica", ["farm-1"]); travado(); await presa; }, { timeout: 20_000 });
+    await jaTravou;
+    let terminou = false;
+    const corr = corrigir({ dispensacaoId: r.id }, supervisora).then(() => { terminou = true; });
+    await new Promise((x) => setTimeout(x, 800));
+    expect(terminou).toBe(false);
+    liberar();
+    await segurando;
+    await corr;
+    expect([terminou, await prisma.correcaoDoItemDaDispensacao.count()]).toEqual([true, 1]);
+  });
+});
+
+/**
+ * V39-R3 (R3-010) — A TROCA DO DEPÓSITO DA FARMÁCIA, com vigência. O estoque não se transfere pela troca; os fatos
+ * passados continuam no depósito em que aconteceram.
+ */
+describe("V39-R3 (R3-010) — troca do depósito da farmácia", { timeout: 120000 }, () => {
+  const amanha = (): string => diaCivil(new Date(meioDiaCivil(diaCivil(new Date())).getTime() + 86_400_000));
+  const depois = (): string => diaCivil(new Date(meioDiaCivil(diaCivil(new Date())).getTime() + 2 * 86_400_000));
+  const trocar = (vigenteDesde: string, deposito = outroDepositoId) => trocarDepositoDaFarmacia(prisma, { farmaciaId: "farm-1", depositoNovoId: deposito, vigenteDesde, fundamento: "Reorganização da farmácia (fixture)", criadoPor: POR });
+
+  it("vale a partir do dia: antes dele o depósito é o anterior, depois o novo; o estoque NÃO muda de depósito; o fato passado continua no depósito dele", async () => {
+    await vincular();
+    const r = await dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "5" }]);
+    const t = await trocar(amanha());
+    expect(t.materiaisNoAnterior).toBe(2);
+    expect([await depositoDaFarmaciaNoDia(prisma, "farm-1", diaCivil(new Date())), await depositoDaFarmaciaNoDia(prisma, "farm-1", amanha())]).toEqual([depositoId, outroDepositoId]);
+    expect(await lote(lotes["A1"]!)).toBe("25.0000");
+    expect(await prisma.movimentoFisicoDeEstoque.count({ where: { depositoId: outroDepositoId } })).toBe(0);
+    const mov = await prisma.itemDaDispensacao.findFirstOrThrow({ where: { dispensacaoId: r.id }, select: { movimentoFisico: { select: { depositoId: true } } } });
+    expect(mov.movimentoFisico.depositoId).toBe(depositoId);
+    // depois da vigência, o lote do depósito anterior não sai pela farmácia (o estoque dela é o do depósito novo)
+    await expect(dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "1" }], amanha())).rejects.toThrow(/O lote A1 é de outro material ou de outro depósito/);
+    // a segunda troca para o mesmo dia é recusada nomeando a que já existe
+    await expect(trocar(amanha(), depositoId)).rejects.toThrow(/Já há troca do depósito da farmácia 0000001 vigente a partir de/);
+    expect(await lote(lotes["A1"]!)).toBe("25.0000");
+  });
+
+  it("CORRIDA: a troca que entra enquanto a dispensação espera a trava da farmácia faz a dispensação recusar, sem gravar no depósito errado", async () => {
+    await vincular();
+    let liberar: () => void = () => undefined;
+    const presa = new Promise<void>((x) => { liberar = x; });
+    let travado: () => void = () => undefined;
+    const jaTravou = new Promise<void>((x) => { travado = x; });
+    const segurando = prisma.$transaction(async (tx) => {
+      await travar(tx, "FarmaciaPublica", ["farm-1"]);
+      travado();
+      await presa;
+      // a troca grava dentro da trava (como o serviço faria), vigente no dia da dispensação que está esperando
+      await tx.trocaDoDepositoDaFarmacia.create({ data: { farmaciaId: "farm-1", depositoAnteriorId: depositoId, depositoNovoId: outroDepositoId, vigenteDesde: meioDiaCivil(amanha()), fundamento: "Troca concorrente (fixture)", criadoPor: POR } });
+    }, { timeout: 20_000 });
+    await jaTravou;
+    const espera = dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "1" }], amanha()).then(() => "gravou", (e: unknown) => String(e));
+    await new Promise((x) => setTimeout(x, 300));
+    liberar();
+    await segurando;
+    expect(await espera).toMatch(/O depósito da farmácia foi trocado enquanto o registro era feito/);
+    expect([await prisma.dispensacaoDeMedicamento.count(), await lote(lotes["A1"]!)]).toEqual([0, "30.0000"]);
+  });
+
+  it("NEGAÇÃO: data passada, data até o último fato, inventário aberto, depósito de outra farmácia e o mesmo depósito são recusados com o motivo", async () => {
+    await vincular();
+    await expect(trocar("2026-04-01")).rejects.toThrow(/A troca vale de hoje em diante/);
+    await dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "1" }], amanha());
+    await expect(trocar(amanha())).rejects.toThrow(/já registrou fato em .*: a troca vale a partir do dia seguinte ao último fato/);
+    await expect(trocar(depois(), depositoId)).rejects.toThrow(/já é o da farmácia nessa data/);
+    await prisma.inventarioDeEstoque.create({ data: { depositoId, dataAbertura: D("2026-04-30"), criadoPor: POR } });
+    await expect(trocar(depois())).rejects.toThrow(/Há inventário aberto em 30\/04\/2026 no depósito atual da farmácia/);
+    await prisma.inventarioDeEstoque.updateMany({ where: { depositoId }, data: { dataFechamento: D("2026-05-01") } });
+    await prisma.farmaciaPublica.create({ data: { id: "farm-2", ugId: "ug-pm", codigo: "0000002", criadoPor: POR } });
+    await prisma.depositoDaFarmacia.create({ data: { farmaciaId: "farm-2", depositoId: outroDepositoId, fundamento: "fixture", criadoPor: POR } });
+    await expect(trocar(depois())).rejects.toThrow(/O depósito DEP-X já é ou foi o estoque de outra farmácia/);
+    expect(await prisma.trocaDoDepositoDaFarmacia.count()).toBe(0);
   });
 });

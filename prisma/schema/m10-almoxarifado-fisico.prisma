@@ -36,6 +36,9 @@
 model Deposito {
   /// V39-R2 (R2-030) — a farmácia cujo estoque é este depósito. VIRTUAL.
   farmacia DepositoDaFarmacia? @relation("FarmaciaDoDeposito")
+  /// V39-R3 (R3-010) — as trocas em que este depósito saiu ou entrou como estoque de uma farmácia.
+  trocasComoAnterior TrocaDoDepositoDaFarmacia[] @relation("DepositoAnteriorDaTroca")
+  trocasComoNovo     TrocaDoDepositoDaFarmacia[] @relation("DepositoNovoDaTroca")
   id     String @id @default(cuid())
   codigo String @unique @db.VarChar(10)
   nome   String
@@ -321,6 +324,10 @@ model MovimentoFisicoDeEstoque {
   /// V39-R2 (R2-030/031) — a dispensação ou o ajuste da farmácia que gerou este movimento. VIRTUAIS.
   itemDaDispensacao ItemDaDispensacao? @relation("SaidaDaDispensacao")
   ajusteDaFarmacia  AjusteDaFarmacia?  @relation("MovimentoDoAjusteDaFarmacia")
+  /// V39-R3 (R3-009) — o estorno físico de um item de dispensação cancelado ou devolvido apto ao reuso.
+  correcaoDaDispensacao CorrecaoDoItemDaDispensacao? @relation("EstornoDoItemDaDispensacao")
+  /// V39-R3 (R3-012) — o ajuste de inventário do almoxarifado que gerou este movimento.
+  ajusteDoInventario AjusteDoInventario? @relation("MovimentoDoAjusteDoInventario")
   id String @id @default(cuid())
 
   materialId String
@@ -523,6 +530,8 @@ model InventarioDeEstoque {
   termoFechamento   Anexo?  @relation("TermoFechamentoInventarioEstoque", fields: [termoFechamentoId], references: [id])
 
   contagens ContagemDeInventario[]
+  /// V39-R3 (R3-012) — a aplicação do ajuste deste inventário (uma só: o banco impede a segunda).
+  aplicacaoDoAjuste AplicacaoDoAjusteDoInventario?
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -532,6 +541,10 @@ model InventarioDeEstoque {
 
 model ContagemDeInventario {
   id String @id @default(cuid())
+  /// V39-R3 (R3-012) — o ajuste aplicado a partir desta contagem, quando houve diferença.
+  ajuste AjusteDoInventario?
+  /// V39-R3 — as recontagens desta contagem (o número anterior e quem recontou), append-only.
+  recontagens RecontagemDeInventario[]
 
   inventarioId String
   inventario   InventarioDeEstoque @relation(fields: [inventarioId], references: [id])
@@ -589,4 +602,65 @@ model BloqueioDeEstoque {
 
   @@index([materialId, inicio])
   @@index([depositoId, inicio])
+}
+
+// ----------------------------------------------------------------------------
+// V39-R3 (R3-012) — O AJUSTE DO INVENTÁRIO DO ALMOXARIFADO, a partir das contagens de um inventário FECHADO.
+//
+// O motor é o mesmo da farmácia (`registrarAjusteFisicoNaTx`: perda ou sobra ao custo médio, com o lançamento). Aqui
+// fica o RASTRO: quem autorizou e com que fundamento (uma aplicação por inventário), e, por contagem com diferença, o
+// registrado na abertura, o contado e o movimento que acertou. Quem autoriza não é quem contou. Append-only.
+// ----------------------------------------------------------------------------
+
+model AplicacaoDoAjusteDoInventario {
+  id String @id @default(cuid())
+
+  inventarioId String              @unique
+  inventario   InventarioDeEstoque @relation(fields: [inventarioId], references: [id], onDelete: Restrict)
+
+  /// O dia da aplicação (depois do fechamento: o dia do fechamento ainda é da janela bloqueada).
+  data       DateTime
+  fundamento String
+
+  ajustes AjusteDoInventario[]
+
+  criadoEm  DateTime @default(now())
+  /// Quem autorizou e aplicou.
+  criadoPor String
+}
+
+model AjusteDoInventario {
+  id String @id @default(cuid())
+
+  aplicacaoId String
+  aplicacao   AplicacaoDoAjusteDoInventario @relation(fields: [aplicacaoId], references: [id], onDelete: Restrict)
+
+  contagemId String               @unique
+  contagem   ContagemDeInventario @relation(fields: [contagemId], references: [id], onDelete: Restrict)
+
+  /// O saldo do material (ou do lote contado) no dia da abertura, e o contado.
+  quantidadeRegistrada Decimal @db.Decimal(18, 4)
+  quantidadeContada    Decimal @db.Decimal(18, 4)
+
+  movimentoFisicoId String                   @unique
+  movimentoFisico   MovimentoFisicoDeEstoque @relation("MovimentoDoAjusteDoInventario", fields: [movimentoFisicoId], references: [id], onDelete: Restrict)
+
+  @@index([aplicacaoId])
+}
+
+/// V39-R3 — A RECONTAGEM com o inventário aberto: a contagem guarda o número atual; aqui fica o anterior e quem recontou.
+/// Append-only. A aplicação do ajuste recusa quem contou e quem recontou.
+model RecontagemDeInventario {
+  id String @id @default(cuid())
+
+  contagemId String
+  contagem   ContagemDeInventario @relation(fields: [contagemId], references: [id], onDelete: Restrict)
+
+  quantidadeAnterior Decimal @db.Decimal(18, 4)
+  quantidadeNova     Decimal @db.Decimal(18, 4)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contagemId])
 }

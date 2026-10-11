@@ -470,6 +470,18 @@ export const ORDEM_DOS_LOCKS = {
    * o que ela já explica. ÚLTIMO POSTO: a liberação não trava mais nada depois.
    */
   ReceitaDoConvenio: 47,
+  /**
+   * V39-R3 — O INVENTÁRIO DO ALMOXARIFADO (M10, `estoque-fisico.ts`): a contagem, o fechamento e a aplicação do ajuste
+   * leem "está aberto?" e "o que foi contado" e gravam em cima. Sem a trava, a recontagem gravada depois do fechamento
+   * mudaria o número de um inventário já apurado. A aplicação trava classe e posições antes (13 e 23) e o inventário
+   * por último. ÚLTIMO POSTO no fluxo do almoxarifado.
+   */
+  InventarioDeEstoque: 48,
+  /**
+   * V39-R3 — O INVENTÁRIO DE BENS (M10, `gestao-do-bem.ts`): a contagem do bem (que trava o bem antes, posto 46) e o
+   * fechamento leem "está aberto?" e gravam. Mesma razão do inventário do almoxarifado.
+   */
+  InventarioDeBens: 49,
 } as const;
 
 export type RecursoTravavel = keyof typeof ORDEM_DOS_LOCKS;

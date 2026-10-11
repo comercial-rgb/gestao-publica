@@ -7,6 +7,8 @@ import {
   meioDiaCivil,
 } from "../../../packages/datas/index.js";
 import {
+  aplicarAjusteDoInventario,
+  divergenciasDoInventario,
   abrirInventarioDeEstoque,
   bloquearEstoque,
   cadastrarGrupoDeMaterial,
@@ -644,25 +646,14 @@ export async function verInventarioDeEstoque(id: string): Promise<DetalheLido | 
   });
   if (inv === null) return null;
 
-  // ⚠️ A DIVERGÊNCIA É CALCULADA AGORA, contra a posição NA DATA DE ABERTURA — e não contra
-  // "hoje". Comparar a contagem de março com o saldo de maio produziria uma divergência que
-  // é só a movimentação do intervalo.
-  const diaDaAbertura = diaCivil(inv.dataAbertura);
-  const divergencias: string[] = [];
-  for (const c of inv.contagens) {
-    const movimentos = await prisma.movimentoFisicoDeEstoque.findMany({
-      where: { materialId: c.material.id, depositoId: inv.depositoId },
-      select: { tipo: true, quantidade: true, valorTotal: true, dataMovimento: true },
-    });
-    const posicao = posicaoDeEstoque(paraPosicao(movimentos), diaDaAbertura);
-    const diferenca = toMoney(c.quantidadeContada.toFixed(4)).minus(posicao.quantidade);
-    if (!diferenca.isZero()) {
-      divergencias.push(
-        `${c.material.codigo}: contado ${c.quantidadeContada.toFixed(3)}, ` +
-          `posição ${posicao.quantidade.toFixed(3)} (${diferenca.greaterThan(0) ? "sobra" : "falta"} ${diferenca.abs().toFixed(3)})`
-      );
-    }
-  }
+  // ⚠️ A DIVERGÊNCIA É CALCULADA contra a posição NA DATA DE ABERTURA — e não contra "hoje" (comparar a contagem de
+  // março com o saldo de maio mediria a movimentação do intervalo). V39-R3: a MESMA leitura que o ajuste aplica, por lote
+  // quando a contagem cita lote.
+  const difs = await divergenciasDoInventario(prisma, id);
+  const divergencias = difs.filter((x) => !x.diferenca.isZero()).map((x) =>
+    `${x.material}${x.lote === null ? "" : ` lote ${x.lote}`}: contado ${x.contado.toFixed(3)}, posição ${x.registrado.toFixed(3)} (${x.diferenca.greaterThan(0) ? "sobra" : "falta"} ${x.diferenca.abs().toFixed(3)})`
+  );
+  const aplicacao = await prisma.aplicacaoDoAjusteDoInventario.findUnique({ where: { inventarioId: id }, select: { data: true, criadoPor: true, fundamento: true, ajustes: { select: { id: true } } } });
 
   const aberto = inv.dataFechamento === null;
   return {
@@ -675,6 +666,7 @@ export async function verInventarioDeEstoque(id: string): Promise<DetalheLido | 
       divergencias.length === 0
         ? { texto: "Sem divergência", tom: "ok" }
         : { texto: `${divergencias.length} com divergência`, tom: "erro" },
+      ...(aplicacao === null ? [] : [{ texto: "Ajuste aplicado", tom: "ok" as const }]),
     ],
     dados: [
       { rotulo: "Depósito", valor: `${inv.deposito.codigo} — ${inv.deposito.nome}` },
@@ -691,7 +683,13 @@ export async function verInventarioDeEstoque(id: string): Promise<DetalheLido | 
         tipo: "longo",
         nota:
           "Comparação com o saldo na data de abertura. A divergência não gera ajuste " +
-          "automático; o ajuste é registrado como movimento próprio, com motivo." },
+          "automático: depois do fechamento, quem autoriza aplica o ajuste, uma vez." },
+      // V39-R3 (R3-012) — a aplicação do ajuste, com quem autorizou e o fundamento.
+      { rotulo: "Ajuste aplicado",
+        valor: aplicacao === null
+          ? (aberto ? "não (o inventário está aberto)" : "ainda não")
+          : `em ${diaCivilBr(aplicacao.data)} por ${aplicacao.criadoPor}: ${String(aplicacao.ajustes.length)} ajuste(s) no estoque e no razão. ${aplicacao.fundamento}`,
+        tipo: "longo" },
     ],
     historico: inv.contagens.map((c) => ({
       id: c.id,
@@ -1032,6 +1030,11 @@ export async function acaoDoInventarioDeEstoque(
           ...(opcional(c, "termoFechamentoId") !== undefined ? { termoFechamentoId: t(c, "termoFechamentoId") } : {}),
           criadoPor,
         })
+      );
+      return;
+    case "aplicar-ajuste":
+      await comEscritaAutenticada("REGISTRAR_AJUSTE_ALMOXARIFADO", (criadoPor) =>
+        aplicarAjusteDoInventario(cliente(), { inventarioId, data: t(c, "data"), fundamento: t(c, "fundamento"), criadoPor })
       );
       return;
     default:

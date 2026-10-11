@@ -1303,6 +1303,7 @@ export async function estornarMovimentoFisico(
         estornos: { select: { id: true } },
         itemDaDispensacao: { select: { dispensacao: { select: { numero: true, farmacia: { select: { codigo: true } } } } } },
         ajusteDaFarmacia: { select: { sentido: true, farmacia: { select: { codigo: true } } } },
+        ajusteDoInventario: { select: { id: true } },
       },
     });
     if (original === null) {
@@ -1316,7 +1317,10 @@ export async function estornarMovimentoFisico(
     // listando como feito o que voltou ao estoque. Pendência nomeada: ESTORNO-DA-DISPENSACAO-E-DO-AJUSTE-DA-FARMACIA.
     if (original.itemDaDispensacao !== null) {
       const x = original.itemDaDispensacao.dispensacao;
-      throw new Error(`Este movimento é da dispensação nº ${String(x.numero)} da farmácia ${x.farmacia.codigo}: ele não se estorna pelo almoxarifado, porque a dispensação e o lançamento do consumo ficariam como estão. Nada foi gravado.`);
+      throw new Error(`Este movimento é da dispensação nº ${String(x.numero)} da farmácia ${x.farmacia.codigo}: ele não se estorna pelo almoxarifado. Corrija a dispensação na tela da farmácia (cancelamento do registro ou devolução), que estorna a saída e o consumo juntos. Nada foi gravado.`);
+    }
+    if (original.ajusteDoInventario !== null) {
+      throw new Error("Este movimento é o ajuste de um inventário aplicado: ele não se estorna sozinho pelo almoxarifado, porque o lançamento e o rastro do inventário ficariam como estão. Nada foi gravado.");
     }
     if (original.ajusteDaFarmacia !== null) {
       const x = original.ajusteDaFarmacia;
@@ -1363,6 +1367,35 @@ export async function estornarMovimentoFisico(
     });
     return { movimentoId: criado.id };
   });
+}
+
+/**
+ * V39-R3 (R3-009) — O ESTORNO DE UMA SAÍDA FÍSICA, para compor com o estorno do consumo na mesma transação (a correção
+ * da dispensação). Devolve ao depósito a quantidade da saída, no mesmo lote e ao custo dela (não ao custo médio do
+ * dia), e aponta o estorno contábil que a acompanha. NÃO AUTORIZA E NÃO TRAVA: quem chama trava classe, posição e o
+ * que mais for, nessa ordem. Recusa o que não for saída e a saída já estornada. Está no `FORA_DO_CENSO`.
+ */
+export async function estornarSaidaFisicaNaTx(
+  tx: Tx,
+  d: { readonly movimentoId: string; readonly dataMovimento: Date; readonly motivo: string; readonly criadoPor: string; readonly movimentoAlmoxarifadoId: string }
+): Promise<{ readonly movimentoId: string }> {
+  const original = await tx.movimentoFisicoDeEstoque.findUnique({
+    where: { id: d.movimentoId },
+    select: { id: true, tipo: true, materialId: true, depositoId: true, loteId: true, quantidade: true, valorUnitario: true, valorTotal: true, setorId: true, itemDeRequisicaoId: true, operacaoId: true, estornos: { select: { id: true } } },
+  });
+  if (original === null) throw new Error(`Movimento físico ${d.movimentoId} não existe. Nada foi gravado.`);
+  if (original.tipo !== "SAIDA") throw new Error(`O movimento ${original.id} não é uma saída: só a saída se devolve por aqui. Nada foi gravado.`);
+  if (original.estornos.length > 0) throw new Error(`A saída ${original.id} já foi estornada: devolvê-la de novo poria a quantidade em dobro no estoque. Nada foi gravado.`);
+  const criado = await tx.movimentoFisicoDeEstoque.create({
+    data: {
+      materialId: original.materialId, depositoId: original.depositoId, loteId: original.loteId, tipo: "ESTORNO_SAIDA",
+      quantidade: original.quantidade.toFixed(4), valorUnitario: original.valorUnitario.toFixed(6), valorTotal: original.valorTotal.toFixed(2),
+      dataMovimento: d.dataMovimento, setorId: original.setorId, itemDeRequisicaoId: original.itemDeRequisicaoId, operacaoId: original.operacaoId,
+      estornoDeId: original.id, movimentoAlmoxarifadoId: d.movimentoAlmoxarifadoId, motivo: d.motivo, criadoPor: d.criadoPor,
+    },
+    select: { id: true },
+  });
+  return { movimentoId: criado.id };
 }
 
 /**
@@ -1759,7 +1792,7 @@ export async function registrarContagemDeInventario(
       where: { id: d.inventarioId },
       select: {
         id: true,
-        dataFechamento: true,
+        depositoId: true,
         deposito: { select: { unidadeOrcId: true } },
       },
     });
@@ -1770,9 +1803,18 @@ export async function registrarContagemDeInventario(
       ACAO_DO_SERVICO.registrarContagemDeInventario,
       { ug: inv.deposito.unidadeOrcId }
     );
-    if (inv.dataFechamento !== null) {
+    // V39-R3 — trava o inventário e só então lê se está aberto: a recontagem não se grava depois do fechamento.
+    await travar(tx, "InventarioDeEstoque", [inv.id]);
+    const { dataFechamento } = await tx.inventarioDeEstoque.findUniqueOrThrow({ where: { id: inv.id }, select: { dataFechamento: true } });
+    if (d.loteId !== undefined) {
+      const lote = await tx.loteDeMaterial.findUnique({ where: { id: d.loteId }, select: { materialId: true, depositoId: true, identificacao: true } });
+      if (lote === null || lote.materialId !== d.materialId || lote.depositoId !== inv.depositoId) {
+        throw new Error(`O lote informado não é deste material neste depósito: contá-lo mostraria a diferença de outro estoque. Nada foi gravado.`);
+      }
+    }
+    if (dataFechamento !== null) {
       throw new Error(
-        `O inventário ${inv.id} já foi FECHADO em ${diaCivil(inv.dataFechamento)}. ` +
+        `O inventário ${inv.id} já foi FECHADO em ${diaCivil(dataFechamento)}. ` +
           `Contar depois do fechamento mudaria um resultado que já foi apurado.`
       );
     }
@@ -1788,9 +1830,14 @@ export async function registrarContagemDeInventario(
         materialId: d.materialId,
         loteId: d.loteId ?? null,
       },
-      select: { id: true },
+      select: { id: true, quantidadeContada: true },
     });
     if (existente !== null) {
+      // V39-R3 — a RECONTAGEM guarda o número anterior e quem recontou (append-only): a aplicação do ajuste não é de
+      // quem contou nem de quem recontou.
+      await tx.recontagemDeInventario.create({
+        data: { contagemId: existente.id, quantidadeAnterior: existente.quantidadeContada.toFixed(4), quantidadeNova: contada.toFixed(4), criadoPor: d.criadoPor },
+      });
       await tx.contagemDeInventario.update({
         where: { id: existente.id },
         data: { quantidadeContada: contada.toFixed(4) },
@@ -1855,6 +1902,10 @@ export async function fecharInventarioDeEstoque(
       ACAO_DO_SERVICO.fecharInventarioDeEstoque,
       { ug: inv.deposito.unidadeOrcId }
     );
+    // V39-R3 — a trava do inventário antes de reler "aberto?" e as contagens (a recontagem concorrente espera).
+    await travar(tx, "InventarioDeEstoque", [inv.id]);
+    const relido = await tx.inventarioDeEstoque.findUniqueOrThrow({ where: { id: inv.id }, select: { dataFechamento: true, contagens: { select: { id: true } } } });
+    Object.assign(inv, { dataFechamento: relido.dataFechamento, contagens: relido.contagens });
     if (inv.dataFechamento !== null) {
       throw new Error(
         `O inventário ${inv.id} já foi fechado em ${diaCivil(inv.dataFechamento)}.`
@@ -1874,13 +1925,15 @@ export async function fecharInventarioDeEstoque(
       );
     }
 
-    await tx.inventarioDeEstoque.update({
-      where: { id: d.inventarioId },
+    // Grava só se ainda aberto (a condição está no próprio UPDATE): o segundo fechamento não sobrescreve a data.
+    const fechou = await tx.inventarioDeEstoque.updateMany({
+      where: { id: d.inventarioId, dataFechamento: null },
       data: {
         dataFechamento: d.dataFechamento,
         termoFechamentoId: d.termoFechamentoId ?? null,
       },
     });
+    if (fechou.count !== 1) throw new Error(`O inventário ${inv.id} já foi fechado. Nada foi gravado.`);
     return { inventarioId: inv.id, contagens: inv.contagens.length };
   });
 }
@@ -1983,10 +2036,12 @@ export async function encerrarBloqueioDeEstoque(
     if (d.fim < b.inicio) {
       throw new Error(`Fim antes do início: a janela do bloqueio ficaria invertida.`);
     }
-    await tx.bloqueioDeEstoque.update({
-      where: { id: d.bloqueioId },
+    // V39-R3 — a condição no próprio UPDATE: dois encerramentos simultâneos não regravam o fim.
+    const encerrou = await tx.bloqueioDeEstoque.updateMany({
+      where: { id: d.bloqueioId, fim: null },
       data: { fim: d.fim },
     });
+    if (encerrou.count !== 1) throw new Error(`O bloqueio ${b.id} já foi encerrado. Nada foi gravado.`);
     return { bloqueioId: b.id };
   });
 }
@@ -2174,4 +2229,128 @@ export async function validadeDoEstoqueDoDeposito(
   }
 
   return validadeDoEstoque(comSaldo, hoje, dentroDeDias);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// V39-R3 (R3-012) — O AJUSTE DO INVENTÁRIO DO ALMOXARIFADO
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface DivergenciaDoInventario {
+  readonly contagemId: string;
+  readonly materialId: string;
+  readonly material: string;
+  readonly classeDeMaterialId: string;
+  readonly controlaLote: boolean;
+  readonly loteId: string | null;
+  readonly lote: string | null;
+  readonly registrado: Money;
+  readonly contado: Money;
+  /** contado − registrado: positivo é sobra, negativo é falta. */
+  readonly diferenca: Money;
+}
+
+/**
+ * As DIFERENÇAS do inventário, por contagem: o registrado é o saldo NO DIA DA ABERTURA (do lote contado, ou do material
+ * no depósito quando a contagem não cita lote) — a movimentação do depósito fica bloqueada da abertura ao fechamento, e
+ * comparar com o saldo de hoje mediria a movimentação de depois, não o erro da contagem. Leitura; está no `FORA_DO_CENSO`.
+ */
+export async function divergenciasDoInventario(tx: Tx, inventarioId: string): Promise<readonly DivergenciaDoInventario[]> {
+  const inv = await tx.inventarioDeEstoque.findUnique({
+    where: { id: inventarioId },
+    select: {
+      depositoId: true, dataAbertura: true,
+      contagens: { orderBy: { criadoEm: "asc" }, select: { id: true, quantidadeContada: true, loteId: true, lote: { select: { identificacao: true } }, material: { select: { id: true, codigo: true, classeDeMaterialId: true, controlaLote: true } } } },
+    },
+  });
+  if (inv === null) return [];
+  const dia = diaCivil(inv.dataAbertura);
+  const saida: DivergenciaDoInventario[] = [];
+  for (const c of inv.contagens) {
+    const ms = await tx.movimentoFisicoDeEstoque.findMany({
+      where: c.loteId === null ? { materialId: c.material.id, depositoId: inv.depositoId } : { loteId: c.loteId },
+      select: { tipo: true, quantidade: true, valorTotal: true, dataMovimento: true },
+    });
+    const posicao = posicaoDeEstoque(ms.map((m) => ({ tipo: m.tipo as TipoMovimentoFisicoEstoque, quantidade: toMoney(m.quantidade.toFixed(4)), valorTotal: toMoney(m.valorTotal.toFixed(2)), dataMovimento: m.dataMovimento })), dia);
+    const contado = toMoney(c.quantidadeContada.toFixed(4));
+    saida.push({
+      contagemId: c.id, materialId: c.material.id, material: c.material.codigo, classeDeMaterialId: c.material.classeDeMaterialId, controlaLote: c.material.controlaLote,
+      loteId: c.loteId, lote: c.lote?.identificacao ?? null, registrado: posicao.quantidade, contado, diferenca: toMoney(contado.minus(posicao.quantidade)),
+    });
+  }
+  return saida;
+}
+
+export const zAplicarAjusteDoInventarioInput = z.object({
+  inventarioId: z.string().min(1),
+  /** O dia da aplicação: depois do fechamento (o dia do fechamento ainda é da janela bloqueada) e não futuro. */
+  data: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data da aplicação."),
+  fundamento: z.string().trim().min(10, "Diga o fundamento da aplicação (o termo de fechamento, a decisão de quem autoriza), com pelo menos 10 caracteres."),
+  criadoPor: z.string().min(1),
+});
+
+/**
+ * APLICAR O AJUSTE DE UM INVENTÁRIO FECHADO: cada contagem com diferença vira uma perda (falta) ou sobra no lote ou no
+ * material, ao custo médio da posição no dia da aplicação, com o lançamento contábil — o MESMO motor da farmácia
+ * (`registrarAjusteFisicoNaTx`). A diferença é a do dia da abertura; a movimentação de depois soma por cima dela.
+ *
+ * RASTRO E AUTORIZAÇÃO: uma aplicação por inventário (o banco garante), com fundamento e quem autorizou; por contagem
+ * com diferença, o registrado, o contado e o movimento. Quem autoriza não é quem contou.
+ * RECUSA: inventário aberto; data no dia do fechamento ou antes, ou futura; contagem sem lote de material que controla
+ * lote; falta maior que o que há hoje no lote (a recusa do motor, nomeando o material).
+ * ORDEM DAS TRAVAS: classes (13), posições (23). Duas aplicações do mesmo inventário pegam as mesmas posições: a segunda
+ * espera e acha a primeira gravada. Escopo: a ação de ajuste do almoxarifado na UG do depósito.
+ */
+export async function aplicarAjusteDoInventario(
+  prisma: PrismaClient,
+  input: z.input<typeof zAplicarAjusteDoInventarioInput>
+): Promise<{ readonly aplicacaoId: string; readonly ajustes: number; readonly semDiferenca: number }> {
+  const d = zAplicarAjusteDoInventarioInput.parse(input);
+  return prisma.$transaction(
+    async (tx) => {
+      const inv = await tx.inventarioDeEstoque.findUnique({
+        where: { id: d.inventarioId },
+        select: { id: true, depositoId: true, dataAbertura: true, dataFechamento: true, deposito: { select: { codigo: true, unidadeOrcId: true } }, contagens: { select: { criadoPor: true, materialId: true, material: { select: { classeDeMaterialId: true } } } } },
+      });
+      if (inv === null) throw new Error("Inventário não encontrado. Nada foi gravado.");
+      await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.aplicarAjusteDoInventario, { ug: inv.deposito.unidadeOrcId });
+      if (inv.dataFechamento === null) throw new Error(`O inventário do depósito ${inv.deposito.codigo} ainda está aberto: feche-o antes de aplicar o ajuste. Nada foi gravado.`);
+      if (d.data <= diaCivil(inv.dataFechamento)) {
+        throw new Error(`O ajuste se aplica depois do fechamento (${diaCivilBr(inv.dataFechamento)}): o dia do fechamento ainda é da janela em que o depósito fica bloqueado. Nada foi gravado.`);
+      }
+      if (d.data > diaCivil(new Date())) throw new Error("A aplicação não pode ter data futura. Nada foi gravado.");
+      const contadores = new Set(inv.contagens.map((c) => c.criadoPor));
+      if (contadores.has(d.criadoPor)) {
+        throw new Error(`Quem contou não autoriza o próprio ajuste: a aplicação do inventário do depósito ${inv.deposito.codigo} é de outra pessoa. Nada foi gravado.`);
+      }
+      await travar(tx, "ClasseDeMaterial", inv.contagens.map((c) => c.material.classeDeMaterialId));
+      await travar(tx, "PosicaoFisicaDeEstoque", inv.contagens.map((c) => chaveDaPosicao(c.materialId, inv.depositoId)));
+      await travar(tx, "InventarioDeEstoque", [inv.id]);
+      const recontaram = await tx.recontagemDeInventario.findMany({ where: { contagem: { inventarioId: inv.id } }, select: { criadoPor: true } });
+      if (recontaram.some((r) => r.criadoPor === d.criadoPor)) {
+        throw new Error(`Quem recontou não autoriza o próprio ajuste: a aplicação do inventário do depósito ${inv.deposito.codigo} é de outra pessoa. Nada foi gravado.`);
+      }
+      // Lido DEPOIS das travas: a segunda aplicação concorrente acha a primeira (e o banco ainda tem o único).
+      const ja = await tx.aplicacaoDoAjusteDoInventario.findUnique({ where: { inventarioId: inv.id }, select: { data: true, criadoPor: true } });
+      if (ja !== null) throw new Error(`O ajuste deste inventário já foi aplicado em ${diaCivilBr(ja.data)} por ${ja.criadoPor}. Um inventário se aplica uma vez. Nada foi gravado.`);
+
+      const divergencias = await divergenciasDoInventario(tx, inv.id);
+      const semLote = divergencias.find((x) => x.controlaLote && x.loteId === null && !x.diferenca.isZero());
+      if (semLote !== undefined) {
+        throw new Error(`O material ${semLote.material} controla lote e foi contado sem lote: conte por lote para o ajuste saber de qual lote sai ou entra. Nada foi gravado.`);
+      }
+      const dataMovimento = meioDiaCivil(d.data);
+      const aplicacao = await tx.aplicacaoDoAjusteDoInventario.create({ data: { inventarioId: inv.id, data: dataMovimento, fundamento: d.fundamento, criadoPor: d.criadoPor }, select: { id: true } });
+      let ajustes = 0;
+      for (const x of divergencias) {
+        if (x.diferenca.isZero()) continue;
+        const sentido = x.diferenca.greaterThan(0) ? "SOBRA" : "PERDA";
+        const motivo = `Inventário do depósito ${inv.deposito.codigo} aberto em ${diaCivilBr(inv.dataAbertura)}: ${x.material}${x.lote === null ? "" : ` lote ${x.lote}`} registrado ${x.registrado.toFixed(4)}, contado ${x.contado.toFixed(4)}. ${d.fundamento}`;
+        const a = await registrarAjusteFisicoNaTx(tx, { materialId: x.materialId, depositoId: inv.depositoId, loteId: x.loteId, sentido, quantidade: toMoney(x.diferenca.abs()), dataMovimento, motivo, criadoPor: d.criadoPor });
+        await tx.ajusteDoInventario.create({ data: { aplicacaoId: aplicacao.id, contagemId: x.contagemId, quantidadeRegistrada: x.registrado.toFixed(4), quantidadeContada: x.contado.toFixed(4), movimentoFisicoId: a.movimentoId } });
+        ajustes += 1;
+      }
+      return { aplicacaoId: aplicacao.id, ajustes, semDiferenca: divergencias.length - ajustes };
+    },
+    { timeout: 60_000 }
+  );
 }

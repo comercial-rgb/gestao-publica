@@ -304,13 +304,17 @@ export async function apreciarProvidencia(
       );
     }
 
-    await tx.providenciaDaIrregularidade.update({
-      where: { id: d.providenciaId },
+    // V39-R3 — a condição no próprio UPDATE: duas apreciações simultâneas não sobrescrevem o juízo.
+    const apreciou = await tx.providenciaDaIrregularidade.updateMany({
+      where: { id: d.providenciaId, aceita: null },
       data: {
         aceita: d.aceita,
         ...(d.motivoDaRecusa !== undefined ? { motivoDaRecusa: d.motivoDaRecusa } : {}),
       },
     });
+    if (apreciou.count !== 1) {
+      throw new Error(`A providência ${d.providenciaId} JÁ FOI APRECIADA. Nada foi gravado.`);
+    }
     return { providenciaId: p.id };
   });
 }

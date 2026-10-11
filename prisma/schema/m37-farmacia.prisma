@@ -13,6 +13,7 @@ model FarmaciaPublica {
   /// V39-R2 (R2-030/031) — o depósito, as dispensações e os ajustes da farmácia (m37-dispensacao.prisma). VIRTUAL.
   deposito     DepositoDaFarmacia?        @relation("DepositoDaFarmacia")
   dispensacoes DispensacaoDeMedicamento[] @relation("DispensacoesDaFarmacia")
+  trocasDeDeposito TrocaDoDepositoDaFarmacia[] @relation("TrocasDoDepositoDaFarmacia")
   ajustes      AjusteDaFarmacia[]         @relation("AjustesDaFarmacia")
   id String @id @default(cuid())
 
