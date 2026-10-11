@@ -152,6 +152,8 @@ export function FormAbastecimento({ bemId, categoria, identificacao, combustivei
         <Escolha nome="combustivel" rotulo="Combustível" opcoes={combustiveis} />
         <label className="text-xs"><span className={ROTULO}>Quantidade (litros; m³ no gás natural)</span><input name="quantidade" required inputMode="decimal" className={CAMPO} /></label>
         <label className="text-xs"><span className={ROTULO}>Cupom, nota ou ordem de abastecimento</span><input name="documento" required className={CAMPO} /></label>
+        <label className="text-xs"><span className={ROTULO}>Número da ordem de abastecimento (se houver)</span><input name="ordemNumero" inputMode="numeric" className={CAMPO} /></label>
+        <label className="text-xs"><span className={ROTULO}>Leitura do hodômetro ou horímetro (opcional, ex.: 45.230,5)</span><input name="leitura" inputMode="decimal" className={CAMPO} /></label>
         <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Registrar"}</button>
         <Resultado estado={estado} acao="registrar-abastecimento" />
       </form>

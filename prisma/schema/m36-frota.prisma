@@ -42,6 +42,11 @@ enum CombustivelDaFrota {
 }
 
 model VeiculoDaFrota {
+  /// V39-R2 (R2-025 a 028) — habilitação exigida, ordens, leituras e manutenções (m36-operacao-da-frota.prisma). VIRTUAIS.
+  exigencias   ExigenciaDeHabilitacaoDaFrota[] @relation("ExigenciasDoVeiculo")
+  ordens       OrdemDeAbastecimento[]          @relation("OrdensDoVeiculo")
+  leituras     LeituraDoMarcadorDaFrota[]      @relation("LeiturasDoVeiculo")
+  manutencoes  ManutencaoDaFrota[]             @relation("ManutencoesDoVeiculo")
   id String @id @default(cuid())
 
   ugId String
@@ -96,6 +101,11 @@ model VersaoDoVeiculo {
 }
 
 model MaquinaDaFrota {
+  /// V39-R2 (R2-025 a 028) — habilitação exigida, ordens, leituras e manutenções (m36-operacao-da-frota.prisma). VIRTUAIS.
+  exigencias   ExigenciaDeHabilitacaoDaFrota[] @relation("ExigenciasDaMaquina")
+  ordens       OrdemDeAbastecimento[]          @relation("OrdensDaMaquina")
+  leituras     LeituraDoMarcadorDaFrota[]      @relation("LeiturasDaMaquina")
+  manutencoes  ManutencaoDaFrota[]             @relation("ManutencoesDaMaquina")
   id String @id @default(cuid())
 
   ugId String
@@ -172,6 +182,11 @@ model AnulacaoDeSituacaoDaFrota {
 }
 
 model AbastecimentoDaFrota {
+  /// V39-R2 (R2-026/027) — a ordem que autorizou este abastecimento (nula: abastecimento sem ordem, como antes) e a
+  /// leitura do marcador feita nele.
+  ordemId String?
+  ordem   OrdemDeAbastecimento? @relation("AbastecimentosDaOrdem", fields: [ordemId], references: [id], onDelete: Restrict)
+  leitura LeituraDoMarcadorDaFrota? @relation("LeituraDoAbastecimento")
   id String @id @default(cuid())
 
   veiculoId String?
@@ -191,6 +206,7 @@ model AbastecimentoDaFrota {
   criadoEm  DateTime @default(now())
   criadoPor String
 
+  @@index([ordemId])
   @@index([veiculoId, data])
   @@index([maquinaId, data])
 }

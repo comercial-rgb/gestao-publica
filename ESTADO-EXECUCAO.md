@@ -275,8 +275,62 @@ Commit da unidade: 760a4414.
   - o escopo do ajuste (ação da farmácia na UG, sem a ação de ajuste de inventário do ente) está declarado no cabeçalho do serviço;
   - testes novos: N=2 lotes do mesmo medicamento (o custo do segundo item é o médio depois do primeiro), data retroativa, ponto decimal, estorno pelo almoxarifado, sobra com posição zerada e visibilidade por unidade. `m37-operacao` 10/10; com censo e estoque físico, 46/46.
 
+Commit da unidade: 549079d9.
+
+### R2-025 a R2-028 (M36) — condutor, ordem de abastecimento, hodômetro e manutenção
+- **Modelo** (`prisma/schema/m36-operacao-da-frota.prisma`, append-only):
+  - `CondutorDaFrota` e `VersaoDoCondutor`: CNH com número, categoria, validade, vínculo e se continua ativo. Só os dados necessários à habilitação;
+  - `ExigenciaDeHabilitacaoDaFrota`: as categorias que o ente aceita para cada bem, declaradas e não deduzidas do tipo do veículo;
+  - `OrdemDeAbastecimento` com cancelamento próprio, e a coluna anulável `ordemId` no abastecimento;
+  - `LeituraDoMarcadorDaFrota`: hodômetro no veículo, horímetro na máquina. A correção é leitura nova que aponta a errada, com motivo;
+  - `ManutencaoDaFrota`: pedido, autorização (contrato opcional, fornecedor, valor estimado), conclusão (custo, documento) ou cancelamento.
+- **Migrations:** `20261110130000` (as duas ações, migration própria) e `20261110140000` (tabelas, coluna e CHECKs, também em `prisma/sql/ck_operacao_da_frota.sql`).
+- **Serviços** (`modules/m36-frota/operacao.ts`):
+  - a ordem confere o bem em uso, o condutor ativo, a CNH válida até o fim do prazo e a categoria aceita;
+  - o abastecimento pela ordem (`registrarAbastecimento` com `ordemId`) confere bem, combustível, prazo, cancelamento, saldo (abastecimentos não anulados) e a CNH no dia;
+  - a leitura não diminui: é recusada se for menor que a anterior ou maior que a seguinte. O consumo é derivado das leituras que valem: km/L no veículo, L/h na máquina;
+  - a manutenção não se conclui sem autorização, não volta no tempo e não se cancela depois de concluída.
+- **Ações e permissões:**
+  - EMITIR_ORDEM_DE_ABASTECIMENTO (emitir e cancelar a ordem) e AUTORIZAR_MANUTENCAO_DA_FROTA (autorizar e cancelar a manutenção) são novas;
+  - o resto usa CADASTRAR_FROTA e REGISTRAR_ABASTECIMENTO;
+  - a v47 concede as duas novas só a quem administra permissões no global.
+- **Tela:** Patrimônio › Frota › "Condutores, ordens de abastecimento, hodômetro e manutenção" (`/patrimonio/frota/operacao`):
+  - condutores, com o aviso de CNH vencida ou a vencer em até 30 dias. Os 30 dias são parâmetro de tela, não regra;
+  - exigência de habilitação por bem;
+  - ordens, com autorizado, abastecido, saldo e situação;
+  - consumo por bem, com leitura e correção;
+  - manutenções, com as fases.
+
+  O formulário de abastecimento da frota ganhou o número da ordem e a leitura, os dois opcionais.
+- **Testes:** `m36-operacao.test.ts`, 5/5:
+  - CNH vencida no prazo, categoria declarada e condutor desligado;
+  - N=2 abastecimentos fechando o autorizado, o excedente recusado, o anulado liberando saldo, combustível, prazo e cancelamento;
+  - leitura que volta, recusada nos dois sentidos, ponto decimal recusado, correção com motivo mudando o consumo de 21,00 para 20,00 km/L, e horímetro em L/h;
+  - manutenção com as datas e as fases;
+  - negação: quem cadastra frota não autoriza manutenção nem emite ordem.
+
+  Mais 2 mutações vermelhas (saldo da ordem, leitura que volta), consumidores do M36 28/28 e censo e atualizações 27/27.
+- **Pela tela (3011, base fictícia):** `scripts/percurso-v39r2-frota.mts`, 11/11 na segunda corrida:
+  - o condutor cadastrado;
+  - a ordem nº 1 de 50 L;
+  - dois abastecimentos pela ordem, na tela da frota, com leitura;
+  - o terceiro recusado por passar do autorizado;
+  - o consumo de 15,00 km/L e a ordem "atendida";
+  - a manutenção pedida, autorizada e concluída com o custo.
+
+  Na primeira corrida, a ordem foi recusada: o condutor tinha sido cadastrado valendo a partir de hoje e a ordem era de dois dias antes. A recusa está certa; o percurso passou a informar a data do condutor.
+- **Auditoria antes do commit, e o que se corrigiu:**
+  - concluir e cancelar a mesma manutenção ao mesmo tempo gravaria os dois: cada fase agora lê o estado DEPOIS de travar o bem. O mesmo vale para o cancelamento da ordem;
+  - a correção da correção perdia a leitura no consumo: a cadeia é seguida até a última. Teste: 10.420,0 → 10.400,0 → 10.360,0 dá 18,00 km/L;
+  - a ordem era buscada pelo número antes da autenticação: a busca foi para dentro do envelope autenticado;
+  - a CNH no dia do abastecimento era conferida sem travar o condutor. Agora o condutor é travado depois do bem, e a emissão da ordem trava na mesma ordem (o bem, depois o condutor e a numeração), para não se abraçar com um abastecimento;
+  - a leitura de abastecimento anulado (e as correções dela) sai da conta;
+  - a tela de condutores mostra a versão que vale hoje, não a última publicada;
+  - as decisões (categorias declaradas pelo ente, 30 dias como parâmetro de tela, a ordem das travas) estão no `MODULO.md` do M36. Pendência nomeada: CATEGORIA-ACC (a ACC não cabe no campo de duas posições).
+  - **Instrumento provado:** o teste de dois abastecimentos simultâneos passou também SEM a trava (as duas chamadas não se cruzaram), então ele não prova a trava. Foi acrescentada a prova determinística: outra transação segura a trava do bem, e o abastecimento espera e só grava depois. Ela fica vermelha sem a trava e verde com ela. `m36-operacao` 7/7.
+
 ### O próximo passo
-1. (feito: frente 5; frente 6 R2-029, 030, 031) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
+1. (feito: frente 5; frente 6 R2-025 a 031) e o resto da frente 6 (R2-025 a 028, 030 e 031), pelo levantamento registrado nesta sessão: condutor e CNH; ordem de abastecimento; hodômetro; manutenção; dispensação com a farmácia vinculada a um depósito; inventário da farmácia pelo inventário do M10.
 
 ## V39: construção integrada depois da V38 (iniciada em 09/10/2026; vale sobre a V38 abaixo)
 

@@ -146,6 +146,9 @@ export type AcaoDoSistema =
   // ── M36/M37 — V27: frota e farmácia pública (SAGRES §4.50 a §4.57) ──
   | "CADASTRAR_FROTA"
   | "REGISTRAR_ABASTECIMENTO"
+  // V39-R2 (R2-026/028) — autorizar o abastecimento por ordem e autorizar a manutenção da frota.
+  | "EMITIR_ORDEM_DE_ABASTECIMENTO"
+  | "AUTORIZAR_MANUTENCAO_DA_FROTA"
   | "CADASTRAR_FARMACIA"
   | "INFORMAR_ESTOQUE_DA_FARMACIA"
   // V39-R2 (R2-030/031) — a dispensação ao usuário e a perda ou sobra apurada na farmácia.
@@ -1278,6 +1281,16 @@ export type NomeDeServico =
   | "registrarSituacaoDaFrota"
   | "anularSituacaoDaFrota"
   | "registrarAbastecimento"
+  | "cadastrarCondutor"
+  | "publicarVersaoDoCondutor"
+  | "declararExigenciaDeHabilitacao"
+  | "emitirOrdemDeAbastecimento"
+  | "cancelarOrdemDeAbastecimento"
+  | "registrarLeituraDoMarcador"
+  | "abrirManutencaoDaFrota"
+  | "autorizarManutencaoDaFrota"
+  | "concluirManutencaoDaFrota"
+  | "cancelarManutencaoDaFrota"
   | "registrarMultaDeTransito"
   | "baixarMultaDeTransito"
   | "anularAbastecimento"
@@ -2158,6 +2171,19 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   registrarSituacaoDaFrota: "CADASTRAR_FROTA",
   anularSituacaoDaFrota: "CADASTRAR_FROTA",
   registrarAbastecimento: "REGISTRAR_ABASTECIMENTO",
+  // V39-R2 (R2-025 a 028) — o cadastro (condutor, exigência de habilitação, pedido e conclusão da manutenção) é do
+  // cadastro da frota; a leitura do marcador, de quem registra o abastecimento; autorizar abastecimento e manutenção,
+  // ações próprias.
+  cadastrarCondutor: "CADASTRAR_FROTA",
+  publicarVersaoDoCondutor: "CADASTRAR_FROTA",
+  declararExigenciaDeHabilitacao: "CADASTRAR_FROTA",
+  emitirOrdemDeAbastecimento: "EMITIR_ORDEM_DE_ABASTECIMENTO",
+  cancelarOrdemDeAbastecimento: "EMITIR_ORDEM_DE_ABASTECIMENTO",
+  registrarLeituraDoMarcador: "REGISTRAR_ABASTECIMENTO",
+  abrirManutencaoDaFrota: "CADASTRAR_FROTA",
+  autorizarManutencaoDaFrota: "AUTORIZAR_MANUTENCAO_DA_FROTA",
+  concluirManutencaoDaFrota: "CADASTRAR_FROTA",
+  cancelarManutencaoDaFrota: "AUTORIZAR_MANUTENCAO_DA_FROTA",
   // V36 — TR 5.10.1.45: as multas de trânsito dos veículos são da gestão da frota (nenhuma ação nova).
   registrarMultaDeTransito: "CADASTRAR_FROTA",
   baixarMultaDeTransito: "CADASTRAR_FROTA",
@@ -3496,6 +3522,9 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "composável interno (a entrada que nasce dentro da transação da liquidação)",
   // V39-R2 (R2-030/031) — os corpos da saída e dos ajustes, para a dispensação e a perda/sobra da farmácia (que
   // cobram DISPENSAR_MEDICAMENTO e REGISTRAR_AJUSTE_DA_FARMACIA e travam antes); os serviços do M10 continuam cobrando os seus.
+  conferirOrdemNoAbastecimentoNaTx: "composável interno (a ordem conferida dentro da transação de registrarAbastecimento, que já autorizou e travou)",
+  registrarLeituraNaTx: "composável interno (a leitura gravada dentro de registrarAbastecimento ou registrarLeituraDoMarcador, que autorizaram e travaram)",
+  consumoDoBemDaFrota: "leitura (V39-R2 — o consumo derivado das leituras que valem; não muta)",
   podeVerDadosDaDispensacao: "leitura (V39-R2 — se quem lê pode ver o identificador do usuário e a receita: dispensar na UG do depósito da farmácia; não muta)",
   registrarSaidaFisicaNaTx: "composável interno (o corpo da saída física; quem chama autoriza e trava classe e posição antes)",
   registrarAjusteFisicoNaTx: "composável interno (perda ou sobra no estoque e no razão; quem chama autoriza e trava antes)",

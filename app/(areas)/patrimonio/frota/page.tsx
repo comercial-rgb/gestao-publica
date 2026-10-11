@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card } from "../../../../components/ui/Card";
 import { EstadoVazio } from "../../../../components/ui/EstadoVazio";
 import { PageHeader } from "../../../../components/ui/PageHeader";
@@ -37,6 +38,7 @@ export default async function FrotaPage(): Promise<React.ReactElement> {
     <div className="space-y-4">
       <SincronizarContexto />
       <PageHeader titulo={TITULO} subtitulo={SUBTITULO} />
+      <p className="text-xs"><Link className="underline" data-operacao-da-frota href="/patrimonio/frota/operacao">Condutores, ordens de abastecimento, hodômetro e manutenção</Link></p>
       <div className="rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3 text-xs text-[color:var(--color-ink-2)]">
         Todo mês o Tribunal recebe a situação de cada veículo e máquina e os litros abastecidos, inclusive quando não houve
         abastecimento. O cadastro vai no mês em que é feito e de novo quando muda o dono, o locador ou algum dado. No bem

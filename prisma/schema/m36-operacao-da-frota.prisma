@@ -1,0 +1,209 @@
+// ============================================================================
+// V39-R2 (R2-025 a R2-028) — A OPERAÇÃO DA FROTA: o condutor e a habilitação, a ordem de abastecimento conferida com o
+// abastecimento, a leitura do hodômetro ou do horímetro (com o consumo derivado) e a manutenção do pedido à conclusão.
+// Tudo append-only: correção é registro novo que aponta o anterior; cancelamento é registro próprio. Nenhum dado do
+// condutor além do necessário para conferir a habilitação (nome, matrícula, número, categoria e validade da CNH).
+// ============================================================================
+
+/// O CONDUTOR. Os dados da habilitação mudam por VERSÃO (renovação, mudança de categoria, desligamento).
+model CondutorDaFrota {
+  id String @id @default(cuid())
+
+  nome      String @db.VarChar(80)
+  /// A matrícula ou o registro do vínculo na unidade (servidor, terceirizado).
+  matricula String @db.VarChar(20) @unique
+
+  versoes   VersaoDoCondutor[]
+  ordens    OrdemDeAbastecimento[] @relation("OrdensDoCondutor")
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+model VersaoDoCondutor {
+  id String @id @default(cuid())
+
+  condutorId String
+  condutor   CondutorDaFrota @relation(fields: [condutorId], references: [id], onDelete: Restrict)
+  versao     Int
+
+  cnhNumero    String @db.VarChar(11)
+  /// A categoria como está na CNH (A, B, C, D, E, ou A combinada: AB, AC, AD, AE).
+  cnhCategoria String @db.VarChar(2)
+  cnhValidade  DateTime
+  /// Servidor efetivo, comissionado, terceirizado, contratado...: como a unidade registra o vínculo.
+  vinculo      String @db.VarChar(60)
+  /// Falso: o condutor deixa de dirigir pela unidade a partir de `vigenteDesde`.
+  ativo        Boolean
+
+  vigenteDesde DateTime
+  fundamento   String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([condutorId, versao])
+}
+
+/// AS CATEGORIAS DE HABILITAÇÃO QUE O ENTE ACEITA PARA O BEM, declaradas (não deduzidas do tipo do veículo). A vigente é
+/// a de `vigenteDesde` mais recente até o dia; sem declaração, o bem não exige categoria.
+model ExigenciaDeHabilitacaoDaFrota {
+  id String @id @default(cuid())
+
+  veiculoId String?
+  veiculo   VeiculoDaFrota? @relation("ExigenciasDoVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
+  maquinaId String?
+  maquina   MaquinaDaFrota? @relation("ExigenciasDaMaquina", fields: [maquinaId], references: [id], onDelete: Restrict)
+
+  categoriasAceitas String[]
+  vigenteDesde      DateTime
+  fundamento        String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([veiculoId, vigenteDesde])
+  @@index([maquinaId, vigenteDesde])
+}
+
+/// A ORDEM DE ABASTECIMENTO: autoriza o bem, o condutor, o combustível, a quantidade máxima e o prazo. O abastecimento
+/// feito por ela a aponta; a soma dos não anulados não passa do autorizado.
+model OrdemDeAbastecimento {
+  id     String @id @default(cuid())
+  numero Int    @unique
+
+  veiculoId String?
+  veiculo   VeiculoDaFrota? @relation("OrdensDoVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
+  maquinaId String?
+  maquina   MaquinaDaFrota? @relation("OrdensDaMaquina", fields: [maquinaId], references: [id], onDelete: Restrict)
+  condutorId String
+  condutor   CondutorDaFrota @relation("OrdensDoCondutor", fields: [condutorId], references: [id], onDelete: Restrict)
+
+  combustivel          CombustivelDaFrota
+  quantidadeAutorizada Decimal @db.Decimal(15, 2)
+  emitidaEm DateTime
+  validaAte DateTime
+  /// Onde abastecer (o posto, o contrato de fornecimento, o tanque).
+  local     String @db.VarChar(120)
+
+  cancelamento    CancelamentoDaOrdemDeAbastecimento?
+  abastecimentos  AbastecimentoDaFrota[] @relation("AbastecimentosDaOrdem")
+
+  criadoEm  DateTime @default(now())
+  /// Quem autorizou.
+  criadoPor String
+
+  @@index([veiculoId, emitidaEm])
+  @@index([maquinaId, emitidaEm])
+}
+
+model CancelamentoDaOrdemDeAbastecimento {
+  id      String @id @default(cuid())
+  ordemId String @unique
+  ordem   OrdemDeAbastecimento @relation(fields: [ordemId], references: [id], onDelete: Restrict)
+  motivo  String
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+/// A LEITURA DO HODÔMETRO (veículo, km) OU DO HORÍMETRO (máquina, horas). Não diminui com o tempo: uma leitura menor que
+/// a anterior é recusada. A correção é leitura nova que aponta a errada (`corrigeId`), com motivo; a errada fica guardada
+/// e sai da conta.
+model LeituraDoMarcadorDaFrota {
+  id String @id @default(cuid())
+
+  veiculoId String?
+  veiculo   VeiculoDaFrota? @relation("LeiturasDoVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
+  maquinaId String?
+  maquina   MaquinaDaFrota? @relation("LeiturasDaMaquina", fields: [maquinaId], references: [id], onDelete: Restrict)
+
+  data  DateTime
+  valor Decimal @db.Decimal(12, 1)
+
+  abastecimentoId String? @unique
+  abastecimento   AbastecimentoDaFrota? @relation("LeituraDoAbastecimento", fields: [abastecimentoId], references: [id], onDelete: Restrict)
+
+  corrigeId  String? @unique
+  corrige    LeituraDoMarcadorDaFrota?  @relation("CorrecaoDaLeitura", fields: [corrigeId], references: [id], onDelete: Restrict)
+  corrigidaPor LeituraDoMarcadorDaFrota? @relation("CorrecaoDaLeitura")
+  motivo     String?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([veiculoId, data])
+  @@index([maquinaId, data])
+}
+
+enum TipoDeManutencaoDaFrota {
+  PREVENTIVA
+  CORRETIVA
+}
+
+/// A MANUTENÇÃO: o pedido; a autorização (com o contrato ou o fornecedor e o valor estimado); a conclusão (com o custo e
+/// o documento). Cada fase é um registro; a situação é derivada.
+model ManutencaoDaFrota {
+  id     String @id @default(cuid())
+  numero Int    @unique
+
+  veiculoId String?
+  veiculo   VeiculoDaFrota? @relation("ManutencoesDoVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
+  maquinaId String?
+  maquina   MaquinaDaFrota? @relation("ManutencoesDaMaquina", fields: [maquinaId], references: [id], onDelete: Restrict)
+
+  tipo        TipoDeManutencaoDaFrota
+  descricao   String
+  solicitante String @db.VarChar(80)
+  dataDoPedido DateTime
+
+  autorizacao  AutorizacaoDaManutencaoDaFrota?
+  conclusao    ConclusaoDaManutencaoDaFrota?
+  cancelamento CancelamentoDaManutencaoDaFrota?
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([veiculoId, dataDoPedido])
+  @@index([maquinaId, dataDoPedido])
+}
+
+model AutorizacaoDaManutencaoDaFrota {
+  id      String @id @default(cuid())
+  manutencaoId String @unique
+  manutencao   ManutencaoDaFrota @relation(fields: [manutencaoId], references: [id], onDelete: Restrict)
+
+  data DateTime
+  /// O contrato pelo qual o serviço é feito, quando há.
+  contratoId String?
+  contrato   Contrato? @relation("ManutencoesDaFrotaNoContrato", fields: [contratoId], references: [id], onDelete: Restrict)
+  fornecedor     String @db.VarChar(120)
+  valorEstimado  Decimal @db.Decimal(18, 2)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([contratoId])
+}
+
+model ConclusaoDaManutencaoDaFrota {
+  id      String @id @default(cuid())
+  manutencaoId String @unique
+  manutencao   ManutencaoDaFrota @relation(fields: [manutencaoId], references: [id], onDelete: Restrict)
+
+  data      DateTime
+  custo     Decimal @db.Decimal(18, 2)
+  /// A nota fiscal ou o documento do serviço executado.
+  documento String @db.VarChar(120)
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}
+
+model CancelamentoDaManutencaoDaFrota {
+  id      String @id @default(cuid())
+  manutencaoId String @unique
+  manutencao   ManutencaoDaFrota @relation(fields: [manutencaoId], references: [id], onDelete: Restrict)
+  motivo  String
+  criadoEm  DateTime @default(now())
+  criadoPor String
+}

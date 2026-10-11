@@ -83,3 +83,21 @@ formato. Sem ele, o veículo fica nomeado na prévia.
 Teste: `m36-multas.test.ts` t1 a t9 (N=2 infratores; sem roteiro; recusas com o motivo; autorização; auto em forma
 canônica; notificação futura e dia inexistente; baixa que não fecha o registro e o estorno do registro indevido;
 competência travada; corrida no índice único). Percurso: `scripts/percurso-v36-multas-de-transito.mts`.
+
+## V39-R2 — Operação da frota (10/10/2026)
+
+`operacao.ts` e `prisma/schema/m36-operacao-da-frota.prisma`; a tela é Patrimônio › Frota › "Condutores, ordens de
+abastecimento, hodômetro e manutenção".
+
+- **Condutor:** versões da habilitação (número, categoria, validade, vínculo, ativo). As categorias aceitas por bem são
+  **declaradas pelo ente** (`ExigenciaDeHabilitacaoDaFrota`); o sistema não deduz do CTB qual categoria dirige qual
+  veículo. Aceita-se quando alguma letra da CNH está entre as declaradas. Sem declaração, o bem não exige categoria.
+  As categorias admitidas no cadastro são A, B, C, D, E e A combinada (AB, AC, AD, AE); a ACC não está (pendência
+  CATEGORIA-ACC: o campo tem duas posições).
+- **Aviso da CNH:** a tela avisa a vencida e a que vence em até 30 dias (`DIAS_DE_AVISO_DA_CNH`). É parâmetro de tela,
+  não regra: só avisa, nunca recusa. Quem recusa é a ordem e o abastecimento, pela validade no dia e no prazo.
+- **Ordem de abastecimento:** o abastecimento pela ordem confere bem, combustível, prazo, cancelamento, saldo (não
+  anulados) e a CNH no dia. Travas: o bem, depois o condutor (e a numeração), nessa ordem em todos os caminhos.
+- **Leitura do marcador:** não diminui; a correção é leitura nova que aponta a errada, e a cadeia de correções é seguida
+  até a última. A leitura de abastecimento anulado sai da conta junto com ele.
+- **Manutenção:** cada fase lê o estado depois de travar o bem (as fases moram em tabelas diferentes).

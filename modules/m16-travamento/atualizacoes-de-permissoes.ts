@@ -705,6 +705,28 @@ export function derivarEmendasAoOrcamento(
 }
 
 /**
+ * V39-R2 (R2-026/028) — AUTORIZAR o abastecimento por ordem e a manutenção da frota.
+ *
+ * ⚠️ SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a v46: autorizar gasto com combustível e com serviço é ato de
+ * autoridade, e quem cadastra veículo ou registra o abastecimento feito não passa a autorizá-lo por isso. O
+ * administrador concede nomeando a pessoa.
+ */
+export function derivarAutorizacoesDaFrota(
+  perfis: readonly PerfilComPermissoes[],
+  _areaDaAcao: AreaDaAcao
+): readonly ConcessaoDerivada[] {
+  const saida: ConcessaoDerivada[] = [];
+  for (const perfil of perfis) {
+    if (!perfil.permissoes.some((p) => p.acao === "CONCEDER_ACAO_A_PERFIL" && p.unidadeOrcId === null)) continue;
+    for (const acao of ["EMITIR_ORDEM_DE_ABASTECIMENTO", "AUTORIZAR_MANUTENCAO_DA_FROTA"] as const) {
+      if (perfil.permissoes.some((p) => p.acao === acao && p.unidadeOrcId === null)) continue;
+      saida.push({ perfilId: perfil.id, perfilNome: perfil.nome, acao, unidadeOrcId: null });
+    }
+  }
+  return saida;
+}
+
+/**
  * V39-R2 (R2-030/031) — a DISPENSAÇÃO de medicamentos ao usuário e a PERDA ou SOBRA apurada na farmácia.
  *
  * ⚠️ VÃO SÓ A QUEM ADMINISTRA PERMISSÕES NO GLOBAL, como a conta bancária (v43), e não a quem já informa o estoque da
@@ -1964,6 +1986,15 @@ export const ATUALIZACOES: readonly AtualizacaoDePermissoes[] = [
       "e REGISTRAR_AJUSTE_DA_FARMACIA so para quem administra permissoes no global, que as distribui nomeando a pessoa: " +
       "dispensar envolve dado de saude do usuario.",
     derivar: derivarOperacaoDaFarmacia,
+  },
+  {
+    versao: 47,
+    nome: "operacao-da-frota",
+    descricao:
+      "A frota passou a ter condutor e habilitacao, ordem de abastecimento conferida com o abastecimento, leitura do " +
+      "hodometro ou horimetro com o consumo e manutencao do pedido a conclusao (V39-R2). Vem com EMITIR_ORDEM_DE_ABASTECIMENTO " +
+      "e AUTORIZAR_MANUTENCAO_DA_FROTA so para quem administra permissoes no global, que as distribui nomeando a pessoa.",
+    derivar: derivarAutorizacoesDaFrota,
   },
 ];
 

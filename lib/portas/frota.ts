@@ -139,9 +139,22 @@ export async function anularSituacaoPelaTela(input: { readonly id: string; reado
   await comEscritaAutenticada("CADASTRAR_FROTA", (criadoPor) => anularSituacaoDaFrota(cliente(), { ...input, criadoPor }));
   return "Situação anulada. O registro fica na história, fora do arquivo do mês.";
 }
-export async function registrarAbastecimentoPelaTela(input: SemAutor<Parameters<typeof registrarAbastecimento>[1]>): Promise<string> {
-  await comEscritaAutenticada("REGISTRAR_ABASTECIMENTO", (criadoPor) => registrarAbastecimento(cliente(), { ...input, criadoPor }));
-  return "Abastecimento registrado.";
+/** V39-R2 (R2-026/027) — a ordem chega pelo NÚMERO (o que está no papel) e vira o id aqui; a leitura é opcional. */
+export async function registrarAbastecimentoPelaTela(input: SemAutor<Omit<Parameters<typeof registrarAbastecimento>[1], "ordemId" | "leitura">> & { readonly ordemNumero?: string; readonly leitura?: string }): Promise<string> {
+  const { ordemNumero, leitura, ...resto } = input;
+  const comOrdem = ordemNumero !== undefined && ordemNumero.trim() !== "";
+  // A busca da ordem pelo número fica DENTRO do envelope autenticado: sem sessão, nada se lê (nem se a ordem existe).
+  await comEscritaAutenticada("REGISTRAR_ABASTECIMENTO", async (criadoPor) => {
+    let ordemId: string | undefined;
+    if (comOrdem) {
+      const n = Number(ordemNumero.trim());
+      const o = Number.isInteger(n) ? await cliente().ordemDeAbastecimento.findUnique({ where: { numero: n }, select: { id: true } }) : null;
+      if (o === null) throw new Error(`A ordem de abastecimento nº ${ordemNumero.trim()} não existe. Nada foi gravado.`);
+      ordemId = o.id;
+    }
+    return registrarAbastecimento(cliente(), { ...resto, ...(ordemId !== undefined ? { ordemId } : {}), ...(leitura !== undefined && leitura.trim() !== "" ? { leitura: leitura.trim() } : {}), criadoPor });
+  });
+  return comOrdem ? "Abastecimento registrado pela ordem, conferido com o autorizado." : "Abastecimento registrado.";
 }
 export async function anularAbastecimentoPelaTela(input: { readonly id: string; readonly motivo: string }): Promise<string> {
   await comEscritaAutenticada("REGISTRAR_ABASTECIMENTO", (criadoPor) => anularAbastecimento(cliente(), { ...input, criadoPor }));

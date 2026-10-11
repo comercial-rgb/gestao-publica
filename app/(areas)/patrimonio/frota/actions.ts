@@ -96,7 +96,7 @@ export async function registrarAbastecimentoAction(_p: EstadoDaFrota, f: FormDat
     const combustivel = escolha(COMBUSTIVEIS, t(f, "combustivel"));
     if (combustivel === undefined) return { erro: "Escolha o combustível." };
     if (t(f, "data") === "") return { erro: "Informe o dia do abastecimento." };
-    return ato(() => registrarAbastecimentoPelaTela({ ...alvo(f), data: t(f, "data"), combustivel, quantidade: t(f, "quantidade"), documento: t(f, "documento") }), "Não foi possível registrar o abastecimento. Nada foi gravado.");
+    return ato(() => registrarAbastecimentoPelaTela({ ...alvo(f), data: t(f, "data"), combustivel, quantidade: t(f, "quantidade"), documento: t(f, "documento"), ordemNumero: t(f, "ordemNumero"), leitura: t(f, "leitura") }), "Não foi possível registrar o abastecimento. Nada foi gravado.");
   });
 }
 

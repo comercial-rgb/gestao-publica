@@ -22,6 +22,7 @@ import {
   situacaoNoDia,
   type MudancaNoDia,
 } from "./dominio.js";
+import { conferirOrdemNoAbastecimentoNaTx, registrarLeituraNaTx } from "./operacao.js";
 
 /**
  * V27 — M36 FROTA: os serviços. Cada ato confere a autorização no servidor, trava o bem antes de ler o estado, e
@@ -297,6 +298,10 @@ export const zRegistrarAbastecimento = z.object({
   combustivel: z.enum(COMBUSTIVEIS),
   quantidade: z.string().trim().min(1, "Informe a quantidade."),
   documento: z.string().trim().min(1, "Informe o cupom, a nota ou a ordem de abastecimento."),
+  /** V39-R2 (R2-026) — a ordem que autorizou (opcional: o abastecimento sem ordem continua como antes). */
+  ordemId: z.string().min(1).optional(),
+  /** V39-R2 (R2-027) — a leitura do hodômetro ou do horímetro no abastecimento (opcional). */
+  leitura: z.string().trim().min(1).optional(),
   criadoPor: z.string().min(1),
 });
 
@@ -312,7 +317,9 @@ export async function registrarAbastecimento(prisma: PrismaClient, input: z.inpu
     // O leiaute não admite abastecimento de bem fora do arquivo de situação; e baixado não abastece.
     if (situacao === null) throw new Error(`${bem.O} não estava na frota em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
     if (situacao === "BAIXADA") throw new Error(`${bem.O} estava ${bem.baixado} em ${d.data.split("-").reverse().join("/")}. Nada foi gravado.`);
-    const c = await tx.abastecimentoDaFrota.create({ data: { ...bem.filtro, data: meioDiaCivil(d.data), combustivel: d.combustivel, quantidade, documento: d.documento, criadoPor: d.criadoPor }, select: { id: true } });
+    if (d.ordemId !== undefined) await conferirOrdemNoAbastecimentoNaTx(tx, { ordemId: d.ordemId, alvo: bem.filtro, combustivel: d.combustivel, quantidade, dia: d.data });
+    const c = await tx.abastecimentoDaFrota.create({ data: { ...bem.filtro, data: meioDiaCivil(d.data), combustivel: d.combustivel, quantidade, documento: d.documento, ordemId: d.ordemId ?? null, criadoPor: d.criadoPor }, select: { id: true } });
+    if (d.leitura !== undefined) await registrarLeituraNaTx(tx, { alvo: bem.filtro, nome: bem.o, ehVeiculo: "veiculoId" in bem.filtro, dia: d.data, valor: d.leitura, abastecimentoId: c.id, criadoPor: d.criadoPor });
     return { id: c.id };
   });
 }

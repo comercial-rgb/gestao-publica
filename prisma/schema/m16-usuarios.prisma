@@ -218,6 +218,9 @@ enum AcaoDoSistema {
   /// V39-R2 (R2-030/031) — a dispensação ao usuário e a perda ou sobra apurada na farmácia.
   DISPENSAR_MEDICAMENTO
   REGISTRAR_AJUSTE_DA_FARMACIA
+  /// V39-R2 (R2-026/028) — autorizar o abastecimento por ordem e autorizar a manutenção da frota.
+  EMITIR_ORDEM_DE_ABASTECIMENTO
+  AUTORIZAR_MANUTENCAO_DA_FROTA
   CADASTRAR_PESSOA
   ALTERAR_PESSOA
   MOVER_PAPEL_DE_PESSOA
