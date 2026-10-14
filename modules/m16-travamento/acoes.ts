@@ -1303,6 +1303,9 @@ export type NomeDeServico =
   | "cadastrarFarmacia"
   | "publicarVersaoDaFarmacia"
   | "informarEstoqueDaFarmacia"
+  | "adotarModoDoInforme"
+  | "declararCodigoDoMaterialNoInforme"
+  | "calcularInformeDaFarmacia"
   | "vincularDepositoAFarmacia"
   | "dispensarMedicamentos"
   | "registrarAjusteDaFarmacia"
@@ -2214,6 +2217,10 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   cadastrarFarmacia: "CADASTRAR_FARMACIA",
   publicarVersaoDaFarmacia: "CADASTRAR_FARMACIA",
   informarEstoqueDaFarmacia: "INFORMAR_ESTOQUE_DA_FARMACIA",
+  // V39-R3 (R3-022) — a posição do mês calculada dos movimentos: a mesma ação de quem informa o estoque.
+  adotarModoDoInforme: "INFORMAR_ESTOQUE_DA_FARMACIA",
+  declararCodigoDoMaterialNoInforme: "INFORMAR_ESTOQUE_DA_FARMACIA",
+  calcularInformeDaFarmacia: "INFORMAR_ESTOQUE_DA_FARMACIA",
   // V39-R2 (R2-030/031) — o depósito da farmácia é cadastro dela; dispensar e ajustar são ações próprias.
   vincularDepositoAFarmacia: "CADASTRAR_FARMACIA",
   dispensarMedicamentos: "DISPENSAR_MEDICAMENTO",
@@ -3579,6 +3586,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
   estornarMovimentoAlmoxarifadoNaTx: "composável interno (o corpo do estorno contábil; quem chama autoriza e trava a classe antes)",
   estornarSaidaFisicaNaTx: "composável interno (o estorno de uma saída física; quem chama autoriza e trava classe e posição antes)",
   depositoDaFarmaciaNoDia: "leitura pura (o depósito da farmácia num dia, pela vigência das trocas)",
+  exigirFarmaciaAtivaNoMes: "leitura (a farmácia existia e estava ativa no fim do mês — conferência comum ao informar e ao cálculo — não muta)",
+  modoDoInformeNoMes: "leitura (V39-R3: o modo da posição mensal da farmácia num mês — não muta)",
   divergenciasDoInventario: "leitura pura (as diferenças entre o contado e o registrado na abertura do inventário)",
   saldoDoTanqueNaTx: "leitura pura (o saldo do combustível no tanque, pela soma dos movimentos)",
   previaVigenteDaLiquidacao: "leitura pura (a prévia de maior versão da liquidação)",
@@ -3656,6 +3665,7 @@ export const FORA_DO_CENSO: Record<string, string> = {
   // e APROPRIAR_CUSTO.
   custoPorCentro: "leitura (soma as partes gravadas por centro na janela de competência — não muta)",
   composicaoDoCentro: "leitura (a composição que volta ao fato: liquidação, empenho e credor — não muta)",
+  previaDoSiope: "leitura (V39-R3: a prévia do SIOPE — correspondência do manual, despesa da função 12 por subfunção pelo medidor do Anexo 8 e os indicadores do Anexo 8 — não muta)",
   composicaoSemCentro: "leitura (V39-R3: a parcela da folha sem centro de custo, por vínculo, com a liquidação — não muta)",
   criteriosDeRateio: "leitura (os critérios publicados, com a marca do vigente — não muta)",
   centrosDeCusto: "leitura (o rol curto de setores ativos que o formulário do critério oferece)",

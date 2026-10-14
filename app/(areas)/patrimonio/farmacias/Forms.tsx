@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import { ChaveDeComando } from "../../../../components/ui/ChaveDeComando";
 import { CLASSE_BOTAO_PRIMARIO, CLASSE_CAMPO as CAMPO, CLASSE_PAINEL_FORMULARIO as PAINEL, CLASSE_ROTULO as ROTULO } from "../../../../components/ui/Formulario";
-import { cadastrarFarmaciaAction, informarEstoqueAction, publicarVersaoDaFarmaciaAction, type EstadoDaFarmacia } from "./actions";
+import { adotarModoDoInformeAction, cadastrarFarmaciaAction, calcularPosicaoAction, declararCodigoNoInformeAction, informarEstoqueAction, publicarVersaoDaFarmaciaAction, type EstadoDaFarmacia } from "./actions";
 
 function Resultado({ estado, acao }: { readonly estado: EstadoDaFarmacia; readonly acao: string }): React.ReactElement | null {
   if (estado.erro !== undefined) return <p role="alert" className="mt-2 text-xs text-[color:var(--color-status-erro-fg)]">{estado.erro}</p>;
@@ -70,7 +70,7 @@ export function FormEstoque({ farmaciaId, codigo }: { readonly farmaciaId: strin
   return (
     <details>
       <summary className="cursor-pointer text-xs text-[color:var(--color-primary)]">Informar o estoque do mês</summary>
-      <form action={action} data-acao="informar-estoque-da-farmacia" className="mt-2 grid gap-2 sm:grid-cols-3" aria-label={`Informar o estoque da farmácia ${codigo}`}>
+      <form action={action} data-acao="informar-estoque-da-farmacia" data-farmacia={codigo} className="mt-2 grid gap-2 sm:grid-cols-3" aria-label={`Informar o estoque da farmácia ${codigo}`}>
         <ChaveDeComando />
         <input type="hidden" name="farmaciaId" value={farmaciaId} />
         <label className="text-xs"><span className={ROTULO}>Mês</span><input name="mes" type="month" required className={CAMPO} /></label>
@@ -88,5 +88,59 @@ export function FormEstoque({ farmaciaId, codigo }: { readonly farmaciaId: strin
         <Resultado estado={estado} acao="informar-estoque-da-farmacia" />
       </form>
     </details>
+  );
+}
+
+/** V39-R3 (R3-022) — de que mês em diante a posição vem dos movimentos (ou volta a ser digitada). */
+export function FormModoDoInforme({ farmaciaId, codigo }: { readonly farmaciaId: string; readonly codigo: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaFarmacia, FormData>(adotarModoDoInformeAction, {});
+  return (
+    <details>
+      <summary className="cursor-pointer text-xs text-[color:var(--color-primary)]">Mudar de onde vem a posição do mês</summary>
+      <form action={action} data-acao="adotar-modo-do-informe" data-farmacia={codigo} className="mt-2 grid gap-2 sm:grid-cols-3" aria-label={`Mudar de onde vem a posição do mês da farmácia ${codigo}`}>
+        <ChaveDeComando />
+        <input type="hidden" name="farmaciaId" value={farmaciaId} />
+        <label className="text-xs"><span className={ROTULO}>De onde vem</span>
+          <select name="modo" required defaultValue="" className={CAMPO}>
+            <option value="">Escolha…</option>
+            <option value="CALCULADO">Calculada dos movimentos do depósito</option>
+            <option value="IMPORTADO">Digitada ou importada de arquivo</option>
+          </select>
+        </label>
+        <label className="text-xs"><span className={ROTULO}>A partir do mês</span><input name="desde" type="month" required className={CAMPO} /></label>
+        <label className="text-xs"><span className={ROTULO}>Por quê (a decisão, o ato)</span><input name="fundamento" required minLength={10} className={CAMPO} /></label>
+        <p className="text-xs text-[color:var(--color-ink-3)] sm:col-span-3">Cada mês tem uma fonte só. Os informes dos meses anteriores continuam valendo; nada se soma.</p>
+        <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Adotar"}</button>
+        <Resultado estado={estado} acao="adotar-modo-do-informe" />
+      </form>
+    </details>
+  );
+}
+
+export function FormCalcularPosicao({ farmaciaId, codigo }: { readonly farmaciaId: string; readonly codigo: string }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaFarmacia, FormData>(calcularPosicaoAction, {});
+  return (
+    <form action={action} data-acao="calcular-posicao-da-farmacia" data-farmacia={codigo} className="grid gap-2 sm:grid-cols-3" aria-label={`Calcular a posição do mês da farmácia ${codigo}`}>
+      <ChaveDeComando />
+      <input type="hidden" name="farmaciaId" value={farmaciaId} />
+      <label className="text-xs"><span className={ROTULO}>Mês terminado</span><input name="mes" type="month" required className={CAMPO} /></label>
+      <div className="flex items-end"><button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Calculando…" : "Calcular a posição do mês"}</button></div>
+      <div className="sm:col-span-3"><Resultado estado={estado} acao="calcular-posicao-da-farmacia" /></div>
+    </form>
+  );
+}
+
+export function FormCodigoNoInforme({ materialId, codigo, nome, atual }: { readonly materialId: string; readonly codigo: string; readonly nome: string; readonly atual: { readonly codigoProduto: string; readonly descricao: string } | null }): React.ReactElement {
+  const [estado, action, pendente] = useActionState<EstadoDaFarmacia, FormData>(declararCodigoNoInformeAction, {});
+  return (
+    <form action={action} data-acao="declarar-codigo-no-informe" data-material={codigo} className="grid gap-2 sm:grid-cols-4" aria-label={`Código no informe do medicamento ${codigo}`}>
+      <ChaveDeComando />
+      <input type="hidden" name="materialId" value={materialId} />
+      <label className="text-xs"><span className={ROTULO}>Código do produto de {nome} (de preferência o GTIN da embalagem)</span><input name="codigoProduto" required inputMode="numeric" maxLength={14} defaultValue={atual?.codigoProduto} className={CAMPO} /></label>
+      <label className="text-xs"><span className={ROTULO}>Descrição no informe (até 60 caracteres)</span><input name="descricao" required maxLength={60} defaultValue={atual?.descricao} className={CAMPO} /></label>
+      <label className="text-xs"><span className={ROTULO}>De onde vem o código</span><input name="fundamento" required minLength={5} className={CAMPO} /></label>
+      <div className="flex items-end"><button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>{pendente ? "Gravando…" : "Declarar"}</button></div>
+      <div className="sm:col-span-4"><Resultado estado={estado} acao="declarar-codigo-no-informe" /></div>
+    </form>
   );
 }

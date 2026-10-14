@@ -25,6 +25,8 @@ model FarmaciaPublica {
 
   versoes  VersaoDaFarmacia[]
   informes InformeDeEstoqueDaFarmacia[]
+  /// V39-R3 (R3-022) — de que mês em diante a posição vem dos movimentos.
+  modosDoInforme ModoDoInformeAdotado[]
 
   criadoEm  DateTime @default(now())
   criadoPor String
@@ -59,6 +61,8 @@ model VersaoDaFarmacia {
 enum OrigemDoInformeDeEstoque {
   DIGITADO
   ARQUIVO
+  /// V39-R3 (R3-022) — a posição do mês derivada dos movimentos do depósito da farmácia, não digitada nem importada.
+  CALCULADO
 }
 
 model InformeDeEstoqueDaFarmacia {
@@ -96,4 +100,51 @@ model ItemDoInformeDeEstoque {
   quantidade    Decimal @db.Decimal(15, 2)
 
   @@unique([informeId, codigoProduto])
+}
+
+/// V39-R3 (R3-022) — DE ONDE VEM A POSIÇÃO MENSAL DA FARMÁCIA.
+enum ModoDoInformeDaFarmacia {
+  /// Digitada ou importada de arquivo (o sistema da farmácia, o inventário).
+  IMPORTADO
+  /// Derivada dos movimentos do depósito da farmácia neste sistema.
+  CALCULADO
+}
+
+/// V39-R3 (R3-022) — O MODO ADOTADO, POR FARMÁCIA, A PARTIR DE UM MÊS. Append-only: mudar é adotar de novo a partir de
+/// outro mês. Sem adoção, vale o IMPORTADO (o que já era). A remessa lê UMA fonte por mês, a do modo daquele mês: a
+/// posição importada e a calculada nunca se somam, e o informe importado de um mês anterior à adoção continua valendo.
+model ModoDoInformeAdotado {
+  id String @id @default(cuid())
+
+  farmaciaId String
+  farmacia   FarmaciaPublica @relation(fields: [farmaciaId], references: [id], onDelete: Restrict)
+
+  modo     ModoDoInformeDaFarmacia
+  desdeAno Int
+  desdeMes Int
+
+  fundamento String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([farmaciaId, desdeAno, desdeMes])
+}
+
+/// V39-R3 (R3-022) — O CÓDIGO DO PRODUTO NO INFORME (de preferência o GTIN) E A DESCRIÇÃO, por material, declarados pelo
+/// ente. O sistema não infere GTIN do código interno nem do CATMAT. Append-only: vale o mais recente.
+model CodigoDoMaterialNoInforme {
+  id String @id @default(cuid())
+
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  codigoProduto String @db.VarChar(14)
+  descricao     String @db.VarChar(60)
+  fundamento    String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([materialId, criadoEm])
 }

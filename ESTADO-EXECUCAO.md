@@ -27,14 +27,56 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
-| R3-021 custo da folha com a parcela sem centro | este | sim | 4 testes novos (19 no arquivo), 6 mutações vermelhas | `percurso-v39r3-custo-da-folha.mts` 6/6 | quem só consulta não recebe o formulário nem a lista por matrícula; divergência com o fechamento; folha por critério; sem permissão (teste) | base R3 |
-| R3-020 pesquisa de preços com origem e preço fixado | este | sim | 8 testes, 16 mutações vermelhas | `percurso-v39r3-pesquisa-de-precos.mts` 6/6 | abaixo do mínimo sem justificativa, justificativa curta, preço sem parâmetro, sem dia ou sem documento, dia futuro, sem regra na data da pesquisa, quem só consulta | base R3 |
+| R3-023 prévia do SIOPE municipal (correspondência versionada) | este | sim | 5 testes, 12 mutações vermelhas | `percurso-v39r3-previa-do-siope.mts` 5/5 | sem correspondência, transcrição adulterada (omissão, linha, seção, nome, condição, tratamento, repetida), sem permissão (tela); arquivo de importação e separação da 365 bloqueados, nomeados | base R3 |
+| R3-022 posição da farmácia calculada dos movimentos | este | sim | 7 testes, 14 mutações vermelhas | `percurso-v39r3-posicao-da-farmacia.mts` 9/9 (rerun 6/6 + 2 já feitos) | modo importado, mês aberto, sem código, código repetido, negativo, mais de 2 casas, posição vazia, adoção retroativa, digitar no modo calculado, sem permissão | base R3 |
+| R3-021 custo da folha com a parcela sem centro | 4ee95965 | sim | 4 testes novos (19 no arquivo), 6 mutações vermelhas | `percurso-v39r3-custo-da-folha.mts` 6/6 | quem só consulta não recebe o formulário nem a lista por matrícula; divergência com o fechamento; folha por critério; sem permissão (teste) | base R3 |
+| R3-020 pesquisa de preços com origem e preço fixado | 4ee95965 | sim | 8 testes, 16 mutações vermelhas | `percurso-v39r3-pesquisa-de-precos.mts` 6/6 | abaixo do mínimo sem justificativa, justificativa curta, preço sem parâmetro, sem dia ou sem documento, dia futuro, sem regra na data da pesquisa, quem só consulta | base R3 |
 | R3-019 solicitações formam os itens do processo | f9ead49f | sim | 6 testes, 7 mutações vermelhas | `percurso-v39r3-solicitacao-no-processo.mts` 13/13 | pendente, já com itens, já comprometida, sem permissão, anulação, duas unidades | base R3 |
 | R3-016 valores a receber de volta (realizáveis) | 43b2cbba | sim | 8 testes, 14 mutações vermelhas | `percurso-v39r3-realizavel.mts` 9/9 | sem decisão do ente, conta fora dos grupos, baixa acima do saldo, sem permissão | base R3 |
 | R3-015 linha de extrato digitada | d1ca4988 | sim | 8 testes, 9 mutações vermelhas | `percurso-v39r3-transcricao-de-extrato.mts` 11/11 | sem permissão, dia futuro, repetida, quem digitou não revisa, dia coberto pelo banco | base R3 |
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-023 (V39-086, M12) — preparação do SIOPE municipal: correspondência versionada e prévia
+- **Rota:** Relatórios › Prévia do SIOPE (`/relatorios/siope`, CONSULTAR_RELATORIOS): a despesa da função Educação por
+  subfunção com o tratamento do manual, inteira e na parte custeada por impostos; a parte de impostos por tratamento
+  (conferência, não a apuração do mínimo); os indicadores do Anexo 8; o que não se gera e por quê.
+- **Material oficial:** o manual do SIOPE guardado (`docs/oficial/fnde-siope/`), sha256 em `MANIFEST-SIOPE.json`. A
+  transcrição da UNIDADE MUNICIPAL (típicas municipais e Quadros 18 a 20, 30 subfunções) é conferida contra o texto
+  pela carga `scripts/carregar-correspondencia-siope.ts`, inclusive a completude; versão 1 de 2026 na R3 (a segunda
+  corrida não grava; transcrição corrigida sobre o mesmo texto grava a versão seguinte).
+- **Auditoria de invariantes, achados corrigidos antes do commit:** a primeira versão transcrevia os Quadros 13 a 16,
+  que são da unidade ESTADUAL (362 a 364 como típicas; faltavam 242 e 695; apoio condicionado) — refeita da unidade
+  municipal; a versão não mudava com a transcrição corrigida; o total por tratamento somava FUNDEB e vinculados ao lado
+  dos indicadores do mínimo — passou a somar só a parte de impostos, dita como conferência; o bloqueio do arquivo
+  subdeclarava o que falta (Tabela 2, conta de cada linha, ordem das colunas) e a 365 em creche e pré-escola não estava
+  nomeada; o verificador não conferia completude, tratamento nem condição; o percurso usava regra de estorno errada,
+  tratamento cravado e fuso cravado.
+- **Migration reescrita antes do commit:** `20261111092000_v39r3_correspondencia_siope` nunca saiu desta máquina; as
+  duas tabelas foram refeitas nas bases locais de teste e R3 para a versão final (nenhuma outra base as tinha).
+- **Sem cálculo novo:** a despesa vem de `medirDespesa` e os indicadores de `anexo8`.
+- **Comandos:** `m12-siope.test.ts` 5/5; 12 mutações vermelhas; censo e `modelo-sem-caso-de-uso` verdes; typecheck
+  0/0/0; percurso 5/5 (361 1.500,00 considerada e 306 420,00 não considerada, iguais à soma por SQL; quem só consulta a
+  contabilidade vai para a tela de sem acesso). Massa seção 10: dois empenhos pelo serviço na função 12.
+
+### R3-022 (V39-072, M37) — a posição mensal da farmácia calculada dos movimentos
+- **Rota:** Patrimônio › Farmácias públicas, por farmácia: "Mudar de onde vem a posição do mês" e "Posição calculada dos
+  movimentos" (códigos no informe por medicamento e o cálculo do mês). Só para INFORMAR_ESTOQUE_DA_FARMACIA.
+- **Regras:** modo adotado por farmácia a partir de um mês, sem alcançar mês com posição; uma fonte por mês na remessa
+  e na tela (`origensDoModo`); a posição é `posicaoDoMaterial` no depósito do fim do mês; código do produto declarado
+  pelo ente (não se deduz GTIN); recusa sem código, código repetido, negativo, mais de 2 casas, posição vazia, mês aberto;
+  recalcular igual devolve o mesmo informe, diferente grava outro. Detalhes e pendências no MODULO.md do M37.
+- **Schema:** `20261111091800_v39r3_origem_calculada_do_informe` (valor de enum, própria) e
+  `20261111091900_v39r3_modo_e_codigo_do_informe_da_farmacia`, `prisma/sql/ck_informe_da_farmacia.sql`; teste e R3.
+- **Auditoria de invariantes, achados corrigidos:** adoção retroativa sem limite (podia mudar mês já remetido); posição
+  vazia gravada e remetida calada; a tela listava o depósito de hoje e cortava em 300 sem aviso; recálculo diferente e o
+  "vale" da tela sem teste; mensagens (unidade, remessa); farmácia ativa no mês não conferida no cálculo.
+- **Comandos:** bloco R3-022 7/7, `m37`, `m36-frota`, censo e `modelo-sem-caso-de-uso` 52/52; 14 mutações vermelhas;
+  typecheck 0/0/0; percurso 9/9 na primeira corrida (setembro: 600 e 450 iguais à soma por SQL), 6/6 + 2 já feitos na
+  repetição. Massa seção 9 (dois medicamentos recebidos em 15/09 pelo empenho e liquidação) e o responsável pelo informe.
+- **Achado fora da unidade:** o teste da R3-020 lia `CotacaoDePreco` direto e quebrava `modelo-sem-caso-de-uso`; passou a
+  ler pela relação do item.
 
 ### R3-021 (V39-056, M12) — o custo da folha com a parcela sem centro de custo
 - **Rota:** Contabilidade › Custos por centro › "Apropriar o custo da folha pelo centro de cada servidor" (só para quem
@@ -218,7 +260,7 @@ Nenhuma linha acima foi validada externamente nem publicada.
   `m07-calculo-da-retencao` e `m07` 58/58.
 
 ### O próximo passo
-1. R3-022 a R3-030 na ordem do pedido (R3-022: não há relação material → GTIN, bloqueio a nomear, sem inventar).
+1. R3-024 a R3-030 na ordem do pedido.
 2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
 3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
 

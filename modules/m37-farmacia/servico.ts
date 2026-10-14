@@ -8,6 +8,7 @@ import { autorizarNo } from "../m16-travamento/escopo.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { ugVigenteNoDia } from "../m01-core-contabil/unidade-gestora.js";
 import { lerInformeDeEstoque, motivoDoItemInvalido, type ItemDeEstoque } from "./dominio.js";
+import { modoDoInformeNoMes } from "./informe-calculado.js";
 
 /**
  * V27 — M37 FARMÁCIA PÚBLICA: os serviços. Ver `prisma/schema/m37-farmacia.prisma` e `MODULO.md`.
@@ -91,6 +92,19 @@ export const zInformarEstoqueDaFarmacia = z.object({
   criadoPor: z.string().min(1),
 });
 
+/** A farmácia existia e estava ativa no fim do mês — o informar e o cálculo da posição conferem igual. Leitura. */
+export async function exigirFarmaciaAtivaNoMes(tx: Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">, farmaciaId: string, ano: number, mes: number): Promise<{ readonly codigo: string }> {
+  const f = await tx.farmaciaPublica.findUnique({ where: { id: farmaciaId }, select: { codigo: true, versoes: { orderBy: { versao: "asc" }, select: { vigenteDesde: true, ativa: true } } } });
+  if (f === null) throw new Error("Farmácia não encontrada. Nada foi gravado.");
+  const fimDoMes = `${String(ano)}-${String(mes).padStart(2, "0")}-31`;
+  const inicio = f.versoes[0];
+  const competencia = `${String(mes).padStart(2, "0")}/${String(ano)}`;
+  if (inicio === undefined || diaCivil(inicio.vigenteDesde) > fimDoMes) throw new Error(`A farmácia ${f.codigo} ainda não existia em ${competencia}. Nada foi gravado.`);
+  const vigenteNoFim = f.versoes.filter((v) => diaCivil(v.vigenteDesde) <= fimDoMes).pop();
+  if (vigenteNoFim !== undefined && !vigenteNoFim.ativa) throw new Error(`A farmácia ${f.codigo} estava encerrada no fim de ${competencia}. Nada foi gravado.`);
+  return { codigo: f.codigo };
+}
+
 /**
  * O estoque do mês. Um informe novo para o mesmo mês substitui o anterior na remessa; o anterior fica guardado.
  * Qualquer linha inválida recusa o informe inteiro, nomeando a linha — nada é gravado pela metade.
@@ -124,14 +138,11 @@ export async function informarEstoqueDaFarmacia(prisma: PrismaClient, input: z.i
   return prisma.$transaction(async (tx) => {
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.informarEstoqueDaFarmacia, "ENTE");
     await travar(tx, "FarmaciaPublica", [d.farmaciaId]);
-    const f = await tx.farmaciaPublica.findUnique({ where: { id: d.farmaciaId }, select: { codigo: true, versoes: { orderBy: { versao: "asc" }, select: { vigenteDesde: true, ativa: true } } } });
-    if (f === null) throw new Error("Farmácia não encontrada. Nada foi gravado.");
-    const fimDoMes = `${String(d.ano)}-${String(d.mes).padStart(2, "0")}-31`;
-    const inicio = f.versoes[0];
+    const f = await exigirFarmaciaAtivaNoMes(tx, d.farmaciaId, d.ano, d.mes);
     const competencia = `${String(d.mes).padStart(2, "0")}/${String(d.ano)}`;
-    if (inicio === undefined || diaCivil(inicio.vigenteDesde) > fimDoMes) throw new Error(`A farmácia ${f.codigo} ainda não existia em ${competencia}. Nada foi gravado.`);
-    const vigenteNoFim = f.versoes.filter((v) => diaCivil(v.vigenteDesde) <= fimDoMes).pop();
-    if (vigenteNoFim !== undefined && !vigenteNoFim.ativa) throw new Error(`A farmácia ${f.codigo} estava encerrada no fim de ${competencia}. Nada foi gravado.`);
+    // V39-R3 (R3-022) — no modo calculado, a posição vem dos movimentos; o informe digitado seria ignorado calado.
+    const modo = await modoDoInformeNoMes(tx, d.farmaciaId, d.ano, d.mes);
+    if (modo.modo === "CALCULADO") throw new Error(`A farmácia ${f.codigo} calcula a posição pelos movimentos desde ${modo.desde ?? ""}; em ${competencia} o estoque não se digita nem se importa. Nada foi gravado.`);
     const c = await tx.informeDeEstoqueDaFarmacia.create({
       data: {
         farmaciaId: d.farmaciaId,

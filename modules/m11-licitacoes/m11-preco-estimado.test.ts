@@ -72,7 +72,13 @@ async function pesquisaCom(numero: string, data: Date, cotacoes: readonly (Orige
 }
 const DIA = new Date("2026-03-02T12:00:00Z");
 const COMPLETA: Origem = { parametro: "FORNECEDORES", dataDoPreco: DIA, documento: "Ofício de cotação" };
-const idDaCotacao = async (itemId: string, valor: string) => (await prisma.cotacaoDePreco.findFirstOrThrow({ where: { itemId, valorUnitario: valor }, select: { id: true } })).id;
+// A cotação se lê pela relação do item (ela só existe aninhada nele; ver test/modelo-sem-caso-de-uso.test.ts).
+const idDaCotacao = async (itemId: string, valor: string): Promise<string> => {
+  const item = await prisma.itemDePesquisaDePrecos.findUniqueOrThrow({ where: { id: itemId }, select: { cotacoes: { where: { valorUnitario: valor }, select: { id: true } } } });
+  const c = item.cotacoes[0];
+  if (c === undefined) throw new Error(`cotação de ${valor} não achada`);
+  return c.id;
+};
 
 describe("V39-R3 — preço estimado: método declarado, origem verificável, descartes com motivo, memória", { timeout: 60000 }, () => {
   beforeEach(async () => semear(), 60000);

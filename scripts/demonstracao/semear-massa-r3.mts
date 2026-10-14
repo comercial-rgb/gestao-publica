@@ -190,10 +190,15 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "tesouraria.realizavel@ficticio.local", nome: "Tesoureiro dos valores a receber (fictício)", perfil: "MOVIMENTO DO REALIZÁVEL — ENSAIO",
     acoes: ["MOVIMENTAR_REALIZAVEL", "CONSULTAR_FINANCEIRO", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-022) — quem informa o estoque da farmácia (e calcula a posição do mês pelos movimentos).
+  {
+    email: "informe.farmacia@ficticio.local", nome: "Responsável pelo informe da farmácia (fictícia)", perfil: "INFORME DA FARMÁCIA — ENSAIO",
+    acoes: ["INFORMAR_ESTOQUE_DA_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+  },
   // V39-R3 (R3-021) — quem apropria o custo da folha e quem só consulta a contabilidade.
   {
     email: "custos.contabilidade@ficticio.local", nome: "Contador de custos (fictício)", perfil: "CUSTOS — ENSAIO",
-    acoes: ["APROPRIAR_CUSTO", "CONSULTAR_CONTABILIDADE", "CONSULTAR_FOLHA"],
+    acoes: ["APROPRIAR_CUSTO", "CONSULTAR_CONTABILIDADE", "CONSULTAR_FOLHA", "CONSULTAR_RELATORIOS"],
   },
   {
     email: "consulta.contabilidade@ficticio.local", nome: "Consulta da contabilidade (fictícia)", perfil: "CONSULTA DA CONTABILIDADE — ENSAIO",
@@ -649,6 +654,89 @@ async function semearCentroDeCusto(prisma: PrismaClient): Promise<void> {
   });
 }
 
+// ═══ 9. FARMÁCIA: dois medicamentos recebidos em SETEMBRO (a posição calculada de um mês terminado, N=2) ═══
+
+const LOTES_DE_SETEMBRO = [
+  { material: "R3MED003", nome: "Losartana 50 mg comprimido", lote: "LOS-2609", quantidade: "600", unitario: "0.08", validade: "2027-12-31" },
+  { material: "R3MED004", nome: "Metformina 850 mg comprimido", lote: "MET-2609", quantidade: "450", unitario: "0.15", validade: "2027-11-30" },
+] as const;
+
+async function semearRecebimentoDeSetembro(prisma: PrismaClient): Promise<void> {
+  const [classe, deposito, unidade, grupo] = await Promise.all([
+    prisma.classeDeMaterial.findFirst({ where: { codigo: "R3-30.09" }, select: { id: true } }),
+    prisma.deposito.findFirst({ where: { codigo: "FARM-R3" }, select: { id: true } }),
+    prisma.unidadeDeMedida.findFirst({ where: { sigla: "CP" }, select: { id: true } }),
+    prisma.grupoDeMaterial.findFirst({ where: { codigo: "R3-09" }, select: { id: true } }),
+  ]);
+  if (classe === null || deposito === null || unidade === null || grupo === null) throw new Error("A seção 3 (farmácia) não está nesta base. Nada foi gravado.");
+  const materiais: Record<string, string> = {};
+  for (const l of LOTES_DE_SETEMBRO) {
+    materiais[l.material] = await passo(`Medicamento ${l.material} ${l.nome}`, async () => {
+      const ja = await prisma.material.findFirst({ where: { codigo: l.material }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      const r = await cadastrarMaterial(prisma, {
+        codigo: l.material, descricaoSucinta: l.nome, descricaoDetalhada: `${l.nome} ${ENSAIO}`, grupoId: grupo.id, classificacao: "CONSUMO", categoria: "PERECIVEL",
+        classeDeMaterialId: classe.id, controlaLote: true, unidades: [{ unidadeDeMedidaId: unidade.id, fatorParaEstoque: "1", ehDeEstoque: true }], criadoPor: ADMIN,
+      });
+      return { estado: "criado", valor: r.materialId };
+    });
+  }
+  const contaDoEstoque = (await exigirContaDaLiquidacao(prisma, "30")).contaCodigo;
+  const credor = cnpjComDv("612730480001");
+  const ficha = await prisma.fichaOrcamentaria.findUnique({ where: { exercicio_numero: { exercicio: 2026, numero: FICHA_MEDICAMENTOS } }, select: { id: true } });
+  if (ficha === null) throw new Error(`A ficha ${String(FICHA_MEDICAMENTOS)} não está nesta base. Nada foi gravado.`);
+  const total = LOTES_DE_SETEMBRO.reduce((t, l) => t.plus(toMoney(l.quantidade).times(l.unitario)), toMoney(0)).toFixed(2);
+  const m05 = criarM05DepsComAlmoxarifado(prisma);
+  const empenhoId = await passo(`Empenho R3-MED-002/2026 de medicamentos R$ ${total}`, async () => {
+    const ja = await prisma.empenho.findFirst({ where: { numero: "R3-MED-002/2026", fichaId: ficha.id }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    const r = await empenhar({ fichaId: ficha.id, numero: "R3-MED-002/2026", tipo: "ORDINARIO", valor: total, data: D("2026-09-08"), credorCpfCnpj: credor, historico: `Aquisição de anti-hipertensivo e antidiabético ${ENSAIO}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN }, roteiroEmpenho(), m05);
+    return { estado: "criado", valor: r.empenhoId };
+  });
+  await passo("Liquidação R3-MED-L2 com o recebimento de 2 lotes no depósito FARM-R3 em 15/09/2026", async () => {
+    if ((await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId, numero: "R3-MED-L2" } }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await liquidar(
+      {
+        empenhoId, numero: "R3-MED-L2", valor: total, data: D("2026-09-15"), responsavelAtesto: "Farmacêutica responsável (fictícia)",
+        notaFiscalNum: "88002", notaFiscalSerie: "1", notaFiscalData: D("2026-09-14"), notaFiscalValor: total, historico: `Medicamentos recebidos e conferidos por lote ${ENSAIO}`, criadoPor: ADMIN,
+        entradasDeMaterial: LOTES_DE_SETEMBRO.map((l) => ({
+          classeDeMaterialId: classe.id, valor: toMoney(l.quantidade).times(l.unitario).toFixed(2),
+          fisica: { materialId: materiais[l.material] as string, depositoId: deposito.id, quantidade: l.quantidade, valorUnitario: l.unitario, unidadeDeMedidaId: unidade.id, loteIdentificacao: l.lote, loteValidade: D(l.validade) },
+        })),
+      },
+      roteiroLiquidacao({ codElemento: "30", obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: contaDoEstoque }),
+      m05
+    );
+    return { estado: "criado", valor: null };
+  });
+}
+
+// ═══ 10. EDUCAÇÃO: dois empenhos na função 12 (a prévia do SIOPE com subfunções de tratamentos diferentes, N=2) ═══
+
+const EMPENHOS_DA_EDUCACAO = [
+  { numero: "R3-EDU-001/2026", subfuncao: "361", valor: "1500.00", historico: "Material pedagógico do ensino fundamental" },
+  { numero: "R3-EDU-002/2026", subfuncao: "306", valor: "420.00", historico: "Gêneros da merenda escolar" },
+] as const;
+
+async function semearEmpenhosDaEducacao(prisma: PrismaClient): Promise<void> {
+  const credor = cnpjComDv("612730480001");
+  const m05 = criarM05DepsComAlmoxarifado(prisma);
+  for (const e of EMPENHOS_DA_EDUCACAO) {
+    await passo(`Empenho ${e.numero} na subfunção ${e.subfuncao} R$ ${e.valor}`, async () => {
+      const ja = await prisma.empenho.findFirst({ where: { numero: e.numero }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: null };
+      const ficha = await prisma.fichaOrcamentaria.findFirst({
+        where: { exercicio: 2026, funcao: { codigo: "12" }, subfuncao: { codigo: e.subfuncao }, fonte: { codigo: "500" }, naturezaDespesa: { codigoCompleto: { startsWith: "3390" } } },
+        orderBy: { numero: "asc" },
+        select: { id: true },
+      });
+      if (ficha === null) throw new Error(`Não há ficha de 2026 da função 12, subfunção ${e.subfuncao}, fonte 500, de outras despesas correntes. Nada foi gravado.`);
+      await empenhar({ fichaId: ficha.id, numero: e.numero, tipo: "ORDINARIO", valor: e.valor, data: D("2026-09-10"), credorCpfCnpj: credor, historico: `${e.historico} ${ENSAIO}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN }, roteiroEmpenho(), m05);
+      return { estado: "criado", valor: null };
+    });
+  }
+}
+
 // ═══ PRINCIPAL ═══
 
 function exigirBanco(): string {
@@ -690,6 +778,10 @@ async function main(): Promise<void> {
     await semearCompras(prisma);
     console.log("\n[8] custo da folha");
     await semearCentroDeCusto(prisma);
+    console.log("\n[9] farmácia: recebimento de setembro");
+    await semearRecebimentoDeSetembro(prisma);
+    console.log("\n[10] educação: empenhos para a prévia do SIOPE");
+    await semearEmpenhosDaEducacao(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

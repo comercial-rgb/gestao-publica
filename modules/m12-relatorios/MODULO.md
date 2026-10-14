@@ -1053,3 +1053,39 @@ Pendências nomeadas (R3-021):
   (a apropriação é uma vez por liquidação). Falta a operação de atribuição posterior, append-only, com o centro
   vigente na competência.
 - `BASE-DE-RATEIO-CALCULADA` continua (só percentual declarado, para o que não é folha).
+
+## V39-R3 (R3-023, V39-086) — preparação do SIOPE municipal: correspondência versionada e prévia
+
+`siope.ts`, `scripts/carregar-correspondencia-siope.ts`; tela Relatórios › Prévia do SIOPE (`/relatorios/siope`).
+
+- **Material oficial:** o texto do manual do SIOPE guardado em `docs/oficial/fnde-siope/Manual_SIOPE_2026.txt`, com o
+  sha256 em `MANIFEST-SIOPE.json` (o do PDF de origem está em `docs/oficial/V23-RELATORIO-DE-FONTES.md`).
+- **A seção certa:** a UNIDADE DO SIOPE MUNICIPAL (linha 4069 em diante): a lista das típicas "no âmbito municipal"
+  (361, 365; 366 e 367 só para alunos do ensino fundamental), o Quadro 18 (apoio administrativo, considerado), o
+  Quadro 19 (demais consideradas; a 782 só com recursos próprios) e o Quadro 20 (não consideradas, inclusive 242 e
+  695). Os Quadros 13 a 16 são da unidade estadual e divergem — a primeira versão os usou; a auditoria pegou antes do
+  commit e a transcrição foi refeita.
+- **Correspondência** (`CorrespondenciaSiope` + itens, versionada por exercício; texto OU transcrição diferente grava a
+  versão seguinte): 30 subfunções, com a seção e a linha de cada código. A carga confere a transcrição CONTRA o texto:
+  código no começo da linha dita, dentro da seção; COMPLETUDE (todo código que começa linha na seção está transcrito);
+  o tratamento provado pela frase da própria seção e as condições pelas observações do texto; cada palavra do nome na
+  seção. Recusa inteira se algo não confere.
+- **Leitura dita:** a observação "despesas realizadas com recursos próprios" do Quadro 19 cai, no texto em colunas, ao
+  lado do 846; pela ordem dos conceitos e pelo Quadro 15 do mesmo manual ela é da 782.
+- **Prévia** (`previaDoSiope`, leitura): a despesa das fichas da função 12 por subfunção, medida por `medirDespesa` do
+  Anexo 8 (liquidada nos bimestres 1 a 5, empenhada no 6º), inteira e na parte custeada por fontes de classe
+  IMPOSTOS_MDE (a classe do Anexo 8); o total por tratamento soma só essa parte e a tela diz que é conferência, não a
+  apuração do mínimo. Subfunção fora da correspondência aparece, não some. Os indicadores são os do Anexo 8. Sem
+  correspondência carregada para o exercício, não há prévia (fail-closed).
+- **Bloqueado, nomeado:** o arquivo de importação (CSV) — faltam a "Tabela 2 - Código de Identificação das Planilhas de
+  Administração Consolidada" (citada na linha 2642 e não trazida), o código da conta de cada linha e a ordem das colunas
+  de cada planilha; e a separação da 365 em creche e pré-escola, que a classificação orçamentária não faz.
+
+Pendências nomeadas (R3-023):
+- `SIOPE-TABELA-2-DAS-PLANILHAS`: o desbloqueio é a tabela oficial, o plano de linhas e colunas das planilhas, ou o
+  CSV de referência exportado pelo programa do SIOPE do ente.
+- `SIOPE-365-CRECHE-E-PRE-ESCOLA`: falta um recorte (ação, programa ou parâmetro do ente) que separe a 365.
+- `SIOPE-CONDICOES-FICHA-A-FICHA`: 366/367 (alunos do ensino fundamental) e 782 (recursos próprios) aparecem com a
+  condição; a prévia não a confere ficha a ficha.
+- `SIOPE-REMUNERACAO`: o arquivo da remuneração dos profissionais (Quadro 11) tem contradição no manual (18 campos
+  listados, exemplo com 19) e não é gerado.

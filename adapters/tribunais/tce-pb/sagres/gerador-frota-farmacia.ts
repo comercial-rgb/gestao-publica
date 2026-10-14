@@ -3,6 +3,7 @@ import { serializarArquivo, type LayoutArquivo } from "./registry.js";
 import { nomeArquivo } from "./nomenclatura.js";
 import { diaCivil } from "../../../../packages/datas/index.js";
 import { toMoney } from "../../../../packages/contracts/index.js";
+import { modoDoInformeNoMes, origensDoModo } from "../../../../modules/m37-farmacia/informe-calculado.js";
 import { baixadoNoMesInteiro, situacoesDoMes, type MudancaNoDia } from "../../../../modules/m36-frota/dominio.js";
 import {
   CATEGORIA_FROTA_MAQUINA,
@@ -272,13 +273,15 @@ export async function lerFatosEstoqueFarmacia(prisma: PrismaClient, p: Mes): Pro
   const fatos: EstoqueFarmaciaFato[] = [];
   const sem: string[] = [];
   for (const f of await farmaciasAtivas(prisma, p)) {
+    // V39-R3 (R3-022) — UMA fonte por mês, a do modo da farmácia naquele mês: a calculada ou a importada, nunca as duas.
+    const modo = await modoDoInformeNoMes(prisma, f.id, ano, mes);
     const informe = await prisma.informeDeEstoqueDaFarmacia.findFirst({
-      where: { farmaciaId: f.id, ano, mes },
-      orderBy: { criadoEm: "desc" },
+      where: { farmaciaId: f.id, ano, mes, origem: { in: [...origensDoModo(modo.modo)] } },
+      orderBy: [{ criadoEm: "desc" }, { id: "desc" }],
       select: { itens: { orderBy: { codigoProduto: "asc" }, select: { codigoProduto: true, descricao: true, unidadeMedida: true, quantidade: true } } },
     });
     if (informe === null) {
-      sem.push(`${f.codigo} (${f.vigente.descricao})`);
+      sem.push(`${f.codigo} (${f.vigente.descricao})${modo.modo === "CALCULADO" ? ": posição calculada não gerada" : ""}`);
       continue;
     }
     for (const i of informe.itens) {
@@ -288,7 +291,7 @@ export async function lerFatosEstoqueFarmacia(prisma: PrismaClient, p: Mes): Pro
   if (sem.length > 0) {
     throw new Error(
       `SAGRES/EstoqueFarmacia §4.57 — farmácia(s) sem o estoque de ${String(mes).padStart(2, "0")}/${String(ano)}: ${sem.join("; ")}. ` +
-        `Informe o estoque do mês em Patrimônio › Farmácias públicas.`
+        `Em Patrimônio › Farmácias públicas, informe o estoque do mês ou, na farmácia que calcula a posição pelos movimentos, calcule a posição do mês.`
     );
   }
   return fatos;

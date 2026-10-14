@@ -76,6 +76,10 @@ const ESCRITO_POR_ANINHAMENTO: Readonly<Record<string, string>> = {
     "escrito por `cotacoes: { create: ... }` em registrarPesquisaDePrecos " +
     "(modules/m11-licitacoes/compras.ts); LIDO em estatisticasDaPesquisa pela relação " +
     "`cotacoes` do item da pesquisa — é dela que saem médio, mínimo e máximo",
+  ItemDaCorrespondenciaSiope:
+    "escrito por `itens: { create: ... }` em scripts/carregar-correspondencia-siope.ts (V39-R3, R3-023); LIDO em " +
+    "previaDoSiope (modules/m12-relatorios/siope.ts) pela relação `itens` da correspondência — uma versão e as suas " +
+    "subfunções nascem no mesmo ato, e a linha não existe sem a versão",
   MembroDeComissaoPatrimonial:
     "escrito por `membros: { create: ... }` em cadastrarComissaoPatrimonial " +
     "(modules/m10-patrimonial/gestao-do-bem.ts) — a comissão e seus membros nascem no " +

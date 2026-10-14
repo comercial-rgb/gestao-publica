@@ -13,7 +13,9 @@ import {
 import { ROTULO_COMBUSTIVEL, ROTULO_SITUACAO, ROTULO_TIPO_DE_FROTA, situacaoNoDia } from "../../modules/m36-frota/dominio.js";
 import { cadastrarFarmacia, informarEstoqueDaFarmacia, publicarVersaoDaFarmacia, type CadastrarFarmaciaInput } from "../../modules/m37-farmacia/servico.js";
 import { unidadesGestorasOperadas } from "../../modules/m01-core-contabil/unidade-gestora.js";
-import { diaCivil, diaCivilBr } from "../../packages/datas/index.js";
+import { adotarModoDoInforme, calcularInformeDaFarmacia, declararCodigoDoMaterialNoInforme, modoDoInformeNoMes, origensDoModo } from "../../modules/m37-farmacia/informe-calculado.js";
+import { acoesPermitidas } from "./molde";
+import { diaCivil, diaCivilBr, meioDiaCivil } from "../../packages/datas/index.js";
 import { cliente } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
 import { comEscritaAutenticada } from "./sessao";
@@ -174,9 +176,15 @@ export interface FarmaciaNaTela {
   readonly versao: number;
   readonly dados: Readonly<Record<string, string>>;
   readonly informes: readonly { readonly mes: string; readonly origem: string; readonly itens: number; readonly quando: string; readonly vale: boolean }[];
+  /** V39-R3 (R3-022) — de onde vem a posição deste mês, e os medicamentos do depósito com o código no informe. */
+  readonly modoAtual: string;
+  readonly totalDeMedicamentos: number;
+  readonly medicamentos: readonly { readonly materialId: string; readonly codigo: string; readonly nome: string; readonly codigoNoInforme: string | null; readonly descricaoNoInforme: string | null }[];
 }
 
-export async function lerFarmacias(): Promise<{ readonly farmacias: readonly FarmaciaNaTela[]; readonly ugs: readonly { readonly id: string; readonly rotulo: string }[] }> {
+const ROTULO_DA_ORIGEM: Readonly<Record<string, string>> = { ARQUIVO: "importado de arquivo", DIGITADO: "digitado", CALCULADO: "calculado dos movimentos" };
+
+export async function lerFarmacias(): Promise<{ readonly farmacias: readonly FarmaciaNaTela[]; readonly ugs: readonly { readonly id: string; readonly rotulo: string }[]; readonly podeInformar: boolean }> {
   await exigirLeituraDoEnte("CONSULTAR_PATRIMONIO");
   const prisma = cliente();
   const [fs, ugs] = await Promise.all([
@@ -187,15 +195,52 @@ export async function lerFarmacias(): Promise<{ readonly farmacias: readonly Far
         codigo: true,
         ug: { select: { codigoTce: true, nome: true } },
         versoes: { orderBy: { versao: "desc" }, take: 1, select: { versao: true, descricao: true, endereco: true, nomeResponsavel: true, cpfResponsavel: true, crfResponsavel: true, ativa: true } },
-        informes: { orderBy: { criadoEm: "desc" }, take: 24, select: { ano: true, mes: true, origem: true, criadoEm: true, _count: { select: { itens: true } } } },
+        informes: { orderBy: [{ criadoEm: "desc" }, { id: "desc" }], take: 24, select: { ano: true, mes: true, origem: true, criadoEm: true, _count: { select: { itens: true } } } },
       },
     }),
     unidadesGestorasOperadas(prisma, new Date()),
   ]);
+  // V39-R3 (R3-022) — o informe que VALE em cada mês é o mais recente da fonte do modo daquele mês (o mesmo critério
+  // da remessa); o da outra fonte fica guardado e não vale.
+  const hoje = diaCivil(new Date());
+  const [anoHoje, mesHoje] = [Number(hoje.slice(0, 4)), Number(hoje.slice(5, 7))];
+  const extras = new Map<string, { modoAtual: string; modoDoMes: Map<string, "IMPORTADO" | "CALCULADO">; totalDeMedicamentos: number; medicamentos: FarmaciaNaTela["medicamentos"] }>();
+  for (const f of fs) {
+    const modoDoMes = new Map<string, "IMPORTADO" | "CALCULADO">();
+    for (const i of f.informes) {
+      const k = `${String(i.ano)}-${String(i.mes)}`;
+      if (!modoDoMes.has(k)) modoDoMes.set(k, (await modoDoInformeNoMes(prisma, f.id, i.ano, i.mes)).modo);
+    }
+    const atual = await modoDoInformeNoMes(prisma, f.id, anoHoje, mesHoje);
+    // Os medicamentos de TODOS os depósitos que a farmácia já teve (o cálculo de um mês passado usa o depósito daquele
+    // mês, não o de hoje): o que o cálculo pode cobrar tem formulário aqui.
+    const [vinculo, trocas] = await Promise.all([
+      prisma.depositoDaFarmacia.findUnique({ where: { farmaciaId: f.id }, select: { depositoId: true } }),
+      prisma.trocaDoDepositoDaFarmacia.findMany({ where: { farmaciaId: f.id }, select: { depositoNovoId: true } }),
+    ]);
+    const depositos = [...new Set([...(vinculo === null ? [] : [vinculo.depositoId]), ...trocas.map((t) => t.depositoNovoId)])];
+    const filtro = { movimentos: { some: { depositoId: { in: depositos } } } };
+    const totalDeMateriais = depositos.length === 0 ? 0 : await prisma.material.count({ where: filtro });
+    const materiais = depositos.length === 0 ? [] : await prisma.material.findMany({
+      where: filtro,
+      orderBy: { codigo: "asc" },
+      take: 300,
+      select: { id: true, codigo: true, descricaoSucinta: true, codigosNoInforme: { orderBy: [{ criadoEm: "desc" }, { id: "desc" }], take: 1, select: { codigoProduto: true, descricao: true } } },
+    });
+    extras.set(f.id, {
+      modoAtual: atual.modo === "CALCULADO" ? `calculada dos movimentos do depósito desde ${atual.desde ?? ""}` : atual.desde === null ? "digitada ou importada de arquivo" : `digitada ou importada de arquivo desde ${atual.desde}`,
+      modoDoMes,
+      totalDeMedicamentos: totalDeMateriais,
+      medicamentos: materiais.map((m) => ({ materialId: m.id, codigo: m.codigo, nome: m.descricaoSucinta, codigoNoInforme: m.codigosNoInforme[0]?.codigoProduto ?? null, descricaoNoInforme: m.codigosNoInforme[0]?.descricao ?? null })),
+    });
+  }
+  const permitidas = await acoesPermitidas(["INFORMAR_ESTOQUE_DA_FARMACIA"]);
   return {
+    podeInformar: permitidas.has("INFORMAR_ESTOQUE_DA_FARMACIA"),
     farmacias: fs.flatMap((f) => {
       const v = f.versoes[0];
       if (v === undefined) return [];
+      const x = extras.get(f.id)!;
       const vistos = new Set<string>();
       return [{
         id: f.id,
@@ -207,11 +252,15 @@ export async function lerFarmacias(): Promise<{ readonly farmacias: readonly Far
         ativa: v.ativa,
         versao: v.versao,
         dados: { descricao: v.descricao, endereco: v.endereco, nomeResponsavel: v.nomeResponsavel, cpfResponsavel: v.cpfResponsavel, crfResponsavel: v.crfResponsavel },
+        modoAtual: x.modoAtual,
+        medicamentos: x.medicamentos,
+        totalDeMedicamentos: x.totalDeMedicamentos,
         informes: f.informes.map((i) => {
           const mes = `${String(i.mes).padStart(2, "0")}/${String(i.ano)}`;
-          const vale = !vistos.has(mes);
-          vistos.add(mes);
-          return { mes, origem: i.origem === "ARQUIVO" ? "arquivo" : "digitado", itens: i._count.itens, quando: diaCivilBr(i.criadoEm), vale };
+          const daFonte = origensDoModo(x.modoDoMes.get(`${String(i.ano)}-${String(i.mes)}`) ?? "IMPORTADO").includes(i.origem);
+          const vale = daFonte && !vistos.has(mes);
+          if (vale) vistos.add(mes);
+          return { mes, origem: ROTULO_DA_ORIGEM[i.origem] ?? i.origem, itens: i._count.itens, quando: diaCivilBr(i.criadoEm), vale };
         }),
       }];
     }),
@@ -230,6 +279,24 @@ export async function publicarVersaoDaFarmaciaPelaTela(input: SemAutor<Parameter
 export async function informarEstoquePelaTela(input: SemAutor<Parameters<typeof informarEstoqueDaFarmacia>[1]>): Promise<string> {
   const r = await comEscritaAutenticada("INFORMAR_ESTOQUE_DA_FARMACIA", (criadoPor) => informarEstoqueDaFarmacia(cliente(), { ...input, criadoPor }));
   return `Estoque de ${String(input.mes).padStart(2, "0")}/${String(input.ano)} informado com ${String(r.itens)} produto(s). Ele substitui, na remessa, o informe anterior do mesmo mês.`;
+}
+
+/** V39-R3 (R3-022) — adotar o modo da posição do mês, declarar o código do medicamento no informe, calcular a posição. */
+export async function adotarModoDoInformePelaTela(input: { readonly farmaciaId: string; readonly modo: "IMPORTADO" | "CALCULADO"; readonly desdeAno: number; readonly desdeMes: number; readonly fundamento: string }): Promise<string> {
+  await comEscritaAutenticada("INFORMAR_ESTOQUE_DA_FARMACIA", (criadoPor) => adotarModoDoInforme(cliente(), { ...input, criadoPor }));
+  const mes = `${String(input.desdeMes).padStart(2, "0")}/${String(input.desdeAno)}`;
+  return input.modo === "CALCULADO" ? `A partir de ${mes}, a posição do mês vem dos movimentos do depósito. Os informes anteriores continuam valendo nos meses deles.` : `A partir de ${mes}, a posição do mês volta a ser digitada ou importada.`;
+}
+export async function declararCodigoNoInformePelaTela(input: { readonly materialId: string; readonly codigoProduto: string; readonly descricao: string; readonly fundamento: string }): Promise<string> {
+  await comEscritaAutenticada("INFORMAR_ESTOQUE_DA_FARMACIA", (criadoPor) => declararCodigoDoMaterialNoInforme(cliente(), { ...input, criadoPor }));
+  return `Código ${input.codigoProduto} declarado para o informe.`;
+}
+export async function calcularPosicaoPelaTela(input: { readonly farmaciaId: string; readonly ano: number; readonly mes: number }): Promise<string> {
+  const r = await comEscritaAutenticada("INFORMAR_ESTOQUE_DA_FARMACIA", (criadoPor) => calcularInformeDaFarmacia(cliente(), { ...input, criadoPor }));
+  const mes = `${String(input.mes).padStart(2, "0")}/${String(input.ano)}`;
+  return r.novo
+    ? `Posição de ${mes} calculada dos movimentos: ${String(r.itens.length)} produto(s) em ${diaCivilBr(meioDiaCivil(r.dia))}.`
+    : `A posição de ${mes} já estava calculada com o mesmo resultado (${String(r.itens.length)} produto(s)). Nada foi gravado de novo.`;
 }
 
 /** V39-R3 (R3-018) — os tanques próprios, para o abastecimento interno escolher de onde saiu o combustível. */

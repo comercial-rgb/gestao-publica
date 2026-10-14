@@ -220,7 +220,7 @@ describe("V27 — farmácia pública e os arquivos §4.56 e §4.57", () => {
 
     let r = await gerarArquivosDaFrotaEFarmacia(prisma, { codUnidadeGestora: UG, cnpjGerenciadora: CNPJ_UG, competencia: MARCO });
     expect(r.recusas.map((x) => x.arquivo)).toEqual(["EstoqueFarmacia"]);
-    expect(r.recusas[0]!.detalhe).toMatch(/sem o estoque de 03\/2026: 77 \(Farmácia do Hospital\)\. Informe o estoque do mês/);
+    expect(r.recusas[0]!.detalhe).toMatch(/sem o estoque de 03\/2026: 77 \(Farmácia do Hospital\)\. Em Patrimônio › Farmácias públicas, informe o estoque do mês/);
     // §4.56: 1-6 UG, 7-13 código, 14-73 descrição, 74-193 endereço, 194-253 responsável, 254-264 CPF, 265-274 CRF.
     const farmacias = linhas(r.arquivos.find((a) => a.arquivo.nome.includes("Farmacia"))!.arquivo.conteudo);
     expect(farmacias[0]).toBe(`${UG}0001234${"Farmácia Básica Central".padEnd(60, " ")}${"Rua Antenor Navarro, 837".padEnd(120, " ")}${"Maria Farmacêutica".padEnd(60, " ")}11144477735${"PB-1234".padEnd(10, " ")}`);

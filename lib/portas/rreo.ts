@@ -5,6 +5,8 @@ import { anexo9, type Anexo9 } from "../../modules/m12-relatorios/rreo-anexo9";
 import { anexo7, type Anexo7 } from "../../modules/m12-relatorios/rreo-anexo7";
 import { anexo12, type Anexo12 } from "../../modules/m12-relatorios/rreo-anexo12";
 import { anexo8, type Anexo8 } from "../../modules/m12-relatorios/rreo-anexo8";
+import { previaDoSiope, type PreviaDoSiope } from "../../modules/m12-relatorios/siope";
+export type { PreviaDoSiope } from "../../modules/m12-relatorios/siope";
 import { anexo11, type Anexo11 } from "../../modules/m12-relatorios/rreo-anexo11";
 import { anexo13, type Anexo13 } from "../../modules/m12-relatorios/rreo-anexo13";
 import { rgfAnexo1, type Anexo1Rgf, type Quadrimestre } from "../../modules/m12-relatorios/rgf-anexo1";
@@ -146,6 +148,11 @@ export async function gerarRreoAnexo8(p: {
     bimestre: p.bimestre,
     ...(p.incluirIBS !== undefined ? { incluirIBS: p.incluirIBS } : {}),
   });
+}
+
+/** V39-R3 (R3-023) — a PRÉVIA DO SIOPE: correspondência do manual, despesa da Educação por subfunção e os indicadores do Anexo 8. */
+export async function gerarPreviaDoSiope(p: { readonly exercicio: number; readonly bimestre: Bimestre }): Promise<PreviaDoSiope> {
+  return previaDoSiope(cliente(), p);
 }
 
 /** A LEITURA do RREO Anexo 1 (Balanço Orçamentário) para a tela. */

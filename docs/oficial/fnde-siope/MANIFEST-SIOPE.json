@@ -1,0 +1,12 @@
+{
+  "descricao": "Texto do manual do SIOPE usado na correspondência versionada (V39-R3, R3-023). O texto foi extraído do PDF embarcado no instalador oficial; a procedência e o sha256 do PDF estão em docs/oficial/V23-RELATORIO-DE-FONTES.md (linha 32). O sha256 abaixo é do texto gravado aqui.",
+  "arquivos": [
+    {
+      "arquivo": "Manual_SIOPE_2026.txt",
+      "fonte": "Manual de Orientações do SIOPE (3ª Revisão), embarcado no instalador SIOPE Ano Base 2026 (Anual) 26.0.3.6",
+      "shaDoPdf": "875c2566916edd8de31f20cb6e53b7043cba496d31d2ce88405f09c2318259d6",
+      "sha256": "bd2b90ce4b3e7495c95290664d55c0b900ce92881cf35635217f2189b6271d85",
+      "exercicio": 2026
+    }
+  ]
+}

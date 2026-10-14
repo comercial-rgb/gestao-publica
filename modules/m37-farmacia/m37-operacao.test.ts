@@ -16,6 +16,9 @@ import { corrigirDispensacao, depositoDaFarmaciaNoDia, dispensarMedicamentos, po
 import { travar } from "../../packages/locks/index.js";
 import { diaCivil } from "../../packages/datas/index.js";
 import { estornarMovimentoFisico } from "../m10-patrimonial/estoque-fisico.js";
+import { adotarModoDoInforme, calcularInformeDaFarmacia, declararCodigoDoMaterialNoInforme, modoDoInformeNoMes } from "./informe-calculado.js";
+import { informarEstoqueDaFarmacia } from "./servico.js";
+import { lerFatosEstoqueFarmacia } from "../../adapters/tribunais/tce-pb/sagres/gerador-frota-farmacia.js";
 
 /**
  * V39-R2 (R2-030, R2-031) — A FARMÁCIA OPERANDO SOBRE O ESTOQUE DO ALMOXARIFADO.
@@ -399,5 +402,133 @@ describe("V39-R3 (R3-010) — troca do depósito da farmácia", { timeout: 12000
     await prisma.depositoDaFarmacia.create({ data: { farmaciaId: "farm-2", depositoId: outroDepositoId, fundamento: "fixture", criadoPor: POR } });
     await expect(trocar(depois())).rejects.toThrow(/O depósito DEP-X já é ou foi o estoque de outra farmácia/);
     expect(await prisma.trocaDoDepositoDaFarmacia.count()).toBe(0);
+  });
+});
+
+describe("V39-R3 (R3-022) — a posição mensal da farmácia calculada dos movimentos", { timeout: 120000 }, () => {
+  // Códigos de produto de FIXTURE (não são GTIN reais): o ente é quem os declara.
+  const COD_DIP = "7890000000011";
+  const COD_AMX = "7890000000028";
+  const MAIO = new Date("2026-05-05T15:00:00Z");
+  const mes = (m: number) => ({ codUnidadeGestora: "201078", cnpjGerenciadora: "08993917000146", competencia: new Date(Date.UTC(2026, m - 1, 1)) });
+  const adotar = (modo: "CALCULADO" | "IMPORTADO", desdeMes: number, por = POR) => adotarModoDoInforme(prisma, { farmaciaId: "farm-1", modo, desdeAno: 2026, desdeMes, fundamento: "Decisão da coordenação da farmácia (fixture)", criadoPor: por });
+  const declarar = (materialId: string, codigoProduto: string, descricao: string) => declararCodigoDoMaterialNoInforme(prisma, { materialId, codigoProduto, descricao, fundamento: "Código da embalagem (fixture)", criadoPor: POR });
+  const calcular = (m: number, agora = MAIO, por = POR) => calcularInformeDaFarmacia(prisma, { farmaciaId: "farm-1", ano: 2026, mes: m, agora, criadoPor: por });
+  const digitar = (m: number, quantidade: string) => informarEstoqueDaFarmacia(prisma, { farmaciaId: "farm-1", ano: 2026, mes: m, itens: [{ codigoProduto: COD_DIP, descricao: "DIPIRONA 500MG", unidadeMedida: "CP", quantidade }], fundamento: "Inventário da farmácia (fixture)", criadoPor: POR });
+
+  it("N=2 medicamentos em dois meses: março 150 e 30; abril, depois da dispensação, 140 e 25; recalcular igual não grava outro", async () => {
+    await vincular();
+    await adotar("CALCULADO", 3);
+    await declarar(dipirona, COD_DIP, "DIPIRONA 500MG COMPRIMIDO");
+    await declarar(amoxicilina, COD_AMX, "AMOXICILINA 500MG CAPSULA");
+    // à mão: entradas de fevereiro: dipirona 100 (L1) + 50 (L2) = 150; amoxicilina 30
+    const marco = await calcular(3);
+    expect(marco.itens.map((i) => [i.codigoProduto, i.unidadeMedida, i.quantidade])).toEqual([[COD_DIP, "CP", "150.00"], [COD_AMX, "CP", "30.00"]]);
+    // à mão: em 10/04 saem 10 de dipirona (L2; o L1 venceu em 31/03) e 5 de amoxicilina: 140 e 25
+    await dispensar([{ materialId: dipirona, loteId: lotes["L2"]!, quantidade: "10" }, { materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "5" }]);
+    const abril = await calcular(4);
+    expect([abril.novo, abril.dia, abril.itens.map((i) => i.quantidade)]).toEqual([true, "2026-04-30", ["140.00", "25.00"]]);
+    const de_novo = await calcular(4);
+    expect([de_novo.novo, de_novo.id]).toEqual([false, abril.id]);
+    expect(await prisma.informeDeEstoqueDaFarmacia.count({ where: { origem: "CALCULADO" } })).toBe(2);
+    // março não mudou: a dispensação de abril não reescreve o mês fechado
+    expect((await calcular(3)).novo).toBe(false);
+  });
+
+  it("UMA fonte por mês, nunca somadas: fevereiro (antes da adoção) é o digitado; março, mesmo com um digitado mais NOVO gravado, é só o calculado", async () => {
+    await vincular();
+    await declarar(dipirona, COD_DIP, "DIPIRONA 500MG COMPRIMIDO");
+    await declarar(amoxicilina, COD_AMX, "AMOXICILINA 500MG CAPSULA");
+    await digitar(2, "77.00");
+    await adotar("CALCULADO", 3);
+    await calcular(3);
+    // Um informe digitado de março MAIS NOVO que o calculado, gravado direto pelo dono do banco de teste (o serviço o
+    // recusa no modo calculado): é o caso em que "o mais recente" e "o da fonte do mês" divergem.
+    await prisma.informeDeEstoqueDaFarmacia.create({ data: { farmaciaId: "farm-1", ano: 2026, mes: 3, origem: "DIGITADO", fundamento: "legado (fixture)", criadoPor: POR, criadoEm: new Date("2027-01-01T12:00:00Z"), itens: { create: [{ codigoProduto: COD_DIP, descricao: "DIPIRONA", unidadeMedida: "CP", quantidade: "88.00" }] } } });
+    const fev = await lerFatosEstoqueFarmacia(prisma, mes(2));
+    const mar = await lerFatosEstoqueFarmacia(prisma, mes(3));
+    expect(fev.map((f) => [f.codigoProduto, f.quantidade.toFixed(2)])).toEqual([[COD_DIP, "77.00"]]);
+    // à mão: 150 e 30, e não 88, nem 150 + 88, nem as linhas dos dois informes
+    expect(mar.map((f) => [f.codigoProduto, f.quantidade.toFixed(2)])).toEqual([[COD_DIP, "150.00"], [COD_AMX, "30.00"]]);
+    // abril no modo calculado sem a posição gerada: a remessa recusa nomeando o motivo, sem cair no digitado
+    await expect(lerFatosEstoqueFarmacia(prisma, mes(4))).rejects.toThrow(/0000001 \(Farmácia Básica Municipal\): posição calculada não gerada/);
+  });
+
+  it("NEGAÇÕES com o motivo, nada gravado: modo importado, mês aberto, material sem código, código repetido, digitar no modo calculado, sem permissão, adotar o modo que já vale", async () => {
+    await vincular();
+    await expect(calcular(3)).rejects.toThrow(/em 03\/2026 a farmácia 0000001 informa a posição por digitação ou arquivo/i);
+    await expect(adotar("IMPORTADO", 3)).rejects.toThrow(/já está nesse modo/);
+    await adotar("CALCULADO", 3);
+    await expect(calcular(5, MAIO)).rejects.toThrow(/O mês 05\/2026 ainda não terminou/);
+    await declarar(dipirona, COD_DIP, "DIPIRONA 500MG COMPRIMIDO");
+    await expect(calcular(3)).rejects.toThrow(/Os materiais MED002 têm estoque no fim de 03\/2026 e não têm o código do produto no informe declarado/);
+    await expect(declarar(amoxicilina, COD_DIP, "AMOXICILINA")).rejects.toThrow(/O código 7890000000011 já é do material MED001/);
+    await expect(declarar(amoxicilina, "ABC", "AMOXICILINA")).rejects.toThrow(/Código do produto "ABC" deve ter de 1 a 14 dígitos/);
+    await expect(digitar(4, "10.00")).rejects.toThrow(/calcula a posição pelos movimentos desde 03\/2026; em 04\/2026 o estoque não se digita/);
+    const leitor = await usuarioCom("so.consulta.farmacia@cg.pb.gov.br", ["CONSULTAR_PATRIMONIO"]);
+    await declarar(amoxicilina, COD_AMX, "AMOXICILINA 500MG CAPSULA");
+    await expect(calcular(3, MAIO, leitor)).rejects.toThrow(/ACESSO NEGADO[\s\S]*INFORMAR_ESTOQUE_DA_FARMACIA/);
+    await expect(adotar("IMPORTADO", 6, leitor)).rejects.toThrow(/ACESSO NEGADO[\s\S]*INFORMAR_ESTOQUE_DA_FARMACIA/);
+    expect([await prisma.informeDeEstoqueDaFarmacia.count(), await prisma.modoDoInformeAdotado.count()]).toEqual([0, 1]);
+  });
+
+  it("a adoção não alcança mês que já tem posição: recusa nomeando o mês e o primeiro possível; a repetida no mesmo mês recusa; o mês informado continua importado", async () => {
+    await vincular();
+    await digitar(3, "88.00");
+    await expect(adotar("CALCULADO", 2)).rejects.toThrow(/A farmácia 0000001 já tem posição de 03\/2026: a mudança de fonte não alcança mês com posição\. Adote a partir de 04\/2026 ou depois/);
+    await expect(adotar("CALCULADO", 3)).rejects.toThrow(/já tem posição de 03\/2026/);
+    await adotar("CALCULADO", 4);
+    await expect(adotar("IMPORTADO", 4)).rejects.toThrow(/já tem modo adotado a partir de 04\/2026/);
+    expect((await lerFatosEstoqueFarmacia(prisma, mes(3))).map((x) => [x.codigoProduto, x.quantidade.toFixed(2)])).toEqual([[COD_DIP, "88.00"]]);
+    // a adoção mais recente ATÉ o mês decide: calculado de 04 a 05, importado de novo a partir de 06
+    await adotar("IMPORTADO", 6);
+    const modos = await Promise.all([3, 4, 5, 6, 7].map(async (m) => (await modoDoInformeNoMes(prisma, "farm-1", 2026, m)).modo));
+    expect(modos).toEqual(["IMPORTADO", "CALCULADO", "CALCULADO", "IMPORTADO", "IMPORTADO"]);
+    expect(await prisma.modoDoInformeAdotado.count()).toBe(2);
+  });
+
+  it("RECÁLCULO com resultado diferente (movimento registrado depois) grava outro e passa a valer; posição zerada sai da lista; mês sem nenhum estoque não se grava", async () => {
+    await vincular();
+    await adotar("CALCULADO", 1);
+    await declarar(dipirona, COD_DIP, "DIPIRONA 500MG COMPRIMIDO");
+    await declarar(amoxicilina, COD_AMX, "AMOXICILINA 500MG CAPSULA");
+    // à mão: as entradas são de 01/02; em 31/01 não há estoque nenhum
+    await expect(calcular(1)).rejects.toThrow(/Nenhum medicamento tem estoque no fim de 01\/2026 no depósito da farmácia 0000001/);
+    await dispensar([{ materialId: dipirona, loteId: lotes["L2"]!, quantidade: "10" }, { materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "5" }]);
+    const primeiro = await calcular(4);
+    expect(primeiro.itens.map((i) => i.quantidade)).toEqual(["140.00", "25.00"]);
+    // à mão: em 20/04 saem os 25 restantes de amoxicilina — a posição dela em 30/04 é zero e sai do informe
+    await dispensar([{ materialId: amoxicilina, loteId: lotes["A1"]!, quantidade: "25" }], "2026-04-20");
+    const segundo = await calcular(4);
+    expect([segundo.novo, segundo.id === primeiro.id, segundo.itens.map((i) => [i.codigoProduto, i.quantidade])]).toEqual([true, false, [[COD_DIP, "140.00"]]]);
+    expect(await prisma.informeDeEstoqueDaFarmacia.count({ where: { ano: 2026, mes: 4 } })).toBe(2);
+    expect((await lerFatosEstoqueFarmacia(prisma, mes(4))).map((x) => [x.codigoProduto, x.quantidade.toFixed(2)])).toEqual([[COD_DIP, "140.00"]]);
+  });
+
+  it("posição negativa e código repetido entre materiais (corrida na declaração) recusam o cálculo, nomeados", async () => {
+    await vincular();
+    await adotar("CALCULADO", 3);
+    await declarar(dipirona, COD_DIP, "DIPIRONA 500MG COMPRIMIDO");
+    // Corrida fabricada SÓ para provar a guarda: o mesmo código gravado direto para o segundo material.
+    await prisma.codigoDoMaterialNoInforme.create({ data: { materialId: amoxicilina, codigoProduto: COD_DIP, descricao: "AMOXICILINA", fundamento: "fixture", criadoPor: POR } });
+    await expect(calcular(3)).rejects.toThrow(/O código 7890000000011 está declarado para mais de um material \((MED001, MED002|MED002, MED001)\)/);
+    await declarar(amoxicilina, COD_AMX, "AMOXICILINA 500MG CAPSULA");
+    // A entrada de 30 vira saída de 15, gravada direto pelo dono do banco de teste: a posição é -15.
+    const e = await prisma.movimentoFisicoDeEstoque.findFirstOrThrow({ where: { materialId: amoxicilina, depositoId }, select: { id: true } });
+    await prisma.movimentoFisicoDeEstoque.update({ where: { id: e.id }, data: { tipo: "SAIDA", quantidade: "15" } });
+    await expect(calcular(3)).rejects.toThrow(/A posição de MED002 \(-15\.00\) no fim de 03\/2026 é negativa/);
+    expect(await prisma.informeDeEstoqueDaFarmacia.count()).toBe(0);
+  });
+
+  it("movimento com mais de 2 casas na quantidade: o cálculo recusa em vez de arredondar", async () => {
+    await vincular();
+    await adotar("CALCULADO", 3);
+    await declarar(dipirona, COD_DIP, "DIPIRONA 500MG COMPRIMIDO");
+    await declarar(amoxicilina, COD_AMX, "AMOXICILINA 500MG CAPSULA");
+    // Movimento de 4 casas fabricado SÓ para provar a guarda (o dono do banco de teste o grava direto).
+    const m = await prisma.movimentoFisicoDeEstoque.findFirstOrThrow({ where: { materialId: amoxicilina, depositoId }, select: { id: true } });
+    await prisma.movimentoFisicoDeEstoque.update({ where: { id: m.id }, data: { quantidade: "30.0005" } });
+    await expect(calcular(3)).rejects.toThrow(/mais de 2 casas na quantidade \(MED002\)/);
+    expect(await prisma.informeDeEstoqueDaFarmacia.count()).toBe(0);
   });
 });

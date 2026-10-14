@@ -229,6 +229,8 @@ model Material {
   itensDeSolicitacao ItemDeSolicitacaoDeCompra[] @relation("ItemDeSolicitacao")
   itensDePesquisa    ItemDePesquisaDePrecos[]    @relation("ItemDePesquisa")
   itensDeOrdem       ItemDeOrdemDeCompra[]       @relation("ItemDeOrdem")
+  /// V39-R3 (R3-022) — o código e a descrição do produto no informe da farmácia.
+  codigosNoInforme   CodigoDoMaterialNoInforme[]
   itensDeDocumentoFiscal ItemDeDocumentoFiscal[] @relation("ItemDeDocumentoFiscal")
 }
 

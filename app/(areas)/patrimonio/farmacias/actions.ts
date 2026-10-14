@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
 import { mensagemDoErro } from "../../../../lib/portas/mensagem-do-erro";
-import { cadastrarFarmaciaPelaTela, informarEstoquePelaTela, publicarVersaoDaFarmaciaPelaTela } from "../../../../lib/portas/frota";
+import { adotarModoDoInformePelaTela, cadastrarFarmaciaPelaTela, calcularPosicaoPelaTela, declararCodigoNoInformePelaTela, informarEstoquePelaTela, publicarVersaoDaFarmaciaPelaTela } from "../../../../lib/portas/frota";
 
 export interface EstadoDaFarmacia {
   readonly erro?: string;
@@ -60,5 +60,30 @@ export async function informarEstoqueAction(_p: EstadoDaFarmacia, f: FormData): 
     const texto = t(f, "produtos");
     if (texto === "") return { erro: "Escolha o arquivo do estoque ou digite os produtos, um por linha." };
     return ato(() => informarEstoquePelaTela({ ...base, texto }), "Não foi possível informar o estoque. Nada foi gravado.");
+  });
+}
+
+/** V39-R3 (R3-022) — o modo da posição do mês, o código do medicamento no informe e o cálculo. Nenhuma regra aqui. */
+export async function adotarModoDoInformeAction(_p: EstadoDaFarmacia, f: FormData): Promise<EstadoDaFarmacia> {
+  return comComandoDoFormulario(f, async () => {
+    const mes = t(f, "desde");
+    const modo = t(f, "modo");
+    if (!/^\d{4}-\d{2}$/.test(mes)) return { erro: "Informe a partir de que mês." };
+    if (modo !== "CALCULADO" && modo !== "IMPORTADO") return { erro: "Escolha de onde vem a posição do mês." };
+    return ato(() => adotarModoDoInformePelaTela({ farmaciaId: t(f, "farmaciaId"), modo, desdeAno: Number(mes.slice(0, 4)), desdeMes: Number(mes.slice(5, 7)), fundamento: t(f, "fundamento") }), "Não foi possível adotar o modo. Nada foi gravado.");
+  });
+}
+
+export async function declararCodigoNoInformeAction(_p: EstadoDaFarmacia, f: FormData): Promise<EstadoDaFarmacia> {
+  return comComandoDoFormulario(f, async () =>
+    ato(() => declararCodigoNoInformePelaTela({ materialId: t(f, "materialId"), codigoProduto: t(f, "codigoProduto"), descricao: t(f, "descricao"), fundamento: t(f, "fundamento") }), "Não foi possível declarar o código. Nada foi gravado.")
+  );
+}
+
+export async function calcularPosicaoAction(_p: EstadoDaFarmacia, f: FormData): Promise<EstadoDaFarmacia> {
+  return comComandoDoFormulario(f, async () => {
+    const mes = t(f, "mes");
+    if (!/^\d{4}-\d{2}$/.test(mes)) return { erro: "Informe o mês." };
+    return ato(() => calcularPosicaoPelaTela({ farmaciaId: t(f, "farmaciaId"), ano: Number(mes.slice(0, 4)), mes: Number(mes.slice(5, 7)) }), "Não foi possível calcular a posição. Nada foi gravado.");
   });
 }

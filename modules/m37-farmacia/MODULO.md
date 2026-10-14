@@ -31,3 +31,45 @@ fim do mês não recebe informe.
   fora, nomeando a farmácia; o §4.56 sai.
 - Aplicabilidade: o leiaute não diz quem está obrigado. Se o município não mantém farmácia pública sob a UG, nenhuma é
   cadastrada e os dois arquivos saem vazios — isso é decisão do ente, não do sistema.
+
+## V39-R3 (R3-022, V39-072) — a posição mensal calculada dos movimentos
+
+`informe-calculado.ts`; tela Patrimônio › Farmácias públicas (por farmácia: "Mudar de onde vem a posição do mês" e
+"Posição calculada dos movimentos: códigos no informe e cálculo do mês").
+
+- **Modo adotado** (`ModoDoInformeAdotado`, append-only, por farmácia a partir de um mês): IMPORTADO (digitado ou
+  arquivo, o que já era; vale sem adoção) ou CALCULADO. Cada mês tem UMA fonte, a do modo daquele mês
+  (`origensDoModo`, a mesma regra na remessa e na tela). A adoção NÃO alcança mês que já tem posição (informada,
+  importada ou calculada, talvez já remetida): recusa nomeando o último mês com posição e o primeiro possível.
+- **A remessa** (`lerFatosEstoqueFarmacia`, SAGRES § 4.57) lê o informe mais recente da fonte do modo do mês, nunca
+  o mais recente de qualquer fonte; no modo calculado sem a posição gerada, recusa nomeando a farmácia e o motivo. O
+  informe importado de mês anterior à adoção continua valendo (importação histórica) e nada se soma.
+- **Digitar ou importar** num mês calculado recusa (seria ignorado calado).
+- **O cálculo** (`calcularInformeDaFarmacia`, mês terminado): depósito da farmácia no último dia do mês
+  (`depositoDaFarmaciaNoDia`), quantidade de cada material por `posicaoDoMaterial` — sem aritmética própria. Posição
+  zero não entra; negativa recusa; mês sem nenhum estoque não se grava (a
+  remessa recusaria calada); a farmácia tem de existir e estar ativa no mês, como no informar. Recalcular igual devolve o mesmo informe; diferente (movimento registrado depois)
+  grava outro, e vale o mais recente. Origem CALCULADO no informe, com o fundamento (dia e depósito).
+- **Código do produto no informe** (`CodigoDoMaterialNoInforme`, append-only, vale o mais recente): o código (de
+  preferência o GTIN) e a descrição de até 60 caracteres, declarados pelo ente para cada material. O material não tem
+  GTIN e o sistema não o deduz do código interno nem do CATMAT: material com estoque e sem código recusa o cálculo,
+  nomeado. O mesmo código em dois materiais recusa na declaração e, se uma corrida passar, no cálculo.
+- Poder: INFORMAR_ESTOQUE_DA_FARMACIA para adotar, declarar e calcular (nenhuma ação nova); os formulários, inclusive o
+  de informar o estoque, só aparecem para quem a tem.
+
+Pendências nomeadas (R3-022):
+- `POSICAO-ARREDONDA-QUANTIDADE` (M10): `posicaoDeEstoque` passa cada quantidade (4 casas no razão físico) por `toMoney`,
+  que arredonda a 2. O cálculo da farmácia recusa depósito com movimento de mais de 2 casas em vez de confiar nisso;
+  a correção é do M10.
+- `CALCULO-SEM-TRAVA-DA-POSICAO`: o cálculo trava a farmácia, não a posição de cada material; um movimento com data no
+  mês registrado durante o cálculo fica para o recálculo (que grava outro informe e passa a valer).
+- `ADOCAO-SO-PARA-FRENTE`: adoção errada (mês ou modo) se corrige adotando de novo a partir de outro mês ainda sem
+  posição; não há anulação da adoção.
+- `CODIGO-NO-INFORME-SEM-VIGENCIA`: o código do produto vale o mais recente, sem data; recalcular um mês antigo depois
+  de mudar o código grava o código novo.
+- `VINCULO-DO-DEPOSITO-SEM-DATA`: `DepositoDaFarmacia` não tem início de vigência; para meses antes do vínculo, o
+  cálculo usa o depósito vinculado (a posição vazia recusa).
+- `INFORME-PARA-O-BNAFAR`: o informe calculado alimenta o SAGRES; o BNAFAR depende do manual de integração do
+  SI-BNAFAR, que exige credencial do DATASUS (FONTE-BNAFAR-MANUAL-DE-INTEGRACAO).
+- `UNIDADE-DO-INFORME`: a unidade do item é a sigla da unidade de estoque do material; a conversão para outra unidade
+  de dispensação não é feita.

@@ -1,0 +1,71 @@
+// ============================================================================
+// V39-R3 (R3-023) — A CORRESPONDÊNCIA DO SIOPE MUNICIPAL, VERSIONADA POR EXERCÍCIO
+//
+// O manual do SIOPE (docs/oficial/fnde-siope/Manual_SIOPE_2026.txt, unidade do SIOPE Municipal: a lista das típicas
+// "no âmbito municipal" e os Quadros 18 a 20) diz como cada subfunção entra no cálculo da manutenção e desenvolvimento
+// do ensino. A carga (scripts/carregar-correspondencia-siope.ts) confere o sha256 do texto e a transcrição contra ele.
+// Versão nova a cada texto OU transcrição diferente; a anterior fica. A prévia lê a versão mais recente do exercício.
+// ============================================================================
+
+/// O grupo da subfunção no manual do SIOPE.
+enum GrupoDaSubfuncaoNoSiope {
+  TIPICA_DA_EDUCACAO
+  APOIO_ADMINISTRATIVO
+  OUTRA_CONSIDERADA
+  OUTRA_NAO_CONSIDERADA
+}
+
+/// Como a despesa da subfunção entra no cálculo, segundo o manual (com as condições que ele põe).
+enum TratamentoNoSiope {
+  CONSIDERADA
+  /// 366 e 367: "só se os alunos estiverem matriculados no Ensino Fundamental".
+  CONSIDERADA_SE_DO_ENSINO_FUNDAMENTAL
+  /// 782: "despesas realizadas com recursos próprios".
+  CONSIDERADA_SE_RECURSOS_PROPRIOS
+  NAO_CONSIDERADA
+}
+
+/// A seção do manual de onde a linha saiu.
+enum SecaoDoManualSiope {
+  TIPICAS_MUNICIPAIS
+  QUADRO_18
+  QUADRO_19
+  QUADRO_20
+}
+
+model CorrespondenciaSiope {
+  id String @id @default(cuid())
+
+  exercicio Int
+  versao    Int
+  /// O documento e a revisão de onde a transcrição saiu.
+  fonte            String
+  shaDoTexto       String @db.VarChar(64)
+  /// sha256 da transcrição carregada (a correção da transcrição sobre o mesmo texto é versão nova).
+  shaDaTranscricao String @db.VarChar(64)
+
+  itens ItemDaCorrespondenciaSiope[]
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@unique([exercicio, versao])
+  @@unique([exercicio, shaDoTexto, shaDaTranscricao])
+}
+
+model ItemDaCorrespondenciaSiope {
+  id String @id @default(cuid())
+
+  correspondenciaId String
+  correspondencia   CorrespondenciaSiope @relation(fields: [correspondenciaId], references: [id], onDelete: Restrict)
+
+  subfuncaoCodigo String                  @db.VarChar(3)
+  nome            String
+  grupo           GrupoDaSubfuncaoNoSiope
+  tratamento      TratamentoNoSiope
+  secao           SecaoDoManualSiope
+  /// A linha do texto guardado onde o código começa.
+  linhaNoManual   Int
+
+  @@unique([correspondenciaId, subfuncaoCodigo])
+}
