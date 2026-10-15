@@ -168,10 +168,17 @@ async function escolherReferencia(page: Page, form: string, campo: CampoDoPercur
   await page.waitForSelector(`${raiz} input[role="combobox"]`, { timeout: 30000 });
   const combo = await page.$(`${raiz} input[role="combobox"]`);
   if (combo === null) throw new Error(`seletor referenciado "${campo.sel}" não encontrado`);
+  const opcao = campo.valor === "" ? `${raiz} [role="option"]` : `${raiz} [role="option"][data-valor="${campo.valor}"]`;
+  // A lista vem do servidor. Espera-se a RESPOSTA dele (ou a opção, se a lista já estava na página), e só então os 20 s
+  // da opção aparecer. Medido na R3 refeita (15/10/2026): o servidor de desenvolvimento descarta a rota das opções quando
+  // ela fica parada e a recompila no pedido seguinte — 20,5 s, 31 s e 32,4 s —, e os 20 s contados do primeiro toque no
+  // teclado venciam antes da resposta. O prazo é o da página (o do percurso), não um número novo.
+  const respondeu = page.waitForResponse((r) => new URL(r.url()).pathname.includes("/opcoes/")).then(() => undefined, () => undefined);
+  const apareceu = page.waitForSelector(opcao).then(() => undefined, () => undefined);
   await combo.click({ count: 3 });
   await page.keyboard.press("Backspace");
   if ((campo.busca ?? "") !== "") await combo.type(campo.busca ?? "", { delay: 10 });
-  const opcao = campo.valor === "" ? `${raiz} [role="option"]` : `${raiz} [role="option"][data-valor="${campo.valor}"]`;
+  await Promise.race([respondeu, apareceu]);
   await page.waitForSelector(opcao, { timeout: 20000 });
   await page.evaluate((sel) => {
     const el = document.querySelector(sel);
@@ -238,6 +245,10 @@ export async function preencherEEnviar(page: Page, acao: string, campos: readonl
       n = n.parentElement;
     }
   }, form);
+  // A página interativa ANTES do primeiro campo, não só antes do envio. Medido na R3 refeita (15/10/2026, percurso do
+  // patrimônio): o campo de referência foi tocado com a página ainda sem o código do navegador, a lista nunca abriu e o
+  // servidor não recebeu pedido de opções nenhum. A chave de comando fica "pronta" quando o formulário está vivo.
+  if ((await page.$(`${form} input[name="__chave"]`)) !== null) await page.waitForSelector(`${form} input[name="__chave"][data-chave-de-comando="pronta"]`, { timeout: 30000 });
   for (const campo of campos) {
     if (campo.tipo === "referencia") {
       await escolherReferencia(page, form, campo);

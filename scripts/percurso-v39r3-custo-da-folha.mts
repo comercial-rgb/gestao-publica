@@ -62,10 +62,6 @@ try {
   const veTitulo = (await pc.$eval("h1", (e) => e.textContent ?? "").catch(() => "")).includes("Custo por centro");
   const temForm = (await pc.$('form[data-acao="apropriar-custo-da-folha"]')) !== null;
   conferir(veTitulo && !temForm, "quem só consulta a contabilidade vê o custo por centro e não recebe o formulário de apropriar a folha");
-  // e, sem consultar a folha, vê quantos estão sem centro, não o valor de cada matrícula
-  const veResumo = (await pc.$("[data-sem-centro-resumo]")) !== null;
-  const veMatricula = (await pc.$("[data-matricula-sem-centro]")) !== null;
-  conferir(veResumo && !veMatricula, "sem consultar a folha, a lista por matrícula não aparece; aparece o resumo");
   await ctxC.close();
 
   // ── 2 e 3. o contador apropria ──
@@ -107,6 +103,19 @@ try {
   const linhaB = linhasB.find((t) => t.includes(numeroB)) ?? "";
   conferir(linhaB.includes("FIC-0002") && linhaB.includes(numeroB) && linhaB.includes(br(B.valor)), `a lista de quem está sem centro tem FIC-0002, a liquidação ${numeroB} e o valor (${linhaB.slice(0, 100)})`);
   await ctx.close();
+
+  // ── 5. quem só consulta, DEPOIS da apropriação sem centro ──
+  // Medido na base refeita do zero: antes de haver parcela sem centro, a tela não mostra o quadro (nem resumo, nem lista),
+  // e a conferência no começo passava ou falhava conforme a base já tivesse uma apropriação de corrida anterior.
+  const ctxC2 = await nav.createBrowserContext();
+  const pc2 = await ctxC2.newPage();
+  pc2.setDefaultTimeout(300000);
+  await entrar(n, pc2, "consulta.contabilidade@ficticio.local", senha);
+  await irPara(n, pc2, `/contabilidade/custos?exercicio=${String(ano)}`);
+  const veResumo = (await pc2.$("[data-sem-centro-resumo]")) !== null;
+  const veMatricula = (await pc2.$("[data-matricula-sem-centro]")) !== null;
+  conferir(veResumo && !veMatricula, "sem consultar a folha, a lista por matrícula não aparece; aparece o resumo");
+  await ctxC2.close();
 } finally {
   await nav.close();
   await prisma.$disconnect();

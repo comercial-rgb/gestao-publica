@@ -73,16 +73,16 @@ As linhas que vinham agrupadas (057 a 062, 077 e 078, 084 a 087, 088 a 091, 092 
 
 | ID | AUD | Estado | O que há | Residual |
 |---|---|---|---|---|
-| V39-027 | AUD-031 | lacuna | A retenção nasce no pagamento. | A prévia sem lançamento pode ser construída antes da regra do momento oficial. |
+| V39-027 | AUD-031 | feito | R3-014: prévia das retenções na liquidação, sem lançamento; percurso na base R3. | A prévia sem lançamento pode ser construída antes da regra do momento oficial. |
 | V39-028 | AUD-036/041 | em produção | R2-005 a 007: fato próprio da retenção de PF (natureza e VPA próprias, pelo documento do credor do empenho), legado PF e PJ só sinalizado (sem reclassificar), documento fora do padrão recusado, anulação do pagamento indevido. Percursos `percurso-v39r2-ir-pessoa-fisica` e `percurso-v39r2-anular-pagamento-indevido` na 3011. | Não operado em produção (moveria a FIC-PM-500 com outubro aberto). Série R-4000 sem leiaute (`FONTE-REINF-LEIAUTES-2.1.2B`). |
-| V39-029 | AUD-047b | lacuna | Não há linha de extrato digitada. | Ensaio antes da decisão. |
-| V39-030 | AUD-056 | lacuna | O M07 só modela o passivo. | — |
+| V39-029 | AUD-047b | feito | R3-015: linha de extrato transcrita à mão, com revisão por outra pessoa; percurso na base R3. | Ensaio antes da decisão. |
+| V39-030 | AUD-056 | feito | R3-016: realizáveis de natureza ativa pelo caixa; percurso na base R3. | — |
 | V39-031 | AUD-118–121 | feito | Família CONTRATO (REGISTRO, ACRESCIMO, SUPRESSAO, EXECUCAO), classes 7/8, contas do contador; o rol de famílias do zod vem do mapa. Teste t3b, 5/5. | Quais eventos cada tipo de contrato usa é escolha da contadora; o mecanismo está pronto. A aplicação no razão é o V39-032. |
 | V39-032 | AUD-118–121 | em produção | R2-008 a 013: o controle contábil do contrato (REGISTRO, ACRÉSCIMO, SUPRESSÃO, EXECUÇÃO pela liquidação) com idempotência, estorno pela inversão do original e conferência contra o valor atualizado. Teste de runtime 5/5; percurso 15/15 em produção (CT-R2-141320). | Quais eventos cada tipo de contrato usa é escolha da contadora. |
-| V39-033 | AUD-124 | lacuna | — | — |
+| V39-033 | AUD-124 | feito | R3-017: referência externa do empenho, declarada e conferida por pessoas diferentes; percurso na base R3. | — |
 | V39-034 | — | existe | Atribuição de UG por guia e `ug-do-registro`. | Prova com 2 UGs. |
 | V39-035 | — | existe | `numeracaoNoExercicio` pelo ente. | Leiaute do Tribunal. |
-| V39-036 | AUD-057 | existe | Cadeia de encerramento testada em serviço (m08). | Percurso de tela; anulação parcial depois. |
+| V39-036 | AUD-057 | feito | R3-024: encerramento de 2026 e abertura de 2027 pela tela numa cópia isolada, com anulação parcial; restos e saldos de destino conferidos por SQL. | Percurso de tela; anulação parcial depois. |
 | V39-037 | — | existe | `composicao.ts` (BF, BO, DFC) até o documento. | BP, DVP e DMPL param na conta. |
 | V39-038 | AUD-078 | depende | `docs/oficial/stn-sof` tem trechos. | MCASP e manuais completos, de fonte primária. |
 
@@ -90,8 +90,8 @@ As linhas que vinham agrupadas (057 a 062, 077 e 078, 084 a 087, 088 a 091, 092 
 
 | ID | AUD | Estado | Resumo do levantamento |
 |---|---|---|---|
-| V39-039 | — | existe | Solicitação de compra existe. Falta ligá-la ao processo e consolidar. |
-| V39-040 | — | existe | Pesquisa de preços com estatística. Faltam o método, o tipo de fonte e o anexo. |
+| V39-039 | — | feito | R3-019: as solicitações formam os itens do processo; percurso na base R3. |
+| V39-040 | — | feito | R3-020: pesquisa de preços com origem, regra vigente e preço fixado; percurso na base R3. |
 | V39-041 | AUD-115 | existe | Reserva com processo. Falta a prova N=2 de consumo sem dupla dedução. |
 | V39-042 | — | em produção (código; operado só na 3011) | R2-014 a 016: itens, participantes, propostas por item ou lote com versões, resultado por item sem vencedor automático, segregação por pessoa. Teste de runtime 6/6; percurso 22/22 na 3011. Produção não tem agente de contratação fictício. |
 | V39-043 | — | em produção (código; operado só na 3011) | R2-017: adjudicação por item, sobre o resultado. |
@@ -106,28 +106,28 @@ As linhas que vinham agrupadas (057 a 062, 077 e 078, 084 a 087, 088 a 091, 092 
 | V39-052 | — | existe | Só o tipo do vínculo. Não há modelo de benefício. |
 | V39-053 | — | depende | Faltam férias, rescisão e RRA, que dependem do estatuto. |
 | V39-054 | — | existe | Afastamento e retorno. Faltam as férias. |
-| V39-055 | — | existe | Folha até a guia. Falta a ponte com a ordem de pagamento e o retorno. |
-| V39-056 | — | existe | O centro de custo no vínculo existe. O M33 não apropria por ele. |
+| V39-055 | — | feito | R3-027: ordem, lote, borderô, retorno e a rejeição do banco (nova); a R2 cobriu a folha até o pagamento. |
+| V39-056 | — | feito | R3-021: o custo da folha apropriado por centro, com a parcela sem centro nomeada; percurso na base R3. |
 | V39-057 | — | existe | A entrada física nasce da liquidação de material (um ato só com o razão), com lote e validade. Não há entrada avulsa pela tela. Falta a prova pedida (dupla entrada, limite ao recebido). |
 | V39-058 | — | existe | Requisição, cota mensal por setor e saída com o consumo no razão (a saída virou `registrarSaidaFisicaNaTx` na R2-030, sem mudar o comportamento). Falta o percurso com recusa de saldo. |
 | V39-059 | — | existe | Inventário com contagem e divergência derivada. O ajuste físico com o contábil existe agora (`registrarAjusteFisicoNaTx`, R2-031), mas só pela farmácia; no almoxarifado geral, `AJUSTE-DE-INVENTARIO-EM-LOTE` segue pendente. |
-| V39-060 | — | existe | Incorporação de bem móvel (M10). Falta a prova da origem da aquisição até o bem. |
-| V39-061 | — | existe | Transferência e termos. Falta a prova da vigência da responsabilidade. |
-| V39-062 | — | existe | Depreciação e baixa. Falta a conciliação com o razão pedida. |
+| V39-060 | — | feito | R3-026: incorporação pela liquidação, com a origem conferida por SQL. |
+| V39-061 | — | feito | R3-026: responsável, sala e transferência entre unidades, sem lançamento. |
+| V39-062 | — | feito | R3-026: depreciação por competência e baixa por doação, conferidas contra o razão. |
 | V39-063 | — | em produção (código; não operado em produção) | R2-025: condutor com versões da CNH; categorias aceitas por bem declaradas pelo ente; aviso de vencimento na tela; CNH conferida na ordem e no abastecimento. `m36-operacao` 7/7; percurso 11/11 na 3011. Produção não tem veículo. Pendência CATEGORIA-ACC. |
 | V39-064 | — | em produção (código; não operado em produção) | R2-026: ordem por bem, condutor, combustível, limite e prazo; o abastecimento pela ordem confere tudo e o saldo; prova determinística da trava. |
 | V39-065 | — | em produção (código; não operado em produção) | R2-027: leitura que não volta, correção encadeada com motivo, leitura de abastecimento anulado fora da conta, consumo derivado (km/L, L/h). |
 | V39-066 | — | em produção (código; não operado em produção) | R2-028: pedido, autorização (contrato opcional), conclusão com custo, cancelamento; as fases leem o estado depois da trava. |
 | V39-067 | — | existe | Multa (V36). Falta o andamento documental. |
-| V39-068 | — | lacuna | Tanque próprio. |
+| V39-068 | — | feito | R3-018: tanque próprio com capacidade e trava da posição; percurso na base R3. |
 | V39-069 | — | depende | Tabela farmacêutica oficial. |
 | V39-070 | — | em produção | R2-029: lote vencido não sai (régua do dia civil), N=2 sob fusos deslocados; o vencido sai só pela perda, com destino (R2-031). |
 | V39-071 | — | em produção (código; não operado em produção) | R2-030: a farmácia aponta um depósito; dispensação com vários itens num ato, lote obrigatório, consumo no razão; identificador do usuário só para quem dispensa na unidade. `m37-operacao` 10/10; percurso 8/8 na 3011, sem estoque (`ESTOQUE-DE-MEDICAMENTO-NA-BASE-DE-ENSAIO`). |
-| V39-072 | — | em produção (código; não operado em produção) | R2-031: perda (com destino) e sobra ao custo médio, no estoque e no razão, com o inventário do depósito opcional. O informe mensal derivado dos fatos não foi feito: o informe continua digitado ou por arquivo. |
+| V39-072 | — | feito | R3-022: a posição da farmácia calculada dos movimentos (modo calculado do informe); percurso na base R3. |
 | V39-073 | — | depende | Leiaute BNAFAR. |
 | V39-074 | — | existe | Tributário e dívida ativa. Falta a ponte lançamento → baixa → inscrição. |
 | V39-075 | AUD-059 | depende | Amostra do legado. |
-| V39-076 | — | existe | Convênios, sem MODULO.md. |
+| V39-076 | — | feito | R3-025: convênio recebido da receita à devolução pela tela; a mesma receita não explica dois instrumentos (teste e percurso). MODULO.md criado. |
 | V39-077 | — | existe | Diárias: concessão, prestação e devolução. Faltam a tela de cadastro e o percurso. |
 | V39-078 | — | existe | Suprimento de fundos: concessão, prestação e baixa. Faltam a tela de cadastro e o percurso. |
 | V39-079 | — | existe | Protocolo e anexo autorizado. |
@@ -142,15 +142,15 @@ As linhas que vinham agrupadas (057 a 062, 077 e 078, 084 a 087, 088 a 091, 092 
 |---|---|---|
 | V39-084 | depende | EFD-Reinf R-2000: manual 2.1.2.1 e NT 03/2023 guardados com SHA-256; leiautes 2.1.2b não obtidos (`FONTE-REINF-LEIAUTES-2.1.2B`). Sem gerador. |
 | V39-085 | depende | EFD-Reinf R-4000: o fato próprio da retenção de PF existe (R2-005); os leiautes e a tabela de natureza de rendimentos vigentes não foram obtidos. Sem gerador. |
-| V39-086 | depende | SIOPE: o manual de 2026 já estava no repositório; faltam as correspondências versionadas e a prévia. |
+| V39-086 | feito | R3-023: correspondência do SIOPE municipal versionada e a prévia; arquivo de importação bloqueado pela Tabela 2 do FNDE (nomeado). |
 | V39-087 | depende | SIOPS: só o manual municipal de 2016 é público; a estrutura vigente sai pelo módulo de gestores (`FONTE-SIOPS-ESTRUTURA-VIGENTE`). |
 | V39-088 | existe | SAGRES por UG existe (inclusive frota e farmácia). Falta a conferência do pacote com duas UGs. |
 | V39-089 | existe | RREO e RGF existem. Falta a evidência por anexo. |
 | V39-090 | existe | MSC e MANAD existem, separados. Falta o período menor que o exercício no MANAD. |
 | V39-091 | existe | eSocial existe para a folha. Sem certificado: não se alega transmissão. |
-| V39-092 | lacuna | Conferência por família de PDF (cabeçalho, ente, período, totais, páginas) não feita. |
-| V39-093 | lacuna | Conferência de CSV por releitura independente não feita. |
-| V39-094 | lacuna | O percurso por perfil (não só administrador) não foi feito para todos; a R2 usou o agente de contratação e o tesoureiro onde a segregação exige. |
+| V39-092 | feito | R3-028: dez famílias de PDF lidas página a página (pdfjs); códigos internos e documentos sem máscara corrigidos; dívida e termo sem documento na base de ensaio. |
+| V39-093 | feito | R3-029: CSV das 58 listas do molde com o conjunto filtrado inteiro, conferido por leitor independente; os CSVs públicos seguem com teto de 5.000 (nomeado). |
+| V39-094 | feito | R3-030: nove perfis sem administrador, com acesso e recusa; o fiscal de contrato sem operação percorrida (sem contrato na base de ensaio). |
 | V39-095 | existe | Aviso de versão (V38) e rascunho por aba. |
 | V39-096 | feito | O painel da conciliação passou a receber a conta (`?conta=`), e a tela é aberta antes de publicar. |
 | V39-097 | existe | Backup local antes de cada publicação. Falta a restauração provada em destino isolado. Feito nesta rodada: a cópia de produção foi restaurada localmente em `gestao_publica_ensaio_v39` e serviu na 3011. |

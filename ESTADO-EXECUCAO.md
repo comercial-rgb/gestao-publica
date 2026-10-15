@@ -18,7 +18,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 ### Unidades
 | Unidade | Commit | Construído | Teste (runtime) | Caminho positivo | Recusa | Instalado |
 |---|---|---|---|---|---|---|
-| R3-001 massa reproduzível | f4da6ec9 + seguintes | sim | massa pelo papel de runtime | sim | massa recusa base que não é ENSAIO | só na base R3 |
+| R3-001 massa reproduzível; todos os percursos numa base refeita do zero | f4da6ec9 + seguintes; final: este | sim; a ordem da reconstrução corrigida (semente antes das permissões) | massa pelo papel de runtime (2ª corrida cria 0) | base refeita do zero: 20 percursos, 15 verdes de primeira; os 5 restantes verdes sozinhos (3 por tempo do servidor de desenvolvimento, 2 por defeito do próprio percurso, corrigidos); encerramento 15/15 na cópia refeita | massa recusa base que não é ENSAIO; as recusas de cada percurso, na base nova | só na base R3 e na cópia do encerramento |
 | R3-003/004 projeto da LOA e emendas pela tela | f4da6ec9 | (existente) | percurso | `percurso-v39r3-projeto-e-emendas.mts` ok | - | base R3 |
 | R3-005 a 008 dispensação, vencido, perda, sobra | f4da6ec9 | conta da classe no estoque | t12/t13, t-alm4 | `percurso-v39r3-farmacia.mts` 19/19 | lote vencido recusado | base R3 |
 | R3-009/010 correção da dispensação, troca de depósito | 1e84a8a0 | sim | sim, com mutação | `percurso-v39r3-correcao-e-troca-da-farmacia.mts` 16/16 | sim | base R3 |
@@ -44,6 +44,36 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-001 final — todos os percursos da R3 numa base refeita do zero (15/10/2026)
+- **Reconstrução** (`refazer-r3.sh` no rascunho da sessão; saída por passo guardada): a base anterior renomeada como
+  evidência (`gestao_publica_esperanca_r3_anterior_<UTC>`); criada do modelo `gestao_publica_esperanca_ensaio_v35`;
+  migrations; SQL manual e papel de runtime; licença de ensaio; semente fictícia; atualizações de permissão; tabelas da
+  retenção, regra e correspondência do SIOPE; massa `semear-massa-r3.mts` duas vezes (110 criados, depois 0).
+- **Achado da 1ª reconstrução:** com as atualizações de permissão aplicadas ANTES da semente, as v43 a v51 ficaram
+  registradas como aplicadas com zero concessões (os perfis ainda não existiam), e o percurso da referência externa caiu
+  sem o formulário. A 2ª reconstrução pôs a semente antes; as v43 a v51 concederam, e o percurso passou 6/6. Se o
+  instalador de uma base nova tem a mesma ordem NÃO foi conferido nesta unidade (pendência
+  ORDEM-SEMENTE-E-PERMISSOES-NO-INSTALADOR).
+- **Corrida inteira** (20 percursos, um servidor, na ordem de dependência): 15 verdes de primeira. Os 5 restantes:
+  - projeto e emendas: a versão foi GRAVADA, mas a resposta levou 24,6 s (primeira compilação da ação no servidor de
+    desenvolvimento) e o percurso leu silêncio; sozinho, 17/17.
+  - solicitação no processo e patrimônio: a lista do campo de referência não chegou em 20 s. Medido: o servidor de
+    desenvolvimento descarta a rota das opções parada e a recompila (20,5 s, 31 s, 32,4 s); numa repetição, o campo foi
+    tocado antes de a página ficar interativa e nenhum pedido chegou ao servidor. O auxiliar
+    (`scripts/percursos-navegador.ts`) passou a esperar a página interativa antes do primeiro campo e a resposta do
+    servidor antes de contar os 20 s da opção — nenhum prazo foi aumentado. Sozinhos: 13/13 e 24/24.
+  - custo da folha: defeito do PERCURSO — conferia o resumo de quem só consulta antes de existir parcela sem centro; numa
+    base nova o quadro não aparece. A conferência foi para depois da apropriação; sozinho, 6/6.
+  - folha até o banco: a rejeição foi gravada (as conferências seguintes acharam o cancelamento e a rejeição ligada), mas
+    a mensagem saiu da tela com o formulário (pendência MENSAGEM-QUE-SAI-COM-O-FORMULARIO). O passo agora se afirma pela
+    rejeição gravada quando a mensagem não é lida, e o diz. Repetido: sem falha (5 ok, 11 passos já feitos ditos).
+  - Uma das repetições caiu porque a máquina saturou (0,5 GB livres; o próprio Next reiniciou por memória); o servidor
+    foi reiniciado e as repetições refeitas. Não contada como aprovação nem defeito.
+- **Encerramento** na cópia `gestao_publica_esperanca_r3_encerramento`, clonada da base refeita e preparada
+  (`preparar-encerramento-r3.mts`): 15/15 de primeira, na 3013.
+- **Typecheck:** `tsconfig.scripts.json` mais os três `.mts` alterados, por configuração temporária (removida): 0 erros.
+- **Não é:** validação externa, nem publicação. A cópia do encerramento continua isolada.
 
 ### R3-030 — jornadas por perfil, sem administrador
 - **Percurso** `scripts/percurso-v39r3-jornadas-por-perfil.mts`: para cada perfil do pedido, o usuário de ensaio que o
@@ -434,9 +464,11 @@ Nenhuma linha acima foi validada externamente nem publicada.
   `m07-calculo-da-retencao` e `m07` 58/58.
 
 ### O próximo passo
-1. R3-024 a R3-030 na ordem do pedido.
-2. R3-001 final: todos os percursos da R3 numa base R3 refeita do zero.
-3. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
+1. ~~R3-024 a R3-030~~ e ~~R3-001 final~~ feitos (acima).
+2. R3-002: perguntar destino e autorização antes de carregar a massa na produção; publicar com o backup da regra.
+3. Pendências nomeadas abertas: TYPECHECK-SEM-MTS (11 erros em .mts antigos), FISCAL-SEM-CONTRATO-NA-R3,
+   NUMERO-DE-CONTROLE-COM-CODIGO-INTERNO, TRANSPARENCIA-CSV-TETO-5000, REJEICAO-DE-NOTA-EXTRA,
+   MENSAGEM-QUE-SAI-COM-O-FORMULARIO e as de cada unidade; depois, os itens tratáveis da matriz V39.
 
 ## V39-R2: continuidade da V39 (iniciada em 10/10/2026; vale sobre a V39 abaixo)
 

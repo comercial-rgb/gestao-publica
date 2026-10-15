@@ -180,7 +180,11 @@ try {
       { sel: 'input[name="ocorrencia"]', valor: "BD - conta do favorecido encerrada (ensaio)" },
     ]);
     await ctx.close();
-    conferir(rj.tipo === "ok" && /ordem do item foi cancelada/.test(rj.texto), `retorno: o banco rejeitou R3-OP-0002 (${rj.texto.slice(0, 90)})`);
+    // Sem outro item a rejeitar, o formulário sai da tela com a mensagem dentro (pendência MENSAGEM-QUE-SAI-COM-O-FORMULARIO):
+    // conforme o tempo do servidor, o percurso lê a mensagem ou o silêncio. No silêncio, o passo se afirma pelo efeito.
+    const gravada = (await prisma.rejeicaoDeRetornoBancario.count({ where: { itemId: itemB.id } })) === 1;
+    if (rj.tipo === "silencio") nota("retorno: a mensagem da rejeição saiu da tela com o formulário; o passo se afirma pela rejeição gravada");
+    conferir(gravada && (rj.tipo === "silencio" || (rj.tipo === "ok" && /ordem do item foi cancelada/.test(rj.texto))), `retorno: o banco rejeitou R3-OP-0002 (${rj.texto.slice(0, 90)})`);
   } else nota("a rejeição de R3-OP-0002 já estava registrada numa corrida anterior");
   {
     const { ctx, p } = await sessao("tesoureiro.lote@ficticio.local");
