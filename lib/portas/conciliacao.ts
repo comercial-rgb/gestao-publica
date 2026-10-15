@@ -1,3 +1,4 @@
+import { ROTULO_MOVIMENTO_BANCARIO } from "../../modules/m09-tesouraria/dominio";
 import { fimDoDiaDoBanco, instanteDoDiaDoBanco, janelaDoBancoDoAno, limiteDoBancoApos } from "../../modules/m09-tesouraria/dia-do-banco";
 import { cliente, PortaSemBancoError } from "./cliente";
 import { exigirLeituraDoEnte } from "./leitura";
@@ -489,16 +490,6 @@ async function resolverInterno(
  * O rótulo de cada tipo na TELA. Record exaustivo — um tipo novo não compila até
  * alguém escrever como ele se chama para quem lê, em vez de vazar o nome do enum.
  */
-const ROTULO_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, string> = {
-  DEPOSITO: "Depósito",
-  SAQUE: "Saque",
-  APLICACAO: "Aplicação financeira",
-  RESGATE: "Resgate de aplicação",
-  RENDIMENTO: "Rendimento creditado",
-  TARIFA: "Tarifa bancária",
-  SAIDA_PARA_REALIZAVEL: "Saída para valor a receber de volta",
-  RETORNO_DE_REALIZAVEL: "Retorno de valor a receber",
-};
 
 /** Os lançamentos sem conta bancária, com o que o contador precisa para achá-los no razão. */
 async function lancamentosNomeados(

@@ -2,6 +2,7 @@ import { gerarPdfDoDemonstrativo, type ResultadoPdf } from "./gerar";
 import type { DocumentoPdf, SecaoPdf } from "./documento";
 import { formatarMoeda } from "../format/moeda";
 import { mascararCpfCnpj } from "../format/mascaras";
+import { ROTULO_CATEGORIA_DO_EMPENHO, ROTULO_STATUS_DO_EMPENHO } from "../format/rotulos-do-empenho";
 import { dataBr } from "../recorte";
 import { lerArrecadacoes, type ArrecadacaoDaTela } from "../portas/arrecadacao";
 import { listarEmpenhosDaExecucao, type EmpenhoDaTela, type VinculoDoEmpenho } from "../portas/empenho";
@@ -87,8 +88,8 @@ export async function montarPdfEmpenhos(p: { readonly exercicio: number; readonl
       { rotulo: "A pagar", alinhamento: "direita" }, { rotulo: "Status" },
     ],
     linhas: empenhos.map((e: EmpenhoDaTela) => [
-      e.numero, dataBr(e.data), e.credorCpfCnpj, String(e.fichaNumero), e.fonteCodigo,
-      brl(e.empenhadoLiquido), brl(e.liquidado), brl(e.pago), brl(e.saldoALiquidar), brl(e.saldoAPagar), e.status,
+      e.numero, dataBr(e.data), mascararCpfCnpj(e.credorCpfCnpj), String(e.fichaNumero), e.fonteCodigo,
+      brl(e.empenhadoLiquido), brl(e.liquidado), brl(e.pago), brl(e.saldoALiquidar), brl(e.saldoAPagar), ROTULO_STATUS_DO_EMPENHO[e.status] ?? e.status,
     ]),
   };
   return {
@@ -154,7 +155,7 @@ export async function montarPdfGerencialEmpenhos(p: {
     linhas: empenhos.map((e: EmpenhoDaTela) => [
       e.numero, dataBr(e.data), mascararCpfCnpj(e.credorCpfCnpj), e.unidadeCodigo,
       String(e.fichaNumero), e.fonteCodigo,
-      brl(e.empenhadoLiquido), brl(e.liquidado), brl(e.pago), brl(e.saldoALiquidar), brl(e.saldoAPagar), e.status,
+      brl(e.empenhadoLiquido), brl(e.liquidado), brl(e.pago), brl(e.saldoALiquidar), brl(e.saldoAPagar), ROTULO_STATUS_DO_EMPENHO[e.status] ?? e.status,
     ]),
   };
 
@@ -184,7 +185,7 @@ export async function montarPdfLiquidacoes(p: { readonly exercicio: number; read
       { rotulo: "Pago", alinhamento: "direita" }, { rotulo: "A pagar", alinhamento: "direita" },
     ],
     linhas: liqs.map((l: LiquidacaoDaTela) => [
-      l.numero, dataBr(l.data), l.empenhoNumero, l.credorCpfCnpj, l.fonteCodigo,
+      l.numero, dataBr(l.data), l.empenhoNumero, mascararCpfCnpj(l.credorCpfCnpj), l.fonteCodigo,
       l.responsavelAtesto, brl(l.liquidadoLiquido), brl(l.pago), brl(l.saldoAPagar),
     ]),
   };
@@ -213,14 +214,14 @@ export async function montarPdfFilaPagamentos(p: { readonly fonteCodigo?: string
   const fonte = p.fonteCodigo !== undefined && p.fonteCodigo !== "" ? p.fonteCodigo : undefined;
   const grupos = await lerFilasDePagamento(fonte !== undefined ? { fonteCodigo: fonte } : undefined);
   const secoes: SecaoPdf[] = grupos.map((g) => ({
-    titulo: `Fonte ${g.fonteCodigo} · ${g.categoria} — total a pagar: ${brl(g.total)}`,
+    titulo: `Fonte ${g.fonteCodigo} · ${ROTULO_CATEGORIA_DO_EMPENHO[g.categoria] ?? g.categoria} — total a pagar: ${brl(g.total)}`,
     colunas: [
       { rotulo: "Pos.", alinhamento: "direita" }, { rotulo: "Liquidação" }, { rotulo: "Liquidada em" },
       { rotulo: "Empenho" }, { rotulo: "Credor" }, { rotulo: "Liquidado", alinhamento: "direita" },
       { rotulo: "A pagar", alinhamento: "direita" },
     ],
     linhas: g.linhas.map((l) => [
-      String(l.posicao), l.numero, dataBr(l.dataLiquidacao), l.empenhoNumero, l.credorCpfCnpj,
+      String(l.posicao), l.numero, dataBr(l.dataLiquidacao), l.empenhoNumero, mascararCpfCnpj(l.credorCpfCnpj),
       brl(l.valorLiquidado), brl(l.saldoAPagar),
     ]),
   }));
@@ -263,8 +264,8 @@ export async function montarNotaEmpenho(p: { readonly exercicio: number; readonl
       ["Unidade orçamentária", `${e.unidadeCodigo} — ${e.unidadeNome}`],
       ["Ficha / dotação", String(e.fichaNumero)],
       ["Fonte de recurso", e.fonteCodigo],
-      ["Natureza da contratação", e.categoria],
-      ["Situação", e.status],
+      ["Natureza da contratação", ROTULO_CATEGORIA_DO_EMPENHO[e.categoria] ?? e.categoria],
+      ["Situação", ROTULO_STATUS_DO_EMPENHO[e.status] ?? e.status],
     ],
   };
   const valores: SecaoPdf = {

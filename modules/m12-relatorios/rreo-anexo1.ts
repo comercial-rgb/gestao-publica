@@ -6,6 +6,7 @@ import { reprevisaoAcumuladaPorNatureza } from "../m02-planejamento/consultas.js
 import { janelaCivilDeMeses, janelaCivilDoAno } from "../../packages/datas/index.js";
 import {
   CATEGORIAS_RECEITA,
+  NOME_DA_ORIGEM,
   ORIGEM_RECEITA,
   parsearNaturezaReceita,
   type CategoriaReceita,
@@ -349,7 +350,8 @@ function rotuloCategoria(cat: string): string {
   return CATEGORIAS_RECEITA[cat as CategoriaReceita] ?? `Categoria ${cat}`;
 }
 function rotuloOrigem(ori: string): string {
-  return ORIGEM_RECEITA[ori as ChaveOrigem] ?? `Origem ${ori}`;
+  const origem = ORIGEM_RECEITA[ori as ChaveOrigem] as (typeof ORIGEM_RECEITA)[ChaveOrigem] | undefined;
+  return origem === undefined ? `Origem ${ori}` : NOME_DA_ORIGEM[origem];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

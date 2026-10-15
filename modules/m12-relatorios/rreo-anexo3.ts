@@ -5,6 +5,7 @@ import {
   arrecadadoPorNaturezaFonte,
 } from "../m04-receita/consultas.js";
 import {
+  NOME_DA_ORIGEM,
   ORIGEM_RECEITA,
   parsearNaturezaReceita,
   type ChaveOrigem,
@@ -459,7 +460,8 @@ function finalizar(
 }
 
 function rotuloOrigem(ori: string): string {
-  return ORIGEM_RECEITA[ori as ChaveOrigem] ?? `Origem ${ori}`;
+  const origem = ORIGEM_RECEITA[ori as ChaveOrigem] as (typeof ORIGEM_RECEITA)[ChaveOrigem] | undefined;
+  return origem === undefined ? `Origem ${ori}` : NOME_DA_ORIGEM[origem];
 }
 
 /**

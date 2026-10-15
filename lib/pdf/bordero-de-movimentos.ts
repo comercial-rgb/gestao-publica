@@ -2,19 +2,13 @@ import type { DocumentoPdf } from "./documento";
 import { formatarMoeda } from "../format/moeda";
 import { dataBr } from "../recorte";
 import type { BorderoDeMovimentos } from "../portas/tesouraria";
+import { ROTULO_MOVIMENTO_BANCARIO } from "../../modules/m09-tesouraria/dominio";
+import type { TipoMovimentoBancario } from "../../prisma/generated/client/client";
 
 /**
  * V36 (TR 5.10.2.22) — O PDF DO BORDERÔ DOS MOVIMENTOS BANCÁRIOS: a conta (banco, agência e número), os movimentos
  * vigentes do período com o sentido, o total de entradas e de saídas, e o espaço do visto. Montagem pura.
  */
-const ROTULO_DO_TIPO: Readonly<Record<string, string>> = {
-  DEPOSITO: "Depósito",
-  SAQUE: "Saque",
-  APLICACAO: "Aplicação financeira",
-  RESGATE: "Resgate de aplicação",
-  RENDIMENTO: "Rendimento creditado",
-  TARIFA: "Tarifa bancária",
-};
 const brl = (v: string): string => formatarMoeda(v).texto;
 const diaBr = (iso: string): string => iso.split("-").reverse().join("/");
 
@@ -33,7 +27,7 @@ export function documentoDoBorderoDeMovimentos(p: { readonly ente: string; reado
         titulo: "Movimentos",
         colunas: [{ rotulo: "Data" }, { rotulo: "Operação" }, { rotulo: "Fonte" }, { rotulo: "Histórico" }, { rotulo: "Entrada", alinhamento: "direita" }, { rotulo: "Saída", alinhamento: "direita" }],
         linhas: [
-          ...b.linhas.map((l) => [dataBr(l.data), ROTULO_DO_TIPO[l.tipo] ?? l.tipo, l.fonteCodigo, l.historico, l.sentido === "ENTRADA" ? brl(l.valor.toFixed(2)) : "", l.sentido === "SAIDA" ? brl(l.valor.toFixed(2)) : ""]),
+          ...b.linhas.map((l) => [dataBr(l.data), ROTULO_MOVIMENTO_BANCARIO[l.tipo as TipoMovimentoBancario] ?? "Movimento", l.fonteCodigo, l.historico, l.sentido === "ENTRADA" ? brl(l.valor.toFixed(2)) : "", l.sentido === "SAIDA" ? brl(l.valor.toFixed(2)) : ""]),
           ["", "", "", `Total (${String(b.linhas.length)} movimento(s))`, brl(b.entradas.toFixed(2)), brl(b.saidas.toFixed(2))],
         ],
         totais: [b.linhas.length],

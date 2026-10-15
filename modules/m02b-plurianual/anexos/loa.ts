@@ -5,6 +5,7 @@ import {
 } from "../../../prisma/seed/dados/natureza-componentes.js";
 import {
   CATEGORIAS_RECEITA,
+  NOME_DA_ORIGEM,
   ORIGEM_RECEITA,
   categoriaDaReceita,
   type ChaveOrigem,
@@ -160,26 +161,6 @@ export class ConferenciaDaLoaError extends Error {
 // RÓTULOS OFICIAIS
 // ═══════════════════════════════════════════════════════════════════════════
 
-/**
- * O nome de cada origem da receita (Portaria Interministerial STN/SOF 163/2001, 2º dígito). A
- * CHAVE é o rol fechado do M04 (`OrigemReceita`) — Record exaustivo: uma origem nova no rol sem
- * nome aqui não compila.
- */
-const NOME_DA_ORIGEM: Readonly<Record<OrigemReceita, string>> = {
-  IMPOSTOS_TAXAS_CONTRIBUICOES_DE_MELHORIA: "Impostos, Taxas e Contribuições de Melhoria",
-  CONTRIBUICOES: "Contribuições",
-  RECEITA_PATRIMONIAL: "Receita Patrimonial",
-  RECEITA_AGROPECUARIA: "Receita Agropecuária",
-  RECEITA_INDUSTRIAL: "Receita Industrial",
-  RECEITA_DE_SERVICOS: "Receita de Serviços",
-  TRANSFERENCIAS_CORRENTES: "Transferências Correntes",
-  OUTRAS_RECEITAS_CORRENTES: "Outras Receitas Correntes",
-  OPERACOES_DE_CREDITO: "Operações de Crédito",
-  ALIENACAO_DE_BENS: "Alienação de Bens",
-  AMORTIZACAO_DE_EMPRESTIMOS: "Amortização de Empréstimos",
-  TRANSFERENCIAS_DE_CAPITAL: "Transferências de Capital",
-  OUTRAS_RECEITAS_DE_CAPITAL: "Outras Receitas de Capital",
-};
 
 /** Categorias da despesa fora das duas econômicas: as reservas (Portaria STN/SOF 163/2001, art. 8º). */
 const CATEGORIAS_DE_RESERVA: Readonly<Record<string, string>> = {

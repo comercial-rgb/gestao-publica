@@ -557,3 +557,19 @@ export const zEstornarMovimentoBancario = z.object({
 export type EstornarMovimentoBancarioInput = z.input<
   typeof zEstornarMovimentoBancario
 >;
+
+/**
+ * O rótulo de cada tipo de movimento bancário para quem lê (tela e PDF). Record exaustivo — um tipo novo não compila até
+ * alguém escrever como ele se chama, em vez de vazar o nome do enum. V39-R3 (R3-028): veio da porta da conciliação para
+ * cá, porque o PDF do borderô dos movimentos tinha uma cópia parcial e imprimia o código dos tipos que faltavam.
+ */
+export const ROTULO_MOVIMENTO_BANCARIO: Record<TipoMovimentoBancario, string> = {
+  DEPOSITO: "Depósito",
+  SAQUE: "Saque",
+  APLICACAO: "Aplicação financeira",
+  RESGATE: "Resgate de aplicação",
+  RENDIMENTO: "Rendimento creditado",
+  TARIFA: "Tarifa bancária",
+  SAIDA_PARA_REALIZAVEL: "Saída para valor a receber de volta",
+  RETORNO_DE_REALIZAVEL: "Retorno de valor a receber",
+};

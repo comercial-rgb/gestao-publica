@@ -206,6 +206,11 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "informe.farmacia@ficticio.local", nome: "Responsável pelo informe da farmácia (fictícia)", perfil: "INFORME DA FARMÁCIA — ENSAIO",
     acoes: ["INFORMAR_ESTOQUE_DA_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-028) — quem só lê os documentos (o percurso das famílias de PDF): consultas, nenhuma escrita.
+  {
+    email: "leitura.documentos@ficticio.local", nome: "Leitura de documentos (fictícia)", perfil: "LEITURA DE DOCUMENTOS — ENSAIO",
+    acoes: ["CONSULTAR_RELATORIOS", "CONSULTAR_CONTABILIDADE", "CONSULTAR_DESPESA", "CONSULTAR_FINANCEIRO", "CONSULTAR_PLANEJAMENTO", "CONSULTAR_FOLHA", "CONSULTAR_PATRIMONIO", "CONSULTAR_DIVIDA", "CONSULTAR_RECEITA"],
+  },
   // V39-R3 (R3-027) — a folha até o banco: quem prepara a ordem, quem a autoriza (outra pessoa) e quem leva ao lote,
   // gera o borderô (que também anexa o documento e abre a fila de assinatura: as duas ações entram) e registra o
   // retorno (pago ou rejeitado).

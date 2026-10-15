@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-028 PDF por família | este | códigos internos e CPF/CNPJ sem máscara corrigidos em 5 documentos | testes dirigidos 131 (7 timeouts de saturação, refeitos sozinhos: 9/9) | `percurso-v39r3-pdf-familias.mts` 10/10 famílias com documento (2 sem documento na base, ditas); 4 mutações no gerador | página vazia, letra encolhida, conteúdo fora da página, código interno, documento sem máscara | base R3 |
 | R3-029 CSV do conjunto inteiro (listas do molde) | este | rota de exportação + registro das 58 listas | `exportacao-do-molde` (2) com mutação; percurso com mutação da rota | `percurso-v39r3-csv-completo.mts` 3/3 | quem não consulta não recebe o arquivo; conjunto que muda no meio recusa (não provocado em percurso) | base R3 |
 | R3-027 folha até o banco: ordem, lote, borderô, retorno e rejeição | este | rejeição do retorno (nova); 3 rótulos de escrita corrigidos; fila do art. 141 | 4 testes novos (t19 a t22; 24 no arquivo), 9 mutações vermelhas; `test/rotulo-da-escrita.test.ts` (3) com mutação | `percurso-v39r3-folha-ate-o-banco.mts`: as operações correram em três corridas (cada uma achou um defeito, abaixo); a 4ª, retomando, verde | quem só consulta sem formulário; rejeitado não se baixa, baixado não se rejeita, ordem com pagamento vivo, outro borderô, sem permissão, ordem rejeitada não entra em lote nem se paga | base R3 (migration 20261111092100) |
 | R3-024 encerramento de 2026 e abertura de 2027 (cópia isolada) | este | (existente) + preparação da cópia | testes do M08 existentes (não alterados) | `percurso-v39r3-encerramento.mts` 1ª corrida 12/15 (as 3 falhas eram do percurso: corte ao meio-dia de 31/12 e a expressão da recusa; as operações e as recusas aconteceram), 2ª corrida verde | confirmação errada, virada sem destino, quem anula não encerra | cópia `gestao_publica_esperanca_r3_encerramento` |
@@ -42,6 +43,37 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-028 — PDF: as famílias documentais, uma a uma
+- **Inventário** (levantamento só de leitura): um motor só (`lib/pdf/gerar.ts`, Chromium) e um molde (`lib/pdf/documento.ts`:
+  cabeçalho com ente, unidade, título, período e filtros; rodapé com o identificador SHA-256 do conteúdo, "Página N de M",
+  hora de emissão e o aviso de documento não assinado). Doze famílias: demonstrações, livros, listagens operacionais,
+  gerencial, documento individual (nota de empenho e afins), pagamentos efetuados, tesouraria, dívida, planejamento (LOA),
+  termos, folha e o público (RREO). Antes, nenhum teste lia o PDF renderizado dessas famílias.
+- **Verificador** (`scripts/percurso-v39r3-pdf-familias.mts`, pdfjs, com quem só consulta): em toda página, ente, título,
+  período, paginação em ordem com N real, o mesmo identificador em todas, o aviso de assinatura, nenhuma página vazia,
+  nada fora da largura, menor letra do corpo de 6 pt, nenhum código interno (MAIÚSCULAS_COM_SUBLINHADO) e nenhum CPF/CNPJ
+  sem máscara; na LOA, "Despesa fixada" igual à soma das fichas por SQL.
+- **Defeitos achados e corrigidos:** o RREO (público) e o Anexo 3 imprimiam o código da origem da receita — o nome oficial
+  passou do anexo da LOA para `NOME_DA_ORIGEM` no M04, usado pelos três; o borderô dos movimentos tinha cópia parcial dos
+  rótulos e imprimia o código da saída para valor a receber — o rótulo completo passou para o domínio do M09, usado pela
+  tela e pelo PDF; a listagem de empenhos, o gerencial e a nota de empenho imprimiam a situação e a categoria em código
+  (`PARCIAL_LIQUIDADO`, `FORNECIMENTO_BENS`) — os rótulos da tela passaram para `lib/format/rotulos-do-empenho.ts`; as
+  listagens de empenhos, liquidações e fila imprimiam o CPF/CNPJ sem máscara.
+- **Resultado:** 10 de 10 famílias com documento na base passam (dívida e termo patrimonial não têm documento na R3: ditos,
+  não contados). Menor letra 8,0 pt em todas.
+- **Provas do verificador:** os próprios defeitos acima (vermelho antes, verde depois); mutações no gerador — página em
+  branco forçada no fim (acusa "vazias [3]"); corpo deslocado para fora da página (acusa ente e título ausentes); tabela a
+  170% da largura (o Chromium encolhe a página: acusa "menor letra 5,3 pt"). O controle de "texto fora da largura" não
+  acusou nenhuma das mutações — o Chromium encolhe ou corta inteiro, e o que é cortado inteiro some do texto (aparece como
+  conteúdo ausente); fica como controle redundante, não como prova.
+- **Testes dirigidos:** anexos da LOA, LDO, RREO 1/3/10–14, RGF 1/3, natureza da receita, borderô, PDF padrão e um de UI:
+  131, com 7 timeouts em dois arquivos (RGF 1, RREO 14), DIFERENTES a cada corrida; sozinhos e com a máquina livre, 9/9 —
+  saturação (servidor de desenvolvimento e navegador abertos), não regra.
+- **Pendências nomeadas:** NUMERO-DE-CONTROLE-COM-CODIGO-INTERNO (o número de controle gravado de cada lançamento, impresso
+  no Diário, carrega o tipo do fato, ex. `DOT-DOTACAO_INICIAL-…`; é identificador append-only de vários módulos; o
+  verificador dispensa essa família com o motivo dito); PDF-DIVIDA-E-TERMO-SEM-DOCUMENTO-NA-R3 (as duas famílias não
+  foram lidas por falta de documento na base de ensaio).
 
 ### R3-029 — CSV: o conjunto filtrado inteiro, conferido por leitor independente
 - **Inventário** (levantamento só de leitura): um gerador comum (`lib/csv/csv.ts`: ";", UTF-8 com marca de ordem de
