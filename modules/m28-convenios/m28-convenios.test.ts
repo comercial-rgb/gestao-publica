@@ -506,6 +506,27 @@ describe("V39-R2 — a receita arrecadada na liberação do convenente", () => {
       .rejects.toThrow(/A receita 2026RC000004 foi arrecadada em 10\/02\/2026, depois da liberação/);
   });
 
+  // V39-R3 (R3-025) — a MESMA receita em DOIS instrumentos: o que um já explica conta contra o outro. Contas: A liga 40.000
+  // de 60.000; B com 30.000 passaria (70.000) e é recusado com o motivo; B com 20.000 fecha exatamente o arrecadado.
+  it("a mesma receita em dois convênios: o já explicado por um conta contra o outro", async () => {
+    await prisma.naturezaReceita.create({ data: { id: "nr-conv", codigo: "17199901", descricao: "Transferências de convênios (fixture)" } });
+    const a = await convenioDeTeste("CONVENENTE");
+    const { convenioId: b } = await cadastrarConvenio(prisma, {
+      identificador: "CV-2026-003", objeto: "Segundo termo recebido na mesma fonte", papelDoEnte: "CONVENENTE", partidaNome: "Secretaria de Estado (fixture)",
+      partidaDocumento: "12345678000195", leiAutorizativa: "Lei Municipal 8.100/2025", valorRepasse: "100000.00", valorContrapartida: "0.00",
+      diaVigenciaInicio: "2026-01-01", diaVigenciaFim: "2026-06-30", fonteRecursoId: FONTE, contaContabilId: "c-ctrl-a", criadoPor: POR,
+    });
+    const r1 = await arrecadacao("2026RC000001", "60000.00", FONTE);
+    const base = { diaMovimento: "2026-02-15", competencia: "2026-02", criadoPor: POR, receitaArrecadadaId: r1 };
+    await liberarParcela(prisma, { ...base, convenioId: a, valor: "40000.00", parcela: 1, motivo: "Parcela de A." });
+    await expect(liberarParcela(prisma, { ...base, convenioId: b, valor: "30000.00", parcela: 1, motivo: "Parcela de B na mesma receita." }))
+      .rejects.toThrow(/A receita 2026RC000001 trouxe 60000\.00, já explica 40000\.00 de outras liberações, e esta é de 30000\.00: passa do que entrou/);
+    expect(await prisma.movimentoConvenio.count({ where: { convenioId: b } })).toBe(0);
+    await liberarParcela(prisma, { ...base, convenioId: b, valor: "20000.00", parcela: 1, motivo: "Parcela de B, o resto da receita." });
+    const ligados = await prisma.movimentoConvenio.findMany({ where: { receitaArrecadadaId: r1 }, select: { convenioId: true, valor: true } });
+    expect(ligados.map((m) => [m.convenioId, m.valor.toFixed(2)]).sort()).toEqual([[a, "40000.00"], [b, "20000.00"]].sort());
+  });
+
   it("A TRAVA EXISTE: com a receita travada por outra transação, a liberação que a liga espera e só grava depois", async () => {
     await prisma.naturezaReceita.create({ data: { id: "nr-conv", codigo: "17199901", descricao: "Transferências de convênios (fixture)" } });
     const convenente = await convenioDeTeste("CONVENENTE");

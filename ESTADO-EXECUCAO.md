@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-025 convênio recebido: ingresso, vínculo à receita, prestação, glosa, devolução | este | (existente) + teste entre instrumentos | 1 teste novo (3 no bloco), 1 mutação vermelha | `percurso-v39r3-convenio.mts` 7/7 | mesma receita em outro convênio passando do arrecadado (tela e teste); quem só consulta não recebe as ações | base R3 |
 | R3-023 prévia do SIOPE municipal (correspondência versionada) | este | sim | 5 testes, 12 mutações vermelhas | `percurso-v39r3-previa-do-siope.mts` 5/5 | sem correspondência, transcrição adulterada (omissão, linha, seção, nome, condição, tratamento, repetida), sem permissão (tela); arquivo de importação e separação da 365 bloqueados, nomeados | base R3 |
 | R3-022 posição da farmácia calculada dos movimentos | este | sim | 7 testes, 14 mutações vermelhas | `percurso-v39r3-posicao-da-farmacia.mts` 9/9 (rerun 6/6 + 2 já feitos) | modo importado, mês aberto, sem código, código repetido, negativo, mais de 2 casas, posição vazia, adoção retroativa, digitar no modo calculado, sem permissão | base R3 |
 | R3-021 custo da folha com a parcela sem centro | 4ee95965 | sim | 4 testes novos (19 no arquivo), 6 mutações vermelhas | `percurso-v39r3-custo-da-folha.mts` 6/6 | quem só consulta não recebe o formulário nem a lista por matrícula; divergência com o fechamento; folha por critério; sem permissão (teste) | base R3 |
@@ -37,6 +38,21 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-025 (M28) — convênio recebido, do ingresso à devolução
+- **Rota:** Transferências › Convênios › detalhe (`/transferencias/convenios/<id>`): liberar parcela ligando a receita
+  arrecadada que a trouxe; aprovar prestação de contas; glosar; registrar devolução. Nada novo de código de domínio: a
+  ligação à receita (V39-R2) e a trava por receita já existiam.
+- **Massa (seção 11 de `semear-massa-r3.mts`):** conta FIC-PM-571 com titular, conta da receita 172451 → VPA
+  4.5.2.3.4.99.00, arrecadação R3-CONV-REC-001 de R$ 30.000,00 pelo serviço da receita, três roteiros de controle e
+  dois convênios recebidos (A 20.000, B 15.000). Gestora e consulta de convênios.
+- **Parâmetros de ensaio, não norma:** a VPA e os roteiros de controle (D 7.1.1.2.1.01.00 / C 8.1.1.2.1.01.04 na
+  aprovação; idem C 8.1.1.2.1.01.05 na glosa; o inverso da glosa na devolução) foram escolhidos no plano do TCE-PB
+  carregado. Pendência ROTEIRO-DE-CONVENIO-A-DECIDIR-PELO-CONTADOR em `modules/m28-convenios/MODULO.md`.
+- **Comandos:** `m28-convenios.test.ts` bloco da receita 3/3, com o teste novo "a mesma receita em dois convênios";
+  mutação (somar só as liberações do mesmo convênio) vermelha, revertida. Percurso 7/7: consulta sem ações; A 20.000
+  ligada; B 15.000 na mesma receita recusada com o motivo, nada gravado; B 10.000; A aprova 18.000, glosa 2.000,
+  devolve 2.000; por SQL, ligado 30.000 = arrecadado e o razão de controle de A 18.000 / -18.000 / 0.
 
 ### R3-023 (V39-086, M12) — preparação do SIOPE municipal: correspondência versionada e prévia
 - **Rota:** Relatórios › Prévia do SIOPE (`/relatorios/siope`, CONSULTAR_RELATORIOS): a despesa da função Educação por

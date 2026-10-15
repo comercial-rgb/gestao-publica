@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { criarPrismaClient } from "../../modules/m01-core-contabil/adapter-prisma.js";
 import { exigirContaDaLiquidacao } from "../../modules/m01-core-contabil/conta-da-liquidacao.js";
-import { CONTA_FORNECEDORES_A_PAGAR, roteiroEmpenho, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros.js";
+import { CONTA_FORNECEDORES_A_PAGAR, roteiroArrecadacao, roteiroEmpenho, roteiroLiquidacao } from "../../modules/m01-core-contabil/roteiros.js";
 import { declararDadosDaUnidade, type NaturezaJuridicaDaUnidade } from "../../modules/m02-planejamento/declaracao-da-unidade.js";
 import { declararDadosDaAcao, declararDadosDoPrograma } from "../../modules/m02-planejamento/declaracao-do-programa.js";
 import { elaborarPropostaOrcamentaria } from "../../modules/m02-planejamento/proposta-orcamentaria.js";
@@ -24,6 +24,13 @@ import { cadastrarFarmacia } from "../../modules/m37-farmacia/servico.js";
 import { registrarPerfilFiscal } from "../../modules/m07-extraorcamentario/retencao-calculada.js";
 import { criarSetor } from "../../modules/m21-protocolo/cadastros.js";
 import { registrarMovimentacao } from "../../modules/m32-pessoal/servico.js";
+import { declararTitularDaContaBancaria, titularVigenteDaConta } from "../../modules/m01-core-contabil/entidade-contabil.js";
+import { contaDaReceitaVigente, declararContaDaReceita } from "../../modules/m04-receita/conta-da-receita.js";
+import { registrarArrecadacao } from "../../modules/m04-receita/servico.js";
+import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma.js";
+import { exigirNaturezaDaFonte } from "../../modules/m01-core-contabil/natureza-da-fonte.js";
+import { declararRoteiroPatrimonial } from "../../modules/m01-core-contabil/roteiro-patrimonial-declarado.js";
+import { cadastrarConvenio } from "../../modules/m28-convenios/servico.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -194,6 +201,15 @@ export const PAPEIS_R3: readonly PapelR3[] = [
   {
     email: "informe.farmacia@ficticio.local", nome: "Responsável pelo informe da farmácia (fictícia)", perfil: "INFORME DA FARMÁCIA — ENSAIO",
     acoes: ["INFORMAR_ESTOQUE_DA_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+  },
+  // V39-R3 (R3-025) — quem opera os convênios recebidos e quem só os consulta.
+  {
+    email: "convenios@ficticio.local", nome: "Gestora de convênios (fictícia)", perfil: "CONVÊNIOS — ENSAIO",
+    acoes: ["LIBERAR_PARCELA_DE_CONVENIO", "APROVAR_PRESTACAO_DE_CONTAS", "GLOSAR_CONVENIO", "REGISTRAR_DEVOLUCAO_DE_CONVENIO", "CONSULTAR_TRANSFERENCIAS", "CONSULTAR_CADASTROS"],
+  },
+  {
+    email: "consulta.convenios@ficticio.local", nome: "Consulta de convênios (fictícia)", perfil: "CONSULTA DE CONVÊNIOS — ENSAIO",
+    acoes: ["CONSULTAR_TRANSFERENCIAS"],
   },
   // V39-R3 (R3-021) — quem apropria o custo da folha e quem só consulta a contabilidade.
   {
@@ -737,6 +753,84 @@ async function semearEmpenhosDaEducacao(prisma: PrismaClient): Promise<void> {
   }
 }
 
+// ═══ 11. CONVÊNIOS RECEBIDOS: a receita da fonte 571, as contas de controle, dois convênios (N=2) ═══
+//
+// PARÂMETROS DE ENSAIO, ESCOLHIDOS NO PLANO DE CONTAS DO TCE-PB CARREGADO (Pcasp_2025), como os do almoxarifado (seção 3):
+//   · a VPA da natureza 1724.51 (convênios dos estados para educação) é 4.5.2.3.4.99.00 DEMAIS TRANSFERÊNCIAS
+//     VOLUNTÁRIAS - INTER OFSS - ESTADO (convênio é transferência voluntária);
+//   · as contas de controle do convenente são as de EXECUÇÃO DE CONVÊNIOS pelos estágios que o próprio plano nomeia
+//     (7.1.1.2.1.01.00 DIREITOS CONVENIADOS contra 8.1.1.2.1.01.04 APROVADOS e 8.1.1.2.1.01.05 IMPUGNADOS), em pares 7/8
+//     simétricos, de modo que nenhuma conta de controle fique com saldo invertido.
+// O contador do ente decide os definitivos (pendência ROTEIRO-DE-CONVENIO-A-DECIDIR-PELO-CONTADOR no MODULO do M28).
+
+const CONTA_BANCOS_571 = "1.1.1.1.1.19.00";
+const ROTEIROS_DE_CONVENIO = [
+  { chave: "PRESTACAO_APROVADA/CONVENENTE", debito: "7.1.1.2.1.01.00", credito: "8.1.1.2.1.01.04", historico: "Prestação de contas de convênio recebido aprovada" },
+  { chave: "GLOSA/CONVENENTE", debito: "7.1.1.2.1.01.00", credito: "8.1.1.2.1.01.05", historico: "Glosa em convênio recebido" },
+  { chave: "DEVOLUCAO/CONVENENTE", debito: "8.1.1.2.1.01.05", credito: "7.1.1.2.1.01.00", historico: "Devolução do valor glosado de convênio recebido" },
+] as const;
+const CONVENIOS_R3 = [
+  { identificador: "R3-CONV-A/2026", objeto: "Reforma de duas salas de aula da escola municipal (ensaio)", repasse: "20000.00" },
+  { identificador: "R3-CONV-B/2026", objeto: "Aquisição de mobiliário escolar para a rede municipal (ensaio)", repasse: "15000.00" },
+] as const;
+
+async function semearConvenios(prisma: PrismaClient): Promise<void> {
+  const fonte = await prisma.fonteRecurso.findUnique({ where: { codigo: "571" }, select: { id: true } });
+  const bancos = await prisma.contaPcasp.findUnique({ where: { codigo: CONTA_BANCOS_571 }, select: { id: true, analitica: true } });
+  const entidade = await prisma.entidadeContabil.findUnique({ where: { codigo: "PM" }, select: { id: true } });
+  if (fonte === null || bancos === null || !bancos.analitica || entidade === null) throw new Error("Fonte 571, conta de bancos analítica ou entidade PM ausente. Nada foi gravado.");
+  // Não há serviço de domínio que cadastre conta bancária (ver semear-esperanca-ficticio.ts): o mesmo caminho do seed.
+  const conta = await passo(`Conta bancária FIC-PM-571 (contábil ${CONTA_BANCOS_571}, fonte 571, fictícia)`, async () => {
+    const ja = await prisma.contaBancaria.findUnique({ where: { codigo: "FIC-PM-571" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    const c = await prisma.contaBancaria.create({ data: { codigo: "FIC-PM-571", descricao: `Prefeitura — convênios da educação, fonte 571 ${ENSAIO}`, fonteId: fonte.id, contaContabilId: bancos.id, banco: "001", agencia: "0000", digitoAgencia: "0", conta: "000571", digitoConta: "0" }, select: { id: true } });
+    return { estado: "criado", valor: c.id };
+  });
+  await passo("Titular de FIC-PM-571: Prefeitura (contrato de abertura fictício)", async () => {
+    if ((await titularVigenteDaConta(prisma, conta)) !== null) return { estado: "existente", valor: null };
+    await declararTitularDaContaBancaria(prisma, { contaBancariaId: conta, entidadeId: entidade.id, atoTipo: "CONTRATO", atoNumero: "571/2026", atoAno: 2026, atoDispositivo: "cláusula 1ª", atoCitacao: `Contrato de abertura da conta corrente 000571 na agência 0000 do banco 001 ${ENSAIO}.`, criadoPor: ADMIN }, new Date());
+    return { estado: "criado", valor: null };
+  });
+  await passo("Conta da receita: naturezas 172451* → VPA 4.5.2.3.4.99.00", async () => {
+    const v = await contaDaReceitaVigente(prisma, "17245101");
+    if (v !== null && v.naturezaPrefixo === "172451") return { estado: "existente", valor: null };
+    await declararContaDaReceita(prisma, { naturezaPrefixo: "172451", contaVpaCodigo: "4.5.2.3.4.99.00", fundamento: `PCASP do TCE-PB 2025: 4.5.2.3.4.99.00 DEMAIS TRANSFERÊNCIAS VOLUNTÁRIAS - INTER OFSS - ESTADO — convênio do estado é transferência voluntária ${ENSAIO}.`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  await passo("Arrecadação R3-CONV-REC-001: 17245101/571, R$ 30.000,00 em 05/08/2026 na FIC-PM-571", async () => {
+    if ((await prisma.receitaArrecadada.findFirst({ where: { exercicio: 2026, numeroReceita: "R3-CONV-REC-001" }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    const natureza = await exigirNaturezaDaFonte(prisma, "571");
+    await registrarArrecadacao(
+      { exercicio: 2026, naturezaReceita: "17245101", fonte: "571", exercicioFonte: 1, valor: "30000.00", dataArrecadacao: D("2026-08-05"), numeroReceita: "R3-CONV-REC-001", contaBancaria: "FIC-PM-571", criadoPor: ADMIN },
+      roteiroArrecadacao({ disponibilidade: CONTA_BANCOS_571, variacaoAumentativa: "4.5.2.3.4.99.00", naturezaDaFonte: natureza.natureza }),
+      criarM04Deps(prisma)
+    );
+    return { estado: "criado", valor: null };
+  });
+  for (const r of ROTEIROS_DE_CONVENIO) {
+    await passo(`Roteiro de convênio ${r.chave}: D ${r.debito} / C ${r.credito}`, async () => {
+      const ja = await prisma.roteiroPatrimonialDeclarado.findFirst({ where: { familia: "CONVENIO", chave: r.chave }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: null };
+      await declararRoteiroPatrimonial(prisma, { familia: "CONVENIO", chave: r.chave, contaDebitoCodigo: r.debito, contaCreditoCodigo: r.credito, historicoPadrao: r.historico, fundamento: `Contas de execução de convênios do PCASP do TCE-PB 2025, pelo estágio que o plano nomeia; parâmetro da base de ensaio ${ENSAIO}.`, criadoPor: ADMIN });
+      return { estado: "criado", valor: null };
+    });
+  }
+  const direitos = await prisma.contaPcasp.findUnique({ where: { codigo: "7.1.1.2.1.01.00" }, select: { id: true } });
+  if (direitos === null) throw new Error("A conta 7.1.1.2.1.01.00 não está no plano. Nada foi gravado.");
+  for (const c of CONVENIOS_R3) {
+    await passo(`Convênio ${c.identificador} (o ente recebe), repasse R$ ${c.repasse}, fonte 571`, async () => {
+      if ((await prisma.convenio.findFirst({ where: { identificador: c.identificador }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await cadastrarConvenio(prisma, {
+        identificador: c.identificador, objeto: c.objeto, papelDoEnte: "CONVENENTE", partidaNome: `Secretaria de Estado da Educação ${ENSAIO}`,
+        partidaDocumento: cnpjComDv("087654320001"), leiAutorizativa: "Lei municipal de autorização de convênios (fictícia, ensaio)",
+        valorRepasse: c.repasse, valorContrapartida: "0.00", diaVigenciaInicio: "2026-07-01", diaVigenciaFim: "2026-12-31", diasParaPrestacaoDeContas: 60,
+        fonteRecursoId: fonte.id, contaContabilId: direitos.id, criadoPor: ADMIN,
+      });
+      return { estado: "criado", valor: null };
+    });
+  }
+}
+
 // ═══ PRINCIPAL ═══
 
 function exigirBanco(): string {
@@ -782,6 +876,8 @@ async function main(): Promise<void> {
     await semearRecebimentoDeSetembro(prisma);
     console.log("\n[10] educação: empenhos para a prévia do SIOPE");
     await semearEmpenhosDaEducacao(prisma);
+    console.log("\n[11] convênios recebidos");
+    await semearConvenios(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();
