@@ -65,8 +65,16 @@ import type { PrismaClient } from "../../prisma/generated/client/client.js";
  */
 
 const BANCO = "gestao_publica_esperanca_r3";
+/**
+ * R3-002 — a base de demonstração publicada. Só com a mesma confirmação da semente fictícia (destino e autorização dados
+ * pelo usuário antes, e backup feito), com a base JÁ declarada de demonstração (a natureza não muda aqui) e com senha
+ * forte, porque os usuários de ensaio ficam na internet.
+ */
+const BANCO_DE_PRODUCAO = "gestao_publica_esperanca";
+const CONFIRMACAO_DE_PRODUCAO = "dados ficticios para apresentar, apagar depois";
 const ADMIN = process.env["FICTICIO_ADMIN"] ?? "admin@cg.pb.gov.br";
-const SENHA = process.env["FICTICIO_SENHA"] ?? "Ficticio#2026";
+let SENHA = process.env["FICTICIO_SENHA"] ?? "Ficticio#2026";
+let NATUREZA_EXIGIDA: "ENSAIO" | "DEMONSTRACAO" = "ENSAIO";
 const ENSAIO = "(ensaio)";
 const D = (dia: string): Date => meioDiaCivil(dia);
 const ORIGEM = "semear-massa-r3 (V39-R3, R3-001)";
@@ -986,7 +994,13 @@ function exigirBanco(): string {
   } catch {
     throw new Error("DATABASE_URL ausente ou ilegível. Nada foi gravado.");
   }
-  if (nome !== BANCO) throw new Error(`Recusado: esta massa só se grava na base isolada de ensaio "${BANCO}", e o DATABASE_URL aponta para "${nome}". Nada foi gravado.`);
+  if (nome === BANCO_DE_PRODUCAO) {
+    if (process.env["FICTICIO_EM_PRODUCAO"] !== CONFIRMACAO_DE_PRODUCAO) throw new Error(`Recusado: "${nome}" é a base publicada. Só com FICTICIO_EM_PRODUCAO="${CONFIRMACAO_DE_PRODUCAO}", destino e autorização confirmados e backup feito. Nada foi gravado.`);
+    const senha = process.env["FICTICIO_SENHA"] ?? "";
+    if (senha.length < 16) throw new Error("Na base publicada os usuários de ensaio ficam na internet: informe FICTICIO_SENHA com 16 caracteres ou mais. Nada foi gravado.");
+    SENHA = senha;
+    NATUREZA_EXIGIDA = "DEMONSTRACAO";
+  } else if (nome !== BANCO) throw new Error(`Recusado: esta massa só se grava na base isolada de ensaio "${BANCO}" (ou na publicada, com confirmação), e o DATABASE_URL aponta para "${nome}". Nada foi gravado.`);
   return urlDoRuntime(url, papelDoAmbiente());
 }
 
@@ -994,11 +1008,16 @@ async function main(): Promise<void> {
   const prisma = criarPrismaClient(exigirBanco());
   try {
     const n = await naturezaDaBase(prisma);
-    if (n.natureza !== "ENSAIO") throw new Error(`A base não está declarada de ENSAIO (está ${n.natureza}): a massa não se grava nela. Rode antes a semente fictícia nesta base.`);
+    if (n.natureza !== NATUREZA_EXIGIDA) throw new Error(`A base não está declarada de ${NATUREZA_EXIGIDA} (está ${n.natureza}): a massa não se grava nela, e a natureza não se muda para isso.`);
     await passo(`Origem da massa registrada na declaração da natureza (${ORIGEM})`, async () => {
       const d = await prisma.declaracaoDaNaturezaDaBase.findFirst({ orderBy: { numero: "desc" }, select: { motivo: true } });
       if (d?.motivo.includes(ORIGEM) === true) return { estado: "existente", valor: null };
-      await declararNaturezaDaBase(prisma, { natureza: "ENSAIO", motivo: `Base isolada de ensaio da V39-R3: semente fictícia de Esperança mais a massa ${ORIGEM}. Dados fictícios, gravados pelos serviços com o papel de runtime.`, declaradoPor: ADMIN });
+      // A MESMA natureza, com a origem da massa no motivo: registra o que entrou na base, sem reclassificá-la.
+      const motivo =
+        NATUREZA_EXIGIDA === "ENSAIO"
+          ? `Base isolada de ensaio da V39-R3: semente fictícia de Esperança mais a massa ${ORIGEM}. Dados fictícios, gravados pelos serviços com o papel de runtime.`
+          : `Base de demonstração publicada: semente fictícia de Esperança mais a massa ${ORIGEM}, com destino e autorização confirmados pelo usuário. Dados fictícios, gravados pelos serviços com o papel de runtime.`;
+      await declararNaturezaDaBase(prisma, { natureza: NATUREZA_EXIGIDA, motivo, declaradoPor: ADMIN });
       return { estado: "criado", valor: null };
     });
     console.log("\n[1] usuários por papel");
