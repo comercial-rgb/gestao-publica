@@ -107,7 +107,7 @@ try {
   await abrir();
   const setembro = await preencherEEnviar(p, `form[data-acao="calcular-posicao-da-farmacia"][data-farmacia="9001"]`, [{ sel: 'input[name="mes"]', valor: "2026-09", tipo: "data" }], "calcular-posicao-da-farmacia");
   const informe = await prisma.informeDeEstoqueDaFarmacia.findFirst({ where: { farmaciaId: farmacia.id, ano: 2026, mes: 9, origem: "CALCULADO" }, orderBy: [{ criadoEm: "desc" }, { id: "desc" }], select: { criadoPor: true, itens: { orderBy: { codigoProduto: "asc" }, select: { codigoProduto: true, quantidade: true } } } });
-  const porMaterial = new Map(Object.entries(CODIGOS).map(([m, [g]]) => [g, m]));
+  const porMaterial = new Map<string, string>(Object.entries(CODIGOS).map(([m, [g]]) => [g, m]));
   const calculado = (informe?.itens ?? []).map((i) => [porMaterial.get(i.codigoProduto) ?? i.codigoProduto, i.quantidade.toFixed(2)] as const).sort();
   conferir(
     setembro.tipo === "ok" && JSON.stringify(calculado) === JSON.stringify(esperadoPositivo) && calculado.length === 2 && informe?.criadoPor === "informe.farmacia@ficticio.local",

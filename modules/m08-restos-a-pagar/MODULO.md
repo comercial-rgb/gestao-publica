@@ -538,3 +538,17 @@ inscrição anterior, anulação, troca de conta, par 6.2.2.1.3 da inscrição, 
   MSC abre exceção para ela: o lançamento de ENCERRAMENTO que é de uma inscrição (`controleDoResto`) mantém fonte e ano. A
   execução (liquidação, pagamento, cancelamento) é NORMAL.
 Regressão: os arquivos que encerram exercício ou anulam liquidação, verdes com o controle desligado.
+## V39-R3 (R3-024) — encerramento e abertura pela tela, num exercício isolado
+
+Nenhum código de domínio novo. A cópia `gestao_publica_esperanca_r3_encerramento` (CREATE DATABASE ... TEMPLATE da base
+R3) recebe `scripts/demonstracao/preparar-encerramento-r3.mts` e o percurso `scripts/percurso-v39r3-encerramento.mts`:
+anulação parcial pela tela, encerramento, apuração, classificação e virada dos controles, abertura de 2027, e por SQL as
+inscrições conferidas contra a conta feita à mão e a abertura de cada inscrição em 01/01/2027.
+
+Pendências nomeadas:
+- **CONTROLE-DOS-RESTOS-DE-ENSAIO.** A declaração das contas do controle dos restos na cópia usa a conta que o manual
+  sugere para 18 papéis e, nos dois "cancelados" que o manual deixa ao ente, 6.3.1.9.9.00.00 e 6.3.2.9.9.00.00 (outros
+  cancelamentos). Parâmetro de ensaio; o contador do ente decide.
+- **VIRADA-PELA-SUGESTAO-DA-TELA.** No percurso, cada conta de controle foi classificada com o destino que a tela sugere
+  (TRANSFERE para 5.3 e 6.3, ENCERRA para o resto), com justificativa dizendo que é ensaio. A classificação real é do
+  contador.

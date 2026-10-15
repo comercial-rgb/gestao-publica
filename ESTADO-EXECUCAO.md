@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-024 encerramento de 2026 e abertura de 2027 (cópia isolada) | este | (existente) + preparação da cópia | testes do M08 existentes (não alterados) | `percurso-v39r3-encerramento.mts` 1ª corrida 12/15 (as 3 falhas eram do percurso: corte ao meio-dia de 31/12 e a expressão da recusa; as operações e as recusas aconteceram), 2ª corrida verde | confirmação errada, virada sem destino, quem anula não encerra | cópia `gestao_publica_esperanca_r3_encerramento` |
 | R3-026 patrimônio: incorporação, responsável e transferência, depreciação, baixa | este | (existente) + massa | testes do M10 existentes (não alterados) | `percurso-v39r3-patrimonio.mts` 23/24 na 1ª corrida (a falha era a expressão do próprio percurso; a recusa aconteceu e nada foi gravado), 2ª corrida verde | passa do liquidado, mesma unidade, competência já processada, passa do valor do bem, bem baixado não se move, quem só consulta | base R3 |
 | R3-025 convênio recebido: ingresso, vínculo à receita, prestação, glosa, devolução | este | (existente) + teste entre instrumentos | 1 teste novo (3 no bloco), 1 mutação vermelha | `percurso-v39r3-convenio.mts` 7/7 | mesma receita em outro convênio passando do arrecadado (tela e teste); quem só consulta não recebe as ações | base R3 |
 | R3-023 prévia do SIOPE municipal (correspondência versionada) | este | sim | 5 testes, 12 mutações vermelhas | `percurso-v39r3-previa-do-siope.mts` 5/5 | sem correspondência, transcrição adulterada (omissão, linha, seção, nome, condição, tratamento, repetida), sem permissão (tela); arquivo de importação e separação da 365 bloqueados, nomeados | base R3 |
@@ -39,6 +40,32 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-024 (M08) — encerramento e abertura, num exercício isolado
+- **Exercício isolado:** `gestao_publica_esperanca_r3_encerramento`, feita por `CREATE DATABASE ... TEMPLATE
+  gestao_publica_esperanca_r3` com a 3012 parada (herda a declaração ENSAIO e os grants do papel de runtime), servida na
+  3013. Encerrar 2026 na própria R3 travaria os outros percursos.
+- **Preparação** (`scripts/demonstracao/preparar-encerramento-r3.mts`, recusa outra base e natureza diferente de
+  ENSAIO): contadora do encerramento e quem anula empenho (nenhum administrador); a declaração do controle dos restos;
+  R3-ENC-001/2026 de 1.000,00 com 400,00 liquidados e R3-ENC-002/2026 de 500,00, na ficha 10861.
+- **Rotas:** Despesa › Anulações (`/despesa/anulacoes`), Despesa › Restos a pagar (`/despesa/restos-a-pagar`:
+  encerrar e apurar), Contabilidade › Virada dos controles (`/contabilidade/virada-dos-controles`: classificar e
+  virar), Planejamento › Proposta orçamentária de 2027 (abrir o exercício).
+- **Percurso, 1ª corrida:** anulação de 250,00 conferida e confirmada; quem anula não recebe o encerramento; confirmação
+  errada recusada sem gravar; 2026 encerrado (16 processados e 7 não processados); resultado apurado (superávit de
+  2.200.858,73); virada recusada com 15 contas sem destino e nada lançado; 15 contas classificadas pela tela; virada
+  feita (11 contas zeradas); 2027 aberto. Por SQL: R3-ENC-001 processado 400,00 e não processado 350,00; R3-ENC-002 não
+  processado 500,00; abertura de cada inscrição em 2027 (D 400,00, D 350,00, D 500,00); 5.3.1.1.0.00.00 = 13.570,00 e
+  5.3.2.1.0.00.00 = 37.728,50 em 2027, iguais às somas das inscrições. As três falhas da 1ª corrida eram do percurso:
+  ele cortava as somas ao meio-dia de 31/12 e o sistema data a apuração e a virada no último instante civil do dia
+  (correto); e a expressão da recusa procurava uma frase que a tela não mostra. Corrigidas, a 2ª corrida passou
+  inteira (operações já feitas, ditas; classes 3 e 4 zeradas; contas que encerram zeradas).
+- **Pendências no MODULO do M08:** CONTROLE-DOS-RESTOS-DE-ENSAIO, VIRADA-PELA-SUGESTAO-DA-TELA.
+- **Medição corrigida nesta unidade — TYPECHECK-SEM-MTS:** `tsconfig.scripts.json` inclui só `scripts/**/*.ts`; os
+  `.mts` (a massa e todos os percursos da R3) nunca passaram pelo typecheck que eu dei como limpo. Medido à parte, com um
+  tsconfig temporário: nos da R3, 1 erro (`percurso-v39r3-posicao-da-farmacia.mts`, tipo do mapa), corrigido; agora 0.
+  Nos 91 `.mts` do repositório, 11 erros em 7 percursos anteriores à R3 (v36, v37, v38), não corrigidos. Pendência:
+  incluir `scripts/**/*.mts` no gate depois de corrigir esses 11.
 
 ### R3-026 (M10) — patrimônio: quatro evidências separadas
 - **Rotas:** Patrimônio › Bens patrimoniais › detalhe (`/patrimonio/bens-patrimoniais/<id>`): incorporar pela
