@@ -336,6 +336,10 @@ export async function cancelarOrdemDePagamento(
   const d = zCancelarOrdemInput.parse(input);
 
   return prisma.$transaction(async (tx) => {
+    // V39-R3 (R3-027) — SOB A TRAVA DA LIQUIDAÇÃO, a mesma da rejeição do banco e do pagamento: sem ela, o cancelamento
+    // manual e a rejeição liam "autorizada" ao mesmo tempo e gravavam dois cancelamentos.
+    const alvo = await tx.ordemDePagamento.findUnique({ where: { id: d.ordemId }, select: { liquidacaoId: true } });
+    if (alvo !== null) await travar(tx, "Liquidacao", [alvo.liquidacaoId]);
     const o = await ordemComEstado(tx, d.ordemId);
 
     await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.cancelarOrdemDePagamento, {
@@ -363,6 +367,43 @@ export async function cancelarOrdemDePagamento(
     });
     return { movimentoId: m.id };
   });
+}
+
+/**
+ * V39-R3 (R3-027) — O BANCO REJEITOU O CRÉDITO DESTA ORDEM: ela se cancela, DENTRO da transação de quem registra a
+ * rejeição (o retorno do M09, que já pediu a permissão dele). Não é um serviço.
+ *
+ * ⚠️ SOB A TRAVA DA LIQUIDAÇÃO, a mesma de `pagar()`: entre ler "autorizada" e gravar o cancelamento, um pagamento
+ * contra a mesma ordem não passa. ⚠️ ORDEM COM PAGAMENTO VIVO É RECUSADA: o crédito não aconteceu, então o pagamento
+ * registrado se desfaz pela anulação dele, antes. Anulado o pagamento, a ordem continua PAGA (o estado conta qualquer
+ * pagamento) e por isso não se paga de novo nem precisa de cancelamento: devolve `null` e a rejeição se grava (a
+ * anulação já devolveu o valor ao saldo a pagar da liquidação). Ordem já cancelada por outro ato também devolve `null`
+ * — sob a mesma trava que `cancelarOrdemDePagamento` toma, não há segundo cancelamento.
+ */
+export async function cancelarOrdemRejeitadaNaTx(
+  tx: Tx,
+  p: { readonly ordemId: string; readonly motivo: string; readonly criadoPor: string }
+): Promise<string | null> {
+  const liq = await tx.ordemDePagamento.findUnique({ where: { id: p.ordemId }, select: { liquidacaoId: true } });
+  if (liq === null) throw new Error(`Ordem de pagamento ${p.ordemId} não encontrada. Nada foi gravado.`);
+  await travar(tx, "Liquidacao", [liq.liquidacaoId]);
+  const o = await ordemComEstado(tx, p.ordemId);
+  if (o.estado === "PAGA") {
+    // Vivo: o original sem estorno total. A anulação parcial deixa o pagamento valendo por menos — continua vivo.
+    const vivos = await tx.pagamento.count({ where: { ordemDePagamentoId: p.ordemId, estornoDeId: null, anulacaoParcialDeId: null, estornos: { none: {} } } });
+    if (vivos === 0) return null;
+    const numero = (await tx.ordemDePagamento.findUnique({ where: { id: p.ordemId }, select: { numero: true } }))?.numero ?? p.ordemId;
+    throw new Error(
+      `A ordem ${numero} já tem pagamento registrado. O banco não fez o crédito, então esse pagamento não aconteceu: ` +
+        `anule-o primeiro (Despesa › Anulações) e prepare outra ordem para o novo crédito. Nada foi gravado.`
+    );
+  }
+  if (o.estado === "CANCELADA") return null;
+  const m = await tx.movimentoDaOrdemDePagamento.create({
+    data: { ordemId: p.ordemId, tipo: "CANCELAMENTO", motivo: p.motivo, criadoPor: p.criadoPor },
+    select: { id: true },
+  });
+  return m.id;
 }
 
 /**

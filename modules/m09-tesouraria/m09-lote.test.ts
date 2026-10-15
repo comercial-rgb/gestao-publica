@@ -8,14 +8,16 @@ import { limparBanco } from "../../test/limpar-banco.js";
 import { criarFichaDeTeste } from "../../test/ficha-teste.js";
 import { criarM05Deps } from "../m05-despesa/adapter-prisma.js";
 import type { M05Deps } from "../m05-despesa/ports.js";
-import { roteiroEmpenho, roteiroLiquidacao } from "../m05-despesa/dominio.js";
+import { roteiroEmpenho, roteiroLiquidacao, roteiroPagamento } from "../m05-despesa/dominio.js";
 import { empenhar } from "../m05-despesa/servico.js";
-import { liquidar } from "../m05-despesa/servico-bloco2.js";
+import { anularPagamento, liquidar, pagar } from "../m05-despesa/servico-bloco2.js";
 import { anularLiquidacaoParcial } from "../m05-despesa/anulacao-parcial.js";
 import {
   autorizarOrdemDePagamento,
+  cancelarOrdemDePagamento,
   prepararOrdemDePagamento,
 } from "../m05-despesa/ordem-pagamento.js";
+import { travar } from "../../packages/locks/index.js";
 import { assinarNaFila } from "../m22-documentos/assinatura.js";
 import {
   conteudoDoBordero,
@@ -29,6 +31,7 @@ import {
   gerarBordero,
   incluirNoLote,
   processarRetornoBancario,
+  registrarRejeicaoBancaria,
 } from "./servico-lote.js";
 import { toMoney } from "../../packages/contracts/index.js";
 
@@ -557,6 +560,156 @@ describe("M09 — o retorno bancário baixa só o que é dele, e o repetido não
     ).rejects.toThrow(/NÃO pertencem ao borderô/);
 
     expect(await prisma.baixaDeRetornoBancario.count()).toBe(0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * V39-R3 (R3-027) — O RETORNO QUE DIZ "NÃO CREDITADO". N=2 no borderô: o banco paga um item e rejeita o outro. Contas:
+ * a ordem rejeitada (500,00) se cancela no mesmo ato, a liquidação dela volta a comportar uma ordem de 500,00, e a nova
+ * ordem entra num lote novo; o item pago não se rejeita, o rejeitado não se baixa, e a rejeição repetida não duplica.
+ */
+describe("V39-R3 — a rejeição do banco no retorno", () => {
+  async function borderoComDoisItens(): Promise<{ borderoId: string; itens: string[]; ordens: string[]; liquidacoes: string[] }> {
+    const l1 = await liquidacaoEm("2026-03-01", "1", "1000.00");
+    const l2 = await liquidacaoEm("2026-03-02", "2", "500.00");
+    const o1 = await ordemAutorizada(l1, "1", "1000.00");
+    const o2 = await ordemAutorizada(l2, "2", "500.00");
+    const loteId = await loteAberto();
+    const i1 = await incluirNoLote(prisma, { loteId, ordemId: o1, criadoPor: TESOUREIRO });
+    const i2 = await incluirNoLote(prisma, { loteId, ordemId: o2, criadoPor: TESOUREIRO });
+    await fecharLote(prisma, { loteId, criadoPor: TESOUREIRO });
+    const b = await gerarBordero(prisma, { loteId, signatarios: [POR], modo: "AVANCADA", criadoPor: TESOUREIRO });
+    return { borderoId: b.borderoId, itens: [i1.itemId, i2.itemId], ordens: [o1, o2], liquidacoes: [l1, l2] };
+  }
+  const DIA = new Date("2026-04-12T12:00:00Z");
+  const cancelamentos = (ordemId: string) => prisma.movimentoDaOrdemDePagamento.findMany({ where: { ordemId, tipo: "CANCELAMENTO" }, select: { id: true, motivo: true } });
+
+  it("t19: um item pago e outro rejeitado — a ordem rejeitada se cancela e a liquidação aceita ordem nova em lote novo", async () => {
+    const { borderoId, itens, ordens, liquidacoes } = await borderoComDoisItens();
+    const [i1, i2] = itens as [string, string];
+    const [o1, o2] = ordens as [string, string];
+
+    const r = await registrarRejeicaoBancaria(prisma, { borderoId, linhas: [{ itemId: i2, dataRejeicao: DIA, ocorrencia: "BD - conta do favorecido encerrada" }], criadoPor: TESOUREIRO });
+    expect(r).toEqual({ rejeitados: 1, jaRejeitados: 0, ordensCanceladas: 1 });
+    const canc = await cancelamentos(o2);
+    expect(canc).toHaveLength(1);
+    expect(canc[0]?.motivo).toMatch(/rejeitado pelo banco no borderô .*BD - conta do favorecido encerrada/);
+    const rej = await prisma.rejeicaoDeRetornoBancario.findUniqueOrThrow({ where: { itemId: i2 }, select: { ocorrencia: true, movimentoDaOrdemId: true } });
+    expect(rej).toEqual({ ocorrencia: "BD - conta do favorecido encerrada", movimentoDaOrdemId: canc[0]?.id });
+    expect(await cancelamentos(o1)).toHaveLength(0);
+
+    // o outro item, o banco pagou
+    expect(await processarRetornoBancario(prisma, { borderoId, linhas: [{ itemId: i1, dataLiquidacaoBanco: DIA, identificadorBanco: "BB-1" }], criadoPor: TESOUREIRO })).toEqual({ baixados: 1, jaBaixados: 0 });
+
+    // o rejeitado não se baixa; o pago não se rejeita; nada é gravado nas recusas
+    await expect(processarRetornoBancario(prisma, { borderoId, linhas: [{ itemId: i2, dataLiquidacaoBanco: DIA, identificadorBanco: "BB-2" }], criadoPor: TESOUREIRO })).rejects.toThrow(/O banco já rejeitou 1 destes item\(ns\): .*não se baixa como pago/);
+    await expect(registrarRejeicaoBancaria(prisma, { borderoId, linhas: [{ itemId: i1, dataRejeicao: DIA, ocorrencia: "XX - tentativa" }], criadoPor: TESOUREIRO })).rejects.toThrow(/O banco já liquidou OP-1 neste borderô: um crédito baixado como pago não se rejeita depois/);
+    expect(await prisma.baixaDeRetornoBancario.count({ where: { itemId: i2 } })).toBe(0);
+    expect(await prisma.rejeicaoDeRetornoBancario.count({ where: { itemId: i1 } })).toBe(0);
+
+    // a repetida não duplica: nem rejeição, nem cancelamento
+    expect(await registrarRejeicaoBancaria(prisma, { borderoId, linhas: [{ itemId: i2, dataRejeicao: DIA, ocorrencia: "BD - conta do favorecido encerrada" }], criadoPor: TESOUREIRO })).toEqual({ rejeitados: 0, jaRejeitados: 1, ordensCanceladas: 0 });
+    expect(await cancelamentos(o2)).toHaveLength(1);
+
+    // o novo crédito: ordem nova da mesma liquidação, em lote novo — COM OUTRA LIQUIDAÇÃO ATRÁS DELA NA FILA (N=2 na
+    // fila): o item rejeitado não pode tirar a liquidação da fila, senão a de trás passa a ser a cabeça e o novo
+    // crédito é recusado por "quebra da ordem cronológica" para sempre (medido pelo percurso da folha até o banco).
+    await liquidacaoEm("2026-03-03", "3", "300.00");
+    const nova = await ordemAutorizada(liquidacoes[1] as string, "2B", "500.00");
+    const lote2 = await loteAberto();
+    const item = await incluirNoLote(prisma, { loteId: lote2, ordemId: nova, criadoPor: TESOUREIRO });
+    expect(item.itemId).not.toBe(i2);
+    // e a ordem rejeitada não volta a lote nenhum, nem se paga
+    await expect(incluirNoLote(prisma, { loteId: lote2, ordemId: o2, criadoPor: TESOUREIRO })).rejects.toThrow(/A ordem OP-2 está CANCELADA — só ordem AUTORIZADA entra em lote/);
+    await prisma.contaPcasp.create({ data: { id: "lc-pago", codigo: "6.2.2.1.3.04.00", nome: "Crédito pago", naturezaSaldo: "CREDORA", nivel: 5, analitica: true } });
+    await expect(
+      pagar(
+        { liquidacaoId: liquidacoes[1] as string, numero: "2026OP-REJ", valor: "500.00", data: new Date("2026-04-13T12:00:00Z"), contaBancaria: CONTA, fonteId: FONTE, historico: "tentativa sobre a ordem rejeitada", criadoPor: ORDENADOR, ordemDePagamentoId: o2 },
+        roteiroPagamento({ obrigacaoAPagar: FORNECEDOR, disponibilidade: CAIXA, creditoLiquidado: C_LIQUIDADO, creditoPago: "6.2.2.1.3.04.00" }),
+        deps
+      )
+    ).rejects.toThrow(/estado CANCELADA/);
+  });
+
+  it("t20: recusas sem gravar — item de outro borderô e ordem já paga", async () => {
+    const a = await borderoComDoisItens();
+    const l3 = await liquidacaoEm("2026-03-03", "3", "300.00");
+    const o3 = await ordemAutorizada(l3, "3", "300.00");
+    const outroLote = await loteAberto();
+    const alheio = await incluirNoLote(prisma, { loteId: outroLote, ordemId: o3, criadoPor: TESOUREIRO });
+    await expect(registrarRejeicaoBancaria(prisma, { borderoId: a.borderoId, linhas: [{ itemId: alheio.itemId, dataRejeicao: DIA, ocorrencia: "BD - teste" }], criadoPor: TESOUREIRO })).rejects.toThrow(/NÃO pertencem ao borderô/);
+
+    // a ordem do item 1 é paga antes de o retorno chegar: a rejeição é recusada e nada é gravado (nem a do item 2)
+    await prisma.contaPcasp.create({ data: { id: "lc-pago", codigo: "6.2.2.1.3.04.00", nome: "Crédito pago", naturezaSaldo: "CREDORA", nivel: 5, analitica: true } });
+    await pagar(
+      { liquidacaoId: a.liquidacoes[0] as string, numero: "2026OP-P1", valor: "1000.00", data: new Date("2026-04-11T12:00:00Z"), contaBancaria: CONTA, fonteId: FONTE, historico: "pago antes do retorno", criadoPor: ORDENADOR, ordemDePagamentoId: a.ordens[0] as string },
+      roteiroPagamento({ obrigacaoAPagar: FORNECEDOR, disponibilidade: CAIXA, creditoLiquidado: C_LIQUIDADO, creditoPago: "6.2.2.1.3.04.00" }),
+      deps
+    );
+    await expect(
+      registrarRejeicaoBancaria(prisma, {
+        borderoId: a.borderoId,
+        linhas: [
+          { itemId: a.itens[1] as string, dataRejeicao: DIA, ocorrencia: "BD - conta encerrada" },
+          { itemId: a.itens[0] as string, dataRejeicao: DIA, ocorrencia: "BD - conta encerrada" },
+        ],
+        criadoPor: TESOUREIRO,
+      })
+    ).rejects.toThrow(/A ordem OP-1 já tem pagamento registrado\. .*anule-o primeiro/);
+    expect(await prisma.rejeicaoDeRetornoBancario.count()).toBe(0);
+    expect(await prisma.movimentoDaOrdemDePagamento.count({ where: { tipo: "CANCELAMENTO" } })).toBe(0);
+
+    // quem não tem a permissão do retorno não rejeita, e nada é gravado
+    const SEM = "estagiario@cg.pb.gov.br";
+    await prisma.usuario.create({ data: { identificador: SEM, nome: SEM, criadoPor: POR } });
+    await expect(registrarRejeicaoBancaria(prisma, { borderoId: a.borderoId, linhas: [{ itemId: a.itens[1] as string, dataRejeicao: DIA, ocorrencia: "BD - conta encerrada" }], criadoPor: SEM })).rejects.toThrow(/PROCESSAR_RETORNO_BANCARIO/);
+    expect(await prisma.rejeicaoDeRetornoBancario.count()).toBe(0);
+  });
+
+  it("t21: o pagamento registrado antes do retorno e depois anulado — a rejeição se grava sem cancelamento, e o novo crédito entra em lote novo", async () => {
+    const a = await borderoComDoisItens();
+    const [i1] = a.itens as [string, string];
+    const [o1] = a.ordens as [string, string];
+    const [l1] = a.liquidacoes as [string, string];
+    await prisma.contaPcasp.create({ data: { id: "lc-pago", codigo: "6.2.2.1.3.04.00", nome: "Crédito pago", naturezaSaldo: "CREDORA", nivel: 5, analitica: true } });
+    const pago = await pagar(
+      { liquidacaoId: l1, numero: "2026OP-P1", valor: "1000.00", data: new Date("2026-04-11T12:00:00Z"), contaBancaria: CONTA, fonteId: FONTE, historico: "pago antes do retorno", criadoPor: ORDENADOR, ordemDePagamentoId: o1 },
+      roteiroPagamento({ obrigacaoAPagar: FORNECEDOR, disponibilidade: CAIXA, creditoLiquidado: C_LIQUIDADO, creditoPago: "6.2.2.1.3.04.00" }),
+      deps
+    );
+    const rejeitar = () => registrarRejeicaoBancaria(prisma, { borderoId: a.borderoId, linhas: [{ itemId: i1, dataRejeicao: DIA, ocorrencia: "BD - conta encerrada" }], criadoPor: TESOUREIRO });
+    await expect(rejeitar()).rejects.toThrow(/A ordem OP-1 já tem pagamento registrado\. .*anule-o primeiro/);
+
+    await anularPagamento({ pagamentoId: pago.pagamentoId, numero: "2026OP-ANUL", data: new Date("2026-04-12T12:00:00Z"), historico: "o banco não creditou", criadoPor: ORDENADOR }, deps);
+    expect(await rejeitar()).toEqual({ rejeitados: 1, jaRejeitados: 0, ordensCanceladas: 0 });
+    expect((await prisma.rejeicaoDeRetornoBancario.findUniqueOrThrow({ where: { itemId: i1 }, select: { movimentoDaOrdemId: true } })).movimentoDaOrdemId).toBeNull();
+    expect(await prisma.movimentoDaOrdemDePagamento.count({ where: { ordemId: o1, tipo: "CANCELAMENTO" } })).toBe(0);
+
+    // a anulação devolveu o saldo; com outra liquidação atrás na fila, a ordem nova da 1 entra em lote novo
+    await liquidacaoEm("2026-03-03", "3", "300.00");
+    const nova = await ordemAutorizada(l1, "1B", "1000.00");
+    const lote2 = await loteAberto();
+    await expect(incluirNoLote(prisma, { loteId: lote2, ordemId: nova, criadoPor: TESOUREIRO })).resolves.toEqual({ itemId: expect.any(String) });
+  });
+
+  it("t22: A TRAVA EXISTE — com a liquidação travada por outra transação, o cancelamento manual da ordem espera", async () => {
+    const l = await liquidacaoEm("2026-03-01", "1", "1000.00");
+    const o = await ordemAutorizada(l, "1", "1000.00");
+    let soltar: () => void = () => undefined;
+    const presa = new Promise<void>((r) => { soltar = r; });
+    let travou: () => void = () => undefined;
+    const jaTravou = new Promise<void>((r) => { travou = r; });
+    const segurando = prisma.$transaction(async (tx) => { await travar(tx, "Liquidacao", [l]); travou(); await presa; }, { timeout: 20_000 });
+    await jaTravou;
+    let terminou = false;
+    const c = cancelarOrdemDePagamento(prisma, { ordemId: o, motivo: "cancelada durante a trava", criadoPor: POR }).then(() => { terminou = true; });
+    await new Promise((r) => setTimeout(r, 800));
+    expect(terminou).toBe(false);
+    soltar();
+    await segurando;
+    await c;
+    expect(terminou).toBe(true);
   });
 });
 

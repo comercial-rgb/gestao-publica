@@ -5,7 +5,7 @@ import { travar } from "../../packages/locks/index.js";
 import { ACAO_DO_SERVICO } from "../m16-travamento/acoes.js";
 import { autorizarNo } from "../m16-travamento/escopo.js";
 import type { Tx } from "../m16-travamento/autorizacao.js";
-import { estadoDaOrdem } from "../m05-despesa/ordem-pagamento.js";
+import { cancelarOrdemRejeitadaNaTx, estadoDaOrdem } from "../m05-despesa/ordem-pagamento.js";
 import { avaliarOrdem } from "../m06-ordem-cronologica/dominio.js";
 import { liquidacoesComSaldo } from "../m06-ordem-cronologica/adapter-prisma.js";
 import { anexarArquivo } from "../m22-documentos/anexos.js";
@@ -22,6 +22,8 @@ import {
   zCriarLote,
   zGerarBordero,
   zIncluirNoLote,
+  zRegistrarRejeicao,
+  type RegistrarRejeicaoInput,
   zProcessarRetorno,
   type CriarLoteInput,
   type GerarBorderoInput,
@@ -274,7 +276,7 @@ async function exigirOrdemCronologica(
       ordensDePagamento: {
         select: {
           itemDeLote: {
-            select: { lote: { select: { movimentos: { select: { tipo: true, criadoEm: true } } } } },
+            select: { rejeicao: { select: { id: true } }, lote: { select: { movimentos: { select: { tipo: true, criadoEm: true } } } } },
           },
         },
       },
@@ -300,6 +302,10 @@ async function exigirOrdemCronologica(
     ordens
       .filter((l) =>
         l.ordensDePagamento.some((o) => {
+          // V39-R3 (R3-027) — E O ITEM QUE O BANCO REJEITOU TAMBÉM NÃO: o crédito não aconteceu, a ordem foi cancelada,
+          // e a liquidação volta a esperar na fila. Contado como "em lote", ela sairia da fila para sempre e o novo
+          // crédito seria recusado como quebra da ordem (medido pelo percurso da folha até o banco; teste t19).
+          if (o.itemDeLote?.rejeicao != null) return false;
           const movimentos = o.itemDeLote?.lote.movimentos;
           return movimentos !== undefined && estadoDoLote(movimentos) !== "CANCELADO";
         })
@@ -669,6 +675,17 @@ export async function processarRetornoBancario(
       );
     }
 
+    // V39-R3 (R3-027) — A BAIXA E A REJEIÇÃO SE EXCLUEM, por item. Sob a trava da liquidação de cada ordem (a que a
+    // rejeição também toma), um item que o banco rejeitou não vira "pago" por outro retorno.
+    await travar(tx, "Liquidacao", await liquidacoesDosItens(tx, d.linhas.map((l) => l.itemId)));
+    const rejeitados = await tx.rejeicaoDeRetornoBancario.findMany({ where: { itemId: { in: d.linhas.map((l) => l.itemId) } }, select: { itemId: true } });
+    if (rejeitados.length > 0) {
+      throw new Error(
+        `O banco já rejeitou ${rejeitados.length} destes item(ns): ${rejeitados.map((r) => r.itemId).join(", ")}. Um crédito ` +
+          `rejeitado não se baixa como pago; o novo crédito sai por outra ordem, em outro lote. Nada foi gravado.`
+      );
+    }
+
     const jaBaixados = new Set(
       (
         await tx.baixaDeRetornoBancario.findMany({
@@ -701,5 +718,86 @@ export async function processarRetornoBancario(
     }
 
     return { baixados: novas.length, jaBaixados: jaBaixados.size };
+  });
+}
+
+/** As liquidações das ordens dos itens (para a trava que a baixa, a rejeição e o pagamento compartilham). */
+async function liquidacoesDosItens(tx: Tx, itemIds: readonly string[]): Promise<string[]> {
+  const itens = await tx.itemDoLote.findMany({ where: { id: { in: [...itemIds] } }, select: { ordem: { select: { liquidacaoId: true } } } });
+  return [...new Set(itens.flatMap((i) => (i.ordem === null ? [] : [i.ordem.liquidacaoId])))].sort();
+}
+
+/**
+ * V39-R3 (R3-027) — O RETORNO QUE DIZ "NÃO CREDITADO": a rejeição do banco, item a item.
+ *
+ * Grava uma `RejeicaoDeRetornoBancario` por item e, no MESMO ato, CANCELA a ordem do item (`cancelarOrdemRejeitadaNaTx`):
+ * a liquidação volta a comportar ordem, e o novo crédito sai por ordem nova em lote novo — o item rejeitado não volta a
+ * lote nenhum (`ItemDoLote.ordemId` é único). Recusa, sem gravar nada: borderô cancelado, item de outro borderô, item
+ * já baixado (o banco pagou), nota extraorçamentária (ainda sem desfecho: pendência REJEICAO-DE-NOTA-EXTRA) e ordem com
+ * pagamento vivo (anule o pagamento antes; anulado, a rejeição se grava sem cancelamento). Rejeição repetida do mesmo item não duplica (`@@unique([itemId])`).
+ *
+ * ⚠️ A PERMISSÃO É A DO RETORNO (`PROCESSAR_RETORNO_BANCARIO`): rejeição e baixa são as duas respostas do mesmo arquivo.
+ */
+export async function registrarRejeicaoBancaria(
+  prisma: PrismaClient,
+  input: RegistrarRejeicaoInput
+): Promise<{ readonly rejeitados: number; readonly jaRejeitados: number; readonly ordensCanceladas: number }> {
+  const d = zRegistrarRejeicao.parse(input);
+
+  return prisma.$transaction(async (tx) => {
+    const b = await tx.bordero.findUnique({ where: { id: d.borderoId }, select: { id: true, numero: true, loteId: true, movimentos: { select: { tipo: true, criadoEm: true } } } });
+    if (b === null) throw new Error(`Borderô ${d.borderoId} não existe. Nada foi gravado.`);
+    await autorizarNo(tx, d.criadoPor, ACAO_DO_SERVICO.registrarRejeicaoBancaria, "ENTE");
+    if (estadoDoBordero(b.movimentos) === "CANCELADO") {
+      throw new Error(`O borderô ${b.numero} está CANCELADO — não há crédito dele a rejeitar. Nada foi gravado.`);
+    }
+    const ids = d.linhas.map((l) => l.itemId);
+    if (new Set(ids).size !== ids.length) throw new Error("O mesmo item aparece duas vezes na rejeição. Nada foi gravado.");
+    const itens = await tx.itemDoLote.findMany({ where: { id: { in: ids } }, select: { id: true, loteId: true, ordemId: true, ordem: { select: { numero: true } } } });
+    const porId = new Map(itens.map((i) => [i.id, i]));
+    const forasteiros = ids.filter((id) => porId.get(id)?.loteId !== b.loteId);
+    if (forasteiros.length > 0) {
+      throw new Error(`A rejeição traz ${forasteiros.length} item(ns) que NÃO pertencem ao borderô ${b.numero}: ${forasteiros.join(", ")}. Nada foi gravado.`);
+    }
+    const extras = itens.filter((i) => i.ordemId === null);
+    if (extras.length > 0) {
+      throw new Error(
+        // Pendência REJEICAO-DE-NOTA-EXTRA (MODULO do M09); o nome fica aqui, não na tela.
+        `${extras.length} item(ns) são notas extraorçamentárias, e a rejeição delas ainda não tem tratamento no sistema. ` +
+          `Nada foi gravado.`
+      );
+    }
+
+    await travar(tx, "Liquidacao", await liquidacoesDosItens(tx, ids));
+    const baixados = await tx.baixaDeRetornoBancario.findMany({ where: { itemId: { in: ids } }, select: { itemId: true } });
+    if (baixados.length > 0) {
+      throw new Error(
+        `O banco já liquidou ${baixados.map((x) => porId.get(x.itemId)?.ordem?.numero ?? x.itemId).join(", ")} neste borderô: ` +
+          `um crédito baixado como pago não se rejeita depois. Nada foi gravado.`
+      );
+    }
+    const jaRejeitados = new Set((await tx.rejeicaoDeRetornoBancario.findMany({ where: { itemId: { in: ids } }, select: { itemId: true } })).map((x) => x.itemId));
+    const novas = d.linhas.filter((l) => !jaRejeitados.has(l.itemId));
+
+    // Todas as ordens conferidas e canceladas ANTES de gravar a primeira rejeição: uma ordem paga no meio recusa tudo.
+    const canceladas = new Map<string, string | null>();
+    for (const l of novas) {
+      const item = porId.get(l.itemId)!;
+      canceladas.set(
+        l.itemId,
+        await cancelarOrdemRejeitadaNaTx(tx, { ordemId: item.ordemId!, motivo: `Crédito rejeitado pelo banco no borderô ${b.numero}: ${l.ocorrencia}`, criadoPor: d.criadoPor })
+      );
+    }
+    for (const l of novas) {
+      await tx.rejeicaoDeRetornoBancario.create({
+        data: { borderoId: b.id, itemId: l.itemId, ocorrencia: l.ocorrencia, dataRejeicao: l.dataRejeicao, movimentoDaOrdemId: canceladas.get(l.itemId) ?? null, criadoPor: d.criadoPor },
+      });
+    }
+    if (novas.length > 0) {
+      await tx.movimentoDoBordero.create({
+        data: { borderoId: b.id, tipo: "RETORNO_PROCESSADO", motivo: `Retorno processado: ${novas.length} rejeição(ões).`, criadoPor: d.criadoPor },
+      });
+    }
+    return { rejeitados: novas.length, jaRejeitados: jaRejeitados.size, ordensCanceladas: [...canceladas.values()].filter((x) => x !== null).length };
   });
 }

@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-027 folha até o banco: ordem, lote, borderô, retorno e rejeição | este | rejeição do retorno (nova); 3 rótulos de escrita corrigidos; fila do art. 141 | 4 testes novos (t19 a t22; 24 no arquivo), 9 mutações vermelhas; `test/rotulo-da-escrita.test.ts` (3) com mutação | `percurso-v39r3-folha-ate-o-banco.mts`: as operações correram em três corridas (cada uma achou um defeito, abaixo); a 4ª, retomando, verde | quem só consulta sem formulário; rejeitado não se baixa, baixado não se rejeita, ordem com pagamento vivo, outro borderô, sem permissão, ordem rejeitada não entra em lote nem se paga | base R3 (migration 20261111092100) |
 | R3-024 encerramento de 2026 e abertura de 2027 (cópia isolada) | este | (existente) + preparação da cópia | testes do M08 existentes (não alterados) | `percurso-v39r3-encerramento.mts` 1ª corrida 12/15 (as 3 falhas eram do percurso: corte ao meio-dia de 31/12 e a expressão da recusa; as operações e as recusas aconteceram), 2ª corrida verde | confirmação errada, virada sem destino, quem anula não encerra | cópia `gestao_publica_esperanca_r3_encerramento` |
 | R3-026 patrimônio: incorporação, responsável e transferência, depreciação, baixa | este | (existente) + massa | testes do M10 existentes (não alterados) | `percurso-v39r3-patrimonio.mts` 23/24 na 1ª corrida (a falha era a expressão do próprio percurso; a recusa aconteceu e nada foi gravado), 2ª corrida verde | passa do liquidado, mesma unidade, competência já processada, passa do valor do bem, bem baixado não se move, quem só consulta | base R3 |
 | R3-025 convênio recebido: ingresso, vínculo à receita, prestação, glosa, devolução | este | (existente) + teste entre instrumentos | 1 teste novo (3 no bloco), 1 mutação vermelha | `percurso-v39r3-convenio.mts` 7/7 | mesma receita em outro convênio passando do arrecadado (tela e teste); quem só consulta não recebe as ações | base R3 |
@@ -40,6 +41,37 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-027 (M09, M05) — a folha até o banco: ordem, lote, borderô, retorno e a rejeição
+- **O que a R2 já cobria e não se repetiu** (`percurso-v39r2-folha-ate-tesouraria.mts`, 5/5): a folha na tela, a
+  liquidação da folha na fila, o pagamento pela tela com o desconto retido, a liquidação fora da fila. **O que faltava:**
+  ordem de pagamento, lote, borderô, retorno — que existiam com tela e teste, mas nenhum percurso os alcançava — e a
+  rejeição, que NÃO existia (o retorno só sabia "pago").
+- **Construído:** `registrarRejeicaoBancaria` (M09) com `RejeicaoDeRetornoBancario` (migration aditiva
+  `20261111092100`) e `cancelarOrdemRejeitadaNaTx` (M05): a rejeição cancela a ordem no mesmo ato, a liquidação volta a
+  comportar ordem e o novo crédito sai em lote novo. Baixa e rejeição se excluem por item, sob a trava da liquidação.
+  Ordem com pagamento vivo é recusada; anulado o pagamento, a rejeição se grava sem cancelamento. Tela:
+  `/financeiro/lotes` com "O banco rejeitou um crédito", a situação de cada item e os formulários só para quem pode.
+- **Defeitos achados pelo percurso e corrigidos:** (1) a porta de criar lote usava um rótulo que não é ação do censo e o
+  envelope o recusava — criar lote pela tela falhava para todos; o teste novo `rotulo-da-escrita` lê todo literal de
+  `comEscritaAutenticada` e achou mais dois (troca da própria senha; envio para assinatura), corrigidos; (2) depois da
+  rejeição a liquidação saía da fila do art. 141 para sempre e o novo crédito era recusado como quebra da ordem — o teste
+  t19 passava porque a fila não tinha ninguém atrás; ganhou N=2 na fila, ficou vermelho, e ficou verde com a correção.
+- **Auditoria de invariantes, achados corrigidos antes do commit:** a rejeição depois de pagamento anulado ficava
+  impossível (a ordem continua PAGA) e a liquidação, fora da fila — agora só o pagamento vivo recusa (t21); o nome da
+  pendência chegava à tela e a nota extra era oferecida no formulário; o cancelamento manual não tomava a trava da
+  liquidação (dois cancelamentos possíveis em corrida) — agora toma (t22, trava provada); teste de negação sem motivo.
+- **Permissões da massa:** preparador, ordenadora (outra pessoa) e tesoureiro dos lotes; gerar o borderô exige também
+  anexar o arquivo e abrir a fila de assinatura (ato composto, como o serviço já fazia).
+- **Comandos:** `m09-lote` + `m05-ordem-pagamento` 42/42 (depois 24 no lote com t22); `rotulo-da-escrita` +
+  `licenciamento-gate` 14/14; censo e `modelo-sem-caso-de-uso` 9/9; 9 mutações vermelhas e restauradas; typecheck
+  0/0/0. Percurso: 1ª corrida parou no rótulo do lote; 2ª no art. 141; 3ª operou tudo (o retorno lia mensagem de
+  formulário que some com o sucesso — passou a conferir efeito e tela); a 4ª, retomando o estado, verde. A corrida única
+  do zero fica para a base refeita (R3-001).
+- **Resíduo na base R3:** um lote vazio (o nº 2) criado pela corrida recusada pelo art. 141, e o borderô do lote 1 sem
+  fila de assinatura (gerado antes de o tesoureiro ter as duas ações). Não existirão na base refeita.
+- **Pendências no MODULO do M09:** REJEICAO-DE-NOTA-EXTRA, REJEICAO-DEPOIS-DO-PAGAMENTO (agora: só enquanto o pagamento
+  está vivo), MENSAGEM-QUE-SAI-COM-O-FORMULARIO; BORDERO-CONVENIO-BANCARIO segue bloqueada por terceiro.
 
 ### R3-024 (M08) — encerramento e abertura, num exercício isolado
 - **Exercício isolado:** `gestao_publica_esperanca_r3_encerramento`, feita por `CREATE DATABASE ... TEMPLATE

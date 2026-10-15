@@ -246,7 +246,23 @@ export const zProcessarRetorno = z.object({
   criadoPor: z.string().min(1),
 });
 
+/** V39-R3 (R3-027) — o retorno que diz que o banco NÃO fez o crédito de um ou mais itens. */
+export const zRegistrarRejeicao = z.object({
+  borderoId: z.string().min(1),
+  linhas: z
+    .array(
+      z.object({
+        itemId: z.string().min(1),
+        dataRejeicao: z.date(),
+        ocorrencia: z.string().trim().min(3, "Diga o que o banco respondeu (o código e o texto da ocorrência).").max(200),
+      })
+    )
+    .min(1),
+  criadoPor: z.string().min(1),
+});
+
 export type CriarLoteInput = z.input<typeof zCriarLote>;
+export type RegistrarRejeicaoInput = z.input<typeof zRegistrarRejeicao>;
 export type IncluirNoLoteInput = z.input<typeof zIncluirNoLote>;
 export type GerarBorderoInput = z.input<typeof zGerarBordero>;
 export type ProcessarRetornoInput = z.input<typeof zProcessarRetorno>;

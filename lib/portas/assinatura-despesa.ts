@@ -148,7 +148,7 @@ export async function enviarParaAssinatura(
   registroId: string,
   signatarios: readonly string[]
 ): Promise<string> {
-  return comEscritaAutenticada("ENVIAR_DOCUMENTO_PARA_ASSINATURA", async (criadoPor) => {
+  return comEscritaAutenticada("CRIAR_FILA_DE_ASSINATURA", async (criadoPor) => {
     const comum = { modo: "AVANCADA" as const, signatarios: [...signatarios], criadoPor };
     const r =
       tipo === "EMPENHO"

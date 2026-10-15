@@ -102,7 +102,9 @@ export function ehRecusaDeLicenca(e: unknown): e is ModuloNaoHabilitadoError | L
  * desconhecido seria a gaveta de sobra que deixa passar, calada, a ação que ninguém
  * classificou — exatamente o que o `Record` exaustivo do catálogo existe para impedir.
  */
-const ROTULOS_DE_PLATAFORMA: readonly string[] = ["APLICAR_ATUALIZACAO_DE_PERMISSOES"];
+// V39-R3 (R3-027) — TROCAR_SENHA: trocar a PRÓPRIA senha é ato de plataforma (não é de módulo contratável, e todo
+// usuário o pratica). Medido por `test/rotulo-da-escrita.test.ts`: sem esta linha, a troca pela tela falhava para todos.
+const ROTULOS_DE_PLATAFORMA: readonly string[] = ["APLICAR_ATUALIZACAO_DE_PERMISSOES", "TROCAR_SENHA"];
 
 export function moduloDoRotuloDaBorda(acao: string): ModuloComercial {
   const m = MODULO_DA_ACAO[acao as AcaoDoSistema];

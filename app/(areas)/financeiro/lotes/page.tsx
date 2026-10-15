@@ -14,8 +14,10 @@ import {
   FormFechar,
   FormGerarBordero,
   FormIncluir,
+  FormRejeicao,
   FormRetorno,
 } from "./FormsDoLote";
+import { acoesPermitidas } from "../../../../lib/portas/molde";
 import { anoCivil, diaCivil } from "../../../../packages/datas/index";
 import { telaExigeLeituraDoEnte } from "../../../../lib/portas/leitura";
 import { formatarMoeda } from "../../../../lib/format/moeda";
@@ -44,11 +46,13 @@ export default async function LotesPage(): Promise<React.ReactElement> {
   );
 
   try {
-    const [contas, lista, ordens, signatarios] = await Promise.all([
+    const [contas, lista, ordens, signatarios, pode] = await Promise.all([
       contasComSaldo(diaCivil(new Date())),
       lotes(),
       ordensDisponiveisParaLote(),
       possiveisSignatarios(),
+      // V39-R3 (R3-027) — cada formulário só para quem o servidor autoriza (a recusa no servidor continua valendo).
+      acoesPermitidas(["CRIAR_LOTE_DE_PAGAMENTO", "INCLUIR_NO_LOTE", "FECHAR_LOTE", "GERAR_BORDERO", "PROCESSAR_RETORNO_BANCARIO"]),
     ]);
 
     // ⚠️ ERA `getFullYear()` — o ano do relógio da MÁQUINA. Em 31/12 às 22:00 no ente,
@@ -59,10 +63,12 @@ export default async function LotesPage(): Promise<React.ReactElement> {
       <div className="space-y-6">
         {cabecalho}
 
-        <FormCriarLote
-          contas={contas.map((c) => ({ id: c.id, codigo: c.codigo, descricao: c.descricao }))}
-          exercicio={exercicio}
-        />
+        {pode.has("CRIAR_LOTE_DE_PAGAMENTO") ? (
+          <FormCriarLote
+            contas={contas.map((c) => ({ id: c.id, codigo: c.codigo, descricao: c.descricao }))}
+            exercicio={exercicio}
+          />
+        ) : null}
 
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-[color:var(--color-ink)]">Lotes</h2>
@@ -110,12 +116,12 @@ export default async function LotesPage(): Promise<React.ReactElement> {
 
                       {l.estado === "ABERTO" ? (
                         <>
-                          <FormIncluir loteId={l.id} ordens={ordens} />
-                          <FormFechar loteId={l.id} />
+                          {pode.has("INCLUIR_NO_LOTE") ? <FormIncluir loteId={l.id} ordens={ordens} /> : null}
+                          {pode.has("FECHAR_LOTE") ? <FormFechar loteId={l.id} /> : null}
                         </>
                       ) : null}
 
-                      {l.estado === "FECHADO" && l.borderoId === null ? (
+                      {l.estado === "FECHADO" && l.borderoId === null && pode.has("GERAR_BORDERO") ? (
                         <FormGerarBordero loteId={l.id} signatarios={signatarios} />
                       ) : null}
 
@@ -145,14 +151,30 @@ export default async function LotesPage(): Promise<React.ReactElement> {
                                 <span>{i.descricao}</span>
                                 <span className="flex items-center gap-2">
                                   <span className="tabular-nums">R$ {formatarMoeda(i.valor).texto}</span>
-                                  <Badge status={i.baixado ? "ok" : "neutro"}>
-                                    {i.baixado ? "baixado" : "em aberto"}
-                                  </Badge>
+                                  <span data-situacao-item={i.baixado ? "baixado" : i.rejeicao !== null ? "rejeitado" : "em-aberto"}>
+                                    <Badge status={i.baixado ? "ok" : i.rejeicao !== null ? "erro" : "neutro"}>
+                                      {i.baixado ? "baixado" : i.rejeicao !== null ? "rejeitado pelo banco" : "em aberto"}
+                                    </Badge>
+                                  </span>
                                 </span>
                               </li>
                             ))}
                           </ul>
-                          <FormRetorno borderoId={l.borderoId} itens={itens} />
+                          {itens.some((i) => i.rejeicao !== null) ? (
+                            <ul className="mt-2 space-y-1 text-[11px] text-[color:var(--color-ink-2)]" data-lista="rejeicoes-do-bordero">
+                              {itens.filter((i) => i.rejeicao !== null).map((i) => (
+                                <li key={i.id}>
+                                  {i.descricao}: o banco respondeu "{i.rejeicao}". A ordem foi cancelada; o novo crédito sai por outra ordem.
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
+                          {pode.has("PROCESSAR_RETORNO_BANCARIO") ? (
+                            <>
+                              <FormRetorno borderoId={l.borderoId} itens={itens} />
+                              <FormRejeicao borderoId={l.borderoId} itens={itens} />
+                            </>
+                          ) : null}
                         </div>
                       )}
                     </article>

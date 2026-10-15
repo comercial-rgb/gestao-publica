@@ -12,6 +12,7 @@ import {
   fecharAction,
   gerarBorderoAction,
   incluirAction,
+  rejeicaoAction,
   retornoAction,
   type EstadoLote,
 } from "./actions";
@@ -36,6 +37,8 @@ export interface ItemParaRetorno {
   readonly descricao: string;
   readonly valor: string;
   readonly baixado: boolean;
+  readonly rejeicao: string | null;
+  readonly nota: boolean;
 }
 
 function Mensagens({ estado }: { readonly estado: EstadoLote }): React.ReactElement {
@@ -229,11 +232,11 @@ export function FormRetorno({
   const [estado, action, pendente] = useActionState<EstadoLote, FormData>(retornoAction, {});
   const idData = `pago-em-${useId()}`;
 
-  const abertos = itens.filter((i) => !i.baixado);
+  const abertos = itens.filter((i) => !i.baixado && i.rejeicao === null);
   if (abertos.length === 0) {
     return (
       <p className="mt-2 text-[11px] text-[color:var(--color-ink-2)]">
-        Todos os itens já foram baixados pelo retorno.
+        Todos os itens já tiveram resposta do banco.
       </p>
     );
   }
@@ -270,5 +273,58 @@ export function FormRetorno({
         {pendente ? "Processando…" : "Processar retorno"}
       </button>
     </form>
+  );
+}
+
+/**
+ * V39-R3 (R3-027) — O BANCO NÃO FEZ O CRÉDITO. Um item por vez, com o que o banco respondeu: a rejeição cancela a ordem
+ * do item, e o novo crédito sai por outra ordem, em outro lote.
+ */
+export function FormRejeicao({
+  borderoId,
+  itens,
+}: {
+  readonly borderoId: string;
+  readonly itens: readonly ItemParaRetorno[];
+}): React.ReactElement | null {
+  const [estado, action, pendente] = useActionState<EstadoLote, FormData>(rejeicaoAction, {});
+  const idItem = `rejeitado-item-${useId()}`;
+  const idData = `rejeitado-em-${useId()}`;
+  const idOcorrencia = `ocorrencia-${useId()}`;
+  // A nota extraorçamentária fica fora: a rejeição dela ainda não tem tratamento no sistema.
+  const abertos = itens.filter((i) => !i.baixado && i.rejeicao === null && !i.nota);
+  if (abertos.length === 0) return null;
+
+  return (
+    <details className={`mt-3 ${CLASSE_PAINEL_FORMULARIO}`}>
+      <summary className="cursor-pointer text-xs font-semibold text-[color:var(--color-ink)]">O banco rejeitou um crédito</summary>
+      <form action={action} data-acao="registrar-rejeicao" className="mt-2 space-y-2">
+        <ChaveDeComando />
+        <input type="hidden" name="borderoId" value={borderoId} />
+        <div>
+          <label htmlFor={idItem} className={ROTULO}>Item rejeitado</label>
+          <select id={idItem} name="itemId" required defaultValue="" className={CAMPO}>
+            <option value="" disabled>Escolha o item</option>
+            {abertos.map((i) => (
+              <option key={i.id} value={i.id}>
+                {i.descricao} · R$ {formatarMoeda(i.valor).texto}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label htmlFor={idData} className={ROTULO}>Data da rejeição no banco</label>
+          <input id={idData} name="rejeitadoEm" type="date" required className={`${CAMPO} max-w-xs`} />
+        </div>
+        <div>
+          <label htmlFor={idOcorrencia} className={ROTULO}>O que o banco respondeu</label>
+          <input id={idOcorrencia} name="ocorrencia" required minLength={3} maxLength={200} placeholder="código e texto da ocorrência" className={CAMPO} />
+        </div>
+        <Mensagens estado={estado} />
+        <button type="submit" disabled={pendente} className={CLASSE_BOTAO_PRIMARIO}>
+          {pendente ? "Registrando…" : "Registrar a rejeição"}
+        </button>
+      </form>
+    </details>
   );
 }

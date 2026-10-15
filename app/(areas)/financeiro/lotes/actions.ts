@@ -6,6 +6,7 @@ import {
   fechar,
   gerarBorderoDoLote,
   incluirOrdemNoLote,
+  registrarRejeicao,
   registrarRetorno,
 } from "../../../../lib/portas/tesouraria";
 import { comComandoDoFormulario } from "../../../../lib/portas/comando";
@@ -140,6 +141,36 @@ export async function retornoAction(
       return { sucesso: `${baixados} item(ns) baixado(s) pelo retorno do banco.` };
     } catch (e) {
       return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível processar o retorno." };
+    }
+  });
+}
+
+/** V39-R3 (R3-027) — o banco devolveu o crédito de um item: a rejeição, com o que o banco respondeu. */
+export async function rejeicaoAction(
+  _prev: EstadoLote,
+  formData: FormData
+): Promise<EstadoLote> {
+  return comComandoDoFormulario(formData, async () => {
+    const borderoId = String(formData.get("borderoId") ?? "").trim();
+    const itemId = String(formData.get("itemId") ?? "").trim();
+    const dia = String(formData.get("rejeitadoEm") ?? "").trim();
+    const ocorrencia = String(formData.get("ocorrencia") ?? "").trim();
+
+    if (itemId === "") return { erro: "Escolha o item que o banco rejeitou." };
+    if (dia === "") return { erro: "Informe a data da rejeição no banco." };
+    if (ocorrencia.length < 3) return { erro: "Diga o que o banco respondeu (o código e o texto da ocorrência)." };
+
+    try {
+      const r = await registrarRejeicao(borderoId, [{ itemId, dia, ocorrencia }]);
+      revalidatePath("/financeiro/lotes");
+      return {
+        sucesso:
+          r.rejeitados === 0
+            ? "Esta rejeição já estava registrada."
+            : `Rejeição registrada. A ordem do item foi cancelada; prepare outra ordem para o novo crédito.`,
+      };
+    } catch (e) {
+      return { erro: e instanceof Error ? mensagemDoErro(e, "") : "Não foi possível registrar a rejeição." };
     }
   });
 }

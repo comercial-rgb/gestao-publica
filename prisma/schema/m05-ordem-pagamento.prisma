@@ -91,6 +91,9 @@ model MovimentoDaOrdemDePagamento {
   criadoEm  DateTime @default(now())
   criadoPor String
 
+  /// back-relation (V39-R3, R3-027): a rejeição do banco que provocou este cancelamento.
+  rejeicao RejeicaoDeRetornoBancario? @relation("CancelamentoPorRejeicao")
+
   @@index([ordemId])
   @@index([ordemId, criadoEm])
 }

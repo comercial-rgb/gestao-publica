@@ -206,6 +206,21 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "informe.farmacia@ficticio.local", nome: "Responsável pelo informe da farmácia (fictícia)", perfil: "INFORME DA FARMÁCIA — ENSAIO",
     acoes: ["INFORMAR_ESTOQUE_DA_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-027) — a folha até o banco: quem prepara a ordem, quem a autoriza (outra pessoa) e quem leva ao lote,
+  // gera o borderô (que também anexa o documento e abre a fila de assinatura: as duas ações entram) e registra o
+  // retorno (pago ou rejeitado).
+  {
+    email: "ordem.preparador@ficticio.local", nome: "Preparador de ordens de pagamento (fictício)", perfil: "ORDEM DE PAGAMENTO — PREPARO — ENSAIO",
+    acoes: ["PREPARAR_ORDEM_PAGAMENTO", "CONSULTAR_DESPESA"],
+  },
+  {
+    email: "ordenador.despesa@ficticio.local", nome: "Ordenadora da despesa (fictícia)", perfil: "ORDEM DE PAGAMENTO — AUTORIZAÇÃO — ENSAIO",
+    acoes: ["AUTORIZAR_ORDEM_PAGAMENTO", "CONSULTAR_DESPESA"],
+  },
+  {
+    email: "tesoureiro.lote@ficticio.local", nome: "Tesoureiro dos lotes (fictício)", perfil: "LOTE E RETORNO BANCÁRIO — ENSAIO",
+    acoes: ["CRIAR_LOTE_DE_PAGAMENTO", "INCLUIR_NO_LOTE", "FECHAR_LOTE", "GERAR_BORDERO", "ANEXAR_ARQUIVO", "CRIAR_FILA_DE_ASSINATURA", "PROCESSAR_RETORNO_BANCARIO", "CONSULTAR_FINANCEIRO"],
+  },
   // V39-R3 (R3-026) — quem opera o patrimônio (incorpora, move, deprecia, baixa) e quem só o consulta.
   {
     email: "patrimonio@ficticio.local", nome: "Gestor do patrimônio (fictício)", perfil: "PATRIMÔNIO — ENSAIO",

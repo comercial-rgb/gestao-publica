@@ -76,7 +76,7 @@ export function FormOrdem({
   const selecionada = contas.find((c) => c.codigo === conta);
 
   return (
-    <form ref={ref} action={action} className={CLASSE_PAINEL_FORMULARIO}>
+    <form ref={ref} action={action} data-acao="preparar-ordem" className={CLASSE_PAINEL_FORMULARIO}>
       <ChaveDeComando />
       <h2 className="mb-1 text-sm font-semibold text-[color:var(--color-ink)]">
         Preparar ordem de pagamento
@@ -172,6 +172,8 @@ export function FormAutorizar({ ordemId }: { readonly ordemId: string }): React.
       </summary>
       <form
         action={action}
+        data-acao="autorizar-ordem"
+        data-ordem={ordemId}
         className="mt-2 space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3"
       >
         <ChaveDeComando />
@@ -206,6 +208,8 @@ export function FormCancelar({ ordemId }: { readonly ordemId: string }): React.R
       </summary>
       <form
         action={action}
+        data-acao="cancelar-ordem"
+        data-ordem={ordemId}
         className="mt-2 space-y-2 rounded-[var(--radius-md)] border border-[color:var(--color-border)] bg-[color:var(--color-surface-2)] p-3"
       >
         <ChaveDeComando />

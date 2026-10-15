@@ -1466,6 +1466,7 @@ export type NomeDeServico =
   | "fecharLote"
   | "gerarBordero"
   | "processarRetornoBancario"
+  | "registrarRejeicaoBancaria"
   // ── M28 — convênios (ENT03b) ──
   | "cadastrarConvenio"
   | "liberarParcela"
@@ -2420,6 +2421,8 @@ export const ACAO_DO_SERVICO: Record<NomeDeServico, AcaoDoSistema> = {
   fecharLote: "FECHAR_LOTE",
   gerarBordero: "GERAR_BORDERO",
   processarRetornoBancario: "PROCESSAR_RETORNO_BANCARIO",
+  // V39-R3 (R3-027) — a rejeição é a outra resposta do mesmo retorno: a mesma permissão.
+  registrarRejeicaoBancaria: "PROCESSAR_RETORNO_BANCARIO",
 
   // ── M28 — convênios (ENT03b) ──
   cadastrarConvenio: "CADASTRAR_CONVENIO",
@@ -3383,6 +3386,8 @@ export const FORA_DO_CENSO: Record<string, string> = {
     "leitura (as ordens de pagamento de um exercício/unidade, com as quatro etapas de T07 — a tela)",
   liquidacoesParaOrdem:
     "leitura (as liquidações que ainda comportam ordem — o vocabulário do formulário)",
+  cancelarOrdemRejeitadaNaTx:
+    "composável interno (V39-R3 — cancela, DENTRO da transação da rejeição do retorno bancário e sob a trava da liquidação, a ordem cujo crédito o banco rejeitou; quem chama já pediu PROCESSAR_RETORNO_BANCARIO)",
   exigirOrdemAutorizada:
     "guard (T07 — confere, DENTRO da transação do pagamento, que a ordem está AUTORIZADA, é da mesma liquidação e tem o valor exato; não abre transação e não pede permissão própria — quem paga já pediu a dele)",
   exigirSolicitacaoParaEmpenho:

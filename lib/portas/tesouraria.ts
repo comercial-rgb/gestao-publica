@@ -21,6 +21,7 @@ import {
   gerarBordero,
   incluirNoLote,
   processarRetornoBancario,
+  registrarRejeicaoBancaria,
 } from "../../modules/m09-tesouraria/servico-lote";
 import { estadoDoLote } from "../../modules/m09-tesouraria/lote";
 // ⚠️ REEXPORTADO para a tela poder DISTINGUIR "conta sem mapeamento contábil" de um erro
@@ -458,7 +459,7 @@ export async function criarLote(input: {
   readonly diaVencimento: string;
   readonly descricao: string;
 }): Promise<number> {
-  return comEscritaAutenticada("CRIAR_LOTE_PAGAMENTO", async (criadoPor) => {
+  return comEscritaAutenticada("CRIAR_LOTE_DE_PAGAMENTO", async (criadoPor) => {
     const r = await criarLoteDePagamento(cliente(), {
       exercicio: input.exercicio,
       contaBancariaId: input.contaBancariaId,
@@ -502,6 +503,10 @@ export interface ItemDoBorderoDaTela {
   readonly descricao: string;
   readonly valor: string;
   readonly baixado: boolean;
+  /** V39-R3 (R3-027) — o que o banco respondeu quando rejeitou o crédito; `null` se não rejeitou. */
+  readonly rejeicao: string | null;
+  /** Nota extraorçamentária (a rejeição dela ainda não tem tratamento: o formulário não a oferece). */
+  readonly nota: boolean;
 }
 
 export async function itensDoBordero(
@@ -518,6 +523,7 @@ export async function itensDoBordero(
               ordem: { select: { numero: true, valor: true } },
               movimentoExtra: { select: { valor: true, credorConsignatario: true } },
               baixa: { select: { id: true } },
+              rejeicao: { select: { ocorrencia: true } },
             },
           },
         },
@@ -530,6 +536,8 @@ export async function itensDoBordero(
       i.ordem?.numero ?? `Nota extra — ${i.movimentoExtra?.credorConsignatario ?? "?"}`,
     valor: (i.ordem?.valor ?? i.movimentoExtra?.valor ?? 0).toString(),
     baixado: i.baixa !== null,
+    rejeicao: i.rejeicao?.ocorrencia ?? null,
+    nota: i.ordem === null,
   }));
 }
 
@@ -552,6 +560,24 @@ export async function registrarRetorno(
       criadoPor,
     });
     return r.baixados;
+  });
+}
+
+/**
+ * V39-R3 (R3-027) — o banco NÃO fez o crédito: registra a rejeição dos itens e cancela as ordens deles no mesmo ato
+ * (o domínio recusa item já pago pelo banco, ordem já paga e nota extraorçamentária).
+ */
+export async function registrarRejeicao(
+  borderoId: string,
+  linhas: readonly { readonly itemId: string; readonly dia: string; readonly ocorrencia: string }[]
+): Promise<{ readonly rejeitados: number; readonly ordensCanceladas: number }> {
+  return comEscritaAutenticada("PROCESSAR_RETORNO_BANCARIO", async (criadoPor) => {
+    const r = await registrarRejeicaoBancaria(cliente(), {
+      borderoId,
+      linhas: linhas.map((l) => ({ itemId: l.itemId, dataRejeicao: meioDiaCivil(l.dia), ocorrencia: l.ocorrencia })),
+      criadoPor,
+    });
+    return { rejeitados: r.rejeitados, ordensCanceladas: r.ordensCanceladas };
   });
 }
 

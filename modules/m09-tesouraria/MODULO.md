@@ -139,7 +139,10 @@ pago o que o banco não liquidou.
 | Pendência | O que falta |
 |---|---|
 | `BORDERO-CONVENIO-BANCARIO` | transmissão real ao banco. O caso de uso RECUSA, nomeando |
-| `LOTE-UI` | telas do lote e do borderô. Os casos de uso existem e são testados; não há superfície |
+| ~~`LOTE-UI`~~ | **RESOLVIDA antes da V39** (a tela `/financeiro/lotes` existe); a V39-R3 (R3-027) a percorreu pela primeira vez e condicionou cada formulário à ação do servidor |
+| `REJEICAO-DE-NOTA-EXTRA` | rejeição do banco a um item de nota extraorçamentária: o serviço recusa, porque o desfecho (o que volta a ser devido e por qual ato) não está decidido |
+| `REJEICAO-DEPOIS-DO-PAGAMENTO` | rejeição de ordem com pagamento VIVO: recusada com o caminho (anular o pagamento antes). Anulado, a rejeição se grava sem cancelamento (a ordem continua PAGA e não se paga de novo) |
+| `MENSAGEM-QUE-SAI-COM-O-FORMULARIO` | fechar o lote, gerar o borderô e o retorno do último item refazem a página e o formulário sai dela levando a mensagem de sucesso; o novo estado aparece no lote e no item, mas o aviso some |
 | `CONCILIACAO-COPIA-PENDENCIAS` | cópia de pendências não baixadas para o período seguinte (2.2) |
 | ~~`CONTAS-BANCARIAS-COM-MESMA-CONTABIL-NOS-SEEDS`~~ | **RESOLVIDA na V22 rodada 7 (2026-09-29).** Não era só seed: o plano oficial tem uma analítica de movimento para todas as contas. Sem reescrever partida nenhuma (razão append-only), o lado contábil da conciliação passou a ser ATRIBUÍDO POR CONTA BANCÁRIA quando a contábil é de mais de uma conta: cada fato que move uma conta já guarda o próprio `lancamentoId` (`lancamentosDaContaBancaria`, `caixa.ts`; a transferência por perna — origem crédito, destino débito). Contábil de uma conta só: comportamento idêntico ao de antes. O que na contábil não é fato de conta nenhuma (ajuste manual) sai nomeado em `lancamentosSemContaBancaria`, fora da identidade, e aparece na tela. A transferência entre contas da mesma contábil passou a entrar no lado interno (e no saldo da conta — o t12 antigo afirmava que A ficava com 1.000 depois de transferir 400) e a ser vinculável. Provas: `m09-conta-contabil-compartilhada.test.ts` (N=2, literal manual), t12/t14 reescritos; mutação: contábil inteira (4 vermelhos), sem as pernas da transferência (4) |
 | ~~`CONCILIACAO-VINCULO-DEPOIS-DO-CORTE`~~ | **RESOLVIDA na V22 rodada 7.** O motor ganhou a data do CONHECIMENTO (`conciliacaoBancaria(…, corte, { conhecimento })`), separada da data do fato; padrão = o corte, e a conciliação por período e o SAGRES continuam reproduzíveis. O painel passa "agora". A tela de `/financeiro/conciliacao` passou a VINCULAR (linha do extrato × registro do sistema, valor sugerido pelo menor residual, parcial legítimo) e a DESFAZER com motivo, pelas ações já do censo (VINCULAR_CONCILIACAO, ESTORNAR_VINCULO), e o domínio passou a aceitar os CINCO tipos internos (antes três: tarifa, rendimento e transferência não tinham como ser conciliados). Provas: `m09-conciliacao.test.ts` (duas datas; conhecimento anterior ao corte recusado), c4 do teste da conta compartilhada; mutação: sem conhecimento (2 vermelhos) |
@@ -353,3 +356,29 @@ mostra a data de cada pendência.
   não é usado nela, e a migration já foi aplicada nas bases locais, por isso não foi reescrita.
 - **PAINEL-SEM-TESTE-DE-UNIDADE**: a escolha do extrato de referência do painel é da porta (com sessão) e não tem teste
   próprio; o efeito na conciliação está no teste do domínio.
+
+## V39-R3 (R3-027) — a rejeição do banco no retorno
+
+O retorno só sabia dizer "pago". `registrarRejeicaoBancaria` (`servico-lote.ts`) registra o crédito que o banco NÃO fez:
+uma `RejeicaoDeRetornoBancario` por item (append-only, `@@unique([itemId])`, com o que o banco respondeu) e, no mesmo
+ato, o CANCELAMENTO da ordem do item (`cancelarOrdemRejeitadaNaTx`, M05). A liquidação volta a comportar ordem, e o novo
+crédito sai por ordem nova em lote novo — o item rejeitado não volta a lote nenhum (`ordemId` único no item).
+
+- **Baixa e rejeição se excluem por item**, sob a trava da liquidação da ordem (a mesma de `pagar()`): o rejeitado não
+  se baixa e o baixado não se rejeita. Rejeição repetida não duplica rejeição nem cancelamento.
+- **A fila do art. 141 não conta o item rejeitado como "em lote vigente"** (`exigirOrdemCronologica`). Contado, a
+  liquidação saía da fila para sempre e o novo crédito era recusado como quebra da ordem — achado pelo percurso, com a
+  fila tendo outra liquidação atrás (o teste t19 passou a ter N=2 na fila e ficou vermelho antes da correção).
+- **Recusas, sem gravar:** borderô cancelado, item de outro borderô, item duplicado, nota extraorçamentária, item já
+  baixado, ordem com pagamento vivo (anulado o pagamento, a rejeição se grava sem cancelamento). O cancelamento manual
+  da ordem passou a tomar a mesma trava da liquidação.
+- **Tela:** `/financeiro/lotes` ganhou "O banco rejeitou um crédito" (item, data, o que o banco respondeu), a situação
+  de cada item (baixado, rejeitado pelo banco, em aberto) e a lista das rejeições do borderô; os formulários do lote
+  aparecem só para quem o servidor autoriza.
+- **Gerar o borderô é ato composto**: além de `GERAR_BORDERO`, anexa o documento (`ANEXAR_ARQUIVO`) e abre a fila de
+  assinatura (`CRIAR_FILA_DE_ASSINATURA`); sem as duas, sobra o borderô sem fila (a falha segura já documentada).
+- **Achado de borda corrigido:** a porta de criar lote mandava o rótulo `CRIAR_LOTE_PAGAMENTO`, que não é ação do censo,
+  e o envelope de escrita o recusava: criar lote pela tela falhava para todos. `test/rotulo-da-escrita.test.ts` lê todo
+  literal de `comEscritaAutenticada` em `lib/` e `app/` e o classifica pela função do envelope; achou mais dois
+  (troca da própria senha e envio para assinatura), corrigidos.
+- Testes: `m09-lote.test.ts` t19 a t22 (24 no arquivo, t22 prova a trava do cancelamento); nove mutações vermelhas e restauradas.

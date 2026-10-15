@@ -98,6 +98,8 @@ model ItemDoLote {
 
   /// back-relation: a baixa do retorno bancário deste item. Campo VIRTUAL.
   baixa BaixaDeRetornoBancario? @relation("BaixaDoItem")
+  /// back-relation (V39-R3, R3-027): a rejeição do banco a este item. Exclusiva com a baixa.
+  rejeicao RejeicaoDeRetornoBancario? @relation("RejeicaoDoItem")
 
   /// ⚠️ A MESMA ORDEM NÃO ENTRA EM DOIS LOTES. Sem isto, a mesma autorização de
   /// pagamento seria enviada ao banco duas vezes — e o segundo borderô pareceria
@@ -162,6 +164,8 @@ model Bordero {
 
   movimentos MovimentoDoBordero[]
   baixas     BaixaDeRetornoBancario[]
+  /// back-relation (V39-R3, R3-027): as rejeições que o retorno do banco trouxe.
+  rejeicoes  RejeicaoDeRetornoBancario[]
   /// back-relation M22 — o documento gerado deste borderô. Campo VIRTUAL.
   anexos     Anexo[]
 
@@ -204,6 +208,37 @@ model BaixaDeRetornoBancario {
 
   /// O identificador que o banco devolveu, para rastreio e para a conciliação.
   identificadorBanco String
+
+  criadoEm  DateTime @default(now())
+  criadoPor String
+
+  @@index([borderoId])
+}
+
+/// V39-R3 (R3-027) — A REJEIÇÃO DE UM ITEM pelo retorno do banco: o crédito não foi feito.
+///
+/// ⚠️ APPEND-ONLY, UMA POR ITEM, EXCLUSIVA COM A BAIXA (as duas guardas vivem no serviço, sob a trava da liquidação da ordem). O item
+/// rejeitado não volta a lote nenhum: a ordem dele é CANCELADA no mesmo ato (`movimentoDaOrdemId`), a liquidação volta a
+/// comportar ordem, e o novo crédito sai por ordem nova em lote novo. Ordem com pagamento vivo é recusada (o pagamento
+/// registrado se desfaz pela anulação dele, antes); anulado, a rejeição se grava sem cancelamento (`movimentoDaOrdemId` nulo).
+model RejeicaoDeRetornoBancario {
+  id String @id @default(cuid())
+
+  borderoId String
+  bordero   Bordero @relation(fields: [borderoId], references: [id])
+
+  itemId String     @unique
+  item   ItemDoLote @relation("RejeicaoDoItem", fields: [itemId], references: [id])
+
+  /// O que o banco disse (código e texto da ocorrência, como veio).
+  ocorrencia String @db.VarChar(200)
+
+  /// Quando o BANCO rejeitou.
+  dataRejeicao DateTime
+
+  /// O cancelamento da ordem que esta rejeição provocou.
+  movimentoDaOrdemId String?                      @unique
+  movimentoDaOrdem   MovimentoDaOrdemDePagamento? @relation("CancelamentoPorRejeicao", fields: [movimentoDaOrdemId], references: [id], onDelete: Restrict)
 
   criadoEm  DateTime @default(now())
   criadoPor String
