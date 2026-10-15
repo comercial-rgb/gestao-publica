@@ -31,6 +31,10 @@ import { criarM04Deps } from "../../modules/m04-receita/adapter-prisma.js";
 import { exigirNaturezaDaFonte } from "../../modules/m01-core-contabil/natureza-da-fonte.js";
 import { declararRoteiroPatrimonial } from "../../modules/m01-core-contabil/roteiro-patrimonial-declarado.js";
 import { cadastrarConvenio } from "../../modules/m28-convenios/servico.js";
+import { declararContaDaLiquidacao } from "../../modules/m01-core-contabil/conta-da-liquidacao.js";
+import { cadastrarBem, cadastrarClasseDeBens, cadastrarLocalizacaoFisica, cadastrarMotivoDeBaixa, cadastrarTipoDeIncorporacao } from "../../modules/m10-patrimonial/gestao-do-bem.js";
+import { parametrizarRoteiroPatrimonial } from "../../modules/m10-patrimonial/roteiros.js";
+import { definirParametroDeAtualizacao } from "../../modules/m10-patrimonial/parametros.js";
 import { calcularDvDoCnpj, documentoTemDigitoValido } from "../../packages/documento/index.js";
 import { meioDiaCivil } from "../../packages/datas/index.js";
 import { toMoney } from "../../packages/contracts/index.js";
@@ -201,6 +205,15 @@ export const PAPEIS_R3: readonly PapelR3[] = [
   {
     email: "informe.farmacia@ficticio.local", nome: "Responsável pelo informe da farmácia (fictícia)", perfil: "INFORME DA FARMÁCIA — ENSAIO",
     acoes: ["INFORMAR_ESTOQUE_DA_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+  },
+  // V39-R3 (R3-026) — quem opera o patrimônio (incorpora, move, deprecia, baixa) e quem só o consulta.
+  {
+    email: "patrimonio@ficticio.local", nome: "Gestor do patrimônio (fictício)", perfil: "PATRIMÔNIO — ENSAIO",
+    acoes: ["ADQUIRIR_BEM", "REGISTRAR_MOVIMENTO_DE_GESTAO", "TRANSFERIR_BEM_ENTRE_ENTIDADES", "ATUALIZAR_COMPETENCIA_PATRIMONIAL", "BAIXAR_BEM", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
+  },
+  {
+    email: "consulta.patrimonio@ficticio.local", nome: "Consulta do patrimônio (fictícia)", perfil: "CONSULTA DO PATRIMÔNIO — ENSAIO",
+    acoes: ["CONSULTAR_PATRIMONIO"],
   },
   // V39-R3 (R3-025) — quem opera os convênios recebidos e quem só os consulta.
   {
@@ -831,6 +844,108 @@ async function semearConvenios(prisma: PrismaClient): Promise<void> {
   }
 }
 
+// ═══ 12. PATRIMÔNIO: o que precisa existir para incorporar, mover, depreciar e baixar pela tela ═══
+//
+// PARÂMETROS DE ENSAIO, ESCOLHIDOS NO PLANO DO TCE-PB CARREGADO (como os das seções 3 e 11), não decisão do ente:
+//   · o elemento 52 liquida em 1.2.3.1.1.99.08 BENS MÓVEIS A CLASSIFICAR (o bem comprado e ainda não tombado);
+//   · a classe R3-INFO (equipamentos de processamento de dados) mora em 1.2.3.1.1.02.01;
+//   · AQUISICAO D 1.2.3.1.1.02.01 / C 1.2.3.1.1.99.08 (classifica o que a liquidação pôs a classificar);
+//   · DEPRECIACAO D 3.3.3.1.1.01.01 DEPRECIAÇÃO DE BENS MÓVEIS / C 1.2.3.8.1.01.02 (-) DEPRECIAÇÃO ACUMULADA DE BENS DE
+//     INFORMÁTICA; 60 meses, residual de 10%;
+//   · DOACAO_REALIZADA D 3.5.2.4.5.01.04 DOAÇÕES CONCEDIDAS DE BENS MÓVEIS - INTER MUNICÍPIOS / C 1.2.3.1.1.02.01.
+// A OPERAÇÃO que o percurso prova (incorporar, atribuir, mover, transferir, depreciar, baixar) NÃO é feita aqui: aqui
+// ficam os dois empenhos ordinários, as duas liquidações (A: 900,00 em agosto; B: 150,00 em outubro; a ficha 10851 tinha 1.100,00 livres) e os dois bens cadastrados.
+// Pendência ROTEIRO-PATRIMONIAL-DE-ENSAIO no MODULO do M10: o contador do ente decide os definitivos.
+
+const CONTA_A_CLASSIFICAR = "1.2.3.1.1.99.08";
+const CONTA_INFORMATICA = "1.2.3.1.1.02.01";
+const ROTEIROS_PATRIMONIAIS_R3 = [
+  { tipo: "AQUISICAO", debito: CONTA_INFORMATICA, credito: CONTA_A_CLASSIFICAR },
+  { tipo: "DEPRECIACAO", debito: "3.3.3.1.1.01.01", credito: "1.2.3.8.1.01.02" },
+  { tipo: "DOACAO_REALIZADA", debito: "3.5.2.4.5.01.04", credito: CONTA_INFORMATICA },
+] as const;
+/** Administração (02004): ficha 10851 da Lei 613/2025, elemento 52, fonte 500. */
+const FICHA_EQUIPAMENTOS = 10851;
+
+async function semearPatrimonio(prisma: PrismaClient): Promise<void> {
+  await passo(`Conta da liquidação do elemento 52: ${CONTA_A_CLASSIFICAR} (bens móveis a classificar)`, async () => {
+    const ja = await prisma.contaDaLiquidacaoPorElemento.findFirst({ where: { elemento: "52" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: null };
+    await declararContaDaLiquidacao(prisma, { elemento: "52", efeito: "IMOBILIZADO", contaCodigo: CONTA_A_CLASSIFICAR, fundamento: `PCASP do TCE-PB 2025: o equipamento comprado entra a classificar até o tombamento ${ENSAIO}.`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  for (const r of ROTEIROS_PATRIMONIAIS_R3) {
+    await passo(`Roteiro patrimonial ${r.tipo}: D ${r.debito} / C ${r.credito}`, async () => {
+      const ja = await prisma.versaoDeRoteiro.findFirst({ where: { familia: "PATRIMONIAL", chave: r.tipo }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: null };
+      await parametrizarRoteiroPatrimonial(prisma, { tipo: r.tipo, contaDebitoId: await contaId(prisma, r.debito), contaCreditoId: await contaId(prisma, r.credito), criadoPor: ADMIN });
+      return { estado: "criado", valor: null };
+    });
+  }
+  const classeId = await passo(`Classe de bens R3-INFO (conta ${CONTA_INFORMATICA})`, async () => {
+    const ja = await prisma.classeDeBens.findFirst({ where: { codigo: "R3-INFO" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarClasseDeBens(prisma, { codigo: "R3-INFO", descricao: `Equipamentos de processamento de dados ${ENSAIO}`, especie: "MOVEL", contaContabilAtivoId: await contaId(prisma, CONTA_INFORMATICA), criadoPor: ADMIN })).classeId };
+  });
+  await passo("Parâmetro de depreciação de R3-INFO: 60 meses, residual de 10%", async () => {
+    if ((await prisma.versaoDeParametroDeAtualizacao.findFirst({ where: { classeDeBensId: classeId }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await definirParametroDeAtualizacao(prisma, { classeDeBensId: classeId, metodo: "DEPRECIACAO", vidaUtilMeses: 60, percentualResidual: "0.10", motivo: `Vida útil de equipamentos de informática ${ENSAIO}`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  const tipoCompra = await passo("Tipo de incorporação R3-COMPRA (aquisição por compra)", async () => {
+    const ja = await prisma.tipoDeIncorporacao.findFirst({ where: { codigo: "R3-COMPRA" }, select: { id: true } });
+    if (ja !== null) return { estado: "existente", valor: ja.id };
+    return { estado: "criado", valor: (await cadastrarTipoDeIncorporacao(prisma, { codigo: "R3-COMPRA", descricao: `Aquisição por compra ${ENSAIO}`, criadoPor: ADMIN })).tipoId };
+  });
+  await passo("Motivo de baixa R3-DOACAO (doação a outro município)", async () => {
+    if ((await prisma.motivoDeBaixa.findFirst({ where: { codigo: "R3-DOACAO" }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+    await cadastrarMotivoDeBaixa(prisma, { codigo: "R3-DOACAO", descricao: `Doação a outro município ${ENSAIO}`, criadoPor: ADMIN });
+    return { estado: "criado", valor: null };
+  });
+  for (const l of [{ codigo: "R3-SALA-01", descricao: "Sala 1 da Secretaria de Administração" }, { codigo: "R3-SALA-02", descricao: "Sala 2 da Secretaria de Administração" }]) {
+    await passo(`Localização ${l.codigo}`, async () => {
+      if ((await prisma.localizacaoFisica.findFirst({ where: { codigo: l.codigo }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await cadastrarLocalizacaoFisica(prisma, { codigo: l.codigo, descricao: `${l.descricao} ${ENSAIO}`, criadoPor: ADMIN });
+      return { estado: "criado", valor: null };
+    });
+  }
+  const m19 = criarM19Deps(prisma);
+  for (const p of [{ doc: cpfComDv("731845301"), nome: "Servidora responsável pela sala 1 (fictícia)" }, { doc: cpfComDv("731845302"), nome: "Servidor responsável pela sala 2 (fictício)" }, { doc: cnpjComDv("558812340001"), nome: "Informática Sertão Ltda (fictícia)" }]) {
+    await passo(`Pessoa ${p.nome}`, async () => {
+      if ((await m19.pessoas.buscarPorDocumento(p.doc)) !== null) return { estado: "existente", valor: null };
+      await cadastrarPessoa({ documento: p.doc, nome: p.nome, municipio: "Esperança", uf: "PB", criadoPor: ADMIN }, m19);
+      return { estado: "criado", valor: null };
+    });
+  }
+  const ficha = await prisma.fichaOrcamentaria.findUnique({ where: { exercicio_numero: { exercicio: 2026, numero: FICHA_EQUIPAMENTOS } }, select: { id: true, naturezaDespesa: { select: { codigoCompleto: true } }, unidadeOrc: { select: { codigo: true } } } });
+  if (ficha === null || ficha.naturezaDespesa.codigoCompleto !== "449052" || ficha.unidadeOrc.codigo !== UO_ADMINISTRACAO) throw new Error(`A ficha ${String(FICHA_EQUIPAMENTOS)} de equipamentos da Administração não está nesta base. Nada foi gravado.`);
+  const m05 = criarM05DepsComAlmoxarifado(prisma);
+  // UM EMPENHO ORDINÁRIO POR BEM: o ordinário é de valor fixo e uma liquidação só (MCASP 4.4.2.1, a guarda do M05).
+  for (const l of [{ empenho: "R3-PAT-001/2026", empenhoDia: "2026-08-10", numero: "R3-PAT-L1", valor: "900.00", dia: "2026-08-15", nf: "77001", o_que: "Computador" }, { empenho: "R3-PAT-002/2026", empenhoDia: "2026-10-02", numero: "R3-PAT-L2", valor: "150.00", dia: "2026-10-02", nf: "77002", o_que: "Impressora" }]) {
+    const empenhoId = await passo(`Empenho ${l.empenho} (${l.o_que}), R$ ${l.valor}`, async () => {
+      const ja = await prisma.empenho.findFirst({ where: { numero: l.empenho, fichaId: ficha.id }, select: { id: true } });
+      if (ja !== null) return { estado: "existente", valor: ja.id };
+      return { estado: "criado", valor: (await empenhar({ fichaId: ficha.id, numero: l.empenho, tipo: "ORDINARIO", valor: l.valor, data: D(l.empenhoDia), credorCpfCnpj: cnpjComDv("558812340001"), historico: `${l.o_que} para a Secretaria de Administração ${ENSAIO}`, categoriaOrdemCronologica: "FORNECIMENTO_BENS", criadoPor: ADMIN }, roteiroEmpenho(), m05)).empenhoId };
+    });
+    await passo(`Liquidação ${l.numero} (${l.o_que}), R$ ${l.valor} em ${l.dia}`, async () => {
+      if ((await prisma.liquidacao.findUnique({ where: { empenhoId_numero: { empenhoId, numero: l.numero } }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await liquidar(
+        { empenhoId, numero: l.numero, valor: l.valor, data: D(l.dia), responsavelAtesto: "Chefe do setor de compras (fictício)", notaFiscalNum: l.nf, notaFiscalSerie: "1", notaFiscalData: D(l.dia), notaFiscalValor: l.valor, historico: `${l.o_que} recebido e conferido ${ENSAIO}`, criadoPor: ADMIN },
+        roteiroLiquidacao({ codElemento: "52", obrigacaoAPagar: CONTA_FORNECEDORES_A_PAGAR, contaDebitada: CONTA_A_CLASSIFICAR }),
+        m05
+      );
+      return { estado: "criado", valor: null };
+    });
+  }
+  for (const b of [{ tombamento: "R3-PAT-0001", descricao: "Computador de mesa da Secretaria de Administração", dia: "2026-08-15" }, { tombamento: "R3-PAT-0002", descricao: "Impressora a laser da Secretaria de Administração", dia: "2026-10-02" }]) {
+    await passo(`Bem ${b.tombamento} cadastrado (sem valor: entra pela incorporação, na tela)`, async () => {
+      if ((await prisma.bemPatrimonial.findFirst({ where: { numeroTombamento: b.tombamento }, select: { id: true } })) !== null) return { estado: "existente", valor: null };
+      await cadastrarBem(prisma, { numeroTombamento: b.tombamento, descricao: `${b.descricao} ${ENSAIO}`, classeDeBensId: classeId, dataAquisicao: D(b.dia), tipoDeIncorporacaoId: tipoCompra, criadoPor: ADMIN });
+      return { estado: "criado", valor: null };
+    });
+  }
+}
+
 // ═══ PRINCIPAL ═══
 
 function exigirBanco(): string {
@@ -878,6 +993,8 @@ async function main(): Promise<void> {
     await semearEmpenhosDaEducacao(prisma);
     console.log("\n[11] convênios recebidos");
     await semearConvenios(prisma);
+    console.log("\n[12] patrimônio: classe, roteiros, parâmetro e duas liquidações de capital");
+    await semearPatrimonio(prisma);
     console.log(`\nPronto: ${String(criados)} criado(s), ${String(existentes)} já existente(s). Usuários da R3: ${PAPEIS_R3.map((p) => p.email).join(", ")}.`);
   } finally {
     await prisma.$disconnect();

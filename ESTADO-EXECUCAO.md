@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-026 patrimônio: incorporação, responsável e transferência, depreciação, baixa | este | (existente) + massa | testes do M10 existentes (não alterados) | `percurso-v39r3-patrimonio.mts` 23/24 na 1ª corrida (a falha era a expressão do próprio percurso; a recusa aconteceu e nada foi gravado), 2ª corrida verde | passa do liquidado, mesma unidade, competência já processada, passa do valor do bem, bem baixado não se move, quem só consulta | base R3 |
 | R3-025 convênio recebido: ingresso, vínculo à receita, prestação, glosa, devolução | este | (existente) + teste entre instrumentos | 1 teste novo (3 no bloco), 1 mutação vermelha | `percurso-v39r3-convenio.mts` 7/7 | mesma receita em outro convênio passando do arrecadado (tela e teste); quem só consulta não recebe as ações | base R3 |
 | R3-023 prévia do SIOPE municipal (correspondência versionada) | este | sim | 5 testes, 12 mutações vermelhas | `percurso-v39r3-previa-do-siope.mts` 5/5 | sem correspondência, transcrição adulterada (omissão, linha, seção, nome, condição, tratamento, repetida), sem permissão (tela); arquivo de importação e separação da 365 bloqueados, nomeados | base R3 |
 | R3-022 posição da farmácia calculada dos movimentos | este | sim | 7 testes, 14 mutações vermelhas | `percurso-v39r3-posicao-da-farmacia.mts` 9/9 (rerun 6/6 + 2 já feitos) | modo importado, mês aberto, sem código, código repetido, negativo, mais de 2 casas, posição vazia, adoção retroativa, digitar no modo calculado, sem permissão | base R3 |
@@ -38,6 +39,27 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-026 (M10) — patrimônio: quatro evidências separadas
+- **Rotas:** Patrimônio › Bens patrimoniais › detalhe (`/patrimonio/bens-patrimoniais/<id>`): incorporar pela
+  liquidação, atribuir responsável, mover de sala, transferir entre unidades, baixar do acervo, registrar situação;
+  Patrimônio › Competência (`/patrimonio/competencia`): prévia e processamento da depreciação.
+- **Massa (seção 12):** conta da liquidação do elemento 52, três roteiros patrimoniais, classe R3-INFO com 60 meses e 10%
+  de residual, tipo de incorporação, motivo de baixa, duas salas, dois responsáveis, dois empenhos ordinários na ficha
+  10851 (900,00 e 150,00; a ficha tinha 1.100,00 livres) e suas liquidações, dois bens sem valor. Gestor e consulta do
+  patrimônio.
+- **Correção da base R3:** a primeira versão da seção 12 gravou um empenho único de 1.050,00, e o ordinário só aceita uma
+  liquidação. Anulados 150,00 dele pelo serviço (`anularEmpenhoParcial`, papel de runtime, número R3-PAT-001/2026-A1,
+  02/10/2026); a base refeita do zero (R3-001 final) não terá esse ato.
+- **Percurso:** A) 0001 incorporado por L1 (900,00); 0002 com 200,00 recusado ("só cabem mais 150.00"); 0002 com 150,00.
+  B) responsável e sala; transferência para a mesma unidade recusada; 02004 → 02002. C) competências 2026-08 e 2026-09
+  (13,50 cada, conta feita à mão no percurso); a mesma competência outra vez sem botão, com o motivo. D) doação com
+  200,00 recusada; com 150,00; situação BAIXADO; mover o bem baixado recusado. Por SQL: origem = a liquidação; razão
+  D 1.2.3.1.1.02.01 / C 1.2.3.1.1.99.08 e a conta a classificar volta a 0,00; responsável, sala, saída e entrada na mesma
+  operação, sem lançamento; depreciação D 3.3.3.1.1.01.01 / C 1.2.3.8.1.01.02 e valor do 0001 = 873,00; doação
+  D 3.5.2.4.5.01.04 / C 1.2.3.1.1.02.01 com o motivo, valor do 0002 = 0,00.
+- **Pendências nomeadas no MODULO do M10:** ROTEIRO-PATRIMONIAL-DE-ENSAIO, BAIXA-CONTABIL-NAO-MARCA-SITUACAO,
+  BAIXA-DE-BEM-DEPRECIADO.
 
 ### R3-025 (M28) — convênio recebido, do ingresso à devolução
 - **Rota:** Transferências › Convênios › detalhe (`/transferencias/convenios/<id>`): liberar parcela ligando a receita

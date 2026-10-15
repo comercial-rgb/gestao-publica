@@ -543,3 +543,19 @@ e vira versão nova, com autor, momento e motivo. O lançamento (`exigirRoteiro`
 sem versão, a linha antiga de `RoteiroAlmoxarifado`; o já lançado não muda. A proposta separada da publicação
 (`proporVersaoDeRoteiro`) continua só para o patrimonial e o resultado da alienação. Teste `m10-roteiros` t-alm4
 (N=2 trocas a partir da linha antiga), 3 mutações vermelhas.
+
+## V39-R3 (R3-026) — o bem da liquidação à baixa, pela tela, numa base de ensaio
+
+Nenhum código de domínio novo: as quatro operações já existiam. O que entrou foi a massa (seção 12 de
+`scripts/demonstracao/semear-massa-r3.mts`) e o percurso `scripts/percurso-v39r3-patrimonio.mts`, que separa a
+evidência de incorporação, de responsabilidade e transferência, de depreciação e de baixa, cada uma conferida por SQL
+(origem, responsável, valor e razão).
+
+Pendências nomeadas:
+- **ROTEIRO-PATRIMONIAL-DE-ENSAIO.** A conta da liquidação do elemento 52 (1.2.3.1.1.99.08), a conta da classe R3-INFO e
+  os roteiros AQUISICAO, DEPRECIACAO e DOACAO_REALIZADA da base R3 foram escolhidos no plano do TCE-PB carregado; não são
+  decisão do ente. O contador decide os definitivos.
+- **BAIXA-CONTABIL-NAO-MARCA-SITUACAO.** `baixarBem` não põe o bem em BAIXADO no eixo de gestão; a situação é outro ato
+  (`registrar-situacao` ou o termo). Entre os dois atos o bem com valor zero ainda se movimenta.
+- **BAIXA-DE-BEM-DEPRECIADO.** `baixarBem` baixa só o líquido informado, numa perna; a depreciação acumulada do bem fica.
+  Para bem depreciado o caminho completo é `alienarBem`. O percurso doa um bem ainda sem depreciação.
