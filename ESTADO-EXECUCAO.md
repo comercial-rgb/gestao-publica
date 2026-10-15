@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-029 CSV do conjunto inteiro (listas do molde) | este | rota de exportação + registro das 58 listas | `exportacao-do-molde` (2) com mutação; percurso com mutação da rota | `percurso-v39r3-csv-completo.mts` 3/3 | quem não consulta não recebe o arquivo; conjunto que muda no meio recusa (não provocado em percurso) | base R3 |
 | R3-027 folha até o banco: ordem, lote, borderô, retorno e rejeição | este | rejeição do retorno (nova); 3 rótulos de escrita corrigidos; fila do art. 141 | 4 testes novos (t19 a t22; 24 no arquivo), 9 mutações vermelhas; `test/rotulo-da-escrita.test.ts` (3) com mutação | `percurso-v39r3-folha-ate-o-banco.mts`: as operações correram em três corridas (cada uma achou um defeito, abaixo); a 4ª, retomando, verde | quem só consulta sem formulário; rejeitado não se baixa, baixado não se rejeita, ordem com pagamento vivo, outro borderô, sem permissão, ordem rejeitada não entra em lote nem se paga | base R3 (migration 20261111092100) |
 | R3-024 encerramento de 2026 e abertura de 2027 (cópia isolada) | este | (existente) + preparação da cópia | testes do M08 existentes (não alterados) | `percurso-v39r3-encerramento.mts` 1ª corrida 12/15 (as 3 falhas eram do percurso: corte ao meio-dia de 31/12 e a expressão da recusa; as operações e as recusas aconteceram), 2ª corrida verde | confirmação errada, virada sem destino, quem anula não encerra | cópia `gestao_publica_esperanca_r3_encerramento` |
 | R3-026 patrimônio: incorporação, responsável e transferência, depreciação, baixa | este | (existente) + massa | testes do M10 existentes (não alterados) | `percurso-v39r3-patrimonio.mts` 23/24 na 1ª corrida (a falha era a expressão do próprio percurso; a recusa aconteceu e nada foi gravado), 2ª corrida verde | passa do liquidado, mesma unidade, competência já processada, passa do valor do bem, bem baixado não se move, quem só consulta | base R3 |
@@ -41,6 +42,29 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-029 — CSV: o conjunto filtrado inteiro, conferido por leitor independente
+- **Inventário** (levantamento só de leitura): um gerador comum (`lib/csv/csv.ts`: ";", UTF-8 com marca de ordem de
+  bytes, CRLF, aspas RFC 4180, neutralização de fórmula); 58 listas do molde cujo CSV era SÓ DA PÁGINA visível (25 linhas,
+  arquivo `<nome>-pagina-N.csv`); 3 CSVs públicos da transparência com teto de 5.000 linhas e aviso de arquivo parcial;
+  cerca de 20 telas que exportam o que carregaram; os demonstrativos (RREO/RGF) exportam o texto da tela.
+- **Construído:** `/exportar/[recurso]` (`app/(areas)/exportar/[recurso]/route.ts`) e o registro
+  `lib/portas/recursos/exportacao.ts` (58 entradas, geradas das próprias páginas): a MESMA ação de leitura e o MESMO
+  lister da tela, chamado página a página com os mesmos filtros e a mesma ordem, até o total que o lister informa. O
+  arquivo confere a si mesmo antes de sair (linhas sem repetição = total; se não, recusa dizendo que o conjunto mudou);
+  acima de 20.000 linhas recusa dizendo quanto há e que se recorte pelos filtros. A lista mostra "Exportar CSV (N linhas)"
+  com o link que leva os filtros e a ordem da tela.
+- **Provas:** `test/exportacao-do-molde.test.ts` (toda página do molde tem entrada com a mesma leitura e o mesmo lister;
+  mutação: trocar a leitura de uma entrada fica vermelho). Percurso 3/3 na R3, com leitor de CSV escrito no percurso:
+  1.054 fichas = SQL, as mesmas fichas, autorizado 245.000.000,00 = SQL ao centavo, cabeçalho com os acentos da tela e a
+  marca de ordem de bytes; o filtro da unidade 02004 vai no link e o arquivo traz as 18 do SQL; quem não consulta o
+  planejamento vai para a tela de sem acesso. Mutação da rota (só a primeira página) deixa o percurso vermelho (25 contra
+  1.054).
+- **Não provado em execução:** a recusa por conjunto que mudou no meio (exigiria gravação concorrente durante o
+  download) e a recusa acima do teto (nenhuma lista da base passa de 20.000).
+- **Pendências nomeadas:** TRANSPARENCIA-CSV-TETO-5000 (os três CSVs públicos truncam em 5.000 linhas com aviso e o total
+  do recorte; completar exigiria paginar a consulta pública); CSV-DOS-DEMONSTRATIVOS-PELA-TELA (o CSV do RREO/RGF é o texto
+  da tela, por desenho: o que estiver recolhido não sai).
 
 ### R3-027 (M09, M05) — a folha até o banco: ordem, lote, borderô, retorno e a rejeição
 - **O que a R2 já cobria e não se repetiu** (`percurso-v39r2-folha-ate-tesouraria.mts`, 5/5): a folha na tela, a

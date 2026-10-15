@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { BarraFiltros } from "../ui/BarraFiltros";
 import { Badge } from "../ui/Badge";
-import { BotaoCsv } from "../ui/BotaoCsv";
 import { Card } from "../ui/Card";
 import { EstadoVazio } from "../ui/EstadoVazio";
 import {
@@ -13,7 +12,6 @@ import { PageHeader } from "../ui/PageHeader";
 import { Paginacao } from "../ui/Paginacao";
 import { TabelaDeDados, type ColunaTabela } from "../ui/TabelaDeDados";
 import { ValorMonetario } from "../ui/ValorMonetario";
-import { paraCsv } from "../../lib/csv/csv";
 import type {
   ColunaDoMolde,
   DefinicaoDeRecurso,
@@ -202,10 +200,9 @@ export function ListaDeRecurso({
     ),
   ];
 
-  const csv = paraCsv(
-    d.colunas.map((c) => c.cabecalho),
-    linhas.map((l) => d.colunas.map((c) => l[c.nome] ?? ""))
-  );
+  // V39-R3 (R3-029) — o CSV é do CONJUNTO FILTRADO INTEIRO, pela rota de exportação: os mesmos filtros e a mesma
+  // ordem da tela, lidos pelo mesmo lister até o total. Antes, o arquivo era só da página visível (25 linhas).
+  const hrefDoCsv = hrefCom(`/exportar/${d.nome}`, filtrosVigentes, { ordem: ordem, dir: ordem === null ? null : direcao });
 
   const semFiltro = Object.fromEntries(
     Object.entries(filtrosVigentes).map(([k]) => [k, ""])
@@ -301,10 +298,14 @@ export function ListaDeRecurso({
               rotuloItens={d.rotulo.toLowerCase()}
               hrefDePagina={(p) => hrefCom(d.rota, filtrosVigentes, { pagina: String(p) })}
             />
-            {/* ⚠️ O CSV É DA PÁGINA VISÍVEL, e o rótulo diz isso. Exportar "tudo" a partir de
-                uma lista paginada é a promessa mais fácil de quebrar: o arquivo sairia com 25
-                linhas e o nome diria o contrário. */}
-            <BotaoCsv csv={csv} nomeArquivo={`${d.nome}-pagina-${pagina}.csv`} />
+            <a
+              href={hrefDoCsv}
+              download
+              data-exportar-csv={d.nome}
+              className="inline-flex min-h-9 items-center rounded-[var(--radius-md)] border border-[color:var(--color-border-strong)] px-3 text-xs text-[color:var(--color-ink)] hover:border-[color:var(--color-primary)]"
+            >
+              Exportar CSV ({total.toLocaleString("pt-BR")} {total === 1 ? "linha" : "linhas"})
+            </a>
           </div>
         </Card>
       )}
