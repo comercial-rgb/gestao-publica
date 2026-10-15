@@ -206,6 +206,16 @@ export const PAPEIS_R3: readonly PapelR3[] = [
     email: "informe.farmacia@ficticio.local", nome: "Responsável pelo informe da farmácia (fictícia)", perfil: "INFORME DA FARMÁCIA — ENSAIO",
     acoes: ["INFORMAR_ESTOQUE_DA_FARMACIA", "CONSULTAR_PATRIMONIO", "CONSULTAR_CADASTROS"],
   },
+  // V39-R3 (R3-030) — as jornadas por perfil que faltavam: recursos humanos (anota na ficha funcional; não admite nem
+  // desliga) e o fiscal de contrato (registra ocorrência da fiscalização; só vê o contrato em que for designado).
+  {
+    email: "rh@ficticio.local", nome: "Recursos humanos (fictício)", perfil: "RECURSOS HUMANOS — ANOTAÇÕES — ENSAIO",
+    acoes: ["REGISTRAR_ANOTACAO", "CONSULTAR_PESSOAL"],
+  },
+  {
+    email: "fiscal.contrato@ficticio.local", nome: "Fiscal de contrato (fictício)", perfil: "FISCAL DE CONTRATO — ENSAIO",
+    acoes: ["REGISTRAR_OCORRENCIA_DE_FISCALIZACAO", "CONSULTAR_LICITACOES"],
+  },
   // V39-R3 (R3-028) — quem só lê os documentos (o percurso das famílias de PDF): consultas, nenhuma escrita.
   {
     email: "leitura.documentos@ficticio.local", nome: "Leitura de documentos (fictícia)", perfil: "LEITURA DE DOCUMENTOS — ENSAIO",

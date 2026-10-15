@@ -27,6 +27,7 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-013 categoria ACC | 52010b0e | sim | sim | `percurso-v39r3-frota-acc-e-tanque.mts` ok | sem equivalência presumida | base R3 |
 | R3-017 referência externa do empenho | 233aa725 | sim | sim | `percurso-v39r3-referencia-externa.mts` ok | quem declara não confere | base R3 |
 | R3-018 tanque próprio | 233aa725 | sim | sim, com mutação | `percurso-v39r3-frota-acc-e-tanque.mts` ok | capacidade, trava da posição | base R3 |
+| R3-030 jornadas por perfil, sem administrador | este | 2 perfis de ensaio novos (recursos humanos, fiscal de contrato) | — | `percurso-v39r3-jornadas-por-perfil.mts`: 9 perfis ok (6 numa corrida, 3 numa corrida com o servidor reiniciado; ver abaixo); operação de recursos humanos percorrida; a do fiscal NÃO | cada perfil recusado em outra área com a ação nomeada; recursos humanos sem admitir, desligar ou alterar remuneração | base R3 |
 | R3-028 PDF por família | este | códigos internos e CPF/CNPJ sem máscara corrigidos em 5 documentos | testes dirigidos 131 (7 timeouts de saturação, refeitos sozinhos: 9/9) | `percurso-v39r3-pdf-familias.mts` 10/10 famílias com documento (2 sem documento na base, ditas); 4 mutações no gerador | página vazia, letra encolhida, conteúdo fora da página, código interno, documento sem máscara | base R3 |
 | R3-029 CSV do conjunto inteiro (listas do molde) | este | rota de exportação + registro das 58 listas | `exportacao-do-molde` (2) com mutação; percurso com mutação da rota | `percurso-v39r3-csv-completo.mts` 3/3 | quem não consulta não recebe o arquivo; conjunto que muda no meio recusa (não provocado em percurso) | base R3 |
 | R3-027 folha até o banco: ordem, lote, borderô, retorno e rejeição | este | rejeição do retorno (nova); 3 rótulos de escrita corrigidos; fila do art. 141 | 4 testes novos (t19 a t22; 24 no arquivo), 9 mutações vermelhas; `test/rotulo-da-escrita.test.ts` (3) com mutação | `percurso-v39r3-folha-ate-o-banco.mts`: as operações correram em três corridas (cada uma achou um defeito, abaixo); a 4ª, retomando, verde | quem só consulta sem formulário; rejeitado não se baixa, baixado não se rejeita, ordem com pagamento vivo, outro borderô, sem permissão, ordem rejeitada não entra em lote nem se paga | base R3 (migration 20261111092100) |
@@ -43,6 +44,26 @@ profundidade em estoque, retenção, estorno e travas; superfície nas telas de 
 | R3-014 prévia das retenções | 0fa7e15a | sim | 7 testes, 3 mutações vermelhas | `percurso-v39r3-previa-das-retencoes.mts` 8/8 | sem permissão, anulada, parcial, sem classificação | base R3 |
 
 Nenhuma linha acima foi validada externamente nem publicada.
+
+### R3-030 — jornadas por perfil, sem administrador
+- **Percurso** `scripts/percurso-v39r3-jornadas-por-perfil.mts`: para cada perfil do pedido, o usuário de ensaio que o
+  representa abre a tela da sua área com o ato dela, e a tela de outra área o leva para a tela de sem acesso nomeando a
+  ação que falta. A operação de cada perfil é a do percurso da R3 citado na linha, feita por esse mesmo usuário:
+  planejador (projeto da LOA e emendas), comprador (solicitação de compra, pesquisa de preços), agente de contratação
+  (itens do processo), almoxarife (contagem e ajuste), patrimônio (as quatro operações), contador (custo da folha, prévia
+  do SIOPE; encerramento na cópia isolada), tesoureiro (lote, borderô, retorno e rejeição). **Recursos humanos** (perfil
+  novo, só anotar e consultar pessoal) opera aqui: a anotação na ficha funcional gravada com o nome de quem anotou, e a
+  ficha sem admitir, desligar ou alterar remuneração. **Fiscal de contrato** (perfil novo): acesso e recusa conferidos; a
+  operação NÃO foi percorrida — a base R3 não tem contrato em que ele seja designado (pendência
+  FISCAL-SEM-CONTRATO-NA-R3; exige o caminho processo → resultado → homologação → contrato → designação na massa).
+- **Resultado:** os 9 perfis ok, em duas corridas: 6 na primeira; os 3 últimos falharam por 500 do servidor de
+  desenvolvimento em páginas DIFERENTES a cada corrida (`frame.join is not a function`, `__webpack_modules__[moduleId] is
+  not a function`, `chunk.reason.enqueueModel is not a function` — erros do próprio Next em modo de desenvolvimento,
+  com 1 GB livre); com o servidor reiniciado (11 GB livres) os 3 passaram e o servidor registrou zero erros. A página
+  sozinha respondeu 200 em todas as vezes em que foi pedida isolada. O percurso passou a esperar a página inicial terminar
+  antes da primeira navegação.
+- **Observado e não alterado:** `/despesa/ordens` recusa quem não consulta a despesa DENTRO da página (mensagem de escopo),
+  não pelo redirecionamento à tela de sem acesso; é recusa, mas de outra forma.
 
 ### R3-028 — PDF: as famílias documentais, uma a uma
 - **Inventário** (levantamento só de leitura): um motor só (`lib/pdf/gerar.ts`, Chromium) e um molde (`lib/pdf/documento.ts`:
