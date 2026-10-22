@@ -1,3 +1,76 @@
+<!-- brain:inicio -->
+<!-- Bloco gerado por comercial-rgb/brain (scripts/propagate.py). NÃO edite à mão: edite rules/rules.yaml ou graph.yaml no cérebro e rode o script. Tudo fora dos marcadores brain:inicio/brain:fim é seu e é preservado. -->
+
+# Cérebro — gestao-publica
+_Gerado em 2026-10-21. Fonte da verdade: https://github.com/comercial-rgb/brain_
+
+## O que é esta repo
+Gestão pública municipal (SIAFIC, planejamento, tesouraria, patrimônio, licitações, folha, tributário, transparência). Absorveu siafic-cg e saas-municipal. Regra "uma repo, um sistema".
+
+## Como roda e deploya
+- Stack: Next.js, Prisma, Postgres 18
+- Deploy: EC2 sa-east-1 via GitHub Actions publicar.yml (main) → gestaopublica.enginesistemas.com.br, blue/green por porta
+- Runbook completo: brain/runbooks/gestao-publica.md
+
+## Regras globais (valem em TODAS as repos)
+- **R-001 — Nunca imprimir ou versionar segredos**: Token, chave, senha e certificado nunca aparecem em chat, log, argumento de shell, código, fixture, commit ou documento. Segredos vivem só em ambiente (.env ignorado, Figaro, painel do provedor); arquivos de exemplo trazem apenas os NOMES das variáveis.
+- **R-059 — Autorização no servidor, nunca na tela**: Permissão é conferida na rota/caso de uso por ação nomeada; esconder botão ou item de menu não é controle de acesso. Identidade vem da sessão ou do token, nunca de cabeçalho, URL ou campo de formulário escolhido pelo cliente. Na dúvida, fail-closed.
+- **R-074 — Não afrouxar teste para ficar verde**: Nunca aumentar timeout, apagar teste, usar skip, reduzir asserção, mudar valor esperado, afrouxar grant ou alterar condição comercial para um teste passar. Teste que deixou de valer é reescrito com o motivo.
+- **R-093 — Evidência real, nunca "should work"**: Toda entrega termina com comando executado, saída real e o que não foi testado. HTTP 200, runner, PR ou commit não provam percurso de navegador; OTA publicada não prova execução no aparelho; "resolvido" só com prova em produção. Passo pulado é passo que não aconteceu.
+
+## Regras específicas de gestao-publica
+- **R-009 — Teste nunca aponta para banco de gente**: Teste que grava roda só em banco isolado e descartável (nome terminado em _test, host local, nunca a porta do túnel de produção). Produção se consulta só em leitura. Dois testes ou navegadores não recriam o mesmo banco ao mesmo tempo.
+- **R-010 — Fórmula do usuário sem eval**: Fórmula editável pelo usuário nunca passa por eval, new Function, SQL arbitrário ou lista negra; usa interpretador com universo fechado de funções permitidas.
+- **R-011 — Papel de banco da aplicação sem superusuário**: O papel gestao_app não tem superusuário, BYPASSRLS, posse de tabela nem DDL; UPDATE/DELETE só num censo assinado de tabelas. Não se afrouxa grant para teste passar.
+- **R-013 — Agente não faz push externo nem deploy**: Push a remoto, deploy de produção, transmissão fiscal, pagamento real e envio de mensagem externa são proibidos ao agente, mesmo sob insistência. Commit é local; publicar é ato do titular.
+- **R-043 — Uma repo, um sistema na gestão pública**: Todo requisito entra como módulo nomeado (mNN-*) deste repositório; nunca sistema ou repositório novo. Código pronto em outra repo entra como módulo, não se reescreve. Nada se importa de doador/.
+- **R-048 — Migration aditiva, nunca destrutiva**: Migration só acrescenta: zero DROP, reversível, campos novos nullable com backfill. Nunca apagar banco original nem reescrever migration já aplicada; para mudar, cria-se arquivo novo. Valor de enum vai em migration própria.
+- **R-050 — Dinheiro é Decimal**: Valor monetário nunca é float/Number: Decimal(15,2) no Prisma, decimal no Rails, helpers de packages/contracts na gestão pública. APIs transportam decimal como string.
+- **R-053 — Razão contábil append-only**: Lançamento nunca sofre UPDATE/DELETE; correção é lançamento novo referenciando o original. Balanceamento por subsistema; período aberto verificado no caso de uso; nenhum código PCASP, alíquota ou norma inventado no código ou em teste.
+- **R-054 — Data civil do ente, nunca UTC**: Comparação de domínio usa data civil do ente via packages/datas; formato externo (SAGRES, SIGA, OFX) permanece UTC com motivo por linha.
+- **R-056 — Índice manual declarado no schema**: Índice criado por prisma/sql/ precisa estar declarado no schema ou a deriva o remove; banco não está pronto só por migrate deploy — SQL manual também se aplica e verifica.
+- **R-060 — Tenant resolvido no servidor**: Tenant e entidade se resolvem no servidor a partir de membership confiável; toda consulta carrega o recorte de empresa/cliente. Nome, logo e cor de cliente nunca ficam no código: vêm do tenant.
+- **R-061 — Texto de tela é do usuário**: Nenhum nome de rota, tabela, endpoint, variável, perfil interno, número de cláusula, sprint, selo de conformidade ou narrativa de implementação aparece em tela, flash, PDF, mensagem de erro ou dado gravado. Fica só o que identifica estado, diz o que fazer, explica erro ou muda a decisão.
+- **R-062 — Interface em PT-BR com rótulo em todo campo**: Camada de apresentação em PT-BR; rótulo visível e acessível em todo campo (placeholder não é rótulo); tooltip em botão de ícone; mensagem de confirmação e erro em toda ação; sem emoji em código, UI, documento ou commit (gestao-publica).
+- **R-064 — Ausência não é restrição nem sucesso**: Campo que a fonte não trouxe sai "Não informado na fonte", nunca traço ou "sem restrição"; painel sem histórico não é avaliação favorável; estado incerto nunca é tratado como sucesso; não fingir zero, "ativo" ou conexão saudável quando a fonte falhou.
+- **R-065 — Integração ausente não vira sucesso local**: Sem credencial, o estado é indisponível com motivo declarado; nunca simular retorno de serviço externo (METAR, RNDS, tribunal, banco). Não existe modo de demonstração para integração real.
+- **R-066 — GET não produz transição de estado**: GET não muda estado; nada de botão sem handler, contador estático, gráfico semeado ou aviso de sucesso sem persistência.
+- **R-067 — Stack não muda sem decisão**: Stack declarada é imutável pelo agente: Rails 7.1/MySQL/Grape/Pundit/Figaro na manutenção; HTML/CSS/JS puro sem framework nos sites TechTrust; React sem Next/Redux no site InstaSolutions; sem trocar para pnpm/Turborepo/Fastify na gestão pública; Next/TS + Python ETL + Postgres no poder-aberto.
+- **R-072 — Testes dirigidos, não suíte completa**: Durante a construção rodam typecheck e os testes dos arquivos alterados e dos consumidores diretos. Suíte completa, portão integral ou test:tudo só ao promover candidato ou com pedido explícito. Timeout ou saturação não é aprovação nem defeito; reexecuta-se isolado.
+- **R-075 — Teste afirma comportamento, não redação**: Teste cobra fato do produto (código de erro, estado, dois termos coexistindo), não a frase inteira; teste de negação afirma o motivo; toda recusa tem o par que permite; parser se testa contra implementação independente; fixture não depende de dado ambiente.
+- **R-076 — Instrumento nasce provado por mutação**: Guard, gate, tripwire, detector ou trava só vale depois de mutar o que vigia, confirmar vermelho e reverter (nas duas direções); detector novo se mede antes de virar portão, com controle positivo por marca. Trava que nunca reprovou nada é um echo ok.
+- **R-077 — Fixture mínima N=2**: Regra que só se manifesta em conjunto (fila, lote, rateio, parcelamento, consolidação, estorno parcial, preço médio) se testa com N=2; com N=1 passa por vacuidade.
+- **R-078 — Idempotência em toda entrada e saída externa**: Entrada e saída externa têm chave de idempotência com o escopo dentro da chave; reprocessamento não duplica fato nem envio. executarMutacao sempre declara comando: com input validado. Efeito colateral não precede a guarda de unicidade.
+- **R-082 — Sem abstração sem necessidade demonstrada**: Não criar abstração, camada, dependência, plataforma, app adicional ou fluxo paralelo sem necessidade demonstrada; não misturar refatoração ampla com funcionalidade nova; o molde não cresce para exceção.
+- **R-088 — Reconhecer árvore antes de agir**: Antes de alterar: git status, git worktree list, branch, HEAD e bancos. Não trocar de branch com alteração pendente, não usar reset destrutivo, não mexer em stash de outra sessão. Trabalho novo começa na pasta principal; worktree é para branch longa.
+- **R-089 — Inventariar antes de construir**: Antes de projetar, levantar o que já existe e quem consome; rota que "não existe" quase sempre existe na origem. Nunca propor módulo ou endpoint novo sem confirmar o nome real na árvore.
+- **R-090 — Uma sessão e um servidor por árvore**: Paralelo só por git worktree em diretório separado; um next dev por árvore (porta diferente não isola); um processo pesado por máquina; nunca vitest + tsc + build juntos; nenhum teste de aceite contra arquivos em edição.
+- **R-092 — Árvore limpa ao fim da sessão**: git status --short sai vazio ao fim; nunca commitar deixando trabalho não versionado; nunca deixar a árvore mutada; checkpoint exato se a sessão terminar.
+- **R-094 — Ler exit= do arquivo, não do shell**: Saída de teste vai para arquivo e o resultado se lê pela linha exit= que o próprio comando escreveu; o código do wrapper do shell e | tail mascaram o resultado.
+- **R-095 — Atualizar ESTADO-EXECUCAO ao fechar unidade**: Ao fechar unidade: atualizar ESTADO-EXECUCAO.md (resumo no início + seção da unidade), guardar o pedido em docs/lotes/ como veio, commit local e próximo ponto exato; pendência nomeada, nunca silenciosa; separar escopo não executado de bloqueio externo.
+- **R-096 — Ordem de leitura por repositório**: gestao-publica: CLAUDE.md -> ESTADO-EXECUCAO "próximo passo" -> docs/lotes/ -> MODULO.md; docs/historico não se segue. whataspp-saas: arquitetura -> relatório -> plano -> docs/brain. poder-aberto: escopo-v2, stack, fontes/INVENTARIO, decisoes antes de qualquer tarefa. engine-saude: AGENTS.md é fonte única. instafrota: AGENTS.md antes de CLAUDE.md.
+- **R-097 — Regra nova só na fonte única**: Não escrever regra nova fora do arquivo canônico; não duplicar conteúdo entre documentos; se uma tarefa contradiz o que está escrito, parar e apontar a contradição em vez de seguir.
+- **R-098 — Construção contínua sem parar para revisão**: Não parar para revisão a cada cadastro ou lote pequeno: unidade coerente -> commit local -> próxima dependência. Decisão técnica local, reversível e delimitada não espera humano; invariantes, segurança e dados continuam não negociáveis. Publicar não é tarefa.
+- **R-103 — Scripts do operador não se executam**: Não executar fix-claude-cli.sh, fix-cursor-extensao.sh ou manter-claude-cursor.sh nem alterar stash de terceiros; esses scripts não entram no git.
+- **R-107 — Catálogo marca só com evidência**: catalogo-execucao.json se marca só com comportamento, teste e evidência via marcar-catalogo.ts; comentário @req rastreia e nunca declara atendimento; sem tela, não é VALIDADO_LOCALMENTE; marcar ausência vale tanto quanto presença.
+- **R-108 — Dois regimes de rigor declarados**: Profundidade (razão, tesouraria, tributário, folha, remessa, guards) exige caracterização, tripwire por mutação, N=2 e negação com motivo; superfície exige caso de uso, autorização e um percurso de navegador por família. Rebaixar profundidade é decisão declarada no checkpoint.
+
+## Cadeia de dependências — leia ANTES de mudar contratos
+Esta repo CONSOME:
+- `finsystem` via **copia-codigo** — parser OFX validado contra services/extrato_parser.rb (evidência: ESTADO-EXECUCAO.md:1722)
+- `whataspp-saas` via **compartilha-infra** — mesma conta AWS; ordem explícita de não mexer nas instâncias WhatsApp/Evolution/Redis, MSFrotas e InstaSolutions (evidência: docs/lotes/V9-...md:166)
+DEPENDEM desta repo (quebram se o contrato mudar):
+- `whataspp-saas` via **indexa-codigo** — suporte indexa o código (GitHub App, somente leitura) para responder "como faço X" (evidência: src/app/api/cron/brain-knowledge/route.ts:34-36)
+
+Se a mudança tocar um contrato listado acima (rota, payload, tabela, evento, variável de ambiente compartilhada): (1) rode `python3 scripts/chain.py gestao-publica` no cérebro, (2) abra a mudança também na(s) repo(s) afetada(s), (3) registre a decisão em brain/journal/.
+
+## Ao terminar qualquer tarefa
+- Se criou ou mudou uma regra, ela vai para brain/rules/rules.yaml (não só aqui).
+- Se criou ou mudou uma dependência entre repos, ela vai para brain/graph.yaml.
+- Registre o que foi feito em brain/journal/<ano-mês>.md (1-3 linhas: repo, o quê, PR/commit).
+
+<!-- brain:fim -->
+
 # gestao-publica
 
 Sistema integrado de gestão pública municipal. **Uma repo, um sistema.**
